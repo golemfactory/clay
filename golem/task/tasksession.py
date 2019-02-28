@@ -229,11 +229,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 task_to_compute.sign_message(self.my_private_key)
 
             config_desc = self.task_server.config_desc
-            self.task_server.disallow_node(
-                task_to_compute.provider_id,
-                config_desc.disallow_node_timeout_seconds, False)
-            self.task_server.disallow_ip(
-                self.address, config_desc.disallow_ip_timeout_seconds)
+            if config_desc.disallow_node_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_node(
+                    node_id=task_to_compute.provider_id,
+                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
+                    persist=False,
+                )
+            if config_desc.disallow_ip_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_ip(
+                    ip=self.address,
+                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
+                )
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
