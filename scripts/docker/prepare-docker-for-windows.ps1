@@ -34,7 +34,7 @@ if( ! $currentGolemUser )
 $createShareScript = $createShareFolder + "create-share.ps1"
 "createShareScript: " + $createShareScript
 
-$golemDataDir = $appDataDir + "golem\golem\default"
+$golemDataDir = $appDataDir + "\golem\golem\default"
 $mainnetDir = $golemDataDir + "\mainnet\ComputerRes"
 "mainnetDir: " + $mainnetDir
 $testnetDir = $golemDataDir + "\rinkeby\ComputerRes"
