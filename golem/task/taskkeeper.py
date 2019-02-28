@@ -627,9 +627,6 @@ class TaskHeaderKeeper:
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
 
-    def request_failure(self, task_id):
-        self.remove_task_header(task_id)
-
     def get_unsupport_reasons(self):
         """
         :return: list of dictionaries of the form {'reason': reason_type,

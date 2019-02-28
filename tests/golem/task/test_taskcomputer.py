@@ -317,12 +317,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         else:
             print('counting thread is None')
 
-    def test_request_rejected(self):
-        task_server = self.task_server
-        tc = TaskComputer(task_server, use_docker_manager=False)
-        with self.assertLogs(logger, level="INFO"):
-            tc.task_request_rejected("xyz", "my rejection reason")
-
     def test_get_environment_no_assigned_subtask(self):
         tc = TaskComputer(self.task_server, use_docker_manager=False)
         assert tc.get_environment() is None

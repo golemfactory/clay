@@ -135,9 +135,6 @@ class TaskComputer(object):
         self.__task_finished(subtask)
         self.session_closed()
 
-    def task_request_rejected(self, task_id, reason):
-        logger.info("Task %r request rejected: %r", task_id, reason)
-
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
