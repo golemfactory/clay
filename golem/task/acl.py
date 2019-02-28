@@ -95,15 +95,15 @@ class _DenyAcl(Acl):
 
 
 class _AllowAcl(Acl):
-    def __init__(self, allow_set: Optional[Set[str]] = None,
-                 list_path: Optional[Path] = None,
-                 max_times: int = 1) -> None:
-        # TODO?: implement timeouts and max_times
+    def __init__(
+            self,
+            allow_set: Optional[Set[str]] = None,
+            list_path: Optional[Path] = None,
+    ) -> None:
         if allow_set is None:
             allow_set = set()
         self._allow_set = allow_set
         self._list_path = list_path
-        self._max_times = max_times
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
         if node_id in self._allow_set:
@@ -142,6 +142,6 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
 
     if ALL_EXCEPT_ALLOWED in nodes_ids:
         nodes_ids.remove(ALL_EXCEPT_ALLOWED)
-        return _AllowAcl(nodes_ids, deny_list_path, max_times)
+        return _AllowAcl(nodes_ids, deny_list_path)
 
     return _DenyAcl(nodes_ids, deny_list_path, max_times)
