@@ -1,8 +1,7 @@
 from typing import List
 import _pytest
 
-from scripts.node_integration_tests.tests.base import \
-    disable_reuse_keys_command_line
+DISABLE_KEY_REUSE_COMMAND_LINE = False
 
 
 def pytest_addoption(parser: _pytest.config.Parser) -> None:
@@ -14,6 +13,7 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: _pytest.config.Config,
-                                  _items: List[_pytest.main.Item]) -> None:
+                                  items: List[_pytest.main.Item]) -> None:
     if config.getoption("--disable-key-reuse") is True:
-        disable_reuse_keys_command_line()
+        global DISABLE_KEY_REUSE_COMMAND_LINE
+        DISABLE_KEY_REUSE_COMMAND_LINE = True

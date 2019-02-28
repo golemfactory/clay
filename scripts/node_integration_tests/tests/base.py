@@ -7,13 +7,6 @@ from typing import Callable
 
 from ..helpers import get_testdir
 
-DISABLE_KEY_REUSE_COMMAND_LINE = False
-
-
-def disable_reuse_keys_command_line():
-    global DISABLE_KEY_REUSE_COMMAND_LINE
-    DISABLE_KEY_REUSE_COMMAND_LINE = True
-
 
 def disable_key_reuse(test_function: Callable)-> Callable:
     @wraps(test_function)
@@ -61,6 +54,10 @@ class NodeTestBase:
         return self.id().replace(parent_name + '.', '')
 
     def _should_node_keys_be_reused(self) -> bool:
+        # It should be imported locally because may be changed in command line
+        # and we need to get here updated value
+        from scripts.node_integration_tests.conftest import \
+            DISABLE_KEY_REUSE_COMMAND_LINE
         if any([
             self.first_test_in_set,
             DISABLE_KEY_REUSE_COMMAND_LINE,
