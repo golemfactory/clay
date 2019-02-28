@@ -4,10 +4,12 @@ import os.path
 import shutil
 import tempfile
 import unittest
+import string
 from pathlib import Path
 from time import sleep
 from typing import Dict
-
+from random import SystemRandom
+from golem.task.taskclient import TaskClient
 import ethereum.keys
 import pycodestyle
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -55,7 +57,7 @@ class TestTaskManager(TaskManager):
 
         self.task_persistence = task_persistence
 
-        tasks_dir = Path(tasks_dir)
+        tasks_dir = Path(os.path.join(root_path, tasks_dir))
         self.tasks_dir = tasks_dir / "tmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
@@ -241,14 +243,38 @@ class PEP8MixIn(object):
 
 class TestTaskIntegration(TempDirFixture):
 
+    TEST_FAILED = False
+
+    @staticmethod
+    def check_file_existence(filename):
+        return lambda: os.path.isfile(filename)
+
+    @staticmethod
+    def run_asserts(assertions):
+        for a in assertions:
+            try:
+                assert a()
+            except AssertionError:
+                TestTaskIntegration.TEST_FAILED = True
+                raise
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        TestTaskIntegration.TEST_FAILED = False
+
     def setUp(self):
         super(TestTaskIntegration, self).setUp()
 
         # build mock node
         self.node = dt_p2p_factory.Node()
         self.task_definition = None
-        self.node_id = "qwertyuiop"
-        self.node_name = "aaaa"
+        self.node_id = ''.join(
+            SystemRandom().choice(string.ascii_lowercase + string.digits) for _
+            in range(8))
+        self.node_name = ''.join(
+            SystemRandom().choice(string.ascii_lowercase + string.digits) for _
+            in range(8))
         self.task = None
         self.dir_manager = DirManager(self.root_dir)
 
@@ -288,22 +314,27 @@ class TestTaskIntegration(TempDirFixture):
                                  max_memory_size=10000000000,
                                  address='127.0.0.1')
             result = self.execute_subtask(task, ctd)
+
             self.task_manager.computed_task_received(
                 subtask_id=ctd['subtask_id'],
                 result=result,
                 verification_finished=None)
-            # all results are moved to the parent dir
 
+            # all results are moved to the parent dir
             task.accept_results(ctd['subtask_id'], list(
                 map(lambda res: outer_dir_path(res), result)))
+
+            # finish subtask
+            TaskClient.assert_exists(self.node_id, task.counting_nodes).finish()
 
     def execute_subtask(self, task, ctd):
 
         extra_data = ctd["extra_data"]
 
-        subtask_dir = os.path.join(self.root_dir, self.node_name)
+        tempdir = self.task_manager.dir_manager.get_task_temporary_dir(
+            task.task_definition.task_id)
 
-        return self.run_test_job(task, subtask_dir, extra_data)
+        return self.run_test_job(task, tempdir, extra_data)
 
     @staticmethod
     def _copy_resources(task, resources_dir):
@@ -349,6 +380,7 @@ class TestTaskIntegration(TempDirFixture):
             raise Exception(dtt.error_msg)
         return dtt.result.get('data')
 
-    def tearDown(self):
-        shutil.rmtree(self.tempdir)
-        super().tearDown()
+    @classmethod
+    def tearDownClass(cls):
+        if not TestTaskIntegration.TEST_FAILED:
+            shutil.rmtree(cls.root_dir)
