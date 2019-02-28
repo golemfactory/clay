@@ -10,14 +10,12 @@ import sys
 import tempfile
 import time
 import typing
-import unittest
 
 from pathlib import Path
 
 from ethereum.utils import denoms
 import golem_messages
 
-from golem_messages import cryptography
 from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
@@ -32,30 +30,11 @@ from golem.ethereum.transactionsystem import tETH_faucet_donate
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
 
+from .util import SetUpTearDownTestCase
+from .granary import Granary, Account
+
 logger = logging.getLogger(__name__)
-
-class Granary:
-
-    @staticmethod
-    def request_account():
-        # TODO: read from granary service
-        logger.debug("Granary called, account requested")
-        return Account(ConcentBaseTest._fake_keys())
-
-    @staticmethod
-    def return_account(account):
-        # TODO: read from granary service
-        logger.debug("Granary called, account returned")
-        logger.debug(account)
-        logger.debug(account.key)
-        logger.debug(account.transaction_store)
-        logger.debug(account.password)
-
-class Account:
-    def __init__(self, key, ts = None, password = None):
-        self.key = key
-        self.transaction_store = ts
-        self.password = password
+logger.setLevel(5)
 
 def dump_balance(sci: SmartContractsInterface):
     gnt = sci.get_gnt_balance(sci.get_eth_address())
@@ -76,28 +55,19 @@ def dump_balance(sci: SmartContractsInterface):
     sys.stderr.write(balance_str)
 
 
-class ConcentBaseTest(unittest.TestCase):
-    @staticmethod
-    def _fake_keys():
-        return cryptography.ECCx(None)
+class ConcentBaseTest(SetUpTearDownTestCase):
 
-    @staticmethod
-    def _fake_account():
-
-        logger.debug('Requesting account from granary')
-        requested_account = Granary.request_account()
-
-        if requested_account is None:
-            logger.debug('No account received, generating one')
-            return Account(self._fake_keys())
-
-        logger.debug('Account received, re-using it')
-        return requested_account
-
+    @classmethod
     def setUpClass(self):
-        self._provider_account = self._fake_account()
-        self._requestor_account = self._fake_account()
+        self._provider_account = Granary.request_account()
+        self._requestor_account = Granary.request_account()
         super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        Granary.return_account(cls._requestor_account)
+        Granary.return_account(cls._provider_account)
+        super().tearDownClass()
 
     def setUp(self):
         from golem.config.environments import set_environment
@@ -112,11 +82,6 @@ class ConcentBaseTest(unittest.TestCase):
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
                      base64.b64encode(self.requestor_pub_key).decode())
-
-    def tearDownClass(self):
-        super().tearDownClass()
-        Granary.return_account(self._requestor_account)
-        Granary.return_account(self._requestor_account)
 
     @property
     def provider_priv_key(self):
@@ -276,18 +241,28 @@ class SCIBaseTest(ConcentBaseTest):
     for the provider and the requestor
     """
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._requestor_ts_path = cls._setup_transactions(cls._requestor_account)
+        cls._provider_ts_path = cls._setup_transactions(cls._provider_account)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._teardown_transactions(cls._requestor_account.transaction_store,
+                                   cls._requestor_ts_path)
+        cls._teardown_transactions(cls._provider_account.transaction_store,
+                                   cls._provider_ts_path)
+        super().tearDownClass()
+
     def setUp(self):
         super().setUp()
         from golem.config.environments.testnet import EthereumConfig
-        random.seed()
 
         self.transaction_timeout = datetime.timedelta(seconds=300)
         self.sleep_interval = 15
 
-        self._requestor_ts_path = self._setup_transactions(self._requestor_account)
         requestor_storage = JsonTransactionsStorage(self._requestor_ts_path)
-
-        self._provider_ts_path = self._setup_transactions(self._provider_account)
         provider_storage = JsonTransactionsStorage(self._provider_ts_path)
 
         self.requestor_eth_addr = privkeytoaddr(self.requestor_keys.raw_privkey)
@@ -309,13 +284,6 @@ class SCIBaseTest(ConcentBaseTest):
             contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
-
-    def tearDownClass(self):
-        self._requestor_account.transaction_store = open(self._requestor_ts_path, 'r').read()
-        self._requestor_account.transaction_store = open(self._requestor_ts_path, 'r').read()
-
-        # Requires the transaction stores to be updated before calling super
-        super().tearDownClass()
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
@@ -397,7 +365,8 @@ class SCIBaseTest(ConcentBaseTest):
             "Acquiring tETH timed out",
         )
 
-        self.wait_for_gntb(sci)
+        if sci.get_gntb_balance() < 10:
+            self.wait_for_gntb(sci)
 
         deposit = False
 
@@ -441,8 +410,15 @@ class SCIBaseTest(ConcentBaseTest):
 
     @staticmethod
     def _setup_transactions(account):
-        transaction_path = Path(tempfile.mkdtemp()) / 'tx.json'
+        transaction_path = Path(tempfile.mkdtemp(), 'tx.json')
         if account.transaction_store is not None:
-            with open(transaction_path, 'rb+')  as f:
-                f.write(account.transaction_store)
+            transaction_path.write_text(account.transaction_store)
         return transaction_path
+
+
+    @staticmethod
+    def _teardown_transactions(account, file):
+        try:
+            account.transaction_store = file.read_text()
+        except:
+            logger.debug('Failed to read %r', file)

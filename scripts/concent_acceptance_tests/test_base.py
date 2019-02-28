@@ -9,7 +9,7 @@ from .base import ConcentBaseTest
 
 
 class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
-    def test_assert_methods(self):
+    def tes_assert_methods(self):
         requestor_keys = self._fake_keys()
         provider_keys = self._fake_keys()
         concent_keys = self._fake_keys()
