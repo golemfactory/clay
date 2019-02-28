@@ -2,26 +2,14 @@ from typing import List
 import pytest
 import _pytest
 
-from scripts.node_integration_tests.tests.base import \
-    disable_reuse_keys_command_line
-
 
 def pytest_addoption(parser: _pytest.config.Parser) -> None:
     parser.addoption("--runslow", action="store_true",
                      default=False, help="run slow tests")
 
-    parser.addoption("--disable-key-reuse",
-                     help="Parameter disables reusing of provider's and "
-                          "requestor's node keys. All node_integration_tests"
-                          "run with new, fresh keys ")
-
 
 def pytest_collection_modifyitems(config: _pytest.config.Config,
                                   items: List[_pytest.main.Item]) -> None:
-    if config.getoption("--disable-key-reuse") and \
-            config.getvalue("--disable-key-reuse") == 'yes':
-        disable_reuse_keys_command_line()
-
     if config.getoption("--runslow"):
         # --runslow given in cli: do not skip slow tests
         return

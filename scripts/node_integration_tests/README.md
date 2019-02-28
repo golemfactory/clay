@@ -180,7 +180,7 @@ To disable reusing node keys on particular test add decorator
 
 To start all tests, each with new fresh key, without reusing keys:
 ```
-pytest --disable-key-reuse=yes scripts/node_integration_tests
+pytest --disable-key-reuse scripts/node_integration_tests
 ```
 
 
