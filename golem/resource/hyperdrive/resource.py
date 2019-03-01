@@ -25,23 +25,23 @@ class ResourceError(RuntimeError):
 
 class Resource:
 
-    __slots__ = ('hash', 'files', 'path', 'task_id')
+    __slots__ = ('hash', 'files', 'path', 'res_id')
 
-    def __init__(self, resource_hash, task_id=None, files=None, path=None):
+    def __init__(self, resource_hash, res_id=None, files=None, path=None):
         self.hash = resource_hash
-        self.task_id = task_id
+        self.res_id = res_id
         self.files = files
         self.path = path
 
     def __eq__(self, other):
         return other and \
-            self.task_id == other.task_id and \
+            self.res_id == other.res_id and \
             self.hash == other.hash and \
             self.path == other.path and \
             self.files == other.files
 
     def __str__(self):
-        return 'Resource(hash: {}, task: {})'.format(self.hash, self.task_id)
+        return 'Resource(hash: {}, id: {})'.format(self.hash, self.res_id)
 
     def __repr__(self):
         return str(self)
@@ -79,7 +79,7 @@ class ResourceCache(object):
         self._task_to_prefix = dict()
 
     def add_resource(self, resource):
-        task_id = resource.task_id
+        task_id = resource.res_id
 
         with self._lock:
             resource_list = self._task_to_res.get(task_id)
@@ -97,7 +97,7 @@ class ResourceCache(object):
         return self._path_to_res.get(resource_path, default)
 
     def has_resource(self, resource):
-        if resource.task_id and resource.task_id not in self._task_to_res:
+        if resource.res_id and resource.res_id not in self._task_to_res:
             return False
         if resource.hash and resource.hash not in self._hash_to_res:
             return False

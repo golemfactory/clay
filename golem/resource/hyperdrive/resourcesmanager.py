@@ -251,7 +251,7 @@ class HyperdriveResourceManager(ClientHandler):
         :param task_id: Task id that files are associated with
         """
         resource_path = self.storage.get_path('', task_id)
-        resource = Resource(resource_hash, task_id=task_id,
+        resource = Resource(resource_hash, res_id=task_id,
                             files=list(files), path=resource_path)
         self._cache_resource(resource)
 
@@ -274,7 +274,7 @@ class HyperdriveResourceManager(ClientHandler):
                       client=None, client_options=None, async_=True):
 
         resource_path = self.storage.get_path('', task_id)
-        resource = Resource(resource_hash=entry[0], task_id=task_id,
+        resource = Resource(resource_hash=entry[0], res_id=task_id,
                             files=entry[1], path=resource_path)
 
         if resource.files and self.storage.exists(resource):
