@@ -212,6 +212,7 @@ definitions:
       reason:
         type: string
   Event:
+    description: Every item has id and exactly one of remaining fields filled.
     type: object
     required:
       - eventId
@@ -228,9 +229,7 @@ definitions:
         $ref: '#/definitions/SubtaskVerification'
     
   Events:
-    description: >
-      Events array.
-      Every item has id and exactly one of remaining fields filled.
+    description: Events array.
     type: array
     items:
       $ref: '#/definitions/Event'
