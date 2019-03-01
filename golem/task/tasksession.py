@@ -697,6 +697,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ConcentDisabled)
             return
 
+        if not self._check_resource_size(msg.size):
+            # We don't have enough disk space available
+            _cannot_compute(reasons.ResourcesTooBig)
+            return
+
         number_of_subtasks = self.task_server.task_keeper\
             .task_headers[msg.task_id]\
             .subtasks_count
@@ -743,6 +748,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if self.task_server.task_given(self.key_id, ctd, msg.price):
                 return
         _cannot_compute(self.err_msg)
+
+    def _check_resource_size(self, resource_size):
+        max_resource_size_kib = self.task_server.config_desc.max_resource_size
+        max_resource_size = int(max_resource_size_kib) * 1024
+        if resource_size > max_resource_size:
+            logger.info('Subtask with too big resources received: '
+                        f'{resource_size}, only {max_resource_size} available')
+            return False
+        return True
 
     def _react_to_waiting_for_results(
             self,
