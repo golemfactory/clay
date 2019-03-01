@@ -211,25 +211,29 @@ definitions:
         type: integer
       reason:
         type: string
+  Event:
+    type: object
+    required:
+      - eventId
+    properties:
+      eventId:
+        $ref: '#/definitions/Uuid'
+      task:
+        $ref: '#/definitions/Task'
+      subtask:
+        $ref: '#/definitions/Subtask'
+      resource:
+        $ref: '#/definitions/Resource'
+      subtaskVerification:
+        $ref: '#/definitions/SubtaskVerification'
+    
   Events:
     description: >
       Events array.
       Every item has id and exactly one of remaining fields filled.
     type: array
     items:
-      required:
-        - eventId
-      properties:
-        eventId:
-          $ref: '#/definitions/Uuid'
-        task:
-          $ref: '#/definitions/Task'
-        subtask:
-          $ref: '#/definitions/Subtask'
-        resource:
-          $ref: '#/definitions/Resource'
-        subtaskVerification:
-          $ref: '#/definitions/SubtaskVerification'
+      $ref: '#/definitions/Event'
 parameters:
   nodeId:
     name: nodeId
