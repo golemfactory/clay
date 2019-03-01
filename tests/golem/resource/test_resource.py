@@ -8,7 +8,6 @@ from apps.core.task.coretaskstate import TaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.resource.resource import (get_resources_for_task, ResourceType,
                                      TaskResource, TaskResourceHeader)
-from golem.resource.resourcesmanager import DistributedResourceManager
 
 from golem.testutils import TempDirFixture
 
@@ -121,17 +120,3 @@ class TestGetTaskResources(TempDirFixture):
 
         assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
                                       ResourceType.HASHES) == files[1:]
-
-        with open(files[0], 'w') as f:
-            f.write("ABCD")
-
-        drm = DistributedResourceManager(os.path.dirname(files[0]))
-        res_files = drm.split_file(files[0])
-        c.add_resources({files[0]: res_files})
-
-        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
-                                      resource_type=3) is None
-        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
-                                      resource_type="aaa") is None
-        assert get_resources_for_task(th, c.get_resources(), c.tmp_dir,
-                                      resource_type=None) is None

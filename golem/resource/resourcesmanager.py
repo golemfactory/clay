@@ -9,45 +9,6 @@ from golem.resource.resourcehash import ResourceHash
 logger = logging.getLogger(__name__)
 
 
-class DistributedResourceManager:
-    def __init__(self, resource_dir):
-        self.resources = set()
-        self.resource_dir = resource_dir
-        self.resource_hash = ResourceHash(self.resource_dir)
-        self.add_resources()
-
-    def copy_resources(self, new_resource_dir):
-        copy_file_tree(self.resource_dir, new_resource_dir)
-        filenames = next(os.walk(self.resource_dir))[2]
-        for f in filenames:
-            os.remove(os.path.join(self.resource_dir, f))
-
-    def split_file(self, file_name, block_size=2 ** 20):
-        resource_hash = ResourceHash(self.resource_dir)
-        list_files = [os.path.basename(file_) for file_ in resource_hash.split_file(file_name, block_size)]
-        self.resources |= set(list_files)
-        return list_files
-
-    def connect_file(self, parts_list, file_name):
-        resource_hash = ResourceHash(self.resource_dir)
-        res_list = [os.path.join(self.resource_dir, p) for p in parts_list]
-        resource_hash.connect_files(res_list, file_name)
-
-    def add_resources(self):
-        filenames = next(os.walk(self.resource_dir))[2]
-        self.resources = set(filenames)
-
-    def check_resource(self, resource):
-        res_path = os.path.join(self.resource_dir, os.path.basename(resource))
-        if os.path.isfile(res_path) and self.resource_hash.get_file_hash(res_path) == resource:
-            return True
-        else:
-            return False
-
-    def get_resource_path(self, resource):
-        return os.path.join(self.resource_dir, resource)
-
-
 class ResourcesManager:
     def __init__(self, dir_manager, owner):
         self.resources = {}
