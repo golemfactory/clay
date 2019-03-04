@@ -9,9 +9,10 @@ import time
 from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages import exceptions as msg_exceptions
+from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
 import golem
@@ -705,6 +706,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ConcentDisabled)
             return
 
+        if not self._check_resource_size(msg.size):
+            # We don't have enough disk space available
+            _cannot_compute(reasons.ResourcesTooBig)
+            return
+
         number_of_subtasks = self.task_server.task_keeper\
             .task_headers[msg.task_id]\
             .subtasks_count
@@ -752,6 +758,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         _cannot_compute(self.err_msg)
 
+    def _check_resource_size(self, resource_size):
+        max_resource_size_kib = self.task_server.config_desc.max_resource_size
+        max_resource_size = int(max_resource_size_kib) * 1024
+        if resource_size > max_resource_size:
+            logger.info('Subtask with too big resources received: '
+                        f'{resource_size}, only {max_resource_size} available')
+            return False
+        return True
+
     def _react_to_waiting_for_results(
             self,
             msg: message.tasks.WaitingForResults,
@@ -762,7 +777,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             concent_key = None
         try:
             msg.verify_owners(
-                requestor_public_key=self.key_id,
+                requestor_public_key=msg_utils.decode_hex(self.key_id),
                 provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
@@ -795,10 +810,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.subtask_id,
                 msg.reason,
             )
-            self.task_manager.task_computation_failure(
+
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+
+            self.task_manager.task_computation_cancelled(
                 msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason)
+                'Task computation rejected: {}'.format(msg.reason),
+                timeout,
             )
+
         self.dropped()
 
     @history.provider_history
@@ -807,8 +828,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 RequestorCheckResult.OK:
             self.dropped()
             return
-        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
-        self.task_server.remove_task_header(msg.task_id)
+        logger.info(
+            "Task request rejected. task_id: %r, reason: %r",
+            msg.task_id,
+            msg.reason,
+        )
+        reasons = message.tasks.CannotAssignTask.REASON
+        if msg.reason is reasons.TaskFinished:
+            self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
         self.task_computer.session_closed()
         self.dropped()
@@ -1055,6 +1082,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        delay += datetime.timedelta(seconds=1)  # added for safety
         logger.debug(
             '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
             delayed_forcing_msg,

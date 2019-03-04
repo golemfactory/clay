@@ -54,7 +54,6 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
             pub_port=40103,
             pub_addr='1.2.3.4',
         ),
-        resource_size=2 * 1024,
         estimated_memory=3 * 1024,
     )
 
@@ -503,11 +502,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.reset_mock()
         method = ts._TaskServer__connection_for_task_request_final_failure
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.assert_called_once_with('conn_id')
 
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
@@ -584,14 +583,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
                 f'27.18 < {min_accepted_perf}; {ids}')
-
-        with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 99, 1.72, 1)
-            _assert_log_msg(
-                cm,
-                f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
@@ -718,7 +709,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
                                           HyperdriveClient.VERSION)
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options)
         assert client_options.peers is None
 
         peers = [
@@ -733,11 +724,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION,
                                           options=dict(peers=peers))
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options, size=1024)
         assert client_options.options.get('peers') == [
             to_hyperg_peer('127.0.0.1', 3282),
             to_hyperg_peer('1.2.3.4', 3282),
         ]
+        assert client_options.options.get('size') == 1024
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
@@ -746,17 +738,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert self.ts.get_download_options(
             received_options=None,
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options={'options': {'peers': ['Invalid']}},
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options=Mock(filtered=Mock(side_effect=Exception)),
-            task_id='task_id'
         ) is built_options
 
     def test_pause_and_resume(self, *_):

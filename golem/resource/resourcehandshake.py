@@ -284,8 +284,7 @@ class ResourceHandshakeSessionMixin:
             success=lambda res, files, _: self._nonce_downloaded(key_id, files),
             error=lambda exc, *_: self._handshake_error(key_id, exc),
             client_options=self.task_server.get_download_options(
-                options,
-                self.NONCE_TASK
+                options
             )
         )
 

@@ -18,7 +18,7 @@ from golem.verificator.blender_verifier import BlenderVerifier
     not is_linux(),
     reason='Docker is only available on Linux buildbots')
 class TestBlenderVerifier(TempDirFixture):
-    TIMEOUT = 120
+    TIMEOUT = 150
 
     def setUp(self):
         # pylint: disable=R0915
