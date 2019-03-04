@@ -104,9 +104,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         _deferred = rs.create_resource_package(existing_paths, self.task_id)
         pkg_path, pkg_sha1 = sync_wait(_deferred)
         resource_size = os.path.getsize(pkg_path)
-        return rm, rs.add_task(pkg_path, pkg_sha1, self.task_id, resource_size)
+        return rm, rs.add_resources(pkg_path, pkg_sha1, self.task_id,
+                                    resource_size)
 
-    def testAddTask(self):
+    def testAddResources(self):
         rm, deferred = self._add_task()
 
         def test(*_):
@@ -152,10 +153,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         if os.path.exists(new_path):
             shutil.rmtree(new_path)
 
-    def testRemoveTask(self):
+    def testRemoveResources(self):
         self.resource_manager.add_files(self._resources(), self.task_id)
         assert self.resource_manager.storage.get_resources(self.task_id)
-        self.resource_server.remove_task(self.task_id)
+        self.resource_server.remove_resources(self.task_id)
         assert not self.resource_manager.storage.get_resources(self.task_id)
 
     def testPendingResources(self):

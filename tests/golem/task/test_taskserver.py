@@ -918,7 +918,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                          prv_addresses=['10.0.0.2'],)
 
         self.resource_manager = Mock(
-            add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
+            add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
@@ -951,20 +951,21 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
             task_server.task_manager.tasks_states[task_id] = TaskState()
 
     def test_without_tasks(self, *_):
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert not self.resource_manager.add_task.called
+            assert not self.resource_manager.add_resources.called
             assert not self.ts.task_manager.delete_task.called
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_connection_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -972,10 +973,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
     def test_with_http_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=HTTPError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -991,10 +993,10 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for state in self.ts.task_manager.tasks_states.values():
             state.resource_hash = str(uuid.uuid4())
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=error_class):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count ==\
+            assert self.resource_manager.add_resources.call_count ==\
                 self.task_count * 2
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
@@ -1004,7 +1006,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self._create_tasks(self.ts, self.task_count)
 
         self.ts.restore_resources()
-        assert self.resource_manager.add_task.call_count == self.task_count
+        assert self.resource_manager.add_resources.call_count == self.task_count
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
