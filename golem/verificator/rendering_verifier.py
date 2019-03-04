@@ -5,16 +5,16 @@ from golem.verificator.core_verifier import CoreVerifier
 from golem.verificator.imgrepr import load_img
 
 
-logger = logging.getLogger("apps.rendering")
+logger = logging.getLogger('apps.rendering')
 
 
 class RenderingVerifier(CoreVerifier):
 
     def __init__(self, verification_data):
         super().__init__()
-        self.subtask_info = verification_data["subtask_info"]
-        self.resources = verification_data["resources"]
-        self.results = verification_data["results"]
+        self.subtask_info = verification_data['subtask_info']
+        self.resources = verification_data['resources']
+        self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING
 
     @staticmethod
@@ -24,8 +24,8 @@ class RenderingVerifier(CoreVerifier):
             return False
         img_x, img_y = img.get_size()
         if img_x != res_x:
-            logger.info("Subtask size doesn't match, has %r,"
-                        " should be %r", img.get_size(), (res_x, res_y))
+            logger.info('Subtask size doesn\'t match, has %r,'
+                        ' should be %r', img.get_size(), (res_x, res_y))
             return False
         return True
 
@@ -34,9 +34,6 @@ class RenderingVerifier(CoreVerifier):
 
 
 class FrameRenderingVerifier(RenderingVerifier):
-
-    def __init__(self, verification_data):
-        super().__init__(verification_data)
 
     def simple_verification(self, verification_data):
         if not super().simple_verification(verification_data):

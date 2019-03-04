@@ -17,11 +17,10 @@ logger = logging.getLogger(__name__)
 # FIXME #2086
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
-    DOCKER_NAME = "golemfactory/blender_verifier"
+    DOCKER_NAME = 'golemfactory/blender_verifier'
     DOCKER_TAG = '1.0'
 
-    def __init__(self, verification_data,
-                 docker_task_cls: Type) -> None:
+    def __init__(self, verification_data, docker_task_cls: Type) -> None:
         super().__init__(verification_data)
         self.finished = Deferred()
         self.docker_task_cls = docker_task_cls
@@ -46,7 +45,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.start_rendering()
         # pylint: disable=W0703
         except Exception as e:
-            logger.error("Verification failed %r", e)
+            logger.error('Verification failed %r', e)
             self.finished.errback(e)
 
         return self.finished
@@ -59,12 +58,12 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.timeout = timeout
 
         def success(result):
-            logger.debug("Success Callback")
+            logger.debug('Success Callback')
             self.state = SubtaskVerificationState.VERIFIED
             return self.verification_completed()
 
         def failure(exc):
-            logger.warning("Failure callback %r", exc)
+            logger.warning('Failure callback %r', exc)
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return exc
 
@@ -77,8 +76,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             resources=subtask_info['path_root'],
             temporary=os.path.dirname(work_dir),
             work=work_dir,
-            output=os.path.join(work_dir, "output"),
-            logs=os.path.join(work_dir, "logs"),
+            output=os.path.join(work_dir, 'output'),
+            logs=os.path.join(work_dir, 'logs'),
         )
 
         extra_data = dict(
@@ -97,7 +96,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             frames=subtask_info['frames'],
             output_format=subtask_info['output_format'],
             basefilename='crop',
-            script_filepath="/golem/scripts_verifier/runner.py",
+            script_filepath='/golem/scripts_verifier/runner.py',
         )
 
         self.docker_task = self.docker_task_cls(
@@ -107,7 +106,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             timeout=self.timeout)
 
         def error(e):
-            logger.warning("Verification process exception %s", e)
+            logger.warning('Verification process exception %s', e)
             self.finished.errback(e)
 
         def callback(*_):
@@ -116,7 +115,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                 verdict = json.load(f)
 
             logger.info(
-                "Subtask %s verification verdict: %s",
+                'Subtask %s verification verdict: %s',
                 subtask_info['subtask_id'],
                 verdict,
             )

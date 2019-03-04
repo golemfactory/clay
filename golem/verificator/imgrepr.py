@@ -9,12 +9,12 @@ import Imath
 from PIL import Image
 
 
-logger = logging.getLogger("apps.rendering")
+logger = logging.getLogger('apps.rendering')
 
 
 class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def load_from_file(self, file_):
+    def load_from_file(self, file_path):
         return
 
     @abc.abstractmethod
@@ -45,17 +45,16 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
 class PILImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
-        self.type = "PIL"
+        self.type = 'PIL'
 
-    def load_from_file(self, file_):
-        self.img = Image.open(file_)
+    def load_from_file(self, file_path):
+        self.img = Image.open(file_path)
         self.img = self.img.convert('RGB')
-        self.img.name = os.path.basename(file_)
+        self.img.name = os.path.basename(file_path)
 
-    def load_from_pil_object(self, pil_img, name="noname.png"):
-        import PIL
-        if not isinstance(pil_img, PIL.Image.Image):
-            raise TypeError("img must be an instance of PIL.Image.Image")
+    def load_from_pil_object(self, pil_img, name='noname.png'):
+        if not isinstance(pil_img, Image.Image):
+            raise TypeError('img must be an instance of PIL.Image.Image')
 
         self.img = pil_img
         self.img = self.img.convert('RGB')
@@ -92,7 +91,7 @@ class PILImgRepr(ImgRepr):
 class EXRImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
-        self.type = "EXR"
+        self.type = 'EXR'
         self.dw = None
         self.pt = Imath.PixelType(Imath.PixelType.FLOAT)
         self.rgb = None
@@ -100,14 +99,14 @@ class EXRImgRepr(ImgRepr):
         self.max = 1.0
         self.file_path = None
 
-    def load_from_file(self, file_):
-        self.img = OpenEXR.InputFile(file_)
+    def load_from_file(self, file_path):
+        self.img = OpenEXR.InputFile(file_path)
         self.dw = self.img.header()['dataWindow']
-        self.rgb = [Image.frombytes("F", self.get_size(),
+        self.rgb = [Image.frombytes('F', self.get_size(),
                                     self.img.channel(c, self.pt))
-                    for c in "RGB"]
-        self.file_path = file_
-        self.name = os.path.basename(file_)
+                    for c in 'RGB']
+        self.file_path = file_path
+        self.name = os.path.basename(file_path)
 
     def get_size(self):
         return self.dw.max.x - self.dw.min.x + 1, \
@@ -140,8 +139,8 @@ class EXRImgRepr(ImgRepr):
         def normalize_0_255(v):
             return v * scale
 
-        rgb8 = [im.point(normalize_0_255).convert("L") for im in self.rgb]
-        return Image.merge("RGB", rgb8)
+        rgb8 = [im.point(normalize_0_255).convert('L') for im in self.rgb]
+        return Image.merge('RGB', rgb8)
 
     def to_l_image(self):
         img = self.to_pil()
@@ -161,41 +160,40 @@ class EXRImgRepr(ImgRepr):
             self.img.close()
 
 
-def load_img(file_: str) -> Optional[ImgRepr]:
+def load_img(file_path: str) -> Optional[ImgRepr]:
     """
     Load image from file path and return ImgRepr
-    :param file_: path to the file
-    :return: Return ImgRepr for special file type or None
-    if there was an error
+    :param file_path: path to the file
+    :return Return ImgRepr for special file type or None if there was an error
     """
     try:
-        _, ext = os.path.splitext(file_)
-        if ext.upper() != ".EXR":
+        _, ext = os.path.splitext(file_path)
+        if ext.upper() != '.EXR':
             img = PILImgRepr()
         else:
             img = EXRImgRepr()
-        img.load_from_file(file_)
+        img.load_from_file(file_path)
         return img
     except Exception as err:
-        logger.warning("Can't verify img file {}:{}".format(file_, err))
+        logger.warning(f'Can\'t verify img file {file_path}:{err}')
         return None
 
 
-def load_as_pil(file_: str) -> Optional[Image.Image]:
-    """ Load image from file path and retun PIL Image representation
-     :param file_: path to the file
-     :return : return PIL Image represantion or None
-     if there was an error
+def load_as_pil(file_path: str) -> Optional[Image.Image]:
+    """
+    Load image from file path and return PIL Image representation
+    :param file_path: path to the file
+    :return return PIL Image representation or None if there was an error
     """
 
-    img = load_img(file_)
+    img = load_img(file_path)
     if img is None:
         return None
     return img.to_pil()
 
 
-def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:
-    img = load_img(file_)
+def load_as_PILImgRepr(file_path: str) -> Optional[PILImgRepr]:
+    img = load_img(file_path)
 
     if isinstance(img, EXRImgRepr):
         img_pil = PILImgRepr()
@@ -209,7 +207,7 @@ def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:
 def blend(img1, img2, alpha):
     (res_x, res_y) = img1.get_size()
     if img2.get_size() != (res_x, res_y):
-        logger.error("Both images must have the same size.")
+        logger.error('Both images must have the same size.')
         return
 
     img = img1.copy()

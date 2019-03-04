@@ -1,17 +1,19 @@
-from __future__ import division
 import logging
 import math
+from random import uniform
+from typing import Optional
 
+import numpy
 from ssim import compute_ssim
 
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.imgrepr import (ImgRepr, PILImgRepr)
 
 
-logger = logging.getLogger("apps.rendering")
+logger = logging.getLogger('apps.rendering')
 
 
-class ImgStatistics(object):
+class ImgStatistics:
     def __init__(self, base_img: ImgRepr, img: ImgRepr):
         if base_img.get_size() != img.get_size():
             raise ValueError('base_img and img are of different sizes.')
@@ -24,21 +26,20 @@ class ImgStatistics(object):
             self._calculate_greyscale_normalized_mse(base_img, self.img)
         self.psnr = self._calculate_psnr(self.mse)
 
-    @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         name = None
         if isinstance(self.img, PILImgRepr):
             name = self.img.get_name()
 
         return name
 
-    def _calculate_greyscale_normalized_mse(self, img1: ImgRepr, img2: ImgRepr):
+    @staticmethod
+    def _calculate_greyscale_normalized_mse(img1: ImgRepr, img2: ImgRepr):
         (res_x, res_y) = img1.get_size()
 
         img1_bw = img1.to_pil().convert('L')  # makes it greyscale
         img2_bw = img2.to_pil().convert('L')  # makes it greyscale
 
-        import numpy
         npimg1 = numpy.array(img1_bw)
         npimg2 = numpy.array(img2_bw)
 
@@ -59,7 +60,8 @@ class ImgStatistics(object):
 
         return mse_bw, norm_mse
 
-    def _calculate_color_normalized_mse(self, img1, img2):
+    @staticmethod
+    def _calculate_color_normalized_mse(img1, img2):  # pylint: disable=too-many-locals
         mse = 0
         (res_x, res_y) = img1.get_size()
 
@@ -79,20 +81,20 @@ class ImgStatistics(object):
 
         return mse, norm_mse
 
-    def _calculate_psnr(self, mse, max_=255):
+    @staticmethod
+    def _calculate_psnr(mse, max_=255):
         if mse <= 0 or max_ <= 0:
-            raise ValueError("MSE & MAX_ must be higher than 0")
+            raise ValueError('MSE & MAX_ must be higher than 0')
         return 20 * math.log10(max_) - 10 * math.log10(mse)
 
     def get_stats(self):
         return self.ssim, self.mse, self.norm_mse, self.mse_bw, self.psnr
 
 
-class ImgVerifier(object):
-    def __init__(self):
-        pass
+class ImgVerifier:
 
-    def crop_img_relative(self, img, crop_window):
+    @staticmethod
+    def crop_img_relative(img, crop_window):
         """
         :param img: input PILImgRepr()
         :param crop_window:
@@ -130,7 +132,6 @@ class ImgVerifier(object):
         alfa = math.sqrt(coverage)
         dx = alfa * (window[1] - window[0])
         dy = alfa * (window[3] - window[2])
-        from random import uniform
         start = [uniform(window[0], window[1] - dx),
                  uniform(window[2], window[3] - dy)]
 
@@ -138,17 +139,17 @@ class ImgVerifier(object):
         return crop_window
 
     def is_valid_against_reference(self,
-                                   imgStat, reference_imgStat,
+                                   img_stat, reference_img_stat,
                                    acceptance_ratio=0.75, maybe_ratio=0.65):
 
-        if not isinstance(imgStat, ImgStatistics) \
-                and not isinstance(reference_imgStat, ImgStatistics):
-            raise TypeError("imgStatistics be instance of ImgStatistics")
+        if not isinstance(img_stat, ImgStatistics) \
+                and not isinstance(reference_img_stat, ImgStatistics):
+            raise TypeError('imgStatistics be instance of ImgStatistics')
 
-        if imgStat.ssim > acceptance_ratio * reference_imgStat.ssim:
+        if img_stat.ssim > acceptance_ratio * reference_img_stat.ssim:
             return SubtaskVerificationState.VERIFIED
 
-        if imgStat.ssim > maybe_ratio * reference_imgStat.ssim:
+        if img_stat.ssim > maybe_ratio * reference_img_stat.ssim:
             return SubtaskVerificationState.UNKNOWN
 
         return SubtaskVerificationState.WRONG_ANSWER

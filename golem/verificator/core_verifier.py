@@ -6,10 +6,10 @@ from twisted.internet.defer import Deferred
 
 from golem.verificator.constants import SubtaskVerificationState
 
-logger = logging.getLogger("golem.verificator.core_verifier")
+logger = logging.getLogger('golem.verificator.core_verifier')
 
 
-class CoreVerifier:
+class CoreVerifier:  # pylint: disable=too-many-instance-attributes
 
     active_status = [SubtaskVerificationState.WAITING,
                      SubtaskVerificationState.IN_PROGRESS]
@@ -27,7 +27,7 @@ class CoreVerifier:
 
     def start_verification(self, verification_data):
         self.time_started = datetime.utcnow()
-        self.subtask_info = verification_data["subtask_info"]
+        self.subtask_info = verification_data['subtask_info']
         if self._verify_result(verification_data):
             self.state = SubtaskVerificationState.VERIFIED
             finished = Deferred()
@@ -35,7 +35,7 @@ class CoreVerifier:
             return finished
 
     def simple_verification(self, verification_data):
-        results = verification_data["results"]
+        results = verification_data['results']
         if not results:
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return False
@@ -43,7 +43,7 @@ class CoreVerifier:
         for result in results:
             if not os.path.isfile(result) or not\
                     self._verify_result(verification_data):
-                self.message = "No proper task result found"
+                self.message = 'No proper task result found'
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
 
@@ -56,16 +56,16 @@ class CoreVerifier:
         return self.subtask_info['subtask_id'], self.state, self._get_answer()
 
     def task_timeout(self, subtask_id):
-        logger.warning("Task %r after deadline", subtask_id)
+        logger.warning('Task %r after deadline', subtask_id)
         if self.time_started is not None:
             self.time_ended = datetime.utcnow()
             if self.state in self.active_status:
                 self.state = SubtaskVerificationState.NOT_SURE
-            self.message = "Verification was stopped"
+            self.message = 'Verification was stopped'
         else:
             self.time_started = self.time_ended = datetime.utcnow()
             self.state = SubtaskVerificationState.TIMEOUT
-            self.message = "Verification never ran, task timed out"
+            self.message = 'Verification never ran, task timed out'
 
         state = self.state
         answer = self._get_answer()
@@ -90,19 +90,18 @@ class CoreVerifier:
     def _check_computer(self):
         if not self.computer:
             self.state = SubtaskVerificationState.NOT_SURE
-            self.message = "No computer available to verify data"
+            self.message = 'No computer available to verify data'
             return False
         return True
 
     def _wait_for_computer(self):
         if not self.computer.wait():
             self.state = SubtaskVerificationState.NOT_SURE
-            self.message = "Computation was not run correctly"
+            self.message = 'Computation was not run correctly'
             return False
         return True
 
     # pylint: disable=unused-argument
     def _verify_result(self, results):
-        """ Override this to change verification method
-        """
+        """ Override this to change verification method. """
         return True
