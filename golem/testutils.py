@@ -2,14 +2,14 @@ import logging
 import os
 import os.path
 import shutil
+import string
 import tempfile
 import unittest
-import string
 from pathlib import Path
+from random import SystemRandom
 from time import sleep
 from typing import Dict
-from random import SystemRandom
-from golem.task.taskclient import TaskClient
+
 import ethereum.keys
 import pycodestyle
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -30,6 +30,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
+from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import TaskState, TaskStatus
 
@@ -242,12 +243,15 @@ class PEP8MixIn(object):
 
 
 class TestTaskIntegration(TempDirFixture):
-
     TEST_FAILED = False
 
     @staticmethod
     def check_file_existence(filename):
         return lambda: os.path.isfile(filename)
+
+    @staticmethod
+    def check_dir_existence(dir_path):
+        return lambda: os.path.isdir(dir_path)
 
     @staticmethod
     def run_asserts(assertions):
@@ -292,13 +296,14 @@ class TestTaskIntegration(TempDirFixture):
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
-    def add_task(self, task_dict):
+    def _add_task(self, task_dict):
 
         task = self.task_manager.create_task(task_dict)
         self.task_manager.add_new_task(task)
         return task
 
-    def execute_task(self, task: Task):
+    def execute_task(self, task_def):
+        task: Task = self._add_task(task_def)
 
         self.task_manager.start_task(task.task_definition.task_id)
         for i in range(task.task_definition.subtasks_count):
@@ -313,7 +318,7 @@ class TestTaskIntegration(TempDirFixture):
                                  max_resource_size=10000000000,
                                  max_memory_size=10000000000,
                                  address='127.0.0.1')
-            result = self.execute_subtask(task, ctd)
+            result = self._execute_subtask(task, ctd)
 
             self.task_manager.computed_task_received(
                 subtask_id=ctd['subtask_id'],
@@ -327,14 +332,14 @@ class TestTaskIntegration(TempDirFixture):
             # finish subtask
             TaskClient.assert_exists(self.node_id, task.counting_nodes).finish()
 
-    def execute_subtask(self, task, ctd):
+    def _execute_subtask(self, task, ctd):
 
         extra_data = ctd["extra_data"]
 
         tempdir = self.task_manager.dir_manager.get_task_temporary_dir(
             task.task_definition.task_id)
 
-        return self.run_test_job(task, tempdir, extra_data)
+        return self._run_test_job(task, tempdir, extra_data)
 
     @staticmethod
     def _copy_resources(task, resources_dir):
@@ -355,7 +360,7 @@ class TestTaskIntegration(TempDirFixture):
             os.makedirs(docker_dir, exist_ok=True)
         return dirs
 
-    def run_test_job(self, task, root_dir, params):
+    def _run_test_job(self, task, root_dir, params):
 
         [resources_dir, work_dir, output_dir] = self._create_docker_dirs(
             root_dir)
@@ -373,7 +378,7 @@ class TestTaskIntegration(TempDirFixture):
         dtt = DockerTaskThread(docker_images=[image],
                                extra_data=params,
                                dir_mapping=dir_mapping,
-                               timeout=300)
+                               timeout=task.task_definition.subtask_timeout)
 
         dtt.run()
         if dtt.error:
