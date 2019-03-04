@@ -17,8 +17,16 @@ def get_mock_cpuinfo_output(vt_supported=True) -> dict:
     }
 
 
+@patch('golem.core.virtualization.is_linux', side_effect=lambda: True)
+class VirtualizationTestLinux(TestCase):
+
+    def test_vt_enabled(self, *_):
+        self.assertTrue(is_virtualization_enabled())
+
+
+@patch('golem.core.virtualization.is_linux', side_effect=lambda: False)
 @patch('golem.core.virtualization.is_windows', side_effect=lambda: False)
-class VirtualizationTestUnix(TestCase):
+class VirtualizationTestOsx(TestCase):
 
     @patch('golem.core.virtualization.get_cpu_info',
            return_value=get_mock_cpuinfo_output())
@@ -31,6 +39,7 @@ class VirtualizationTestUnix(TestCase):
         self.assertFalse(is_virtualization_enabled())
 
 
+@patch('golem.core.virtualization.is_linux', side_effect=lambda: False)
 @patch('golem.core.virtualization.is_windows', side_effect=lambda: True)
 class VirtualizationTestWindows(TestCase):
 
@@ -46,3 +55,4 @@ class VirtualizationTestWindows(TestCase):
 
     def test_script_path(self, *_):
         self.assertTrue(Path(WIN_SCRIPT_PATH).exists())
+
