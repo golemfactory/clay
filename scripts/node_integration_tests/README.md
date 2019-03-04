@@ -171,18 +171,7 @@ environment variable, e.g.:
 GOLEM_INTEGRATION_TEST_DIR=/some/location pytest scripts/node_integration_tests
 ```
 
-There is possibility to reuse provider's and requestor's node keys. It is done 
-to make this tests faster- when tests use the same account, so there is no need 
-to wait for ETH, tGNT and GNTB any more. It is default behavior.
- 
-To disable reusing node keys on particular test add decorator 
-`@disable_key_reuse` on test function (in test_golem.py and test_concent.py). 
-
-To start all tests, each with new fresh key, without reusing keys:
-```
-pytest --disable-key-reuse scripts/node_integration_tests
-```
-
+#### Running tests selectively
 
 And finally, to run a single test using `pytest`, just use standard `pytest`
 syntax, e.g.:
@@ -194,3 +183,26 @@ pytest scripts/node_integration_tests/tests/test_golem.py::GolemNodeTest::test_r
 Suggestion: when you _don't_ provide the `GOLEM_INTEGRATION_TEST_DIR` variable
 to pytest, run `pytest -s -v [...]` so that you can see the paths generated
 automatically during the test run.
+
+#### Node key reuse
+
+Normally, each test starts with empty provider and requestor datadirs. That
+also means that the nodes need to initialize they keystores, request GNT and
+ETH from the faucets and finally convert GNT into GNTB which adds several
+minutes to each run.
+
+To optimize that, we're now only initializing the keystores on the first test
+run by default and all subsequest tests reuse the same node key pairs.
+Thus, nodes don't need to wait for ETH, GNT and GNTB anymore.
+
+In some tests, we need to ensure there are no side effects on the blockchain.
+For that, we can disable key reuse for this particular test by adding the
+`@disable_key_reuse` decorator to the test method
+(in test_golem.py and test_concent.py).
+
+To completely disable key reuse and run each test with a new key, specify a
+`--disable-key-reuse` option on the pytest's command line:
+
+```
+pytest --disable-key-reuse scripts/node_integration_tests
+```
