@@ -613,7 +613,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
-        
+
     def get_output_names(self):
         return [self.output_file]
 
