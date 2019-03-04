@@ -68,7 +68,7 @@ class BaseResourceServer(object):
             value = r, pkg_path, pkg_sha1, pkg_size
             _result.callback(value)
 
-        _deferred = self.resource_manager.add_task(
+        _deferred = self.resource_manager.add_resources(
             [pkg_path], task_id, client_options=client_options)
         _deferred.addCallback(callback)
         _deferred.addErrback(_result.errback)
@@ -90,7 +90,7 @@ class BaseResourceServer(object):
         return error  # continue with the errback chain
 
     def remove_task(self, task_id):
-        self.resource_manager.remove_task(task_id)
+        self.resource_manager.remove_resources(task_id)
 
     def download_resources(self, resources, task_id, client_options=None):
         with self._lock:

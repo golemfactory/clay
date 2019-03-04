@@ -42,7 +42,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
-        client_1.resource_server.resource_manager.add_task(
+        client_1.resource_server.resource_manager.add_resources(
             resources, self.task_id, async_=False)
 
     def tearDown(self):

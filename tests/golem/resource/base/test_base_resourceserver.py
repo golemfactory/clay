@@ -159,7 +159,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         assert not self.resource_manager.storage.get_resources(self.task_id)
 
     def testPendingResources(self):
-        self.resource_manager.add_task(self.target_resources, self.task_id,
+        self.resource_manager.add_resources(self.target_resources, self.task_id,
                                        async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
@@ -170,7 +170,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         assert len(pending) == len(resources)
 
     def testGetResources(self):
-        self.resource_manager.add_task(self.target_resources, self.task_id,
+        self.resource_manager.add_resources(self.target_resources, self.task_id,
                                        async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)

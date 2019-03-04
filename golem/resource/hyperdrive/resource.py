@@ -134,25 +134,25 @@ class ResourceStorage(object):
         self.resource_dir_method = resource_dir_method
         self.cache = ResourceCache()
 
-    def get_dir(self, task_id):
-        return norm_path(self.resource_dir_method(task_id))
+    def get_dir(self, res_id):
+        return norm_path(self.resource_dir_method(res_id))
 
-    def get_path(self, relative_file_path, task_id):
-        resource_dir = self.get_dir(task_id)
+    def get_path(self, relative_file_path, res_id):
+        resource_dir = self.get_dir(res_id)
         return os.path.join(resource_dir, norm_path(relative_file_path))
 
     def get_root(self):
         return self.dir_manager.get_node_dir()
 
-    def get_resources(self, task_id) -> List[Resource]:
-        return self.cache.get_resources(task_id)
+    def get_resources(self, res_id) -> List[Resource]:
+        return self.cache.get_resources(res_id)
 
     def exists(self, resource):
         return self.cache.has_resource(resource) and resource.exists
 
-    def relative_path(self, path, task_id):
+    def relative_path(self, path, res_id):
         path = norm_path(path)
-        common_prefix = self.cache.get_prefix(task_id)
+        common_prefix = self.cache.get_prefix(res_id)
         return relative_path(path, common_prefix)
 
     def copy_dir(self, src_dir):
@@ -164,10 +164,10 @@ class ResourceStorage(object):
             copy_file_tree(src_dir, root_dir)
             return True
 
-    def copy(self, src_path, dst_relative_path, task_id):
+    def copy(self, src_path, dst_relative_path, res_id):
 
         dst_relative_path = norm_path(dst_relative_path)
-        dst_path = self.get_path(dst_relative_path, task_id)
+        dst_path = self.get_path(dst_relative_path, res_id)
         src_path = norm_path(src_path)
 
         if os.path.isfile(dst_path):
