@@ -1,7 +1,7 @@
 import logging
+from .constants import SubtaskVerificationState
 from .core_verifier import CoreVerifier
 from .imgrepr import load_img
-from .verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")
 

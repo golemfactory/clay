@@ -1,7 +1,7 @@
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
 from golem.core.deferred import sync_wait
 
 from twisted.internet.defer import Deferred

@@ -6,7 +6,7 @@ import numpy
 import os
 import json
 
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verificator.constants import SubtaskVerificationState
 
 from .rendering_verifier import FrameRenderingVerifier
 from twisted.internet.defer import Deferred

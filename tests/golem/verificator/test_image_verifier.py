@@ -1,10 +1,10 @@
 import os
 
 from golem.tools.assertlogs import LogTestCase
+from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.imgrepr import PILImgRepr
 from golem.verificator.imgverifier import ImgStatistics, \
     ImgVerifier
-from golem.verificator.verifier import SubtaskVerificationState
 
 
 # to run from console: go to the folder with images and type:

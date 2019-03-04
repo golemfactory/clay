@@ -4,7 +4,7 @@ import math
 
 from .imgrepr import (ImgRepr, PILImgRepr)
 
-from .verifier import SubtaskVerificationState
+from .constants import SubtaskVerificationState
 
 from ssim import compute_ssim
 
