@@ -1,9 +1,10 @@
 import logging
 import os
 from datetime import datetime
-from .constants import SubtaskVerificationState
 
 from twisted.internet.defer import Deferred
+
+from golem.verificator.constants import SubtaskVerificationState
 
 logger = logging.getLogger("golem.verificator.core_verifier")
 

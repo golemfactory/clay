@@ -2,11 +2,11 @@ from __future__ import division
 import logging
 import math
 
-from .imgrepr import (ImgRepr, PILImgRepr)
-
-from .constants import SubtaskVerificationState
-
 from ssim import compute_ssim
+
+from golem.verificator.constants import SubtaskVerificationState
+from golem.verificator.imgrepr import (ImgRepr, PILImgRepr)
+
 
 logger = logging.getLogger("apps.rendering")
 

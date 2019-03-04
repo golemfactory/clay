@@ -1,15 +1,15 @@
+import json
+import logging
+import os
 from datetime import datetime
 from typing import Type
 
-import logging
 import numpy
-import os
-import json
+from twisted.internet.defer import Deferred
 
 from golem.verificator.constants import SubtaskVerificationState
+from golem.verificator.rendering_verifier import FrameRenderingVerifier
 
-from .rendering_verifier import FrameRenderingVerifier
-from twisted.internet.defer import Deferred
 
 logger = logging.getLogger(__name__)
 

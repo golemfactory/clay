@@ -1,12 +1,13 @@
-import os
 import abc
 import logging
+import os
 from copy import deepcopy
 from typing import Optional
 
 import OpenEXR
 import Imath
 from PIL import Image
+
 
 logger = logging.getLogger("apps.rendering")
 
