@@ -61,7 +61,8 @@ class TaskComputer(object):
         self.listeners = []
         self.last_task_request = time.time()
 
-        self.dir_manager: Optional[DirManager] = None
+        self.dir_manager: DirManager = DirManager(
+            task_server.get_task_computer_root())
         self.task_request_frequency = None
 
         self.docker_manager: DockerManager = DockerManager.install()
