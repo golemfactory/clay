@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 import pytest
 from unittest import mock
@@ -100,7 +101,7 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data['results'] = []
         for result in results:
             result_path = os.path.join(self.tempdir, result)
-            os.link(
+            shutil.copyfile(
                 os.path.join(
                     get_golem_path(),
                     'tests/apps/blender/verification/test_data',
