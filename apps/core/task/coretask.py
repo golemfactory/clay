@@ -441,7 +441,7 @@ class CoreTask(Task):
 
     def get_finishing_subtasks(self, node_id: str) -> List[dict]:
         return [
-            subtask for subtask in self.subtasks_given
+            subtask for subtask in self.subtasks_given.values()
             if subtask['status'].is_finishing()
             and subtask['node_id'] == node_id
         ]
