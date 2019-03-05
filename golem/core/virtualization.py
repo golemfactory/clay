@@ -38,4 +38,3 @@ def _check_vt_unix() -> bool:
 def _check_vt_windows() -> bool:
     virtualization_state = run_powershell(script=WIN_SCRIPT_PATH)
     return virtualization_state == 'True'
-

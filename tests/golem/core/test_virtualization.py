@@ -55,4 +55,3 @@ class VirtualizationTestWindows(TestCase):
 
     def test_script_path(self, *_):
         self.assertTrue(Path(WIN_SCRIPT_PATH).exists())
-
