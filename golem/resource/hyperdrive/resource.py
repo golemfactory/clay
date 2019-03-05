@@ -175,7 +175,7 @@ class ResourceStorage(object):
         elif os.path.isdir(dst_path):
             shutil.rmtree(dst_path)
 
-        os.makedirs(dst_path, exist_ok=True)
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
 
         if os.path.isfile(src_path):
             shutil.copyfile(src_path, dst_path)
