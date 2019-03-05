@@ -30,12 +30,12 @@ class BlenderVerifier(FrameRenderingVerifier):
     def _get_part_size(self, subtask_info):
         if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
                 >= subtask_info['total_tasks']:
-            res_y = subtask_info['resolution'][1]
+            resolution_y = subtask_info['resolution'][1]
         else:
-            res_y = int(round(numpy.float32(
+            resolution_y = int(round(numpy.float32(
                 numpy.float32(subtask_info['crops'][0]['borders_y'][0]) *
                 numpy.float32(subtask_info['resolution'][1]))))
-        return subtask_info['resolution'][0], res_y
+        return subtask_info['resolution'][0], resolution_y
 
     def start_verification(self, verification_data):
         self.time_started = datetime.utcnow()
@@ -44,9 +44,9 @@ class BlenderVerifier(FrameRenderingVerifier):
         try:
             self.start_rendering()
         # pylint: disable=W0703
-        except Exception as e:
-            logger.error('Verification failed %r', e)
-            self.finished.errback(e)
+        except Exception as exception:
+            logger.error('Verification failed %r', exception)
+            self.finished.errback(exception)
 
         return self.finished
 
@@ -62,10 +62,10 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.state = SubtaskVerificationState.VERIFIED
             return self.verification_completed()
 
-        def failure(exc):
-            logger.warning('Failure callback %r', exc)
+        def failure(exception):
+            logger.warning('Failure callback %r', exception)
             self.state = SubtaskVerificationState.WRONG_ANSWER
-            return exc
+            return exception
 
         self.finished.addCallback(success)
         self.finished.addErrback(failure)
@@ -105,9 +105,9 @@ class BlenderVerifier(FrameRenderingVerifier):
             dir_mapping=dir_mapping,
             timeout=self.timeout)
 
-        def error(e):
-            logger.warning('Verification process exception %s', e)
-            self.finished.errback(e)
+        def error(exception):
+            logger.warning('Verification process exception %s', exception)
+            self.finished.errback(exception)
 
         def callback(*_):
             with open(os.path.join(dir_mapping.output, 'verdict.json'), 'r') \

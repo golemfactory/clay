@@ -18,14 +18,17 @@ class RenderingVerifier(CoreVerifier):
         self.state = SubtaskVerificationState.WAITING
 
     @staticmethod
-    def check_size(file_, res_x, res_y):
-        img = load_img(file_)
-        if img is None:
+    def check_size(file_path, resolution_x, resolution_y):
+        image = load_img(file_path)
+        if image is None:
             return False
-        img_x, img_y = img.get_size()
-        if img_x != res_x:
-            logger.info("Subtask size doesn't match, has %r,"
-                        " should be %r", img.get_size(), (res_x, res_y))
+        image_x, _ = image.get_size()
+        if image_x != resolution_x:
+            logger.info(
+                "Subtask size doesn't match, has %r,"
+                " should be %r",
+                image.get_size(),
+                (resolution_x, resolution_y))
             return False
         return True
 
@@ -50,10 +53,10 @@ class FrameRenderingVerifier(RenderingVerifier):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
 
-        res_x, res_y = self._get_part_size(subtask_info)
+        resolution_x, resolution_y = self._get_part_size(subtask_info)
 
-        for img in results:
-            if not self.check_size(img, res_x, res_y):
+        for image in results:
+            if not self.check_size(image, resolution_x, resolution_y):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
         self.state = SubtaskVerificationState.VERIFIED

@@ -14,70 +14,70 @@ logger = logging.getLogger('apps.rendering')
 
 
 class ImgStatistics:
-    def __init__(self, base_img: ImgRepr, img: ImgRepr):
-        if base_img.get_size() != img.get_size():
-            raise ValueError('base_img and img are of different sizes.')
+    def __init__(self, base_image: ImgRepr, image: ImgRepr) -> None:
+        if base_image.get_size() != image.get_size():
+            raise ValueError('base_image and image are of different sizes.')
 
-        self.img = img
-        self.ssim = compute_ssim(base_img.to_pil(), self.img.to_pil())
+        self.image = image
+        self.ssim = compute_ssim(base_image.to_pil(), self.image.to_pil())
         self.mse, self.norm_mse = \
-            self._calculate_color_normalized_mse(base_img, self.img)
+            self._calculate_color_normalized_mse(base_image, self.image)
         self.mse_bw, norm_mse_bw = \
-            self._calculate_greyscale_normalized_mse(base_img, self.img)
+            self._calculate_greyscale_normalized_mse(base_image, self.image)
         self.psnr = self._calculate_psnr(self.mse)
 
     @property
     def name(self) -> Optional[str]:
         name = None
-        if isinstance(self.img, PILImgRepr):
-            name = self.img.get_name()
+        if isinstance(self.image, PILImgRepr):
+            name = self.image.get_name()
 
         return name
 
     @staticmethod
-    def _calculate_greyscale_normalized_mse(img1: ImgRepr, img2: ImgRepr):
-        (res_x, res_y) = img1.get_size()
+    def _calculate_greyscale_normalized_mse(image_1: ImgRepr,
+                                            image_2: ImgRepr):  # pylint: disable=too-many-locals
+        (resolution_x, resolution_y) = image_1.get_size()
 
-        img1_bw = img1.to_pil().convert('L')  # makes it greyscale
-        img2_bw = img2.to_pil().convert('L')  # makes it greyscale
+        image_1_greyscale = image_1.to_pil().convert('L')  # makes it greyscale
+        image_2_greyscale = image_2.to_pil().convert('L')  # makes it greyscale
 
-        npimg1 = numpy.array(img1_bw)
-        npimg2 = numpy.array(img2_bw)
-
-        npimg1 = npimg1.astype(numpy.float32, copy=False)
-        npimg2 = npimg2.astype(numpy.float32, copy=False)
+        numpy_image_1 = numpy.array(image_1_greyscale).astype(
+            numpy.float32, copy=False)
+        numpy_image_2 = numpy.array(image_2_greyscale).astype(
+            numpy.float32, copy=False)
 
         mse_bw = 0
-        for i in range(len(npimg1)):
-            for j in range(len(npimg1[0])):
-                mse_bw += (npimg1[i][j] - npimg2[i][j]) \
-                          * (npimg1[i][j] - npimg2[i][j])
+        for i, numpy_image_1_item in enumerate(numpy_image_1):
+            for j in range(len(numpy_image_1[0])):
+                mse_bw += (numpy_image_1_item[j] - numpy_image_2[i][j]) \
+                          * (numpy_image_1_item[j] - numpy_image_2[i][j])
 
-        mse_bw /= res_x * res_y
+        mse_bw /= resolution_x * resolution_y
 
         # max value of pixel is 255
-        max_possible_mse = res_x * res_y * 255
+        max_possible_mse = resolution_x * resolution_y * 255
         norm_mse = mse_bw / max_possible_mse
 
         return mse_bw, norm_mse
 
     @staticmethod
-    def _calculate_color_normalized_mse(img1, img2):  # pylint: disable=too-many-locals
+    def _calculate_color_normalized_mse(image_1, image_2):  # pylint: disable=too-many-locals
         mse = 0
-        (res_x, res_y) = img1.get_size()
+        (resolution_x, resolution_y) = image_1.get_size()
 
-        for i in range(0, res_x):
-            for j in range(0, res_y):
-                [r1, g1, b1] = img1.get_pixel((i, j))
-                [r2, g2, b2] = img2.get_pixel((i, j))
+        for i in range(0, resolution_x):
+            for j in range(0, resolution_y):
+                [r1, g1, b1] = image_1.get_pixel((i, j))
+                [r2, g2, b2] = image_2.get_pixel((i, j))
                 mse += (r1 - r2) * (r1 - r2) + \
                        (g1 - g2) * (g1 - g2) + \
                        (b1 - b2) * (b1 - b2)
 
-        mse /= res_x * res_y * 3
+        mse /= resolution_x * resolution_y * 3
 
         # max value of pixel is 255
-        max_possible_mse = res_x * res_y * 3 * 255
+        max_possible_mse = resolution_x * resolution_y * 3 * 255
         norm_mse = mse / max_possible_mse
 
         return mse, norm_mse
@@ -95,9 +95,9 @@ class ImgStatistics:
 class ImgVerifier:
 
     @staticmethod
-    def crop_img_relative(img, crop_window):
+    def crop_img_relative(image, crop_window):
         """
-        :param img: input PILImgRepr()
+        :param image: input PILImgRepr()
         :param crop_window:
         Values describing render region that range from min (0) to max (1)
         in order xmin, xmax, ymin,ymax. (0,0) is top left
@@ -106,17 +106,17 @@ class ImgVerifier:
         left, upper, right, and lower pixel ordinate.
         """
 
-        (res_x, res_y) = img.get_size()
+        (resolution_x, resolution_y) = image.get_size()
 
-        left = int(math.ceil(res_x * crop_window[0]))
-        right = int(math.ceil(res_x * crop_window[1]))
-        lower = int(math.ceil(res_y * crop_window[2]))
-        upper = int(math.ceil(res_y * crop_window[3]))
+        left = int(math.ceil(resolution_x * crop_window[0]))
+        right = int(math.ceil(resolution_x * crop_window[1]))
+        lower = int(math.ceil(resolution_y * crop_window[2]))
+        upper = int(math.ceil(resolution_y * crop_window[3]))
 
         # in PIL's world (0,0) is bottom left ;p
-        cropped_img = img.to_pil().crop((left, lower, right, upper))
+        cropped_img = image.to_pil().crop((left, lower, right, upper))
         p = PILImgRepr()
-        p.load_from_pil_object(cropped_img, img.get_name())
+        p.load_from_pil_object(cropped_img, image.get_name())
         return p
 
     def get_random_crop_window(self, coverage=0.33, window=(0, 1, 0, 1)):
@@ -140,17 +140,17 @@ class ImgVerifier:
         return crop_window
 
     def is_valid_against_reference(self,
-                                   img_stat, reference_img_stat,
+                                   image_stat, reference_image_stat,
                                    acceptance_ratio=0.75, maybe_ratio=0.65):
 
-        if not isinstance(img_stat, ImgStatistics) \
-                and not isinstance(reference_img_stat, ImgStatistics):
+        if not isinstance(image_stat, ImgStatistics) \
+                and not isinstance(reference_image_stat, ImgStatistics):
             raise TypeError('imgStatistics be instance of ImgStatistics')
 
-        if img_stat.ssim > acceptance_ratio * reference_img_stat.ssim:
+        if image_stat.ssim > acceptance_ratio * reference_image_stat.ssim:
             return SubtaskVerificationState.VERIFIED
 
-        if img_stat.ssim > maybe_ratio * reference_img_stat.ssim:
+        if image_stat.ssim > maybe_ratio * reference_image_stat.ssim:
             return SubtaskVerificationState.UNKNOWN
 
         return SubtaskVerificationState.WRONG_ANSWER
