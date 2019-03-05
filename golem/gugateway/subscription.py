@@ -303,7 +303,8 @@ class Subscription(object):
     def finish_subtask(self, task_server: TaskServer, root_path: str,
                        subtask_id: str, request_json: dict) -> bool:
         if subtask_id not in self.events \
-                or subtask_id not in task_server.task_sessions:
+                or subtask_id not in task_server.task_sessions\
+                or request_json is None:
             return False
 
         subtask = self.events[subtask_id].subtask

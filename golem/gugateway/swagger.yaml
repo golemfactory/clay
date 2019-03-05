@@ -44,7 +44,7 @@ definitions:
         type: integer
         description: minimal accepted price in 10e-18 GNT
       performance:
-        type: integer
+        type: number
         format: float
       maxCpuCores:
         type: integer
