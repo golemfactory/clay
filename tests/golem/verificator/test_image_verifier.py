@@ -20,6 +20,13 @@ from golem.verificator.verifier import SubtaskVerificationState
 
 class TestImageVerifier(LogTestCase):
 
+    def setUp(self):
+        super().setUp()
+        self.test_resources_path = os.path.join(
+            os.path.abspath(os.path.dirname(__file__)),
+            "imgs_for_verification_tests",
+        )
+
     def test_get_random_crop_window(self):
         import random
         random.seed(0)
@@ -34,21 +41,14 @@ class TestImageVerifier(LogTestCase):
 
     def test_imgStat_values(self):
         # arrange
-        folder_path = os.path.join(
-            "tests",
-            "golem",
-            "verificator",
-            "imgs_for_verification_tests",
-        )
-
         ref_img0 = PILImgRepr()
         ref_img0.load_from_file(
-            os.path.join(folder_path,
+            os.path.join(self.test_resources_path,
                          'reference_300x400spp50_run0.png'))
 
         ref_img1 = PILImgRepr()
         ref_img1.load_from_file(
-            os.path.join(folder_path,
+            os.path.join(self.test_resources_path,
                          'reference_300x400spp50_run1.png'))
 
         cropping_window = (0.55, 0.75, 0.6, 0.8)
@@ -71,25 +71,19 @@ class TestImageVerifier(LogTestCase):
 
     def test_is_valid_against_reference(self):
         # arrange
-        folder_path = os.path.join(
-            "tests",
-            "golem",
-            "verificator",
-            "imgs_for_verification_tests",
-        )
-
         ref_img0 = PILImgRepr()
-        ref_img0.load_from_file(os.path.join(folder_path,
+        ref_img0.load_from_file(os.path.join(self.test_resources_path,
                                              'reference_300x400spp50_run0.png'))
         ref_img1 = PILImgRepr()
-        ref_img1.load_from_file(os.path.join(folder_path,
+        ref_img1.load_from_file(os.path.join(self.test_resources_path,
                                              'reference_300x400spp50_run1.png'))
 
         images = list()
-        for file_name in os.listdir(folder_path):
+        for file_name in os.listdir(self.test_resources_path):
             if file_name.endswith(".png") and 'reference' not in file_name:
                 p = PILImgRepr()
-                p.load_from_file(os.path.join(folder_path, file_name))
+                p.load_from_file(os.path.join(self.test_resources_path,
+                                              file_name))
                 images.append(p)
 
         cropping_window = (0.55, 0.75, 0.6, 0.8)
