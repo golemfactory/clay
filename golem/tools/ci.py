@@ -14,5 +14,3 @@ def ci_skip(obj):
     if in_appveyor() or in_travis():
         return unittest.skip('Unsupported CI environment')
     return obj
-
-

@@ -1169,4 +1169,3 @@ TASK_CONN_TYPES = {
     'start_session': 7,
     'task_verification_result': 8,
 }
-

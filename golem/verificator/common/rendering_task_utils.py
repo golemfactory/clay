@@ -24,4 +24,3 @@ def get_min_max_y(task_num, parts, res_y):
 class AdvanceVerificationOptions(object):
     def __init__(self):
         self.type = 'forFirst'
-
