@@ -100,7 +100,7 @@ class BaseResourceServer(object):
             collected = not self.pending_resources.get(res_id)
 
         if collected:
-            self.client.task_resource_collected(res_id)
+            self.client.resource_collected(res_id)
 
     def _add_pending_resource(self, resource, res_id, client_options):
         if res_id not in self.pending_resources:
@@ -156,7 +156,7 @@ class BaseResourceServer(object):
 
     def _download_error(self, error, resource, res_id):
         self._remove_pending_resource(resource, res_id)
-        self.client.task_resource_failure(res_id, error)
+        self.client.resource_failure(res_id, error)
 
     def _extract_resources(self, resource, res_id):
         resource_dir = self.resource_manager.storage.get_dir(res_id)
@@ -174,7 +174,7 @@ class BaseResourceServer(object):
 
         async_req = golem_async.AsyncRequest(extract_packages, resource[1])
         golem_async.async_run(async_req).addCallbacks(
-            lambda _: self.client.task_resource_collected(res_id),
+            lambda _: self.client.resource_collected(res_id),
             lambda e: self._download_error(e, resource, res_id)
         )
 

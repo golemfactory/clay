@@ -23,10 +23,10 @@ class MockClient:
         self.failed = None
         self.task_server = mock.Mock()
 
-    def task_resource_collected(self, *args, **kwargs):
+    def resource_collected(self, *args, **kwargs):
         self.downloaded = True
 
-    def task_resource_failure(self, *args, **kwrags):
+    def resource_failure(self, *args, **kwrags):
         self.failed = True
 
 
