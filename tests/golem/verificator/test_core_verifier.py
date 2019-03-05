@@ -1,10 +1,12 @@
-from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
-from golem.verificator.common.common import sync_wait
+from datetime import datetime
 
 from twisted.internet.defer import Deferred
+
+from golem.core.deferred import sync_wait
+from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import LogTestCase
+from golem.verificator.constants import SubtaskVerificationState
+from golem.verificator.core_verifier import CoreVerifier
 
 
 class TestCoreVerifier(TempDirFixture, LogTestCase):
@@ -51,3 +53,19 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
         verification_data["results"] = ["not a file"]
         core_verifier.simple_verification(verification_data)
         assert core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+
+    @staticmethod
+    def test_task_timeout():  # TODO: fix it
+        subtask_id = 'abcde'
+
+        def callback(*args, **kwargs):
+            time = datetime.utcnow()
+
+            assert kwargs['subtask_id'] == subtask_id
+            assert kwargs['verdict'] == SubtaskVerificationState.TIMEOUT
+            assert kwargs['result']['time_started'] == time
+            assert kwargs['result']['time_ended'] == time
+
+        sv = CoreVerifier()
+        sv.callback = callback
+        sv.task_timeout(subtask_id)
