@@ -6,8 +6,8 @@ from typing import Optional
 import numpy
 from ssim import compute_ssim
 
+from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
 from golem.verificator.constants import SubtaskVerificationState
-from golem.verificator.imgrepr import (ImgRepr, PILImgRepr)
 
 
 logger = logging.getLogger('apps.rendering')
@@ -26,6 +26,7 @@ class ImgStatistics:
             self._calculate_greyscale_normalized_mse(base_img, self.img)
         self.psnr = self._calculate_psnr(self.mse)
 
+    @property
     def name(self) -> Optional[str]:
         name = None
         if isinstance(self.img, PILImgRepr):

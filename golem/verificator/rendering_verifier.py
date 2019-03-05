@@ -1,8 +1,8 @@
 import logging
 
+from apps.rendering.resources.imgrepr import load_img
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.imgrepr import load_img
 
 
 logger = logging.getLogger('apps.rendering')
@@ -24,8 +24,8 @@ class RenderingVerifier(CoreVerifier):
             return False
         img_x, img_y = img.get_size()
         if img_x != res_x:
-            logger.info('Subtask size doesn\'t match, has %r,'
-                        ' should be %r', img.get_size(), (res_x, res_y))
+            logger.info("Subtask size doesn't match, has %r,"
+                        " should be %r", img.get_size(), (res_x, res_y))
             return False
         return True
 

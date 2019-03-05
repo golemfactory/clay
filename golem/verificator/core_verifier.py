@@ -87,20 +87,6 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
                 'time_ended': self.time_ended,
                 'extra_data': self.extra_data}
 
-    def _check_computer(self):
-        if not self.computer:
-            self.state = SubtaskVerificationState.NOT_SURE
-            self.message = 'No computer available to verify data'
-            return False
-        return True
-
-    def _wait_for_computer(self):
-        if not self.computer.wait():
-            self.state = SubtaskVerificationState.NOT_SURE
-            self.message = 'Computation was not run correctly'
-            return False
-        return True
-
     # pylint: disable=unused-argument
     def _verify_result(self, results):
         """ Override this to change verification method. """
