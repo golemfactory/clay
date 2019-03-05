@@ -54,17 +54,6 @@ def call_task_computer_and_drop_after_attr_error(*args, **_):
     args[0].dropped()
 
 
-def dropped_after():
-    def inner(f):
-        @functools.wraps(f)
-        def curry(self, *args, **kwargs):
-            result = f(self, *args, **kwargs)
-            self.dropped()
-            return result
-        return curry
-    return inner
-
-
 def get_task_message(
         message_class_name,
         node_id,

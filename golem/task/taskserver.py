@@ -1170,6 +1170,3 @@ TASK_CONN_TYPES = {
     'task_verification_result': 8,
 }
 
-
-class TaskListenTypes(object):
-    StartSession = 1
