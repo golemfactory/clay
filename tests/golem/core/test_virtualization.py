@@ -2,7 +2,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
-from golem.core.virtualization import is_virtualization_satisfied, WIN_SCRIPT_PATH
+from golem.core.virtualization import is_virtualization_satisfied,\
+    WIN_SCRIPT_PATH
 
 
 def get_mock_cpuinfo_output(vt_supported=True) -> dict:
