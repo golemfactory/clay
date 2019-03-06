@@ -47,6 +47,8 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
             "%s graceful shutdown timed-out, issuing sigkill." % node_type)
         process.kill()
 
+    print("%s shut down correctly." % node_type)
+
 
 def run_golem_node(node_type: str, *args,
                    nodes_root: typing.Optional[pathlib.Path] = None):
