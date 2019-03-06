@@ -14,12 +14,9 @@ class TestCoreVerifier(unittest.SynchronousTestCase, TempDirFixture):
     def setUp(self):
         super().setUp()
 
-        subtask_info = {'subtask_id': 5}
+        self.subtask_info = {'subtask_id': 5}
         files = self.additional_dir_content([1])
-
-        self.verification_data = dict()
-        self.verification_data["results"] = files
-        self.verification_data["subtask_info"] = subtask_info
+        self.verification_data = {"results": files}
 
     def test_start_verification_sets_status_verified_if_data_correct(self):
         def _is_status_correct(*_args, **_kwargs):
@@ -27,6 +24,7 @@ class TestCoreVerifier(unittest.SynchronousTestCase, TempDirFixture):
                 core_verifier.state == SubtaskVerificationState.VERIFIED)
 
         core_verifier = CoreVerifier()
+        core_verifier.subtask_info = self.subtask_info
         self.finished = core_verifier.start_verification(self.verification_data)
         self.finished.addCallback(_is_status_correct)
         self.assertTrue(self.successResultOf(self.finished))
@@ -36,6 +34,7 @@ class TestCoreVerifier(unittest.SynchronousTestCase, TempDirFixture):
         with mock.patch.object(CoreVerifier, '_verify_result',
                                return_value=False):
             core_verifier = CoreVerifier()
+            core_verifier.subtask_info = self.subtask_info
             self.finished = core_verifier.start_verification(
                 self.verification_data)
 
@@ -52,10 +51,9 @@ class TestSimpleVerifier(TempDirFixture):
 
     def test_simple_verification(self):
         core_verifier = CoreVerifier()
-        subtask_info = {"subtask_id": "2432423"}
-        core_verifier.subtask_info = subtask_info
         verification_data = dict()
         verification_data["results"] = []
+        verification_data["subtask_info"] = "2432423"
         core_verifier.simple_verification(verification_data)
         assert core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
 
