@@ -5,7 +5,7 @@ from .base import SubtaskResultsVerifyBaseTest
 
 class SubtaskResultsVerifyTest(SubtaskResultsVerifyBaseTest):
 
-    def test_send_srv_reason_incorrect(self):
+    def tes_send_srv_reason_incorrect(self):
         srv = self.get_srv()
         response = self.provider_send(srv)
         msg = self.provider_load_response(response)
@@ -15,7 +15,7 @@ class SubtaskResultsVerifyTest(SubtaskResultsVerifyBaseTest):
             concent_msg.ServiceRefused.REASON.InvalidRequest
         )
 
-    def test_send_srv_no_deposit(self):
+    def tes_send_srv_no_deposit(self):
         srv = self.get_correct_srv()
         response = self.provider_send(srv)
         msg = self.provider_load_response(response)
@@ -25,7 +25,7 @@ class SubtaskResultsVerifyTest(SubtaskResultsVerifyBaseTest):
             concent_msg.ServiceRefused.REASON.TooSmallRequestorDeposit
         )
 
-    def test_send(self):
+    def tes_send(self):
         srv = self.get_srv_with_deposit()
         response = self.provider_send(srv)
         msg = self.provider_load_response(response)

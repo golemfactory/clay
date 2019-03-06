@@ -20,6 +20,10 @@ class Granary:
 
     @staticmethod
     def request_account():
+        def _load_if_exists(path):
+            if path.exists():
+                return path.read_text()
+            return None
         # TODO: read from granary service
         logger.debug("Granary called, account requested")
         walk_folder = Path(BASE_DIR)
@@ -37,17 +41,11 @@ class Granary:
                 logger.debug('This key is locked, skipping')
                 continue
             logger.info('Unlocked key found, locking...')
-            lock_file.touch()
             try:
+                lock_file.touch()
                 key = (key_folder / KEY_FILE_NAME).read_bytes()
-                ts = None
-                ts_file = (key_folder / TS_FILE_NAME)
-                if ts_file.exists():
-                    ts = ts_file.read_text()
-                password = None
-                password_file = (key_folder / PASS_FILE_NAME)
-                if password_file.exists():
-                    password = password_file.read_text()
+                ts = _load_if_exists(key_folder / TS_FILE_NAME)
+                password = _load_if_exists(key_folder / PASS_FILE_NAME)
                 logger.info('Key locked and read, returning Account')
                 return Account(key, ts, password)
             except:

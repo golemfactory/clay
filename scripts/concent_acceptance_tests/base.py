@@ -352,20 +352,27 @@ class SCIBaseTest(ConcentBaseTest):
                 sci.REQUIRED_CONFS,
             ),
         )
+        eth_address = sci.get_eth_address()
+        eth_balance = sci.get_eth_balance(eth_address)
+        sys.stderr.write("Balance tETH: " + str(eth_balance / denoms.ether) + "\n")
+        if eth_balance < 0.01  * denoms.ether:
+            sys.stderr.write('Calling tETH faucet...\n')
+            self.retry_until_timeout(
+                lambda: not tETH_faucet_donate(sci.get_eth_address()),
+                "Faucet timed out",
+            )
 
-        sys.stderr.write('Calling tETH faucet...\n')
-        self.retry_until_timeout(
-            lambda: not tETH_faucet_donate(sci.get_eth_address()),
-            "Faucet timed out",
-        )
+            sys.stderr.write('Waiting for tETH...\n')
+            self.retry_until_timeout(
+                lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
+                "Acquiring tETH timed out",
+            )
+        else:
+            sys.stderr.write("Sufficient tETH, not requesting\n")
 
-        sys.stderr.write('Waiting for tETH...\n')
-        self.retry_until_timeout(
-            lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
-            "Acquiring tETH timed out",
-        )
-
-        if sci.get_gntb_balance() < 10:
+        gnt_balance = sci.get_gntb_balance(eth_address)
+        sys.stderr.write("Balance tETH: " + str(gnt_balance / denoms.ether) + "\n")
+        if gnt_balance < 100 * denoms.ether:
             self.wait_for_gntb(sci)
 
         deposit = False
