@@ -10,7 +10,7 @@ import uuid
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verificator.constants import SubtaskVerificationState
 from PIL import Image
 
 

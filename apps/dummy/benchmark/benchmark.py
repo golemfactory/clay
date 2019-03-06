@@ -8,7 +8,7 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verificator.constants import SubtaskVerificationState
 
 
 class DummyTaskBenchmark(CoreBenchmark):

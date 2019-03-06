@@ -4,11 +4,11 @@ from PIL import Image
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
+from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.rendering_verifier import (
     RenderingVerifier,
     FrameRenderingVerifier,
 )
-from golem.verificator.verifier import SubtaskVerificationState
 
 
 class TestRenderingVerifier(TempDirFixture, LogTestCase):

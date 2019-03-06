@@ -27,8 +27,8 @@ from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -441,7 +441,7 @@ class CoreTask(Task):
 
     def get_finishing_subtasks(self, node_id: str) -> List[dict]:
         return [
-            subtask for subtask in self.subtasks_given
+            subtask for subtask in self.subtasks_given.values()
             if subtask['status'].is_finishing()
             and subtask['node_id'] == node_id
         ]
