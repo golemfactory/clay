@@ -52,6 +52,6 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         )
         self.assertEqual(exit_code, 0)
 
-    def test_zero_price_provider(self):
-        exit_code = self._run_test('golem.regular_run_zero_price_provider.RegularRun')
+    def test_zero_price(self):
+        exit_code = self._run_test('golem.zero_price.ZeroPrice')
         self.assertEqual(exit_code, 0)

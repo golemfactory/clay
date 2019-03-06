@@ -62,7 +62,7 @@ class NodeTestPlaybook:
 
     task_package = None
     task_settings = 'default'
-    task_dict = None
+    task_dict: dict
 
     reconnect_attempts_left = 7
     reconnect_countdown_initial = 10
