@@ -1,4 +1,7 @@
 import logging
+
+import cv2
+
 from .core_verifier import CoreVerifier
 from .imgrepr import load_img
 from .verifier import SubtaskVerificationState
@@ -29,6 +32,17 @@ class RenderingVerifier(CoreVerifier):
 
     def _get_part_size(self, subtask_info):
         return subtask_info['res_x'], subtask_info['res_y']
+
+    def _verify_result(self, results):
+        subtask_info = results["subtask_info"]
+        results = results["results"]
+
+        for result in results:
+            image = cv2.imread(result)
+            height, width, _channels = image.shape
+            if self._get_part_size(subtask_info) != (width, height):
+                return False
+        return True
 
 
 class FrameRenderingVerifier(RenderingVerifier):
