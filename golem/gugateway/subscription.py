@@ -352,8 +352,8 @@ class Subscription(object):
 
     def events_after(self, event_id: int) -> List[Event]:
         if event_id >= self.event_counter:
-            raise KeyError(f'event id {event_id} should be less than '
-                           f'{self.event_counter}')
+            raise RuntimeError(f'event id {event_id} should be less than '
+                               f'{self.event_counter}')
         return [e for e in self.events.values() if e.event_id > event_id]
 
     def set_config_to(self, config_desc: ClientConfigDescriptor):

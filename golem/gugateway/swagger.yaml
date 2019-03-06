@@ -227,7 +227,6 @@ definitions:
         $ref: '#/definitions/Resource'
       subtaskVerification:
         $ref: '#/definitions/SubtaskVerification'
-    
   Events:
     description: Events array.
     type: array

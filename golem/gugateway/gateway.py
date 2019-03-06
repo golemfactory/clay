@@ -378,7 +378,7 @@ def fetch_events(node_id: str, task_type: str) -> (str, int):
         logger.debug('events for subscription %s', subs)
         return json.dumps([e.to_json_dict()
                            for e in subs.events_after(last_event_id)])
-    except InvalidTaskType as e:
+    except (InvalidTaskType, RuntimeError) as e:
         return _invalid_input(e)
     except KeyError as e:
         return _not_found(f'subscription for {e}')
