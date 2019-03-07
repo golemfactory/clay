@@ -65,27 +65,6 @@ def calculate_metrics(
     if default_metrics['Label'] == VERIFICATION_SUCCESS:
         default_crop.save(CROP_NAME)
         return ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-    else:
-        # Try offset crops
-        for crop in scene_crops[1:]:
-            try:
-                img_metrics = compare_images(cropped_img, crop, available_metrics)
-                img_metrics['Label'] = classify_with_tree(img_metrics, classifier, labels)
-            except Exception as e:
-                print("There were error %r" % e, file=sys.stderr)
-                img_metrics['Label'] = VERIFICATION_FAIL
-            if img_metrics['Label'] == VERIFICATION_SUCCESS:
-                best_img_metrics = img_metrics
-                best_crop = crop
-                break
-        if best_crop and best_img_metrics:
-            best_crop.save(CROP_NAME)
-            return ImgMetrics(best_img_metrics).write_to_file(metrics_output_filename)
-        else:
-            # We didnt find any better match in offset crops, return the default one
-            default_crop.save(CROP_NAME)
-            path_to_metrics = ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-            return path_to_metrics
 
     stub_data = {element: -1 for element in get_labels_from_metrics(available_metrics)}
     stub_data['Label'] = VERIFICATION_FAIL
