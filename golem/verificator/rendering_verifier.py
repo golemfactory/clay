@@ -40,10 +40,10 @@ class RenderingVerifier(CoreVerifier):
         subtask_info = results["subtask_info"]
         results = results["results"]
 
-        for result in results:
-            image = cv2.imread(result)
-            height, width, _channels = image.shape
-            if self._get_part_size(subtask_info) != (width, height):
+        resolution_x, resolution_y = self._get_part_size(subtask_info)
+
+        for image in results:
+            if not self.check_size(image, resolution_x, resolution_y):
                 return False
         return True
 
@@ -65,11 +65,5 @@ class FrameRenderingVerifier(RenderingVerifier):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
 
-        resolution_x, resolution_y = self._get_part_size(subtask_info)
-
-        for image in results:
-            if not self.check_size(image, resolution_x, resolution_y):
-                self.state = SubtaskVerificationState.WRONG_ANSWER
-                return False
         self.state = SubtaskVerificationState.VERIFIED
         return True
