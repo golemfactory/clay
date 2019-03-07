@@ -7,6 +7,7 @@ from typing import Dict, Tuple, List, Optional
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 
+
 class Region:
 
     def __init__(self, left: float, top: float, right: float, bottom: float):
@@ -15,6 +16,7 @@ class Region:
         self.top = top
         self.bottom = bottom
 
+
 class PixelRegion:
 
     def __init__(self, left: int, top: int, right: int, bottom: int):
@@ -22,6 +24,7 @@ class PixelRegion:
         self.right = right
         self.top = top
         self.bottom = bottom
+
 
 class SubImage:
 

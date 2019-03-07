@@ -23,11 +23,13 @@ BLACK = 765
 OFFSET = 30
 
 
-def calculate_metrics(reference_img_path,
-                      result_img_path,
-                      xres,
-                      yres,
-                      metrics_output_filename='metrics.txt'):
+def calculate_metrics(
+    reference_img_path,
+    result_img_path,
+    xres,
+    yres,
+    metrics_output_filename='metrics.txt'
+):
     """
     This is the entry point for calculation of metrics between the
     rendered_scene and the sample(cropped_img) generated for comparison.
@@ -39,18 +41,16 @@ def calculate_metrics(reference_img_path,
     :return:
     """
 
-    cropped_img, scene_crops, rendered_scene = \
-        _load_and_prepare_images_for_comparison(reference_img_path,
-                                                result_img_path,
-                                                xres,
-                                                yres)
-
-    best_crop = None
-    best_img_metrics = None
+    (cropped_img, scene_crops, rendered_scene) = _load_and_prepare_images_for_comparison(
+        reference_img_path,
+        result_img_path,
+        xres,
+        yres
+    )
     img_metrics = dict()
     img_metrics['Label'] = VERIFICATION_FAIL
 
-    effective_metrics, classifier, labels, available_metrics = get_metrics()
+    (effective_metrics, classifier, labels, available_metrics) = get_metrics()
 
     # First try not offset crop
     # TODO this shouldn't depend on the crops' ordering
@@ -87,11 +87,9 @@ def calculate_metrics(reference_img_path,
             path_to_metrics = ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
             return path_to_metrics
 
-    # This is unexpected but handle in case of errors
-    stub_data = {element:-1 for element in get_labels_from_metrics(available_metrics)}
+    stub_data = {element: -1 for element in get_labels_from_metrics(available_metrics)}
     stub_data['Label'] = VERIFICATION_FAIL
-    path_to_metrics = ImgMetrics(stub_data).write_to_file(metrics_output_filename)
-    return path_to_metrics
+    return ImgMetrics(stub_data).write_to_file(metrics_output_filename)
 
 
 def load_classifier():
@@ -107,11 +105,7 @@ def classify_with_tree(metrics, classifier, feature_labels):
     return results[0].decode('utf-8')
 
 
-def _load_and_prepare_images_for_comparison(reference_img_path,
-                                            result_img_path,
-                                            xres,
-                                            yres):
-
+def _load_and_prepare_images_for_comparison(reference_img_path, result_img_path, xres, yres):
     """
     This function prepares (i.e. crops) the rendered_scene so that it will
     fit the sample(cropped_img) generated for comparison.
