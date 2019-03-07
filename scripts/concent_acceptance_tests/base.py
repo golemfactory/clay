@@ -249,10 +249,13 @@ class SCIBaseTest(ConcentBaseTest):
 
     @classmethod
     def tearDownClass(cls):
-        cls._teardown_transactions(cls._requestor_account.transaction_store,
-                                   cls._requestor_ts_path)
-        cls._teardown_transactions(cls._provider_account.transaction_store,
-                                   cls._provider_ts_path)
+
+        logger.debug('Reading transaction files...')
+        cls._requestor_account.transaction_store = cls._requestor_ts_path.read_text()
+        cls._provider_account.transaction_store = cls._provider_ts_path.read_text()
+        logger.debug('Transaction storages updated')
+        logger.debug(cls._requestor_account.transaction_store)
+        logger.debug(cls._provider_account.transaction_store)
         super().tearDownClass()
 
     def setUp(self):
@@ -358,13 +361,13 @@ class SCIBaseTest(ConcentBaseTest):
         if eth_balance < 0.01  * denoms.ether:
             sys.stderr.write('Calling tETH faucet...\n')
             self.retry_until_timeout(
-                lambda: not tETH_faucet_donate(sci.get_eth_address()),
+                lambda: not tETH_faucet_donate(eth_address),
                 "Faucet timed out",
             )
 
             sys.stderr.write('Waiting for tETH...\n')
             self.retry_until_timeout(
-                lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
+                lambda: sci.get_eth_balance(eth_address) == 0,
                 "Acquiring tETH timed out",
             )
         else:
@@ -375,28 +378,30 @@ class SCIBaseTest(ConcentBaseTest):
         if gnt_balance < 100 * denoms.ether:
             self.wait_for_gntb(sci)
 
-        deposit = False
+        if True: # TODO: sci.get_deposit_value(eth_address) < 5 << 20:
+            deposit = False
 
-        def deposit_confirmed(_):
-            nonlocal deposit
-            deposit = True
-        sys.stderr.write(
-            'Depositing %.8f GNTB...\n' % (amount / denoms.ether, ),
-        )
-        tx_hash = sci.deposit_payment(amount)
-        sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
+            def deposit_confirmed(_):
+                nonlocal deposit
+                deposit = True
+            sys.stderr.write(
+                'Depositing %.8f GNTB...\n' % (amount / denoms.ether, ),
+            )
+            tx_hash = sci.deposit_payment(amount)
+            sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
 
-        self.retry_until_timeout(
-            lambda: not deposit,
-            "Deposit timed out.",
-            sleep_interval=1,
-        )
+            self.retry_until_timeout(
+                lambda: not deposit,
+                "Deposit timed out.",
+                sleep_interval=1,
+            )
+            sys.stderr.write("\nDeposit confirmed\n")
+            if sci.get_deposit_value(eth_address) < amount:
+                raise RuntimeError("Deposit failed")
+            self.blockchain_sleep(120)
+        else:
+            sys.stderr.write("\nNo Deposit needed\n")
 
-        sys.stderr.write("\nDeposit confirmed\n")
-
-        if sci.get_deposit_value(sci.get_eth_address()) < amount:
-            raise RuntimeError("Deposit failed")
-        self.blockchain_sleep(120)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):
@@ -421,11 +426,3 @@ class SCIBaseTest(ConcentBaseTest):
         if account.transaction_store is not None:
             transaction_path.write_text(account.transaction_store)
         return transaction_path
-
-
-    @staticmethod
-    def _teardown_transactions(account, file):
-        try:
-            account.transaction_store = file.read_text()
-        except:
-            logger.debug('Failed to read %r', file)

@@ -202,7 +202,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         with self.assertRaises(concent_exceptions.ConcentRequestError):
             self.requestor_send(fsrr)
 
-    def test_requestor_responds_with_accept(self):
+    def tes_requestor_responds_with_accept(self):
         self.assertIsNone(self.provider_send_force())
         fsr = self.requestor_receive()
         self.assertTrue(

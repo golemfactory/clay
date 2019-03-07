@@ -1,8 +1,11 @@
 import logging
 from pathlib import Path
 import random
+import subprocess
 
-from eth_utils import encode_hex
+import shlex
+
+from eth_utils import encode_hex, decode_hex
 from ethereum.utils import sha3
 
 from golem_messages.cryptography import ECCx
@@ -20,38 +23,29 @@ class Granary:
 
     @staticmethod
     def request_account():
-        def _load_if_exists(path):
-            if path.exists():
-                return path.read_text()
-            return None
         # TODO: read from granary service
         logger.debug("Granary called, account requested")
-        walk_folder = Path(BASE_DIR)
-        # Ensure it exists
-        walk_folder.mkdir(exist_ok=True)
-        for key_folder in walk_folder.iterdir():
+        cmd = ['ssh', 'mwu-vps', '/home/ubuntu/.cargo/bin/golem-granary', 'get_used_account']
 
-            logger.debug("Checking key: " + str(key_folder))
-            if not key_folder.is_dir():
-                logger.debug('Not a dir, skipping')
-                continue
 
-            lock_file = key_folder / LOCK_FILE_NAME
-            if lock_file.exists():
-                logger.debug('This key is locked, skipping')
-                continue
-            logger.info('Unlocked key found, locking...')
-            try:
-                lock_file.touch()
-                key = (key_folder / KEY_FILE_NAME).read_bytes()
-                ts = _load_if_exists(key_folder / TS_FILE_NAME)
-                password = _load_if_exists(key_folder / PASS_FILE_NAME)
-                logger.info('Key locked and read, returning Account')
-                return Account(key, ts, password)
-            except:
-                logger.info('Failed to load account from granary')
-                continue
-        logger.debug("Granary done, giving new account")
+        completed = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        print('returncode:', completed.returncode)
+
+        if completed.stderr:
+            print('stderr:', completed.stderr)
+        else:
+            print('stderr: EMPTY')
+
+        if completed.stdout:
+            print('stdout:', completed.stdout)
+            out_lines = completed.stdout.split('\n')
+            raw_key = out_lines[0].strip()
+            print('raw_key:', raw_key)
+            key = decode_hex(raw_key)
+            print('key:', key)
+            return Account(key, out_lines[1] or None)
+        else:
+            print('stdout: EMPTY')
         return Account()
 
     @staticmethod
@@ -64,19 +58,27 @@ class Granary:
         print(account.password)
 
         key_pub_addr = encode_hex(sha3(account.key.raw_pubkey)[12:])
-        key_folder = Path(BASE_DIR, key_pub_addr)
-        existing_key = key_folder.exists()
-        key_folder.mkdir(exist_ok=True)
-        print("Storing key in folder: " + str(key_folder))
-        (key_folder / KEY_FILE_NAME).write_bytes(account.raw_key)
-        if account.transaction_store is not None:
-            (key_folder / TS_FILE_NAME).write_text(account.transaction_store)
-        if account.password is not None:
-            (key_folder / PASS_FILE_NAME).write_text(account.password)
-        if existing_key:
-            print("Removing lock file")
-            (key_folder / LOCK_FILE_NAME).unlink()
-        print("DONE")
+
+        ts = account.transaction_store or '{}'
+        ts = shlex.quote(ts)
+
+        cmd = ['ssh', 'mwu-vps', '/home/ubuntu/.cargo/bin/golem-granary', 'return_used_account', '-p', key_pub_addr, '-P', encode_hex(account.raw_key), '-t', ts]
+
+        #cmd = f"ssh mwu-vps /home/ubuntu/.cargo/bin/golem-granary return_used_account -p {key_pub_addr} -P {encode_hex(account.raw_key)} -t '{shlex.account.transaction_store or '{}'}'"
+
+        print(cmd)
+        completed = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
+        print('returncode:', completed.returncode)
+        if completed.stdout:
+            print('stdout:', completed.stdout)
+        else:
+            print('stdout: EMPTY')
+
+        if completed.stderr:
+            print('stderr:', completed.stderr)
+        else:
+            print('stderr: EMPTY')
+        return
 
 class Account:
     def __init__(self, raw_key = None, ts = None, password = None):
