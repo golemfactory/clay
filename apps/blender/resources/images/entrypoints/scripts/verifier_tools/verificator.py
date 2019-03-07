@@ -14,53 +14,37 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
-def prepare_params(mounted_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
-           crops_count=3, crops_borders=None):
-
-    subimage = SubImage(Region(subtask_border[0],
-                               subtask_border[1],
-                               subtask_border[2],
-                               subtask_border[3]), resolution)
-
+def prepare_params(subtask_border, scene_file_path, resolution, samples, frames, output_format, crops_count=3):
+    subimage = SubImage(
+        Region(subtask_border[0], subtask_border[1], subtask_border[2], subtask_border[3]),
+        resolution,
+    )
     crops: List[Crop] = []
     crops_render_data = []
 
-    if crops_borders:
-        idx  = 0
-        for border in crops_borders:
-            crop = Crop.create_from_region(idx, Region(border[0], border[1], border[2], border[3]), subimage)
-            crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename" : "crop" + str(idx) + '_',
-                    "borders_x" : [crop.crop_region.left, crop.crop_region.right],
-                    "borders_y" : [crop.crop_region.top, crop.crop_region.bottom]
-                }
-            )
-            crops.append(crop)
-            idx += 1
-    else:
-        for i in range(0,crops_count):
-            crop = generate_single_random_crop_data(subimage, subimage.get_default_crop_size(), i)
-            crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename" : "crop" + str(i) + '_',
-                    "borders_x" : [crop.crop_region.left, crop.crop_region.right],
-                    "borders_y" : [crop.crop_region.top, crop.crop_region.bottom]
-                }
-            )
-            crops.append(crop)
+    for i in range(0, crops_count):
+        crop = generate_single_random_crop_data(subimage,
+                                                subimage.get_default_crop_size(),
+                                                i)
+        crops_render_data.append(
+            {
+                "id": crop.id,
+                "outfilebasename": "crop" + str(i) + '_',
+                "borders_x": [crop.crop_region.left, crop.crop_region.right],
+                "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
+            }
+        )
+        crops.append(crop)
 
     params = {
-        "scene_file" : scene_file_path,
-        "resolution" : resolution,
-        "use_compositing" : False,
-        "samples" : samples,
-        "frames" : frames,
+        "scene_file": scene_file_path,
+        "resolution": resolution,
+        "use_compositing": False,
+        "samples": samples,
+        "frames": frames,
         "start_task": 1,
-        "output_format" : output_format,
-        "crops" : crops_render_data
+        "output_format": output_format,
+        "crops": crops_render_data
     }
 
     return crops, params
@@ -73,9 +57,10 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
         crop = get_crop_with_id(crop_data['crop']['id'], crops)
 
         left, top = crop.get_relative_top_left()
-
+        print('borders_x: ', crop_data['crop']['borders_x'])
+        print('borders_y: ', crop_data['crop']['borders_y'])
         print("left " + str(left))
-        print("top " + str(top))
+        print("top: " + str(top))
 
         for crop, subtask in zip(crop_data['results'], subtask_file_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
@@ -110,7 +95,6 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
         json.dump({'verdict': verdict}, f)
 
 
-
 def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
            crops_count=3, crops_borders=None, use_raw_verification=False):
 
@@ -135,10 +119,15 @@ def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samp
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
-    crops, params = prepare_params(mounted_paths, subtask_border, scene_file_path,
-                                    resolution, samples, frames, output_format,
-                                    basefilename, crops_count, crops_borders)
-
+    (crops, params) = prepare_params(
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count
+    )
     results = blender.render(params, mounted_paths)
 
     print(results)
