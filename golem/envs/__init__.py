@@ -70,11 +70,22 @@ class EnvMetadata:
     custom_metadata: Dict[str, Any]
 
 
+class EnvStatus(Enum):
+    DISABLED = 0
+    PREPARING = 1
+    ENABLED = 2
+    CLEANING_UP = 3
+
+
 class Environment(ABC):
 
     @classmethod
     @abstractmethod
     def supported(cls) -> EnvSupportStatus:
+        raise NotImplementedError
+
+    @abstractmethod
+    def status(self) -> EnvStatus:
         raise NotImplementedError
 
     @abstractmethod
