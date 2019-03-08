@@ -218,7 +218,8 @@ definitions:
       - eventId
     properties:
       eventId:
-        $ref: '#/definitions/Uuid'
+        type: integer
+        format: int64
       task:
         $ref: '#/definitions/Task'
       subtask:
