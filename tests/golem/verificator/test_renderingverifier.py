@@ -3,7 +3,6 @@ import os
 from PIL import Image
 
 from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.rendering_verifier import (
     RenderingVerifier,
@@ -11,7 +10,7 @@ from golem.verificator.rendering_verifier import (
 )
 
 
-class VerificationMixin(TempDirFixture, LogTestCase):
+class VerificationTestsBase(TempDirFixture):
     def setUp(self):
         super().setUp()
         self.x = 80
@@ -45,7 +44,7 @@ class VerificationMixin(TempDirFixture, LogTestCase):
         image.save(image_path)
 
 
-class TestRenderingVerifier(VerificationMixin):
+class TestRenderingVerifier(VerificationTestsBase):
     def test_get_part_size(self):
         rendering_verifier = RenderingVerifier(self.verification_data)
 
@@ -87,7 +86,7 @@ class TestRenderingVerifier(VerificationMixin):
         assert verifier_state == SubtaskVerificationState.VERIFIED
 
 
-class TestFrameRenderingVerifier(VerificationMixin):
+class TestFrameRenderingVerifier(VerificationTestsBase):
     def setUp(self):
         super().setUp()
         self.verification_data['results'] = self._create_images()
@@ -97,10 +96,9 @@ class TestFrameRenderingVerifier(VerificationMixin):
             self.verification_data
         )
         frame_rendering_verifier.simple_verification(self.verification_data)
-        frame_rendering_verifier.verification_completed()
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        assert frame_rendering_verifier.state == \
-               SubtaskVerificationState.VERIFIED
+        assert verifier_state == SubtaskVerificationState.VERIFIED
 
     def test_simple_verification_frames_less_tasks_than_frames(self):
         self.subtask_info["use_frames"] = True
@@ -111,10 +109,9 @@ class TestFrameRenderingVerifier(VerificationMixin):
             self.verification_data
         )
         frame_rendering_verifier.simple_verification(self.verification_data)
-        frame_rendering_verifier.verification_completed()
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        assert frame_rendering_verifier.state == \
-               SubtaskVerificationState.WRONG_ANSWER
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_no_results(self):
         self.verification_data["results"] = ["file1"]
@@ -123,10 +120,9 @@ class TestFrameRenderingVerifier(VerificationMixin):
             self.verification_data
         )
         frame_rendering_verifier.simple_verification(self.verification_data)
-        frame_rendering_verifier.verification_completed()
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        assert frame_rendering_verifier.state == \
-               SubtaskVerificationState.WRONG_ANSWER
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_wrong_resolution(self):
         img_path = os.path.join(self.path, "img1.png")
@@ -138,7 +134,6 @@ class TestFrameRenderingVerifier(VerificationMixin):
             self.verification_data
         )
         frame_rendering_verifier.simple_verification(self.verification_data)
-        frame_rendering_verifier.verification_completed()
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        assert frame_rendering_verifier.state == \
-               SubtaskVerificationState.WRONG_ANSWER
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
