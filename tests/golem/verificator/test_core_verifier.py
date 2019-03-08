@@ -1,19 +1,22 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
+from freezegun import freeze_time
 from twisted.internet.defer import Deferred
 
 from golem.core.deferred import sync_wait
 from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
 
 
-class TestCoreVerifier(TempDirFixture, LogTestCase):
+@freeze_time()
+class TestCoreVerifier(TempDirFixture):
 
     def setUp(self):
         super().setUp()
+        self.subtask_id = 5
         self.core_verifier = CoreVerifier()
+        self.utcnow = datetime.utcnow()
 
     def test_start_verification(self):
         deferred = Deferred()
@@ -24,7 +27,7 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
             assert state == SubtaskVerificationState.VERIFIED
             deferred.callback(True)
 
-        subtask_info = {'subtask_id': 5}
+        subtask_info = {'subtask_id': self.subtask_id}
         files = self.additional_dir_content([1])
 
         verification_data = dict(
@@ -57,18 +60,45 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
         self.core_verifier.simple_verification(verification_data)
         assert self.core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
 
-    @staticmethod
-    def test_task_timeout():  # TODO: fix it
-        subtask_id = 'abcde'
+    def test_task_timeout_when_task_started_and_state_is_active(self):
+        for state in CoreVerifier.active_status:
+            start_time = self.utcnow - timedelta(hours=1)
+            self.core_verifier.time_started = start_time
+            self.core_verifier.state = state
 
-        def callback(*args, **kwargs):
-            time = datetime.utcnow()
+            self._verify_task_timeout_results(
+                SubtaskVerificationState.NOT_SURE,
+                "Verification was stopped",
+                start_time,
+                self.utcnow
+            )
 
-            assert kwargs['subtask_id'] == subtask_id
-            assert kwargs['verdict'] == SubtaskVerificationState.TIMEOUT
-            assert kwargs['result']['time_started'] == time
-            assert kwargs['result']['time_ended'] == time
+    def test_task_timeout_when_task_started_and_state_is_not_active(self):
+        start_time = self.utcnow - timedelta(hours=1)
+        self.core_verifier.time_started = start_time
 
-        core_verifier = CoreVerifier()
-        core_verifier.callback = callback
-        core_verifier.task_timeout(subtask_id)
+        self._verify_task_timeout_results(
+            SubtaskVerificationState.UNKNOWN_SUBTASK,
+            "Verification was stopped",
+            start_time,
+            self.utcnow
+        )
+
+    def test_task_timeout_when_task_is_not_started(self):
+        self._verify_task_timeout_results(
+            SubtaskVerificationState.TIMEOUT,
+            "Verification never ran, task timed out",
+            self.utcnow,
+            self.utcnow,
+        )
+
+    def _verify_task_timeout_results(self, expected_state, expected_message,
+                                     start_time, end_time):
+        returned_subtask_id, state, answer = self.core_verifier.task_timeout(
+            self.subtask_id)
+
+        assert returned_subtask_id == self.subtask_id
+        assert state == expected_state
+        assert answer['message'] == expected_message
+        assert answer['time_started'] == start_time
+        assert answer['time_ended'] == end_time
