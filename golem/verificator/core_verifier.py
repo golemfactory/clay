@@ -25,19 +25,17 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
         self.message = ""
         self.computer = None
 
-    def start_verification(self, verification_data: dict) -> Deferred:
+    def start_verification(self, verification_data):
         self.time_started = datetime.utcnow()
-        finished = Deferred()
-        finished.callback(self.verification_completed())
+        self.subtask_info = verification_data['subtask_info']
         if self._verify_result(verification_data):
             self.state = SubtaskVerificationState.VERIFIED
-        else:
-            self.state = SubtaskVerificationState.WRONG_ANSWER
-        return finished
+            finished = Deferred()
+            finished.callback(self.verification_completed())
+            return finished
 
     def simple_verification(self, verification_data):
         results = verification_data['results']
-        self.subtask_info = verification_data['subtask_info']
         if not results:
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return False
