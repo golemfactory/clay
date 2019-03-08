@@ -9,6 +9,12 @@ from .rust import order_providers
 logger = logging.getLogger(__name__)
 
 
+def scale_price(task_price: float, offered_price: float) -> float:
+    if offered_price == 0:
+        return float('inf')
+    return task_price / offered_price
+
+
 class Offer:
     def __init__(
             self,
