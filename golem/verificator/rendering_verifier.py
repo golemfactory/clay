@@ -1,7 +1,5 @@
 import logging
 
-import cv2
-
 from apps.rendering.resources.imgrepr import load_img
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
