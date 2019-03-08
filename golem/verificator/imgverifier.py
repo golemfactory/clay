@@ -36,7 +36,7 @@ class ImgStatistics:
 
     @staticmethod
     def _calculate_greyscale_normalized_mse(image_1: ImgRepr,
-                                            image_2: ImgRepr):  # pylint: disable=too-many-locals
+                                            image_2: ImgRepr):  # noqa pylint: disable=too-many-locals
         (resolution_x, resolution_y) = image_1.get_size()
 
         image_1_greyscale = image_1.to_pil().convert('L')  # makes it greyscale
@@ -62,7 +62,7 @@ class ImgStatistics:
         return mse_bw, norm_mse
 
     @staticmethod
-    def _calculate_color_normalized_mse(image_1, image_2):  # pylint: disable=too-many-locals
+    def _calculate_color_normalized_mse(image_1, image_2):  # # noqa pylint: disable=too-many-locals
         mse = 0
         (resolution_x, resolution_y) = image_1.get_size()
 

@@ -3,7 +3,6 @@ import os
 from PIL import Image
 
 from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.rendering_verifier import (
     RenderingVerifier,
@@ -11,111 +10,130 @@ from golem.verificator.rendering_verifier import (
 )
 
 
-class TestRenderingVerifier(TempDirFixture, LogTestCase):
-
-    last_verdict = None
-
-    def test_get_part_size(self):
-        subtask_info = {
-            "res_x": 800,
-            "res_y": 600}
-        verification_data = {'subtask_info': subtask_info, 'results': [], 'reference_data': [], 'resources': []}
-        rendering_verifier = RenderingVerifier(verification_data)
-        assert rendering_verifier._get_part_size(subtask_info) == (800, 600)
-
-    def test_simple_verification(self):
-        self.last_verdict = None
-        # Result us not a file
-        subtask_info = {
-            "res_x": 80,
-            "res_y": 60,
-            "subtask_id": "subtask1"
+class VerificationTestsBase(TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.x = 80
+        self.y = 60
+        self.subtask_info = {
+            "frames": [3],
+            "use_frames": False,
+            "total_tasks": 2,
+            "all_frames": [3],
+            "res_x": self.x,
+            "res_y": self.y,
+            "subtask_id": "2432423"
         }
 
-        verification_data = {'subtask_info': subtask_info, 'results': ["file1"], 'reference_data': [], 'resources': []}
+        self.verification_data = {
+            'subtask_info': self.subtask_info,
+            'results': [],
+            'reference_data': [],
+            'resources': []
+        }
 
-        rendering_verifier = RenderingVerifier(verification_data)
+    def _create_images(self):
+        image_path = os.path.join(self.path, "img1.png")
+        self._save_image(image_path)
+        image_path2 = os.path.join(self.path, "img2.png")
+        self._save_image(image_path2)
+        return [image_path, image_path2]
 
-        rendering_verifier.simple_verification(verification_data)
-        self.last_verdict = rendering_verifier.verification_completed()[1]
-        assert self.last_verdict == SubtaskVerificationState.WRONG_ANSWER
+    def _save_image(self, image_path):
+        image = Image.new("RGB", (self.x, self.y))
+        image.save(image_path)
 
-        subtask_info["total_tasks"] = 30
-        subtask_info["start_task"] = 3
-        # No data
-        self.last_verdict = None
-        rendering_verifier.simple_verification(verification_data)
-        self.last_verdict = rendering_verifier.verification_completed()[1]
-        assert self.last_verdict == SubtaskVerificationState.WRONG_ANSWER
 
+class TestRenderingVerifier(VerificationTestsBase):
+    def test_get_part_size(self):
+        rendering_verifier = RenderingVerifier(self.verification_data)
+
+        assert rendering_verifier._get_part_size(
+            self.subtask_info) == (self.x, self.y)
+
+    def test_simple_verification_wrong_answer_when_not_a_file(self):
+        # Result is not a file
+        self.verification_data['results'] = ['non_exiting_file']
+
+        rendering_verifier = RenderingVerifier(self.verification_data)
+        rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = rendering_verifier.verification_completed()[1]
+
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
+
+    def test_simple_verification_wrong_answer_when_result_is_not_an_image(self):
         # Result is not an image
-        self.last_verdict = None
-        rendering_verifier.simple_verification(verification_data)
-        self.last_verdict = rendering_verifier.verification_completed()[1]
-        assert self.last_verdict == SubtaskVerificationState.WRONG_ANSWER
+        path = os.path.join(self.path, 'not_image.txt')
+        with open(path, 'w') as f:
+            f.write("This is not an image, this is SPARTA!!!")
 
-        img_path = os.path.join(self.path, "img1.png")
-        img = Image.new("RGB", (80, 60))
-        img.save(img_path)
+        self.verification_data['results'] = [path]
 
-        img_path2 = os.path.join(self.path, "img2.png")
-        img = Image.new("RGB", (80, 60))
-        img.save(img_path2)
+        rendering_verifier = RenderingVerifier(self.verification_data)
+        rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = rendering_verifier.verification_completed()[1]
 
-        ver_dir = os.path.join(self.path, "ver_img")
-        os.makedirs(ver_dir)
-        img_path3 = os.path.join(ver_dir, "img3.png")
-        img.save(img_path3)
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
+    def test_simple_verification_correct_results(self):
         # Proper simple verification - just check if images have proper sizes
-        self.last_verdict = None
-        verification_data['results'] = [img_path, img_path2]
+        self.verification_data['results'] = self._create_images()
 
-        rendering_verifier.simple_verification(verification_data)
-        self.last_verdict = rendering_verifier.verification_completed()[1]
-        assert self.last_verdict == SubtaskVerificationState.VERIFIED
+        rendering_verifier = RenderingVerifier(self.verification_data)
+        rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = rendering_verifier.verification_completed()[1]
+
+        assert verifier_state == SubtaskVerificationState.VERIFIED
 
 
-class TestFrameRenderingVerifier(TempDirFixture):
+class TestFrameRenderingVerifier(VerificationTestsBase):
+    def setUp(self):
+        super().setUp()
+        self.verification_data['results'] = self._create_images()
 
-    def test_simple_verification_frames(self):
+    def test_simple_verification_frames_correct_results(self):
+        frame_rendering_verifier = FrameRenderingVerifier(
+            self.verification_data
+        )
+        frame_rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        subtask_info = {"frames": [3],
-                        "use_frames": False,
-                        "total_tasks": 20,
-                        "all_frames": [3],
-                        "res_x": 800,
-                        "res_y": 600,
-                        "subtask_id": "2432423"}
+        assert verifier_state == SubtaskVerificationState.VERIFIED
 
-        verification_data = {'subtask_info': subtask_info, 'results': [], 'reference_data': [], 'resources': []}
+    def test_simple_verification_frames_less_tasks_than_frames(self):
+        self.subtask_info["use_frames"] = True
+        self.subtask_info["all_frames"] = [3, 4, 5, 6]
+        self.subtask_info["frames"] = [3, 4, 5, 6]
 
-        frame_rendering_verifier = FrameRenderingVerifier(verification_data)
+        frame_rendering_verifier = FrameRenderingVerifier(
+            self.verification_data
+        )
+        frame_rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        frame_rendering_verifier.subtask_info = subtask_info
-        frame_rendering_verifier.simple_verification(verification_data)
-        frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
-        subtask_info["use_frames"] = True
-        subtask_info["all_frames"] = [3, 4, 5, 6]
-        frame_rendering_verifier.simple_verification(verification_data)
-        frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+    def test_simple_verification_frames_no_results(self):
+        self.verification_data["results"] = ["file1"]
 
-        subtask_info["total_tasks"] = 2
-        frame_rendering_verifier.simple_verification(verification_data)
-        frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        frame_rendering_verifier = FrameRenderingVerifier(
+            self.verification_data
+        )
+        frame_rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        subtask_info["frames"] = [3, 4]
-        verification_data["results"] = ["file1"]
-        frame_rendering_verifier.simple_verification(verification_data)
-        frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
-        subtask_info["start_task"] = 1
-        verification_data["results"] = ["file1", "file2"]
-        frame_rendering_verifier.simple_verification(verification_data)
-        frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+    def test_simple_verification_frames_wrong_resolution(self):
+        img_path = os.path.join(self.path, "img1.png")
+        img = Image.new("RGB", (800, 600))
+        img.save(img_path)
+        self.verification_data["results"] = [img_path]
+
+        frame_rendering_verifier = FrameRenderingVerifier(
+            self.verification_data
+        )
+        frame_rendering_verifier.simple_verification(self.verification_data)
+        verifier_state = frame_rendering_verifier.verification_completed()[1]
+
+        assert verifier_state == SubtaskVerificationState.WRONG_ANSWER

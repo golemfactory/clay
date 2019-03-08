@@ -4,7 +4,6 @@ from apps.rendering.resources.imgrepr import load_img
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
 
-
 logger = logging.getLogger('apps.rendering')
 
 
@@ -35,6 +34,17 @@ class RenderingVerifier(CoreVerifier):
     def _get_part_size(self, subtask_info):
         return subtask_info['res_x'], subtask_info['res_y']
 
+    def _verify_result(self, results):
+        subtask_info = results["subtask_info"]
+        results = results["results"]
+
+        resolution_x, resolution_y = self._get_part_size(subtask_info)
+
+        for image in results:
+            if not self.check_size(image, resolution_x, resolution_y):
+                return False
+        return True
+
 
 class FrameRenderingVerifier(RenderingVerifier):
 
@@ -53,11 +63,5 @@ class FrameRenderingVerifier(RenderingVerifier):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
 
-        resolution_x, resolution_y = self._get_part_size(subtask_info)
-
-        for image in results:
-            if not self.check_size(image, resolution_x, resolution_y):
-                self.state = SubtaskVerificationState.WRONG_ANSWER
-                return False
         self.state = SubtaskVerificationState.VERIFIED
         return True
