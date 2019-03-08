@@ -1,5 +1,8 @@
 from datetime import datetime
 
+from twisted.internet.defer import Deferred
+
+from golem.core.deferred import sync_wait
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.verificator.constants import SubtaskVerificationState
@@ -13,10 +16,13 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
         self.core_verifier = CoreVerifier()
 
     def test_start_verification(self):
+        deferred = Deferred()
+
         def callback(result):
             subtask_id, state, _answer = result
             assert subtask_id == subtask_info['subtask_id']
             assert state == SubtaskVerificationState.VERIFIED
+            deferred.callback(True)
 
         subtask_info = {'subtask_id': 5}
         files = self.additional_dir_content([1])
@@ -28,6 +34,8 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
 
         finished = self.core_verifier.start_verification(verification_data)
         finished.addCallback(callback)
+
+        assert sync_wait(deferred, 2) is True
 
     def test_simple_verification(self):
         verification_data = dict(
@@ -61,6 +69,6 @@ class TestCoreVerifier(TempDirFixture, LogTestCase):
             assert kwargs['result']['time_started'] == time
             assert kwargs['result']['time_ended'] == time
 
-        sv = CoreVerifier()
-        sv.callback = callback
-        sv.task_timeout(subtask_id)
+        core_verifier = CoreVerifier()
+        core_verifier.callback = callback
+        core_verifier.task_timeout(subtask_id)
