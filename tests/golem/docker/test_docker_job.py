@@ -95,7 +95,7 @@ class TestDockerJob(DockerTestCase):
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(
             image=self.image,
-            script_filepath=script,
+            entrypoint=f'python3 {script}',
             parameters=params,
             resources_dir=self.resources_dir,
             work_dir=self.work_dir,

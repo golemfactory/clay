@@ -276,9 +276,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer = mock.Mock()
         compute_task = TaskComputer._TaskComputer__compute_task
 
-        resource_manager = task_computer.resource_manager
-        resource_manager.get_resource_dir.return_value = self.tempdir + '_res'
-        resource_manager.get_temporary_dir.return_value = self.tempdir + '_tmp'
+        dir_manager = task_computer.dir_manager
+        dir_manager.get_task_resource_dir.return_value = self.tempdir + '_res'
+        dir_manager.get_task_temporary_dir.return_value = self.tempdir + '_tmp'
 
         task_computer.lock = Lock()
         task_computer.dir_lock = Lock()

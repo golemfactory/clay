@@ -42,7 +42,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
