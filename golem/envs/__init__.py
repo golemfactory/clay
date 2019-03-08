@@ -121,21 +121,31 @@ class Environment(ABC):
 
 class EnvironmentManager:
 
+    def __init__(self):
+        self._envs: Dict[EnvId, Environment] = {}
+        self._state: Dict[EnvId, bool] = {}
+
+    def register_env(self, env: Environment) -> None:
+        env_id = env.metadata().id
+        self._envs[env_id] = env
+        self._state[env_id] = False
+
     def state(self) -> Dict[EnvId, bool]:
-        raise NotImplementedError
+        return dict(self._state)
 
     def set_state(self, state: Dict[EnvId, bool]) -> None:
-        raise NotImplementedError
+        for env_id, enabled in state.items():
+            self.set_enabled(env_id, enabled)
 
     def enabled(self, env_id: EnvId) -> bool:
-        raise NotImplementedError
+        return self._state[env_id]
 
     def set_enabled(self, env_id: EnvId, enabled: bool) -> None:
-        raise NotImplementedError
+        if env_id in self._state:
+            self._state[env_id] = enabled
 
     def environments(self) -> List[Environment]:
-        raise NotImplementedError
+        return list(self._envs.values())
 
     def environment(self, env_id: EnvId) -> Environment:
-        raise NotImplementedError
-
+        return self._envs[env_id]
