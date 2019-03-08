@@ -623,7 +623,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=task.header.max_price / msg.price,
+            scaled_price=(
+                msg.price / task.header.max_price
+                if task.header.max_price > 0
+                else float('inf')
+            ),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )
