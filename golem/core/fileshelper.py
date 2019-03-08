@@ -153,11 +153,6 @@ def inner_dir_path(path, directory):
     return os.path.join(current_dir, directory, filename)
 
 
-def ensure_dir_exists(directory):
-    if not os.path.isdir(directory):
-        os.mkdir(directory)
-
-
 def has_ext(filename, ext, case_sensitive=False):
     if case_sensitive:
         return filename.endswith(ext)
@@ -203,13 +198,6 @@ def du(path):
         human_readable_size,
         memoryhelper.translate_resource_index(idx)
     )
-
-
-def format_cmd_line_path(path):
-    if is_windows():
-        return "{}".format(path)
-    else:
-        return '"{}"'.format(path)
 
 
 def relative_path(path, prefix):
