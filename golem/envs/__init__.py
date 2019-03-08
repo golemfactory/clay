@@ -127,8 +127,9 @@ class EnvironmentManager:
 
     def register_env(self, env: Environment) -> None:
         env_id = env.metadata().id
-        self._envs[env_id] = env
-        self._state[env_id] = False
+        if env_id not in self._envs:
+            self._envs[env_id] = env
+            self._state[env_id] = False
 
     def state(self) -> Dict[EnvId, bool]:
         return dict(self._state)
