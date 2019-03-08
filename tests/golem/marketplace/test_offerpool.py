@@ -1,3 +1,4 @@
+import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
@@ -9,7 +10,7 @@ class TestScalePrice(TestCase):
         assert scale_price(5, 2) == 2.5
 
     def test_zero(self):
-        assert scale_price(5, 0) == float('inf')
+        assert scale_price(5, 0) == sys.float_info.max
 
 
 @patch('golem.marketplace.offerpool.task.deferLater')
