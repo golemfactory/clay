@@ -1,59 +1,43 @@
 from datetime import datetime
 
-import mock
-from twisted.internet import defer
-from twisted.trial import unittest
+from twisted.internet.defer import Deferred
 
+from golem.core.deferred import sync_wait
 from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 from golem.verificator.constants import SubtaskVerificationState
 from golem.verificator.core_verifier import CoreVerifier
 
 
-class TestCoreVerifier(unittest.SynchronousTestCase, TempDirFixture):
+class TestCoreVerifier(TempDirFixture, LogTestCase):
 
-    def setUp(self):
-        super().setUp()
+    def test_start_verification(self):
 
-        self.subtask_info = {'subtask_id': 5}
-        files = self.additional_dir_content([1])
-        self.verification_data = {"results": files}
+        d = Deferred()
 
-    def test_start_verification_sets_status_verified_if_data_correct(self):
-        def _is_status_correct(*_args, **_kwargs):
-            return defer.succeed(
-                core_verifier.state == SubtaskVerificationState.VERIFIED)
+        def callback(*args, **kwargs):
+            assert core_verifier.state == SubtaskVerificationState.VERIFIED
+            d.callback(True)
 
         core_verifier = CoreVerifier()
-        core_verifier.subtask_info = self.subtask_info
-        self.finished = core_verifier.start_verification(self.verification_data)
-        self.finished.addCallback(_is_status_correct)
-        self.assertTrue(self.successResultOf(self.finished))
+        subtask_info = {'subtask_id': 5}
+        files = self.additional_dir_content([1])
 
-    def test_start_verification_sets_status_wrong_answer_if_data_incorrect(
-            self):
-        with mock.patch.object(CoreVerifier, '_verify_result',
-                               return_value=False):
-            core_verifier = CoreVerifier()
-            core_verifier.subtask_info = self.subtask_info
-            self.finished = core_verifier.start_verification(
-                self.verification_data)
+        verification_data = dict()
+        verification_data["results"] = files
+        verification_data["subtask_info"] = subtask_info
 
-            def _is_status_correct(*_args, **_kwargs):
-                return defer.succeed(
-                    core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
-                )
+        finished = core_verifier.start_verification(verification_data)
+        finished.addCallback(callback)
 
-            self.finished.addCallback(_is_status_correct)
-            self.assertTrue(self.successResultOf(self.finished))
-
-
-class TestSimpleVerifier(TempDirFixture):
+        sync_wait(d, 40)
 
     def test_simple_verification(self):
         core_verifier = CoreVerifier()
+        subtask_info = {"subtask_id": "2432423"}
+        core_verifier.subtask_info = subtask_info
         verification_data = dict()
         verification_data["results"] = []
-        verification_data["subtask_info"] = "2432423"
         core_verifier.simple_verification(verification_data)
         assert core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
 
