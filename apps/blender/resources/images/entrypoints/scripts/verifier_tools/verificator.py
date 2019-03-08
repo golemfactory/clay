@@ -7,6 +7,7 @@ from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion,
 from .img_metrics_calculator import calculate_metrics, get_raw_verification
 
 
+
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
         if crop.id == id:
@@ -14,18 +15,33 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
-def prepare_params(subtask_border, scene_file_path, resolution, samples, frames, output_format, crops_count=3):
+def prepare_params(
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count=3
+):
     subimage = SubImage(
-        Region(subtask_border[0], subtask_border[1], subtask_border[2], subtask_border[3]),
+        Region(
+            subtask_border[0],
+            subtask_border[1],
+            subtask_border[2],
+            subtask_border[3]
+        ),
         resolution,
     )
     crops: List[Crop] = []
     crops_render_data = []
 
     for i in range(0, crops_count):
-        crop = generate_single_random_crop_data(subimage,
-                                                subimage.get_default_crop_size(),
-                                                i)
+        crop = generate_single_random_crop_data(
+            subimage,
+            subimage.get_default_crop_size(),
+            i
+        )
         crops_render_data.append(
             {
                 "id": crop.id,
@@ -64,7 +80,6 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
 
         for crop, subtask in zip(crop_data['results'], subtask_file_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
-
             if not use_raw_verification:
                 results_path = calculate_metrics(
                     crop_path,
@@ -95,8 +110,17 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
         json.dump({'verdict': verdict}, f)
 
 
-def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
-           crops_count=3, crops_borders=None, use_raw_verification=False):
+def verify(
+        subtask_file_paths,
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count=3,
+        use_raw_verification=False
+):
 
     """ Function will verifiy image with crops rendered from given blender scene file.
 

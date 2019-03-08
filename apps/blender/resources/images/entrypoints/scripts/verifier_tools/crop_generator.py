@@ -1,8 +1,7 @@
-import os
 import numpy
 import math
 import random
-from typing import Dict, Tuple, List, Optional
+from typing import Tuple, List
 
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
@@ -34,12 +33,15 @@ class SubImage:
 
     def __init__(self, region: Region, resolution: List[int]):
         self.region = region
-        self.pixel_region = self.calculate_pixels(region, resolution[0], resolution[1])
+        self.pixel_region = self.calculate_pixels(region, resolution[0],
+                                                  resolution[1])
         self.width = self.pixel_region.right - self.pixel_region.left
         self.height = self.pixel_region.top - self.pixel_region.bottom
         self.resolution = resolution
 
-    def calculate_pixels(self, region: Region, width: int, height: int) -> None:
+    @staticmethod
+    def calculate_pixels(region: Region, width: int,
+                         height: int) -> PixelRegion:
         # This is how Blender is calculating pixel, check
         # BlenderSync::get_buffer_params in blender_camera.cpp file
         # BoundBox2D border = cam->border.clamp();
@@ -59,7 +61,8 @@ class SubImage:
 
         # NOTE we are exchanging here top with bottom, because borders
         # in blender are in OpenGL UV coordinate system (left, bottom is 0,0)
-        # where pixel values are for use in classic coordinate system (left, top is 0,0)
+        # where pixel values are for use in classic coordinate system
+        # (left, top is 0,0)
 
         top = math.floor(
             numpy.float32(region.bottom) * numpy.float32(height) +
@@ -85,38 +88,38 @@ class SubImage:
         y = self.__calculate_crop_side_length(self.height)
         return x, y
 
+
 class Crop:
-
-    @staticmethod
-    def create_from_region(id: int, crop_region: Region, subimage: SubImage):
-        crop = Crop(id, subimage)
-        crop.crop_region = crop_region
-        crop.pixel_region = crop.subimage.calculate_pixels(crop_region,
-          subimage.width, subimage.height)
-        return crop
-
-    @staticmethod
-    def create_from_pixel_region(id: int, pixel_region: PixelRegion, subimage: SubImage):
-        crop = Crop(id, subimage)
-        crop.pixel_region = pixel_region
-        crop.crop_region = crop.calculate_borders(pixel_region, subimage.resolution[0], subimage.resolution[1])
-        return crop
-
-    def __init__(self, id: int, subimage: SubImage):
-        self.id = id
+    def __init__(self, id_: int, subimage: SubImage):
+        self.id = id_
         self.subimage = subimage
         self.pixel_region = None
         self.crop_region = None
 
-    def get_relative_top_left(self) \
-        -> Tuple[int, int]:
+    @staticmethod
+    def create_from_pixel_region(
+        id_: int,
+        pixel_region: PixelRegion,
+        subimage: SubImage
+    ) -> 'Crop':
+        crop = Crop(id_, subimage)
+        crop.pixel_region = pixel_region
+        crop.crop_region = crop.calculate_borders(pixel_region,
+                                                  subimage.resolution[0],
+                                                  subimage.resolution[1])
+        return crop
+
+    def get_relative_top_left(self) -> Tuple[int, int]:
         # get top left corner of crop in relation to particular subimage
-        print("Sumimag top=%r -  crop.top=%r" % (self.subimage.region.top, self.pixel_region.top))
+        print("Sumimag top=%r -  crop.top=%r" % (
+            self.subimage.region.top, self.pixel_region.top))
         y = self.subimage.pixel_region.top - self.pixel_region.top
         print("X=%r, Y=%r" % (self.pixel_region.left, y))
         return self.pixel_region.left, y
 
-    def calculate_borders(self, pixel_region: PixelRegion, width: int, height: int):
+    @staticmethod
+    def calculate_borders(pixel_region: PixelRegion, width: int,
+                          height: int) -> Region:
 
         left = numpy.float32(
             (numpy.float32(pixel_region.left) + SubImage.PIXEL_OFFSET) /
@@ -136,8 +139,12 @@ class Crop:
 
         return Region(left, top, right, bottom)
 
-def generate_single_random_crop_data(subimage: SubImage, crop_size_px: Tuple[int, int], id: int) \
-     -> Crop:
+
+def generate_single_random_crop_data(
+        subimage: SubImage,
+        crop_size_px: Tuple[int, int],
+        id_: int
+) -> Crop:
 
     crop_horizontal_pixel_coordinates = _get_random_interval_within_boundaries(
             subimage.pixel_region.left,
@@ -149,7 +156,7 @@ def generate_single_random_crop_data(subimage: SubImage, crop_size_px: Tuple[int
             subimage.pixel_region.top,
             crop_size_px[1])
 
-    crop = Crop.create_from_pixel_region(id, PixelRegion(
+    crop = Crop.create_from_pixel_region(id_, PixelRegion(
         crop_horizontal_pixel_coordinates[0],
         crop_vertical_pixel_coordinates[1],
         crop_horizontal_pixel_coordinates[1],
@@ -157,10 +164,12 @@ def generate_single_random_crop_data(subimage: SubImage, crop_size_px: Tuple[int
 
     return crop
 
-def _get_random_interval_within_boundaries(begin: int,
-                                            end: int,
-                                            interval_length: int) \
-        -> Tuple[int, int]:
+
+def _get_random_interval_within_boundaries(
+        begin: int,
+        end: int,
+        interval_length: int
+) -> Tuple[int, int]:
 
     # survive in edge cases
     end -= 1
