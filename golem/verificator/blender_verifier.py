@@ -40,7 +40,9 @@ class BlenderVerifier(FrameRenderingVerifier):
     def start_verification(self, verification_data):
         self.time_started = datetime.utcnow()
         self.verification_data = verification_data
-
+        logger.info(
+            f'Start verification in BlenderVerifier. '
+            f'Subtask_id: {verification_data["subtask_info"]["subtask_id"]}.')
         try:
             self.start_rendering()
         # pylint: disable=W0703
@@ -56,14 +58,19 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def start_rendering(self, timeout=0):
         self.timeout = timeout
+        subtask_id = self.verification_data['subtask_info']['subtask_id']
 
-        def success(result):
-            logger.debug('Success Callback')
+        def success(_result):
+            logger.info(
+                f'Verification completed. '
+                f'Subtask_id: {subtask_id}. Verification verdict: positive. ')
             self.state = SubtaskVerificationState.VERIFIED
             return self.verification_completed()
 
         def failure(exception):
-            logger.warning('Failure callback %r', exception)
+            logger.info(
+                f'Verification completed. '
+                f'Subtask_id: {subtask_id}. Verification verdict: negative. ')
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return exception
 
@@ -106,25 +113,24 @@ class BlenderVerifier(FrameRenderingVerifier):
             timeout=self.timeout)
 
         def error(exception):
-            logger.warning('Verification process exception %s', exception)
+            logger.warning(
+                f'Verification process exception. '
+                f'Subtask_id: {subtask_id}. Exception: {exception}')
             self.finished.errback(exception)
 
         def callback(*_):
             with open(os.path.join(dir_mapping.output, 'verdict.json'), 'r') \
                     as f:
                 verdict = json.load(f)
-
-            logger.info(
-                'Subtask %s verification verdict: %s',
-                subtask_info['subtask_id'],
-                verdict,
-            )
             if verdict['verdict']:
                 self.finished.callback(True)
             else:
                 self.finished.errback(
-                    Exception('Verification result negative', verdict))
+                    Exception('Verification result negative'))
 
+        logger.info(
+            f'Data for verification prepared. '
+            f'Subtask_id: {subtask_id}. Extra data:{json.dumps(extra_data)}.')
         d = self.docker_task.start()
         d.addErrback(error)
         d.addCallback(callback)
