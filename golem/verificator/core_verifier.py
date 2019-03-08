@@ -31,10 +31,9 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
         finished.callback(self.verification_completed())
         if self._verify_result(verification_data):
             self.state = SubtaskVerificationState.VERIFIED
-            return finished
         else:
             self.state = SubtaskVerificationState.WRONG_ANSWER
-            return finished
+        return finished
 
     def simple_verification(self, verification_data):
         results = verification_data['results']
