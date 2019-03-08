@@ -235,10 +235,7 @@ def _ensure_task_deposit(client, task, force):
 @defer.inlineCallbacks
 def _create_task_package(client, task):
     files = resource.get_resources_for_task(
-        resource_header=None,
-        resource_type=resource.ResourceType.HASHES,
-        tmp_dir=getattr(task, 'tmp_dir', None),
-        resources=task.get_resources(),
+        resources=task.get_resources()
     )
 
     packager_result = yield client.resource_server.create_resource_package(
