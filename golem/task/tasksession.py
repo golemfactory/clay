@@ -556,6 +556,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def _offer_chosen(is_chosen: bool) -> None:
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
+
             if not is_chosen:
                 logger.info(
                     "Provider not chosen by marketplace. task_id=%r, node=%r",
@@ -563,14 +571,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     node_name_id,
                 )
                 _cannot_assign(reasons.NoMoreSubtasks)
-                return
-
-            if not self.conn.opened:
-                logger.info(
-                    "Provider disconnected. task_id=%r, node=%r",
-                    msg.task_id,
-                    node_name_id,
-                )
                 return
 
             logger.info("Offer confirmed, assigning subtask")
@@ -581,7 +581,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
-                "task_id=%s, node=%s ctd=%s",
+                "CTD generated. task_id=%s, node=%s ctd=%s",
                 msg.task_id,
                 node_name_id,
                 ctd,
