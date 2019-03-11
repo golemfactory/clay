@@ -760,7 +760,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         cancel = session.concent_service.cancel_task_message
 
-        ttc = msg_factories.tasks.TaskToComputeFactory()
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            concent_enabled=True,
+        )
         task_id = ttc.task_id
         subtask_id = ttc.subtask_id
 
