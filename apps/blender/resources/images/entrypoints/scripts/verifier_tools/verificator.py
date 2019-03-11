@@ -1,8 +1,10 @@
 import json
 import os
 from typing import List, Optional
+
 from ..render_tools import blender_render as blender
-from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
+
+from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, \
     generate_single_random_crop_data, Crop
 from .img_metrics_calculator import calculate_metrics, get_raw_verification
 
@@ -15,40 +17,62 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
-def prepare_params(mounted_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
-           crops_count=3, crops_borders=None):
-
-    subimage = SubImage(Region(subtask_border[0],
-                               subtask_border[1],
-                               subtask_border[2],
-                               subtask_border[3]), resolution)
+def prepare_params(
+    subtask_border,
+    scene_file_path,
+    resolution,
+    samples,
+    frames,
+    output_format,
+    crops_count=3,
+    crops_borders=None
+):
+    subimage = SubImage(
+        Region(
+            subtask_border[0],
+            subtask_border[1],
+            subtask_border[2],
+            subtask_border[3]
+        ),
+        resolution
+    )
 
     crops: List[Crop] = []
     crops_render_data = []
 
     if crops_borders:
-        idx  = 0
+        idx = 0
         for border in crops_borders:
-            crop = Crop.create_from_region(idx, Region(border[0], border[1], border[2], border[3]), subimage)
+            crop = Crop.create_from_region(
+                idx,
+                Region(border[0], border[1], border[2], border[3]),
+                subimage
+            )
             crops_render_data.append(
                 {
                     "id": crop.id,
-                    "outfilebasename" : "crop" + str(idx) + '_',
-                    "borders_x" : [crop.crop_region.left, crop.crop_region.right],
-                    "borders_y" : [crop.crop_region.top, crop.crop_region.bottom]
+                    "outfilebasename": "crop" + str(idx) + '_',
+                    "borders_x": [crop.crop_region.left,
+                                  crop.crop_region.right],
+                    "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
                 }
             )
             crops.append(crop)
             idx += 1
     else:
-        for i in range(0,crops_count):
-            crop = generate_single_random_crop_data(subimage, subimage.get_default_crop_size(), i)
+        for i in range(0, crops_count):
+            crop = generate_single_random_crop_data(
+                subimage,
+                subimage.get_default_crop_size(),
+                i
+            )
             crops_render_data.append(
                 {
                     "id": crop.id,
-                    "outfilebasename" : "crop" + str(i) + '_',
-                    "borders_x" : [crop.crop_region.left, crop.crop_region.right],
-                    "borders_y" : [crop.crop_region.top, crop.crop_region.bottom]
+                    "outfilebasename": "crop" + str(i) + '_',
+                    "borders_x": [crop.crop_region.left,
+                                  crop.crop_region.right],
+                    "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
                 }
             )
             crops.append(crop)
@@ -111,7 +135,7 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
         json.dump({'verdict': verdict}, f)
 
 
-def verify(
+def verify(  # pylint: disable=too-many-arguments
         subtask_file_paths,
         subtask_border,
         scene_file_path,
@@ -119,35 +143,37 @@ def verify(
         samples,
         frames,
         output_format,
-        basefilename,
+        basefilename=None,
         crops_count=3,
         crops_borders=None,
-        use_raw_verification=False
+        use_raw_verification=False,
 ):
-    """ Function will verifiy image with crops rendered from given blender scene file.
+    """
+    Function will verify image with crops rendered from given blender
+    scene file.
 
-    subtask_file_paths - path (or paths if there was more than one frame) to image file, that will be compared against crops
-    subtask_border - [left, top, right, bottom] float decimal values representing
-                    image localization in whole blender scene
+    subtask_file_paths - path (or paths if there was more than one frame)
+                         to image file, that will be compared against crops
+    subtask_border - [left, top, right, bottom] float decimal values
+                     representing image localization in whole blender scene
     scene_file_path - path to blender scene file
-    resolution - resolution at which given subtask was rendered (crop will be rendered with exactly same parameters)
+    resolution - resolution at which given subtask was rendered
+                 (crop will be rendered with exactly same parameters)
     samples - samples at which given subtask was rendered
     frames - number of frames that are present in subtasks
     output_format - output format of rendered crops
-    basefilename - this will be used for creating crop names
     crops_count - number of randomly generated crops, (default 3)
-    work_dir - work
-    crops_borders - list of [left, top, right, bottom] float decimal values list, representing crops borders
+    crops_borders - list of [left, top, right, bottom] float decimal
+                    values lists, representing crops borders
                     those will be used instead of random crops, if present.
-
     """
     mounted_paths = dict()
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
-    crops, params = prepare_params(mounted_paths, subtask_border, scene_file_path,
-                                    resolution, samples, frames, output_format,
-                                    basefilename, crops_count, crops_borders)
+    crops, params = prepare_params(subtask_border, scene_file_path, resolution,
+                                   samples, frames, output_format, crops_count,
+                                   crops_borders)
 
     results = blender.render(params, mounted_paths)
 
