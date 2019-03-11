@@ -12,5 +12,6 @@ verify(
     params['resolution'],
     params['samples'],
     params['frames'],
-    params['output_format']
+    params['output_format'],
+    params['basefilename'],
 )
