@@ -97,6 +97,17 @@ class Crop:
         self.crop_region = None
 
     @staticmethod
+    def create_from_region(id: int, crop_region: Region, subimage: SubImage):
+        crop = Crop(id, subimage)
+        crop.crop_region = crop_region
+        crop.pixel_region = crop.subimage.calculate_pixels(
+            crop_region,
+            subimage.width,
+            subimage.height
+        )
+        return crop
+
+    @staticmethod
     def create_from_pixel_region(
         id_: int,
         pixel_region: PixelRegion,
