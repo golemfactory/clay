@@ -17,15 +17,15 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
-def prepare_params(
-    subtask_border,
-    scene_file_path,
-    resolution,
-    samples,
-    frames,
-    output_format,
-    crops_count=3,
-    crops_borders=None
+def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count=3,
+        crops_borders=None
 ):
     subimage = SubImage(
         Region(
@@ -36,11 +36,10 @@ def prepare_params(
         ),
         resolution
     )
-
     crops: List[Crop] = []
     crops_render_data = []
 
-    if crops_borders:
+    if crops_borders:  # TODO: Allow verification with given crops_border!
         idx = 0
         for border in crops_borders:
             crop = Crop.create_from_region(
@@ -63,7 +62,6 @@ def prepare_params(
         for i in range(0, crops_count):
             crop = generate_single_random_crop_data(
                 subimage,
-                subimage.get_default_crop_size(),
                 i
             )
             crops_render_data.append(
@@ -97,7 +95,9 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
     for crop_data in results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops)
 
+        # TODO: Used with the old generate_single_random_crop_data
         left, top = crop.get_relative_top_left()
+        left, top = crop.pixel_region.left, crop.pixel_region.top
         print('borders_x: ', crop_data['crop']['borders_x'])
         print('borders_y: ', crop_data['crop']['borders_y'])
         print("left: " + str(left))
