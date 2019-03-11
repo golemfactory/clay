@@ -10,10 +10,7 @@ class DummyTaskVerifier(CoreVerifier):
     # it is set in the query_extra_data
     def __init__(self, verification_data: Dict[str, Any]) -> None:
         super().__init__(verification_data)
-        if verification_data:
-            self.subtask_info = verification_data["subtask_info"]
-        else:
-            self.subtask_info = None
+        self.subtask_info = verification_data["subtask_info"]
 
     def _verify_result(self, results: Dict[str, Any]):
 
