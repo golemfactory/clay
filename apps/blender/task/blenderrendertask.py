@@ -405,7 +405,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "start_task": start_task,
                       "total_tasks": self.total_tasks,
                       "crops": crops,
-                      "entrypoint": "python3 /golem/scripts/job.py",
+                      "entrypoint":
+                          "python3 /golem/entrypoints/render_entrypoint.py",
                       }
 
         subtask_id = self.create_subtask_id()
@@ -488,7 +489,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "start_task": 1,
                       "total_tasks": 1,
                       "crops": crops,
-                      "entrypoint": "python3 /golem/scripts/job.py",
+                      "entrypoint":
+                          "python3 /golem/entrypoints/render_entrypoint.py",
                       }
 
         hash = "{}".format(random.getrandbits(128))

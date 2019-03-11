@@ -1,8 +1,8 @@
-FROM golemfactory/blender:1.8
+FROM golemfactory/blender:igor_pr2
 
 # Install scripts requirements first, then add scripts.
-ADD scripts_verifier/requirements.txt /golem/work/
-ADD scripts_verifier/copy.sh /golem/
+ADD entrypoints/scripts/verifier_tools/requirements.txt /golem/work/
+ADD entrypoints/scripts/verifier_tools/copy.sh /golem/
 
 # Install any needed packages specified in requirements.txt
 RUN set +x \
@@ -27,10 +27,8 @@ RUN set +x \
     && apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/*
 
-ENV PYTHONPATH=/golem/scripts:/golem/scripts_verifier:/golem:$PYTHONPATH
-
 # Create symbolic link to python. I don't know where, something removes it.
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
-RUN mkdir /golem/scripts_verifier
-ADD scripts_verifier/ /golem/scripts_verifier
+ADD entrypoints/scripts/verifier_tools/ /golem/entrypoints/scripts/verifier_tools/
+ADD entrypoints/verifier_entrypoint.py /golem/entrypoints/
