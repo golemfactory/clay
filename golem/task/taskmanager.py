@@ -374,10 +374,17 @@ class TaskManager(TaskEventListener):
             max_resource_size, max_memory_size, address,
         )
 
+        if node_id == self.keys_auth.key_id:
+            logger.warning("No subtasks for self")
+            return None
+
         if not self.is_my_task(task_id):
             return None
 
         if not self.check_next_subtask(task_id, price):
+            return None
+
+        if not self.task_needs_computation(task_id):
             return None
 
         if self.should_wait_for_node(task_id, node_id):
