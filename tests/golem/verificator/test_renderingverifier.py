@@ -56,7 +56,7 @@ class TestRenderingVerifier(VerificationTestsBase):
         self.verification_data['results'] = ['non_exiting_file']
 
         rendering_verifier = RenderingVerifier(self.verification_data)
-        rendering_verifier.simple_verification(self.verification_data)
+        rendering_verifier.simple_verification()
         verifier_state = rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
@@ -70,7 +70,7 @@ class TestRenderingVerifier(VerificationTestsBase):
         self.verification_data['results'] = [path]
 
         rendering_verifier = RenderingVerifier(self.verification_data)
-        rendering_verifier.simple_verification(self.verification_data)
+        rendering_verifier.simple_verification()
         verifier_state = rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
@@ -80,7 +80,7 @@ class TestRenderingVerifier(VerificationTestsBase):
         self.verification_data['results'] = self._create_images()
 
         rendering_verifier = RenderingVerifier(self.verification_data)
-        rendering_verifier.simple_verification(self.verification_data)
+        rendering_verifier.simple_verification()
         verifier_state = rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.VERIFIED
@@ -95,7 +95,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification(self.verification_data)
+        frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.VERIFIED
@@ -108,7 +108,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification(self.verification_data)
+        frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
@@ -119,7 +119,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification(self.verification_data)
+        frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
@@ -133,7 +133,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification(self.verification_data)
+        frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER

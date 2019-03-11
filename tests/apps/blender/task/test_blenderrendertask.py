@@ -138,13 +138,13 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        def verification_finished1(verification_data):
+        def verification_finished1():
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+            result['extra_data']['results'] = list(self.bt.results.values())[0]
             self.bt.verification_finished(
                 extra_data3.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
@@ -162,13 +162,13 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(verification_data):
+        def verification_finished2():
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+            result['extra_data']['results'] = list(self.bt.results.values())[0]
             self.bt.verification_finished(
                 extra_data4.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,

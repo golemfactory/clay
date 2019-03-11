@@ -10,7 +10,8 @@ logger = logging.getLogger('apps.rendering')
 class RenderingVerifier(CoreVerifier):
 
     def __init__(self, verification_data):
-        super().__init__()
+        super().__init__(verification_data)
+        self.verification_data = verification_data
         self.subtask_info = verification_data['subtask_info']
         self.resources = verification_data['resources']
         self.results = verification_data['results']
@@ -48,12 +49,12 @@ class RenderingVerifier(CoreVerifier):
 
 class FrameRenderingVerifier(RenderingVerifier):
 
-    def simple_verification(self, verification_data):
-        if not super().simple_verification(verification_data):
+    def simple_verification(self):
+        if not super().simple_verification():
             return False
 
-        subtask_info = verification_data['subtask_info']
-        results = verification_data['results']
+        subtask_info = self.verification_data['subtask_info']
+        results = self.verification_data['results']
         use_frames = subtask_info['use_frames']
         total_tasks = subtask_info['total_tasks']
         frames = subtask_info['all_frames']

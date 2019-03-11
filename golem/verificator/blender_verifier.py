@@ -37,10 +37,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                 numpy.float32(subtask_info['resolution'][1]))))
         return subtask_info['resolution'][0], resolution_y
 
-    def start_verification(self, verification_data):
+    def start_verification(self):
         self.time_started = datetime.utcnow()
-        self.verification_data = verification_data
-
         try:
             self.start_rendering()
         # pylint: disable=W0703
