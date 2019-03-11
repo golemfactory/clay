@@ -55,3 +55,10 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
     def test_zero_price(self):
         exit_code = self._run_test('golem.zero_price.ZeroPrice')
         self.assertEqual(exit_code, 0)
+
+    def test_large_result(self):
+        exit_code = self._run_test(
+            'golem.separate_hyperg.SeparateHyperdrive',
+            **{'task-package': 'cubes', 'task-settings': '4k'},
+        )
+        self.assertEqual(exit_code, 0)
