@@ -106,7 +106,6 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert isinstance(task.header.task_owner, dt_p2p.Node)
         assert task.header.subtask_timeout == 1200
         assert task.header.task_owner.node_name == 'some_node'
-        assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
         assert task.docker_images[0].repository == 'golemfactory/blender'

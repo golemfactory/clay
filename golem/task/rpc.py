@@ -235,10 +235,7 @@ def _ensure_task_deposit(client, task, force):
 @defer.inlineCallbacks
 def _create_task_package(client, task):
     files = resource.get_resources_for_task(
-        resource_header=None,
-        resource_type=resource.ResourceType.HASHES,
-        tmp_dir=getattr(task, 'tmp_dir', None),
-        resources=task.get_resources(),
+        resources=task.get_resources()
     )
 
     packager_result = yield client.resource_server.create_resource_package(
@@ -283,7 +280,7 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
 def _inform_subsystems(client, task, packager_result):
     task_id = task.header.task_id
     package_path, package_sha1 = packager_result
-    task.header.resource_size = os.path.getsize(package_path)
+    resource_size = os.path.getsize(package_path)
 
     if client.config_desc.net_masking_enabled:
         task.header.mask = _get_mask_for_task(
@@ -306,7 +303,7 @@ def _inform_subsystems(client, task, packager_result):
         package_path,
         package_sha1,
         task_id,
-        task.header.resource_size,
+        resource_size,
         client_options=client_options,
     )
     return resource_server_result

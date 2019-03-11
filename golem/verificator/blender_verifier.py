@@ -97,7 +97,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             frames=subtask_info['frames'],
             output_format=subtask_info['output_format'],
             basefilename='crop',
-            script_filepath="/golem/scripts_verifier/runner.py",
+            entrypoint="python3 /golem/scripts_verifier/runner.py",
         )
 
         self.docker_task = self.docker_task_cls(

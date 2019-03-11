@@ -27,8 +27,8 @@ class ForceAccept(ConcentTestPlaybook):
         deadline = calendar.timegm(time.gmtime()) + self.subtask_timeout_secs
         fake_rct = ReportComputedTaskFactory(
             task_to_compute__compute_task_def__deadline=deadline,
-            size=1000000,  # @todo add proper size read from the provider's
-                           # results directory, if possible
+            size=45_000_000,  # @todo add proper size read from the provider's
+                              # results directory, if possible
         )
         return msg_helpers.subtask_verification_time(fake_rct)
 

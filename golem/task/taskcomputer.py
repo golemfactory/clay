@@ -19,7 +19,6 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
@@ -62,8 +61,8 @@ class TaskComputer(object):
         self.listeners = []
         self.last_task_request = time.time()
 
-        self.dir_manager = None
-        self.resource_manager: Optional[ResourcesManager] = None
+        self.dir_manager: DirManager = DirManager(
+            task_server.get_task_computer_root())
         self.task_request_frequency = None
 
         self.docker_manager: DockerManager = DockerManager.install()
@@ -134,9 +133,6 @@ class TaskComputer(object):
         )
         self.__task_finished(subtask)
         self.session_closed()
-
-    def task_request_rejected(self, task_id, reason):
-        logger.info("Task %r request rejected: %r", task_id, reason)
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
@@ -252,7 +248,6 @@ class TaskComputer(object):
                       run_benchmarks=False):
         self.dir_manager = DirManager(
             self.task_server.get_task_computer_root())
-        self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.compute_tasks = config_desc.accept_tasks \
             and not config_desc.in_shutdown
@@ -361,9 +356,9 @@ class TaskComputer(object):
                     docker_images)
 
         with self.dir_lock:
-            resource_dir = self.resource_manager.get_resource_dir(task_id)
+            resource_dir = self.dir_manager.get_task_resource_dir(task_id)
             temp_dir = os.path.join(
-                self.resource_manager.get_temporary_dir(task_id), unique_str)
+                self.dir_manager.get_task_temporary_dir(task_id), unique_str)
             # self.dir_manager.clear_temporary(task_id)
 
             if not os.path.exists(temp_dir):
