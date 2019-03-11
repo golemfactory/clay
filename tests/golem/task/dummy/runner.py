@@ -364,7 +364,7 @@ def dispatch(args):
         # second arg is the data dir,
         # third arg is the number of subtasks.
         run_requesting_node(args[2], int(args[3]))
-    elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
+    elif len(args) in [5, 6] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node,
         # second arg is the data dir,
         # third arg is the address to connect to,
