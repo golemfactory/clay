@@ -10,20 +10,13 @@ from ethereum.utils import sha3
 
 from golem_messages.cryptography import ECCx
 
-BASE_DIR = '/Users/mwu-gol/tmp/granary/'
-KEY_FILE_NAME = 'key'
-TS_FILE_NAME = 'ts'
-PASS_FILE_NAME = 'pass'
-LOCK_FILE_NAME = 'lock'
-
 logger = logging.getLogger(__name__)
-logger.setLevel(5)
+# logger.setLevel(5)
 
 class Granary:
 
     @staticmethod
     def request_account():
-        # TODO: read from granary service
         logger.debug("Granary called, account requested")
         cmd = ['ssh', 'mwu-vps', '/home/ubuntu/.cargo/bin/golem-granary', 'get_used_account']
 
@@ -50,7 +43,6 @@ class Granary:
 
     @staticmethod
     def return_account(account):
-        # TODO: read from granary service
         print("Granary called, account returned")
         print(account)
         print(account.raw_key)
@@ -63,8 +55,6 @@ class Granary:
         ts = shlex.quote(ts)
 
         cmd = ['ssh', 'mwu-vps', '/home/ubuntu/.cargo/bin/golem-granary', 'return_used_account', '-p', key_pub_addr, '-P', encode_hex(account.raw_key), '-t', ts]
-
-        #cmd = f"ssh mwu-vps /home/ubuntu/.cargo/bin/golem-granary return_used_account -p {key_pub_addr} -P {encode_hex(account.raw_key)} -t '{shlex.account.transaction_store or '{}'}'"
 
         print(cmd)
         completed = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
@@ -81,7 +71,7 @@ class Granary:
         return
 
 class Account:
-    def __init__(self, raw_key = None, ts = None, password = None):
+    def __init__(self, raw_key = None, ts = None):
         self.key = ECCx(raw_key)
         if raw_key is not None:
             random.seed()
@@ -89,4 +79,3 @@ class Account:
         self.raw_key = self.key.raw_privkey
         logger.debug("Account created: " + str(self.raw_key))
         self.transaction_store = ts
-        self.password = password
