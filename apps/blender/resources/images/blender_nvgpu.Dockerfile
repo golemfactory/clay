@@ -14,7 +14,8 @@ RUN apt-get update && \
 		libgl1-mesa-dev \
 		libglu1-mesa \
 		libxi6 \
-		libxrender1 && \
+		libxrender1 \
+		python3 && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
@@ -29,3 +30,5 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
 
 ENV BLENDER_DEVICE_TYPE NVIDIA_GPU
 ENV PATH=/opt/blender:$PATH
+
+COPY scripts/ /golem/scripts/
