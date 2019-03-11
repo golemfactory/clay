@@ -43,10 +43,10 @@ def do_transcode(track, targs, output, use_playlist):
     ffmpeg.transcode_video(track, targs, output, use_playlist)
 
 
-def do_merge(playlists_dir, outputfilename):
+def do_merge(chunks, outputfilename):
     [output_playlist, _] = os.path.splitext(
         os.path.basename(outputfilename))
-    merged = join_playlists(playlists_dir)
+    merged = join_playlists(chunks)
     merged_filename = os.path.join(RESOURCES_DIR,
                                    output_playlist + ".m3u8")
     file = open(merged_filename, 'w')
