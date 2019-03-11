@@ -22,7 +22,7 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
         self.env = BlenderEnvironment()
 
     def init_deposits(self):
-        price = random.randint(5 << 20, 10 << 20)
+        price = random.randint(1 << 20, 10 << 20)
         self.requestor_put_deposit(price)
         self.provider_put_deposit(price)
         return price
