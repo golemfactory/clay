@@ -28,15 +28,16 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
-                self.path, "1.2.3.4:5678"]
+                self.path, "1.2.3.4:5678", "pid", ]
         runner.dispatch(args)
-        self.assertFalse(mock_run_requesting_node.called)
-        self.assertTrue(mock_run_computing_node.called)
-        self.assertEqual(mock_run_computing_node.call_args[0],
-                         (self.path, SocketAddress("1.2.3.4", 5678)))
-        self.assertEqual(mock_run_computing_node.call_args[1],
-                         {"fail_after": None})
-        self.assertFalse(mock_run_simulation.called)
+        mock_run_requesting_node.assert_not_called()
+        mock_run_computing_node.assert_called_once_with(
+            self.path,
+            SocketAddress("1.2.3.4", 5678),
+            fail_after=None,
+            provider_id="pid",
+        )
+        mock_run_simulation.assert_not_called()
 
     @mock.patch("tests.golem.task.dummy.runner.run_requesting_node")
     @mock.patch("tests.golem.task.dummy.runner.run_computing_node")
@@ -45,15 +46,16 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
             self, mock_run_simulation, mock_run_computing_node,
             mock_run_requesting_node):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
-                self.path, "10.0.255.127:16000", "25"]
+                self.path, "10.0.255.127:16000", "pid", "25"]
         runner.dispatch(args)
-        self.assertFalse(mock_run_requesting_node.called)
-        self.assertTrue(mock_run_computing_node.called)
-        self.assertEqual(mock_run_computing_node.call_args[0],
-                         (self.path, SocketAddress("10.0.255.127", 16000)))
-        self.assertEqual(mock_run_computing_node.call_args[1],
-                         {"fail_after": 25.0})
-        self.assertFalse(mock_run_simulation.called)
+        mock_run_requesting_node.assert_not_called()
+        mock_run_computing_node.assert_called_once_with(
+            self.path,
+            SocketAddress("10.0.255.127", 16000),
+            fail_after=25.0,
+            provider_id='pid'
+        )
+        mock_run_simulation.assert_not_called()
 
     @mock.patch("tests.golem.task.dummy.runner.run_requesting_node")
     @mock.patch("tests.golem.task.dummy.runner.run_computing_node")
@@ -89,12 +91,18 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     @mock.patch("golem.core.common.config_logging")
     def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
-        client = runner.run_computing_node(self.path,
-                                           SocketAddress("127.0.0.1", 40102))
+        client = runner.run_computing_node(
+            self.path,
+            SocketAddress("127.0.0.1", 40102),
+            "pid",
+        )
         assert task.DummyTask.ENVIRONMENT_NAME in \
             client.environments_manager.environments
-        self.assertTrue(mock_reactor.run.called)
-        self.assertTrue(mock_config_logging.called)
+        mock_reactor.run.assert_called_once_with()
+        mock_config_logging.assert_called_once_with(
+            datadir=mock.ANY,
+            loglevel='DEBUG',
+        )
         client.quit()
 
     @mock.patch("subprocess.Popen")

@@ -3,7 +3,6 @@
 import copy
 import datetime
 import enum
-import functools
 import logging
 import time
 from typing import TYPE_CHECKING, List, Optional
@@ -505,13 +504,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.check_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.price):
+                msg.task_id, msg.price):
             logger.debug(
                 "check_next_subtask False. task_id=%s, node=%s",
                 msg.task_id,
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if not self.task_manager.task_needs_computation(msg.task_id):
+            logger.debug(
+                "TaskFinished. task_id=%s, provider=%s",
+                msg.task_id,
+                node_name_id,
+            )
+            _cannot_assign(reasons.TaskFinished)
             return
 
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
@@ -548,6 +556,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def _offer_chosen(is_chosen: bool) -> None:
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
+
             if not is_chosen:
                 logger.info(
                     "Provider not chosen by marketplace. task_id=%r, node=%r",
@@ -555,14 +571,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     node_name_id,
                 )
                 _cannot_assign(reasons.NoMoreSubtasks)
-                return
-
-            if not self.conn.opened:
-                logger.info(
-                    "Provider disconnected. task_id=%r, node=%r",
-                    msg.task_id,
-                    node_name_id,
-                )
                 return
 
             logger.info("Offer confirmed, assigning subtask")
@@ -573,7 +581,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
-                "task_id=%s, node=%s ctd=%s",
+                "CTD generated. task_id=%s, node=%s ctd=%s",
                 msg.task_id,
                 node_name_id,
                 ctd,
@@ -1054,25 +1062,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.concent_service.cancel_task_message(
             msg.subtask_id, 'ForceReportComputedTask')
 
-        delayed_forcing_msg = message.concents.ForceSubtaskResults(
-            ack_report_computed_task=msg,
-        )
-        ttc_deadline = datetime.datetime.utcfromtimestamp(
-            msg.task_to_compute.compute_task_def['deadline']
-        )
-        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
-        delay = ttc_deadline + svt - datetime.datetime.utcnow()
-        delay += datetime.timedelta(seconds=1)  # added for safety
-        logger.debug(
-            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
-            delayed_forcing_msg,
-            delay
-        )
-        self.concent_service.submit_task_message(
-            subtask_id=msg.subtask_id,
-            msg=delayed_forcing_msg,
-            delay=delay,
-        )
+        if msg.task_to_compute.concent_enabled:
+            delayed_forcing_msg = message.concents.ForceSubtaskResults(
+                ack_report_computed_task=msg,
+            )
+            ttc_deadline = datetime.datetime.utcfromtimestamp(
+                msg.task_to_compute.compute_task_def['deadline']
+            )
+            svt = msg_helpers.subtask_verification_time(
+                msg.report_computed_task,
+            )
+            delay = ttc_deadline + svt - datetime.datetime.utcnow()
+            delay += datetime.timedelta(seconds=1)  # added for safety
+            logger.debug(
+                '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+                delayed_forcing_msg,
+                delay
+            )
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=delayed_forcing_msg,
+                delay=delay,
+            )
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
