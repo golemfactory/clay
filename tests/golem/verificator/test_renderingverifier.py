@@ -53,7 +53,6 @@ class TestRenderingVerifier(VerificationTestsBase):
             self.subtask_info) == (self.x, self.y)
 
     def test_simple_verification_wrong_answer_when_not_a_file(self):
-        # Result is not a file
         self.verification_data['results'] = ['non_exiting_file']
 
         rendering_verifier = RenderingVerifier(self.verification_data)
@@ -63,7 +62,6 @@ class TestRenderingVerifier(VerificationTestsBase):
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_wrong_answer_when_result_is_not_an_image(self):
-        # Result is not an image
         path = os.path.join(self.path, 'not_image.txt')
         with open(path, 'w') as f:
             f.write("This is not an image, this is SPARTA!!!")
@@ -76,15 +74,10 @@ class TestRenderingVerifier(VerificationTestsBase):
 
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
-    def test_simple_verification_correct_results(self):
-        # Proper simple verification - just check if images have proper sizes
+    def test_simple_verification_returns_true_if_images_have_proper_sizes(self):
         self.verification_data['results'] = self._create_images()
-
         rendering_verifier = RenderingVerifier(self.verification_data)
-        rendering_verifier.simple_verification()
-        verifier_state = rendering_verifier.verification_completed()[1]
-
-        assert verifier_state == SubtaskVerificationState.VERIFIED
+        self.assertTrue(rendering_verifier.simple_verification())
 
 
 class TestFrameRenderingVerifier(VerificationTestsBase):
@@ -92,14 +85,10 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         super().setUp()
         self.verification_data['results'] = self._create_images()
 
-    def test_simple_verification_frames_correct_results(self):
-        frame_rendering_verifier = FrameRenderingVerifier(
-            self.verification_data
-        )
-        frame_rendering_verifier.simple_verification()
-        verifier_state = frame_rendering_verifier.verification_completed()[1]
-
-        assert verifier_state == SubtaskVerificationState.VERIFIED
+    def test_simple_verification_returns_true_if_images_have_proper_sizes(self):
+        self.verification_data['results'] = self._create_images()
+        rendering_verifier = FrameRenderingVerifier(self.verification_data)
+        self.assertTrue(rendering_verifier.simple_verification())
 
     def test_simple_verification_frames_less_tasks_than_frames(self):
         self.subtask_info["use_frames"] = True
@@ -109,9 +98,10 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification()
+        result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
+        self.assertFalse(result)
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_no_results(self):
@@ -120,9 +110,10 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification()
+        result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
+        self.assertFalse(result)
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_wrong_resolution(self):
@@ -144,7 +135,8 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data
         )
-        frame_rendering_verifier.simple_verification()
+        result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
+        self.assertFalse(result)
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
