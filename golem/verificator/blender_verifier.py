@@ -27,7 +27,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.timeout = 0
         self.docker_task = None
 
-    def _get_part_size(self, subtask_info):
+    @staticmethod
+    def _get_part_size(subtask_info):
         if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
                 >= subtask_info['total_tasks']:
             resolution_y = subtask_info['resolution'][1]
