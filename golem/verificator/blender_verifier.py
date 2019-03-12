@@ -27,18 +27,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.timeout = 0
         self.docker_task = None
 
-    @staticmethod
-    def _get_part_size(subtask_info):
-        if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
-                >= subtask_info['total_tasks']:
-            resolution_y = subtask_info['resolution'][1]
-        else:
-            resolution_y = int(round(numpy.float32(
-                numpy.float32(subtask_info['crops'][0]['borders_y'][0]) *
-                numpy.float32(subtask_info['resolution'][1]))))
-        return subtask_info['resolution'][0], resolution_y
-
-    def start_verification(self):
+    def start_verification(self) -> Deferred:
         self.time_started = datetime.utcnow()
         logger.info(
             f'Start verification in BlenderVerifier. '
@@ -52,11 +41,22 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         return self.finished
 
+    @staticmethod
+    def _get_part_size(subtask_info):
+        if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
+                >= subtask_info['total_tasks']:
+            res_y = subtask_info['resolution'][1]
+        else:
+            res_y = int(round(numpy.float32(
+                numpy.float32(subtask_info['crops'][0]['borders_y'][0]) *
+                numpy.float32(subtask_info['resolution'][1]))))
+        return subtask_info['resolution'][0], res_y
+
     def stop(self):
         if self.docker_task:
             self.docker_task.end_comp()
 
-    def start_rendering(self, timeout=0):
+    def start_rendering(self, timeout=0) -> None:
         self.timeout = timeout
         subtask_id = self.verification_data['subtask_info']['subtask_id']
 
