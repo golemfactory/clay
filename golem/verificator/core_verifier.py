@@ -26,13 +26,13 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
         self.message = ""
         self.computer = None
 
-    def start_verification(self):
+    def start_verification(self) -> Deferred:
         self.time_started = datetime.utcnow()
-        if self._verify_result(self.verification_data):
-            self.state = SubtaskVerificationState.VERIFIED
-            finished = Deferred()
-            finished.callback(self.verification_completed())
-            return finished
+        self.subtask_info = self.verification_data['subtask_info']
+        self.state = SubtaskVerificationState.VERIFIED
+        finished = Deferred()
+        finished.callback(self.verification_completed())
+        return finished
 
     def simple_verification(self):
         results = self.verification_data['results']
@@ -41,13 +41,10 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
             return False
 
         for result in results:
-            if not os.path.isfile(result) or not\
-                    self._verify_result(self.verification_data):
+            if not os.path.isfile(result):
                 self.message = 'No proper task result found'
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
-
-        self.state = SubtaskVerificationState.VERIFIED
         return True
 
     def verification_completed(self):
@@ -86,8 +83,3 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
                 'time_started': self.time_started,
                 'time_ended': self.time_ended,
                 'extra_data': self.extra_data}
-
-    # pylint: disable=unused-argument
-    def _verify_result(self, results):
-        """ Override this to change verification method. """
-        return True
