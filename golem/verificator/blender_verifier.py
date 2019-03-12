@@ -129,7 +129,7 @@ class BlenderVerifier(FrameRenderingVerifier):
                     Exception('Verification result negative'))
 
         logger.info(
-            f'Data for verification prepared. '
+            f' Starting docker thread for:  '
             f'Subtask_id: {subtask_id}. Extra data:{json.dumps(extra_data)}.')
         d = self.docker_task.start()
         d.addErrback(error)
