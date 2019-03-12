@@ -82,9 +82,12 @@ class ffmpegDefaults(TaskDefaults):
 
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):
-    SUPPORTED_FILE_TYPES = [Container.MKV, Container.AVI,
-                            Container.MP4]
-    SUPPORTED_VIDEO_CODECS = [VideoCodec.MPEG_2, VideoCodec.H_264]
+    SUPPORTED_FILE_TYPES = [Container.c_MKV, Container.c_AVI,
+                            Container.c_MP4, Container.c_MOV, Container.c_MPEG,
+                            Container.c_3GP, Container.c_3G2, Container.c_F4V]
+    SUPPORTED_VIDEO_CODECS = [VideoCodec.MPEG_1, VideoCodec.MPEG_2,
+                              VideoCodec.H_264, VideoCodec.H_265,
+                              VideoCodec.HEVC, VideoCodec.H_264]
     SUPPORTED_AUDIO_CODECS = [AudioCodec.MP3, AudioCodec.AAC]
     TASK_CLASS = ffmpegTask
     DEFAULTS = ffmpegDefaults
