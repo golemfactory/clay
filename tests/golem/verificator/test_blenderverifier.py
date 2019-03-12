@@ -2,7 +2,7 @@ import os
 import shutil
 import time
 import pytest
-from unittest import mock
+from unittest import mock, TestCase
 
 from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait
@@ -148,3 +148,44 @@ class TestBlenderVerifier(TempDirFixture):
             ['GolemTask_10001.png'],
             'Subtask computation failed with exit code 1',
         )
+
+
+class TestUnitBlenderVerifier:
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.width = 400
+        self.height = 350
+        self.subtask_info_stub = {
+            'all_frames': [1, 2, 3],
+            'total_tasks': 3,
+            'use_frames': True,
+            'resolution': [self.width, self.height]
+        }
+
+    def test__get_part_size_no_crops(self):
+        result = BlenderVerifier._get_part_size(self.subtask_info_stub)
+        assert result[0] == self.width
+        assert result[1] == self.height
+
+    @pytest.mark.parametrize(
+        "start_border_y, expected_height", [
+            (0.1, 35),
+            (0.33, 116),
+            (0.37, 130)
+        ]
+    )
+    def test__get_part_size_with_crops(self, start_border_y, expected_height):
+        crops = [{
+            "id": 11,
+            "outfilebasename": "crop11_",
+            "borders_x": [0.2, 0.3],
+            "borders_y": [start_border_y, 0.4]
+        }]
+        self.subtask_info_stub.update({
+            'use_frames': False,
+            'crops': crops
+        })
+
+        result = BlenderVerifier._get_part_size(self.subtask_info_stub)
+        assert result[0] == self.width
+        assert result[1] == expected_height
