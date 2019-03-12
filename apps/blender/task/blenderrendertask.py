@@ -7,16 +7,15 @@ import time
 from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
-from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blenderenvironment import BlenderEnvironment, \
     BlenderNVGPUEnvironment
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_as_pil
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
@@ -30,10 +29,6 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem.verificator.blender_verifier import BlenderVerifier
-
-# Allow loading truncated images.
-# https://github.com/golemfactory/golem/issues/2059
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 
@@ -70,46 +65,41 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
 
     def get_offset(self, subtask_number):
-        if 0 < subtask_number < len(self.expected_offsets):
-            return self.expected_offsets[subtask_number]
-        return self.preview_res_y
+        return self.expected_offsets.get(subtask_number, self.preview_res_y)
 
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
 
-        with handle_image_error(logger) as handler_result, \
-                handle_none(load_as_pil(subtask_path),
-                            raise_if_none=IOError("load_as_pil failed")) \
-                as subtask_img:
+        with handle_opencv_image_error(logger) as handler_result:
+
+            subtask_img = OpenCVImgRepr.from_image_file(subtask_path)
 
             offset = self.get_offset(subtask_number)
             if subtask_number == self.perfectly_placed_subtasks + 1:
-                _, img_y = subtask_img.size
-                self.perfect_match_area_y += img_y
+                self.perfect_match_area_y += subtask_img.get_height()
                 self.perfectly_placed_subtasks += 1
 
-            # this is the last task
-            if subtask_number + 1 >= len(self.expected_offsets):
-                height = self.preview_res_y - \
-                         self.expected_offsets[subtask_number]
-            else:
-                height = self.expected_offsets[subtask_number + 1] - \
-                         self.expected_offsets[subtask_number]
+            chunk_height = self._get_height(subtask_number)
 
-            with subtask_img.resize((self.preview_res_x, height),
-                                    resample=Image.BILINEAR) \
-                    as subtask_img_resized:
-                def open_or_create_image():
-                    if not os.path.exists(self.preview_file_path) \
-                            or len(self.chunks) == 1:
-                        return Image.new("RGB", (self.preview_res_x,
-                                                 self.preview_res_y))
-                    return Image.open(self.preview_file_path)
+            subtask_img_resized = subtask_img.resize(self.preview_res_x,
+                                                     chunk_height)
 
-                with open_or_create_image() as preview_img:
-                    preview_img.paste(subtask_img_resized, (0, offset))
-                    preview_img.save(self.preview_file_path, PREVIEW_EXT)
+            def open_or_create_image():
+                if not os.path.exists(self.preview_file_path) \
+                        or len(self.chunks) == 1:
+                    chunk_channels = subtask_img.get_channels()
+                    return OpenCVImgRepr.empty(self.preview_res_x,
+                                               self.preview_res_y,
+                                               channels=chunk_channels)
+                return OpenCVImgRepr.from_image_file(self.preview_file_path)
+
+            preview_img = open_or_create_image()
+
+            subtask_img_resized.try_adjust_type(OpenCVImgRepr.IMG_U8)
+
+            preview_img.paste_image(subtask_img_resized, 0, offset)
+            preview_img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
         if not handler_result.success:
             return
@@ -124,10 +114,14 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
-            with handle_image_error(logger), \
-                 Image.new("RGB", (self.preview_res_x, self.preview_res_y)) \
-                    as img:
-                img.save(self.preview_file_path, PREVIEW_EXT)
+            with handle_opencv_image_error(logger):
+                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y)\
+                    .save_with_extension(self.preview_file_path, PREVIEW_EXT)
+
+    def _get_height(self, subtask_number):
+        next_offset = \
+            self.expected_offsets.get(subtask_number + 1, self.preview_res_y)
+        return next_offset - self.expected_offsets.get(subtask_number)
 
 
 class RenderingTaskTypeInfo(CoreTaskTypeInfo):
@@ -532,19 +526,19 @@ class BlenderRenderTask(FrameRenderingTask):
                               final=False):
         num = self.frames.index(frame_num)
         if final:
-            with handle_image_error(logger), \
-                 handle_none(load_as_pil(new_chunk_file_path),
-                             raise_if_none=IOError("load_as_pil failed")) \
-                    as img, \
-                    img.resize((int(round(self.res_x * self.scale_factor)),
-                                int(round(self.res_y * self.scale_factor))),
-                               resample=Image.BILINEAR) as scaled:
+            with handle_opencv_image_error(logger):
+                img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
+                img.resize(int(round(self.res_x * self.scale_factor)),
+                           int(round(self.res_y * self.scale_factor)))
 
                 preview_task_file_path = self._get_preview_task_file_path(num)
                 self.last_preview_path = preview_task_file_path
 
-                scaled.save(preview_task_file_path, PREVIEW_EXT)
-                scaled.save(self._get_preview_file_path(num), PREVIEW_EXT)
+                img.try_adjust_type(OpenCVImgRepr.IMG_U8)
+
+                img.save_with_extension(preview_task_file_path, PREVIEW_EXT)
+                img.save_with_extension(self._get_preview_file_path(num),
+                                        PREVIEW_EXT)
         else:
             self.preview_updaters[num].update_preview(new_chunk_file_path, part)
             self._update_frame_task_preview()
@@ -559,8 +553,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-            with handle_image_error(logger), \
-                    collector.finalize() as image:
+            with handle_opencv_image_error(logger):
+                image = collector.finalize()
                 image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
@@ -574,7 +568,7 @@ class BlenderRenderTask(FrameRenderingTask):
         res_x = preview_updater.preview_res_x
         for i in range(0, res_x):
             for j in range(lower, upper):
-                img_task.putpixel((i, j), color)
+                img_task.set_pixel((i, j), color)
 
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
@@ -584,7 +578,7 @@ class BlenderRenderTask(FrameRenderingTask):
             for i in range(0, int(math.floor(self.res_x * self.scale_factor))):
                 for j in range(0,
                                int(math.floor(self.res_y * self.scale_factor))):
-                    img_task.putpixel((i, j), color)
+                    img_task.set_pixel((i, j), color)
         else:
             parts = int(self.total_tasks / len(self.frames))
             pu = self.preview_updaters[frame_index]
@@ -603,8 +597,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                         height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
-            with handle_image_error(logger), \
-                    collector.finalize() as image:
+            with handle_opencv_image_error(logger):
+                image = collector.finalize()
                 image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,
@@ -663,14 +657,12 @@ class CustomCollector(RenderingTaskCollector):
         self.current_offset = 0
 
     def _paste_image(self, final_img, new_part, num):
-        with handle_image_error(logger), \
-             Image.new("RGB", (self.width, self.height)) as img_offset:
-            offset = self.current_offset
-            _, new_img_res_y = new_part.size
-            self.current_offset += new_img_res_y
-            img_offset.paste(new_part, (0, offset))
-            result = ImageChops.add(final_img, img_offset)
-            return result
+        img_offset = OpenCVImgRepr.empty(self.width, self.height)
+        img_offset.paste_image(new_part, 0, self.current_offset)
+        new_img_res_y = new_part.get_height()
+        self.current_offset += new_img_res_y
+        img_offset.add(final_img)
+        return img_offset
 
 
 def generate_expected_offsets(parts, res_x, res_y):
@@ -678,17 +670,17 @@ def generate_expected_offsets(parts, res_x, res_y):
     # returns expected offsets for preview; the highest value is preview's
     # height
     scale_factor = BlenderTaskTypeInfo.scale_factor(res_x, res_y)
-    expected_offsets = [0]
+    expected_offsets = {}
     previous_end = 0
     for i in range(1, parts + 1):
         low, high = get_min_max_y(i, parts, res_y)
         low *= scale_factor * res_y
         high *= scale_factor * res_y
         height = int(math.floor(high - low))
-        expected_offsets.append(previous_end)
+        expected_offsets[i] = previous_end
         previous_end += height
 
-    expected_offsets.append(previous_end)
+    expected_offsets[parts + 1] = previous_end
     return expected_offsets
 
 
