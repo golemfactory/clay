@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections import namedtuple
-from typing import Iterable
+from typing import Iterable, Optional
 
 import enum
 from crossbar.common import checkconfig
@@ -34,8 +34,8 @@ class CrossbarRouter(object):
     # pylint: disable=too-many-arguments
     def __init__(self,
                  datadir: str,
-                 host: str = CROSSBAR_HOST,
-                 port: int = CROSSBAR_PORT,
+                 host: Optional[str] = CROSSBAR_HOST,
+                 port: Optional[int] = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,

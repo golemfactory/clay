@@ -1,6 +1,7 @@
 from enum import IntEnum
 import functools
 import logging
+from pathlib import Path
 import time
 from typing import (
     Any,
@@ -12,7 +13,7 @@ from typing import (
     TypeVar,
 )
 
-from pathlib import Path
+from fs.tempfs import TempFS
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
     FirstError
@@ -44,6 +45,8 @@ from golem.rpc.session import (
     Session,
 )
 from golem import terms
+from golem.tools.uploadcontroller import UploadController
+from golem.tools.remotefs import RemoteFS
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -80,8 +83,8 @@ class Node(HardwarePresetsMixin):
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
                  peers: Optional[List[SocketAddress]] = None,
-                 use_monitor: bool = None,
-                 use_talkback: bool = None,
+                 use_monitor: bool = False,
+                 use_talkback: bool = False,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None
@@ -142,6 +145,9 @@ class Node(HardwarePresetsMixin):
             task_finished_cb=self._try_shutdown,
             update_hw_preset=self.upsert_hw_preset
         )
+
+        self.tempfs = TempFS()
+        self.remotefs = RemoteFS(self.tempfs, UploadController(self.tempfs))
 
         if password is not None:
             if not self.set_password(password):
@@ -229,6 +235,33 @@ class Node(HardwarePresetsMixin):
     @rpc_utils.expose('golem.password.unlocked')
     def is_account_unlocked(self) -> bool:
         return self._keys_auth is not None
+
+    @rpc_utils.expose('comp.task.results_purge')
+    def purge_task_results(self, task_id):
+        path = self.get_temp_results_path_for_task(task_id)
+        self.tempfs.removetree(path)
+
+    @staticmethod
+    def get_temp_results_path_for_task(task_id):
+        return 'results-{task_id}'.format(task_id=task_id)
+
+    @rpc_utils.expose('comp.task.subtask_results')
+    def query_subtask_results(self, task_id, subtask_id):
+        task = self.client.task_server.task_manager.tasks[task_id]
+        results = task.get_results(subtask_id)
+        res_path = self.get_temp_results_path_for_task(subtask_id)
+        # Create a directory there results will be held temporarily
+        outs = self.remotefs.copy_files_to_tmp_location(results, res_path)
+        return outs
+
+    @rpc_utils.expose('comp.task.result')
+    def get_task_results(self, task_id):
+        # FIXME Obtain task state in less hacky way
+        state = self.client.task_server.task_manager.query_task_state(task_id)
+        res_path = self.get_temp_results_path_for_task(task_id)
+        outs = self.remotefs.copy_files_to_tmp_location(state.outputs,
+                                                        res_path)
+        return outs
 
     @rpc_utils.expose('golem.mainnet')
     @classmethod
@@ -347,7 +380,8 @@ class Node(HardwarePresetsMixin):
         rpc_providers = (
             self,
             virtualization,
-            self.rpc_session
+            self.rpc_session,
+            self.remotefs
         )
 
         for provider in rpc_providers:
