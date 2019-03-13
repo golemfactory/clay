@@ -591,8 +591,8 @@ class TestOptNode(TempDirFixture):
             self.node.start()
 
         setup_client_mock.assert_not_called()
-        self.node._docker_manager.apply_config.assert_not_called()
-        self.node._docker_manager.check_environment.assert_called()
+        self.node._docker_manager.apply_config.assert_not_called() # noqa # pylint: disable=no-member
+        self.node._docker_manager.check_environment.assert_called() # noqa # pylint: disable=no-member
 
     @patch('golem.node.DockerManager')
     def test_start_docker_other_error(self, mock_dm, *_):
