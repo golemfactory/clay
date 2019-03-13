@@ -750,6 +750,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
+        logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
@@ -757,6 +758,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
+        logger.debug("updating settings: %r", settings_dict)
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
                 raise KeyError("Unknown setting: {}".format(key))

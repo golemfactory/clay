@@ -37,6 +37,9 @@ class NodeTestPlaybook:
     provider_enabled = True
     requestor_enabled = True
 
+    provider_opts: typing.Dict[str, typing.Any] = {}
+    requestor_opts: typing.Dict[str, typing.Any] = {}
+
     nodes_root: typing.Optional[Path] = None
     provider_node = None
     requestor_node = None
@@ -59,7 +62,7 @@ class NodeTestPlaybook:
 
     task_package = None
     task_settings = 'default'
-    task_dict = None
+    task_dict: dict
 
     reconnect_attempts_left = 7
     reconnect_countdown_initial = 10
@@ -174,6 +177,38 @@ class NodeTestPlaybook:
 
         return self.call_requestor('net.ident.key',
                               on_success=on_success, on_error=on_error)
+
+    def step_configure_provider(self):
+        if not self.provider_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured provider")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring provider")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.provider_opts,
+                                  on_success=on_success, on_error=on_error)
+
+    def step_configure_requestor(self):
+        if not self.requestor_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured requestor")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring requestor")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.requestor_opts,
+                                  on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
         def on_success(result):
@@ -415,6 +450,8 @@ class NodeTestPlaybook:
     initial_steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
+        step_configure_provider,
+        step_configure_requestor,
         step_get_provider_network_info,
         step_ensure_requestor_network,
         step_connect_nodes,
