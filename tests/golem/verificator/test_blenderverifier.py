@@ -2,7 +2,7 @@ import os
 import shutil
 import time
 import pytest
-from unittest import mock, TestCase
+from unittest import mock
 
 from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait
@@ -189,3 +189,34 @@ class TestUnitBlenderVerifier:
         result = BlenderVerifier._get_part_size(self.subtask_info_stub)
         assert result[0] == self.width
         assert result[1] == expected_height
+
+    def test_start_verification_exception_is_logged(self):
+        class MyException(Exception):
+            def __repr__(self):
+                return ">This is Sparta!<"
+
+        DockerTaskThreadMock = mock.Mock()
+        DockerTaskThreadMock.return_value.start.side_effect = MyException()
+        verification_data = {
+            'subtask_info': {
+                'path_root': 'some/path/',
+                'crop_window': [0.1, 0.2, 0.3, 0.4],
+                'scene_file': '/golem/resources/bmw.blend',
+                'resolution': [600, 400],
+                'frames': [1],
+                'samples': 35,
+                'output_format': 'PNG',
+            },
+            'resources': mock.sentinel.resources,
+            'results': ['/some/other/path/result.png'],
+        }
+
+        blender_verifier = BlenderVerifier(verification_data,
+                                           DockerTaskThreadMock)
+        with mock.patch(
+                'golem.verificator.blender_verifier.logger',
+        ) as mocked_logger:
+            blender_verifier.start_verification(verification_data)
+
+        assert mocked_logger.error.call_count == 1
+        assert 'Verification failed %r' in mocked_logger.error.call_args[0][0]
