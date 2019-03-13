@@ -54,7 +54,6 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
             pub_port=40103,
             pub_addr='1.2.3.4',
         ),
-        resource_size=2 * 1024,
         estimated_memory=3 * 1024,
     )
 
@@ -503,11 +502,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.reset_mock()
         method = ts._TaskServer__connection_for_task_request_final_failure
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.assert_called_once_with('conn_id')
 
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
@@ -584,14 +583,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
                 f'27.18 < {min_accepted_perf}; {ids}')
-
-        with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 99, 1.72, 1)
-            _assert_log_msg(
-                cm,
-                f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
@@ -718,7 +709,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
                                           HyperdriveClient.VERSION)
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options)
         assert client_options.peers is None
 
         peers = [
@@ -733,11 +724,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION,
                                           options=dict(peers=peers))
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options, size=1024)
         assert client_options.options.get('peers') == [
             to_hyperg_peer('127.0.0.1', 3282),
             to_hyperg_peer('1.2.3.4', 3282),
         ]
+        assert client_options.options.get('size') == 1024
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
@@ -746,17 +738,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert self.ts.get_download_options(
             received_options=None,
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options={'options': {'peers': ['Invalid']}},
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options=Mock(filtered=Mock(side_effect=Exception)),
-            task_id='task_id'
         ) is built_options
 
     def test_pause_and_resume(self, *_):
@@ -918,7 +907,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                          prv_addresses=['10.0.0.2'],)
 
         self.resource_manager = Mock(
-            add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
+            add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
@@ -951,20 +940,21 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
             task_server.task_manager.tasks_states[task_id] = TaskState()
 
     def test_without_tasks(self, *_):
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert not self.resource_manager.add_task.called
+            assert not self.resource_manager.add_resources.called
             assert not self.ts.task_manager.delete_task.called
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_connection_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -972,10 +962,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
     def test_with_http_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=HTTPError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -991,10 +982,10 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for state in self.ts.task_manager.tasks_states.values():
             state.resource_hash = str(uuid.uuid4())
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=error_class):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count ==\
+            assert self.resource_manager.add_resources.call_count ==\
                 self.task_count * 2
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
@@ -1004,7 +995,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self._create_tasks(self.ts, self.task_count)
 
         self.ts.restore_resources()
-        assert self.resource_manager.add_task.call_count == self.task_count
+        assert self.resource_manager.add_resources.call_count == self.task_count
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count

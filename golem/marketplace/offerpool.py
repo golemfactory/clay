@@ -1,3 +1,4 @@
+import sys
 import logging
 from typing import List, Dict, ClassVar, Tuple
 
@@ -7,6 +8,13 @@ from twisted.internet.defer import Deferred
 from .rust import order_providers
 
 logger = logging.getLogger(__name__)
+
+
+def scale_price(task_price: float, offered_price: float) -> float:
+    if offered_price == 0:
+        # using float('inf') breaks math in order_providers, when alpha < 1
+        return sys.float_info.max
+    return task_price / offered_price
 
 
 class Offer:

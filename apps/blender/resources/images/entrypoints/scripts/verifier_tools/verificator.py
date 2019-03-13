@@ -1,7 +1,7 @@
 import json
 import os
 from typing import List, Optional
-from ..scripts import blender_render as blender
+from ..render_tools import blender_render as blender
 from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
     generate_single_random_crop_data, Crop
 from .img_metrics_calculator import calculate_metrics

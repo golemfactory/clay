@@ -42,7 +42,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -611,14 +611,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.db:
             self.db.close()
 
-    def task_resource_send(self, task_id):
-        self.task_server.task_manager.resources_send(task_id)
+    def resource_collected(self, res_id):
+        self.task_server.task_computer.resource_collected(res_id)
 
-    def task_resource_collected(self, task_id):
-        self.task_server.task_computer.task_resource_collected(task_id)
-
-    def task_resource_failure(self, task_id, reason):
-        self.task_server.task_computer.task_resource_failure(task_id, reason)
+    def resource_failure(self, res_id, reason):
+        self.task_server.task_computer.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
@@ -750,6 +747,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
+        logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
@@ -757,6 +755,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
+        logger.debug("updating settings: %r", settings_dict)
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
                 raise KeyError("Unknown setting: {}".format(key))

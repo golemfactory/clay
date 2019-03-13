@@ -58,6 +58,20 @@ class BasicSession(FileSession):
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
 
+    def __str__(self):
+        if self._disconnect_sent:
+            disconnect_s = ' #disconnect_sent'
+        else:
+            disconnect_s = ''
+        lmt = time.time() - self.last_message_time
+        return (
+            f"{ self.__class__.__name__ } with { self.address }:{ self.port }"
+            f" (LMT: { lmt }s){ disconnect_s }"
+        )
+
+    def __repr__(self):
+        return f"<{ str(self) }>"
+
     def interpret(self, msg: message.base.Message):
         """
         React to specific message. Disconnect, if message type is unknown

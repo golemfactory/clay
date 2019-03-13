@@ -63,7 +63,7 @@ class CompTaskInfo:
         self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
-            self.header.subtask_timeout, self.header.resource_size)
+            self.header.subtask_timeout, 0)
 
     def __repr__(self):
         return "<CompTaskInfo(%r) reqs: %r>" % (
@@ -225,8 +225,14 @@ class CompTaskKeeper:
 
         comp_task_info.requests -= 1
         comp_task_info.subtasks[subtask_id] = comp_task_def
+        header = self.get_task_header(task_id)
+        comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
+            header.subtask_timeout, task_to_compute.size)
 
         self.subtask_to_task[subtask_id] = task_id
+        if task_to_compute.resources_options:
+            task_to_compute.resources_options['options']['size'] = \
+                task_to_compute.size
         self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
@@ -393,7 +399,7 @@ class TaskHeaderKeeper:
                                ok() otherwise.
         """
         max_price = getattr(header, "max_price", None)
-        if max_price and max_price >= self.min_price:
+        if max_price is not None and max_price >= self.min_price:
             return SupportStatus.ok()
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
@@ -626,9 +632,6 @@ class TaskHeaderKeeper:
             cur_time = time.time()
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
-
-    def request_failure(self, task_id):
-        self.remove_task_header(task_id)
 
     def get_unsupport_reasons(self):
         """

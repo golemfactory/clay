@@ -6,7 +6,6 @@ from apps.core.task.coretask import TaskBuilder
 from apps.blender.blenderenvironment import BlenderEnvironment
 
 
-
 class TestAppsManager(TestCase):
 
     @staticmethod

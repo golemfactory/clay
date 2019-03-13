@@ -1,5 +1,5 @@
 import numpy
-from skimage import compare_ssim
+from .skimage import compare_ssim
 
 import sys
 
