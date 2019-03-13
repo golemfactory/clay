@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-from twisted.internet.defer import Deferred, succeed, maybeDeferred
+from twisted.internet.defer import Deferred, succeed, maybeDeferred, FirstError
 from twisted.python.failure import Failure
 
 import golem.argsparser as argsparser
@@ -575,6 +575,42 @@ class TestOptNode(TempDirFixture):
         assert self.node._docker_manager
         assert self.node._docker_manager.check_environment.called  # noqa # pylint: disable=no-member
         assert self.node._docker_manager.apply_config.called  # noqa # pylint: disable=no-member
+
+    @patch('golem.node.DockerManager')
+    def test_start_docker_unavailable(self, mock_dm, *_):
+        self.node_kwargs['use_docker_manager'] = True
+        self.node = Node(**self.node_kwargs)
+        setup_client_mock = Mock()
+        self.node._setup_client = setup_client_mock
+        # This needs to be wrapped in FirstError since the exception is raised
+        # from a Deferred in gatherResults
+        mock_dm.check_environment.side_effect = FirstError(
+            Failure(EnvironmentError()), 0)
+
+        with patch('golem.node.DockerManager.install', return_value=mock_dm):
+            self.node.start()
+
+        setup_client_mock.assert_not_called()
+        self.node._docker_manager.apply_config.assert_not_called()
+        self.node._docker_manager.check_environment.assert_called()
+
+    @patch('golem.node.DockerManager')
+    def test_start_docker_other_error(self, mock_dm, *_):
+        self.node_kwargs['use_docker_manager'] = True
+        self.node = Node(**self.node_kwargs)
+        error_msg = 'just a test'
+        mock_dm.check_environment.side_effect = FirstError(
+            Failure(Exception(error_msg)), 0)
+
+        with patch('golem.node.DockerManager.install', return_value=mock_dm), \
+             self.assertLogs('golem.node', level='INFO') as logs:
+            self.node.start()
+            output = "\n".join(logs.output)
+
+        full_msg = \
+            "ERROR:golem.node:Stopping because of " \
+                f"'setup client' error: {error_msg}"
+        assert full_msg in output
 
     @patch('golem.node.DockerManager')
     def test_not_start_docker_mgr(self, *_):

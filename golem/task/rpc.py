@@ -99,7 +99,7 @@ def validate_client(client: Client):
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
+            'toggle shutdown mode off to create new tasks.')
     if client.task_server is None:
         raise CreateTaskError("Golem is not ready")
 

@@ -14,7 +14,7 @@ from typing import (
 
 from pathlib import Path
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred, succeed, fail
+from twisted.internet.defer import gatherResults, Deferred, succeed, fail, FirstError
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
@@ -161,9 +161,19 @@ class Node(HardwarePresetsMixin):
                 docker = self._start_docker()
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
+            def on_start_error(failure: FirstError):
+                failure.value.subFailure.trap(EnvironmentError)
+                logger.warning(
+                    """
+                    There was a problem setting up the environment. Golem will
+                    run with limited functionality to support communication with
+                    local clients.
+                    """
+                )
+
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
-                self._error('keys or docker'),
+                on_start_error,
             ).addErrback(self._error('setup client'))
             self._reactor.run()
         except Exception:  # pylint: disable=broad-except
