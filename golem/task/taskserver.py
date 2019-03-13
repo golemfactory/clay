@@ -122,8 +122,11 @@ class TaskServer(
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
+        # Remove .task_sessions when Message Queue is implemented
+        # https://github.com/golemfactory/golem/issues/2223
         self.task_sessions = {}
-        self.task_sessions_incoming = weakref.WeakSet()
+        self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.task_sessions_outgoing: weakref.WeakSet = weakref.WeakSet()
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
@@ -170,6 +173,12 @@ class TaskServer(
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
+        )
+
+    @property
+    def all_sessions(self):
+        return frozenset(
+            self.task_sessions_outgoing | self.task_sessions_incoming,
         )
 
     def sync_network(self, timeout=None):
@@ -259,7 +268,6 @@ class TaskServer(
                     'price': price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
-                    'num_cores': self.config_desc.num_cores
                 }
 
                 node = theader.task_owner
@@ -369,13 +377,7 @@ class TaskServer(
             session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
-        task_sessions = dict(self.task_sessions)
-        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
-
-        for task_session in list(task_sessions.values()):
-            task_session.dropped()
-
-        for task_session in sessions_incoming:
+        for task_session in self.all_sessions:
             try:
                 task_session.dropped()
             except Exception as exc:
@@ -615,9 +617,6 @@ class TaskServer(
             self.max_trust)
         Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
-    def unpack_delta(self, dest_dir, delta, task_id):
-        self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
-
     def get_computing_trust(self, node_id):
         return self.client.get_computing_trust(node_id)
 
@@ -717,8 +716,7 @@ class TaskServer(
             task_id,
             provider_perf,
             max_resource_size,
-            max_memory_size,
-            num_cores):
+            max_memory_size):
 
         node_name_id = node_info_str(node_name, node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -742,19 +740,6 @@ class TaskServer(
                 details={
                     'provider_perf': provider_perf,
                     'min_accepted_perf': min_accepted_perf,
-                })
-            return False
-
-        if task.header.resource_size > (int(max_resource_size) * 1024):
-            logger.info('insufficient provider disk size: '
-                        f'{task.header.resource_size} B < {max_resource_size} '
-                        f'KiB; {ids}')
-            self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
-                reason=self.RejectedReason.disk_size,
-                details={
-                    'resource_size': task.header.resource_size,
-                    'max_resource_size': max_resource_size * 1024,
                 })
             return False
 
@@ -836,7 +821,7 @@ class TaskServer(
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
             short_id = short_node_id(node_id)
-            logger.info('requestor is %s; %s', reason, short_id)
+            logger.info('requestor is %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: %r", trust)
@@ -885,26 +870,24 @@ class TaskServer(
     #############################
     def __connection_for_task_request_established(
             self, session: TaskSession, conn_id, node_name, key_id, task_id,
-            estimated_performance, price, max_resource_size, max_memory_size,
-            num_cores):
+            estimated_performance, price, max_resource_size, max_memory_size):
         self.new_session_prepare(
             session=session,
-            subtask_id=task_id,
             key_id=key_id,
             conn_id=conn_id,
         )
         session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
-                             max_resource_size, max_memory_size, num_cores)
+                             max_resource_size, max_memory_size)
 
     def __connection_for_task_request_failure(
             self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, num_cores, *args):
+            price, max_resource_size, max_memory_size, *args):
         def response(session):
             return self.__connection_for_task_request_established(
                 session, conn_id, node_name, key_id, task_id,
                 estimated_performance, price, max_resource_size,
-                max_memory_size, num_cores)
+                max_memory_size)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
@@ -922,7 +905,6 @@ class TaskServer(
                                                  waiting_task_result):
         self.new_session_prepare(
             session=session,
-            subtask_id=waiting_task_result.subtask_id,
             key_id=waiting_task_result.owner.key,
             conn_id=conn_id,
         )
@@ -955,7 +937,6 @@ class TaskServer(
                                                   key_id, subtask_id, err_msg):
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -985,7 +966,6 @@ class TaskServer(
             ans_conn_id):
         self.new_session_prepare(
             session=session,
-            subtask_id=None,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -1002,13 +982,23 @@ class TaskServer(
         #     key_id, node_info, super_node_info, ans_conn_id)
 
     def __connection_for_task_request_final_failure(
-            self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, num_cores, *args):
-        logger.info("Cannot connect to task {} owner".format(task_id))
-        logger.info("Removing task {} from task list".format(task_id))
-
-        self.task_computer.task_request_rejected(task_id, "Connection failed")
-        self.task_keeper.request_failure(task_id)
+            self,
+            conn_id,
+            node_name,
+            key_id,
+            task_id,
+            *_args,
+            **_kwargs,
+    ):
+        logger.info(
+            "Cannot connect to task owner. task_id: %s, node: %s",
+            task_id,
+            node_info_str(
+                node_name,
+                key_id,
+            )
+        )
+        self.task_keeper.remove_task_header(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
@@ -1043,17 +1033,16 @@ class TaskServer(
 
     def new_session_prepare(self,
                             session: TaskSession,
-                            subtask_id: str,
                             key_id: str,
                             conn_id: str):
         self.remove_forwarded_session_request(key_id)
-        session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.task_sessions_outgoing.add(session)
 
-    def noop(self, *args, **kwargs):
+    @classmethod
+    def noop(cls, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
@@ -1068,7 +1057,6 @@ class TaskServer(
         full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -1093,17 +1081,14 @@ class TaskServer(
 
     def __remove_old_sessions(self):
         cur_time = time.time()
-        sessions_to_remove = []
-        sessions = dict(self.task_sessions)
 
-        for subtask_id, session in sessions.items():
+        for session in self.all_sessions:
             dt = cur_time - session.last_message_time
-            if dt > self.last_message_time_threshold:
-                sessions_to_remove.append(subtask_id)
-        for subtask_id in sessions_to_remove:
-            if sessions[subtask_id].task_computer is not None:
-                sessions[subtask_id].task_computer.session_timeout()
-            sessions[subtask_id].dropped()
+            if dt < self.last_message_time_threshold:
+                continue
+            if session.task_computer is not None:
+                session.task_computer.session_timeout()
+            session.dropped()
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):
@@ -1268,7 +1253,3 @@ TASK_CONN_TYPES = {
     'start_session': 7,
     'task_verification_result': 8,
 }
-
-
-class TaskListenTypes(object):
-    StartSession = 1

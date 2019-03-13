@@ -23,7 +23,6 @@ class TestCoreTaskDefautls(TestCase):
     def test_init(self):
         defaults = TaskDefaults()
         assert defaults.output_format == ""
-        assert defaults.main_program_file == ""
         assert defaults.timeout == 4 * 3600
         assert defaults.subtask_timeout == 20 * 60
         assert defaults.min_subtasks == 1

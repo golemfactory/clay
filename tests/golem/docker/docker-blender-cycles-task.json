@@ -11,8 +11,8 @@
         {
           "py/object": "golem.docker.image.DockerImage",
           "repository": "golemfactory/blender",
-          "tag": "1.4",
-          "name": "golemfactory/blender:1.4",
+          "tag": "1.9",
+          "name": "golemfactory/blender:1.9",
           "id": null
         }
       ],
@@ -49,7 +49,6 @@
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Blender",
-  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "subtasks_count":6,
   "max_price": 12,
@@ -57,8 +56,8 @@
     {
       "py/object": "golem.docker.image.DockerImage",
       "repository": "golemfactory/blender",
-      "tag": "1.4",
-      "name": "golemfactory/blender:1.4",
+      "tag": "1.9",
+      "name": "golemfactory/blender:1.9",
       "id": null
     }
   ],

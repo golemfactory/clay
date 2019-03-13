@@ -69,7 +69,6 @@ def get_example_task_header(
             pub_port=40103,
             pub_addr='1.2.3.4',
         ),
-        resource_size=resource_size,
         estimated_memory=estimated_memory,
     )
 
@@ -296,14 +295,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = "10.10.10.10"
         session.port = 1020
         ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
-            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
-        self.assertEqual(session.task_id, "xyz")
+            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1)
+        self.assertIn(session, self.ts.task_sessions_outgoing)
         self.assertEqual(session.key_id, "key")
         self.assertEqual(session.conn_id, "abc")
-        self.assertEqual(ts.task_sessions["xyz"], session)
         session.send_hello.assert_called_with()
         session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3,
-                                                1, 2)
+                                                1)
 
     def test_change_config(self, *_):
         ts = self.ts
@@ -363,7 +361,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
-        self.assertEqual(ts.task_sessions[subtask_id], session)
+        self.assertIn(session, ts.task_sessions_outgoing)
 
     def test_retry_sending_task_result(self, *_):
         ts = self.ts
@@ -480,7 +478,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
 
         self.assertEqual(session.key_id, 'key_id')
-        self.assertIn('subtask_id', ts.task_sessions)
+        self.assertIn(session, ts.task_sessions_outgoing)
         self.assertTrue(session.send_hello.called)
         session.send_task_failure.assert_called_once_with('subtask_id',
                                                           'err_msg')
@@ -533,11 +531,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.reset_mock()
         method = ts._TaskServer__connection_for_task_request_final_failure
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.assert_called_once_with('conn_id')
 
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
@@ -589,12 +587,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         with self.assertLogs(logger, level='INFO') as cm:
-            # when
-            accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, 'tid', 1, 1, 1, 1)
-
-            # then
-            assert not accepted
+            assert not ts.should_accept_provider(
+                node_id, "127.0.0.1", node_name, 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
@@ -638,7 +632,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", node_name, task_id,
-                provider_perf, DEFAULT_MAX_RESOURCE_SIZE_KB,
+                provider_perf,
                 DEFAULT_MAX_MEMORY_SIZE_KB, 1)
 
             # then
@@ -658,51 +652,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             details={
                 'provider_perf': provider_perf,
                 'min_accepted_perf': DEFAULT_MIN_ACCEPTED_PERF,
-            })
-
-    def test_should_accept_provider_insufficient_disk_size(self, *_args):
-        # given
-        listener = Mock()
-        dispatcher.connect(listener, signal='golem.taskserver')
-        resource_size = DEFAULT_MAX_RESOURCE_SIZE_KB*1024 + 1
-
-        ts = self.ts
-        node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
-
-        task = get_mock_task(resource_size=resource_size)
-        task_id = task.header.task_id
-        ts.task_manager.tasks[task_id] = task
-
-        self._prepare_env()
-
-        ids = f'provider={node_name_id}, task_id={task_id}'
-
-        with self.assertLogs(logger, level='INFO') as cm:
-            # when
-            accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
-
-            # then
-            assert not accepted
-            _assert_log_msg(
-                cm,
-                f'INFO:{logger.name}:insufficient provider disk size: '
-                f'{resource_size} B < {DEFAULT_MAX_RESOURCE_SIZE_KB} '
-                f'KiB; {ids}')
-
-        listener.assert_called_once_with(
-            sender=ANY,
-            signal='golem.taskserver',
-            event='provider_rejected',
-            node_id=node_id,
-            task_id=task_id,
-            reason='disk size',
-            details={
-                'resource_size': resource_size,
-                'max_resource_size': DEFAULT_MAX_RESOURCE_SIZE_KB*1024,
             })
 
     def test_should_accept_provider_insufficient_memory_size(self, *_args):
@@ -728,7 +677,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
             assert not accepted
@@ -777,7 +726,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
         self.client.get_computing_trust.return_value = \
@@ -785,7 +734,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
         trust = ts.config_desc.computing_trust - 0.2
@@ -794,7 +743,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
             assert not accepted
@@ -840,7 +789,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
             assert not accepted
@@ -878,16 +827,15 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(node_id, "127.0.0.1",
-                                                 node_name, task_id, 99, 3, 4,
-                                                 5)
+                                                 node_name, task_id, 99, 3, 4)
 
             # then
             assert not accepted
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task at this moment '
-                f'(either waiting for results or previously failed)'
+                f' is not allowed for this task at this moment'
+                f' (either waiting for results or previously failed)'
             )
 
         listener.assert_called_once_with(
@@ -926,8 +874,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+                node_id=node_id,
+                address="127.0.0.1",
+                node_name=node_name,
+                task_id=task_id,
+                provider_perf=DEFAULT_PROVIDER_PERF,
+                max_resource_size=DEFAULT_MAX_RESOURCE_SIZE_KB,
+                max_memory_size=DEFAULT_MAX_MEMORY_SIZE_KB,
+            )
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider is blacklisted; {ids}')
@@ -947,7 +901,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         assert not ts.should_accept_provider(
             "XYZ", "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
         listener.assert_called_once_with(
             sender=ANY,
             signal='golem.taskserver',
@@ -985,21 +939,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = '127.0.0.1'
         session.port = 10
 
-        subtask_id = str(uuid.uuid4())
         key_id = str(uuid.uuid4())
         conn_id = str(uuid.uuid4())
 
         self.ts.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, key_id)
         self.assertEqual(session.conn_id, conn_id)
         mark_mock.assert_called_once_with(conn_id, session.address,
                                           session.port)
+        self.assertIn(session, self.ts.task_sessions_outgoing)
 
     def test_new_connection(self, *_):
         ts = self.ts
@@ -1017,7 +969,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
                                           HyperdriveClient.VERSION)
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options)
         assert client_options.peers is None
 
         peers = [
@@ -1032,11 +984,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION,
                                           options=dict(peers=peers))
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options, size=1024)
         assert client_options.options.get('peers') == [
             to_hyperg_peer('127.0.0.1', 3282),
             to_hyperg_peer('1.2.3.4', 3282),
         ]
+        assert client_options.options.get('size') == 1024
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
@@ -1045,17 +998,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert self.ts.get_download_options(
             received_options=None,
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options={'options': {'peers': ['Invalid']}},
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options=Mock(filtered=Mock(side_effect=Exception)),
-            task_id='task_id'
         ) is built_options
 
     def test_pause_and_resume(self, *_):
@@ -1175,7 +1125,7 @@ class TestTaskServer2(TaskServerBase):
             "DEF",
             task_id,
             1000, 10,
-            5, 10, 2,
+            5, 10,
             "10.10.10.10")
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
@@ -1188,9 +1138,10 @@ class TestTaskServer2(TaskServerBase):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
-        self.ts.task_sessions = {'task_id': Mock()}
+        session_mock = Mock()
+        self.ts.task_sessions_outgoing.add(session_mock)
         self.ts.disconnect()
-        assert self.ts.task_sessions['task_id'].dropped.called
+        session_mock.dropped.assert_called_once_with()
 
 
 # pylint: disable=too-many-ancestors
@@ -1216,7 +1167,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                          prv_addresses=['10.0.0.2'],)
 
         self.resource_manager = Mock(
-            add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
+            add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
@@ -1249,20 +1200,21 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
             task_server.task_manager.tasks_states[task_id] = TaskState()
 
     def test_without_tasks(self, *_):
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert not self.resource_manager.add_task.called
+            assert not self.resource_manager.add_resources.called
             assert not self.ts.task_manager.delete_task.called
             assert not self.ts.task_manager.notify_update_task.called
 
     def test_with_connection_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=ConnectionError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -1270,10 +1222,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
     def test_with_http_error(self, *_):
         self._create_tasks(self.ts, self.task_count)
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=HTTPError):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count == self.task_count
+            assert self.resource_manager.add_resources.call_count == \
+                self.task_count
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
             assert not self.ts.task_manager.notify_update_task.called
@@ -1289,10 +1242,10 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for state in self.ts.task_manager.tasks_states.values():
             state.resource_hash = str(uuid.uuid4())
 
-        with patch.object(self.resource_manager, 'add_task',
+        with patch.object(self.resource_manager, 'add_resources',
                           side_effect=error_class):
             self.ts.restore_resources()
-            assert self.resource_manager.add_task.call_count ==\
+            assert self.resource_manager.add_resources.call_count ==\
                 self.task_count * 2
             assert self.ts.task_manager.delete_task.call_count == \
                 self.task_count
@@ -1302,7 +1255,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self._create_tasks(self.ts, self.task_count)
 
         self.ts.restore_resources()
-        assert self.resource_manager.add_task.call_count == self.task_count
+        assert self.resource_manager.add_resources.call_count == self.task_count
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
@@ -1376,10 +1329,8 @@ class TaskVerificationResultTest(TaskServerTestBase):
         self.ts.conn_established_for_type[self.conn_type](
             session, self.conn_id, extracted_package, self.key_id, subtask_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, self.key_id)
         self.assertEqual(session.conn_id, self.conn_id)
-        self.assertEqual(self.ts.task_sessions[subtask_id], session)
         result_received_call = session.result_received.call_args[0]
         self.assertEqual(result_received_call[0], subtask_id)
 

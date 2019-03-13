@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional
 from eth_utils import encode_hex
 
 from golem.core.common import to_unicode, datetime_to_timestamp_utc
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment
 
 logger = logging.getLogger(__name__)
 
