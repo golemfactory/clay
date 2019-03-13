@@ -82,7 +82,6 @@ class DummyTask(Task):
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
             subtasks_count=num_subtasks,
-            resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
             max_price=MIN_PRICE,
             min_version=golem.__version__,
@@ -242,7 +241,7 @@ class DummyTask(Task):
         """
         self.resource_parts = resource_parts
 
-    def computation_failed(self, subtask_id):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         print('DummyTask.computation_failed called')
         self.computation_finished(subtask_id, None)
 

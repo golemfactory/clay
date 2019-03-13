@@ -42,7 +42,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -750,6 +750,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
+        logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
@@ -757,6 +758,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
+        logger.debug("updating settings: %r", settings_dict)
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
                 raise KeyError("Unknown setting: {}".format(key))

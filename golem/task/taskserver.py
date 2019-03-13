@@ -714,11 +714,6 @@ class TaskServer(
                         f' < {min_accepted_perf}; {ids}')
             return False
 
-        if task.header.resource_size > (int(max_resource_size) * 1024):
-            logger.info('insufficient provider disk size: '
-                        f'{max_resource_size} KiB; {ids}')
-            return False
-
         if task.header.estimated_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
                         f'{max_memory_size} KiB; {ids}')
@@ -903,13 +898,23 @@ class TaskServer(
         #     key_id, node_info, super_node_info, ans_conn_id)
 
     def __connection_for_task_request_final_failure(
-            self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, *args):
-        logger.info("Cannot connect to task {} owner".format(task_id))
-        logger.info("Removing task {} from task list".format(task_id))
-
-        self.task_computer.task_request_rejected(task_id, "Connection failed")
-        self.task_keeper.request_failure(task_id)
+            self,
+            conn_id,
+            node_name,
+            key_id,
+            task_id,
+            *_args,
+            **_kwargs,
+    ):
+        logger.info(
+            "Cannot connect to task owner. task_id: %s, node: %s",
+            task_id,
+            node_info_str(
+                node_name,
+                key_id,
+            )
+        )
+        self.task_keeper.remove_task_header(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
@@ -1164,7 +1169,3 @@ TASK_CONN_TYPES = {
     'start_session': 7,
     'task_verification_result': 8,
 }
-
-
-class TaskListenTypes(object):
-    StartSession = 1

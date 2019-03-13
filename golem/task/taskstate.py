@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Dict, Optional
+from typing import Dict
 
 from golem.core.common import to_unicode
 
@@ -59,7 +59,7 @@ class SubtaskState(object):
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
-        self.subtask_status: Optional[SubtaskStatus] = None
+        self.subtask_status: SubtaskStatus = SubtaskStatus.starting
         self.stdout = ""
         self.stderr = ""
         self.results = []

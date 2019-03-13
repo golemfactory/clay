@@ -267,12 +267,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
 
-        wrong_task = not self.tm.is_my_task("xyz")
+        assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, "10.10.10.10")
 
         assert subtask is None
-        assert not wrong_task
 
     def test_get_next_subtask_progress_completed(self):
         task_mock = self._get_task_mock()
@@ -363,7 +362,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.tasks_states.get("xyz") is None
 
     def test_check_next_subtask_not_my_task(self):
-        checked = self.tm.check_next_subtask("aaa", "aaa", "aaa", 1)
+        checked = self.tm.check_next_subtask("aaa", 1)
         assert not checked
 
     def test_should_wait_for_node_not_my_task(self):
@@ -657,6 +656,57 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert ss.subtask_status == SubtaskStatus.failure
         assert not self.tm.task_computation_failure("aabbcc",
                                                     "something went wrong")
+        checker([("xyz", "aabbcc", SubtaskOp.FAILED),
+                 ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
+        del handler
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_computation_cancelled(self, *_):
+        # create a task with a single subtask, call task_computation_cancelled
+        # twice; event handler should be called twice, first notifying of
+        # subtask restart, then notifying about unexpected subtask
+        timeout = 1000.0
+        task_mock = self._get_task_mock()
+        task_mock.needs_computation = lambda: True
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
+        self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
+        (handler, checker) = self._connect_signal_handler()
+        assert self.tm.task_computation_cancelled("aabbcc",
+                                                  "computing another task",
+                                                  timeout)
+        ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert not self.tm.task_computation_cancelled("aabbcc",
+                                                      "computing another task",
+                                                      timeout)
+        checker([("xyz", "aabbcc", SubtaskOp.FAILED),
+                 ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
+        del handler
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_computation_cancelled_after_timeout(self, *_):
+        # create a task with a single subtask, call task_computation_cancelled
+        # with an invalid timeout and make sure that task_computation_failure
+        # is called; then call task_computation_cancelled again.
+        # event handler should be called twice, first notifying of
+        # subtask failure, then notifying about unexpected subtask
+        task_mock = self._get_task_mock()
+        task_mock.needs_computation = lambda: True
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
+        self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
+        (handler, checker) = self._connect_signal_handler()
+        assert self.tm.task_computation_cancelled("aabbcc",
+                                                  "computing another task",
+                                                  timeout=-1000)
+        ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert not self.tm.task_computation_cancelled("aabbcc",
+                                                      "computing another task",
+                                                      timeout=1000)
         checker([("xyz", "aabbcc", SubtaskOp.FAILED),
                  ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
         del handler

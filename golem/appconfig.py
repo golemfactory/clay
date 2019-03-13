@@ -64,6 +64,7 @@ TASK_SESSION_TIMEOUT = 900
 RESOURCE_SESSION_TIMEOUT = 600
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
+COMPUTATION_CANCELLATION_TIMEOUT = 10.0
 CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60     # 3 days
 CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60     # 3 days
 # FIXME Issue #3862
@@ -168,6 +169,7 @@ class AppConfig:
             resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
+            computation_cancellation_timeout=COMPUTATION_CANCELLATION_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
             clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
             cleaning_enabled=CLEANING_ENABLED,

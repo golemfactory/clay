@@ -34,6 +34,13 @@ class NodeTestPlaybook:
     requestor_datadir = None
     provider_node_script: typing.Optional[str] = None
     requestor_node_script: typing.Optional[str] = None
+    provider_enabled = True
+    requestor_enabled = True
+
+    provider_opts: typing.Dict[str, typing.Any] = {}
+    requestor_opts: typing.Dict[str, typing.Any] = {}
+
+    nodes_root: typing.Optional[Path] = None
     provider_node = None
     requestor_node = None
     provider_output_queue = None
@@ -55,7 +62,7 @@ class NodeTestPlaybook:
 
     task_package = None
     task_settings = 'default'
-    task_dict = None
+    task_dict: dict
 
     reconnect_attempts_left = 7
     reconnect_countdown_initial = 10
@@ -170,6 +177,38 @@ class NodeTestPlaybook:
 
         return self.call_requestor('net.ident.key',
                               on_success=on_success, on_error=on_error)
+
+    def step_configure_provider(self):
+        if not self.provider_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured provider")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring provider")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.provider_opts,
+                                  on_success=on_success, on_error=on_error)
+
+    def step_configure_requestor(self):
+        if not self.requestor_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured requestor")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring requestor")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.requestor_opts,
+                                  on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
         def on_success(result):
@@ -383,21 +422,23 @@ class NodeTestPlaybook:
         self.node_restart_count += 1
 
         # replace the the nodes with different versions
-        provider_replacement_script = getattr(
-            self,
-            'provider_node_script_%s' % (self.node_restart_count + 1),
-            None,
-        )
-        requestor_replacement_script = getattr(
-            self,
-            'requestor_node_script_%s' % (self.node_restart_count + 1),
-            None,
-        )
+        if self.provider_enabled:
+            provider_replacement_script = getattr(
+                self,
+                'provider_node_script_%s' % (self.node_restart_count + 1),
+                None,
+            )
+            if provider_replacement_script:
+                self.provider_node_script = provider_replacement_script
 
-        if provider_replacement_script:
-            self.provider_node_script = provider_replacement_script
-        if requestor_replacement_script:
-            self.requestor_node_script = requestor_replacement_script
+        if self.requestor_enabled:
+            requestor_replacement_script = getattr(
+                self,
+                'requestor_node_script_%s' % (self.node_restart_count + 1),
+                None,
+            )
+            if requestor_replacement_script:
+                self.requestor_node_script = requestor_replacement_script
 
         self.task_in_creation = False
         time.sleep(60)
@@ -409,6 +450,8 @@ class NodeTestPlaybook:
     initial_steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
+        step_configure_provider,
+        step_configure_requestor,
         step_get_provider_network_info,
         step_ensure_requestor_network,
         step_connect_nodes,
@@ -476,36 +519,49 @@ class NodeTestPlaybook:
     def start_nodes(self):
         print("Provider data directory: %s" % self.provider_datadir)
         print("Requestor data directory: %s" % self.requestor_datadir)
-        
-        self.provider_node = helpers.run_golem_node(
-            self.provider_node_script,
-            '--datadir', self.provider_datadir
-        )
-        self.requestor_node = helpers.run_golem_node(
-            self.requestor_node_script,
-            '--datadir', self.requestor_datadir
-        )
 
-        self.provider_output_queue = helpers.get_output_queue(
-            self.provider_node)
-        self.requestor_output_queue = helpers.get_output_queue(
-            self.requestor_node)
+        if self.provider_enabled:
+            self.provider_node = helpers.run_golem_node(
+                self.provider_node_script,
+                '--datadir', self.provider_datadir,
+                nodes_root=self.nodes_root,
+            )
+            self.provider_output_queue = helpers.get_output_queue(
+                self.provider_node)
+
+        if self.requestor_enabled:
+            self.requestor_node = helpers.run_golem_node(
+                self.requestor_node_script,
+                '--datadir', self.requestor_datadir,
+                nodes_root=self.nodes_root,
+            )
+
+            self.requestor_output_queue = helpers.get_output_queue(
+                self.requestor_node)
+
         self.nodes_started = True
 
     def stop_nodes(self):
         if self.nodes_started:
-            helpers.gracefully_shutdown(self.provider_node, 'Provider')
-            helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
+            if self.provider_node:
+                helpers.gracefully_shutdown(self.provider_node, 'Provider')
+            if self.requestor_node:
+                helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
             self.nodes_started = False
 
     def run(self):
         if self.nodes_started:
-            provider_exit = self.provider_node.poll()
-            requestor_exit = self.requestor_node.poll()
-            helpers.report_termination(provider_exit, "Provider")
-            helpers.report_termination(requestor_exit, "Requestor")
-            if provider_exit is not None or requestor_exit is not None:
-                self.fail()
+            if self.provider_node:
+                provider_exit = self.provider_node.poll()
+                helpers.report_termination(provider_exit, "Provider")
+                if provider_exit is not None:
+                    self.fail("Provider exited abnormally.")
+
+            if self.requestor_node:
+                requestor_exit = self.requestor_node.poll()
+                helpers.report_termination(requestor_exit, "Requestor")
+                if requestor_exit is not None:
+                    self.fail("Requestor exited abnormally.")
 
         try:
             method = self.current_step_method
@@ -524,9 +580,13 @@ class NodeTestPlaybook:
             return
 
     def __init__(self, **kwargs) -> None:
-        if not self.provider_node_script or not self.requestor_node_script:
+        if not self.provider_node_script and self.provider_enabled:
             raise NotImplementedError(
-                "Provider and Requestor scripts need to be set")
+                "`provider_node_script` unset and not explicitly disabled.")
+
+        if not self.requestor_node_script and self.requestor_enabled:
+            raise NotImplementedError(
+                "`requestor_node_script` unset and not explicitly disabled.")
 
         for attr, val in kwargs.items():
             setattr(self, attr, val)

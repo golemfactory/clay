@@ -15,6 +15,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
 )
 
 from ethereum.utils import denoms
@@ -108,7 +109,8 @@ class TransactionSystem(LoopingCallService):
         self._payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
-        self._gnt_conversion_status = ConversionStatus.NONE
+        self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
+            (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
@@ -206,7 +208,8 @@ class TransactionSystem(LoopingCallService):
         gate_address = self._sci.get_gate_address()
         if gate_address is not None:
             if self._sci.get_gnt_balance(gate_address):
-                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+                self._gnt_conversion_status = \
+                    (ConversionStatus.UNFINISHED, None)
 
         self._payment_processor = PaymentProcessor(self._sci)
         self._eth_per_payment = self._current_eth_per_payment()
@@ -756,9 +759,9 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         self._sci: SmartContractsInterface
-        if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
+        if self._gnt_conversion_status[0] == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
-                self._gnt_conversion_status = ConversionStatus.NONE
+                self._gnt_conversion_status = (ConversionStatus.NONE, None)
             else:
                 gas_cost = self.gas_price * \
                     self._sci.GAS_TRANSFER_FROM_GATE
@@ -768,7 +771,8 @@ class TransactionSystem(LoopingCallService):
                         "Finishing previously started GNT conversion %s",
                         tx_hash,
                     )
-                    self._gnt_conversion_status = ConversionStatus.TRANSFERRING
+                    self._gnt_conversion_status = \
+                        (ConversionStatus.TRANSFERRING, tx_hash)
                 else:
                     log.info(
                         "Not enough gas to finish GNT conversion, has %.6f,"
@@ -777,26 +781,35 @@ class TransactionSystem(LoopingCallService):
                         gas_cost / denoms.ether,
                     )
             return
+        if self._gnt_conversion_status[0] == ConversionStatus.TRANSFERRING:
+            receipt = self._sci.get_transaction_receipt(
+                self._gnt_conversion_status[1],
+            )
+            if receipt is None:
+                return
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
+
         if self._gnt_balance == 0:
-            self._gnt_conversion_status = ConversionStatus.NONE
             return
 
         gas_price = self.gas_price
         gate_address = self._sci.get_gate_address()
         if gate_address is None:
+            if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+                return
             gas_cost = gas_price * self._sci.GAS_OPEN_GATE
-            if self._gnt_conversion_status != ConversionStatus.OPENING_GATE:
-                if self._eth_balance >= gas_cost:
-                    tx_hash = self._sci.open_gate()
-                    log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
-                    self._gnt_conversion_status = ConversionStatus.OPENING_GATE
-                else:
-                    log.info(
-                        "Not enough gas for opening conversion gate, has: %.6f,"
-                        " needed: %.6f",
-                        self._eth_balance / denoms.ether,
-                        gas_cost / denoms.ether,
-                    )
+            if self._eth_balance >= gas_cost:
+                tx_hash = self._sci.open_gate()
+                log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
+                self._gnt_conversion_status = \
+                    (ConversionStatus.OPENING_GATE, None)
+            else:
+                log.info(
+                    "Not enough gas for opening conversion gate, has: %.6f,"
+                    " needed: %.6f",
+                    self._eth_balance / denoms.ether,
+                    gas_cost / denoms.ether,
+                )
             return
 
         # This is extra safety check, shouldn't ever happen
@@ -804,30 +817,30 @@ class TransactionSystem(LoopingCallService):
             log.critical('Gate address should not equal to %s', gate_address)
             return
 
-        if self._gnt_conversion_status == ConversionStatus.OPENING_GATE:
-            self._gnt_conversion_status = ConversionStatus.NONE
+        if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
 
         gas_cost = gas_price * \
             (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_TRANSFER_FROM_GATE)
-        if self._gnt_conversion_status != ConversionStatus.TRANSFERRING:
-            if self._eth_balance >= gas_cost:
-                tx_hash1 = \
-                    self._sci.transfer_gnt(gate_address, self._gnt_balance)
-                tx_hash2 = self._sci.transfer_from_gate()
-                log.info(
-                    "Converting %.6f GNT to GNTB %s %s",
-                    self._gnt_balance / denoms.ether,
-                    tx_hash1,
-                    tx_hash2,
-                )
-                self._gnt_conversion_status = ConversionStatus.TRANSFERRING
-            else:
-                log.info(
-                    "Not enough gas for GNT conversion, has: %.6f,"
-                    " needed: %.6f",
-                    self._eth_balance / denoms.ether,
-                    gas_cost / denoms.ether,
-                )
+        if self._eth_balance >= gas_cost:
+            tx_hash1 = \
+                self._sci.transfer_gnt(gate_address, self._gnt_balance)
+            tx_hash2 = self._sci.transfer_from_gate()
+            log.info(
+                "Converting %.6f GNT to GNTB %s %s",
+                self._gnt_balance / denoms.ether,
+                tx_hash1,
+                tx_hash2,
+            )
+            self._gnt_conversion_status = \
+                (ConversionStatus.TRANSFERRING, tx_hash2)
+        else:
+            log.info(
+                "Not enough gas for GNT conversion, has: %.6f,"
+                " needed: %.6f",
+                self._eth_balance / denoms.ether,
+                gas_cost / denoms.ether,
+            )
 
     def _run(self) -> None:
         if not self._payment_processor:

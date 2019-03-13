@@ -60,7 +60,7 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['all_frames'] = [1]
         self.subtask_info['tmp_dir'] = self.tempdir
         self.subtask_info['subtask_timeout'] = 600
-        self.subtask_info['script_filepath'] = '/golem/scripts/job.py'
+        self.subtask_info['entrypoint'] = 'python3 /golem/scripts/job.py'
 
         self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
         self.subtask_info['parts'] = 1
@@ -90,8 +90,8 @@ class TestBlenderVerifier(TempDirFixture):
             self.subtask_info['crops']
         self.subtask_info['ctd']['extra_data']['path_root'] = \
             self.subtask_info['path_root']
-        self.subtask_info['ctd']['extra_data']['script_filepath'] = \
-            self.subtask_info['script_filepath']
+        self.subtask_info['ctd']['extra_data']['entrypoint'] = \
+            self.subtask_info['entrypoint']
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
 
     def _test_image(self, results, exception_regex=None):
