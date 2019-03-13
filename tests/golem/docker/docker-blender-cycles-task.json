@@ -11,8 +11,8 @@
         {
           "py/object": "golem.docker.image.DockerImage",
           "repository": "golemfactory/blender",
-          "tag": "igor_pr2",
-          "name": "golemfactory/blender:igor_pr2",
+          "tag": "1.9",
+          "name": "golemfactory/blender:1.9",
           "id": null
         }
       ],
@@ -56,8 +56,8 @@
     {
       "py/object": "golem.docker.image.DockerImage",
       "repository": "golemfactory/blender",
-      "tag": "igor_pr2",
-      "name": "golemfactory/blender:igor_pr2",
+      "tag": "1.9",
+      "name": "golemfactory/blender:1.9",
       "id": null
     }
   ],
