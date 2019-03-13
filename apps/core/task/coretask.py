@@ -2,15 +2,18 @@ import decimal
 import logging
 import os
 import time
-from typing import Type, Dict, Any
+from typing import (
+    Any,
+    Dict,
+    List,
+    Type,
+)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
-from golem_verificator.core_verifier import CoreVerifier
-from golem_verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
@@ -24,6 +27,8 @@ from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verificator.core_verifier import CoreVerifier
+from golem.verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -44,18 +49,11 @@ class CoreTaskTypeInfo(TaskTypeInfo):
     def __init__(self,
                  name: str,
                  definition: 'Type[TaskDefinition]',
-                 defaults: 'TaskDefaults',
                  options: Type[Options],
                  builder_type: Type[TaskBuilder]):
-        super().__init__(name, definition, defaults, options, builder_type)
+        super().__init__(name, definition, options, builder_type)
         self.output_formats = []
         self.output_file_ext = []
-
-    @classmethod
-    # pylint:disable=unused-argument
-    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
-                                 output_num=1):
-        return 0
 
     @classmethod
     # pylint:disable=unused-argument
@@ -121,15 +119,6 @@ class CoreTask(Task):
         # pylint: disable=not-callable
         self.environment = self.ENVIRONMENT_CLASS()
 
-        # src_code stuff
-        self.main_program_file = self.environment.main_program_file
-        try:
-            with open(self.main_program_file, "r") as src_file:
-                src_code = src_file.read()
-        except OSError as err:
-            logger.warning("Wrong main program file: %s", err)
-            src_code = ""
-
         # docker_images stuff
         if task_definition.docker_images:
             self.docker_images = task_definition.docker_images
@@ -146,14 +135,13 @@ class CoreTask(Task):
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=total_tasks,
-            resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
             timestamp=int(time.time()),
         )
 
-        Task.__init__(self, th, src_code, task_definition)
+        Task.__init__(self, th, task_definition)
 
         self.total_tasks = total_tasks
         self.last_task = 0
@@ -224,12 +212,7 @@ class CoreTask(Task):
                           **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data()
         )
-
-    # pylint:disable=no-self-use
-    def get_reference_data(self):
-        return []
 
     def verification_finished(self, subtask_id, verdict, result):
         try:
@@ -347,7 +330,6 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
-        ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
@@ -355,6 +337,7 @@ class CoreTask(Task):
             int(timeout_to_deadline(self.header.subtask_timeout)),
             self.header.deadline,
         )
+        ctd['resources'] = self.get_resources()
 
         return ctd
 
@@ -456,6 +439,13 @@ class CoreTask(Task):
                 self.counting_nodes[node_id].cancel()
         self.num_failed_subtasks += 1
 
+    def get_finishing_subtasks(self, node_id: str) -> List[dict]:
+        return [
+            subtask for subtask in self.subtasks_given.values()
+            if subtask['status'].is_finishing()
+            and subtask['node_id'] == node_id
+        ]
+
     def get_resources(self):
         return self.task_resources
 
@@ -516,7 +506,6 @@ class CoreTaskBuilder(TaskBuilder):
         self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
         self.owner = owner
-        self.src_code = ""
         self.environment = None
 
     def build(self):
@@ -545,7 +534,6 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
-        definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
     @classmethod

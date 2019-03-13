@@ -42,7 +42,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -411,7 +411,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
             dir_manager=dir_manager,
-            keys_auth=self.keys_auth,
             client=self
         )
 
@@ -615,11 +614,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+    def task_resource_collected(self, task_id):
+        self.task_server.task_computer.task_resource_collected(task_id)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
@@ -1100,15 +1096,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             resources,
             task_id,
             client_options=client_options
-        )
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
         )
 
     @rpc_utils.expose('res.dirs')

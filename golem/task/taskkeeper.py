@@ -25,6 +25,7 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -62,7 +63,7 @@ class CompTaskInfo:
         self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
-            self.header.subtask_timeout, self.header.resource_size)
+            self.header.subtask_timeout, 0)
 
     def __repr__(self):
         return "<CompTaskInfo(%r) reqs: %r>" % (
@@ -111,6 +112,10 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
+        # information about resource options for subtask
+        self.resources_options: typing.Dict[str, typing.Optional[
+            HyperdriveClientOptions]] = {}
+
         # price information per last task request
         self.active_task_offers: typing.Dict[str, int] = {}
 
@@ -142,6 +147,7 @@ class CompTaskKeeper:
                 self.subtask_to_task,
                 self.task_package_paths,
                 self.active_task_offers,
+                self.resources_options
             )
             pickle.dump(dump_data, f)
 
@@ -159,6 +165,7 @@ class CompTaskKeeper:
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
                 active_task_offers = data[3] if len(data) > 3 else {}
+                resources_options = data[4] if len(data) > 4 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -171,6 +178,7 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
         self.active_task_offers.update(active_task_offers)
+        self.resources_options.update(resources_options)
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
@@ -186,10 +194,6 @@ class CompTaskKeeper:
             price, self.active_tasks[task_id].header.subtask_timeout
         )
         self.dump()
-
-    @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
 
     @handle_key_error
     def get_task_header(self, task_id):
@@ -221,8 +225,15 @@ class CompTaskKeeper:
 
         comp_task_info.requests -= 1
         comp_task_info.subtasks[subtask_id] = comp_task_def
+        header = self.get_task_header(task_id)
+        comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
+            header.subtask_timeout, task_to_compute.size)
 
         self.subtask_to_task[subtask_id] = task_id
+        if task_to_compute.resources_options:
+            task_to_compute.resources_options['options']['size'] = \
+                task_to_compute.size
+        self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
 
@@ -262,6 +273,10 @@ class CompTaskKeeper:
     def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
+    def get_resources_options(self, subtask_id: str) -> \
+            typing.Optional[HyperdriveClientOptions]:
+        return self.resources_options.get(subtask_id)
+
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)
@@ -283,6 +298,7 @@ class CompTaskKeeper:
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
+                self.resources_options.pop(subtask_id, None)
                 self.subtask_to_task.pop(subtask_id, None)
 
             self.active_tasks.pop(task_id, None)
@@ -616,9 +632,6 @@ class TaskHeaderKeeper:
             cur_time = time.time()
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
-
-    def request_failure(self, task_id):
-        self.remove_task_header(task_id)
 
     def get_unsupport_reasons(self):
         """

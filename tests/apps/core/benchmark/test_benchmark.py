@@ -1,6 +1,7 @@
 import unittest.mock as mock
 
-from PIL import Image
+import cv2
+import numpy as np
 
 from apps.rendering.benchmark import renderingbenchmark
 from golem.testutils import TempDirFixture
@@ -16,23 +17,24 @@ class TestBenchmark(TempDirFixture):
         filepath = self.temp_file_name("img.png")
         resolution = self.benchmark.task_definition.resolution
 
-        with open(filepath, "wb") as fd:
-            img = Image.new("RGB", resolution)
-            img.save(fd, "PNG")
+        with open(filepath, "wb"):
+            img = np.zeros((resolution[1], resolution[0], 3), np.uint8)
+            cv2.imwrite(filepath, img)
             self.assertTrue(self.benchmark.verify_img(filepath))
 
-        with open(filepath, "wb") as fd:
-            img = Image.new("RGB", (resolution[0]+1, resolution[1]))
-            img.save(fd, "PNG")
+        with open(filepath, "wb"):
+            img = np.zeros((resolution[1]+1, resolution[0], 3), np.uint8)
+            cv2.imwrite(filepath, img)
             self.assertFalse(self.benchmark.verify_img(filepath))
 
     def test_broken_image(self):
         filepath = self.temp_file_name("broken.png")
         with open(filepath, "w") as f:
             f.write('notanimage,notanimageatall')
-        with mock.patch('apps.rendering.benchmark.renderingbenchmark.logger') as m:
+        with mock.patch('apps.rendering.benchmark.renderingbenchmark.logger') \
+                as m:
             self.assertFalse(self.benchmark.verify_img(filepath))
-            m.error.assert_called_once()
+            m.exception.assert_called_once()
 
     def test_verify_log(self):
         def verify_log(file_content):
@@ -49,7 +51,8 @@ class TestBenchmark(TempDirFixture):
     def test_verify_result(self):
         """Wether verify_result calls correct methods."""
 
-        with mock.patch.multiple(self.benchmark, verify_img=mock.DEFAULT, verify_log=mock.DEFAULT) as mocks:
+        with mock.patch.multiple(self.benchmark, verify_img=mock.DEFAULT,
+                                 verify_log=mock.DEFAULT) as mocks:
             self.assertTrue(self.benchmark.verify_result(['a.txt', 'b.gif']))
             self.assertEqual(mocks['verify_img'].call_count, 0)
             self.assertEqual(mocks['verify_log'].call_count, 0)

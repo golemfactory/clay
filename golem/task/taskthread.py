@@ -24,8 +24,6 @@ class TaskThread(threading.Thread):
 
     # pylint:disable=too-many-arguments
     def __init__(self,
-                 subtask_id: str,
-                 src_code: str,
                  extra_data: Dict,
                  res_path: str,
                  tmp_path: str,
@@ -33,8 +31,6 @@ class TaskThread(threading.Thread):
         super(TaskThread, self).__init__()
 
         self.vm = None
-        self.subtask_id = subtask_id
-        self.src_code = src_code
         self.extra_data = extra_data
         self.result = None
         self.done = False
@@ -70,9 +66,6 @@ class TaskThread(threading.Thread):
                 except TimeoutException as e:
                     self._fail(e)
 
-    def get_subtask_id(self):
-        return self.subtask_id
-
     def get_progress(self):
         with self.lock:
             return self.vm.get_progress()
@@ -107,7 +100,7 @@ class TaskThread(threading.Thread):
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.warning("Task computing error")
+        logger.warning("Task computing error %s", exception)
 
         self.error = True
         self.error_msg = str(exception)
@@ -123,7 +116,7 @@ class TaskThread(threading.Thread):
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
             self.result, self.error_msg = self.vm.run_task(
-                self.src_code,
+                extra_data['src_code'],
                 extra_data
             )
         finally:

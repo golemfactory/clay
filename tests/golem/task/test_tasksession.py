@@ -24,15 +24,13 @@ from twisted.internet.defer import Deferred
 import golem
 from golem import model, testutils
 from golem.core import variables
-from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
-from golem.network.transport.tcpnetwork import BasicProtocol
-from golem.resource.client import ClientOptions
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task import taskstate
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
@@ -52,13 +50,14 @@ class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
     ENV_ID = ""
-    APP_DIR = ""
-    SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
 
 class TestTaskSessionPep8(testutils.PEP8MixIn, TestCase):
-    PEP8_FILES = ['golem/task/tasksession.py', ]
+    PEP8_FILES = [
+        'golem/task/tasksession.py',
+        'tests/golem/task/test_tasksession.py',
+    ]
 
 
 class ConcentMessageMixin():
@@ -92,6 +91,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.task_manager = Mock(tasks_states={}, tasks={})
         server = Mock(task_manager=self.task_manager)
         server.get_key_id = lambda: self.provider_key
+        server.get_share_options.return_value = None
         self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
@@ -124,7 +124,6 @@ class TaskSessionTaskToComputeTest(TestCase):
             'price': 30,
             'max_resource_size': 3,
             'max_memory_size': 1,
-            'num_cores': 8,
             'task_header': self._get_task_header()
         }
 
@@ -174,7 +173,6 @@ class TaskSessionTaskToComputeTest(TestCase):
             params['price'],
             params['max_resource_size'],
             params['max_memory_size'],
-            params['num_cores']
         )
         ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
@@ -185,7 +183,6 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.assertEqual(mt.price, params['price'])
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
         self.assertEqual(mt.max_memory_size, params['max_memory_size'])
-        self.assertEqual(mt.num_cores, params['num_cores'])
         self.assertEqual(mt.provider_public_key, self.provider_key)
         self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
 
@@ -217,6 +214,10 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.task_manager.check_next_subtask.return_value = False
         ts2.interpret(mt)
+        ts2.task_manager.check_next_subtask.assert_called_once_with(
+            mt.task_id,
+            mt.price,
+        )
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
@@ -253,6 +254,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -268,6 +271,8 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['price', 1],
             ['size', task_state.package_size],
             ['ethsig', ms.ethsig],
+            ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
+                                   'options': {}}],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -281,6 +286,8 @@ class TaskSessionTaskToComputeTest(TestCase):
 
         ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.task_manager.should_wait_for_node.return_value = False
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
@@ -398,7 +405,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 0
         ts.disconnect = Mock()
@@ -434,7 +440,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 80
         ts.disconnect = Mock()
@@ -461,7 +466,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         difficulty = 4
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = difficulty
         ts.disconnect = Mock()
@@ -487,8 +491,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         conn.send_message.side_effect = lambda msg: msg._fake_sign()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
         keys_auth = KeysAuth(
             datadir=self.path,
@@ -596,21 +598,17 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
 
     # pylint: disable=too-many-statements
-    def test_react_to_task_to_compute(self):
+    @classmethod
+    def test_react_to_task_to_compute(cls):
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = MagicMock()
-        ts.task_computer = Mock()
         ts.task_computer.has_assigned_task.return_value = False
-        ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
-        env.allow_custom_main_program_file = False
-        env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
         keys = cryptography.ECCx(None)
@@ -647,7 +645,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
 
-        def _prepare_and_react(compute_task_def):
+        def _prepare_and_react(compute_task_def, resource_size=102400):
             msg = msg_factories.tasks.TaskToComputeFactory(
                 compute_task_def=compute_task_def,
             )
@@ -662,13 +660,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 .task_headers[msg.task_id].subtasks_count = 10
             ts.task_server.client.transaction_system.get_available_gnt\
                 .return_value = msg.price * 10
+            ts.task_server.config_desc.max_resource_size = resource_size
             ts._react_to_task_to_compute(msg)
             return msg
-
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
 
         # Source code from local environment -> proper execution
         __reset_mocks()
@@ -684,23 +678,24 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         conn.close.assert_not_called()
 
+        def __assert_failure(ts, conn):
+            ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+            ts.task_computer.session_closed.assert_called_with()
+            assert conn.close.called
+
         # Wrong key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Wrong task owner key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Wrong return port -> failure
         __reset_mocks()
@@ -708,9 +703,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.pub_port = 0
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Proper port and key -> proper execution
         __reset_mocks()
@@ -719,18 +712,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         _prepare_and_react(ctd)
         conn.close.assert_not_called()
 
-        # Allow custom code / no code in ComputeTaskDef -> failure
+        # Wrong data size -> failure
         __reset_mocks()
-        env.allow_custom_main_program_file = True
-        ctd['src_code'] = ""
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        _prepare_and_react(ctd, 1024)
+        __assert_failure(ts, conn)
 
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
-        ctd['src_code'] = "print 'Hello world!'"
+        ctd['extra_data']['src_code'] = "print 'Hello world!'"
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
@@ -746,9 +735,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_server.get_environment_by_id.return_value = None
         _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongEnvironment
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Envrionment is Docker environment but with different images -> failure
         __reset_mocks()
@@ -760,72 +747,22 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ])
         _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongDockerImages
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
-        # Envrionment is Docker environment with proper images,
-        # but no srouce code -> failure
-        __reset_mocks()
-        de = DockerEnvironmentMock(additional_images=[
-            DockerImage("dockerix/xii", tag="323"),
-            DockerImage("dockerix/xiii", tag="325"),
-            DockerImage("dockerix/xiii", tag="323")
-        ])
-        ts.task_server.get_environment_by_id.return_value = de
-        _prepare_and_react(ctd)
-        assert ts.err_msg == reasons.NoSourceCode
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
-        # Proper Docker environment with source code
-        __reset_mocks()
-        file_name = os.path.join(self.path, "main_program_file")
-        with open(file_name, 'w') as f:
-            f.write("Hello world!")
-        de.main_program_file = file_name
-        msg = _prepare_and_react(ctd)
-        ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_server.task_given.assert_called_with(
-            header.task_owner.key,
-            ctd,
-            msg.price,
-        )
-        conn.close.assert_not_called()
-
-    # pylint: enable=too-many-statements
-
-    def test_get_resource(self):
-        conn = BasicProtocol()
-        conn.transport = Mock()
-        conn.server = Mock()
-
-        db = DataBuffer()
-
-        sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(
-            m.serialize(),
-        )
-        sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()))
-
-        self.assertTrue(
-            message.base.Message.deserialize(db.buffered_data, lambda x: x)
-        )
+        __assert_failure(ts, conn)
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
-        session.concent_service = MagicMock()
+        session.conn.server.client.concent_service = MagicMock()
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
         cancel = session.concent_service.cancel_task_message
 
-        ttc = msg_factories.tasks.TaskToComputeFactory()
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            concent_enabled=True,
+        )
         task_id = ttc.task_id
         subtask_id = ttc.subtask_id
 
@@ -871,36 +808,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
-    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_resource_list(self):
-        task_server = self.task_session.task_server
-
-        client = 'test_client'
-        version = 1.0
-        peers = [{'TCP': ('127.0.0.1', 3282)}]
-        msg = message.resources.ResourceList(resources=[['1'], ['2']],
-                                             options=None)
-
-        # Use locally saved hyperdrive client options
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert task_server.get_download_options.called
-        assert task_server.pull_resources.called
-        assert isinstance(call_options['client_options'], Mock)
-
-        # Use download options built by TaskServer
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
-        task_server.get_download_options.return_value = client_options
-
-        self.task_session.task_server.pull_resources.reset_mock()
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options'].options['peers'] == peers
-
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
         mapping = dict()
@@ -934,7 +841,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 ),
                 subtask_timeout=1,
                 max_price=1,
-                resource_size=1,
             ),
             20,
         )
@@ -1051,8 +957,14 @@ class WaitingForResultsTestCase(
         self.ts.conn.send_message.side_effect = \
             lambda msg: msg._fake_sign()
         self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
+        requestor_keys = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
         self.ts.task_server.get_key_id.return_value = "key_id"
-        self.ts.key_id = 'unittest_key_id'
+        self.ts.key_id = requestor_keys.key_id
         self.ts.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
 
@@ -1064,17 +976,32 @@ class WaitingForResultsTestCase(
         )
         self.ts.task_server.keys_auth = keys_auth
         self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
-        self.n = dt_p2p_factory.Node()
-        self.msg = message.tasks.WaitingForResults()
-        self.ts.task_id = str(uuid.uuid4())
+        ttc_prefix = 'task_to_compute'
+        hdr_prefix = f'{ttc_prefix}__want_to_compute_task__task_header'
+        self.msg = msg_factories.tasks.WaitingForResultsFactory(
+            sign__privkey=requestor_keys.ecc.raw_privkey,
+            **{
+                f'{ttc_prefix}__sign__privkey': requestor_keys.ecc.raw_privkey,
+                f'{ttc_prefix}__requestor_public_key':
+                    encode_hex(requestor_keys.ecc.raw_pubkey),
+                f'{ttc_prefix}__want_to_compute_task__sign__privkey':
+                    keys_auth.ecc.raw_privkey,
+                f'{ttc_prefix}__want_to_compute_task__provider_public_key':
+                    encode_hex(keys_auth.ecc.raw_pubkey),
+                f'{hdr_prefix}__sign__privkey':
+                    requestor_keys.ecc.raw_privkey,
+                f'{hdr_prefix}__requestor_public_key':
+                    encode_hex(requestor_keys.ecc.raw_pubkey),
+            },
+        )
 
     def test_task_server_notification(self, *_):
         self.ts._react_to_waiting_for_results(self.msg)
-        # https://github.com/golemfactory/golem-messages/issues/320
         self.ts.task_server.subtask_waiting.assert_called_once_with(
-            task_id=self.ts.task_id,
-            subtask_id=None,
+            task_id=self.msg.task_id,
+            subtask_id=self.msg.subtask_id,
         )
+
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
@@ -1202,7 +1129,7 @@ class SubtaskResultsAcceptedTest(TestCase):
     def setUp(self):
         self.task_session = TaskSession(Mock())
         self.task_server = Mock()
-        self.task_session.task_server = self.task_server
+        self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
         self.provider_keys = cryptography.ECCx(None)
@@ -1283,7 +1210,6 @@ class SubtaskResultsAcceptedTest(TestCase):
         def computed_task_received(*args):
             args[2]()
 
-        self.task_session.task_manager = Mock()
         self.task_session.task_manager.computed_task_received = \
             computed_task_received
 
@@ -1306,7 +1232,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             )
 
         assert self.task_session.send.called
-        sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
+        sra = self.task_session.send.call_args[0][0]  # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
         self.assertIsInstance(sra.report_computed_task,
                               message.tasks.ReportComputedTask)

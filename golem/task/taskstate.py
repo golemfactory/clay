@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Dict, Optional
+from typing import Dict
 
 from golem.core.common import to_unicode
 
@@ -128,6 +128,9 @@ class SubtaskStatus(Enum):
 
     def is_finished(self) -> bool:
         return self == self.finished
+
+    def is_finishing(self) -> bool:
+        return self in {self.downloading, self.verifying}
 
 
 class TaskTestStatus(Enum):

@@ -30,11 +30,10 @@ class PendingResource(object):
 
 class BaseResourceServer(object):
 
-    def __init__(self, resource_manager, dir_manager, keys_auth, client):
+    def __init__(self, resource_manager, dir_manager, client):
         self._lock = Lock()
 
         self.client = client
-        self.keys_auth = keys_auth
 
         self.dir_manager = dir_manager
         self.resource_manager = resource_manager
@@ -101,7 +100,7 @@ class BaseResourceServer(object):
             collected = not self.pending_resources.get(task_id)
 
         if collected:
-            self.client.task_resource_collected(task_id, unpack_delta=False)
+            self.client.task_resource_collected(task_id)
 
     def _add_pending_resource(self, resource, task_id, client_options):
         if task_id not in self.pending_resources:
@@ -175,19 +174,9 @@ class BaseResourceServer(object):
 
         async_req = golem_async.AsyncRequest(extract_packages, resource[1])
         golem_async.async_run(async_req).addCallbacks(
-            lambda _: self.client.task_resource_collected(task_id,
-                                                          unpack_delta=False),
+            lambda _: self.client.task_resource_collected(task_id),
             lambda e: self._download_error(e, resource, task_id)
         )
-
-    def get_key_id(self):
-        return self.keys_auth.key_id
-
-    def sign(self, data):
-        return self.keys_auth.sign(data)
-
-    def verify_sig(self, sig, data, public_key):
-        return self.keys_auth.verify(sig, data, public_key)
 
     def start_accepting(self):
         pass

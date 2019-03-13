@@ -7,7 +7,7 @@ from eth_utils import encode_hex
 import faker
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message import ComputeTaskDef
 
 import golem
@@ -74,14 +74,14 @@ class DummyTask(Task):
             pub_port=owner_port,
             key=owner_key_id
         )
-        header = dt_tasks.TaskHeader(
+
+        header = TaskHeaderFactory(
             task_id=task_id,
             task_owner=task_owner,
             environment=environment,
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
             subtasks_count=num_subtasks,
-            resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
             max_price=MIN_PRICE,
             min_version=golem.__version__,
@@ -91,14 +91,14 @@ class DummyTask(Task):
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
         with open(script_path, 'r') as f:
-            src_code = f.read()
-            src_code += '\noutput = run_dummy_task(' \
+            self.src_code = f.read()
+            self.src_code += '\noutput = run_dummy_task(' \
                 'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
         task_definition = DummyTaskDefinition(DummyTaskDefaults())
-        Task.__init__(self, header, src_code, task_definition)
+        Task.__init__(self, header, task_definition)
 
         self.task_id = task_id
         self.task_params = params
@@ -162,7 +162,7 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         """ Returns data for the next subtask. """
@@ -183,14 +183,14 @@ class DummyTask(Task):
         subtask_def = ComputeTaskDef()
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
-        subtask_def['src_code'] = self.src_code
         subtask_def['deadline'] = timeout_to_deadline(5 * 60)
         subtask_def['extra_data'] = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
             'difficulty': self.task_params.difficulty,
             'result_size': self.task_params.result_size,
-            'result_file': 'result.' + subtask_id[0:6]
+            'result_file': 'result.' + subtask_id[0:6],
+            'src_code': self.src_code,
         }
 
         return self.ExtraData(ctd=subtask_def)
@@ -279,6 +279,12 @@ class DummyTask(Task):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
+
+    def get_finishing_subtasks(self, node_id):
+        try:
+            return [{'subtask_id': self.assigned_nodes[node_id]}]
+        except KeyError:
+            return []
 
     def accept_client(self, node_id):
         print('DummyTask.accept_client called node_id=%r '

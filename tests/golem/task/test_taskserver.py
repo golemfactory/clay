@@ -9,7 +9,6 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 import freezegun
 
-from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -19,10 +18,9 @@ from golem_messages.message import ComputeTaskDef
 from golem_messages.utils import encode_hex as encode_key_id
 from requests import HTTPError
 
-import golem
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timeout_to_deadline, node_info_str
+from golem.core.common import node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -56,7 +54,6 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
             pub_port=40103,
             pub_addr='1.2.3.4',
         ),
-        resource_size=2 * 1024,
         estimated_memory=3 * 1024,
     )
 
@@ -269,14 +266,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = "10.10.10.10"
         session.port = 1020
         ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
-            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
-        self.assertEqual(session.task_id, "xyz")
+            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1)
+        self.assertIn(session, self.ts.task_sessions_outgoing)
         self.assertEqual(session.key_id, "key")
         self.assertEqual(session.conn_id, "abc")
-        self.assertEqual(ts.task_sessions["xyz"], session)
         session.send_hello.assert_called_with()
         session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3,
-                                                1, 2)
+                                                1)
 
     def test_change_config(self, *_):
         ts = self.ts
@@ -336,7 +332,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
-        self.assertEqual(ts.task_sessions[subtask_id], session)
+        self.assertIn(session, ts.task_sessions_outgoing)
 
     def test_retry_sending_task_result(self, *_):
         ts = self.ts
@@ -453,7 +449,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
 
         self.assertEqual(session.key_id, 'key_id')
-        self.assertIn('subtask_id', ts.task_sessions)
+        self.assertIn(session, ts.task_sessions_outgoing)
         self.assertTrue(session.send_hello.called)
         session.send_task_failure.assert_called_once_with('subtask_id',
                                                           'err_msg')
@@ -506,11 +502,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.reset_mock()
         method = ts._TaskServer__connection_for_task_request_final_failure
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.assert_called_once_with('conn_id')
 
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
@@ -574,7 +570,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, 'tid', 27.18, 1, 1, 7)
+                node_id, node_name, 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: '
@@ -582,7 +578,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 27.18, 1, 1, 7)
+                node_id, node_name, task_id, 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
@@ -590,15 +586,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 99, 1.72, 1, 4)
-            _assert_log_msg(
-                cm,
-                f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; {ids}')
-
-        with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 999, 3, 2.7, 1)
+                node_id, node_name, task_id, 999, 3, 2.7)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider memory size:'
@@ -608,21 +596,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         # given
         ts.config_desc.computing_trust = 0.4
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         # given
         ts.config_desc.computing_trust = 0.5
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
@@ -631,13 +617,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # given
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:network mask mismatch: {ids}')
@@ -648,12 +633,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task at this moment '
-                f'(either waiting for results or previously failed)'
+                f' is not allowed for this task (it has previously failed)'
             )
 
         # given
@@ -662,7 +646,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider node is blacklisted; {ids}')
@@ -695,21 +679,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = '127.0.0.1'
         session.port = 10
 
-        subtask_id = str(uuid.uuid4())
         key_id = str(uuid.uuid4())
         conn_id = str(uuid.uuid4())
 
         self.ts.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, key_id)
         self.assertEqual(session.conn_id, conn_id)
         mark_mock.assert_called_once_with(conn_id, session.address,
                                           session.port)
+        self.assertIn(session, self.ts.task_sessions_outgoing)
 
     def test_new_connection(self, *_):
         ts = self.ts
@@ -727,7 +709,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         options = HyperdriveClientOptions(HyperdriveClient.CLIENT_ID,
                                           HyperdriveClient.VERSION)
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options)
         assert client_options.peers is None
 
         peers = [
@@ -742,11 +724,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION,
                                           options=dict(peers=peers))
 
-        client_options = ts.get_download_options(options, task_id='task_id')
+        client_options = ts.get_download_options(options, size=1024)
         assert client_options.options.get('peers') == [
             to_hyperg_peer('127.0.0.1', 3282),
             to_hyperg_peer('1.2.3.4', 3282),
         ]
+        assert client_options.options.get('size') == 1024
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
@@ -755,17 +738,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert self.ts.get_download_options(
             received_options=None,
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options={'options': {'peers': ['Invalid']}},
-            task_id='task_id'
         ) is built_options
 
         assert self.ts.get_download_options(
             received_options=Mock(filtered=Mock(side_effect=Exception)),
-            task_id='task_id'
         ) is built_options
 
     def test_pause_and_resume(self, *_):
@@ -885,7 +865,7 @@ class TestTaskServer2(TaskServerBase):
             "DEF",
             task_id,
             1000, 10,
-            5, 10, 2,
+            5, 10,
             "10.10.10.10")
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
@@ -898,9 +878,10 @@ class TestTaskServer2(TaskServerBase):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
-        self.ts.task_sessions = {'task_id': Mock()}
+        session_mock = Mock()
+        self.ts.task_sessions_outgoing.add(session_mock)
         self.ts.disconnect()
-        assert self.ts.task_sessions['task_id'].dropped.called
+        session_mock.dropped.assert_called_once_with()
 
 
 # pylint: disable=too-many-ancestors
@@ -1086,10 +1067,8 @@ class TaskVerificationResultTest(TaskServerTestBase):
         self.ts.conn_established_for_type[self.conn_type](
             session, self.conn_id, extracted_package, self.key_id, subtask_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, self.key_id)
         self.assertEqual(session.conn_id, self.conn_id)
-        self.assertEqual(self.ts.task_sessions[subtask_id], session)
         result_received_call = session.result_received.call_args[0]
         self.assertEqual(result_received_call[0], subtask_id)
 
