@@ -14,7 +14,8 @@ from typing import (
 
 from pathlib import Path
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred, succeed, fail, FirstError
+from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
+    FirstError
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
