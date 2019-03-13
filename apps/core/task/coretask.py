@@ -2,28 +2,35 @@ import decimal
 import logging
 import os
 import time
-from typing import Type, Dict, Any
+from typing import Any, Dict, Type, TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
-from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
 from golem_verificator.core_verifier import CoreVerifier
 from golem_verificator.verifier import SubtaskVerificationState
 
-from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
 from golem import constants as gconst
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
+from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem_messages.datastructures import p2p as dt_p2p
+    from apps.core.task.coretaskstate import \
+        TaskDefaults, TaskDefinition, Options
+
 
 logger = logging.getLogger("apps.core")
 
@@ -45,7 +52,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
                  name: str,
                  definition: 'Type[TaskDefinition]',
                  defaults: 'TaskDefaults',
-                 options: Type[Options],
+                 options: Type['Options'],
                  builder_type: Type[TaskBuilder]):
         super().__init__(name, definition, defaults, options, builder_type)
         self.output_formats = []
@@ -83,10 +90,10 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
 class CoreTask(Task):
-    VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
+    VERIFIER_CLASS: Type[CoreVerifier] = CoreVerifier
     VERIFICATION_QUEUE = VerificationQueue()
 
-    ENVIRONMENT_CLASS = None  # type: Type[Environment]
+    ENVIRONMENT_CLASS: Type['Environment'] = Environment
 
     handle_key_error = HandleKeyError(log_key_error)
 
@@ -96,8 +103,8 @@ class CoreTask(Task):
 
     # pylint:disable=too-many-arguments
     def __init__(self,
-                 task_definition: TaskDefinition,
-                 owner: dt_p2p.Node,
+                 task_definition: 'TaskDefinition',
+                 owner: 'dt_p2p.Node',
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
@@ -134,6 +141,7 @@ class CoreTask(Task):
         if task_definition.docker_images:
             self.docker_images = task_definition.docker_images
         elif isinstance(self.environment, DockerEnvironment):
+            # pylint: disable=no-member
             self.docker_images = self.environment.docker_images
         else:
             self.docker_images = None
@@ -159,7 +167,7 @@ class CoreTask(Task):
         self.last_task = 0
 
         self.num_tasks_received = 0
-        self.subtasks_given = {}
+        self.subtasks_given: Dict[str, Dict[str, Any]] = {}
         self.num_failed_subtasks = 0
 
         self.timeout = task_timeout
@@ -508,8 +516,8 @@ class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
     def __init__(self,
-                 owner: dt_p2p.Node,
-                 task_definition: TaskDefinition,
+                 owner: 'dt_p2p.Node',
+                 task_definition: 'TaskDefinition',
                  dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
@@ -584,7 +592,7 @@ class CoreTaskBuilder(TaskBuilder):
     # move to overriding their own TaskDefinitions instead of
     # overriding `build_dictionary. Issue #2424`
     @staticmethod
-    def build_dictionary(definition: TaskDefinition) -> dict:
+    def build_dictionary(definition: 'TaskDefinition') -> dict:
         return definition.to_dict()
 
     @classmethod

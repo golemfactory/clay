@@ -6,11 +6,15 @@ import os
 import time
 import weakref
 from collections import deque
+from enum import Enum
 from pathlib import Path
 from typing import (
+    Any,
+    Dict,
     List,
     Optional,
-    Set)
+    Set,
+)
 
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
@@ -40,7 +44,8 @@ from golem.ranking.manager.database_manager import (
     update_requestor_assigned_sum,
     update_requestor_efficiency,
 )
-from golem.task.acl import get_acl
+from golem.rpc import utils as rpc_utils
+from golem.task.acl import get_acl, _DenyAcl as DenyAcl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -137,7 +142,9 @@ class TaskServer(
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
         self.response_list = {}
-        self.acl = get_acl(Path(client.datadir))
+        self.acl = get_acl(Path(client.datadir),
+                           max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
 
@@ -417,6 +424,7 @@ class TaskServer(
             return False
         return True
 
+    @rpc_utils.expose('comp.tasks.known.delete')
     def remove_task_header(self, task_id) -> bool:
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
@@ -691,9 +699,20 @@ class TaskServer(
         env = self.get_environment_by_id(task.header.environment)
         return env.get_min_accepted_performance()
 
+    class RejectedReason(Enum):
+        not_my_task = 'not my task'
+        performance = 'performance'
+        disk_size = 'disk size'
+        memory_size = 'memory size'
+        acl = 'acl'
+        trust = 'trust'
+        netmask = 'netmask'
+        not_accepted = 'not accepted'
+
     def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
+            address,
             node_name,
             task_id,
             provider_perf,
@@ -706,6 +725,9 @@ class TaskServer(
 
         if task_id not in self.task_manager.tasks:
             logger.info('Cannot find task in my tasks: %s', ids)
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.not_my_task)
             return False
 
         task = self.task_manager.tasks[task_id]
@@ -714,46 +736,107 @@ class TaskServer(
         if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'
                         f' < {min_accepted_perf}; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.performance,
+                details={
+                    'provider_perf': provider_perf,
+                    'min_accepted_perf': min_accepted_perf,
+                })
             return False
 
         if task.header.resource_size > (int(max_resource_size) * 1024):
             logger.info('insufficient provider disk size: '
-                        f'{max_resource_size} KiB; {ids}')
+                        f'{task.header.resource_size} B < {max_resource_size} '
+                        f'KiB; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.disk_size,
+                details={
+                    'resource_size': task.header.resource_size,
+                    'max_resource_size': max_resource_size * 1024,
+                })
             return False
 
         if task.header.estimated_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
-                        f'{max_memory_size} KiB; {ids}')
+                        f'{task.header.estimated_memory} B < {max_memory_size} '
+                        f'KiB; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.memory_size,
+                details={
+                    'memory_size': task.header.estimated_memory,
+                    'max_memory_size': max_memory_size * 1024,
+                })
             return False
 
         allowed, reason = self.acl.is_allowed(node_id)
+        if allowed:
+            allowed, reason = self.acl_ip.is_allowed(address)
         if not allowed:
-            logger.info(f'provider {reason}; {ids}')
+            logger.info(f'provider is {reason.value}; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.acl,
+                details={'acl_reason': reason.value})
             return False
 
         trust = self.get_computing_trust(node_id)
         if trust < self.config_desc.computing_trust:
-            logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            logger.info(f'insufficient provider trust level: {trust} < '
+                        f'{self.config_desc.computing_trust}; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.trust,
+                details={
+                    'trust': trust,
+                    'required_trust': self.config_desc.computing_trust,
+                })
             return False
 
         if not task.header.mask.matches(decode_hex(node_id)):
             logger.info(f'network mask mismatch: {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.netmask)
             return False
 
-        if task.should_accept_client(node_id) != AcceptClientVerdict.ACCEPTED:
+        accept_client_verdict: AcceptClientVerdict \
+            = task.should_accept_client(node_id)
+        if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '
                         f'(either waiting for results or previously failed)')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.not_accepted,
+                details={
+                    'verdict': accept_client_verdict.value,
+                })
             return False
 
         logger.debug('provider can be accepted %s', ids)
         return True
 
+    @classmethod
+    def notify_provider_rejected(cls, node_id: str, task_id: str,
+                                 reason: RejectedReason,
+                                 details: Optional[Dict[str, Any]] = None):
+        dispatcher.send(
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason=reason.value,
+            details=details,
+        )
+
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
             short_id = short_node_id(node_id)
-            logger.info('requestor %s. node=%s', reason, short_id)
+            logger.info('requestor is %s; %s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: %r", trust)
@@ -761,6 +844,14 @@ class TaskServer(
             return SupportStatus.ok()
         else:
             return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
+
+    def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
+            -> None:
+        self.acl.disallow(node_id, timeout_seconds, persist)
+
+    @rpc_utils.expose('net.peer.block_ip')
+    def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
+        self.acl_ip.disallow(ip, timeout_seconds)
 
     def _sync_forwarded_session_requests(self):
         now = time.time()

@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Dict, Optional
+from typing import Dict
 
 from golem.core.common import to_unicode
 

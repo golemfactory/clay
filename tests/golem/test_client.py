@@ -817,7 +817,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         task_id = str(uuid.uuid4())
         c.delete_task(task_id)
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -833,7 +833,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         c.purge_tasks()
         assert c.get_tasks.called
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -1156,7 +1156,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.acl = Mock(spec=Acl)
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
-            'node_id', persist=True)
+            'node_id', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):

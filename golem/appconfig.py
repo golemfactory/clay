@@ -83,6 +83,12 @@ MIN_NUM_WORKERS_FOR_MASK = 20
 # Updating by 1 bit increases number of workers 2x
 MASK_UPDATE_NUM_BITS = 1
 
+# Experimental temporary banning options
+DISALLOW_NODE_TIMEOUT_SECONDS = None
+DISALLOW_IP_TIMEOUT_SECONDS = None
+DISALLOW_ID_MAX_TIMES = 1
+DISALLOW_IP_MAX_TIMES = 1
+
 
 class NodeConfig:
 
@@ -178,7 +184,12 @@ class AppConfig:
             net_masking_enabled=NET_MASKING_ENABLED,
             initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
             min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
-            mask_update_num_bits=MASK_UPDATE_NUM_BITS
+            mask_update_num_bits=MASK_UPDATE_NUM_BITS,
+            # acl
+            disallow_node_timeout_seconds=DISALLOW_NODE_TIMEOUT_SECONDS,
+            disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
+            disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
+            disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
