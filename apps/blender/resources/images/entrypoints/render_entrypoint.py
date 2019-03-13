@@ -1,5 +1,5 @@
 import json
-import blender_render as blender
+from scripts.render_tools import blender_render as blender
 
 
 with open('params.json', 'r') as params_file:
