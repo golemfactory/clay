@@ -34,6 +34,7 @@ class TestCoreVerifier(TempDirFixture):
             assert state == SubtaskVerificationState.VERIFIED
             deferred.callback(True)
 
+        self.core_verifier.simple_verification()
         finished = self.core_verifier.start_verification()
         finished.addCallback(callback)
 

@@ -11,10 +11,8 @@ class RenderingVerifier(CoreVerifier):
 
     def __init__(self, verification_data):
         super().__init__(verification_data)
-        self.verification_data = verification_data
-        self.resources = verification_data['resources']
-        self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING
+        self.resources = verification_data['resources']
 
     @staticmethod
     def check_size(file_path, resolution_x, resolution_y):
@@ -38,9 +36,7 @@ class RenderingVerifier(CoreVerifier):
     def simple_verification(self):
         if not super().simple_verification():
             return False
-
-        results = self.verification_data['results']
-        for _ in results:
+        for _ in self.results:
             if not self._are_image_sizes_correct():
                 self.message = 'No proper task result found'
                 self.state = SubtaskVerificationState.WRONG_ANSWER
@@ -61,14 +57,12 @@ class FrameRenderingVerifier(RenderingVerifier):
         if not super().simple_verification():
             return False
 
-        subtask_info = self.verification_data['subtask_info']
-        results = self.verification_data['results']
-        use_frames = subtask_info['use_frames']
-        total_tasks = subtask_info['total_tasks']
-        frames = subtask_info['all_frames']
+        use_frames = self.subtask_info['use_frames']
+        total_tasks = self.subtask_info['total_tasks']
+        frames = self.subtask_info['all_frames']
         if use_frames and total_tasks <= len(frames):
-            frames_list = subtask_info['frames']
-            if len(results) < len(frames_list):
+            frames_list = self.subtask_info['frames']
+            if len(self.results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
         return True
