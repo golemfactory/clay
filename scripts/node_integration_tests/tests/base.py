@@ -17,21 +17,11 @@ def disable_key_reuse(test_function: Callable)-> Callable:
 
 
 class ReuseNodeKeys:
-    instance = None
+    first_test = True
 
-    class __ReuseNodeKeys:
-        first_test_in_set = True
-
-        def __init__(self):
-            self.first_test_in_set = True
-
-        def set_first_test_to_false(self):
-            self.first_test_in_set = False
-
-    def __new__(cls):
-        if cls.instance is None:
-            cls.instance = ReuseNodeKeys.__ReuseNodeKeys()
-        return ReuseNodeKeys.instance
+    @classmethod
+    def next_test(cls):
+        cls.first_test = False
 
 
 class NodeTestBase:
@@ -42,11 +32,10 @@ class NodeTestBase:
         os.makedirs(self.provider_datadir)
         os.makedirs(self.requestor_datadir)
         self.disable_keys_decorator = False
-        self.first_test_in_set = ReuseNodeKeys().first_test_in_set
 
     def tearDown(self):
-        if self.first_test_in_set is True:
-            ReuseNodeKeys().set_first_test_to_false()
+        if ReuseNodeKeys.first_test:
+            ReuseNodeKeys.next_test()
             self._copy_keystores()
 
     def _relative_id(self):
@@ -59,7 +48,7 @@ class NodeTestBase:
         from scripts.node_integration_tests.conftest import \
             DISABLE_KEY_REUSE_COMMAND_LINE
         if any([
-            self.first_test_in_set,
+            ReuseNodeKeys.first_test,
             DISABLE_KEY_REUSE_COMMAND_LINE,
             self.disable_keys_decorator
         ]) is True:
