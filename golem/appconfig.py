@@ -86,8 +86,8 @@ MASK_UPDATE_NUM_BITS = 1
 # Experimental temporary banning options
 DISALLOW_NODE_TIMEOUT_SECONDS = None
 DISALLOW_IP_TIMEOUT_SECONDS = None
-ALLOW_ID_MAX_TIMES = 1
-ALLOW_IP_MAX_TIMES = 1
+DISALLOW_ID_MAX_TIMES = 1
+DISALLOW_IP_MAX_TIMES = 1
 
 
 class NodeConfig:
@@ -188,8 +188,8 @@ class AppConfig:
             # acl
             disallow_node_timeout_seconds=DISALLOW_NODE_TIMEOUT_SECONDS,
             disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
-            allow_id_max_times=ALLOW_ID_MAX_TIMES,
-            allow_ip_max_times=ALLOW_IP_MAX_TIMES,
+            disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
+            disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)

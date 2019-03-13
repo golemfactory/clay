@@ -143,8 +143,8 @@ class TaskServer(
         self.forwarded_session_requests = {}
         self.response_list = {}
         self.acl = get_acl(Path(client.datadir),
-                           max_times=config_desc.allow_id_max_times)
-        self.acl_ip = DenyAcl([], max_times=config_desc.allow_ip_max_times)
+                           max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
 
