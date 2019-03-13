@@ -51,7 +51,7 @@ class OpenCVImgRepr:
                                       "tmp",
                                       extension.lower())
         self.save(file_path)
-        os.replace(file_path, path)
+        os.replace(file_path, f'{path}.{extension}')
 
     def save(self, path):
         try:

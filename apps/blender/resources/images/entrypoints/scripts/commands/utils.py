@@ -1,9 +1,8 @@
 from pathlib import Path
-
-import enum
-import sqlite3
-
 from typing import List, Optional
+import enum
+import random
+import sqlite3
 
 
 class SubtaskStatus(enum.Enum):
@@ -84,3 +83,11 @@ def string_to_frames(s):
         else:
             raise ValueError("Wrong frame range")
     return sorted(frames)
+
+
+def gen_subtask_id(subtask_num: int) -> str:
+    return f'{subtask_num}-{random.random()}'
+
+
+def get_subtask_num_from_id(subtask_id: str) -> int:
+    return int(subtask_id.split('-')[0])

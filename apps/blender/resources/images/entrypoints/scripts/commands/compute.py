@@ -3,7 +3,7 @@ import os
 import zipfile
 from pathlib import Path
 
-from ..scripts import blender_render
+from ..render_tools import blender_render
 
 
 def compute(
@@ -12,12 +12,11 @@ def compute(
     with open(work_dir / 'params.json', 'r') as f:
         params = json.load(f)
     resources_dir = work_dir / 'resources'
-    resources_dir.mkdir(exist_ok=True)  # TODO remove
+    resources_dir.mkdir()
     result_dir = work_dir / 'result'
-    result_dir.mkdir(exist_ok=True)  # TODO remove
+    result_dir.mkdir()
     for rid in params['resources']:
-        with zipfile.ZipFile(network_resources_dir / '{}.zip'.format(rid), 'r')\
-                as zipf:
+        with zipfile.ZipFile(network_resources_dir / f'{rid}.zip', 'r') as zipf:
             zipf.extractall(resources_dir)
 
     params['scene_file'] = resources_dir / params['scene_file']

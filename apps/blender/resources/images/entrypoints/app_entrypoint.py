@@ -2,11 +2,11 @@ from pathlib import Path
 
 import click
 
-from create_task import create_task as create_task_impl
-from get_subtask import get_subtask as get_subtask_impl
-from compute import compute as compute_impl
-from verify import verify as verify_impl
-from benchmark import benchmark as benchmark_impl
+from scripts.commands.benchmark import benchmark as benchmark_impl
+from scripts.commands.compute import compute as compute_impl
+from scripts.commands.create_task import create_task as create_task_impl
+from scripts.commands.get_subtask import get_subtask as get_subtask_impl
+from scripts.commands.verify import verify as verify_impl
 
 
 WORK_DIR = Path('/work')
@@ -80,7 +80,7 @@ def benchmark():
         # WORK_DIR,
         # BENCHMARK_DIR,
         Path('/tmp/blender_docker/req/benchmark_work'),
-        Path('/tmp/blender_docker/req/benchmark'),
+        Path('/home/admin_imapp/golem_repos/golem/apps/blender/resources/images/benchmark'),  # noqa
     )
 
 
