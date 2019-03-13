@@ -1,6 +1,6 @@
 from PIL import Image, ImageFilter
 import numpy
-from skimage import compare_mse
+from .skimage import compare_mse
 
 
 import sys

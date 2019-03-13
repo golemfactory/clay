@@ -2,7 +2,9 @@ from importlib import reload
 
 import unittest.mock as mock
 
-from apps.blender.resources.images.scripts import scenefileeditor
+from apps.blender.resources.images.entrypoints.scripts.render_tools import (
+    scenefileeditor,
+)
 
 from golem.testutils import TempDirFixture
 

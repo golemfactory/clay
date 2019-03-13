@@ -84,9 +84,11 @@ setup(
             path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath(
-            '../../golem/apps/blender/resources/images/scripts/templates'), [
-                path.normpath('apps/blender/resources/images/scripts/'
-                              'templates/blendercrop.py.template')]
+            '../../golem/apps/blender/resources/images/entrypoints/scripts/'
+            'render_tools/templates'), [
+                path.normpath(
+                    'apps/blender/resources/images/entrypoints/'
+                    'scripts/render_tools/templates/blendercrop.py.template')]
         ),
         (path.normpath('../../golem/apps/dummy/resources/code_dir'), [
             path.normpath('apps/dummy/resources/code_dir/computing.py')

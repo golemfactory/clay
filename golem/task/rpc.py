@@ -299,7 +299,7 @@ def _inform_subsystems(client, task, packager_result):
         task.header.deadline,
     )
 
-    resource_server_result = yield client.resource_server.add_task(
+    resource_server_result = yield client.resource_server.add_resources(
         package_path,
         package_sha1,
         task_id,

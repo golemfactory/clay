@@ -20,7 +20,7 @@ from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer, OfferPool
+from golem.marketplace import scale_price, Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -631,7 +631,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=task.header.max_price / msg.price,
+            scaled_price=scale_price(task.header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )

@@ -61,7 +61,8 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['all_frames'] = [1]
         self.subtask_info['tmp_dir'] = self.tempdir
         self.subtask_info['subtask_timeout'] = 600
-        self.subtask_info['entrypoint'] = 'python3 /golem/scripts/job.py'
+        self.subtask_info['entrypoint'] = \
+            'python3 /golem/entrypoints/render_entrypoint.py'
 
         self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
         self.subtask_info['parts'] = 1
@@ -69,7 +70,7 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.8').to_dict()]
+            'golemfactory/blender', tag='1.9').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['scene_file'] = \
             self.subtask_info['scene_file']

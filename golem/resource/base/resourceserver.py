@@ -21,9 +21,9 @@ class TransferStatus(Enum):
 
 class PendingResource(object):
 
-    def __init__(self, resource, task_id, client_options, status):
+    def __init__(self, resource, res_id, client_options, status):
         self.resource = resource
-        self.task_id = task_id
+        self.res_id = res_id
         self.client_options = client_options
         self.status = status
 
@@ -59,25 +59,25 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, pkg_path, pkg_sha1, task_id, pkg_size,  # noqa pylint:disable=too-many-arguments
+    def add_resources(self, pkg_path, pkg_sha1, res_id, pkg_size,  # noqa pylint:disable=too-many-arguments
                  client_options=None) -> Deferred:
         _result = Deferred()
-        _result.addErrback(self._add_task_error)
+        _result.addErrback(self._add_res_error)
 
         def callback(r):
             value = r, pkg_path, pkg_sha1, pkg_size
             _result.callback(value)
 
-        _deferred = self.resource_manager.add_task(
-            [pkg_path], task_id, client_options=client_options)
+        _deferred = self.resource_manager.add_resources(
+            [pkg_path], res_id, client_options=client_options)
         _deferred.addCallback(callback)
         _deferred.addErrback(_result.errback)
 
         return _result
 
-    def create_resource_package(self, files, task_id) -> Deferred:
-        resource_dir = self.resource_manager.storage.get_dir(task_id)
-        package_path = os.path.join(resource_dir, task_id)
+    def create_resource_package(self, files, res_id) -> Deferred:
+        resource_dir = self.resource_manager.storage.get_dir(res_id)
+        package_path = os.path.join(resource_dir, res_id)
         request = golem_async.AsyncRequest(
             self.packager.create,
             package_path, files,
@@ -85,34 +85,34 @@ class BaseResourceServer(object):
         return golem_async.async_run(request)
 
     @staticmethod
-    def _add_task_error(error):
-        logger.error("Resource server: add_task error: %r", error)
+    def _add_res_error(error):
+        logger.error("Resource server: add_resources error: %r", error)
         return error  # continue with the errback chain
 
-    def remove_task(self, task_id):
-        self.resource_manager.remove_task(task_id)
+    def remove_resources(self, res_id):
+        self.resource_manager.remove_resources(res_id)
 
-    def download_resources(self, resources, task_id, client_options=None):
+    def download_resources(self, resources, res_id, client_options=None):
         with self._lock:
             for resource in resources:
-                self._add_pending_resource(resource, task_id, client_options)
+                self._add_pending_resource(resource, res_id, client_options)
 
-            collected = not self.pending_resources.get(task_id)
+            collected = not self.pending_resources.get(res_id)
 
         if collected:
-            self.client.task_resource_collected(task_id)
+            self.client.resource_collected(res_id)
 
-    def _add_pending_resource(self, resource, task_id, client_options):
-        if task_id not in self.pending_resources:
-            self.pending_resources[task_id] = []
+    def _add_pending_resource(self, resource, res_id, client_options):
+        if res_id not in self.pending_resources:
+            self.pending_resources[res_id] = []
 
-        self.pending_resources[task_id].append(PendingResource(
-            resource, task_id, client_options, TransferStatus.idle
+        self.pending_resources[res_id].append(PendingResource(
+            resource, res_id, client_options, TransferStatus.idle
         ))
 
-    def _remove_pending_resource(self, resource, task_id):
+    def _remove_pending_resource(self, resource, res_id):
         with self._lock:
-            pending_resources = self.pending_resources.get(task_id, [])
+            pending_resources = self.pending_resources.get(res_id, [])
 
             for i, pending_resource in enumerate(pending_resources):
                 if pending_resource.resource == resource:
@@ -120,8 +120,8 @@ class BaseResourceServer(object):
                     break
 
         if not pending_resources:
-            self.pending_resources.pop(task_id, None)
-            return task_id
+            self.pending_resources.pop(res_id, None)
+            return res_id
 
     def _download_resources(self, async_=True):
         download_statuses = [TransferStatus.idle, TransferStatus.failed]
@@ -135,31 +135,31 @@ class BaseResourceServer(object):
                 entry.status = TransferStatus.transferring
 
                 self.resource_manager.pull_resource(
-                    entry.resource, entry.task_id,
+                    entry.resource, entry.res_id,
                     client_options=entry.client_options,
                     success=self._download_success,
                     error=self._download_error,
                     async_=async_
                 )
 
-    def _download_success(self, resource, _, task_id):
+    def _download_success(self, resource, _, res_id):
         if not resource:
             self._download_error("Downloaded an empty resource package",
-                                 resource, task_id)
+                                 resource, res_id)
             return
 
-        if not self._remove_pending_resource(resource, task_id):
-            logger.warning("Resources for task %r were re-downloaded", task_id)
+        if not self._remove_pending_resource(resource, res_id):
+            logger.warning("Resources for id %r were re-downloaded", res_id)
             return
 
-        self._extract_task_resources(resource, task_id)
+        self._extract_resources(resource, res_id)
 
-    def _download_error(self, error, resource, task_id):
-        self._remove_pending_resource(resource, task_id)
-        self.client.task_resource_failure(task_id, error)
+    def _download_error(self, error, resource, res_id):
+        self._remove_pending_resource(resource, res_id)
+        self.client.resource_failure(res_id, error)
 
-    def _extract_task_resources(self, resource, task_id):
-        resource_dir = self.resource_manager.storage.get_dir(task_id)
+    def _extract_resources(self, resource, res_id):
+        resource_dir = self.resource_manager.storage.get_dir(res_id)
         ctk = self.client.task_server.task_manager.comp_task_keeper
 
         def extract_packages(package_files):
@@ -170,12 +170,12 @@ class BaseResourceServer(object):
                 logger.info('Extracting task resource: %r', package_path)
                 self.packager.extract(package_path, resource_dir)
 
-            ctk.add_package_paths(task_id, package_paths)
+            ctk.add_package_paths(res_id, package_paths)
 
         async_req = golem_async.AsyncRequest(extract_packages, resource[1])
         golem_async.async_run(async_req).addCallbacks(
-            lambda _: self.client.task_resource_collected(task_id),
-            lambda e: self._download_error(e, resource, task_id)
+            lambda _: self.client.resource_collected(res_id),
+            lambda e: self._download_error(e, resource, res_id)
         )
 
     def start_accepting(self):

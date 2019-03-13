@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = 'golemfactory/blender_verifier'
-    DOCKER_TAG = '1.0'
+    DOCKER_TAG = '1.1'
 
     def __init__(self, verification_data, docker_task_cls: Type) -> None:
         super().__init__(verification_data)
@@ -96,7 +96,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             frames=subtask_info['frames'],
             output_format=subtask_info['output_format'],
             basefilename='crop',
-            entrypoint="python3 /golem/scripts_verifier/runner.py",
+            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
         )
 
         self.docker_task = self.docker_task_cls(

@@ -399,7 +399,7 @@ class TaskHeaderKeeper:
                                ok() otherwise.
         """
         max_price = getattr(header, "max_price", None)
-        if max_price and max_price >= self.min_price:
+        if max_price is not None and max_price >= self.min_price:
             return SupportStatus.ok()
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
