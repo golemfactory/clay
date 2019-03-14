@@ -111,10 +111,20 @@ def check_golem_running(datadir: str, cli_in_mainnet: bool):
     net_to_check = RINKEBY if cli_in_mainnet else MAINNET
 
     if is_app_running(datadir, net_to_check):
-        flag_action = 'removing' if cli_in_mainnet else 'adding'
-        msg = f'Detected golem core running on {net_to_check} chain. ' \
-            f'In case of authorization failure, ' \
-              f'try {flag_action} --mainnet (-m) flag.'
+        cmd_hint = sys.argv + ['--mainnet']
+        if cli_in_mainnet:
+            cmd_hint = filter(
+                lambda part: part not in ['--mainnet', '-m'],
+                sys.argv
+            )
+
+        msg = f"""
+        ***************************************************************
+        Detected Golem core running on {net_to_check} chain.
+        In case of authorization failure, try running:
+        {' '.join(cmd_hint)}
+        ***************************************************************
+        """
 
         logger.warning(msg)
 
