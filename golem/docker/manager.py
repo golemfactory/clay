@@ -43,6 +43,7 @@ class DockerManager(DockerConfigManager):
         self._env_checked = True
 
         try:
+            raise EnvironmentError("No VM hypervisor found.")
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
                 self.hypervisor.setup()
@@ -52,13 +53,14 @@ class DockerManager(DockerConfigManager):
                 ***************************************************************
                 No supported VM hypervisor was found.
                 Golem will not be able to compute anything.
-                hypervisor.setup() returned {}
+                hypervisor.setup() returned {!r}
                 ***************************************************************
                 """.format(e)
             )
-            raise EnvironmentError
+            raise EnvironmentError("No VM hypervisor found.")
 
         try:
+            raise EnvironmentError("Docker unavailable.")
             # We're checking the availability of "docker" command line utility
             # (other commands may result in an error if docker env variables
             # are set incorrectly)
@@ -69,11 +71,11 @@ class DockerManager(DockerConfigManager):
                 ***************************************************************
                 Docker is not available, not building images.
                 Golem will not be able to compute anything.
-                Command 'docker info' returned {}
+                Command 'docker info' returned {!r}
                 ***************************************************************
                 """.format(err)
             )
-            raise EnvironmentError
+            raise EnvironmentError("Docker unavailable.")
 
         try:
             self.pull_images()

@@ -163,13 +163,15 @@ class Node(HardwarePresetsMixin):
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             def on_start_error(failure: FirstError):
-                failure.value.subFailure.trap(EnvironmentError)
+                sub_failure: Failure = failure.value.subFailure
+                sub_failure.trap(EnvironmentError)
+
                 logger.error(
                     """
-                    There was a problem setting up the environment. Golem will
-                    run with limited functionality to support communication with
-                    local clients.
-                    """
+                    There was a problem setting up the environment: {}
+                    Golem will run with limited functionality to support
+                    communication with local clients.
+                    """.format(sub_failure.getErrorMessage())
                 )
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
