@@ -1,7 +1,7 @@
 import os
 from typing import Callable, Dict, Optional, Any
 
-from golem_verificator.core_verifier import CoreVerifier
+from golem.verificator.core_verifier import CoreVerifier
 from apps.dummy.resources.code_dir import computing
 
 

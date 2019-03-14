@@ -15,27 +15,6 @@ logger = logging.getLogger(__name__)
 
 class TaskResourcesMixin:
     """Resource management functionality of TaskServer"""
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
-
-    def get_resource_peer(self, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get(key_id)
-        return None
-
-    def get_resource_peers(self, task_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get_for_task(task_id)
-        return []
-
-    def remove_resource_peer(self, task_id, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.remove(task_id, key_id)
-        return None
-
     def get_resources(self, task_id):
         resource_manager = self._get_resource_manager()
         resources = resource_manager.get_resources(task_id)
@@ -79,7 +58,7 @@ class TaskResourcesMixin:
         options.timeout = timeout
 
         try:
-            resource_hash, _ = resource_manager.add_task(
+            resource_hash, _ = resource_manager.add_resources(
                 files, task_id, resource_hash=resource_hash,
                 client_options=options, async_=False
             )
@@ -99,13 +78,17 @@ class TaskResourcesMixin:
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def request_resource(self, task_id, subtask_id):
-        if subtask_id not in self.task_sessions:
-            logger.error("Cannot map subtask_id %r to session", subtask_id)
+    def request_resource(self, task_id, subtask_id, resources):
+        if not self.client.resource_server:
+            logger.error("ResourceManager not ready")
             return False
+        resource_manager = self.client.resource_server.resource_manager
+        resources = resource_manager.from_wire(resources)
 
-        session = self.task_sessions[subtask_id]
-        session.request_resource(task_id)
+        task_keeper = self.task_manager.comp_task_keeper
+        options = task_keeper.get_resources_options(subtask_id)
+        client_options = self.get_download_options(options)
+        self.pull_resources(task_id, resources, client_options)
         return True
 
     def pull_resources(self, task_id, resources, client_options=None):
@@ -115,9 +98,8 @@ class TaskResourcesMixin:
     def get_download_options(
             self,
             received_options: Optional[Union[dict, HyperdriveClientOptions]],
-            task_id: Optional[str] = None):
+            size: Optional[int] = None):
 
-        task_keeper = getattr(self, 'task_keeper')
         resource_manager = self._get_resource_manager()
         options: Optional[HyperdriveClientOptions] = None
 
@@ -142,10 +124,9 @@ class TaskResourcesMixin:
             options = received_options
 
         options = _filter_options(options)
-        task_header = task_keeper.task_headers.get(task_id)
 
-        if task_header:
-            options.set(size=task_header.resource_size)
+        if size and options:
+            options.set(size=size)
         return options
 
     def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
@@ -189,7 +170,3 @@ class TaskResourcesMixin:
     def _get_resource_manager(self):
         resource_server = self.client.resource_server
         return resource_server.resource_manager
-
-    def _get_peer_manager(self):
-        resource_manager = self._get_resource_manager()
-        return getattr(resource_manager, 'peer_manager', None)

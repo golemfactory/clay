@@ -39,6 +39,7 @@ class ResourceSetUp(TempDirFixture):
     __test__ = False
 
     def setUp(self):
+        super().setUp()
         self.dir_manager = DirManager(self.path)
         self.node_name = str(uuid.uuid4())
         self.task_id = str(uuid.uuid4())
@@ -71,6 +72,9 @@ class ResourceSetUp(TempDirFixture):
 
 class TestResourceManagerBase(ResourceSetUp):
 
+# FIXME Make this test suite work again. Issue #3950
+#    __test__ = True
+
     def setUp(self):
         super().setUp()
         self.resource_manager = DummyResourceManager(self.dir_manager)
@@ -86,8 +90,6 @@ class TestResourceManagerBase(ResourceSetUp):
             prev_content
 
     def test_add_file(self):
-        self.resource_manager.storage.clear_cache()
-
         self.resource_manager.add_file(self.test_dir_file, self.task_id)
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(resources) == 1
@@ -99,7 +101,6 @@ class TestResourceManagerBase(ResourceSetUp):
         assert len(resources) == 1
 
     def test_add_files(self):
-        self.resource_manager.storage.clear_cache()
         self.resource_manager.add_files(self.target_resources, self.task_id)
 
         storage = self.resource_manager.storage
@@ -112,7 +113,6 @@ class TestResourceManagerBase(ResourceSetUp):
             assert storage.cache.get_by_path(resource.file_name) is not None
         assert storage.cache.get_by_path(str(uuid.uuid4())) is None
 
-        storage.clear_cache()
 
         self.resource_manager.add_files([self.test_dir_file], self.task_id)
         assert len(storage.get_resources(self.task_id)) == 1
@@ -122,9 +122,8 @@ class TestResourceManagerBase(ResourceSetUp):
 
         assert len(storage.get_resources(self.task_id)) == 1
 
-    def test_add_task(self):
+    def test_add_resources(self):
         storage = self.resource_manager.storage
-        storage.clear_cache()
 
         resource_paths = get_resource_paths(
             self.resource_manager.storage,
@@ -132,7 +131,7 @@ class TestResourceManagerBase(ResourceSetUp):
             self.task_id
         )
 
-        self.resource_manager._add_task(resource_paths, self.task_id)
+        self.resource_manager.add_resources(resource_paths, self.task_id)
         resources = storage.get_resources(self.task_id)
 
         assert len(resources) == len(self.target_resources)
@@ -140,22 +139,21 @@ class TestResourceManagerBase(ResourceSetUp):
         assert storage.cache.get_resources(self.task_id)
 
         new_task = str(uuid.uuid4())
-        self.resource_manager._add_task(resource_paths, new_task)
+        self.resource_manager.add_resources(resource_paths, new_task)
         assert len(resources) == len(storage.get_resources(new_task))
 
-        self.resource_manager._add_task(resource_paths, new_task)
+        self.resource_manager.add_resources(resource_paths, new_task)
         assert len(storage.get_resources(new_task)) == len(resources)
 
     def test_remove_task(self):
-        self.resource_manager.storage.clear_cache()
 
         resource_paths = get_resource_paths(
             self.resource_manager.storage,
             self.target_resources,
             self.task_id
         )
-        self.resource_manager._add_task(resource_paths, self.task_id)
-        self.resource_manager.remove_task(self.task_id)
+        self.resource_manager.add_resources(resource_paths, self.task_id)
+        self.resource_manager.remove_resources(self.task_id)
 
         assert not self.resource_manager.storage.cache.get_prefix(self.task_id)
         assert not self.resource_manager.storage.get_resources(self.task_id)
@@ -165,7 +163,7 @@ class TestResourceManagerBase(ResourceSetUp):
         for resource in self.joined_resources:
             manager = Resource(
                 str(uuid.uuid4()),
-                task_id="task",
+                res_id="task",
                 path=os.path.dirname(resource),
                 files=[os.path.basename(resource)]
             )
@@ -229,10 +227,10 @@ class TestHyperdriveResourceManager(TempDirFixture):
         assert restore.called
         assert not add.called
 
-    def test_add_task_failure(self, _add, _restore):
+    def test_add_resources_failure(self, _add, _restore):
         exc = Exception('Test exception')
         self.resource_manager._add_files = Mock(side_effect=exc)
-        deferred = self.resource_manager.add_task(self.files, self.task_id)
+        deferred = self.resource_manager.add_resources(self.files, self.task_id)
         assert deferred.called
         assert isinstance(deferred.result, Failure)
 

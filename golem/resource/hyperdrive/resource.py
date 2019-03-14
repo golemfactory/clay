@@ -25,23 +25,23 @@ class ResourceError(RuntimeError):
 
 class Resource:
 
-    __slots__ = ('hash', 'files', 'path', 'task_id')
+    __slots__ = ('hash', 'files', 'path', 'res_id')
 
-    def __init__(self, resource_hash, task_id=None, files=None, path=None):
+    def __init__(self, resource_hash, res_id=None, files=None, path=None):
         self.hash = resource_hash
-        self.task_id = task_id
+        self.res_id = res_id
         self.files = files
         self.path = path
 
     def __eq__(self, other):
         return other and \
-            self.task_id == other.task_id and \
+            self.res_id == other.res_id and \
             self.hash == other.hash and \
             self.path == other.path and \
             self.files == other.files
 
     def __str__(self):
-        return 'Resource(hash: {}, task: {})'.format(self.hash, self.task_id)
+        return 'Resource(hash: {}, id: {})'.format(self.hash, self.res_id)
 
     def __repr__(self):
         return str(self)
@@ -73,18 +73,18 @@ class ResourceCache(object):
         self._hash_to_res = dict()
         # path to resource
         self._path_to_res = dict()
-        # task to resources
-        self._task_to_res = dict()
-        # task to resource common prefix
-        self._task_to_prefix = dict()
+        # id to resources
+        self._id_to_res = dict()
+        # id to resource common prefix
+        self._id_to_prefix = dict()
 
     def add_resource(self, resource):
-        task_id = resource.task_id
+        res_id = resource.res_id
 
         with self._lock:
-            resource_list = self._task_to_res.get(task_id)
+            resource_list = self._id_to_res.get(res_id)
             if not resource_list:
-                self._task_to_res[task_id] = resource_list = list()
+                self._id_to_res[res_id] = resource_list = list()
             resource_list.append(resource)
 
             self._hash_to_res[resource.hash] = resource
@@ -97,34 +97,34 @@ class ResourceCache(object):
         return self._path_to_res.get(resource_path, default)
 
     def has_resource(self, resource):
-        if resource.task_id and resource.task_id not in self._task_to_res:
+        if resource.res_id and resource.res_id not in self._id_to_res:
             return False
         if resource.hash and resource.hash not in self._hash_to_res:
             return False
         return resource.path in self._path_to_res
 
-    def get_resources(self, task_id, default=None):
-        return self._task_to_res.get(task_id, default or [])
+    def get_resources(self, res_id, default=None):
+        return self._id_to_res.get(res_id, default or [])
 
-    def set_prefix(self, task_id, prefix):
-        self._task_to_prefix[task_id] = norm_path(prefix)
+    def set_prefix(self, res_id, prefix):
+        self._id_to_prefix[res_id] = norm_path(prefix)
 
-    def get_prefix(self, task_id, default=''):
-        return self._task_to_prefix.get(task_id, default)
+    def get_prefix(self, res_id, default=''):
+        return self._id_to_prefix.get(res_id, default)
 
-    def remove(self, task_id):
-        resources = self._task_to_res.pop(task_id, [])
+    def remove(self, res_id):
+        resources = self._id_to_res.pop(res_id, [])
         for r in resources:
             self._hash_to_res.pop(r.hash, None)
             self._path_to_res.pop(r.path, None)
-        self._task_to_prefix.pop(task_id, None)
+        self._id_to_prefix.pop(res_id, None)
         return resources
 
     def clear(self):
         self._hash_to_res = dict()
         self._path_to_res = dict()
-        self._task_to_res = dict()
-        self._task_to_prefix = dict()
+        self._id_to_res = dict()
+        self._id_to_prefix = dict()
 
 
 class ResourceStorage(object):
@@ -134,25 +134,25 @@ class ResourceStorage(object):
         self.resource_dir_method = resource_dir_method
         self.cache = ResourceCache()
 
-    def get_dir(self, task_id):
-        return norm_path(self.resource_dir_method(task_id))
+    def get_dir(self, res_id):
+        return norm_path(self.resource_dir_method(res_id))
 
-    def get_path(self, relative_file_path, task_id):
-        resource_dir = self.get_dir(task_id)
+    def get_path(self, relative_file_path, res_id):
+        resource_dir = self.get_dir(res_id)
         return os.path.join(resource_dir, norm_path(relative_file_path))
 
     def get_root(self):
         return self.dir_manager.get_node_dir()
 
-    def get_resources(self, task_id) -> List[Resource]:
-        return self.cache.get_resources(task_id)
+    def get_resources(self, res_id) -> List[Resource]:
+        return self.cache.get_resources(res_id)
 
     def exists(self, resource):
         return self.cache.has_resource(resource) and resource.exists
 
-    def relative_path(self, path, task_id):
+    def relative_path(self, path, res_id):
         path = norm_path(path)
-        common_prefix = self.cache.get_prefix(task_id)
+        common_prefix = self.cache.get_prefix(res_id)
         return relative_path(path, common_prefix)
 
     def copy_dir(self, src_dir):
@@ -164,10 +164,10 @@ class ResourceStorage(object):
             copy_file_tree(src_dir, root_dir)
             return True
 
-    def copy(self, src_path, dst_relative_path, task_id):
+    def copy(self, src_path, dst_relative_path, res_id):
 
         dst_relative_path = norm_path(dst_relative_path)
-        dst_path = self.get_path(dst_relative_path, task_id)
+        dst_path = self.get_path(dst_relative_path, res_id)
         src_path = norm_path(src_path)
 
         if os.path.isfile(dst_path):

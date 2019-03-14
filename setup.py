@@ -83,13 +83,13 @@ setup(
         (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
             path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
-        (path.normpath('../../golem/apps/blender/resources/scripts'), [
-            path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
-            path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
-        ]),
-        (path.normpath('../../golem/apps/dummy/resources/scripts'), [
-            path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
-        ]),
+        (path.normpath(
+            '../../golem/apps/blender/resources/images/entrypoints/scripts/'
+            'render_tools/templates'), [
+                path.normpath(
+                    'apps/blender/resources/images/entrypoints/'
+                    'scripts/render_tools/templates/blendercrop.py.template')]
+        ),
         (path.normpath('../../golem/apps/dummy/resources/code_dir'), [
             path.normpath('apps/dummy/resources/code_dir/computing.py')
         ]),
@@ -104,13 +104,21 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager().pull_images()
+
+    docker_manager = DockerManager()
+
+    try:
+        DockerManager().pull_images()
+    except Exception as exc:  # pylint: disable=broad-except
+        print('Exception occurred:', exc)
+        DockerManager().build_images()
 
 if building_wheel:
     move_wheel()
 
 if not building_migration:
     from golem.database.migration.create import latest_migration_exists
+
     if not latest_migration_exists():
         raise RuntimeError("Database schema error: latest migration script "
                            "does not exist")

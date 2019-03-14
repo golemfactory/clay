@@ -47,15 +47,6 @@ def split_path(path):
     return split_path(head) + [tail]
 
 
-def find_task_script(task_dir, script_name):
-    scripts_path = os.path.abspath(os.path.join(task_dir, "resources", "scripts"))
-    script_file = os.path.join(scripts_path, script_name)
-    if os.path.isfile(script_file):
-        return script_file
-
-    logger.error("Script file {} does not exist!".format(script_file))
-
-
 def list_dir_recursive(dir: str) -> Iterator[str]:
     for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
         for name in filenames:

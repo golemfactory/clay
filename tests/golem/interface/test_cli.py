@@ -7,9 +7,13 @@ from io import StringIO
 from twisted.internet import defer
 from twisted.internet.error import ReactorNotRunning
 
-from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
-from golem.interface.command import group, doc, argument,\
-    identifier, name, command, CommandHelper, storage_context
+from golem.interface.cli import (
+    CLI, _exit, _help, _debug, ArgumentParser, disable_withdraw,
+)
+from golem.interface.command import (
+    group, doc, argument, identifier, name, command, CommandHelper,
+    storage_context,
+)
 from golem.interface.exceptions import ParsingException, CommandException
 
 
@@ -371,3 +375,34 @@ class TestArgumentParser(unittest.TestCase):
         ap = ArgumentParser()
         with self.assertRaises(ParsingException):
             ap.exit()
+
+
+class TestAdaptChildren(unittest.TestCase):
+    def setUp(self):
+        def foofun():
+            pass
+
+        def barfun():
+            pass
+
+        self.children = {
+            'withdraw': foofun,
+            'sth else': barfun,
+        }
+
+    def test_empty_remains_empty(self):
+        result = disable_withdraw({})
+        self.assertEqual(result, {})
+
+    def test_no_adaptation_for_mainnet(self):
+        from golem.config.environments.mainnet import EthereumConfig
+        with patch('golem.config.active.EthereumConfig', EthereumConfig):
+            result = disable_withdraw(self.children)
+            self.assertEqual(result, self.children)
+
+    def test_remove_withdraw_if_not_mainnet(self):
+        from golem.config.environments.testnet import EthereumConfig
+        with patch('golem.config.active.EthereumConfig', EthereumConfig):
+            result = disable_withdraw(self.children)
+            self.children.pop('withdraw')
+            self.assertEqual(result, self.children)
