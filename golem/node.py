@@ -164,7 +164,7 @@ class Node(HardwarePresetsMixin):
 
             def on_start_error(failure: FirstError):
                 failure.value.subFailure.trap(EnvironmentError)
-                logger.warning(
+                logger.error(
                     """
                     There was a problem setting up the environment. Golem will
                     run with limited functionality to support communication with
