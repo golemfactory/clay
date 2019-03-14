@@ -40,7 +40,7 @@ pydispatcher
 pyOpenSSL==17.1.0
 pysha3>=1.0.2
 pytz
-PyYAML>=3.12
+PyYAML>=5.1
 raven
 requests==2.18.4
 scrypt
