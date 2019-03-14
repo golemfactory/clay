@@ -186,7 +186,7 @@ automatically during the test run.
 #### Mac OS
 
 To run the tests, the suite creates temporary Golem datadirs. As the default
-temporary directories on Mac are not by accessible to Docker out of the box,
+temporary directories on Mac are not accessible to Docker out of the box,
 tests won't be able to launch Golem nodes correctly and thus will fail to run
 correctly .
 
