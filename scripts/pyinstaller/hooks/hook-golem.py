@@ -16,8 +16,10 @@ datas = [
      'apps/rendering/benchmark/minilight/'),
     ('apps/blender/resources/images/*.Dockerfile',
      'apps/blender/resources/images/'),
-    ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
-     'apps/blender/resources/images/scripts/templates'),
+    ('apps/blender/resources/images/entrypoints/scripts/render_tools/templates/'
+        'blendercrop.py.template',
+     'apps/blender/resources/images/entrypoints/scripts/render_tools/'
+        'templates'),
     ('apps/dummy/resources/images',
      'apps/dummy/resources/'),
     ('apps/dummy/resources/code_dir/computing.py',

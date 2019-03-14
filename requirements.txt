@@ -33,8 +33,8 @@ eth-keys==0.2.0b3
 eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==3.1.0
-Golem-Smart-Contracts-Interface==1.6.1
+Golem-Messages==3.3.0
+Golem-Smart-Contracts-Interface==1.7.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -74,7 +74,6 @@ pbkdf2==1.3
 pbr==4.0.2
 peewee-migrate==0.14.0
 peewee==2.10.2
-Pillow==4.2.1
 pluggy==0.6.0
 portalocker==1.2.1
 priority==1.3.0
@@ -98,7 +97,7 @@ pysha3==1.0.2
 pyssim==0.4
 PyTrie==0.3
 pytz==2018.4
-PyYAML==3.12
+PyYAML==5.1
 raven==6.6.0
 repoze.lru==0.7
 requests==2.21.0

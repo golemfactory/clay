@@ -69,13 +69,15 @@ class ImgMetrics:
 
     @staticmethod
     def get_metric_classes():
-        import ssim
-        import psnr
-        import variance
-        import edges
-        import wavelet
-        import histograms_correlation
-        import mass_center_distance
+        from . import (
+            ssim,
+            psnr,
+            variance,
+            edges,
+            wavelet,
+            histograms_correlation,
+            mass_center_distance,
+        )
         available_metrics = [ssim.MetricSSIM,
                 psnr.MetricPSNR,
                 variance.ImageVariance,

@@ -58,7 +58,7 @@ class DockerJob:
     # pylint:disable=too-many-arguments
     def __init__(self,
                  image: DockerImage,
-                 script_filepath: str,
+                 entrypoint: str,
                  parameters: Dict,
                  resources_dir: str,
                  work_dir: str,
@@ -69,7 +69,7 @@ class DockerJob:
                  container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
-        :param str script_src: source of the task script file
+        :param str entrypoint: command that will be executed in Docker
         :param dict parameters: parameters for the task script
         :param str resources_dir: directory with task resources
         :param str work_dir: directory for temporary work files
@@ -79,7 +79,7 @@ class DockerJob:
             raise TypeError('Incorrect image type: {}. '
                             'Should be: DockerImage'.format(type(image)))
         self.image = image
-        self.script_filepath = script_filepath
+        self.entrypoint = entrypoint
         self.parameters = parameters if parameters else {}
 
         self.parameters.update(self.PATH_PARAMS)
@@ -130,7 +130,7 @@ class DockerJob:
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=[f'python3 "{self.script_filepath}"'],
+            command=[self.entrypoint],
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )

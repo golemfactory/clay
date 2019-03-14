@@ -267,12 +267,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
 
-        wrong_task = not self.tm.is_my_task("xyz")
+        assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, "10.10.10.10")
 
         assert subtask is None
-        assert not wrong_task
 
     def test_get_next_subtask_progress_completed(self):
         task_mock = self._get_task_mock()
@@ -363,7 +362,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.tasks_states.get("xyz") is None
 
     def test_check_next_subtask_not_my_task(self):
-        checked = self.tm.check_next_subtask("aaa", "aaa", "aaa", 1)
+        checked = self.tm.check_next_subtask("aaa", 1)
         assert not checked
 
     def test_should_wait_for_node_not_my_task(self):

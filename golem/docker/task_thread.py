@@ -192,7 +192,7 @@ class DockerTaskThread(TaskThread):
 
         params = dict(
             image=self.image,
-            script_filepath=self.extra_data['script_filepath'],
+            entrypoint=self.extra_data['entrypoint'],
             parameters=self.extra_data,
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),

@@ -1,19 +1,21 @@
 import itertools
 import os
 import sys
+from pathlib import Path
 from typing import Dict
 
 import OpenEXR
 from PIL import Image
 
-import decision_tree
-from img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
-from imgmetrics import ImgMetrics
+from . import decision_tree
+from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
+from .imgmetrics import ImgMetrics
 
 CROP_NAME = "scene_crop.png"
 VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
-TREE_PATH = "/golem/scripts_verifier/tree35_[crr=87.71][frr=0.92].pkl"
+PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
+TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
 
 
 def calculate_metrics(reference_img_path,

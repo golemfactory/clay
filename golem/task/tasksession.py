@@ -3,15 +3,15 @@
 import copy
 import datetime
 import enum
-import functools
 import logging
 import time
 from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages import exceptions as msg_exceptions
+from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
 import golem
@@ -20,7 +20,7 @@ from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer, OfferPool
+from golem.marketplace import scale_price, Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -51,17 +51,6 @@ def call_task_computer_and_drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(2)", exc_info=True)
     args[0].task_computer.session_closed()
     args[0].dropped()
-
-
-def dropped_after():
-    def inner(f):
-        @functools.wraps(f)
-        def curry(self, *args, **kwargs):
-            result = f(self, *args, **kwargs)
-            self.dropped()
-            return result
-        return curry
-    return inner
 
 
 def get_task_message(
@@ -236,6 +225,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
+
+            config_desc = self.task_server.config_desc
+            if config_desc.disallow_node_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_node(
+                    node_id=task_to_compute.provider_id,
+                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
+                    persist=False,
+                )
+            if config_desc.disallow_ip_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_ip(
+                    ip=self.address,
+                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
+                )
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -500,8 +506,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         task_server_ok = self.task_server.should_accept_provider(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size)
+            self.key_id,
+            self.address,
+            msg.node_name,
+            msg.task_id,
+            msg.perf_index,
+            msg.max_resource_size,
+            msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -515,13 +526,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.check_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.price):
+                msg.task_id, msg.price):
             logger.debug(
                 "check_next_subtask False. task_id=%s, node=%s",
                 msg.task_id,
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if not self.task_manager.task_needs_computation(msg.task_id):
+            logger.debug(
+                "TaskFinished. task_id=%s, provider=%s",
+                msg.task_id,
+                node_name_id,
+            )
+            _cannot_assign(reasons.TaskFinished)
             return
 
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
@@ -558,6 +578,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def _offer_chosen(is_chosen: bool) -> None:
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
+
             if not is_chosen:
                 logger.info(
                     "Provider not chosen by marketplace. task_id=%r, node=%r",
@@ -565,14 +593,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     node_name_id,
                 )
                 _cannot_assign(reasons.NoMoreSubtasks)
-                return
-
-            if not self.conn.opened:
-                logger.info(
-                    "Provider disconnected. task_id=%r, node=%r",
-                    msg.task_id,
-                    node_name_id,
-                )
                 return
 
             logger.info("Offer confirmed, assigning subtask")
@@ -583,7 +603,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
-                "task_id=%s, node=%s ctd=%s",
+                "CTD generated. task_id=%s, node=%s ctd=%s",
                 msg.task_id,
                 node_name_id,
                 ctd,
@@ -633,7 +653,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=task.header.max_price / msg.price,
+            scaled_price=scale_price(task.header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )
@@ -696,6 +716,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ConcentDisabled)
             return
 
+        if not self._check_resource_size(msg.size):
+            # We don't have enough disk space available
+            _cannot_compute(reasons.ResourcesTooBig)
+            return
+
         number_of_subtasks = self.task_server.task_keeper\
             .task_headers[msg.task_id]\
             .subtasks_count
@@ -743,6 +768,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         _cannot_compute(self.err_msg)
 
+    def _check_resource_size(self, resource_size):
+        max_resource_size_kib = self.task_server.config_desc.max_resource_size
+        max_resource_size = int(max_resource_size_kib) * 1024
+        if resource_size > max_resource_size:
+            logger.info('Subtask with too big resources received: '
+                        f'{resource_size}, only {max_resource_size} available')
+            return False
+        return True
+
     def _react_to_waiting_for_results(
             self,
             msg: message.tasks.WaitingForResults,
@@ -753,7 +787,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             concent_key = None
         try:
             msg.verify_owners(
-                requestor_public_key=self.key_id,
+                requestor_public_key=msg_utils.decode_hex(self.key_id),
                 provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
@@ -804,8 +838,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 RequestorCheckResult.OK:
             self.dropped()
             return
-        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
-        self.task_server.remove_task_header(msg.task_id)
+        logger.info(
+            "Task request rejected. task_id: %r, reason: %r",
+            msg.task_id,
+            msg.reason,
+        )
+        reasons = message.tasks.CannotAssignTask.REASON
+        if msg.reason is reasons.TaskFinished:
+            self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
         self.task_computer.session_closed()
         self.dropped()
@@ -1044,25 +1084,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.concent_service.cancel_task_message(
             msg.subtask_id, 'ForceReportComputedTask')
 
-        delayed_forcing_msg = message.concents.ForceSubtaskResults(
-            ack_report_computed_task=msg,
-        )
-        ttc_deadline = datetime.datetime.utcfromtimestamp(
-            msg.task_to_compute.compute_task_def['deadline']
-        )
-        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
-        delay = ttc_deadline + svt - datetime.datetime.utcnow()
-        delay += datetime.timedelta(seconds=1)  # added for safety
-        logger.debug(
-            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
-            delayed_forcing_msg,
-            delay
-        )
-        self.concent_service.submit_task_message(
-            subtask_id=msg.subtask_id,
-            msg=delayed_forcing_msg,
-            delay=delay,
-        )
+        if msg.task_to_compute.concent_enabled:
+            delayed_forcing_msg = message.concents.ForceSubtaskResults(
+                ack_report_computed_task=msg,
+            )
+            ttc_deadline = datetime.datetime.utcfromtimestamp(
+                msg.task_to_compute.compute_task_def['deadline']
+            )
+            svt = msg_helpers.subtask_verification_time(
+                msg.report_computed_task,
+            )
+            delay = ttc_deadline + svt - datetime.datetime.utcnow()
+            delay += datetime.timedelta(seconds=1)  # added for safety
+            logger.debug(
+                '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+                delayed_forcing_msg,
+                delay
+            )
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=delayed_forcing_msg,
+                delay=delay,
+            )
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
