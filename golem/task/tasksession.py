@@ -226,6 +226,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
 
+            config_desc = self.task_server.config_desc
+            if config_desc.disallow_node_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_node(
+                    node_id=task_to_compute.provider_id,
+                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
+                    persist=False,
+                )
+            if config_desc.disallow_ip_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_ip(
+                    ip=self.address,
+                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
+                )
+
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
                 self.key_id,
@@ -489,8 +506,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         task_server_ok = self.task_server.should_accept_provider(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size)
+            self.key_id,
+            self.address,
+            msg.node_name,
+            msg.task_id,
+            msg.perf_index,
+            msg.max_resource_size,
+            msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
