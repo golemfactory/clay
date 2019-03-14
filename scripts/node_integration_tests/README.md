@@ -196,7 +196,7 @@ run by default and all subsequest tests reuse the same node key pairs.
 Thus, nodes don't need to wait for ETH, GNT and GNTB anymore.
 
 In some tests, we need to ensure there are no side effects on the blockchain.
-For that, we can disable key reuse for this particular test by adding the
+To achieve that, we can disable key reuse for this particular test by adding the
 `@disable_key_reuse` decorator to the test method
 (in test_golem.py and test_concent.py).
 
