@@ -1174,16 +1174,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def __check_docker_images(self,
                               ctd: message.ComputeTaskDef,
                               env: DockerEnvironment):
-        for image_dict in ctd['docker_images']:
-            image = DockerImage(**image_dict)
-            for env_image in env.docker_images:
-                if env_image.cmp_name_and_tag(image):
-                    ctd['docker_images'] = [image_dict]
-                    return True
-
-        reasons = message.tasks.CannotComputeTask.REASON
-        self.err_msg = reasons.WrongDockerImages
-        return False
+        return True
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
