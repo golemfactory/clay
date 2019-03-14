@@ -155,7 +155,8 @@ class TransactionSystem(LoopingCallService):
         )
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
-            raise Exception("Storage already exists, can't override")
+            raise Exception("Storage already exists, can't override. path=%s" %
+                            str(new_storage_path))
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
