@@ -184,6 +184,20 @@ Suggestion: when you _don't_ provide the `GOLEM_INTEGRATION_TEST_DIR` variable
 to pytest, run `pytest -s -v [...]` so that you can see the paths generated
 automatically during the test run.
 
+#### Mac OS
+
+To run the tests, the suite creates temporary Golem datadirs. As the default
+temporary directories on Mac are not accessible to Docker out of the box,
+tests won't be able to launch Golem nodes correctly and thus will fail to run
+correctly .
+
+To alleviate this issue, a Docker-acessible location needs to be provided
+as the default temporary directory, e.g.:
+
+```
+TMPDIR=/tmp pytest scripts/node_integration_tests/
+```
+
 #### Node key reuse
 
 Normally, each test starts with empty provider and requestor datadirs. That
