@@ -12,7 +12,6 @@ class RenderingVerifier(CoreVerifier):
     def __init__(self, verification_data):
         super().__init__(verification_data)
         self.verification_data = verification_data
-        self.subtask_info = verification_data['subtask_info']
         self.resources = verification_data['resources']
         self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING

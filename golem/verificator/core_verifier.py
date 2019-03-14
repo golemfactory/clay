@@ -16,7 +16,7 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, verification_data):
         self.verification_data = verification_data
-        self.subtask_info = {}
+        self.subtask_info = self.verification_data['subtask_info']
         self.resources = []
         self.results = []
         self.state = SubtaskVerificationState.UNKNOWN_SUBTASK
@@ -28,7 +28,6 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
 
     def start_verification(self):
         self.time_started = datetime.utcnow()
-        self.subtask_info = self.verification_data['subtask_info']
         if self._verify_result(self.verification_data):
             self.state = SubtaskVerificationState.VERIFIED
             finished = Deferred()
