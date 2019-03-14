@@ -5,15 +5,21 @@ Param(
     $currentUserName = "",
     $productVersion = ""
 )
+
 if (Get-Command "AI_GetMsiProperty" -errorAction SilentlyContinue)
 {
     $createShareFolder = (AI_GetMsiProperty TempFolder)
-    $productVersion = (AI_GetMsiProperty ProductVersion)
     $appDataDir = (AI_GetMsiProperty LocalAppDataFolder)
     $currentUserName = (AI_GetMsiProperty LogonUser)
+    $productVersion = (AI_GetMsiProperty ProductVersion)
 }
 
 $ErrorActionPreference = "Stop"
+
+if ($productVersion)
+{
+    $createShareFolder += $productVersion + "\"
+}
 
 # Your code goes here.
 $golemUserName = "golem-docker"
@@ -33,7 +39,7 @@ if( ! $currentGolemUser )
 "createShareFolder: " + $createShareFolder
 "appDataDir: " + $appDataDir
 
-$createShareScript = $createShareFolder + $productVersion + "\create-share.ps1"
+$createShareScript = $createShareFolder + "create-share.ps1"
 "createShareScript: " + $createShareScript
 
 $golemDataDir = $appDataDir + "\golem\golem\default"
