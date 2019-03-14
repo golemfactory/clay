@@ -43,7 +43,6 @@ class DockerManager(DockerConfigManager):
         self._env_checked = True
 
         try:
-            raise EnvironmentError("No VM hypervisor found.")
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
                 self.hypervisor.setup()
@@ -60,7 +59,6 @@ class DockerManager(DockerConfigManager):
             raise EnvironmentError("No VM hypervisor found.")
 
         try:
-            raise EnvironmentError("Docker unavailable.")
             # We're checking the availability of "docker" command line utility
             # (other commands may result in an error if docker env variables
             # are set incorrectly)
