@@ -97,7 +97,7 @@ PyQRCode==1.2.1
 pysha3==1.0.2
 PyTrie==0.3
 pytz==2018.4
-PyYAML==3.12
+PyYAML==5.1
 raven==6.6.0
 repoze.lru==0.7
 requests==2.18.4
