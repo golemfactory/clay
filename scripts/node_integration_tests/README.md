@@ -187,7 +187,7 @@ automatically during the test run.
 #### Node key reuse
 
 Normally, each test starts with empty provider and requestor datadirs. That
-also means that the nodes need to initialize they keystores, request GNT and
+also means that the nodes need to initialize their keystores, request GNT and
 ETH from the faucets and finally convert GNT into GNTB which adds several
 minutes to each run.
 
