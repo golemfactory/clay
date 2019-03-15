@@ -29,3 +29,5 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
 
 ENV BLENDER_DEVICE_TYPE NVIDIA_GPU
 ENV PATH=/opt/blender:$PATH
+
+COPY entrypoints/ /golem/entrypoints/
