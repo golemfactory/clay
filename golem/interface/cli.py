@@ -2,13 +2,17 @@ import argparse
 import shlex
 import sys
 import time
+from collections import namedtuple
 from copy import deepcopy
-from typing import Text, Dict, Callable
+from typing import Text, Dict, Callable, List, Optional
 
-from golem.interface.command import CommandHelper, CommandStorage, command, Argument
-from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
-from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 from twisted.internet.defer import TimeoutError
+
+from golem.interface.command import CommandHelper, CommandStorage, command, \
+    Argument
+from golem.interface.exceptions import ExecutionException, ParsingException, \
+    CommandException
+from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
 @command(name="exit", help="Exit the interactive shell", root=True)
@@ -54,6 +58,11 @@ def disable_withdraw(
         if 'withdraw' in new_children:
             new_children.pop('withdraw')
     return new_children
+
+
+def _ask_for_confirmation(question: str) -> bool:
+    text = input(f'{question} (y/n) ')
+    return True if text == 'y' else False
 
 
 class CLI(object):
@@ -173,11 +182,7 @@ class CLI(object):
         except Exception as exc:
             result = repr(result)
             sys.stderr.write("Formatter error: {}".format(exc))
-
-        if result is None:
-            return "Completed in {0:.2f} s".format(
-                time.time() - started), output
-        return result, output
+        return self._create_return_message(args, started, result), output
 
     def build(self):
 
@@ -306,3 +311,116 @@ class CLI(object):
             if len(action_groups) > 2:
                 # ... then move them to the beginning.
                 parser._action_groups = action_groups[2:] + action_groups[:2]  # pylint: disable=protected-access
+
+    def _create_return_message(
+            self,
+            args: List[str],
+            started: float,
+            result: Optional[str]
+    ) -> str:
+
+        def _fill_messages_to_print_with_return_messages():
+            _add(['settings', 'set', 'min_price'],
+                 f'Minimal price set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'max_price'],
+                 f'Maximum price set to: {args[-1]}.', True)
+            _add(['concent', 'switch', 'turn'],
+                 f'Concent switch turned {args[-1]}.')
+            _add(['envs', 'disable'], f'Env {args[-1]} disabled.')
+            _add(['envs', 'enable'], f'Env {args[-1]} enabled.')
+            _add(['envs', 'perf_mult_set'],
+                 f'Envs perf_mult_set to {args[-1]}.')
+            _add(['network', 'block'], f'{args[-1]} blocked.')
+            _add(['network', 'connect'],
+                 f'Connected with: Ip: {args[-2]}. Port: {args[-1]}.')
+            _add(['tasks', 'create'], f'Task with id {result} '
+                 f'was created. To confirm run golemcli task show.')
+            _add(['settings', 'set', 'node_name'],
+                 f'Node name changed to: {args[-1]}.', True)
+            _add(['settings', 'set', 'accept_tasks', '1'],
+                 f'Your node will accept tasks.', True)
+            _add(['settings', 'set', 'accept_tasks', '0'],
+                 f'Your node will not '
+                 f'accept tasks (acting as requestor only).', True)
+            _add(['settings', 'set', 'getting_tasks_interval'],
+                 f'Getting tasks interval set to: {args[-1]} seconds.', True)
+            _add(['settings', 'set', 'getting_peers_interval'],
+                 f'Getting peers interval set to: {args[-1]} seconds.', True)
+            _add(['settings', 'set', 'task_session_timeout'],
+                 f'Task session timeout set to: {args[-1]} seconds.', True)
+            _add(['settings', 'set', 'p2p_session_timeout'],
+                 f'p2p session timeout set to: {args[-1]} seconds.', True)
+            _add(['settings', 'set', 'requesting_trust'],
+                 f'Requesting_trust set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'computing_trust'],
+                 f'Computing trust set to: {args[-1]} GNT.', True)
+            _add(['settings', 'set', 'use_ipv6', '1'],
+                 f'Using ipv6 set to: True.', True)
+            _add(['settings', 'set', 'use_ipv6', '0'],
+                 f'Using ipv6 set to: False.', True)
+            _add(['settings', 'set', 'opt_peer_num'],
+                 f'Number of peers to keep set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'send_pings', '1'],
+                 f'Send pings set to: True.', True)
+            _add(['settings', 'set', 'send_pings', '0'],
+                 f'Send pings set to: False.', True)
+            _add(['settings', 'set', 'pings_interval'],
+                 f'Pings interval set to: {args[-1]} seconds.', True)
+            _add(['settings', 'set', 'max_memory_size'],
+                 f'Maximal memory size set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'max_memory_size'],
+                 f'Maximal memory size set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'num_cores'],
+                 f'Number of CPU cores to use set to: {args[-1]}.', True)
+            _add(['settings', 'set', 'enable_talkbacks', '0'],
+                 f'Talkback enabled: False')
+            _add(['settings', 'set', 'enable_talkbacks', '1'],
+                 f'Talkback enabled: True')
+            if 'account' and 'withdraw' in args:
+                _add(['account', 'withdraw'],
+                     f'Sent {args[-2]} GNT to: {args[-3]}. Gas fee: {args[-1]} '
+                     f'WEI. Transaction hash (check on etherscan.io): {result}')
+            return self.messages_to_print
+
+        def _add(keys: list, values: str, add_cli_hint=False):
+            hint = ' To confirm run golemcli settings show.'
+            values = values + hint if add_cli_hint else values
+            self.messages_to_print[' '.join(map(str, keys))] = values
+
+        self.messages_to_print: Dict[str, str] = dict()  # pylint: disable=attribute-defined-outside-init
+        _fill_messages_to_print_with_return_messages()
+        time_message = f' Completed in {time.time() - started:.3f} s.'
+        for key, value in self.messages_to_print.items():
+            if key in ' '.join(map(str, args)):
+                return value + time_message
+
+        Mes = namedtuple('Mes', 'list_of_keys confirmation question')
+
+        messages_with_confirmation = [
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'abort'])),
+                confirmation=f'Task {args[-1]} aborted. To confirm run golemcli tasks show.',  # noqa pylint: disable=line-too-long
+                question=f'Are you sure? Confirm aborting {args[-1]} task'),
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'purge'])),
+                confirmation=f'All tasks were purged. To confirm run golemcli tasks show.',  # noqa pylint: disable=line-too-long
+                question=f'Are you sure? Confirm purging all tasks'),
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'restart_subtasks', 'id'])),  # noqa pylint: disable=line-too-long
+                confirmation=f'All subtasks of a {args[-1]} task were restarted',  # noqa pylint: disable=line-too-long
+                question=f'Are you sure? Confirm restarting all task {args[-1]} subtasks'),  # noqa pylint: disable=line-too-long
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'restart_subtasks', 'subtask_ids'])),  # noqa pylint: disable=line-too-long
+                confirmation=f'Subtask with {args[-1]} was restarted',
+                question=f'Are you sure? Confirm restarting subtask with {args[-1]} id'),  # noqa pylint: disable=line-too-long
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'restart_subtasks', 'force'])),  # noqa pylint: disable=line-too-long
+                confirmation=f'Subtask with {args[-1]} was restarted',
+                question=f'Are you sure? Confirm restarting subtasks with {args[-1]} id'),  # noqa pylint: disable=line-too-long
+            Mes(list_of_keys=' '.join(map(str, ['tasks', 'restart'])),
+                confirmation=f'Task {args[-1]} was restarted as a new task with id {result}',  # noqa pylint: disable=line-too-long
+                question=f'Are you sure? Confirm restarting {args[-1]}')]
+
+        for element in messages_with_confirmation:
+            if element[0] in ' '.join(map(str, args)):
+                if _ask_for_confirmation(element[2]) is True:  # pylint:disable=no-else-return
+                    return element[1] + time_message
+                else:
+                    return "Command aborted"
+
+        return result if result is not None else "Unexpected return message"

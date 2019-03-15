@@ -1,9 +1,11 @@
 import argparse
+import time
 import unittest
 from unittest.mock import patch, Mock
 
 from io import StringIO
 
+import pytest
 from twisted.internet import defer
 from twisted.internet.error import ReactorNotRunning
 
@@ -406,3 +408,97 @@ class TestAdaptChildren(unittest.TestCase):
             result = disable_withdraw(self.children)
             self.children.pop('withdraw')
             self.assertEqual(result, self.children)
+
+
+class TestCreateReturnMessage:
+    # pylint: disable=attribute-defined-outside-init
+
+    @pytest.mark.parametrize(('args', 'expected'), [
+        (['concent', 'switch', 'turn', 'off'], 'Concent switch turned off.'),
+        (['envs', 'disable', 'BLENDER'], 'Env BLENDER disabled.'),
+        (['envs', 'enable', 'BLENDER'], 'Env BLENDER enabled.'),
+        (['envs', 'perf_mult_set', '1.3'], 'Envs perf_mult_set to 1.3.'),
+        (['network', 'block', 'custom_id'], 'custom_id blocked.'),
+        (['network', 'connect', '192.168.1.1', '80'], 'Connected with: Ip: 192.168.1.1. Port: 80'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'min_price', '0.02'], 'Minimal price set to: 0.02. To confirm run golemcli settings show.'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'max_price', '0.02'], 'Maximum price set to: 0.02. To confirm run golemcli settings show.'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'accept_tasks', '1'], 'Your node will accept tasks. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'accept_tasks', '0'],
+         'Your node will not accept tasks (acting as requestor only). To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'use_ipv6', '0'], 'Using ipv6 set to: False. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'use_ipv6', '1'], 'Using ipv6 set to: True. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'send_pings', '1'], 'Send pings set to: True. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'send_pings', '0'], 'Send pings set to: False. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'enable_talkbacks', '0'], 'Talkback enabled: False'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'enable_talkbacks', '1'], 'Talkback enabled: True'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'getting_tasks_interval', '2'],
+         'Getting tasks interval set to: 2 seconds. To confirm run golemcli settings show.'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'node_name', 'new_name'], 'Node name changed to: new_name. To confirm run golemcli settings show.'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'getting_peers_interval', '2'],
+         'Getting peers interval set to: 2 seconds. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'task_session_timeout', '2'],
+         'Task session timeout set to: 2 seconds. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'p2p_session_timeout', '2'],
+         'p2p session timeout set to: 2 seconds. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'requesting_trust', '2'],
+         'Requesting_trust set to: 2. To confirm run golemcli settings show'),
+        (['settings', 'set', 'computing_trust', '2'], 'Computing trust set to: 2 GNT. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'opt_peer_num', '2'], 'Number of peers to keep set to: 2. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'pings_interval', '2'], 'Pings interval set to: 2 seconds. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'max_memory_size', '2'], 'Maximal memory size set to: 2. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+        (['settings', 'set', 'num_cores', '2'], 'Number of CPU cores to use set to: 2. To confirm run golemcli settings show'),  # noqa pylint: disable=line-too-long
+    ])
+    def test_create_return_message_returns_correct_message(
+            self,
+            args,
+            expected,
+    ):
+        self.cli = CLI(client=Mock())
+        return_message = self.cli._create_return_message(
+            args, time.time(), None)
+        assert expected in return_message
+
+    @pytest.mark.parametrize(('args', 'expected', 'result'), [
+        (['tasks', 'create'],
+         'Task with id custom_task_id was created. To confirm run golemcli task show.',  # noqa pylint: disable=line-too-long
+         'custom_task_id'),
+        (['account', 'withdraw', 'address', 'gnt_amount', 'gas_fee'],
+         'Sent gnt_amount GNT to: address. Gas fee: gas_fee WEI. Transaction hash (check on etherscan.io): tx_hash',
+         'tx_hash'),
+    ])
+    def test_create_return_message_returns_correct_message_when_result_given(
+            self,
+            args,
+            expected,
+            result
+    ):
+        self.cli = CLI(client=Mock())
+        return_message = self.cli._create_return_message(
+            args, time.time(), result)
+        assert expected in return_message
+
+    @pytest.mark.parametrize(('args', 'expected'), [
+        (['tasks', 'abort', 'custom_task_id'], 'Task custom_task_id aborted. To confirm run golemcli tasks show'),  # noqa pylint: disable=line-too-long
+        (['tasks', 'purge'], 'All tasks were purged. To confirm run golemcli tasks show'),  # noqa pylint: disable=line-too-long
+        (['tasks', 'restart_subtasks', 'id', 'custom_task_id'], 'All subtasks of a custom_task_id task were restarted'),  # noqa pylint: disable=line-too-long
+        (['tasks', 'restart_subtasks', 'subtask_ids', 'custom_subtask_id'], 'Subtask with custom_subtask_id was restarted'),  # noqa pylint: disable=line-too-long
+        (['tasks', 'restart_subtasks', 'force', 'custom_subtask_id'], 'Subtask with custom_subtask_id was restarted'),  # noqa pylint: disable=line-too-long
+    ])
+    def test_create_return_message_returns_correct_message_when_confirmation(
+            self,
+            args,
+            expected,
+    ):
+        self.cli = CLI(client=Mock())
+
+        with patch('golem.interface.cli._ask_for_confirmation',
+                   return_value=True):
+            return_message = self.cli._create_return_message(
+                args, time.time(), None)
+            assert expected in return_message
+
+        with patch('golem.interface.cli._ask_for_confirmation',
+                   return_value=False):
+            return_message = self.cli._create_return_message(
+                args, time.time(), None)
+            assert return_message == 'Command aborted'
