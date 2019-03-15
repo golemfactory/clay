@@ -9,8 +9,9 @@ def render_whole_scene(parameters):
     # Note: params dictionary contains both: rendering parameters
     # and paths mounted by golem.
     paths = parameters
+    subtask_info = parameters['subtask_info']
 
-    results_info = blender.render(parameters, paths)
+    results_info = blender.render(subtask_info, paths)
     print(results_info)
 
 
@@ -31,9 +32,18 @@ def run():
         params = json.load(params_file)
 
     render_whole_scene(params)
-    outfiles = [os.path.join(params['OUTPUT_DIR'], crop['outfilebasename'])
-                for crop in params['crops']]
+
+    crops = params['subtask_info']['crops']
+    output_format = params['output_format'].lower()
+    outfiles = []
+    for crop in crops:
+        for frame in params["frames"]:
+            filename = crop["outfilebasename"] \
+                       + "{:04d}.".format(frame) \
+                       + output_format
+            outfiles.append(os.path.join(params['OUTPUT_DIR'], filename))
     params['subtask_paths'] = outfiles
+
     sanity_check(params)
 
 

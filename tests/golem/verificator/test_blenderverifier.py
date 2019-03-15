@@ -167,6 +167,7 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
+
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(os.path.join(
             get_golem_path(),
@@ -204,6 +205,23 @@ class TestBlenderVerifier(TempDirFixture):
             # Change crop coordinates for next image verification
             y_crop_cord_step += 30
             y_crop_float_cord_step += 0.2
+
+    def test_docker_sanity_check(self):
+        self.subtask_info['entrypoint'] = \
+            'python3 /golem/entrypoints/test_entrypoint.py'
+
+        verification_data = {
+            'subtask_info': self.subtask_info,
+            'results': [os.path.join(self.tempdir, 'GolemTask_10001.png')],
+            'reference_data': [],
+            'resources': self.resources,
+            'paths': os.path.dirname(self.resources[0])
+        }
+
+        verifier = BlenderVerifier(verification_data, DockerTaskThread)
+        d = verifier.start_verification()
+
+        sync_wait(d, self.TIMEOUT)
 
 
 class TestUnitBlenderVerifier:
