@@ -207,6 +207,7 @@ class TestUnitBlenderVerifier:
                 'frames': [1],
                 'samples': 35,
                 'output_format': 'PNG',
+                'subtask_id': 'qwerty1234'
             },
             'resources': mock.sentinel.resources,
             'results': ['/some/other/path/result.png'],
