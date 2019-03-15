@@ -14,7 +14,8 @@ RUN apt-get update && \
 		libgl1-mesa-dev \
 		libglu1-mesa \
 		libxi6 \
-		libxrender1 && \
+		libxrender1 \
+		python3 && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
