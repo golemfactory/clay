@@ -109,7 +109,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             frames=self.subtask_info['frames'],
             output_format=self.subtask_info['output_format'],
             basefilename='crop',
-            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
+            # entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
+            entrypoint=self.subtask_info['entrypoint'],
         )
 
         self.docker_task = self.docker_task_cls(

@@ -263,7 +263,9 @@ class TestUnitBlenderVerifier:
                 'frames': [1],
                 'samples': 35,
                 'output_format': 'PNG',
-                'subtask_id': 'qwerty1234'
+                'subtask_id': 'qwerty1234',
+                'entrypoint': 'python3 /golem/entrypoints/'
+                              'verifier_entrypoint.py'
             },
             'resources': mock.sentinel.resources,
             'results': ['/some/other/path/result.png'],
