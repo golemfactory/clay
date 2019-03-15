@@ -5,7 +5,7 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
     Any,
@@ -330,11 +330,12 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         return self._sci.get_eth_address()
 
-    def get_payments_list(self):
+    def get_payments_list(self, num: Optional[int] = None,
+                          interval: Optional[timedelta] = None):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
         """
-        return self._payments_keeper.get_list_of_all_payments()
+        return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
     def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \

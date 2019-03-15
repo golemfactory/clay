@@ -171,6 +171,8 @@ environment variable, e.g.:
 GOLEM_INTEGRATION_TEST_DIR=/some/location pytest scripts/node_integration_tests
 ```
 
+#### Running tests selectively
+
 And finally, to run a single test using `pytest`, just use standard `pytest`
 syntax, e.g.:
 
@@ -181,3 +183,40 @@ pytest scripts/node_integration_tests/tests/test_golem.py::GolemNodeTest::test_r
 Suggestion: when you _don't_ provide the `GOLEM_INTEGRATION_TEST_DIR` variable
 to pytest, run `pytest -s -v [...]` so that you can see the paths generated
 automatically during the test run.
+
+#### Mac OS
+
+To run the tests, the suite creates temporary Golem datadirs. As the default
+temporary directories on Mac are not accessible to Docker out of the box,
+tests won't be able to launch Golem nodes correctly and thus will fail to run
+correctly .
+
+To alleviate this issue, a Docker-acessible location needs to be provided
+as the default temporary directory, e.g.:
+
+```
+TMPDIR=/tmp pytest scripts/node_integration_tests/
+```
+
+#### Node key reuse
+
+Normally, each test starts with empty provider and requestor datadirs. That
+also means that the nodes need to initialize their keystores, request GNT and
+ETH from the faucets and finally convert GNT into GNTB which adds several
+minutes to each run.
+
+To optimize that, we're now only initializing the keystores on the first test
+run by default and all subsequest tests reuse the same node key pairs.
+Thus, nodes don't need to wait for ETH, GNT and GNTB anymore.
+
+In some tests, we need to ensure there are no side effects on the blockchain.
+To achieve that, we can disable key reuse for this particular test by adding the
+`@disable_key_reuse` decorator to the test method
+(in test_golem.py and test_concent.py).
+
+To completely disable key reuse and run each test with a new key, specify a
+`--disable-key-reuse` option on the pytest's command line:
+
+```
+pytest --disable-key-reuse scripts/node_integration_tests
+```

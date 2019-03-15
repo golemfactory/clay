@@ -7,6 +7,8 @@ import uuid
 from collections import deque
 from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
+
+from pydispatch import dispatcher
 import freezegun
 
 from golem_messages import idgenerator
@@ -29,6 +31,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
+from golem.task.acl import DenyReason as AclDenyReason
 from golem.task.server import concent as server_concent
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskserver import TASK_CONN_TYPES
@@ -41,7 +44,19 @@ from golem.tools.testwithreactor import TestDatabaseWithReactor
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
-def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
+DEFAULT_RESOURCE_SIZE: int = 2 * 1024
+DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
+DEFAULT_ESTIMATED_MEMORY: int = 3 * 1024
+DEFAULT_MAX_MEMORY_SIZE_KB: int = 4
+DEFAULT_MIN_ACCEPTED_PERF: int = 77
+DEFAULT_PROVIDER_PERF: int = 88
+
+
+def get_example_task_header(
+        key_id: str,
+        resource_size: int = DEFAULT_RESOURCE_SIZE,
+        estimated_memory: int = DEFAULT_ESTIMATED_MEMORY,
+) -> dt_tasks.TaskHeader:
     requestor_public_key = encode_key_id(key_id)
     return msg_factories.datastructures.tasks.TaskHeaderFactory(
         mask=Mask().to_bytes(),
@@ -54,21 +69,35 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
             pub_port=40103,
             pub_addr='1.2.3.4',
         ),
-        estimated_memory=3 * 1024,
+        estimated_memory=estimated_memory,
     )
 
 
-def get_mock_task(key_gen="whatsoever", subtask_id="whatever"):
+def get_mock_task(
+        key_gen: str = "whatsoever",
+        subtask_id: str = "whatever",
+        resource_size: int = DEFAULT_RESOURCE_SIZE,
+        estimated_memory: int = DEFAULT_ESTIMATED_MEMORY,
+) -> Mock:
     task_mock = Mock()
-    key_id = str.encode(key_gen)
-    task_mock.header = get_example_task_header(key_id)
+    task_mock.header = get_example_task_header(
+        key_gen,
+        resource_size=resource_size,
+        estimated_memory=estimated_memory,
+    )
     task_id = task_mock.header.task_id
     task_mock.header.max_price = 1010
     task_mock.query_extra_data.return_value.ctd = ComputeTaskDef(
         task_id=task_id,
         subtask_id=subtask_id,
     )
+    task_mock.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
     return task_mock
+
+
+def _assert_log_msg(logger_mock, msg):
+    assert len(logger_mock.output) == 1
+    assert logger_mock.output[0].strip() == msg
 
 
 class TaskServerTestBase(LogTestCase,
@@ -545,111 +574,342 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts._sync_pending()
         assert not ts.network.connect.called
 
-    def test_should_accept_provider(self, *_):
+    def test_should_accept_provider_no_such_task(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
-
-        task = get_mock_task()
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
-        task_id = task.header.task_id
-        ts.task_manager.tasks[task_id] = task
-        task.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
-
-        min_accepted_perf = 77
-        env = Mock()
-        env.get_min_accepted_performance.return_value = min_accepted_perf
-        ts.get_environment_by_id = Mock(return_value=env)
         node_name_id = node_info_str(node_name, node_id)
-        ids = 'provider={}, task_id={}'.format(node_name_id, task_id)
+        task_id = "tid"
 
-        def _assert_log_msg(logger_mock, msg):
-            self.assertEqual(len(logger_mock.output), 1)
-            self.assertEqual(logger_mock.output[0].strip(), msg)
+        ids = f'provider={node_name_id}, task_id={task_id}'
 
-        # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, 'tid', 27.18, 1, 1)
+                node_id, "127.0.0.1", node_name, 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
-                f'INFO:{logger.name}:Cannot find task in my tasks: '
-                f'provider={node_name_id}, task_id=tid')
+                f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
+
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id='tid',
+            reason='not my task',
+            details=None)
+
+    def _prepare_env(self, *,
+                     min_accepted_perf: int = DEFAULT_MIN_ACCEPTED_PERF) \
+            -> None:
+        env = Mock()
+        env.get_min_accepted_performance.return_value = min_accepted_perf
+        self.ts.get_environment_by_id = Mock(return_value=env)
+
+    def test_should_accept_provider_insufficient_performance(self, *_args):
+        # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        provider_perf = DEFAULT_MIN_ACCEPTED_PERF - 10
+
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+        node_name_id = node_info_str(node_name, node_id)
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        ids = f'provider={node_name_id}, task_id={task_id}'
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 27.18, 1, 1)
+            # when
+            accepted = ts.should_accept_provider(
+                node_id, "127.0.0.1", node_name, task_id,
+                provider_perf,
+                DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+
+            # then
+            assert not accepted
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
-                f'27.18 < {min_accepted_perf}; {ids}')
+                f'{provider_perf} < {DEFAULT_MIN_ACCEPTED_PERF}; {ids}')
+
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='performance',
+            details={
+                'provider_perf': provider_perf,
+                'min_accepted_perf': DEFAULT_MIN_ACCEPTED_PERF,
+            })
+
+    def test_should_accept_provider_insufficient_memory_size(self, *_args):
+        # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        estimated_memory = DEFAULT_MAX_MEMORY_SIZE_KB*1024 + 1
+
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+        node_name_id = node_info_str(node_name, node_id)
+
+        task = get_mock_task(estimated_memory=estimated_memory)
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        ids = f'provider={node_name_id}, task_id={task_id}'
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 999, 3, 2.7)
+            # when
+            accepted = ts.should_accept_provider(
+                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+
+            # then
+            assert not accepted
             _assert_log_msg(
                 cm,
-                f'INFO:{logger.name}:insufficient provider memory size:'
-                f' 2.7 KiB; {ids}')
+                f'INFO:{logger.name}:insufficient provider memory size: '
+                f'{estimated_memory} B < {DEFAULT_MAX_MEMORY_SIZE_KB} '
+                f'KiB; {ids}')
 
-        # given
-        self.client.get_computing_trust = Mock(return_value=0.4)
-        ts.config_desc.computing_trust = 0.2
-        # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='memory size',
+            details={
+                'memory_size': estimated_memory,
+                'max_memory_size': DEFAULT_MAX_MEMORY_SIZE_KB*1024
+            })
 
+    def test_should_accept_provider_insufficient_trust(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+        node_name_id = node_info_str(node_name, node_id)
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        self.client.get_computing_trust = Mock()
+
+        ids = f'provider={node_name_id}, task_id={task_id}'
+
         ts.config_desc.computing_trust = 0.4
-        # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         # given
-        ts.config_desc.computing_trust = 0.5
-        # then
+        self.client.get_computing_trust.return_value = \
+            ts.config_desc.computing_trust + 0.2
+        # when/then
+        assert ts.should_accept_provider(
+            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+
+        # given
+        self.client.get_computing_trust.return_value = \
+            ts.config_desc.computing_trust
+        # when/then
+        assert ts.should_accept_provider(
+            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+
+        # given
+        trust = ts.config_desc.computing_trust - 0.2
+        self.client.get_computing_trust.return_value = trust
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4)
+            # when
+            accepted = ts.should_accept_provider(
+                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+
+            # then
+            assert not accepted
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
-                f' 0.4; {ids}')
+                f' 0.2 < 0.4; {ids}')
 
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='trust',
+            details={
+                'trust': trust,
+                'required_trust': ts.config_desc.computing_trust,
+            })
+
+    def test_should_accept_provider_masking(self, *_args):
         # given
-        ts.config_desc.computing_trust = 0.2
-        # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+        node_name_id = node_info_str(node_name, node_id)
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        self.client.get_computing_trust = Mock(return_value=0)
 
         task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
+
+        ids = f'provider={node_name_id}, task_id={task_id}'
+
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4)
+            # when
+            accepted = ts.should_accept_provider(
+                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+
+            # then
+            assert not accepted
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:network mask mismatch: {ids}')
 
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='netmask',
+            details=None)
+
+    def test_should_accept_provider_rejected(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        self.client.get_computing_trust = Mock(return_value=0)
         task.header.mask = Mask()
         task.should_accept_client.return_value = AcceptClientVerdict.REJECTED
-        # then
+
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4)
+            # when
+            accepted = ts.should_accept_provider(node_id, "127.0.0.1",
+                                                 node_name, task_id, 99, 3, 4)
+
+            # then
+            assert not accepted
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task (it has previously failed)'
+                f' is not allowed for this task at this moment'
+                f' (either waiting for results or previously failed)'
             )
+
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='not accepted',
+            details={
+                'verdict': AcceptClientVerdict.REJECTED.value,
+            })
+
+    def test_should_accept_provider_acl(self, *_args):
+        # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
+        ts = self.ts
+        node_id = "0xdeadbeef"
+        node_name = "deadbeef"
+        node_name_id = node_info_str(node_name, node_id)
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        self._prepare_env()
+
+        self.client.get_computing_trust = Mock(return_value=0)
+
+        ids = f'provider={node_name_id}, task_id={task_id}'
 
         # given
         task.header.mask = Mask()
         ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4)
+            assert not ts.should_accept_provider(
+                node_id=node_id,
+                address="127.0.0.1",
+                node_name=node_name,
+                task_id=task_id,
+                provider_perf=DEFAULT_PROVIDER_PERF,
+                max_resource_size=DEFAULT_MAX_RESOURCE_SIZE_KB,
+                max_memory_size=DEFAULT_MAX_MEMORY_SIZE_KB,
+            )
             _assert_log_msg(
                 cm,
-                f'INFO:{logger.name}:provider node is blacklisted; {ids}')
+                f'INFO:{logger.name}:provider is blacklisted; {ids}')
+
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason='acl',
+            details={'acl_reason': AclDenyReason.blacklisted.value})
+        listener.reset_mock()
+
+        # given
+        ts.acl_ip.disallow("127.0.0.1")
+        # then
+        assert not ts.should_accept_provider(
+            "XYZ", "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+        listener.assert_called_once_with(
+            sender=ANY,
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id="XYZ",
+            task_id=task_id,
+            reason='acl',
+            details={'acl_reason': AclDenyReason.blacklisted.value})
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
@@ -844,7 +1104,7 @@ class TestTaskServer2(TaskServerBase):
     def test_results(self, trust, *_):
         ts = self.ts
 
-        task_mock = get_mock_task("xyz", "xxyyzz")
+        task_mock = get_mock_task(key_gen="xyz", subtask_id="xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
         task_id = task_mock.header.task_id
         extra_data = Mock()

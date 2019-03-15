@@ -627,4 +627,3 @@ class NodeTestPlaybook:
 
         self.stop_nodes()
         self.exit_code = exit_code
-

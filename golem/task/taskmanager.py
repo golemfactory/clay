@@ -695,6 +695,7 @@ class TaskManager(TaskEventListener):
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.subtask_status = SubtaskStatus.failure
+                ss.stderr = "[GOLEM] Not accepted"
                 self.notice_task_updated(
                     task_id,
                     subtask_id=subtask_id,
