@@ -113,9 +113,9 @@ def check_golem_running(datadir: str, cli_in_mainnet: bool):
     if is_app_running(datadir, net_to_check):
         cmd_hint = sys.argv + ['--mainnet']
         if cli_in_mainnet:
-            cmd_hint = filter(
+            cmd_hint = list(filter(
                 lambda part: part not in ['--mainnet', '-m'],
-                sys.argv
+                sys.argv)
             )
 
         msg = f"""
