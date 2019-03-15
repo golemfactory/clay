@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
+import time
 from typing import Any, ClassVar, Dict, Iterable, List, Optional
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
@@ -90,6 +91,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
     VOLUME_DRIVER = "cifs"
     SMB_PORT = "445"
+    REMOVE_VM_RETRY_LIMIT = 10
 
     SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
     GET_VSWITCH_SCRIPT_PATH = \
@@ -232,13 +234,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def _failed_to_create(self, vm_name: Optional[str] = None):
         name = vm_name or self._vm_name
         logger.error(
-            f'{ self.DRIVER_NAME}: VM failed to create, this can be '
+            f'{self.DRIVER_NAME}: VM failed to create, this can be '
             'caused by insufficient RAM or HD free on the host machine')
-        try:
-            self.command('rm', name, args=['-f'])
-        except subprocess.CalledProcessError:
+
+        # Removing the VM sometimes fails so let's try a few times
+        for _ in range(self.REMOVE_VM_RETRY_LIMIT):
+            if name not in self.vms:
+                break
+
+            try:
+                self.command('rm', name, args=['-f'])
+            except subprocess.CalledProcessError:
+                logger.warning(f'{self.DRIVER_NAME}: Attempt to remove '
+                               f'machine "{name}" failed')
+            time.sleep(0.1)
+
+        else:
+            # Log error if all attempts failed
             logger.error(
-                f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
+                f'{self.DRIVER_NAME}: Failed to clean up a (possible) '
                 'corrupt machine, please run: '
                 f'`docker-machine rm -y -f {name}`')
 
