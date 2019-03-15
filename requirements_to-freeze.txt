@@ -16,7 +16,7 @@ enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==3.3.0
-Golem-Smart-Contracts-Interface==1.6.1
+Golem-Smart-Contracts-Interface==1.7.0
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
@@ -29,7 +29,6 @@ os-win
 packaging
 peewee<2.11,>=2.8
 peewee_migrate==0.14.0
-Pillow==4.2.1
 pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
@@ -40,7 +39,7 @@ pydispatcher
 pyOpenSSL==17.1.0
 pysha3>=1.0.2
 pytz
-PyYAML>=3.12
+PyYAML>=5.1
 raven
 requests==2.21.0
 scrypt

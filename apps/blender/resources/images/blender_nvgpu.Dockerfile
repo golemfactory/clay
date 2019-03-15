@@ -6,6 +6,6 @@ FROM golemfactory/nvgpu:1.2
 
 MAINTAINER Golem Tech <tech@golem.network>
 
-FROM golemfactory/blender:1.8
+FROM golemfactory/blender:1.9
 
 ENV BLENDER_DEVICE_TYPE NVIDIA_GPU

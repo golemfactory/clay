@@ -5,7 +5,7 @@ import sys
 from multiprocessing import cpu_count
 from typing import List
 
-import scenefileeditor
+from . import scenefileeditor
 
 BLENDER_COMMAND = "blender"
 

@@ -69,6 +69,12 @@ class ClientConfigDescriptor(object):
         self.mask_update_interval = 0
         self.mask_update_num_bits = 0
 
+        self.disallow_node_timeout_seconds: typing.Optional[int] = None
+        self.disallow_ip_timeout_seconds: typing.Optional[int] = None
+
+        self.disallow_id_max_times = 1
+        self.disallow_ip_max_times = 1
+
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig
