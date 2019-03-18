@@ -417,6 +417,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
+        task.header.max_price = 0
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
 

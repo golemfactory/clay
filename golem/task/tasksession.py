@@ -3,7 +3,6 @@
 import copy
 import datetime
 import enum
-import functools
 import logging
 import time
 from typing import TYPE_CHECKING, List, Optional
@@ -21,7 +20,7 @@ from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer, OfferPool
+from golem.marketplace import scale_price, Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -32,6 +31,7 @@ from golem.ranking.manager.database_manager import (
     get_provider_efficiency,
 )
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
+from golem.task import exceptions
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 
@@ -94,6 +94,20 @@ def copy_and_sign(msg: message.base.Message, private_key) \
     return msg
 
 
+def check_docker_images(
+        ctd: message.ComputeTaskDef,
+        env: DockerEnvironment,
+):
+    for image_dict in ctd['docker_images']:
+        image = DockerImage(**image_dict)
+        for env_image in env.docker_images:
+            if env_image.cmp_name_and_tag(image):
+                ctd['docker_images'] = [image_dict]
+                return
+    reasons = message.tasks.CannotComputeTask.REASON
+    raise exceptions.CannotComputeTask(reason=reasons.WrongDockerImages)
+
+
 class RequestorCheckResult(enum.Enum):
     OK = enum.auto()
     MISMATCH = enum.auto()
@@ -103,7 +117,6 @@ class RequestorCheckResult(enum.Enum):
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
-    ConnectionStateType = tcpnetwork.SafeProtocol
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = common.HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
@@ -124,7 +137,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
-        self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
     @property
@@ -226,6 +238,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
+
+            config_desc = self.task_server.config_desc
+            if config_desc.disallow_node_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_node(
+                    node_id=task_to_compute.provider_id,
+                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
+                    persist=False,
+                )
+            if config_desc.disallow_ip_timeout_seconds is not None:
+                # Experimental feature. Try to spread subtasks fairly amongst
+                # providers.
+                self.task_server.disallow_ip(
+                    ip=self.address,
+                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
+                )
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -490,8 +519,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         task_server_ok = self.task_server.should_accept_provider(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size)
+            self.key_id,
+            self.address,
+            msg.node_name,
+            msg.task_id,
+            msg.perf_index,
+            msg.max_resource_size,
+            msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -505,13 +539,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.check_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.price):
+                msg.task_id, msg.price):
             logger.debug(
                 "check_next_subtask False. task_id=%s, node=%s",
                 msg.task_id,
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if not self.task_manager.task_needs_computation(msg.task_id):
+            logger.debug(
+                "TaskFinished. task_id=%s, provider=%s",
+                msg.task_id,
+                node_name_id,
+            )
+            _cannot_assign(reasons.TaskFinished)
             return
 
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
@@ -548,6 +591,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def _offer_chosen(is_chosen: bool) -> None:
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
+
             if not is_chosen:
                 logger.info(
                     "Provider not chosen by marketplace. task_id=%r, node=%r",
@@ -555,14 +606,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     node_name_id,
                 )
                 _cannot_assign(reasons.NoMoreSubtasks)
-                return
-
-            if not self.conn.opened:
-                logger.info(
-                    "Provider disconnected. task_id=%r, node=%r",
-                    msg.task_id,
-                    node_name_id,
-                )
                 return
 
             logger.info("Offer confirmed, assigning subtask")
@@ -573,7 +616,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
-                "task_id=%s, node=%s ctd=%s",
+                "CTD generated. task_id=%s, node=%s ctd=%s",
                 msg.task_id,
                 node_name_id,
                 ctd,
@@ -623,7 +666,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=task.header.max_price / msg.price,
+            scaled_price=scale_price(task.header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )
@@ -727,16 +770,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
-        env_id = msg.want_to_compute_task.task_header.environment
-        if self._check_ctd_params(ctd)\
-                and self._set_env_params(env_id, ctd)\
-                and self.task_manager.comp_task_keeper.receive_subtask(msg):
-            self.task_server.add_task_session(
-                ctd['subtask_id'], self
+        try:
+            self._check_ctd_params(ctd)
+            self._set_env_params(
+                env_id=msg.want_to_compute_task.task_header.environment,
+                ctd=ctd,
             )
-            if self.task_server.task_given(self.key_id, ctd, msg.price):
-                return
-        _cannot_compute(self.err_msg)
+        except exceptions.CannotComputeTask as e:
+            _cannot_compute(e.reason)
+            return
+
+        self.task_manager.comp_task_keeper.receive_subtask(msg)
+        self.task_server.add_task_session(
+            ctd['subtask_id'], self
+        )
+        if not self.task_server.task_given(self.key_id, ctd, msg.price):
+            _cannot_compute(None)
+            return
 
     def _check_resource_size(self, resource_size):
         max_resource_size_kib = self.task_server.config_desc.max_resource_size
@@ -1054,25 +1104,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.concent_service.cancel_task_message(
             msg.subtask_id, 'ForceReportComputedTask')
 
-        delayed_forcing_msg = message.concents.ForceSubtaskResults(
-            ack_report_computed_task=msg,
-        )
-        ttc_deadline = datetime.datetime.utcfromtimestamp(
-            msg.task_to_compute.compute_task_def['deadline']
-        )
-        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
-        delay = ttc_deadline + svt - datetime.datetime.utcnow()
-        delay += datetime.timedelta(seconds=1)  # added for safety
-        logger.debug(
-            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
-            delayed_forcing_msg,
-            delay
-        )
-        self.concent_service.submit_task_message(
-            subtask_id=msg.subtask_id,
-            msg=delayed_forcing_msg,
-            delay=delay,
-        )
+        if msg.task_to_compute.concent_enabled:
+            delayed_forcing_msg = message.concents.ForceSubtaskResults(
+                ack_report_computed_task=msg,
+            )
+            ttc_deadline = datetime.datetime.utcfromtimestamp(
+                msg.task_to_compute.compute_task_def['deadline']
+            )
+            svt = msg_helpers.subtask_verification_time(
+                msg.report_computed_task,
+            )
+            delay = ttc_deadline + svt - datetime.datetime.utcnow()
+            delay += datetime.timedelta(seconds=1)  # added for safety
+            logger.debug(
+                '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+                delayed_forcing_msg,
+                delay
+            )
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=delayed_forcing_msg,
+                delay=delay,
+            )
 
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
@@ -1131,15 +1184,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd: message.ComputeTaskDef):
+    def _check_ctd_params(self, ctd: message.ComputeTaskDef) -> None:
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
         owner = header.task_owner
 
         reasons = message.tasks.CannotComputeTask.REASON
         if owner.key != self.key_id:
-            self.err_msg = reasons.WrongKey
-            return False
+            raise exceptions.CannotComputeTask(reason=reasons.WrongKey)
 
         addresses = [
             (owner.pub_addr, owner.pub_port),
@@ -1148,36 +1200,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not any(tcpnetwork.SocketAddress.is_proper_address(addr, port)
                    for addr, port in addresses):
-            self.err_msg = reasons.WrongAddress
-            return False
-        return True
+            raise exceptions.CannotComputeTask(reason=reasons.WrongAddress)
 
-    def _set_env_params(self, env_id: str, ctd: message.tasks.ComputeTaskDef):
+    def _set_env_params(
+            self,
+            env_id: str,
+            ctd: message.tasks.ComputeTaskDef,
+    ) -> None:
         env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
-            self.err_msg = reasons.WrongEnvironment
-            return False
-
-        if isinstance(env, DockerEnvironment):
-            if not self.__check_docker_images(ctd, env):
-                return False
-
-        return True
-
-    def __check_docker_images(self,
-                              ctd: message.ComputeTaskDef,
-                              env: DockerEnvironment):
-        for image_dict in ctd['docker_images']:
-            image = DockerImage(**image_dict)
-            for env_image in env.docker_images:
-                if env_image.cmp_name_and_tag(image):
-                    ctd['docker_images'] = [image_dict]
-                    return True
+            raise exceptions.CannotComputeTask(reason=reasons.WrongEnvironment)
 
         reasons = message.tasks.CannotComputeTask.REASON
-        self.err_msg = reasons.WrongDockerImages
-        return False
+
+        if isinstance(env, DockerEnvironment):
+            if not check_docker_images(ctd, env):
+                raise exceptions.CannotComputeTask(
+                    reason=reasons.WrongDockerImages,
+                )
 
     def __set_msg_interpretations(self):
         self._interpretation.update({

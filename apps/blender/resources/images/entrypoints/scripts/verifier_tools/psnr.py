@@ -1,6 +1,6 @@
 import numpy
 import math
-from skimage import compare_psnr
+from .skimage import compare_psnr
 
 import sys
 

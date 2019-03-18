@@ -91,9 +91,6 @@ class PeerSession(BasicSafeSession):
 
         self.__set_msg_interpretations()
 
-    def __str__(self):
-        return "{} : {}".format(self.address, self.port)
-
     def dropped(self):
         """
         Close connection and inform p2p service about disconnection

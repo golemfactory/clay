@@ -58,7 +58,7 @@ class TaskResourcesMixin:
         options.timeout = timeout
 
         try:
-            resource_hash, _ = resource_manager.add_task(
+            resource_hash, _ = resource_manager.add_resources(
                 files, task_id, resource_hash=resource_hash,
                 client_options=options, async_=False
             )

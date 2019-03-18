@@ -1,6 +1,7 @@
 import os
 
-from PIL import Image
+import cv2
+import numpy as np
 
 from golem.testutils import TempDirFixture
 from golem.verificator.constants import SubtaskVerificationState
@@ -40,8 +41,8 @@ class VerificationTestsBase(TempDirFixture):
         return [image_path, image_path2]
 
     def _save_image(self, image_path):
-        image = Image.new("RGB", (self.x, self.y))
-        image.save(image_path)
+        image = np.zeros((self.y, self.x, 3), np.uint8)
+        cv2.imwrite(image_path, image)
 
 
 class TestRenderingVerifier(VerificationTestsBase):
@@ -126,9 +127,19 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
 
     def test_simple_verification_frames_wrong_resolution(self):
         img_path = os.path.join(self.path, "img1.png")
-        img = Image.new("RGB", (800, 600))
-        img.save(img_path)
-        self.verification_data["results"] = [img_path]
+        img = np.zeros((600, 800, 3), np.uint8)
+        cv2.imwrite(img_path, img)
+
+        img_path2 = os.path.join(self.path, "img2.png")
+        cv2.imwrite(img_path2, img)
+
+        ver_dir = os.path.join(self.path, "ver_img")
+        os.makedirs(ver_dir)
+        img_path3 = os.path.join(ver_dir, "img3.png")
+        cv2.imwrite(img_path3, img)
+
+        # Proper simple verification - just check if images have proper sizes
+        self.verification_data['results'] = [img_path, img_path2]
 
         frame_rendering_verifier = FrameRenderingVerifier(
             self.verification_data

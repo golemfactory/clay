@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = 'golemfactory/blender_verifier'
-    DOCKER_TAG = '1.0'
+    DOCKER_TAG = '1.1'
 
     def __init__(self, verification_data, docker_task_cls: Type) -> None:
         super().__init__(verification_data)
@@ -27,7 +27,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.timeout = 0
         self.docker_task = None
 
-    def _get_part_size(self, subtask_info):
+    @staticmethod
+    def _get_part_size(subtask_info):
         if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
                 >= subtask_info['total_tasks']:
             resolution_y = subtask_info['resolution'][1]
@@ -39,6 +40,9 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def start_verification(self):
         self.time_started = datetime.utcnow()
+        logger.info(
+            f'Start verification in BlenderVerifier. '
+            f'Subtask_id: {verification_data["subtask_info"]["subtask_id"]}.')
         try:
             self.start_rendering()
         # pylint: disable=W0703
@@ -54,14 +58,19 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def start_rendering(self, timeout=0):
         self.timeout = timeout
+        subtask_id = self.verification_data['subtask_info']['subtask_id']
 
-        def success(result):
-            logger.debug('Success Callback')
+        def success(_result):
+            logger.info(
+                f'Verification completed. '
+                f'Subtask_id: {subtask_id}. Verification verdict: positive. ')
             self.state = SubtaskVerificationState.VERIFIED
             return self.verification_completed()
 
         def failure(exception):
-            logger.warning('Failure callback %r', exception)
+            logger.info(
+                f'Verification completed. '
+                f'Subtask_id: {subtask_id}. Verification verdict: negative. ')
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return exception
 
@@ -94,7 +103,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             frames=subtask_info['frames'],
             output_format=subtask_info['output_format'],
             basefilename='crop',
-            entrypoint="python3 /golem/scripts_verifier/runner.py",
+            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
         )
 
         self.docker_task = self.docker_task_cls(
@@ -104,25 +113,24 @@ class BlenderVerifier(FrameRenderingVerifier):
             timeout=self.timeout)
 
         def error(exception):
-            logger.warning('Verification process exception %s', exception)
+            logger.warning(
+                f'Verification process exception. '
+                f'Subtask_id: {subtask_id}. Exception: {exception}')
             self.finished.errback(exception)
 
         def callback(*_):
             with open(os.path.join(dir_mapping.output, 'verdict.json'), 'r') \
                     as f:
                 verdict = json.load(f)
-
-            logger.info(
-                'Subtask %s verification verdict: %s',
-                subtask_info['subtask_id'],
-                verdict,
-            )
             if verdict['verdict']:
                 self.finished.callback(True)
             else:
                 self.finished.errback(
-                    Exception('Verification result negative', verdict))
+                    Exception('Verification result negative'))
 
+        logger.info(
+            f' Starting docker thread for:  '
+            f'Subtask_id: {subtask_id}. Extra data:{json.dumps(extra_data)}.')
         d = self.docker_task.start()
         d.addErrback(error)
         d.addCallback(callback)

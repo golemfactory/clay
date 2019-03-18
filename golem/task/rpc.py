@@ -99,7 +99,7 @@ def validate_client(client: Client):
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
+            'toggle shutdown mode off to create new tasks.')
     if client.task_server is None:
         raise CreateTaskError("Golem is not ready")
 
@@ -299,7 +299,7 @@ def _inform_subsystems(client, task, packager_result):
         task.header.deadline,
     )
 
-    resource_server_result = yield client.resource_server.add_task(
+    resource_server_result = yield client.resource_server.add_resources(
         package_path,
         package_sha1,
         task_id,

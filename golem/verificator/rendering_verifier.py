@@ -31,7 +31,8 @@ class RenderingVerifier(CoreVerifier):
             return False
         return True
 
-    def _get_part_size(self, subtask_info):
+    @staticmethod
+    def _get_part_size(subtask_info):
         return subtask_info['res_x'], subtask_info['res_y']
 
     def _verify_result(self, results):
