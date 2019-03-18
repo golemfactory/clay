@@ -367,7 +367,7 @@ class SCIBaseTest(ConcentBaseTest):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
-        self._blockchain_sleep(120)
+        self.blockchain_sleep(120)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):
