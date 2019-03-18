@@ -4,7 +4,7 @@
 
 FROM golemfactory/nvgpu:1.2
 
-MAINTAINER Marek Franciszkiewicz <marek@golem.network>
+MAINTAINER Golem Tech <tech@golem.network>
 
 RUN apt-get update && \
 	apt-get install -y \
@@ -18,14 +18,25 @@ RUN apt-get update && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
+
 ENV BLENDER_MAJOR 2.79
 ENV BLENDER_VERSION 2.79
 ENV GLIBC_VERSION 219
 ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 
-RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
-    ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /opt/blender
+RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
+    mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender
+
+RUN /golem/install_py_libs.sh 0 typing
+
+ENV PATH=/blender:/usr/bin/:$PATH
+
+# Create symbolic link to python. I don't know where, something removes it.
+RUN ln -s /usr/bin/python3.6 /usr/bin/python3
+
+RUN mkdir -p /golem/entrypoints/scripts
+COPY entrypoints/scripts/render_tools /golem/entrypoints/scripts/render_tools/
+COPY entrypoints/render_entrypoint.py /golem/entrypoints/
 
 ENV BLENDER_DEVICE_TYPE NVIDIA_GPU
-ENV PATH=/opt/blender:$PATH
