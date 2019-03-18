@@ -275,12 +275,36 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
 
     return mask
 
-
 @defer.inlineCallbacks
-def _inform_subsystems(client, task, packager_result):
-    task_id = task.header.task_id
+def add_resources(client, resources, res_id, timeout):
+    files = copy.copy(list(resources))
+
+    packager_result = yield client.resource_server.create_resource_package(
+        files,
+        res_id
+    )
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
+    client_options = client.task_server.get_share_options(res_id, None)
+    client_options.timeout = timeout
+    resource_server_result = yield client.resource_server.add_resources(
+        package_path,
+        package_sha1,
+        res_id,
+        resource_size,
+        client_options=client_options,
+    )
+
+    logger.info(
+        "Resource package created. Informing subsystems. res_id=%r",
+        res_id
+    )
+    return resource_server_result
+
+
+@defer.inlineCallbacks
+def _inform_subsystems(client, task):
+    task_id = task.header.task_id
 
     if client.config_desc.net_masking_enabled:
         task.header.mask = _get_mask_for_task(
@@ -294,18 +318,13 @@ def _inform_subsystems(client, task, packager_result):
         task.get_total_tasks())
     client.task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
-    client_options = client.task_server.get_share_options(task_id, None)
-    client_options.timeout = common.deadline_to_timeout(
-        task.header.deadline,
+    resource_server_result = yield add_resources(
+        client,
+        task.get_resources(),
+        task_id,
+        common.deadline_to_timeout(task.header.deadline)
     )
 
-    resource_server_result = yield client.resource_server.add_resources(
-        package_path,
-        package_sha1,
-        task_id,
-        resource_size,
-        client_options=client_options,
-    )
     return resource_server_result
 
 
@@ -343,20 +362,9 @@ def enqueue_new_task(client, task, force=False) \
     )
     logger.info('Enqueue new task %r', task)
 
-    packager_result = yield _create_task_package(
-        client=client,
-        task=task,
-    )
-
-    logger.info(
-        "Resource package created. Informing subsystems. task_id=%r",
-        task_id,
-    )
-
     resource_server_result = yield _inform_subsystems(
         client=client,
         task=task,
-        packager_result=packager_result,
     )
 
     logger.info("Task created. task_id=%r", task_id)
