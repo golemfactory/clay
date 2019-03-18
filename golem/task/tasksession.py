@@ -104,6 +104,7 @@ def check_docker_images(
             if env_image.cmp_name_and_tag(image):
                 ctd['docker_images'] = [image_dict]
                 return
+
     reasons = message.tasks.CannotComputeTask.REASON
     raise exceptions.CannotComputeTask(reason=reasons.WrongDockerImages)
 
@@ -1215,10 +1216,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         reasons = message.tasks.CannotComputeTask.REASON
 
         if isinstance(env, DockerEnvironment):
-            if not check_docker_images(ctd, env):
-                raise exceptions.CannotComputeTask(
-                    reason=reasons.WrongDockerImages,
-                )
+            check_docker_images(ctd, env)
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
