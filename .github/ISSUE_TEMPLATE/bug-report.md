@@ -10,18 +10,27 @@ assignees: 'ZmijaWA'
 ## Description
 
 **Golem Version**:
+
 **Golem-Messages version** (leave empty if unsure):
+
 **Electron version** (if used):
+
 **OS** [e.g. Windows 10 Pro]:
+
 **Branch** (if launched from source):
+
 **Mainnet/Testnet**:
+
 **Description of the issue**:
+
 _A clear and concise description of what went wrong, in which component, when and where._
 
 **Actual result**:
+
 _What is the observed behavior and/or result in this issue_
 
-**Screenshots**
+**Screenshots**:
+
 _If applicable, add screenshots to help explain your problem._
 
 ## Steps To Reproduce
