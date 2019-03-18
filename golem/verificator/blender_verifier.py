@@ -42,7 +42,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.time_started = datetime.utcnow()
         logger.info(
             f'Start verification in BlenderVerifier. '
-            f'Subtask_id: {verification_data["subtask_info"]["subtask_id"]}.')
+            f'Subtask_id: {self.subtask_info["subtask_id"]}.')
         try:
             self.start_rendering()
         # pylint: disable=W0703

@@ -1,8 +1,9 @@
 import os
 import shutil
 import time
-import pytest
 from unittest import mock
+
+import pytest
 
 from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait
@@ -116,7 +117,7 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
-        d = verifier.start_verification(verification_data)
+        d = verifier.start_verification()
 
         if not exception_regex:
             sync_wait(d, self.TIMEOUT)
@@ -215,10 +216,9 @@ class TestUnitBlenderVerifier:
 
         blender_verifier = BlenderVerifier(verification_data,
                                            DockerTaskThreadMock)
-        with mock.patch(
-                'golem.verificator.blender_verifier.logger',
-        ) as mocked_logger:
-            blender_verifier.start_verification(verification_data)
+        with mock.patch('golem.verificator.blender_verifier.logger') \
+                as mocked_logger:
+            blender_verifier.start_verification()
 
         assert mocked_logger.error.call_count == 1
         assert 'Verification failed %r' in mocked_logger.error.call_args[0][0]
