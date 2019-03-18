@@ -15,7 +15,14 @@ class TestCoreVerifier(TempDirFixture):
     def setUp(self):
         super().setUp()
         self.subtask_id = 5
-        self.core_verifier = CoreVerifier()
+        files = self.additional_dir_content([1])
+
+        self.subtask_info = {'subtask_id': self.subtask_id}
+        self.verification_data = dict(
+            results=files,
+            subtask_info=self.subtask_info,
+        )
+        self.core_verifier = CoreVerifier(self.verification_data)
         self.utcnow = datetime.utcnow()
 
     def test_start_verification(self):
@@ -23,42 +30,35 @@ class TestCoreVerifier(TempDirFixture):
 
         def callback(result):
             subtask_id, state, _answer = result
-            assert subtask_id == subtask_info['subtask_id']
+            assert subtask_id == self.subtask_info['subtask_id']
             assert state == SubtaskVerificationState.VERIFIED
             deferred.callback(True)
 
-        subtask_info = {'subtask_id': self.subtask_id}
-        files = self.additional_dir_content([1])
-
-        verification_data = dict(
-            results=files,
-            subtask_info=subtask_info,
-        )
-
-        finished = self.core_verifier.start_verification(verification_data)
+        finished = self.core_verifier.start_verification()
         finished.addCallback(callback)
 
         assert sync_wait(deferred, 2) is True
 
+    def _check_state(self, expected_state: SubtaskVerificationState):
+        core_verifier = CoreVerifier(self.verification_data)
+        core_verifier.simple_verification()
+        assert core_verifier.state == expected_state
+
     def test_simple_verification(self):
-        verification_data = dict(
-            results=[]
-        )
-        self.core_verifier.simple_verification(verification_data)
-        assert self.core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+
+        self.verification_data["results"] = []
+        self._check_state(SubtaskVerificationState.WRONG_ANSWER)
 
         files = self.additional_dir_content([3])
-        verification_data["results"] = files
-        self.core_verifier.simple_verification(verification_data)
-        assert self.core_verifier.state == SubtaskVerificationState.VERIFIED
+        self.verification_data["results"] = files
+        self._check_state(SubtaskVerificationState.VERIFIED)
 
-        verification_data["results"] = [files[0]]
-        self.core_verifier.simple_verification(verification_data)
-        assert self.core_verifier.state == SubtaskVerificationState.VERIFIED
+        files = self.additional_dir_content([3])
+        self.verification_data["results"] = [files[0]]
+        self._check_state(SubtaskVerificationState.VERIFIED)
 
-        verification_data["results"] = ["not a file"]
-        self.core_verifier.simple_verification(verification_data)
-        assert self.core_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        self.verification_data["results"] = ["not a file"]
+        self._check_state(SubtaskVerificationState.WRONG_ANSWER)
 
     def test_task_timeout_when_task_started_and_state_is_active(self):
         for state in CoreVerifier.active_status:

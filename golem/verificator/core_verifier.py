@@ -14,8 +14,9 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
     active_status = [SubtaskVerificationState.WAITING,
                      SubtaskVerificationState.IN_PROGRESS]
 
-    def __init__(self):
-        self.subtask_info = {}
+    def __init__(self, verification_data):
+        self.verification_data = verification_data
+        self.subtask_info = self.verification_data['subtask_info']
         self.resources = []
         self.results = []
         self.state = SubtaskVerificationState.UNKNOWN_SUBTASK
@@ -25,24 +26,23 @@ class CoreVerifier:  # pylint: disable=too-many-instance-attributes
         self.message = ""
         self.computer = None
 
-    def start_verification(self, verification_data):
+    def start_verification(self):
         self.time_started = datetime.utcnow()
-        self.subtask_info = verification_data['subtask_info']
-        if self._verify_result(verification_data):
+        if self._verify_result(self.verification_data):
             self.state = SubtaskVerificationState.VERIFIED
             finished = Deferred()
             finished.callback(self.verification_completed())
             return finished
 
-    def simple_verification(self, verification_data):
-        results = verification_data['results']
+    def simple_verification(self):
+        results = self.verification_data['results']
         if not results:
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return False
 
         for result in results:
             if not os.path.isfile(result) or not\
-                    self._verify_result(verification_data):
+                    self._verify_result(self.verification_data):
                 self.message = 'No proper task result found'
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
