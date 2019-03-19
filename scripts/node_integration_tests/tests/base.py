@@ -5,7 +5,7 @@ import subprocess
 from functools import wraps
 from typing import Callable
 
-from scripts.node_integration_tests.conftest import NodeKeyReuse
+from scripts.node_integration_tests import conftest
 
 from ..helpers import get_testdir
 
@@ -34,7 +34,7 @@ class NodeTestBase:
         self.requestor_reuse_dir = self.key_reuse_dir / 'requestor'
 
     def tearDown(self):
-        key_reuse = NodeKeyReuse.get()
+        key_reuse = conftest.NodeKeyReuse.get()
         if key_reuse.enabled and not key_reuse.keys_ready:
             try:
                 self._copy_keystores()
@@ -49,7 +49,7 @@ class NodeTestBase:
         return self.id().replace(parent_name + '.', '')
 
     def _can_recycle_keys(self) -> bool:
-        return all([NodeKeyReuse.get().keys_ready, self.reuse_keys])
+        return all([conftest.NodeKeyReuse.get().keys_ready, self.reuse_keys])
 
     def _run_test(self, playbook_class_path: str, *args, **kwargs):
         cwd = pathlib.Path(os.path.realpath(__file__)).parent.parent
@@ -63,6 +63,12 @@ class NodeTestBase:
         for k, v in kwargs.items():
             test_args.append('--' + k)
             test_args.append(v)
+
+        if conftest.DumpOutput.on_fail():
+            test_args.append('--dump-output-on-fail')
+
+        if conftest.DumpOutput.on_crash():
+            test_args.append('--dump-output-on-crash')
 
         if self._can_recycle_keys():
             self._recycle_keys()
