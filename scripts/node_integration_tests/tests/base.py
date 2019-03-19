@@ -36,7 +36,12 @@ class NodeTestBase:
     def tearDown(self):
         key_reuse = NodeKeyReuse.get()
         if key_reuse.enabled and not key_reuse.keys_ready:
-            self._copy_keystores()
+            try:
+                self._copy_keystores()
+            except FileNotFoundError:
+                print('Copying keystores failed...')
+                return
+
             key_reuse.mark_keys_ready()
 
     def _relative_id(self):
