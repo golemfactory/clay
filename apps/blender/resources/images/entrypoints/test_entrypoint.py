@@ -24,6 +24,8 @@ def sanity_check(parameters):
         parameters['samples'],
         parameters['frames'],
         parameters['output_format'],
+        parameters['basefilename'],
+        crops_count=20,
     )
 
 
