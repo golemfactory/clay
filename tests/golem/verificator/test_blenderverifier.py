@@ -209,6 +209,26 @@ class TestBlenderVerifier(TempDirFixture):
     def test_docker_sanity_check(self):
         self.subtask_info['entrypoint'] = \
             'python3 /golem/entrypoints/test_entrypoint.py'
+        self.subtask_info['samples'] = 30
+        self.subtask_info['scene_file'] = \
+            '/golem/resources/chessboard_400x400_5x5.blend'
+        self.resources = [
+            os.path.join(
+                get_golem_path(),
+                'tests/apps/blender/verification/test_data/'
+                'chessboard_400x400_5x5.blend'
+            ),
+        ]
+        self.subtask_info['resolution'] = [400, 400]
+        self.subtask_info['crops'] = [
+            {
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'borders_x': [0.0, 1.0],
+                'borders_y': [0.0, 0.53]
+            }
+        ]
+        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
 
         verification_data = {
             'subtask_info': self.subtask_info,
