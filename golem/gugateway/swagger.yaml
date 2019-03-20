@@ -123,7 +123,6 @@ definitions:
       minVersion:
         type: string
         description: minimal Golem version
-    additionalProperties: true
   Subtask:
     description: >
       Subtask is a part of task supossed to be executed by a provider,
@@ -161,7 +160,10 @@ definitions:
               type: string
             tag:
               type: string
-    additionalProperties: true
+      extraData:
+        type: object
+        additionalProperties:
+          type: string
   Resource:
     description: Binary content (files) required to execute subtask
     required:
@@ -213,7 +215,6 @@ definitions:
         type: string
   Event:
     description: Every item has id and exactly one of remaining fields filled.
-    type: object
     required:
       - eventId
     properties:
