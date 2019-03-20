@@ -41,6 +41,12 @@ if __name__ == '__main__':
         help="dump the nodes' outputs on test fail",
     )
     parser.add_argument(
+        '--dump-output-on-crash',
+        action='store_true',
+        required=False,
+        help="dump node output of the crashed node on abnormal termination",
+    )
+    parser.add_argument(
         '--mainnet',
         action='store_true',
         required=False,
@@ -86,6 +92,7 @@ if __name__ == '__main__':
             'provider_datadir',
             'requestor_datadir',
             'dump_output_on_fail',
+            'dump_output_on_crash',
         ]
            and v
     }
