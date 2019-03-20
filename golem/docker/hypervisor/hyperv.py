@@ -185,10 +185,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def is_available(cls) -> bool:
-        command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = run_powershell(command=command)
-            return output == "Hyper-V"
+            output = run_powershell(
+                script=os.path.join(
+                    get_golem_path(),
+                    'scripts',
+                    'virtualization',
+                    'get-hyperv-state.ps1'
+                )
+            )
+            return output == 'True'
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
             return False
