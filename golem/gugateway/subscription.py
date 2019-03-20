@@ -1,13 +1,13 @@
 from collections import Counter
-from enum import auto, Enum
-from logging import Logger, getLogger
-from pathlib import Path
-from typing import Union, Dict, List, Optional
 
+from enum import auto, Enum
 from golem_messages.datastructures.tasks import TaskHeader
 from golem_messages.message.tasks import SubtaskResultsAccepted, \
     SubtaskResultsRejected
+from logging import Logger, getLogger
+from pathlib import Path
 from pydispatch import dispatcher
+from typing import Union, Dict, List, Optional
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.task.taskserver import TaskServer
@@ -32,7 +32,7 @@ class InvalidTaskType(Exception):
 
     def __str__(self):
         return f'task type {self.args[0]} not known. List' \
-               f' of supported task types: {self.known_task_types}'
+            f' of supported task types: {self.known_task_types}'
 
 
 class SubtaskStatus(Enum):
@@ -57,7 +57,7 @@ class InvalidSubtaskStatus(Exception):
     def __str__(self):
         if len(self.args[0].split()) == 1:
             return f'subtask status {self.args[0]} not known. List' \
-                   f' of supported task statuses: {self.known_statuses}'
+                f' of supported task statuses: {self.known_statuses}'
 
         return self.args[0]
 
@@ -177,7 +177,6 @@ class Event(object):
                  'subtask_verification']
 
     def __init__(self, event_id: int, **kwargs):
-
         self.event_id = event_id
         self.task: Optional[Task] = kwargs.get('task')
         self.subtask: Optional[Subtask] = kwargs.get('subtask')
@@ -199,19 +198,31 @@ class Event(object):
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
+    def update(self, request_json: dict):
+        self.name = request_json.get('name', '')
+        self.min_price = int(request_json['minPrice'])
+        self.performance = float(request_json.get('performance', 0.0))
+        self.max_cpu_cores = int(request_json['maxCpuCores'])
+        self.max_memory_size = int(request_json['maxMemorySize'])
+        self.max_disk_size = int(request_json['maxDiskSize'])
+        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
+
     def __init__(self,
                  node_id: str,
                  task_type: TaskType,
                  request_json: dict,
                  known_tasks: Dict[str, TaskHeader]
                  ):
+        self.update(request_json)
+
         self.node_id = node_id
         self.task_type: TaskType = task_type
-        self.update(request_json)
         self.stats: Counter = Counter()
         self.event_counter: int = 0
         # TODO: events TTL and cleanup
         self.events: Dict[str, Event] = dict()
+        self.tasks: Dict[str, Task] = dict()
+        self.subtasks: Dict[str, Subtask] = dict()
 
         for task_id, header in known_tasks.items():
             if header.environment.lower() != self.task_type.name.lower():
@@ -221,15 +232,6 @@ class Subscription(object):
 
         dispatcher.connect(self.add_task_event, signal='golem.task')
         dispatcher.connect(self._remove_task_event, signal='golem.task.removed')
-
-    def update(self, request_json: dict):
-        self.name = request_json.get('name', '')
-        self.min_price = int(request_json['minPrice'])
-        self.performance = float(request_json.get('performance', 0.0))
-        self.max_cpu_cores = int(request_json['maxCpuCores'])
-        self.max_memory_size = int(request_json['maxMemorySize'])
-        self.max_disk_size = int(request_json['maxDiskSize'])
-        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
 
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
@@ -241,17 +243,16 @@ class Subscription(object):
 
     def _remove_task_event(self, task_id: str):
         # TODO: remove also subtasks and resources?
-        # this is bad idea since task can be removed
-        # while subtask is still being computed
-        pass
-        # del self.events[task_id]
+        del self.tasks[task_id]
 
     def add_task_event(self, header: TaskHeader):
         logger.debug('task event: header: %r', header)
-        self._add_event(header.task_id, task=Task(header))
+        task = Task(header)
+        self.tasks[task.task_id] = task
+        self._add_event(task.task_id, task=task)
 
     def want_subtask(self, task_server: TaskServer, task_id: str) -> bool:
-        if task_id not in self.events:
+        if task_id not in self.tasks:
             return False
 
         self.set_config_to(task_server.config_desc)
@@ -265,7 +266,8 @@ class Subscription(object):
         # TODO: persist or read existing subtasks upon start
         logger.debug('subtask event: %r, kwargs: %r', event, kwargs)
         subtask = Subtask(**kwargs)
-        if event == 'started' and subtask.task_id in self.events:
+        self.subtasks[subtask.subtask_id] = subtask
+        if event == 'started' and subtask.task_id in self.tasks:
             self._add_event(subtask.subtask_id, subtask=subtask)
             dispatcher.disconnect(self.add_subtask_event,
                                   signal='golem.subtask')
@@ -278,8 +280,7 @@ class Subscription(object):
 
     # TODO: remove from events or mark cancelled
     def cancel_subtask(self, task_server: TaskServer, subtask_id: str) -> bool:
-        if subtask_id not in self.events \
-                or subtask_id not in task_server.task_sessions:
+        if subtask_id not in task_server.task_sessions:
             return False
 
         self.set_config_to(task_server.config_desc)
@@ -292,7 +293,7 @@ class Subscription(object):
     def add_resource_event(self, **kwargs) -> None:
         logger.debug('resource event kwargs: %r ', kwargs)
         resource = Resource(**kwargs)
-        if resource.subtask_id in self.events:
+        if resource.task_id in self.tasks:
             self._add_event(f'rs-{resource.subtask_id}', resource=resource)
             dispatcher.disconnect(self.add_resource_event,
                                   signal='golem.resource')
@@ -303,12 +304,10 @@ class Subscription(object):
 
     def finish_subtask(self, task_server: TaskServer, root_path: str,
                        subtask_id: str, request_json: dict) -> bool:
-        if subtask_id not in self.events \
-                or subtask_id not in task_server.task_sessions\
-                or request_json is None:
-            return False
+        if request_json is None:
+            raise KeyError('status')
 
-        subtask = self.events[subtask_id].subtask
+        task_id = self.subtasks[subtask_id].task_id
         status = SubtaskStatus.match(request_json['status'])
         self.set_config_to(task_server.config_desc)
 
@@ -319,11 +318,11 @@ class Subscription(object):
 
             # TODO: should we call
             # golem_client.task_server.task_computer.__task_finished(subtask)
-            task_server.send_results(subtask_id, subtask.task_id, result)
+            task_server.send_results(subtask_id, task_id, result)
 
         elif status == SubtaskStatus.failed:
             reason = request_json['reason']
-            task_server.send_task_failed(subtask_id, subtask.task_id, reason)
+            task_server.send_task_failed(subtask_id, task_id, reason)
 
         else:
             logger.warning('wrong %s result for subtask %s', status, subtask_id)
@@ -338,7 +337,7 @@ class Subscription(object):
     def add_result_verification_event(self, **kwargs) -> None:
         logger.debug('kwargs: %r ', kwargs)
         msg = kwargs['message']
-        if msg.subtask_id in self.events \
+        if msg.subtask_id in self.subtasks \
                 and (isinstance(msg, SubtaskResultsAccepted)
                      or isinstance(msg, SubtaskResultsRejected)):
             self._add_event(f'rv-{msg.subtask_id}', subtask_verification=(
@@ -351,11 +350,18 @@ class Subscription(object):
             status = SubtaskStatus.match(status)
         self.stats.update([status.name])
 
+    def clean_up_before(self, event_id: int) -> None:
+        self.events = {hsh: ev for hsh, ev in self.events.items()
+                       if ev.event_id > event_id}
+
     def events_after(self, event_id: int) -> List[Event]:
         if event_id >= self.event_counter:
             raise RuntimeError(f'event id {event_id} should be less than '
                                f'{self.event_counter}')
-        return [e for e in self.events.values() if e.event_id > event_id]
+
+        self.clean_up_before(event_id)
+
+        return [ev for ev in self.events.values()]
 
     def set_config_to(self, config_desc: ClientConfigDescriptor):
         config_desc.node_name = self.name
