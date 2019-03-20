@@ -1,3 +1,4 @@
+from datetime import datetime
 import decimal
 import logging
 import os
@@ -590,11 +591,17 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
+        base_path = options['output_path']
+
+        target_dir = definition.name + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        output_path = os.path.join(base_path, target_dir)
+        os.makedirs(output_path, exist_ok=True)
 
         absolute_path = cls.get_nonexistent_path(
-            options['output_path'],
+            output_path,
             definition.name,
-            options.get('format', ''))
+            options.get('format', '')
+        )
 
         return absolute_path
 
