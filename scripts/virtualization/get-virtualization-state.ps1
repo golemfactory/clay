@@ -1,10 +1,17 @@
 $ErrorActionPreference = "Stop"
 [Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
 
+# Is Hyper-V module installed?
 $HyperVModule = @(Get-Module -ListAvailable hyper-v).Name | Get-Unique
-If ($HyperVModule -eq "Hyper-V") {
-    return "True"
+If (!($HyperVModule -eq "Hyper-V")) {
+    return "False"
 }
 
-$SystemInfo = (GWMI Win32_Processor)
-return $SystemInfo.VMMonitorModeExtensions -and $SystemInfo.VirtualizationFirmwareEnabled
+# Is Hyper-V management service running?
+try {
+    Get-Process -Name vmms | Out-Null
+} catch {
+    return "False"
+}
+
+return "True"
