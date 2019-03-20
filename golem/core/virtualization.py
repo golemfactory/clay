@@ -39,9 +39,13 @@ def _check_vt_unix() -> bool:
 
 
 def _check_vt_windows() -> bool:
-    hyperv_state = run_powershell(script=os.path.join(SCRIPTS_PATH, HYPERV_SCRIPT_NAME))
+    hyperv_state = run_powershell(
+        script=os.path.join(SCRIPTS_PATH, HYPERV_SCRIPT_NAME)
+    )
     if hyperv_state == 'True':
         return True
 
-    virtualization_state = run_powershell(script=os.path.join(SCRIPTS_PATH, VIRTUALIZATION_SCRIPT_NAME))
+    virtualization_state = run_powershell(
+        script=os.path.join(SCRIPTS_PATH, VIRTUALIZATION_SCRIPT_NAME)
+    )
     return virtualization_state == 'True'
