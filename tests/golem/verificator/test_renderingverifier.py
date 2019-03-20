@@ -77,7 +77,7 @@ class TestRenderingVerifier(VerificationTestsBase):
     def test_simple_verification_returns_true_if_images_have_proper_sizes(self):
         self.verification_data['results'] = self._create_images()
         rendering_verifier = RenderingVerifier(self.verification_data)
-        self.assertTrue(rendering_verifier.simple_verification())
+        assert rendering_verifier.simple_verification() is True
 
 
 class TestFrameRenderingVerifier(VerificationTestsBase):
@@ -88,7 +88,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
     def test_simple_verification_returns_true_if_images_have_proper_sizes(self):
         self.verification_data['results'] = self._create_images()
         rendering_verifier = FrameRenderingVerifier(self.verification_data)
-        self.assertTrue(rendering_verifier.simple_verification())
+        assert rendering_verifier.simple_verification() is True
 
     def test_simple_verification_frames_less_tasks_than_frames(self):
         self.subtask_info["use_frames"] = True
@@ -101,7 +101,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        self.assertFalse(result)
+        assert result is False
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_no_results(self):
@@ -113,7 +113,7 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        self.assertFalse(result)
+        assert result is False
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER
 
     def test_simple_verification_frames_wrong_resolution(self):
@@ -138,5 +138,5 @@ class TestFrameRenderingVerifier(VerificationTestsBase):
         result = frame_rendering_verifier.simple_verification()
         verifier_state = frame_rendering_verifier.verification_completed()[1]
 
-        self.assertFalse(result)
+        assert result is False
         assert verifier_state == SubtaskVerificationState.WRONG_ANSWER

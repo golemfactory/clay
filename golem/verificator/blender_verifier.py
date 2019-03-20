@@ -58,7 +58,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def start_rendering(self, timeout=0) -> None:
         self.timeout = timeout
-        subtask_id = self.verification_data['subtask_info']['subtask_id']
+        subtask_id = self.subtask_info['subtask_id']
 
         def success(_result):
             logger.info(
@@ -77,10 +77,10 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addCallback(success)
         self.finished.addErrback(failure)
 
-        subtask_info = self.verification_data['subtask_info']
-        work_dir = os.path.dirname(self.verification_data['results'][0])
+        # subtask_info = self.verification_data['subtask_info']
+        work_dir = os.path.dirname(self.results[0])
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
-            resources=subtask_info['path_root'],
+            resources=self.subtask_info['path_root'],
             temporary=os.path.dirname(work_dir),
             work=work_dir,
             output=os.path.join(work_dir, 'output'),
@@ -89,19 +89,19 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         extra_data = dict(
             subtask_paths=['/golem/work/{}'.format(
-                os.path.basename(i)) for i in self.verification_data['results']
+                os.path.basename(i)) for i in self.results
             ],
             subtask_borders=[
-                subtask_info['crop_window'][0],
-                subtask_info['crop_window'][2],
-                subtask_info['crop_window'][1],
-                subtask_info['crop_window'][3],
+                self.subtask_info['crop_window'][0],
+                self.subtask_info['crop_window'][2],
+                self.subtask_info['crop_window'][1],
+                self.subtask_info['crop_window'][3],
             ],
-            scene_path=subtask_info['scene_file'],
-            resolution=subtask_info['resolution'],
-            samples=subtask_info['samples'],
-            frames=subtask_info['frames'],
-            output_format=subtask_info['output_format'],
+            scene_path=self.subtask_info['scene_file'],
+            resolution=self.subtask_info['resolution'],
+            samples=self.subtask_info['samples'],
+            frames=self.subtask_info['frames'],
+            output_format=self.subtask_info['output_format'],
             basefilename='crop',
             entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
         )

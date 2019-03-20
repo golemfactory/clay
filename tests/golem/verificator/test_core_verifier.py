@@ -34,7 +34,6 @@ class TestCoreVerifier(TempDirFixture):
             assert state == SubtaskVerificationState.VERIFIED
             deferred.callback(True)
 
-        self.core_verifier.simple_verification()
         finished = self.core_verifier.start_verification()
         finished.addCallback(callback)
 
@@ -43,23 +42,23 @@ class TestCoreVerifier(TempDirFixture):
     def _check_state(self, expected_result: bool):
         core_verifier = CoreVerifier(self.verification_data)
         result = core_verifier.simple_verification()
-        self.assertIs(result, expected_result)
+        assert result == expected_result
 
     def test_simple_verification(self):
 
         self.verification_data["results"] = []
-        self._check_state(False)
+        self._check_state(expected_result=False)
 
         files = self.additional_dir_content([3])
         self.verification_data["results"] = files
-        self._check_state(True)
+        self._check_state(expected_result=True)
 
         files = self.additional_dir_content([3])
         self.verification_data["results"] = [files[0]]
-        self._check_state(True)
+        self._check_state(expected_result=True)
 
         self.verification_data["results"] = ["not a file"]
-        self._check_state(False)
+        self._check_state(expected_result=False)
 
     def test_task_timeout_when_task_started_and_state_is_active(self):
         for state in CoreVerifier.active_status:

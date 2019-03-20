@@ -12,15 +12,14 @@ class RenderingVerifier(CoreVerifier):
     def __init__(self, verification_data):
         super().__init__(verification_data)
         self.state = SubtaskVerificationState.WAITING
-        self.resources = verification_data['resources']
 
     @staticmethod
     def check_size(file_path, resolution_x, resolution_y):
         image = load_img(file_path)
         if image is None:
             return False
-        image_x, _ = image.get_size()
-        if image_x != resolution_x:
+        image_x, image_y = image.get_size()
+        if image_x != resolution_x or image_y != resolution_y:
             logger.info(
                 "Subtask size doesn't match, has %r,"
                 " should be %r",
@@ -36,11 +35,10 @@ class RenderingVerifier(CoreVerifier):
     def simple_verification(self):
         if not super().simple_verification():
             return False
-        for _ in self.results:
-            if not self._are_image_sizes_correct():
-                self.message = 'No proper task result found'
-                self.state = SubtaskVerificationState.WRONG_ANSWER
-                return False
+        if not self._are_image_sizes_correct():
+            self.message = 'No proper task result found'
+            self.state = SubtaskVerificationState.WRONG_ANSWER
+            return False
         return True
 
     def _are_image_sizes_correct(self):
