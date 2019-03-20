@@ -40,7 +40,7 @@ class NodeKeyReuse:
 
 class DumpOutput:
     @staticmethod
-    def on_crash():
+    def enabled_on_crash():
         return DUMP_OUTPUT_ON_CRASH
 
     @staticmethod
@@ -49,7 +49,7 @@ class DumpOutput:
         DUMP_OUTPUT_ON_CRASH = True
 
     @staticmethod
-    def on_fail():
+    def enabled_on_fail():
         return DUMP_OUTPUT_ON_FAIL
 
     @staticmethod

@@ -64,10 +64,10 @@ class NodeTestBase:
             test_args.append('--' + k)
             test_args.append(v)
 
-        if conftest.DumpOutput.on_fail():
+        if conftest.DumpOutput.enabled_on_fail():
             test_args.append('--dump-output-on-fail')
 
-        if conftest.DumpOutput.on_crash():
+        if conftest.DumpOutput.enabled_on_crash():
             test_args.append('--dump-output-on-crash')
 
         if self._can_recycle_keys():
