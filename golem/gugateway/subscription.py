@@ -247,6 +247,7 @@ class Subscription(object):
         # del self.events[task_id]
 
     def add_task_event(self, header: TaskHeader):
+        logger.debug('task event: header: %r', header)
         self._add_event(header.task_id, task=Task(header))
 
     def want_subtask(self, task_server: TaskServer, task_id: str) -> bool:
@@ -262,7 +263,7 @@ class Subscription(object):
 
     def add_subtask_event(self, event='default', **kwargs) -> None:
         # TODO: persist or read existing subtasks upon start
-        logger.debug('event: %r, kwargs: %r', event, kwargs)
+        logger.debug('subtask event: %r, kwargs: %r', event, kwargs)
         subtask = Subtask(**kwargs)
         if event == 'started' and subtask.task_id in self.events:
             self._add_event(subtask.subtask_id, subtask=subtask)
@@ -289,7 +290,7 @@ class Subscription(object):
         return True
 
     def add_resource_event(self, **kwargs) -> None:
-        logger.debug('kwargs: %r ', kwargs)
+        logger.debug('resource event kwargs: %r ', kwargs)
         resource = Resource(**kwargs)
         if resource.subtask_id in self.events:
             self._add_event(f'rs-{resource.subtask_id}', resource=resource)
