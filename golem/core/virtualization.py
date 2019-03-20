@@ -2,7 +2,7 @@ import os
 
 from cpuinfo import get_cpu_info
 
-from golem.core.common import get_golem_path, is_windows
+from golem.core.common import get_golem_path, is_linux, is_windows
 from golem.core.windows import run_powershell
 from golem.rpc import utils as rpc_utils
 
@@ -15,13 +15,17 @@ WIN_SCRIPT_PATH = os.path.join(
 
 
 @rpc_utils.expose('env.hw.virtualization')
-def is_virtualization_enabled() -> bool:
+def is_virtualization_satisfied() -> bool:
     """ Checks if hardware virtualization is available on this machine.
-    Currently, this check is limited to Intel CPUs (VT and VT-x support).
-    :return bool: True if virtualization is available. On Windows, we also check
-    if the feature is enabled in firmware.
+    If hardware virtualization is not required to run Golem (e.g. on Linux),
+    the actual check is skipped. Currently, this function is limited to Intel
+    CPUs (VT and VT-x support).
+    :return bool: True if virtualization is available or is not required.
+    On Windows, we additionally check if the feature is enabled in firmware.
     """
-    if is_windows():
+    if is_linux():
+        return True
+    elif is_windows():
         return _check_vt_windows()
 
     return _check_vt_unix()
