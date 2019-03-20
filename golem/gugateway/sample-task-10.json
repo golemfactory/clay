@@ -1,10 +1,10 @@
 {
     "type": "Blender",
     "compute_on": "cpu",
-    "name": "Golem Task",
+    "name": "cube_out",
     "timeout": "10:00:00",
     "subtask_timeout": "10:00:00",
-    "subtasks_count": 1,
+    "subtasks_count": 10,
     "bid": 0.2,
     "resources": [
         "/Users/tworec/git/golem/apps/blender/benchmark/test_task/cube.blend"
