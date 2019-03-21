@@ -51,7 +51,6 @@ class TaskDefinition(object):
 
         self.max_price = 0
 
-        self.verification_options: Dict[str, Any] = {}
         self.options = Options()
         self.docker_images = None
         self.compute_on = "cpu"
