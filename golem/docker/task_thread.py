@@ -214,7 +214,12 @@ class DockerTaskThread(TaskThread):
 
             if exit_code != 0:
                 std_err = (self.dir_mapping.logs / self.STDERR_FILE).read_text()
-                logger.warning(f'Task stderr:\n{std_err}')
+                with (self.dir_mapping.logs / self.STDOUT_FILE).open() as f:
+                    lines = f.readlines()
+                    std_out = "".join(lines[-21:])
+                logger.warning(f'Task error - exit_code={exit_code}\n'
+                               f'stderr:\n{std_err}\n'
+                               f'tail of stdout:\n{std_out}\n')
                 raise JobException(self._exit_code_message(exit_code))
 
         return estm_mem

@@ -6,12 +6,14 @@ from golem.core.common import get_golem_path, is_linux, is_windows
 from golem.core.windows import run_powershell
 from golem.rpc import utils as rpc_utils
 
-WIN_SCRIPT_PATH = os.path.join(
+SCRIPTS_PATH = os.path.join(
     get_golem_path(),
     'scripts',
-    'virtualization',
-    'get-virtualization-state.ps1'
+    'virtualization'
 )
+
+VIRTUALIZATION_SCRIPT_NAME = 'get-virtualization-state.ps1'
+HYPERV_SCRIPT_NAME = 'get-hyperv-state.ps1'
 
 
 @rpc_utils.expose('env.hw.virtualization')
@@ -37,5 +39,13 @@ def _check_vt_unix() -> bool:
 
 
 def _check_vt_windows() -> bool:
-    virtualization_state = run_powershell(script=WIN_SCRIPT_PATH)
+    hyperv_state = run_powershell(
+        script=os.path.join(SCRIPTS_PATH, HYPERV_SCRIPT_NAME)
+    )
+    if hyperv_state == 'True':
+        return True
+
+    virtualization_state = run_powershell(
+        script=os.path.join(SCRIPTS_PATH, VIRTUALIZATION_SCRIPT_NAME)
+    )
     return virtualization_state == 'True'
