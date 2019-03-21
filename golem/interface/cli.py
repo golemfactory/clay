@@ -11,7 +11,7 @@ from twisted.internet.defer import TimeoutError
 from golem.interface.command import CommandHelper, CommandStorage, command, \
     Argument
 from golem.interface.exceptions import ExecutionException, ParsingException, \
-    CommandException
+    CommandException, RejectConfirmationException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
@@ -61,8 +61,14 @@ def disable_withdraw(
 
 
 def _ask_for_confirmation(question: str) -> bool:
-    text = input(f'{question} (y/n) ')
-    return True if text == 'y' else False
+    while True:
+        answer = input(f'{question} (Y/n) ')
+        if answer in ['', 'Y', 'y']:
+            return True
+        elif answer in ['N', 'n']:
+            return False
+        else:
+            print("Please choose between Y, y, N, n")
 
 
 class CLI(object):
@@ -111,7 +117,6 @@ class CLI(object):
 
     def execute(self, args=None, interactive=False):
         cls = self.__class__
-
         if interactive:
             import readline
             readline.parse_and_bind("tab: complete")
@@ -146,7 +151,8 @@ class CLI(object):
         started = time.time()
 
         try:
-
+            self._create_messages_with_confirmation(args)
+            self._check_confirmation(args)
             namespace = self.parser.parse_args(args)
             clean = self._clean_namespace(namespace)
             formatter = self.get_formatter(clean)
@@ -167,6 +173,9 @@ class CLI(object):
 
         except TimeoutError:
             result = ExecutionException("Command timed out", " ".join(args), started)
+
+        except RejectConfirmationException:
+            return 'Command aborted', sys.stdout
 
         except Exception as exc:
             result = ExecutionException("Exception: {}".format(exc), " ".join(args), started)
@@ -394,9 +403,20 @@ class CLI(object):
             if key in ' '.join(map(str, args)):
                 return value + time_message
 
-        Mes = namedtuple('Mes', 'list_of_keys confirmation question')
+        def _add_result_if_required(message) -> str:
+            if 'was restarted as a new task' in message:
+                message = message + result
+            return message + time_message
 
-        messages_with_confirmation = [
+        for element in self.messages_with_confirmation:
+            if element[0] in ' '.join(map(str, args)):
+                return _add_result_if_required(element[1])
+
+        return result if result is not None else "Unexpected return message"
+
+    def _create_messages_with_confirmation(self, args):
+        Mes = namedtuple('Mes', 'list_of_keys confirmation question')
+        self.messages_with_confirmation = [  # pylint: disable=attribute-defined-outside-init
             Mes(list_of_keys=' '.join(map(str, ['tasks', 'abort'])),
                 confirmation=f'Task {args[-1]} aborted. To confirm run golemcli tasks show.',  # noqa pylint: disable=line-too-long
                 question=f'Are you sure? Confirm aborting {args[-1]} task'),
@@ -413,14 +433,11 @@ class CLI(object):
                 confirmation=f'Subtask with {args[-1]} was restarted',
                 question=f'Are you sure? Confirm restarting subtasks with {args[-1]} id'),  # noqa pylint: disable=line-too-long
             Mes(list_of_keys=' '.join(map(str, ['tasks', 'restart'])),
-                confirmation=f'Task {args[-1]} was restarted as a new task with id {result}',  # noqa pylint: disable=line-too-long
+                confirmation=f'Task {args[-1]} was restarted as a new task with id ',  # noqa pylint: disable=line-too-long
                 question=f'Are you sure? Confirm restarting {args[-1]}')]
 
-        for element in messages_with_confirmation:
-            if element[0] in ' '.join(map(str, args)):
-                if _ask_for_confirmation(element[2]) is True:  # pylint:disable=no-else-return
-                    return element[1] + time_message
-                else:
-                    return "Command aborted"
-
-        return result if result is not None else "Unexpected return message"
+    def _check_confirmation(self, args):
+        for element in self.messages_with_confirmation:
+            if getattr(element, 'list_of_keys') in ' '.join(map(str, args)):
+                if _ask_for_confirmation(getattr(element, 'question')) is False:
+                    raise RejectConfirmationException

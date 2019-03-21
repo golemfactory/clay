@@ -6,6 +6,10 @@ class CommandException(Exception):
     pass
 
 
+class RejectConfirmationException(Exception):
+    pass
+
+
 class ParsingException(CommandException):
 
     def __init__(self, message=None, parser=None):

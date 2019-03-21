@@ -463,7 +463,7 @@ class TestCreateReturnMessage:
          'Task with id custom_task_id was created. To confirm run golemcli task show.',  # noqa pylint: disable=line-too-long
          'custom_task_id'),
         (['account', 'withdraw', 'address', 'gnt_amount', 'gas_fee'],
-         'Sent gnt_amount GNT to: address. Gas fee: gas_fee WEI. Transaction hash (check on etherscan.io): tx_hash',
+         'Sent gnt_amount GNT to: address. Gas fee: gas_fee WEI. Transaction hash (check on etherscan.io): tx_hash', # noqa pylint: disable=line-too-long
          'tx_hash'),
     ])
     def test_create_return_message_returns_correct_message_when_result_given(
@@ -493,12 +493,10 @@ class TestCreateReturnMessage:
 
         with patch('golem.interface.cli._ask_for_confirmation',
                    return_value=True):
-            return_message = self.cli._create_return_message(
-                args, time.time(), None)
-            assert expected in return_message
+            return_message = self.cli.process(args)
+            assert expected in return_message[0]
 
         with patch('golem.interface.cli._ask_for_confirmation',
                    return_value=False):
-            return_message = self.cli._create_return_message(
-                args, time.time(), None)
-            assert return_message == 'Command aborted'
+            return_message = self.cli.process(args)
+            assert return_message[0] == 'Command aborted'
