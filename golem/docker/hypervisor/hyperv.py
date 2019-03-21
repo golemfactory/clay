@@ -91,9 +91,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
     VOLUME_DRIVER = "cifs"
     SMB_PORT = "445"
 
-    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
+    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts')
     GET_VSWITCH_SCRIPT_PATH = \
-        os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
+        os.path.join(SCRIPTS_PATH, 'docker', 'get-default-vswitch.ps1')
+    GET_HYPERV_SCRIPT_PATH = \
+        os.path.join(SCRIPTS_PATH, 'virtualization', 'get-hyperv-state.ps1')
     START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):
@@ -185,10 +187,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def is_available(cls) -> bool:
-        command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = run_powershell(command=command)
-            return output == "Hyper-V"
+            return run_powershell(script=cls.GET_HYPERV_SCRIPT_PATH) == 'True'
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
             return False

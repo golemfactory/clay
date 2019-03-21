@@ -37,5 +37,6 @@ datas = [
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),
     ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
     ('scripts/virtualization/get-virtualization-state.ps1',
-     'scripts/virtualization')
+     'scripts/virtualization'),
+    ('scripts/virtualization/get-hyperv-state.ps1', 'scripts/virtualization')
 ]
