@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from abc import ABCMeta
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, Optional, Iterable
@@ -14,7 +14,7 @@ from golem.report import Component, report_calls
 logger = logging.getLogger(__name__)
 
 
-class Hypervisor(metaclass=ABCMeta):
+class Hypervisor(ABC):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
     SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
@@ -118,23 +118,25 @@ class Hypervisor(metaclass=ABCMeta):
         logger.info("Docker: restoring machine state not implemented")
         self.start_vm(vm_name)
 
+    @abstractmethod
     def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
-    def _failed_to_create(self, vm_name: Optional[str] = None):
-        raise NotImplementedError
-
+    @abstractmethod
     def constrain(self, name: Optional[str] = None, **params) -> None:
         raise NotImplementedError
 
+    @abstractmethod
     def constraints(self, name: Optional[str] = None) -> Dict:
         raise NotImplementedError
 
     @contextmanager
+    @abstractmethod
     def restart_ctx(self, name: Optional[str] = None):
         raise NotImplementedError
 
     @contextmanager
+    @abstractmethod
     def recover_ctx(self, name: Optional[str] = None):
         raise NotImplementedError
 
@@ -146,4 +148,6 @@ class Hypervisor(metaclass=ABCMeta):
         return False
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
-        raise NotImplementedError
+        if self.uses_volumes():
+            raise NotImplementedError
+        return {}
