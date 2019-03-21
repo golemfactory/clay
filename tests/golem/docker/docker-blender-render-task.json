@@ -58,7 +58,6 @@
   "output_file":"hel.png",
   "optimize_total":false,
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend",
-  "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
   "max_price": 13,

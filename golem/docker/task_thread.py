@@ -1,12 +1,11 @@
 import logging
-import os
 from pathlib import Path
 from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
     List, NamedTuple
 
 import requests
 
-from golem.core.common import is_windows, is_osx, posix_path
+from golem.core.common import posix_path
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager

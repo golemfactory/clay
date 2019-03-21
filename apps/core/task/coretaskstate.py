@@ -1,4 +1,5 @@
 from os import path, remove
+from typing import Any, Dict
 
 from ethereum.utils import denoms
 
@@ -50,7 +51,6 @@ class TaskDefinition(object):
 
         self.max_price = 0
 
-        self.verification_options = None
         self.options = Options()
         self.docker_images = None
         self.compute_on = "cpu"
@@ -115,26 +115,6 @@ class TaskDefinition(object):
 
     def remove_from_resources(self):
         pass
-
-    def make_preset(self):
-        """ Create preset that can be shared with different tasks
-        :return dict:
-        """
-        return {
-            "options": self.options,
-            "subtasks_count": self.subtasks_count,
-            "optimize_total": self.optimize_total,
-            "verification_options": self.verification_options
-        }
-
-    def load_preset(self, preset):
-        """ Apply options from preset to this task definition
-        :param dict preset: Dictionary with shared options
-        """
-        self.options = preset["options"]
-        self.subtasks_count = preset["subtasks_count"]
-        self.optimize_total = preset["optimize_total"]
-        self.verification_options = preset["verification_options"]
 
     def to_dict(self) -> dict:
         task_timeout = timeout_to_string(int(self.timeout))

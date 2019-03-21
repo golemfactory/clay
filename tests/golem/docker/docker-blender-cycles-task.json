@@ -45,7 +45,6 @@
   "output_format":"PNG",
   "output_file":"hel.png",
   "optimize_total":false,
-  "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Blender",
