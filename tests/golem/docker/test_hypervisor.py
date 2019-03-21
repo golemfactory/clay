@@ -171,23 +171,6 @@ class TestDockerMachineHypervisor(LogTestCase):
             with self.assertLogs(level='WARN'):
                 assert not hypervisor.remove('test')
 
-    def test_not_implemented(self):
-        hypervisor = Hypervisor(MockDockerManager())
-
-        with self.assertRaises(NotImplementedError):
-            hypervisor.constrain(VM_NAME, param_1=1)
-
-        with self.assertRaises(NotImplementedError):
-            hypervisor.constraints(VM_NAME)
-
-        with self.assertRaises(NotImplementedError):
-            with hypervisor.restart_ctx(VM_NAME):
-                pass
-
-        with self.assertRaises(NotImplementedError):
-            with hypervisor.recover_ctx(VM_NAME):
-                pass
-
 
 class TestVirtualBoxHypervisor(LogTestCase):
 

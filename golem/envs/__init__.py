@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, NamedTuple
 
 from twisted.internet.defer import Deferred
 
@@ -8,8 +8,6 @@ CounterId = str
 CounterUsage = Any
 
 EnvId = str
-EnvSupportStatus = bool
-EnvConfig = Dict[str, Any]
 
 EnvEventId = str
 EnvEvent = Any  # TODO: Define environment events
@@ -18,8 +16,17 @@ RuntimeEventId = str
 RuntimeEvent = Any  # TODO: Define runtime events
 
 
-class Payload:
+class EnvConfig(NamedTuple):
     pass
+
+
+class Payload(NamedTuple):
+    pass
+
+
+class EnvSupportStatus(NamedTuple):
+    supported: bool
+    nonsupport_reason: Optional[str] = None
 
 
 class RuntimeStatus(Enum):
@@ -33,6 +40,9 @@ class RuntimeStatus(Enum):
     CLEANING_UP = 7
     TORN_DOWN = 8
     FAILURE = 9
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Runtime(ABC):
@@ -63,7 +73,7 @@ class Runtime(ABC):
         raise NotImplementedError
 
 
-class EnvMetadata:
+class EnvMetadata(NamedTuple):
     id: EnvId
     description: str
     supported_counters: List[CounterId]
@@ -75,6 +85,9 @@ class EnvStatus(Enum):
     PREPARING = 1
     ENABLED = 2
     CLEANING_UP = 3
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class Environment(ABC):
@@ -96,8 +109,9 @@ class Environment(ABC):
     def cleanup(self) -> Deferred:
         raise NotImplementedError
 
+    @classmethod
     @abstractmethod
-    def metadata(self) -> EnvMetadata:
+    def metadata(cls) -> EnvMetadata:
         raise NotImplementedError
 
     @abstractmethod
