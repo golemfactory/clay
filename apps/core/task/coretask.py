@@ -591,19 +591,19 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
+
         base_path = options['output_path']
+        output_dir_name = definition.name + \
+            datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+        full_output_path = os.path.join(base_path, output_dir_name)
 
-        target_dir = definition.name + datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
-        output_path = os.path.join(base_path, target_dir)
-        os.makedirs(output_path, exist_ok=True)
+        os.makedirs(full_output_path, exist_ok=True)
 
-        absolute_path = cls.get_nonexistent_path(
-            output_path,
+        return cls.get_nonexistent_path(
+            full_output_path,
             definition.name,
             options.get('format', '')
         )
-
-        return absolute_path
 
     @classmethod
     def get_nonexistent_path(cls, path, name, extension=""):
