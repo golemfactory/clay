@@ -593,6 +593,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            msg.task_id, node_name_id)
             return
 
+        @defer.inlineCallbacks
         def _offer_chosen(is_chosen: bool) -> None:
             if not self.conn.opened:
                 logger.info(
@@ -628,14 +629,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_assign(reasons.NoMoreSubtasks)
                 return
 
-            # FIXME It shouldn't be added from get_resources, but set in task
-            ctd["resources"] = self.task_server.get_resources(msg.task_id)
-            resources_result = add_resources(
+            resources_result = yield add_resources(
                 self.task_server.client,
                 ctd["resources"],
                 msg.task_id,
                 common.deadline_to_timeout(ctd["deadline"])
             )
+            ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.info("resources_result: %r", resources_result)
             logger.info(
                 "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
