@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from typing import Type
+from typing import Type, TYPE_CHECKING
 
 from pathlib import Path
 
@@ -12,9 +12,12 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verificator.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
+
+if TYPE_CHECKING:
+    from golem.docker.environment import DockerEnvironment
+
 
 MIN_TIMEOUT = 60
 SUBTASK_MIN_TIMEOUT = 60
@@ -29,7 +32,7 @@ logger = logging.getLogger("apps.rendering")
 # pylint: disable-msg=too-many-instance-attributes,abstract-method
 class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
-    ENVIRONMENT_CLASS = None  # type: Type[DockerEnvironment]
+    ENVIRONMENT_CLASS: 'Type[DockerEnvironment]'
 
     @classmethod
     def _get_task_collector_path(cls):

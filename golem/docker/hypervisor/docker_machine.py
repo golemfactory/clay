@@ -87,12 +87,16 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     @property
     def vms(self):
         try:
+            # DON'T use the '-q' option. It doesn't list VMs in invalid state
             output = self.command('list')
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine: failed to list VMs: %r", e)
         else:
             if output:
-                return [i.strip() for i in output.split("\n") if i]
+                # Skip first line (header) and last (empty)
+                lines = output.split('\n')[1:-1]
+                # Get the first word of each line
+                return [l.strip().split()[0] for l in lines]
         return []
 
     @property

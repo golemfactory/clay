@@ -76,14 +76,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
 
         header.max_price = 10.0
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
-
-        header.min_version = golem.__version__
-        self.assertTrue(tk.check_support(header))
-
-        header.max_price = 10.0
         self.assertTrue(tk.check_support(header))
 
         config_desc = mock.Mock()
@@ -94,15 +86,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertTrue(tk.check_support(header))
-
-        header.min_version = "120.0.0"
-        self.assertFalse(tk.check_support(header))
-
-        header.min_version = golem.__version__
-        self.assertTrue(tk.check_support(header))
-
-        header.min_version = "abc"
-        self.assertFalse(tk.check_support(header))
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
@@ -388,10 +371,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.add_task_header(thd)
 
         reasons = tk.get_unsupport_reasons()
-        # 3 tasks with wrong version
-        self.assertIn({'avg': golem.__version__,
-                       'reason': 'app_version',
-                       'ntasks': 3}, reasons)
         # 2 tasks with wrong price
         self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
         # 1 task with wrong environment

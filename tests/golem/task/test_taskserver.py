@@ -258,8 +258,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert ts.request_task()
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
-        self.assertTrue(ts.send_results(subtask_id, task_id, results))
-        self.assertTrue(ts.send_results(subtask_id2, task_id, results))
+        ts.send_results(subtask_id, task_id, results)
+        ts.send_results(subtask_id2, task_id, results)
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, subtask_id)

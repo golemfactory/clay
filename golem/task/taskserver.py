@@ -319,28 +319,26 @@ class TaskServer(
         if 'data' not in result:
             raise AttributeError("Wrong result format")
 
-        header = self.task_keeper.task_headers[task_id]
-
-        if subtask_id not in self.results_to_send:
-            delay_time = 0.0
-            last_sending_trial = 0
-
-            wtr = WaitingTaskResult(
-                task_id=task_id,
-                subtask_id=subtask_id,
-                result=result['data'],
-                last_sending_trial=last_sending_trial,
-                delay_time=delay_time,
-                owner=header.task_owner)
-
-            self.create_and_set_result_package(wtr)
-            self.results_to_send[subtask_id] = wtr
-
-            Trust.REQUESTED.increase(header.task_owner.key)
-        else:
+        if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
-        return True
+        header = self.task_keeper.task_headers[task_id]
+
+        delay_time = 0.0
+        last_sending_trial = 0
+
+        wtr = WaitingTaskResult(
+            task_id=task_id,
+            subtask_id=subtask_id,
+            result=result['data'],
+            last_sending_trial=last_sending_trial,
+            delay_time=delay_time,
+            owner=header.task_owner)
+
+        self.create_and_set_result_package(wtr)
+        self.results_to_send[subtask_id] = wtr
+
+        Trust.REQUESTED.increase(header.task_owner.key)
 
     def create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
