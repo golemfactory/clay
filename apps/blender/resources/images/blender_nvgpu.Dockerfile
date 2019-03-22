@@ -47,4 +47,4 @@ RUN curl -OL ${CDN_URL}/kernel_sm_62.cubin
 RUN curl -OL ${CDN_URL}/filter_sm_75.cubin
 RUN curl -OL ${CDN_URL}/kernel_sm_75.cubin
 
-RUN mv *.cubin /opt/blender/${BLENDER_VERSION}/scripts/addons/cycles/lib
+RUN mv *.cubin /blender/${BLENDER_VERSION}/scripts/addons/cycles/lib
