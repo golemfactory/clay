@@ -506,7 +506,7 @@ class CoreTask(Task):
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
-    OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H:%M:%S'
+    OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,
                  owner: 'dt_p2p.Node',

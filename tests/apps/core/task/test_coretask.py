@@ -550,7 +550,7 @@ class TestCoreTaskBuilder(TestCase):
     def test_get_output_path_creates_target_dir(self):
         builder = self._get_core_task_builder()
         task_name = 'test_task'
-        task_dir_name = f'{task_name}_2019-01-01_00:00:00'
+        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
 
         with TemporaryDirectory() as output_path:
             task_def = self._get_task_def_dict(output_path, 'png')
@@ -568,7 +568,7 @@ class TestCoreTaskBuilder(TestCase):
     def test_get_output_path_creates_intermediate_dirs(self):
         builder = self._get_core_task_builder()
         task_name = 'test_task'
-        task_dir_name = f'{task_name}_2019-01-01_00:00:00'
+        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
         output_suffix = 'some/new/dirs'
 
         with TemporaryDirectory() as output_path:

@@ -395,9 +395,6 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
         assert definition.max_price == 250000000000000000
         assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
-        output_file = self.task_dict['name'] + "." + \
-            self.task_dict['options']['format']
-        assert definition.output_file == self.path + os.sep + output_file
 
     def test_timeout_too_short(self):
         # given
