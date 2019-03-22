@@ -1,4 +1,4 @@
-FROM golemfactory/nvgpu:1.2
+FROM golemfactory/nvgpu:1.3
 
 # Contents of blender.Dockerfile
 
@@ -34,8 +34,8 @@ ENV PATH=/blender:/usr/bin/:$PATH
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
 RUN mkdir -p /golem/entrypoints/scripts
-COPY entrypoints/scripts/render_tools /golem/entrypoints/scripts/render_tools/
-COPY entrypoints/render_entrypoint.py /golem/entrypoints/
+COPY blender/resources/images/entrypoints/scripts/render_tools /golem/entrypoints/scripts/render_tools/
+COPY blender/resources/images/entrypoints/render_entrypoint.py /golem/entrypoints/
 
 # NVGPU
 
