@@ -14,7 +14,6 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
-from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
@@ -95,7 +94,7 @@ def _validate_task_dict(client, task_dict) -> None:
             )
 
 
-def validate_client(client: Client):
+def validate_client(client):
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
@@ -274,6 +273,7 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
     )
 
     return mask
+
 
 @defer.inlineCallbacks
 def add_resources(client, resources, res_id, timeout):

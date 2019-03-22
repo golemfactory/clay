@@ -34,6 +34,7 @@ from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task import taskstate
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
+from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
@@ -80,8 +81,9 @@ def _offerpool_add(*_):
 @patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 @patch('golem.task.tasksession.get_provider_efficiency', Mock())
 @patch('golem.task.tasksession.get_provider_efficacy', Mock())
-class TaskSessionTaskToComputeTest(TestCase):
+class TaskSessionTaskToComputeTest(TempDirFixture):
     def setUp(self):
+        super().setUp()
         self.maxDiff = None
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
@@ -245,8 +247,11 @@ class TaskSessionTaskToComputeTest(TestCase):
     def test_request_task(self, *_):
         mt = self._get_wtct()
         ts2 = self._get_requestor_tasksession(accept_provider=True)
+        ts2.task_server.get_resources.return_value = \
+            self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
 
+        print(ts2.task_server.get_resources(mt.task_id))
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         task_state = self._set_task_state()
 

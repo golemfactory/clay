@@ -13,6 +13,7 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
+from twisted.internet import defer
 
 import golem
 from golem.core import common
@@ -33,6 +34,7 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -615,7 +617,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 self.address)
 
-            ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
                 "CTD generated. task_id=%s, node=%s ctd=%s",
                 msg.task_id,
@@ -627,6 +628,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_assign(reasons.NoMoreSubtasks)
                 return
 
+            # FIXME It shouldn't be added from get_resources, but set in task
+            ctd["resources"] = self.task_server.get_resources(msg.task_id)
+            resources_result = add_resources(
+                self.task_server.client,
+                ctd["resources"],
+                msg.task_id,
+                common.deadline_to_timeout(ctd["deadline"])
+            )
+            logger.info("resources_result: %r", resources_result)
             logger.info(
                 "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
                 msg.task_id,
