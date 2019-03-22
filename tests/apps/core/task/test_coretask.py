@@ -4,7 +4,7 @@ from copy import copy
 from tempfile import TemporaryDirectory
 from typing import Optional
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -585,7 +585,8 @@ class TestCoreTaskBuilder(TestCase):
                              task_dir_name, task_name)
             )
 
-    def test_get_output_path_fails_without_permissions(self):
+    @patch('os.makedirs', side_effect=PermissionError)
+    def test_get_output_path_fails_without_permissions(self, *_):
         builder = self._get_core_task_builder()
         task_name = 'test_task'
         output_path = '/new/path/without/permission'
