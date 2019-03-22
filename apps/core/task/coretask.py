@@ -506,6 +506,7 @@ class CoreTask(Task):
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
+    OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H:%M:%S'
 
     def __init__(self,
                  owner: 'dt_p2p.Node',
@@ -589,12 +590,15 @@ class CoreTaskBuilder(TaskBuilder):
         return definition.to_dict()
 
     @classmethod
-    def get_output_path(cls, dictionary, definition):
+    def get_output_path(
+            cls,
+            dictionary: Dict[str, Any],
+            definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
         base_path = options['output_path']
         output_dir_name = definition.name + \
-            datetime.now().strftime('%Y-%m-%d_%H:%M:%S')
+            datetime.now().strftime(cls.OUTPUT_DIR_TIME_FORMAT)
         full_output_path = os.path.join(base_path, output_dir_name)
 
         os.makedirs(full_output_path, exist_ok=True)

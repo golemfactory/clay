@@ -341,13 +341,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
-    def test_get_output_path(self):
-        td = TaskDefinition()
-        td.name = "MY task"
-        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
-        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
-            path.join("/dir3/dir4", "MY task.txt")
-
     def test_build_definition_minimal(self):
         # given
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
