@@ -247,7 +247,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             except subprocess.CalledProcessError:
                 logger.warning(f'{self.DRIVER_NAME}: Attempt to remove '
                                f'machine "{name}" failed')
-            time.sleep(0.1)
+            time.sleep(0.5)
 
         else:
             # Log error if all attempts failed
