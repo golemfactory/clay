@@ -771,6 +771,10 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
 
+        self.notice_task_updated(task_id,
+                                    subtask_id=subtask_id,
+                                    op=SubtaskOp.VERIFYING
+                                 )
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
@@ -1032,6 +1036,17 @@ class TaskManager(TaskEventListener):
 
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
+
+    @rpc_utils.expose('comp.task.verify_subtask')
+    def external_verify_subtask(self, subtask_id, verdict):
+        logger.info("external_verify_subtask. subtask_id=%r",
+                    subtask_id)
+        if subtask_id in self.subtask2task_mapping:
+            task_id = self.subtask2task_mapping[subtask_id]
+            return self.tasks[task_id].external_verify_subtask(subtask_id,
+                                                               verdict)
+        else:
+            raise ValueError('Not my subtask')
 
     def get_frame_subtasks(self, task_id: str, frame) \
             -> Optional[FrozenSet[str]]:

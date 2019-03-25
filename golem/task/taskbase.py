@@ -347,3 +347,10 @@ class Task(abc.ABC):
     # pylint: disable=unused-argument, no-self-use
     def get_finishing_subtasks(self, node_id: str) -> List[dict]:
         return []
+
+    def external_verify_subtask(self, subtask_id, verdict):
+        """
+        Verify subtask results
+        """
+        return None
+
