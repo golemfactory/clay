@@ -86,16 +86,3 @@ class DockerForMac(Hypervisor):
 
         with open(self.CONFIG_FILE, 'w') as config_file:
             json.dump(config, config_file)
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name: Optional[str] = None):
-        if self.vm_running():
-            self.stop_vm()
-        yield name
-        self.start_vm()
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.recover')
-    def recover_ctx(self, name: Optional[str] = None):
-        self.restart_ctx(name)

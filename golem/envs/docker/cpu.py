@@ -180,10 +180,8 @@ class DockerCPUEnvironment(Environment):
             cpu: config.cpu_count
         }
         if target != current:
-            # We are *not* using restart_ctx() because hypervisor should be
-            # already shut down when this method is called
-            # TODO: Make sure all hypervisors handle this correctly
-            self._hypervisor.constrain(**target)
+            with self._hypervisor.reconfig_ctx():
+                self._hypervisor.constrain(**target)
 
     def listen(self, event_id: EnvEventId,
                callback: Callable[[EnvEvent], Any]) -> None:

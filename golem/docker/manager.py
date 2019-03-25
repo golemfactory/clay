@@ -177,7 +177,7 @@ class DockerManager(DockerConfigManager):
             if restart_vm:
                 logger.info("Docker: applying configuration: %r", diff)
                 try:
-                    with self.hypervisor.restart_ctx() as vm:
+                    with self.hypervisor.reconfig_ctx() as vm:
                         self.hypervisor.constrain(vm, **diff)
                 except Exception as e:
                     logger.error("Docker: error updating configuration: %r", e)
