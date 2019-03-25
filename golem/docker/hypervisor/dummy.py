@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from typing import Optional, Dict
 
 from golem.docker.hypervisor import Hypervisor
@@ -35,11 +34,3 @@ class DummyHypervisor(Hypervisor):
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         pass
-
-    @contextmanager
-    def restart_ctx(self, name: Optional[str] = None):
-        yield
-
-    @contextmanager
-    def recover_ctx(self, name: Optional[str] = None):
-        yield

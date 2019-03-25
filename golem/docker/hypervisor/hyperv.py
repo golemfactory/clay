@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from enum import Enum
 import logging
 import os
@@ -293,6 +294,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
         super().update_work_dir(work_dir)
         # Ensure that working directory is shared via SMB
         smbshare.create_share(self.DOCKER_USER, work_dir)
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+
+        # VM running -> restart
+        if self.vm_running():
+            with self.restart_ctx(name) as res:
+                yield res
+
+        # VM suspended -> remove saved state
+        elif self._vm_utils.get_vm_state(name) == HYPERV_VM_STATE_SUSPENDED:
+            self._vm_utils.set_vm_state(name, HYPERV_VM_STATE_DISABLED)
+            yield name
+
+        # VM disabled -> do nothing
+        else:
+            yield name
 
     @classmethod
     def _get_vswitch_name(cls) -> str:

@@ -46,8 +46,8 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         self.LockType = LockType
 
     @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name: Optional[str] = None):
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
         name = name or self._vm_name
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:

@@ -131,14 +131,34 @@ class Hypervisor(ABC):
         raise NotImplementedError
 
     @contextmanager
-    @abstractmethod
-    def restart_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
+        """ Put machine in appropriate state for configuration change """
+        name = name or self._vm_name
+        if self.vm_running():
+            with self.restart_ctx(name) as res:
+                yield res
+        else:
+            yield name
 
     @contextmanager
-    @abstractmethod
+    @report_calls(Component.hypervisor, 'vm.restart')
+    def restart_ctx(self, name: Optional[str] = None):
+        """ Force machine restart """
+        name = name or self._vm_name
+        if self.vm_running():
+            self.stop_vm()
+        yield name
+        self.start_vm()
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
+        """ Attempt to recover from invalid machine state
+            By default just restarts the machine """
+        name = name or self._vm_name
+        with self.restart_ctx(name) as res:
+            yield res
 
     def update_work_dir(self, work_dir: Path) -> None:
         self._work_dir = work_dir

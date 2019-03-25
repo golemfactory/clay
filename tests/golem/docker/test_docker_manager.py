@@ -52,7 +52,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         hypervisor = mock.Mock()
         hypervisor.constraints.return_value = DEFAULTS
-        hypervisor.restart_ctx.return_value = mock.Mock(
+        hypervisor.reconfig_ctx.return_value = mock.Mock(
             __enter__=mock.Mock(),
             __exit__=mock.Mock(),
         )
