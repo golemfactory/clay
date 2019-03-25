@@ -185,17 +185,14 @@ class GLambdaTask(CoreTask):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
-
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
 
-        # NOTE: Only VerificationMethod.NO_VERIFICATION is supported at this
-        # moment. branch golem^glambda0.2 contains logic for EXTERNALLY_VERIFIED
-        # user tasks.
         if self.verification_type == self.VerificationMethod.NO_VERIFICATION:
             verdict = SubtaskVerificationState.VERIFIED
         elif self.verification_type == \
                 self.VerificationMethod.EXTERNALLY_VERIFIED:
             self.subtasks_given[subtask_id]['verif_cb'] = verification_finished
+            self.results[subtask_id] = task_result
             verdict = SubtaskVerificationState.IN_PROGRESS
         try:
             self._handle_verification_verdict(subtask_id, verdict,
@@ -218,6 +215,11 @@ class GLambdaTask(CoreTask):
 
     def get_output_names(self) -> List[str]:
         return self.outputs
+
+    def external_verify_subtask(self, subtask_id, verdict):
+        verif_cb = self.subtasks_given[subtask_id].pop('verif_cb')
+        self._handle_verification_verdict(subtask_id, verdict, verif_cb)
+        return None
 
 
 class GLambdaTaskVerifier(CoreVerifier):

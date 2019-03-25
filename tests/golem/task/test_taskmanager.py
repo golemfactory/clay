@@ -557,6 +557,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         checker([("task4", "ttt4", SubtaskOp.NOT_ACCEPTED),
                  ("task4", "ttt4", OtherOp.UNEXPECTED),
                  ("task4", "sss4", SubtaskOp.ASSIGNED),
+                 ("task4", "sss4", SubtaskOp.VERIFYING),
                  ("task4", "sss4", SubtaskOp.FINISHED),
                  ("task4", None, TaskOp.FINISHED)])
         del handler
@@ -591,7 +592,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         expected_warn = f"Task finished but was not accepted. " \
                         f"task_id='{task_id}'"
         assert any(expected_warn in s for s in log.output)
-        assert self.tm.notice_task_updated.call_count == 2
+        assert self.tm.notice_task_updated.call_count == 3
         self.tm.notice_task_updated.assert_called_with(
             task_id, op=TaskOp.NOT_ACCEPTED)
         mock_finished.assert_called_once()

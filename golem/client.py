@@ -867,6 +867,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         except KeyError:
             return None, "Subtask not found: '{}'".format(subtask_id)
 
+    @rpc_utils.expose('comp.task.verify_subtask')
+    def verify_sutbask(self, subtask_id, verdict):
+        logger.debug('Verifying subtask "%r" ...', subtask_id)
+        self.task_server.task_manager.external_verify_subtask(subtask_id,
+                                                                   verdict)
+
     @rpc_utils.expose('comp.task.preview')
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,

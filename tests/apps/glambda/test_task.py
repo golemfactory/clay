@@ -156,3 +156,60 @@ class GLambdaTaskTestCase(TempDirFixture):
                          SubtaskStatus.finished)
         verif_cb.assert_called_once()
 
+    def test_external_verification_finish(self):
+        self.task.verification_type = \
+            GLambdaTask.VerificationMethod.EXTERNALLY_VERIFIED
+
+        results = ['result']
+        verif_cb = MagicMock()
+
+        self.task.counting_nodes = MagicMock()
+        self.task.should_accept = MagicMock()
+        self.task.should_accept.return_value = True
+        self.task._copy_results = MagicMock()
+
+        self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
+        self.task.computation_finished('some_id', results, verif_cb)
+
+        self.assertEqual(self.task.subtasks_given['some_id']['verif_cb'],
+                         verif_cb)
+        self.assertEqual(self.task.results['some_id'],
+                         results)
+        verif_cb.assert_not_called()
+
+        self.task.external_verify_subtask('some_id',
+                                          SubtaskVerificationState.VERIFIED)
+
+        self.assertTrue('verif_cb' not in self.task.subtasks_given['some_id'])
+        self.assertEqual(self.task.num_tasks_received, 1)
+        verif_cb.assert_called_once()
+
+    def test_external_verification_failed(self):
+        self.task.verification_type = \
+            GLambdaTask.VerificationMethod.EXTERNALLY_VERIFIED
+
+        results = ['result']
+        verif_cb = MagicMock()
+
+        self.task.counting_nodes = MagicMock()
+        self.task.should_accept = MagicMock()
+        self.task.should_accept.return_value = True
+        self.task._copy_results = MagicMock()
+        self.task.computation_failed = MagicMock()
+
+        self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
+        self.task.computation_finished('some_id', results, verif_cb)
+
+        self.assertEqual(self.task.subtasks_given['some_id']['verif_cb'],
+                         verif_cb)
+        self.assertEqual(self.task.results['some_id'],
+                         results)
+        verif_cb.assert_not_called()
+
+        self.task.external_verify_subtask('some_id',
+                                          SubtaskVerificationState.WRONG_ANSWER)
+
+        self.assertTrue('verif_cb' not in self.task.subtasks_given['some_id'])
+        self.assertEqual(self.task.num_tasks_received, 0)
+        verif_cb.assert_called()
+        self.task.computation_failed.assert_called_once()

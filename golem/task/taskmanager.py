@@ -724,6 +724,10 @@ class TaskManager(TaskEventListener):
                                                  op=TaskOp.NOT_ACCEPTED)
             verification_finished()
 
+        self.notice_task_updated(task_id,
+                                    subtask_id=subtask_id,
+                                    op=SubtaskOp.VERIFYING
+                                 )
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
@@ -955,6 +959,15 @@ class TaskManager(TaskEventListener):
 
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
+
+    def external_verify_subtask(self, subtask_id, verdict):
+        logger.warning("external_verify_subtask. subtask_id=%r",
+                            subtask_id)
+        if subtask_id in self.subtask2task_mapping:
+            task_id = self.subtask2task_mapping[subtask_id]
+            return self.tasks[task_id].external_verify_subtask(subtask_id, verdict)
+        else:
+            raise ValueError('Not my subtask')
 
     def get_frame_subtasks(self, task_id: str, frame) \
             -> Optional[Dict[str, SubtaskState]]:
