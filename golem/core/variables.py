@@ -1,6 +1,7 @@
 import pathlib
 from typing import ClassVar
 
+import dateutil.relativedelta
 from golem_messages.constants import MAX_CONCENT_PING_INTERVAL
 
 from golem.core import common
@@ -66,6 +67,8 @@ KEY_DIFFICULTY = 14
 
 # Maximum acceptable difference between node time and monitor time (seconds)
 MAX_TIME_DIFF = 10
+
+MESSAGE_QUEUE_MAX_AGE = dateutil.relativedelta.relativedelta(months=6)
 
 
 ###############

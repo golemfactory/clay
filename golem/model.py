@@ -4,10 +4,13 @@ import inspect
 import json
 import pickle
 import sys
+import time
 from typing import Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
+import golem_messages
+from golem_messages import datastructures as msg_dt
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
@@ -23,7 +26,9 @@ from peewee import (
     SmallIntegerField,
     TextField,
 )
+import semantic_version
 
+from golem.core import common
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -86,6 +91,7 @@ class HexIntegerField(CharField):
     def python_value(self, value):
         if value is not None:
             return int(value, 16)
+        return None
 
 
 class FixedLengthHexField(CharField):
@@ -253,6 +259,20 @@ class PaymentStatusField(EnumField):
     """ Database field that stores PaymentStatusField objects as integers. """
     def __init__(self, *args, **kwargs):
         super().__init__(PaymentStatus, *args, **kwargs)
+
+
+class VersionField(CharField):
+    """Semantic version field"""
+
+    def db_value(self, value):
+        if not isinstance(value, semantic_version.Version):
+            raise TypeError(f"Value {value} is not a semantic version")
+        return str(value)
+
+    def python_value(self, value):
+        if value is not None:
+            return semantic_version.Version(value)
+        return None
 
 
 class Payment(BaseModel):
@@ -513,6 +533,51 @@ class NetworkMessage(BaseModel):
     def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
+
+
+class QueuedMessage(BaseModel):
+    node = CharField(null=False, index=True)
+    msg_version = VersionField(null=False)
+    msg_cls = CharField(null=False)
+    msg_data = BlobField(null=False)
+
+    @classmethod
+    def from_message(cls, node_id: str, msg: message.base.Message):
+        instance = cls()
+        instance.node = node_id
+        instance.msg_cls = '.'.join(
+            [msg.__class__.__module__, msg.__class__.__qualname__, ],
+        )
+        instance.msg_version = semantic_version.Version(
+            golem_messages.__version__,
+        )
+        instance.msg_data = golem_messages.dump(msg, None, None)
+        return instance
+
+    def as_message(self) -> message.base.Message:
+        message.base.verify_version(str(self.msg_version))
+        msg = golem_messages.load(
+            self.msg_data,
+            None,
+            None,
+            check_time=False,
+        )
+        msg.header = msg_dt.MessageHeader(
+            msg.header[0],
+            int(time.time()),
+            False,
+        )
+        msg.sig = None
+        return msg
+
+    def __str__(self):
+        node = self.node or ''
+        return (
+            f"{ self.__class__.__name__ }"
+            f" node={common.short_node_id(node)}"
+            f", version={self.msg_version}"
+            f", class={self.msg_cls}"
+        )
 
 
 def collect_db_models(module: str = __name__):
