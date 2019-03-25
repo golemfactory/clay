@@ -43,14 +43,21 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     @staticmethod
     def _get_part_size(subtask_info):
+        resolution_x = subtask_info['resolution'][0]
+        resolution_y = subtask_info['resolution'][1]
+
         if subtask_info['use_frames'] and len(subtask_info['all_frames']) \
                 >= subtask_info['total_tasks']:
-            res_y = subtask_info['resolution'][1]
+            crop_resolution_y = resolution_y
         else:
-            res_y = int(round(numpy.float32(
-                numpy.float32(subtask_info['crops'][0]['borders_y'][0]) *
-                numpy.float32(subtask_info['resolution'][1]))))
-        return subtask_info['resolution'][0], res_y
+            border_y_min = numpy.float32(subtask_info['crops'][0]['borders_y'][0])  # noqa pylint: disable=line-too-long
+            border_y_max = numpy.float32(subtask_info['crops'][0]['borders_y'][1])  # noqa pylint: disable=line-too-long
+
+            crop_resolution_y = int(round(numpy.float32(
+                resolution_y * border_y_max -
+                resolution_y * border_y_min
+            )))
+        return resolution_x, crop_resolution_y
 
     def stop(self):
         if self.docker_task:
