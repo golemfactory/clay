@@ -42,7 +42,7 @@ class TestCoreVerifier(TempDirFixture):
     def _check_state(self, expected_result: bool):
         core_verifier = CoreVerifier(self.verification_data)
         result = core_verifier.simple_verification()
-        assert result == expected_result
+        assert result is expected_result
 
     def test_simple_verification(self):
 

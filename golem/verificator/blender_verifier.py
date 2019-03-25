@@ -84,7 +84,6 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addCallback(success)
         self.finished.addErrback(failure)
 
-        # subtask_info = self.verification_data['subtask_info']
         work_dir = os.path.dirname(self.results[0])
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
             resources=self.subtask_info['path_root'],
