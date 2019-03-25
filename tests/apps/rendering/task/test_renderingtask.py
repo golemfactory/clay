@@ -341,13 +341,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
-    def test_get_output_path(self):
-        td = TaskDefinition()
-        td.name = "MY task"
-        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
-        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
-            path.join("/dir3/dir4", "MY task.txt")
-
     def test_build_definition_minimal(self):
         # given
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
@@ -402,9 +395,6 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
         assert definition.max_price == 250000000000000000
         assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
-        output_file = self.task_dict['name'] + "." + \
-            self.task_dict['options']['format']
-        assert definition.output_file == self.path + os.sep + output_file
 
     def test_timeout_too_short(self):
         # given
