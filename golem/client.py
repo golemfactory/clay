@@ -33,7 +33,7 @@ from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService
+from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -855,6 +855,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return subtasks
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
+            return None
 
     @rpc_utils.expose('comp.task.subtask')
     def get_subtask(self, subtask_id: str) \
@@ -871,7 +872,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def verify_sutbask(self, subtask_id, verdict):
         logger.debug('Verifying subtask "%r" ...', subtask_id)
         self.task_server.task_manager.external_verify_subtask(subtask_id,
-                                                                   verdict)
+                                                              verdict)
 
     @rpc_utils.expose('comp.task.preview')
     def get_task_preview(self, task_id, single=False):
@@ -902,8 +903,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             raise ValueError("Incorrect number of days: {}".format(last_days))
         if last_days > 0:
             return self.task_archiver.get_unsupport_reasons(last_days)
-        else:
-            return self.task_server.task_keeper.get_unsupport_reasons()
+        return self.task_server.task_keeper.get_unsupport_reasons()
 
     @rpc_utils.expose('pay.ident')
     def get_payment_address(self):
@@ -1114,8 +1114,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
-        if state:
-            return DictSerializer.dump(state)
+        return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.resource_server.download_resources(
@@ -1185,7 +1184,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server is None:
             return {}
         headers = {}
-        for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
+        for key, header in\
+                list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
         return headers
 
@@ -1215,14 +1215,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.environment.enable')
     def enable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, True)
+            return self.environments_manager.change_accept_tasks(env_id, True)
         except KeyError:
             return "No such environment"
 
     @rpc_utils.expose('comp.environment.disable')
     def disable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, False)
+            return self.environments_manager.change_accept_tasks(env_id, False)
         except KeyError:
             return "No such environment"
 
@@ -1373,6 +1373,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
+        return None
 
     @staticmethod
     def enable_talkback(value):
@@ -1399,10 +1400,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
-    def __init__(self, client: Client):
+    def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts = {}
+        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)

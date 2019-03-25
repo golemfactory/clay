@@ -530,7 +530,8 @@ class TaskManager(TaskEventListener):
         # Map new subtasks to old by 'start_task'
         subtasks_to_copy = {
             subtask['start_task']: subtask for subtask in
-            map(lambda id_: old_task.subtasks_given[id_], subtask_ids_to_copy)
+            map(lambda id_: old_task.subtasks_given[id_],  # type: ignore
+                subtask_ids_to_copy)
         }
 
         # Generate all subtasks for the new task
@@ -725,9 +726,8 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.notice_task_updated(task_id,
-                                    subtask_id=subtask_id,
-                                    op=SubtaskOp.VERIFYING
-                                 )
+                                 subtask_id=subtask_id,
+                                 op=SubtaskOp.VERIFYING)
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
@@ -962,10 +962,11 @@ class TaskManager(TaskEventListener):
 
     def external_verify_subtask(self, subtask_id, verdict):
         logger.warning("external_verify_subtask. subtask_id=%r",
-                            subtask_id)
+                       subtask_id)
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
-            return self.tasks[task_id].external_verify_subtask(subtask_id, verdict)
+            return self.tasks[task_id].external_verify_subtask(subtask_id,
+                                                               verdict)
         else:
             raise ValueError('Not my subtask')
 
@@ -1060,14 +1061,16 @@ class TaskManager(TaskEventListener):
         ss.price = price
 
         (self.tasks_states[ctd['task_id']].
-            subtask_states[ctd['subtask_id']]) = ss
+         subtask_states[ctd['subtask_id']]) = ss
 
     def notify_update_task(self, task_id):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def notice_task_updated(self, task_id: str, subtask_id: str = None,
-                            op: Operation = None, persist: bool = True):
+    def notice_task_updated(self, task_id: str,
+                            subtask_id: Optional[str] = None,
+                            op: Optional[Operation] = None,
+                            persist: bool = True):
         """Called when a task is modified, saves the task and
         propagates information
 
