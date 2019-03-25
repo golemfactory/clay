@@ -171,9 +171,10 @@ class TestUnitBlenderVerifier:
 
     @pytest.mark.parametrize(
         "start_border_y, expected_height", [
-            (0.1, 35),
-            (0.33, 116),
-            (0.37, 130)
+            (0, 140),
+            (0.1, 105),
+            (0.33, 24),
+            (0.37, 10)
         ]
     )
     def test__get_part_size_with_crops(self, start_border_y, expected_height):

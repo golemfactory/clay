@@ -11,9 +11,6 @@ class RenderingVerifier(CoreVerifier):
 
     def __init__(self, verification_data):
         super().__init__(verification_data)
-        self.verification_data = verification_data
-        self.resources = verification_data['resources']
-        self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING
 
     @staticmethod
@@ -21,8 +18,8 @@ class RenderingVerifier(CoreVerifier):
         image = load_img(file_path)
         if image is None:
             return False
-        image_x, _ = image.get_size()
-        if image_x != resolution_x:
+        image_x, image_y = image.get_size()
+        if image_x != resolution_x or image_y != resolution_y:
             logger.info(
                 "Subtask size doesn't match, has %r,"
                 " should be %r",
@@ -35,13 +32,18 @@ class RenderingVerifier(CoreVerifier):
     def _get_part_size(subtask_info):
         return subtask_info['res_x'], subtask_info['res_y']
 
-    def _verify_result(self, results):
-        subtask_info = results["subtask_info"]
-        results = results["results"]
+    def simple_verification(self):
+        if not super().simple_verification():
+            return False
+        if not self._are_image_sizes_correct():
+            self.message = 'No proper task result found'
+            self.state = SubtaskVerificationState.WRONG_ANSWER
+            return False
+        return True
 
-        resolution_x, resolution_y = self._get_part_size(subtask_info)
-
-        for image in results:
+    def _are_image_sizes_correct(self):
+        resolution_x, resolution_y = self._get_part_size(self.subtask_info)
+        for image in self.results:
             if not self.check_size(image, resolution_x, resolution_y):
                 return False
         return True
@@ -53,16 +55,12 @@ class FrameRenderingVerifier(RenderingVerifier):
         if not super().simple_verification():
             return False
 
-        subtask_info = self.verification_data['subtask_info']
-        results = self.verification_data['results']
-        use_frames = subtask_info['use_frames']
-        total_tasks = subtask_info['total_tasks']
-        frames = subtask_info['all_frames']
+        use_frames = self.subtask_info['use_frames']
+        total_tasks = self.subtask_info['total_tasks']
+        frames = self.subtask_info['all_frames']
         if use_frames and total_tasks <= len(frames):
-            frames_list = subtask_info['frames']
-            if len(results) < len(frames_list):
+            frames_list = self.subtask_info['frames']
+            if len(self.results) < len(frames_list):
                 self.state = SubtaskVerificationState.WRONG_ANSWER
                 return False
-
-        self.state = SubtaskVerificationState.VERIFIED
         return True
