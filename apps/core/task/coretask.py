@@ -1,3 +1,4 @@
+from datetime import datetime
 import decimal
 import logging
 import os
@@ -505,6 +506,7 @@ class CoreTask(Task):
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
+    OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,
                  owner: 'dt_p2p.Node',
@@ -588,15 +590,24 @@ class CoreTaskBuilder(TaskBuilder):
         return definition.to_dict()
 
     @classmethod
-    def get_output_path(cls, dictionary, definition):
+    def get_output_path(
+            cls,
+            dictionary: Dict[str, Any],
+            definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
-        absolute_path = cls.get_nonexistent_path(
-            options['output_path'],
-            definition.name,
-            options.get('format', ''))
+        base_path = options['output_path']
+        output_dir_name = definition.name + \
+            datetime.now().strftime(cls.OUTPUT_DIR_TIME_FORMAT)
+        full_output_path = os.path.join(base_path, output_dir_name)
 
-        return absolute_path
+        os.makedirs(full_output_path, exist_ok=True)
+
+        return cls.get_nonexistent_path(
+            full_output_path,
+            definition.name,
+            options.get('format', '')
+        )
 
     @classmethod
     def get_nonexistent_path(cls, path, name, extension=""):

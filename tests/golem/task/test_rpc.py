@@ -1,5 +1,6 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
 
@@ -25,6 +26,7 @@ from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
 
 fake = faker.Faker()
+task_output_path = TemporaryDirectory(prefix='golem-test-output-').name
 
 
 class ProviderBase(test_client.TestClientBase):
@@ -46,7 +48,7 @@ class ProviderBase(test_client.TestClientBase):
             'resolution': [1920, 1080],
             'frames': '1-10',
             'format': 'EXR',
-            'output_path': '/Users/user/Desktop/',
+            'output_path': task_output_path,
             'compositing': True,
         },
         'concent_enabled': False,
@@ -224,7 +226,7 @@ class TestRestartTask(ProviderBase):
             'name': 'test task',
             'options': {
                 'difficulty': 1337,
-                'output_path': '',
+                'output_path': task_output_path,
             },
             'resources': [str(some_file_path)],
             'subtask_timeout': common.timeout_to_string(3),
