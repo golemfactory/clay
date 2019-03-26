@@ -1,10 +1,33 @@
+import functools
 import inspect
 import types
 
 from contextlib import contextmanager
 from operator import itemgetter
+from typing import Callable
 
-from golem.interface.exceptions import CommandException
+from golem.interface.exceptions import CommandException, \
+    CommandCanceledException
+
+
+def ask_for_confirmation(question: str) -> Callable:
+    """
+    Decorator that will ask for confirmation (with given `question`) before
+    executing `func`. In case user cancels, `CommandCanceledException` is
+    being raised.
+    """
+    def wrapper(func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            answer = 'maybe'
+            while answer not in ['', 'y', 'n']:
+                answer = input(f'{question} (Y/n)').lower()
+            if answer != 'n':
+                return func(*args, **kwargs)
+            else:
+                raise CommandCanceledException
+        return wrapped
+    return wrapper
 
 
 def group(name=None, parent=None, **kwargs):

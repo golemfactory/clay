@@ -31,3 +31,7 @@ class ExecutionException(CommandException):
         if timestamp:
             return datetime.datetime.fromtimestamp(timestamp).strftime('%H:%M:%S.%f')
         return ""
+
+
+class CommandCanceledException(Exception):
+    pass

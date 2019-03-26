@@ -1,10 +1,14 @@
 import unittest
 
+import pytest
+from mock import patch
 from twisted.internet.defer import Deferred, TimeoutError
 
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, CommandResult, CommandHelper, \
-    group, doc, command, CommandStorage, storage_context, CommandException
+    group, doc, command, CommandStorage, storage_context, CommandException, \
+    ask_for_confirmation
+from golem.interface.exceptions import CommandCanceledException
 
 
 class TestArgument(unittest.TestCase):
@@ -183,3 +187,49 @@ class TestCommandHelper(unittest.TestCase):
             @group("commands", help="command group")
             def foo():
                 pass
+
+
+class TestAskForConfirmation:
+
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.question = "Do you really what to now the truth?"
+        self.output = "Earth's not flat"
+
+    @pytest.mark.parametrize(
+        'users_answer', ['', 'y', 'Y']
+    )
+    def test_confirmation(self, users_answer):
+
+        @ask_for_confirmation(self.question)
+        def _foo():
+            return self.output
+
+        with patch('builtins.input', return_value=users_answer) as mocked_input:
+            assert _foo() == self.output
+            mocked_input.assert_called_once_with(self.question + ' (Y/n)')
+
+    @pytest.mark.parametrize(
+        'users_answer', ['n', 'N']
+    )
+    def test_cancellation(self, users_answer):
+
+        @ask_for_confirmation(self.question)
+        def _bar():
+            pass
+
+        with patch('builtins.input', return_value=users_answer) as mocked_input:
+            with pytest.raises(CommandCanceledException):
+                _bar()
+            mocked_input.assert_called_once_with(self.question + ' (Y/n)')
+
+    def test_users_enters_invalid_answer(self):
+
+        @ask_for_confirmation(self.question)
+        def _baz():
+            return self.output
+
+        with patch('builtins.input',
+                   side_effect=['a', 'no', 'yes', 'y']) as mocked_input:
+            assert _baz() == self.output
+            mocked_input.call_count = 3
