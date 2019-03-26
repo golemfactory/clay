@@ -4,6 +4,7 @@ import shutil
 import time
 from unittest import mock
 from typing import List, Optional
+import cv2
 
 from golem_messages.message import ComputeTaskDef
 import pytest
@@ -166,6 +167,43 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
+    def test_multiple_subtasks_in_task(self):
+        result_image = cv2.imread(os.path.join(
+            get_golem_path(),
+            'tests/apps/blender/verification/test_data',
+            'GolemTask_10001.png',
+        ))
+        y_crop_cord_step = 0
+        y_crop_float_cord_step = 0.0
+        splited_images = {}
+        for i in range(1, 6):
+            # Split image to cropped parts
+            splited_images[f'image_part_{i}'] = \
+                result_image[y_crop_cord_step:y_crop_cord_step + 30, 0:150]
+
+            # Store images in temporary directory to load them to verification
+            temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
+            cv2.imwrite(temp_path, splited_images[f'image_part_{i}'])
+
+            # Create clear verification_data for every crop image
+            verification_data = dict(
+                subtask_info=self._create_subtask_info(
+                    borders_y=[
+                        0.8 - y_crop_float_cord_step, 1.0 - y_crop_float_cord_step
+                    ],
+                    outfilebasename=f'GolemTask_{i}'
+                ),
+                results=[temp_path],
+                resources=self.resources,
+                paths=os.path.dirname(self.resources[0]),
+            )
+            verifier = BlenderVerifier(verification_data, DockerTaskThread)
+            d = verifier.start_verification()
+            sync_wait(d, self.TIMEOUT)
+
+            # Change crop coordinates for next image verification
+            y_crop_cord_step += 30
+            y_crop_float_cord_step += 0.2
 
 
 class TestUnitBlenderVerifier:
