@@ -154,19 +154,18 @@ class TestResourceManagerBase(ResourceSetUp):
             self.task_id
         )
         self.resource_manager.add_resources(resource_paths, self.task_id,
-                                       async_=False)
+                                            async_=False)
         self.resource_manager.remove_resources(self.task_id)
 
         assert not self.resource_manager.storage.cache.get_prefix(self.task_id)
         assert not self.resource_manager.storage.get_resources(self.task_id)
 
     def test_to_from_wire(self):
-        resource_hash = str(uuid.uuid4())
         entries = []
 
         for resource in self.joined_resources:
             manager = Resource(
-                resource_hash,
+                str(uuid.uuid4()),
                 res_id="task",
                 path=os.path.dirname(resource),
                 files=self.joined_resources,
