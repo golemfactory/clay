@@ -21,11 +21,9 @@ class TestffmpegIntegration(TestTaskIntegration):
             os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.tt = ffmpegTaskTypeInfo()
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
-    def test_simple_case(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
-        result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
-        task_def = {
+    @classmethod
+    def _create_task_def_for_transcoding(cls, resource_stream, result_file):
+        return {
             'type': 'FFMPEG',
             'name': os.path.splitext(os.path.basename(result_file))[0],
             'timeout': '0:10:00',
@@ -43,6 +41,14 @@ class TestffmpegIntegration(TestTaskIntegration):
                 'container': os.path.splitext(result_file)[1][1:]
             }
         }
+
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    def test_simple_case(self):
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file)
 
         task = self.execute_task(task_def)
         result = task.task_definition.output_file
@@ -53,24 +59,9 @@ class TestffmpegIntegration(TestTaskIntegration):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
                                    'test_invalid_task_definition.mp4')
-        task_def = {
-            'type': 'FFMPEG',
-            'name': os.path.splitext(os.path.basename(result_file))[0],
-            'timeout': '0:10:00',
-            'subtask_timeout': '0:09:50',
-            'subtasks_count': 2,
-            'bid': 1.0,
-            'resources': [resource_stream],
-            'options': {
-                'output_path': os.path.dirname(result_file),
-                'video': {
-                    'codec': 'h265',
-                    'resolution': [320, 240],
-                    'frame_rate': "25"
-                },
-                'container': os.path.splitext(result_file)[1][1:]
-            }
-        }
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file)
 
         task = self.execute_task(task_def)
 
@@ -85,24 +76,9 @@ class TestffmpegIntegration(TestTaskIntegration):
                                        'test_nonexistent_video.mp4')
 
         result_file = os.path.join(self.root_dir, 'test_nonexistent_video.mp4')
-        task_def = {
-            'type': 'FFMPEG',
-            'name': os.path.splitext(os.path.basename(result_file))[0],
-            'timeout': '0:10:00',
-            'subtask_timeout': '0:09:50',
-            'subtasks_count': 2,
-            'bid': 1.0,
-            'resources': [resource_stream],
-            'options': {
-                'output_path': os.path.dirname(result_file),
-                'video': {
-                    'codec': 'h265',
-                    'resolution': [320, 240],
-                    'frame_rate': "25"
-                },
-                'container': os.path.splitext(result_file)[1][1:]
-            }
-        }
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file)
 
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
@@ -112,24 +88,10 @@ class TestffmpegIntegration(TestTaskIntegration):
         resource_stream = os.path.join(self.RESOURCES, 'invalid_test_video.mp4')
         result_file = os.path.join(self.root_dir,
                                    'test_invalid_resource_stream.mp4')
-        task_def = {
-            'type': 'FFMPEG',
-            'name': os.path.splitext(os.path.basename(result_file))[0],
-            'timeout': '0:10:00',
-            'subtask_timeout': '0:08:00',
-            'subtasks_count': 2,
-            'bid': 1.0,
-            'resources': [resource_stream],
-            'options': {
-                'output_path': os.path.dirname(result_file),
-                'video': {
-                    'codec': 'h265',
-                    'resolution': [320, 240],
-                    'frame_rate': "25"
-                },
-                'container': os.path.splitext(result_file)[1][1:]
-            }
-        }
+
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file)
 
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
@@ -138,24 +100,10 @@ class TestffmpegIntegration(TestTaskIntegration):
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
-        task_def = {
-            'type': 'FFMPEG',
-            'name': os.path.splitext(os.path.basename(result_file))[0],
-            'timeout': '0:10:00',
-            'subtask_timeout': '0:08:00',
-            'subtasks_count': 2,
-            'bid': 1.0,
-            'resources': [resource_stream],
-            'options': {
-                'output_path': os.path.dirname(result_file),
-                'video': {
-                    'codec': 'abcd',
-                    'resolution': [320, 240],
-                    'frame_rate': "25"
-                },
-                'container': os.path.splitext(result_file)[1][1:]
-            }
-        }
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file)
+        task_def['options']['video']['codec'] = 'abcd'
 
         with self.assertRaises(UnsupportedVideoCodec):
             self.execute_task(task_def)
