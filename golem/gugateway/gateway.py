@@ -270,7 +270,7 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
                 logger.info('want task %s for %s', task_id, subs)
                 return _json_response('OK')
         except KeyError as e:
-            return _not_found(f'task {e}')
+            return _not_found(f'key {e}')
     else:
         return _not_found(f'task {task_id}')
 
