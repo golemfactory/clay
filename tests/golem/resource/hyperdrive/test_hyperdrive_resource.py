@@ -130,6 +130,8 @@ class TestResourceCache(TempDirFixture):
 
 class TestResourceStorage(ResourceSetUp):
 
+    __test__ = True
+
     def setUp(self):
         super().setUp()
         self.storage = ResourceStorage(
