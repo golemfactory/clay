@@ -13,10 +13,10 @@ logger = logging.getLogger(__name__)
 
 
 @ci_skip
-class TestffmpegIntegration(TestTaskIntegration):
+class FfmpegIntegrationTestCase(TestTaskIntegration):
 
     def setUp(self):
-        super(TestffmpegIntegration, self).setUp()
+        super(FfmpegIntegrationTestCase, self).setUp()
         self.RESOURCES = os.path.join(os.path.dirname(
             os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.tt = ffmpegTaskTypeInfo()
@@ -41,6 +41,10 @@ class TestffmpegIntegration(TestTaskIntegration):
                 'container': os.path.splitext(result_file)[1][1:]
             }
         }
+
+
+@ci_skip
+class TestffmpegIntegration(FfmpegIntegrationTestCase):
 
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_simple_case(self):
