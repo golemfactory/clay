@@ -1,12 +1,15 @@
 import logging
 import time
+from typing import Dict, TYPE_CHECKING
 
 from ethereum.utils import denoms
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
 
-from .transactionsystem import TransactionSystem
+
+if TYPE_CHECKING:
+    from .transactionsystem import TransactionSystem  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +28,12 @@ class TaskFundsLock:
 class FundsLocker(LoopingCallService):
     def __init__(
             self,
-            transaction_system: TransactionSystem,
+            transaction_system: 'TransactionSystem',
             interval_seconds: int = 60) -> None:
         super().__init__(interval_seconds)
-        self.task_lock: dict = {}
-        self.transaction_system = transaction_system
+        self.task_lock: Dict[str, TaskFundsLock] = {}
+        self.transaction_system: 'TransactionSystem' \
+            = transaction_system
 
     def lock_funds(
             self,

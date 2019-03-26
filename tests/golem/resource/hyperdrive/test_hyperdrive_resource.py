@@ -26,24 +26,24 @@ class TestResourceCache(TempDirFixture):
         self.cache.set_prefix(self.task_id, self.prefix)
         resource = Resource(
             self.resource_hash,
-            task_id=self.task_id,
+            res_id=self.task_id,
             files=self.resource_files,
             path=self.resource_path
         )
 
-        assert self.cache.get_prefix(resource.task_id) == self.prefix
+        assert self.cache.get_prefix(resource.res_id) == self.prefix
         assert self.cache.get_prefix(str(uuid.uuid4())) == ''
         assert self.cache.get_prefix(str(uuid.uuid4()), 'default_value') == \
             'default_value'
 
         self.cache.add_resource(resource)
-        self.cache.remove(resource.task_id)
-        assert self.cache.get_prefix(resource.task_id) == ''
+        self.cache.remove(resource.res_id)
+        assert self.cache.get_prefix(resource.res_id) == ''
 
     def test_resources(self):
         resource = Resource(
             self.resource_hash,
-            task_id=self.task_id,
+            res_id=self.task_id,
             files=self.resource_files,
             path=self.resource_path
         )
@@ -51,7 +51,7 @@ class TestResourceCache(TempDirFixture):
         new_task_file = 'new_name'
         new_resource = Resource(
             str(uuid.uuid4()),
-            task_id=str(uuid.uuid4()),
+            res_id=str(uuid.uuid4()),
             files=[new_task_file],
             path=self.resource_path
         )
@@ -64,7 +64,7 @@ class TestResourceCache(TempDirFixture):
         self.cache.add_resource(resource)
 
         assert self.cache.get_resources(self.task_id) == [resource]
-        assert self.cache.get_resources(new_resource.task_id) == []
+        assert self.cache.get_resources(new_resource.res_id) == []
         assert self.cache.get_resources('unknown') == []
         assert self.cache.has_resource(resource)
         assert not self.cache.has_resource(new_resource)
@@ -75,14 +75,14 @@ class TestResourceCache(TempDirFixture):
         assert new_resource.exists
 
         assert self.cache.get_resources(self.task_id) == [resource]
-        assert self.cache.get_resources(new_resource.task_id) == [new_resource]
+        assert self.cache.get_resources(new_resource.res_id) == [new_resource]
         assert self.cache.get_resources('unknown') == []
         assert self.cache.has_resource(resource)
         assert self.cache.has_resource(new_resource)
 
         assert self.cache.remove(self.task_id)
         assert self.cache.remove('unknown') == []
-        assert self.cache.get_resources(new_resource.task_id) == [new_resource]
+        assert self.cache.get_resources(new_resource.res_id) == [new_resource]
 
     def test_remove(self):
         self._add_all()
@@ -92,7 +92,7 @@ class TestResourceCache(TempDirFixture):
         new_path = '/other/path'
         new_resource = Resource(
             str(uuid.uuid4()),
-            task_id=str(uuid.uuid4()),
+            res_id=str(uuid.uuid4()),
             path=new_path,
             files=[new_path]
         )
@@ -114,7 +114,7 @@ class TestResourceCache(TempDirFixture):
     def _add_all(self):
         resource = Resource(
             self.resource_hash,
-            task_id=self.task_id,
+            res_id=self.task_id,
             path=self.resource_path,
             files=['file']
         )

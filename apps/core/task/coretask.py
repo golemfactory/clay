@@ -1,3 +1,4 @@
+from datetime import datetime
 import decimal
 import logging
 import os
@@ -7,15 +8,14 @@ from typing import (
     Dict,
     List,
     Type,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
-from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
 
-from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
 from golem import constants as gconst
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
@@ -29,6 +29,14 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 from golem.verificator.core_verifier import CoreVerifier
 from golem.verificator.verifier import SubtaskVerificationState
+
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem_messages.datastructures import p2p as dt_p2p
+    from .coretaskstate import TaskDefinition, Options
+    from golem.environments.environment import Environment
+
 
 logger = logging.getLogger("apps.core")
 
@@ -49,7 +57,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
     def __init__(self,
                  name: str,
                  definition: 'Type[TaskDefinition]',
-                 options: Type[Options],
+                 options: 'Type[Options]',
                  builder_type: Type[TaskBuilder]):
         super().__init__(name, definition, options, builder_type)
         self.output_formats = []
@@ -81,10 +89,10 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
 class CoreTask(Task):
-    VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
+    VERIFIER_CLASS: Type[CoreVerifier] = CoreVerifier
     VERIFICATION_QUEUE = VerificationQueue()
 
-    ENVIRONMENT_CLASS = None  # type: Type[Environment]
+    ENVIRONMENT_CLASS: 'Type[Environment]'
 
     handle_key_error = HandleKeyError(log_key_error)
 
@@ -94,8 +102,8 @@ class CoreTask(Task):
 
     # pylint:disable=too-many-arguments
     def __init__(self,
-                 task_definition: TaskDefinition,
-                 owner: dt_p2p.Node,
+                 task_definition: 'TaskDefinition',
+                 owner: 'dt_p2p.Node',
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
@@ -123,6 +131,7 @@ class CoreTask(Task):
         if task_definition.docker_images:
             self.docker_images = task_definition.docker_images
         elif isinstance(self.environment, DockerEnvironment):
+            # pylint: disable=no-member
             self.docker_images = self.environment.docker_images
         else:
             self.docker_images = None
@@ -147,7 +156,7 @@ class CoreTask(Task):
         self.last_task = 0
 
         self.num_tasks_received = 0
-        self.subtasks_given = {}
+        self.subtasks_given: Dict[str, Dict[str, Any]] = {}
         self.num_failed_subtasks = 0
 
         self.timeout = task_timeout
@@ -214,7 +223,8 @@ class CoreTask(Task):
             resources=self.task_resources,
         )
 
-    def verification_finished(self, subtask_id, verdict, result):
+    def verification_finished(self, subtask_id,
+                              verdict: SubtaskVerificationState, result):
         try:
             if verdict == SubtaskVerificationState.VERIFIED:
                 self.accept_results(subtask_id, result['extra_data']['results'])
@@ -441,7 +451,7 @@ class CoreTask(Task):
 
     def get_finishing_subtasks(self, node_id: str) -> List[dict]:
         return [
-            subtask for subtask in self.subtasks_given
+            subtask for subtask in self.subtasks_given.values()
             if subtask['status'].is_finishing()
             and subtask['node_id'] == node_id
         ]
@@ -496,10 +506,11 @@ class CoreTask(Task):
 
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
+    OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,
-                 owner: dt_p2p.Node,
-                 task_definition: TaskDefinition,
+                 owner: 'dt_p2p.Node',
+                 task_definition: 'TaskDefinition',
                  dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
@@ -523,7 +534,8 @@ class CoreTaskBuilder(TaskBuilder):
         return kwargs
 
     @classmethod
-    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary) \
+            -> 'TaskDefinition':
         logger.debug(
             "build_minimal_definition. task_type=%r, dictionary=%r",
             task_type, dictionary
@@ -540,7 +552,8 @@ class CoreTaskBuilder(TaskBuilder):
     def build_definition(cls,  # type: ignore
                          task_type: CoreTaskTypeInfo,
                          dictionary: Dict[str, Any],
-                         minimal=False):
+                         minimal=False) \
+            -> 'TaskDefinition':
         # dictionary comes from the GUI
         if not minimal:
             definition = cls.build_full_definition(task_type, dictionary)
@@ -553,7 +566,8 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def build_full_definition(cls,
                               task_type: CoreTaskTypeInfo,
-                              dictionary: Dict[str, Any]):
+                              dictionary: Dict[str, Any]) \
+            -> 'TaskDefinition':
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.name = dictionary['name']
         definition.max_price = \
@@ -572,19 +586,28 @@ class CoreTaskBuilder(TaskBuilder):
     # move to overriding their own TaskDefinitions instead of
     # overriding `build_dictionary. Issue #2424`
     @staticmethod
-    def build_dictionary(definition: TaskDefinition) -> dict:
+    def build_dictionary(definition: 'TaskDefinition') -> dict:
         return definition.to_dict()
 
     @classmethod
-    def get_output_path(cls, dictionary, definition):
+    def get_output_path(
+            cls,
+            dictionary: Dict[str, Any],
+            definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
-        absolute_path = cls.get_nonexistent_path(
-            options['output_path'],
-            definition.name,
-            options.get('format', ''))
+        base_path = options['output_path']
+        output_dir_name = definition.name + \
+            datetime.now().strftime(cls.OUTPUT_DIR_TIME_FORMAT)
+        full_output_path = os.path.join(base_path, output_dir_name)
 
-        return absolute_path
+        os.makedirs(full_output_path, exist_ok=True)
+
+        return cls.get_nonexistent_path(
+            full_output_path,
+            definition.name,
+            options.get('format', '')
+        )
 
     @classmethod
     def get_nonexistent_path(cls, path, name, extension=""):

@@ -1,5 +1,6 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
 
@@ -25,6 +26,7 @@ from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
 
 fake = faker.Faker()
+task_output_path = TemporaryDirectory(prefix='golem-test-output-').name
 
 
 class ProviderBase(test_client.TestClientBase):
@@ -46,7 +48,7 @@ class ProviderBase(test_client.TestClientBase):
             'resolution': [1920, 1080],
             'frames': '1-10',
             'format': 'EXR',
-            'output_path': '/Users/user/Desktop/',
+            'output_path': task_output_path,
             'compositing': True,
         },
         'concent_enabled': False,
@@ -81,15 +83,15 @@ class ProviderBase(test_client.TestClientBase):
             result = 'package_path', 'package_sha1'
             return test_client.done_deferred(result)
 
-        def add_task(*_args, **_kwargs):
+        def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash', 42
             return test_client.done_deferred(result)
 
         self.client.resource_server.create_resource_package = mock.Mock(
             side_effect=create_resource_package)
-        self.client.resource_server.add_task = mock.Mock(
-            side_effect=add_task)
+        self.client.resource_server.add_resources = mock.Mock(
+            side_effect=add_resources)
 
         def add_new_task(task, *_args, **_kwargs):
             instance = self.client.task_manager
@@ -198,7 +200,7 @@ class TestRestartTask(ProviderBase):
             result = 'package_path', 'package_sha1'
             return test_client.done_deferred(result)
 
-        def add_task(*_args, **_kwargs):
+        def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash', 0
             return test_client.done_deferred(result)
@@ -207,7 +209,7 @@ class TestRestartTask(ProviderBase):
             create_resource_package=mock.Mock(
                 side_effect=create_resource_package,
             ),
-            add_task=mock.Mock(side_effect=add_task)
+            add_resources=mock.Mock(side_effect=add_resources)
         )
 
         task_manager = self.client.task_server.task_manager
@@ -224,7 +226,7 @@ class TestRestartTask(ProviderBase):
             'name': 'test task',
             'options': {
                 'difficulty': 1337,
-                'output_path': '',
+                'output_path': task_output_path,
             },
             'resources': [str(some_file_path)],
             'subtask_timeout': common.timeout_to_string(3),
@@ -340,7 +342,7 @@ class TestEnqueueNewTask(ProviderBase):
         task_id = task.header.task_id
         assert isinstance(task, taskbase.Task)
         assert task.header.task_id
-        assert c.resource_server.add_task.called
+        assert c.resource_server.add_resources.called
 
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = taskstate.TaskState()

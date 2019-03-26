@@ -7,9 +7,9 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
+from datetime import timedelta
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
-from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -42,7 +42,7 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -214,6 +214,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
+        dispatcher.connect(
+            self.taskserver_listener,
+            signal='golem.taskserver'
+        )
 
         logger.debug('Client init completed')
 
@@ -236,7 +240,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             concent_soft_switch,
             framerenderingtask,
             MinPerformanceMultiplier,
-            self.task_server.task_manager,
+            self.task_server,
+            self.task_manager,
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
@@ -292,6 +297,20 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             op_value: int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
+
+    def taskserver_listener(
+            self,
+            event,
+            **kwargs,
+    ):
+        if event == 'provider_rejected':
+            self._publish(
+                Task.evt_provider_rejected,
+                node_id=kwargs['node_id'],
+                task_id=kwargs['task_id'],
+                reason=kwargs['reason'],
+                details=kwargs['details'],
+            )
 
     @report_calls(Component.client, 'sync')
     def sync(self):
@@ -611,14 +630,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.db:
             self.db.close()
 
-    def task_resource_send(self, task_id):
-        self.task_server.task_manager.resources_send(task_id)
+    def resource_collected(self, res_id):
+        self.task_server.task_computer.resource_collected(res_id)
 
-    def task_resource_collected(self, task_id):
-        self.task_server.task_computer.task_resource_collected(task_id)
-
-    def task_resource_failure(self, task_id, reason):
-        self.task_server.task_computer.task_resource_failure(task_id, reason)
+    def resource_failure(self, res_id, reason):
+        self.task_server.task_computer.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
@@ -657,7 +673,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.task.delete')
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
-        self.remove_task_header(task_id)
+        self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
@@ -683,9 +699,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
-
-    def get_suggested_conn_reverse(self, key_id):
-        return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
         if self.p2pservice:
@@ -750,6 +763,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
+        logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
@@ -757,6 +771,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
+        logger.debug("updating settings: %r", settings_dict)
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
                 raise KeyError("Unknown setting: {}".format(key))
@@ -954,8 +969,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         }
 
     @rpc_utils.expose('pay.payments')
-    def get_payments_list(self) -> List[Dict[str, Any]]:
-        return self.transaction_system.get_payments_list()
+    def get_payments_list(
+            self,
+            num: Optional[int] = None,
+            last_seconds: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        interval = None
+        if last_seconds is not None:
+            interval = timedelta(seconds=last_seconds)
+        return self.transaction_system.get_payments_list(num, interval)
 
     @rpc_utils.expose('pay.incomes')
     def get_incomes_list(self) -> List[Dict[str, Any]]:
@@ -1141,10 +1163,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
 
-    @rpc_utils.expose('comp.tasks.known.delete')
-    def remove_task_header(self, task_id):
-        self.task_server.remove_task_header(task_id)
-
     def clean_old_tasks(self):
         logger.debug('Cleaning old tasks ...')
         now = get_timestamp_utc()
@@ -1158,6 +1176,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.tasks.known')
     def get_known_tasks(self):
+        if self.task_server is None:
+            return {}
         headers = {}
         for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
@@ -1353,16 +1373,21 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         enable_sentry_logger(value)
 
     @rpc_utils.expose('net.peer.block')
-    def block_node(self, node_id: str) -> Tuple[bool, Optional[str]]:
-        if self.task_server is not None:
-            try:
-                self.task_server.acl.disallow(node_id, persist=True)
-                return True, None
+    def block_node(
+            self,
+            node_id: str,
+            timeout_seconds: int = -1,
+    ) -> Tuple[bool, Optional[str]]:
+        if not self.task_server:
+            return False, 'Client is not ready'
 
-            except Exception as e:  # pylint: disable=broad-except
-                return False, str(e)
-
-        return False, 'Client is not ready'
+        try:
+            self.task_server.disallow_node(node_id,
+                                           timeout_seconds=timeout_seconds,
+                                           persist=True)
+            return True, None
+        except Exception as e:  # pylint: disable=broad-except
+            return False, str(e)
 
 
 class DoWorkService(LoopingCallService):

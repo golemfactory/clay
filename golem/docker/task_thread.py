@@ -1,12 +1,11 @@
 import logging
-import os
 from pathlib import Path
 from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
     List, NamedTuple
 
 import requests
 
-from golem.core.common import is_windows, is_osx, posix_path
+from golem.core.common import posix_path
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -192,7 +191,7 @@ class DockerTaskThread(TaskThread):
 
         params = dict(
             image=self.image,
-            script_filepath=self.extra_data['script_filepath'],
+            entrypoint=self.extra_data['entrypoint'],
             parameters=self.extra_data,
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),
@@ -214,7 +213,12 @@ class DockerTaskThread(TaskThread):
 
             if exit_code != 0:
                 std_err = (self.dir_mapping.logs / self.STDERR_FILE).read_text()
-                logger.warning(f'Task stderr:\n{std_err}')
+                with (self.dir_mapping.logs / self.STDOUT_FILE).open() as f:
+                    lines = f.readlines()
+                    std_out = "".join(lines[-21:])
+                logger.warning(f'Task error - exit_code={exit_code}\n'
+                               f'stderr:\n{std_err}\n'
+                               f'tail of stdout:\n{std_out}\n')
                 raise JobException(self._exit_code_message(exit_code))
 
         return estm_mem

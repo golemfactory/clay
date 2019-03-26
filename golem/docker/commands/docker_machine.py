@@ -9,7 +9,8 @@ class DockerMachineCommandHandler(DockerCommandHandler):
         start=['docker-machine', '--native-ssh', 'start'],
         stop=['docker-machine', '--native-ssh', 'stop'],
         active=['docker-machine', '--native-ssh', 'active'],
-        list=['docker-machine', '--native-ssh', 'ls', '-q'],
+        # DON'T use the '-q' option. It doesn't list VMs in invalid state
+        list=['docker-machine', '--native-ssh', 'ls'],
         env=['docker-machine', '--native-ssh', 'env'],
         status=['docker-machine', '--native-ssh', 'status'],
         inspect=['docker-machine', '--native-ssh', 'inspect'],
