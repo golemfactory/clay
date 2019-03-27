@@ -12,6 +12,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
+from golem_messages.datastructures import p2p as dt_p2p
 from pydispatch import dispatcher
 
 import golem
@@ -457,6 +458,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
+                node_info=self.task_server.client.node,
             ),
             send_unverified=True
         )
@@ -582,7 +584,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Can not accept offer: Resource handshake is'
                            ' required. task_id=%r, node=%r',
                            msg.task_id, node_name_id)
-            self._start_handshake(self.key_id)
+            self.task_server.start_handshake(self.key_id)
             return
 
         elif self._handshake_in_progress(self.key_id):
@@ -1040,6 +1042,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.key_id is None:
             self.key_id = msg.client_key_id
             send_hello = True
+
+        self.task_server.remembered_nodes[msg.client_key_id] = msg.node_info
 
         if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
