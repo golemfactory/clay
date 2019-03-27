@@ -28,7 +28,7 @@ class TaskOutputDirectory(NodeTestPlaybook):
         print('Verifying task output directories.')
 
         task_name: str = self.task_settings_dict.get('name')
-        output_contents: typing.Generator[Path] = \
+        output_contents: typing.Iterable[Path] = \
             Path(self.output_path).glob('*/*')
 
         for path in output_contents:
@@ -38,7 +38,6 @@ class TaskOutputDirectory(NodeTestPlaybook):
                         path.name.strip(task_name),
                         self.OUTPUT_DIR_TIME_FORMAT
                     )
-                    print(f'Verified output directory: {path.name}')
                 except ValueError:
                     self.fail(f'Output directory: {path.resolve()} does not'
                               f'match the expected format.')
