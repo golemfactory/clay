@@ -44,7 +44,7 @@ class FundsLocker(LoopingCallService):
 
         tfl = TaskFundsLock(subtask_price, num_tasks, deadline)
         logger.info(
-            'Locking funds for task: %r price: %f num: %d',
+            'Locking funds for task: %r price: %.3f GNTB num: %d',
             task_id,
             tfl.price / denoms.ether,
             tfl.num_tasks,

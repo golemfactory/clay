@@ -409,8 +409,9 @@ class TransactionSystem(LoopingCallService):
             raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
         log.info(
-            "Locking %f GNT and ETH for %d payments",
+            "Locking %.3f GNTB and %.8f ETH for %d payments",
             gnt / denoms.ether,
+            eth / denoms.ether,
             num,
         )
         locked_eth = self.get_locked_eth()
@@ -433,7 +434,7 @@ class TransactionSystem(LoopingCallService):
 
             ))
         log.info(
-            "Unlocking %f GNT and ETH for %d payments",
+            "Unlocking %.3f GNTB for %d payments",
             gnt / denoms.ether,
             num,
         )
