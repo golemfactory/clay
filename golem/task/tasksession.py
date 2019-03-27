@@ -131,6 +131,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server: 'TaskServer' = self.conn.server
         self.task_manager: 'TaskManager' = self.task_server.task_manager
         self.task_computer: 'TaskComputer' = self.task_server.task_computer
+        # self.keys_auth: 'KeysAuth' = self.task_server.keys_auth
         self.concent_service = self.task_server.client.concent_service
         # FIXME: Remove task_id and use values from messages
         self.task_id = None  # current task id
@@ -175,10 +176,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @property
     def my_private_key(self) -> bytes:
+        # return self.keys_auth._private_key  # noqa pylint: disable=protected-access
         return self.task_server.keys_auth._private_key  # noqa pylint: disable=protected-access
 
     @property
     def my_public_key(self) -> bytes:
+        # return self.keys_auth.public_key
         return self.task_server.keys_auth.public_key
 
     ###################################

@@ -217,6 +217,9 @@ class Subscription(object):
         self.update(request_json)
 
         self.node_id = node_id
+        # TODO: By default node_id should be used as address for payments. It
+        #      can by overwritten by `ethPubKey` field. But GM needs pub key :/
+        # self.eth_pub_key = self.eth_pub_key or self.node_id[2:]
         self.task_type: TaskType = task_type
         self.stats: Counter = Counter()
         self.event_counter: int = 0
@@ -257,6 +260,14 @@ class Subscription(object):
             return False
 
         self.set_config_to(task_server.config_desc)
+
+        # new_keys_auth = KeysAuth(
+        #     datadir=task_server.client.datadir,
+        #     private_key_name=task_id + PRIVATE_KEY,
+        #     password="gu-gw",
+        #     difficulty=task_server.client.config_desc.key_difficulty,
+        # )
+
         task_server.request_task(task_id, self.performance, self.eth_pub_key)
         dispatcher.connect(self.add_subtask_event,
                            signal='golem.subtask')
