@@ -4,7 +4,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
-from typing import Optional
+from typing import List, Optional
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
@@ -30,6 +30,7 @@ class Commands(enum.Enum):
     SPLIT = ('split', 'split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE = ('merge', '')
+    COMPUTE_METRICS = ('compute-metrics', '')
 
 
 class StreamOperator:
@@ -191,3 +192,42 @@ class StreamOperator:
                                                     temporary=temporary,
                                                     resources=resources,
                                                     logs=logs, work=work)
+
+    def get_metadata(self, input_files: List[str], task_dir: str) -> dict:
+        try:
+            resources_dir = task_dir
+            output_dir = os.path.join(task_dir, 'metadata_output')
+            work_dir = os.path.join(task_dir, 'metadata_work')
+            os.makedirs(output_dir)
+            os.makedirs(work_dir)
+        except OSError:
+            raise ffmpegException(
+                "Failed to prepare directory structure for get_metadata")
+
+        metadata_requests = [{
+            'video': input_file,
+            'output': f'metadata-logs-{os.path.splitext(input_file)[0]}.json'
+        } for input_file in input_files]
+
+        extra_data = {
+            'entrypoint': FFMPEG_ENTRYPOINT,
+            'command': Commands.COMPUTE_METRICS.value[0],
+            'metrics_params': {
+                'metadata': metadata_requests,
+            },
+        }
+
+        dir_mapping = DockerTaskThread.specify_dir_mapping(
+            output=output_dir,
+            temporary=work_dir,
+            resources=resources_dir,
+            logs=work_dir,
+            work=work_dir)
+
+        logger.info('Obtaining video metadata.')
+        logger.debug('Command params: %s', extra_data)
+
+        job_result = self._do_job_in_container(dir_mapping, extra_data)
+
+        logger.info('Video metadata obtained successfully!')
+        return job_result
