@@ -14,7 +14,6 @@ from twisted.internet import threads
 
 import golem_sci
 
-from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
@@ -79,7 +78,7 @@ class PaymentProcessor:
                 .select() \
                 .where(Payment.status == PaymentStatus.awaiting):
             log.info(
-                "Restoring awaiting payment for subtask %s to %s, value %f",
+                "Restoring awaiting payment for subtask %s to %s of %.6f GNTB",
                 awaiting_payment.subtask,
                 encode_hex(awaiting_payment.payee),
                 awaiting_payment.value / denoms.ether,
@@ -101,7 +100,7 @@ class PaymentProcessor:
         total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
         log.info(
-            "Batch transfer confirmed %s average gas fee per subtask %f",
+            "Batch transfer confirmed %s average gas fee per subtask %.6f ETH",
             receipt,
             fee / denoms.ether,
         )
@@ -117,7 +116,7 @@ class PaymentProcessor:
     @staticmethod
     def _payment_confirmed(payment: Payment, timestamp: int) -> None:
         log.debug(
-            "- %s confirmed fee %.6f",
+            "- %s confirmed fee: %.6f ETH",
             payment.subtask,
             payment.details.fee / denoms.ether
         )
@@ -135,7 +134,7 @@ class PaymentProcessor:
 
     def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
         log.info(
-            "Adding payment for %s to %s (value: %f)",
+            "Adding payment for %s to %s (%.6f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
@@ -220,7 +219,7 @@ class PaymentProcessor:
         payments = self._awaiting[:payments_count]
 
         value = sum([p.value for p in payments])
-        log.info("Batch payments value: %.6f", value / denoms.ether)
+        log.info("Batch payments value: %.6f GNTB", value / denoms.ether)
 
         closure_time = payments[-1].processed_ts
         tx_hash = self._sci.batch_transfer(
@@ -233,7 +232,7 @@ class PaymentProcessor:
             payment.status = PaymentStatus.sent
             payment.details.tx = tx_hash[2:]
             payment.save()
-            log.debug("- {} send to {} ({:.6f})".format(
+            log.debug("- {} send to {} ({:.6f} GNTB)".format(
                 payment.subtask,
                 encode_hex(payment.payee),
                 payment.value / denoms.ether))
