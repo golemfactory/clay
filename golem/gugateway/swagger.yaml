@@ -33,16 +33,17 @@ definitions:
         type: string
   Subscription:
     required:
-      - minPrice
+      - minPriceGnt
       - maxCpuCores
       - maxMemorySize
       - maxDiskSize
     properties:
       name:
         type: string
-      minPrice:
-        type: integer
-        description: minimal accepted price in 10e-18 GNT
+      minPriceGnt:
+        type: number
+        format: double
+        description: minimal accepted price in GNT
       performance:
         type: number
         format: float
@@ -95,7 +96,7 @@ definitions:
       - deadline
       - subtaskTimeout
       - subtasksCount
-      - maxPrice
+      - maxPriceGnt
     properties:
       taskId:
         $ref: '#/definitions/Uuid'
@@ -116,10 +117,10 @@ definitions:
       estimatedMemory:
         type: integer
         format: int64
-      maxPrice:
-        type: integer
-        format: int64
-        description: in 10e-18 GNT per second of computation
+      maxPriceGnt:
+        type: number
+        format: double
+        description: in GNT per second of computation
       minVersion:
         type: string
         description: minimal Golem version
@@ -130,18 +131,18 @@ definitions:
     required:
       - taskId
       - subtaskId
-      - price
+      - priceGnt
       - deadline
     properties:
       taskId:
         $ref: '#/definitions/Uuid'
       subtaskId:
         $ref: '#/definitions/Uuid'
-      price:
-        type: integer
-        format: int64
+      priceGnt:
+        type: number
+        format: double
         description: >
-          total subtask price in 10e-18 GNT computed as `task_max_price * subtask_timeout`
+          total subtask price in GNT computed as `task_max_price * subtask_timeout`
       deadline:
         type: integer
         description: >

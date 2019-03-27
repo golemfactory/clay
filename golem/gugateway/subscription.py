@@ -1,6 +1,7 @@
 from collections import Counter
 
 from enum import auto, Enum
+from eth_utils import denoms
 from golem_messages.datastructures.tasks import TaskHeader
 from golem_messages.message.tasks import SubtaskResultsAccepted, \
     SubtaskResultsRejected
@@ -66,7 +67,7 @@ class Task(object):
     """ Golem task representation for GU gateway. Just header values"""
 
     __slots__ = ['task_id', 'deadline', 'subtask_timeout', 'subtasks_count',
-                 'resource_size', 'estimated_memory', 'max_price',
+                 'resource_size', 'estimated_memory', 'max_price_gnt',
                  'min_version']
 
     def __init__(self, header: TaskHeader):
@@ -76,7 +77,7 @@ class Task(object):
         self.subtasks_count = header.subtasks_count
         self.resource_size = header.resource_size
         self.estimated_memory = header.estimated_memory
-        self.max_price = header.max_price
+        self.max_price_gnt = header.max_price / denoms.ether
         self.min_version = header.min_version
 
     def to_json_dict(self) -> dict:
@@ -87,7 +88,7 @@ class Task(object):
             'subtasksCount': self.subtasks_count,
             'resourceSize': self.resource_size,
             'estimatedMemory': self.estimated_memory,
-            'maxPrice': self.max_price,
+            'maxPriceGnt': self.max_price_gnt,
             'minVersion': self.min_version
         }
 
@@ -95,11 +96,11 @@ class Task(object):
 class Subtask(object):
     """ Golem subtask representation for GU gateway"""
 
-    __slots__ = ['task_id', 'subtask_id', 'price', 'deadline',
+    __slots__ = ['task_id', 'subtask_id', 'price_gnt', 'deadline',
                  'docker_images', 'extra_data']
 
     def __init__(self, **kwargs):
-        self.price = int(kwargs['price'])
+        self.price_gnt = int(kwargs['price']) / denoms.ether
         ctd = kwargs['ctd']
         self.task_id = ctd['task_id']
         self.subtask_id = ctd['subtask_id']
@@ -112,7 +113,7 @@ class Subtask(object):
         return {
             'taskId': self.task_id,
             'subtaskId': self.subtask_id,
-            'price': self.price,
+            'priceGnt': self.price_gnt,
             'deadline': self.deadline,
             'dockerImages': self.docker_images,
             'extraData': self.extra_data
@@ -200,7 +201,7 @@ class Subscription(object):
 
     def update(self, request_json: dict):
         self.name = request_json.get('name', '')
-        self.min_price = int(request_json['minPrice'])
+        self.min_price_gnt = int(request_json['minPriceGnt'])
         self.performance = float(request_json.get('performance', 0.0))
         self.max_cpu_cores = int(request_json['maxCpuCores'])
         self.max_memory_size = int(request_json['maxMemorySize'])
@@ -365,7 +366,7 @@ class Subscription(object):
 
     def set_config_to(self, config_desc: ClientConfigDescriptor):
         config_desc.node_name = self.name
-        config_desc.min_price = self.min_price
+        config_desc.min_price = self.min_price_gnt * denoms.ether
         config_desc.num_cores = self.max_cpu_cores
         config_desc.max_memory_size = self.max_memory_size
         config_desc.max_resource_size = self.max_disk_size
@@ -376,7 +377,7 @@ class Subscription(object):
             'taskType': self.task_type.name,
             'subscription': {
                 'name': self.name,
-                'minPrice': self.min_price,
+                'minPriceGnt': self.min_price_gnt,
                 'performance': self.performance,
                 'maxCpuCores': self.max_cpu_cores,
                 'maxMemorySize': self.max_memory_size,
