@@ -7,7 +7,7 @@ from twisted.internet.defer import Deferred, TimeoutError
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, CommandResult, CommandHelper, \
     group, doc, command, CommandStorage, storage_context, CommandException, \
-    ask_for_confirmation
+    ask_for_confirmation, customize_question
 from golem.interface.exceptions import CommandCanceledException
 
 
@@ -233,3 +233,44 @@ class TestAskForConfirmation:
                    side_effect=['a', 'no', 'yes', 'y']) as mocked_input:
             assert _baz() == self.output
             mocked_input.call_count = 3
+
+    def test_customized_question(self):
+        uid = 777
+        question = "Do you want to delete user with id: {}?"
+
+        @ask_for_confirmation(question,
+                              parameter_name='user_id')
+        def fun(user_id):
+            return user_id + 1
+
+        with patch('builtins.input', return_value='y') as mocked_input:
+            assert fun(uid) == uid + 1  # sanity check
+            mocked_input.assert_called_once_with(
+                question.format(uid) + ' (Y/n)'
+            )
+
+
+class TestCustomizeQuestion:
+    def test_that_question_is_unchanged_if_parameter_is_none(self):
+        def _foo(uid):
+            pass
+        question = 'Do you want do delete user: {}?'
+        result = customize_question(question, None, _foo)
+        assert result == question
+
+    def test_that_question_is_changed_if_parameter_is_in_call_args(self):
+        def _foo(uid):
+            pass
+
+        question = 'Do you want do delete user: {}?'
+        actual_parameter = 1
+        result = customize_question(question, 'uid', _foo, actual_parameter)
+        assert result == question.format(actual_parameter)
+
+    def test_that_question_is_changed_if_parameter_is_in_call_kwargs(self):
+        def _foo(uid):
+            pass
+        question = 'Do you want do delete user: {}?'
+        value = 1
+        result = customize_question(question, 'uid', _foo, uid=value)
+        assert result == question.format(value)

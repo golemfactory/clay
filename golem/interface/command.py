@@ -4,13 +4,37 @@ import types
 
 from contextlib import contextmanager
 from operator import itemgetter
-from typing import Callable
+from typing import Callable, Optional, Any
 
 from golem.interface.exceptions import CommandException, \
     CommandCanceledException
 
 
-def ask_for_confirmation(question: str) -> Callable:
+def customize_question(
+        question: str,
+        parameter_name: Optional[str],
+        function: Callable,
+        *args: Any,
+        **kwargs: Any
+) -> str:
+    """
+    Helper function that allows to customize confirmation question - it will
+    format the question to include call-time value of `parameter_name` (if it
+    is not `None`) from call args (`*args` or `**kwargs`). If it is not there,
+    `TypeError` will be raised.
+    :raises `TypeError`
+    """
+    if parameter_name is None:
+        return question
+
+    call = inspect.signature(function).bind(*args, **kwargs)
+    return question.format(call.arguments[parameter_name])
+
+
+def ask_for_confirmation(
+        question: str,
+        parameter_name: Optional[str] = None
+) -> Callable:
     """
     Decorator that will ask for confirmation (with given `question`) before
     executing `func`. In case user cancels, `CommandCanceledException` is
@@ -20,8 +44,10 @@ def ask_for_confirmation(question: str) -> Callable:
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             answer = 'maybe'
+            q = customize_question(question, parameter_name, func, *args,
+                                   **kwargs)
             while answer not in ['', 'y', 'n']:
-                answer = input(f'{question} (Y/n)').lower()
+                answer = input(f'{q} (Y/n)').lower()
             if answer != 'n':
                 return func(*args, **kwargs)
             else:
