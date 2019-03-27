@@ -48,6 +48,7 @@ class PaymentProcessor:
         self._gntb_reserved = 0
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self.load_from_db()
+        self.last_print_time = 0
 
     @property
     def recipients_count(self) -> int:
@@ -149,7 +150,7 @@ class PaymentProcessor:
         self._awaiting.add(payment)
         self._gntb_reserved += value
 
-        log.info("GNTB reserved %.3f", self._gntb_reserved / denoms.ether)
+        log.info("Reserved %.3f GNTB", self._gntb_reserved / denoms.ether)
         return payment.processed_ts
 
     def __get_next_batch(self, closure_time: int) -> int:
@@ -210,8 +211,10 @@ class PaymentProcessor:
         now = get_timestamp()
         deadline = self._awaiting[0].processed_ts + acceptable_delay
         if deadline > now:
-            log.info("Next sendout at %s",
+            if now > self.last_print_time + 300:
+                log.info("Next sendout at %s",
                      datetime.datetime.fromtimestamp(deadline))
+                self.last_print_time = now
             return False
 
         payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
@@ -220,7 +223,7 @@ class PaymentProcessor:
         payments = self._awaiting[:payments_count]
 
         value = sum([p.value for p in payments])
-        log.info("Batch payments value: %.6f GNTB", value / denoms.ether)
+        log.info("Batch payments value: %.3f GNTB", value / denoms.ether)
 
         closure_time = payments[-1].processed_ts
         tx_hash = self._sci.batch_transfer(
