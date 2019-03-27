@@ -24,6 +24,10 @@ class Payload(NamedTuple):
     pass
 
 
+class Prerequisites(NamedTuple):
+    pass
+
+
 class EnvSupportStatus(NamedTuple):
     supported: bool
     nonsupport_reason: Optional[str] = None
@@ -112,6 +116,21 @@ class Environment(ABC):
     @classmethod
     @abstractmethod
     def metadata(cls) -> EnvMetadata:
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+            -> Prerequisites:
+        raise NotImplementedError
+
+    @abstractmethod
+    def prepare_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
         raise NotImplementedError
 
     @abstractmethod

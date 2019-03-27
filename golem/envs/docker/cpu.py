@@ -16,7 +16,7 @@ from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
     RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId
-from golem.envs.docker import DockerPayload
+from golem.envs.docker import DockerPayload, DockerPrerequisites
 
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
@@ -149,6 +149,27 @@ class DockerCPUEnvironment(Environment):
             supported_counters=[],
             custom_metadata={}
         )
+
+    @classmethod
+    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+            -> DockerPrerequisites:
+        return DockerPrerequisites(**prerequisites_dict)
+
+    def prepare_prerequisites(self, prerequisites: DockerPrerequisites) \
+            -> Deferred:
+        if self._status != EnvStatus.ENABLED:
+            raise ValueError(f"Cannot prepare prerequisites because environment"
+                             f"is in invalid state: '{self._status}'")
+
+        def _prepare():
+            args = [f"{prerequisites.image}:{prerequisites.tag}"]
+            DockerCommandHandler.run("pull", args=args)
+
+        return deferToThread(_prepare)
+
+    @classmethod
+    def parse_config(cls, config_dict: Dict[str, Any]) -> DockerCPUConfig:
+        return DockerCPUConfig(**config_dict)
 
     def config(self) -> DockerCPUConfig:
         return DockerCPUConfig(*self._config)
