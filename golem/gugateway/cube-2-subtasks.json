@@ -1,0 +1,25 @@
+{
+    "type": "Blender",
+    "compute_on": "cpu",
+    "name": "Cube 2s",
+    "timeout": "00:02:00",
+    "subtask_timeout": "00:01:00",
+    "subtasks_count": 2,
+    "bid": 1.2,
+    "resources": [
+        "/Users/tworec/git/golem/apps/blender/benchmark/test_task/cube.blend"
+    ],
+    "options": {
+        "frame_count": 1,
+        "output_path": "/Users/tworec/tmp/",
+        
+        "format": "PNG",
+        "resolution": [
+            1000,
+            600
+        ],
+        "frames": "1",
+        "compositing": false
+    },
+    "concent_enabled": false
+}

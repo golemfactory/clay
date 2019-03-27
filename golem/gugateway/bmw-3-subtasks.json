@@ -1,13 +1,12 @@
 {
     "type": "Blender",
     "compute_on": "cpu",
-    "name": "Golem Task",
-    "timeout": "10:00:00",
-    "subtask_timeout": "10:00:00",
-    "subtasks_count": 1,
-    "bid": 0.2,
+    "name": "BMW 3s",
+    "timeout": "00:07:00",
+    "subtask_timeout": "00:02:00",
+    "subtasks_count": 3,
+    "bid": 2.3,
     "resources": [
-        "/Users/tworec/git/golem/apps/blender/benchmark/test_task/cube.blend",
         "/Users/tworec/git/golem/apps/blender/benchmark/test_task/bmw27_cpu.blend"
     ],
     "options": {
