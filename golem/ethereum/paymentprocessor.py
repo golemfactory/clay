@@ -78,7 +78,7 @@ class PaymentProcessor:
                 .select() \
                 .where(Payment.status == PaymentStatus.awaiting):
             log.info(
-                "Restoring awaiting payment for subtask %s to %s of %.6f GNTB",
+                "Restoring awaiting payment for subtask %s to %s of %.3f GNTB",
                 awaiting_payment.subtask,
                 encode_hex(awaiting_payment.payee),
                 awaiting_payment.value / denoms.ether,
@@ -100,7 +100,7 @@ class PaymentProcessor:
         total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
         log.info(
-            "Batch transfer confirmed %s average gas fee per subtask %.6f ETH",
+            "Batch transfer confirmed %s average gas fee per subtask %.8f ETH",
             receipt,
             fee / denoms.ether,
         )
@@ -116,7 +116,7 @@ class PaymentProcessor:
     @staticmethod
     def _payment_confirmed(payment: Payment, timestamp: int) -> None:
         log.debug(
-            "- %s confirmed fee: %.6f ETH",
+            "- %s confirmed fee: %.18f ETH",
             payment.subtask,
             payment.details.fee / denoms.ether
         )
@@ -134,7 +134,7 @@ class PaymentProcessor:
 
     def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
         log.info(
-            "Adding payment for %s to %s (%.6f GNTB)",
+            "Adding payment for %s to %s (%.3f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
@@ -149,7 +149,7 @@ class PaymentProcessor:
         self._awaiting.add(payment)
         self._gntb_reserved += value
 
-        log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
+        log.info("GNTB reserved %.3f", self._gntb_reserved / denoms.ether)
         return payment.processed_ts
 
     def __get_next_batch(self, closure_time: int) -> int:
@@ -168,7 +168,7 @@ class PaymentProcessor:
             if gntb_balance < 0:
                 log.debug(
                     'Insufficient GNTB balance.'
-                    ' value=%(value).6f, subtask_id=%(subtask)s',
+                    ' value=%(value).18f, subtask_id=%(subtask)s',
                     {
                         'value': p.value / denoms.ether,
                         'subtask': p.subtask,
@@ -185,7 +185,7 @@ class PaymentProcessor:
             if gas_cost > eth_balance:
                 log.debug(
                     'Not enough ETH to pay gas for transaction.'
-                    ' gas_cost=%(gas_cost).6f, subtask_id=%(subtask)s',
+                    ' gas_cost=%(gas_cost).18f, subtask_id=%(subtask)s',
                     {
                         'gas_cost': gas_cost / denoms.ether,
                         'subtask': p.subtask,
@@ -210,7 +210,8 @@ class PaymentProcessor:
         now = get_timestamp()
         deadline = self._awaiting[0].processed_ts + acceptable_delay
         if deadline > now:
-            log.info("Next sendout in %r s", deadline - now)
+            log.info("Next sendout at %s",
+                     datetime.datetime.fromtimestamp(deadline))
             return False
 
         payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
@@ -232,7 +233,7 @@ class PaymentProcessor:
             payment.status = PaymentStatus.sent
             payment.details.tx = tx_hash[2:]
             payment.save()
-            log.debug("- {} send to {} ({:.6f} GNTB)".format(
+            log.debug("- {} send to {} ({:.18f} GNTB)".format(
                 payment.subtask,
                 encode_hex(payment.payee),
                 payment.value / denoms.ether))
