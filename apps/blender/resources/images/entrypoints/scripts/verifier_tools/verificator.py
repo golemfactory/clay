@@ -4,7 +4,8 @@ from typing import List, Optional
 from ..render_tools import blender_render as blender
 from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
     generate_single_random_crop_data, Crop
-from .img_metrics_calculator import calculate_metrics
+from .img_metrics_calculator import calculate_metrics, get_raw_verification
+
 
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
@@ -65,7 +66,7 @@ def prepare_params(mounted_paths, subtask_border, scene_file_path, resolution, s
     return crops, params
 
 
-def make_verdict( subtask_file_paths, crops, results ):
+def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
     verdict = True
 
     for crop_data in results:
@@ -78,11 +79,28 @@ def make_verdict( subtask_file_paths, crops, results ):
 
         for crop, subtask in zip(crop_data['results'], subtask_file_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
-            results_path = calculate_metrics(crop_path,
-                                subtask,
-                                left, top,
-                                metrics_output_filename=os.path.join(OUTPUT_DIR, crop_data['crop']['outfilebasename'] + "metrics.txt"))
 
+            if not use_raw_verification:
+                results_path = calculate_metrics(
+                    crop_path,
+                    subtask,
+                    left, top,
+                    metrics_output_filename=os.path.join(
+                        OUTPUT_DIR,
+                        crop_data['crop']['outfilebasename'] + "metrics.txt")
+                    )
+            else:
+                results_path = get_raw_verification(
+                    crop_path,
+                    subtask,
+                    left,
+                    top,
+                    metrics_output_filename=os.path.join(
+                        OUTPUT_DIR,
+                        crop_data['crop']['outfilebasename'] + "metrics.txt"
+                    ),
+                )
+            print("results_path: ", results_path)
             with open(results_path, 'r') as f:
                 data = json.load(f)
             if data['Label'] != "TRUE":
@@ -94,7 +112,7 @@ def make_verdict( subtask_file_paths, crops, results ):
 
 
 def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
-           crops_count=3, crops_borders=None):
+           crops_count=3, crops_borders=None, use_raw_verification=False):
 
     """ Function will verifiy image with crops rendered from given blender scene file.
 
@@ -125,4 +143,4 @@ def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samp
 
     print(results)
 
-    make_verdict( subtask_file_paths, crops, results )
+    make_verdict(subtask_file_paths, crops, results, use_raw_verification)
