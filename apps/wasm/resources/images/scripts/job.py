@@ -1,7 +1,7 @@
 import json
 import os
 import subprocess
-
+import resource
 
 WASM_SANDBOX_EXECUTABLE_NAME = '/wasm-sandbox'
 
@@ -9,6 +9,11 @@ WASM_SANDBOX_EXECUTABLE_NAME = '/wasm-sandbox'
 def run_job():
     with open('params.json', 'r') as params_file:
         params = json.load(params_file)
+
+    resource.setrlimit(resource.RLIMIT_CPU, (1, 1))
+    print("WAT!")
+    print(resource.getrlimit(resource.RLIMIT_CPU))
+    print("WAT!")
 
     input_dir = os.path.join(
         os.environ['RESOURCES_DIR'], params['input_dir_name']
@@ -32,7 +37,11 @@ def run_job():
         ] + params['exec_args'],
         cwd=os.environ['RESOURCES_DIR']
     )
+    print("WAT!")
+    print(resource.getrusage(resource.RUSAGE_CHILDREN))
+    print("WAT!")
 
 
 if __name__ == '__main__':
     run_job()
+
