@@ -1,8 +1,12 @@
 import os
+import random
 import shutil
 import time
 from unittest import mock
+from typing import List, Optional
+import cv2
 
+from golem_messages.message import ComputeTaskDef
 import pytest
 
 from golem.core.common import get_golem_path, is_linux
@@ -22,6 +26,76 @@ from golem.verificator.blender_verifier import BlenderVerifier
 class TestBlenderVerifier(TempDirFixture):
     TIMEOUT = 150
 
+    def _create_basic_subtask_info(  # pylint: disable=too-many-arguments
+            self,
+            resolution: Optional[List[int]] = None,
+            samples: Optional[int] = None,
+            borders_y: Optional[List[float]] = None,
+            entrypoint: Optional[str] = None,
+            outfilebasename: Optional[str] = None,
+    ) -> dict:
+        return dict(
+            scene_file='/golem/resources/bmw.blend',
+            resolution=resolution if resolution is not None else [150, 150],
+            use_compositing=False,
+            samples=samples if samples is not None else 35,
+            frames=[1],
+            output_format='PNG',
+            use_frames=False,
+            start_task=1,
+            total_tasks=1,
+            crops=list(
+                dict(
+                    outfilebasename=outfilebasename if \
+                        outfilebasename is not None else "GolemTask_1",
+                    borders_x=[0.0, 1.0],
+                    borders_y=(
+                        borders_y if borders_y is not None else [0.0, 1.0]
+                    ),
+                )
+            ),
+            entrypoint=entrypoint if entrypoint is not None else \
+                'python3 /golem/entrypoints/render_entrypoint.py',
+            path_root=os.path.dirname(self.resources[0]),
+            subtask_id=str(random.randint(1 * 10 ** 36, 9 * 10 ** 36)),
+        )
+
+    def _create_subtask_info(  # pylint: disable=too-many-arguments
+            self,
+            resolution: Optional[List[int]] = None,
+            samples: Optional[int] = None,
+            borders_y: Optional[List[float]] = None,
+            entrypoint: Optional[str] = None,
+            outfilebasename: Optional[str] = None,
+    ) -> dict:
+        return dict(
+            **self._create_basic_subtask_info(
+                resolution,
+                samples,
+                borders_y,
+                entrypoint,
+                outfilebasename
+            ),
+            ctd=ComputeTaskDef(
+                deadline=time.time() + 3600,
+                docker_images=[
+                    DockerImage('golemfactory/blender', tag='1.9').to_dict()
+                ],
+                extra_data=dict(**self._create_basic_subtask_info(
+                    resolution,
+                    samples,
+                    borders_y,
+                    entrypoint,
+                    outfilebasename,
+                ))
+            ),
+            crop_window=[0.0, 1.0, borders_y[0], borders_y[1]] \
+                if borders_y is not None else [0.0, 1.0, 0.0, 1.0],
+            tmp_dir=self.tempdir,
+            subtask_timeout=600,
+            parts=1,
+        )
+
     def setUp(self):
         # pylint: disable=R0915
         super().setUp()
@@ -37,65 +111,7 @@ class TestBlenderVerifier(TempDirFixture):
                 'tests/apps/blender/verification/test_data/bmw.blend'),
         ]
         self.computer = ComputerAdapter()
-
-        self.subtask_info = dict()
-        self.subtask_info['scene_file'] = '/golem/resources/bmw.blend'
-        self.subtask_info['resolution'] = [150, 150]
-        self.subtask_info['use_compositing'] = False
-        self.subtask_info['samples'] = 35
-        self.subtask_info['frames'] = [1]
-        self.subtask_info['output_format'] = 'PNG'
-        self.subtask_info['use_frames'] = False
-        self.subtask_info['start_task'] = 1
-        self.subtask_info['total_tasks'] = 1
-        self.subtask_info['crops'] = [
-            {
-                'outfilebasename':
-                    'GolemTask_{}'.format(self.subtask_info['start_task']),
-                'borders_x': [0.0, 1.0],
-                'borders_y':[0.0, 1.0]
-            }
-        ]
-        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 1.0]
-        self.subtask_info['node_id'] = 'deadbeef'
-        self.subtask_info['subtask_id'] = '250771152547690738285326338136457465'
-        self.subtask_info['all_frames'] = [1]
-        self.subtask_info['tmp_dir'] = self.tempdir
-        self.subtask_info['subtask_timeout'] = 600
-        self.subtask_info['entrypoint'] = \
-            'python3 /golem/entrypoints/render_entrypoint.py'
-
-        self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
-        self.subtask_info['parts'] = 1
-        self.subtask_info['owner'] = "deadbeef"
-        self.subtask_info['ctd'] = dict()
-        self.subtask_info['ctd']['deadline'] = time.time() + 3600
-        self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.9').to_dict()]
-        self.subtask_info['ctd']['extra_data'] = dict()
-        self.subtask_info['ctd']['extra_data']['scene_file'] = \
-            self.subtask_info['scene_file']
-        self.subtask_info['ctd']['extra_data']['resolution'] = \
-            self.subtask_info['resolution']
-        self.subtask_info['ctd']['extra_data']['use_compositing'] = \
-            self.subtask_info['use_compositing']
-        self.subtask_info['ctd']['extra_data']['samples'] = \
-            self.subtask_info['samples']
-        self.subtask_info['ctd']['extra_data']['frames'] = \
-            self.subtask_info['frames']
-        self.subtask_info['ctd']['extra_data']['output_format'] = \
-            self.subtask_info['output_format']
-        self.subtask_info['ctd']['extra_data']['start_task'] = \
-            self.subtask_info['start_task']
-        self.subtask_info['ctd']['extra_data']['total_tasks'] = \
-            self.subtask_info['total_tasks']
-        self.subtask_info['ctd']['extra_data']['crops'] = \
-            self.subtask_info['crops']
-        self.subtask_info['ctd']['extra_data']['path_root'] = \
-            self.subtask_info['path_root']
-        self.subtask_info['ctd']['extra_data']['entrypoint'] = \
-            self.subtask_info['entrypoint']
-        self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
+        self.subtask_info = self._create_subtask_info()
 
     def _test_image(self, results, exception_regex=None):
         verification_data = {}
@@ -150,6 +166,44 @@ class TestBlenderVerifier(TempDirFixture):
             ['GolemTask_10001.png'],
             'Subtask computation failed with exit code 1',
         )
+
+    def test_multiple_subtasks_in_task(self):
+        result_image = cv2.imread(os.path.join(
+            get_golem_path(),
+            'tests/apps/blender/verification/test_data',
+            'GolemTask_10001.png',
+        ))
+        y_crop_cord_step = 0
+        y_crop_float_cord_step = 0.0
+        splited_images = {}
+        for i in range(1, 6):
+            # Split image to cropped parts
+            splited_images[f'image_part_{i}'] = \
+                result_image[y_crop_cord_step:y_crop_cord_step + 30, 0:150]
+
+            # Store images in temporary directory to load them to verification
+            temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
+            cv2.imwrite(temp_path, splited_images[f'image_part_{i}'])
+
+            # Create clear verification_data for every crop image
+            verification_data = dict(
+                subtask_info=self._create_subtask_info(
+                    borders_y=[
+                        0.8 - y_crop_float_cord_step, 1.0 - y_crop_float_cord_step
+                    ],
+                    outfilebasename=f'GolemTask_{i}'
+                ),
+                results=[temp_path],
+                resources=self.resources,
+                paths=os.path.dirname(self.resources[0]),
+            )
+            verifier = BlenderVerifier(verification_data, DockerTaskThread)
+            d = verifier.start_verification()
+            sync_wait(d, self.TIMEOUT)
+
+            # Change crop coordinates for next image verification
+            y_crop_cord_step += 30
+            y_crop_float_cord_step += 0.2
 
 
 class TestUnitBlenderVerifier:
