@@ -7,7 +7,8 @@ from typing import Any, Optional, Tuple
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
-from golem.interface.command import doc, group, command, Argument, CommandResult
+from golem.interface.command import doc, group, command, Argument, \
+    CommandResult, ask_for_confirmation
 from golem.task.taskstate import TaskStatus
 
 if typing.TYPE_CHECKING:
@@ -127,6 +128,7 @@ class Tasks:
                                         sort=sort)
 
     @command(arguments=(id_req, force_arg, ), help="Restart a task")
+    @ask_for_confirmation('Are you sure? Confirm restarting {}', 'id')
     def restart(self, id, force: bool = False):
         deferred = Tasks.client._call('comp.task.restart', id, force=force)  # noqa pylint: disable=protected-access
         new_task_id, error = sync_wait(deferred)
@@ -146,6 +148,7 @@ class Tasks:
         return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
+    @ask_for_confirmation('Are you sure? Confirm aborting {} task', 'id')
     def abort(self, id):
         deferred = Tasks.client.abort_task(id)
         return sync_wait(deferred)
@@ -156,6 +159,7 @@ class Tasks:
         return sync_wait(deferred)
 
     @command(help="Deletes all tasks")
+    @ask_for_confirmation('Are you sure? Confirm purging all tasks')
     def purge(self):
         deferred = Tasks.client.purge_tasks()
         return sync_wait(deferred)

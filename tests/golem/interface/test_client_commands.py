@@ -677,7 +677,8 @@ class TestTasks(TempDirFixture):
 
         self.client = client
 
-    def test_basic_commands(self):
+    @patch('builtins.input', return_value='')
+    def test_basic_commands(self, _mocked_input):
         client = self.client
 
         with client_ctx(Tasks, client):
@@ -690,7 +691,8 @@ class TestTasks(TempDirFixture):
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
 
-    def test_restart_success(self):
+    @patch('builtins.input', return_value='')
+    def test_restart_success(self, _mocked_input):
         with client_ctx(Tasks, self.client):
             self.client._call.return_value = 'new_task_id', None
             tasks = Tasks()
@@ -702,7 +704,8 @@ class TestTasks(TempDirFixture):
                 force=False,
             )
 
-    def test_restart_error(self):
+    @patch('builtins.input', return_value='')
+    def test_restart_error(self, _mocked_input):
         with client_ctx(Tasks, self.client):
             self.client._call.return_value = None, 'error'
             tasks = Tasks()

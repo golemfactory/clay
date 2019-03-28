@@ -6,7 +6,8 @@ from copy import deepcopy
 from typing import Text, Dict, Callable
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
-from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
+from golem.interface.exceptions import ExecutionException, ParsingException, \
+    CommandException, CommandCanceledException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 from twisted.internet.defer import TimeoutError
 
@@ -158,6 +159,9 @@ class CLI(object):
 
         except TimeoutError:
             result = ExecutionException("Command timed out", " ".join(args), started)
+
+        except CommandCanceledException:
+            result = 'Command cancelled.'
 
         except Exception as exc:
             result = ExecutionException("Exception: {}".format(exc), " ".join(args), started)
