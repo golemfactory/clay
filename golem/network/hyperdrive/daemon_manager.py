@@ -32,7 +32,7 @@ class HyperdriveDaemonManager(object):
             datadir,
             daemon_config: Optional[dict] = None,
             client_config: Optional[dict] = None
-    ):
+    ) -> None:
         self._addresses = None
         self._config = client_config or {}
         self._daemon_config = daemon_config or {}

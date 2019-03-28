@@ -75,15 +75,14 @@ def log_error(msg, exc):
 
 class HyperdriveResourceManager(ClientHandler):
 
-    def __init__(
-            self, dir_manager, daemon_address=None, config=None,
+    def __init__(  # noqa pylint: disable=too-many-arguments
+            self, dir_manager, daemon_address=None, config=None,  # noqa pylint: disable=unused-argument
             resource_dir_method=None,
             client_kwargs: typing.Optional[dict] = None,
-    ):
-
+    ) -> None:
         super().__init__(config)
 
-        self.client = HyperdriveAsyncClient(
+        self.client = HyperdriveAsyncClient(  # type: ignore
             **self.config.client, **(client_kwargs or {}))
         logger.info("Initializing %s, using %s",
                     self.__class__.__name__, self.client)

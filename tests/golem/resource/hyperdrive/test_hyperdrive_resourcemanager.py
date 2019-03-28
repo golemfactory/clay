@@ -192,7 +192,7 @@ class TestHyperdriveResourceManager(TempDirFixture):
         self.task_id = str(uuid.uuid4())
         self.handle_retries = Mock()
         self.dir_manager = DirManager(self.tempdir)
-        self.resource_manager = HyperdriveResourceManager(
+        self.resource_manager = HyperdriveResourceManager(  # noqa pylint: disable=unexpected-keyword-arg
             self.dir_manager,
             **hyperdrive_client_kwargs()
         )
