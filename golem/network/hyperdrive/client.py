@@ -18,10 +18,6 @@ from golem.resource.client import IClient, ClientOptions
 log = logging.getLogger(__name__)
 
 
-DEFAULT_HYPERDRIVE_PORT = 3282
-DEFAULT_HYPERDRIVE_RPC_PORT = 3292
-
-
 def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
 
@@ -35,12 +31,14 @@ def round_timeout(value: Optional[Union[int, float]]) -> Optional[int]:
 
 
 class HyperdriveClient(IClient):
+    """
+    Enables communication between Golem and the Hyperdrive service.
+    """
 
     CLIENT_ID = 'hyperg'
     VERSION = 1.1
 
-    def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT,
-                 host='localhost', timeout=None):
+    def __init__(self, port, host, timeout=None):
         super(HyperdriveClient, self).__init__()
 
         # API destination address
@@ -52,6 +50,9 @@ class HyperdriveClient(IClient):
         # default POST request headers
         self._url = 'http://{}:{}/api'.format(self.host, self.port)
         self._headers = {'content-type': 'application/json'}
+
+    def __repr__(self):
+        return '{} at {}'.format(self.CLIENT_ID, self._url)
 
     @classmethod
     def build_options(cls, peers=None, **kwargs):
@@ -145,8 +146,7 @@ class HyperdriveClient(IClient):
 
 class HyperdriveAsyncClient(HyperdriveClient):
 
-    def __init__(self, port=DEFAULT_HYPERDRIVE_RPC_PORT, host='localhost',
-                 timeout=None):
+    def __init__(self, port, host, timeout=None):
         from twisted.web.http_headers import Headers  # imports reactor
 
         super().__init__(port, host, timeout)

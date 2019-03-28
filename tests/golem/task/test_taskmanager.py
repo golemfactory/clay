@@ -18,6 +18,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
 from apps.appsmanager import AppsManager
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
@@ -89,6 +90,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             dt_p2p_factory.Node(),
             keys_auth,
             root_path=self.path,
+            config_desc=ClientConfigDescriptor(),
             task_persistence=True,
             finished_cb=Mock()
         )
@@ -202,6 +204,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
+                                  config_desc=ClientConfigDescriptor(),
                                   task_persistence=True)
 
             temp_tm.key_id = "KEYID"
@@ -213,8 +216,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                     "TASK %s DUMPED" % task_id in log for log in log.output)
 
         with self.assertLogs(logger, level="DEBUG") as log:
-            fresh_tm = TaskManager(dt_p2p_factory.Node(), keys_auth=Mock(),
-                                   root_path=self.path, task_persistence=True)
+            fresh_tm = TaskManager(
+                dt_p2p_factory.Node(),
+                keys_auth=Mock(),
+                root_path=self.path,
+                config_desc=ClientConfigDescriptor(),
+                task_persistence=True)
 
             assert any(
                 "SEARCHING FOR TASKS TO RESTORE" in log for log in log.output)
@@ -897,8 +904,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
-                         apps_manager=apps_manager)
+        tm = TaskManager(
+            dt_p2p_factory.Node(),
+            Mock(),
+            root_path=self.path,
+            config_desc=ClientConfigDescriptor(),
+            apps_manager=apps_manager)
         task_id, subtask_id = self.__build_tasks(tm, count)
 
         one_task = tm.get_task_dict(task_id)
@@ -928,8 +939,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
         ln = LocalNode(**dt_p2p_factory.Node().to_dict())
-        tm = TaskManager(ln, Mock(), root_path=self.path,
-                         apps_manager=apps_manager)
+        tm = TaskManager(
+            ln,
+            Mock(),
+            root_path=self.path,
+            config_desc=ClientConfigDescriptor(),
+            apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
         tm.get_task_preview(task_id)
@@ -940,8 +955,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
-                         apps_manager=apps_manager)
+        tm = TaskManager(
+            dt_p2p_factory.Node(),
+            Mock(),
+            root_path=self.path,
+            config_desc=ClientConfigDescriptor(),
+            apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, count)
 
         borders = tm.get_subtasks_borders(task_id, 0)
@@ -1276,6 +1295,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',
+            config_desc=ClientConfigDescriptor(),
             task_persistence=False
         )
 

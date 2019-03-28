@@ -20,6 +20,8 @@ from golem.resource.resourcehandshake import ResourceHandshake, \
 from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture, DatabaseFixture
 
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
+
 
 class TestResourceHandshake(TempDirFixture):
 
@@ -609,7 +611,8 @@ class TestResourceHandshakeShare(DatabaseFixture):
         client = Mock(datadir=session.data_dir)
         dir_manager = DirManager(session.data_dir)
 
-        resource_manager = HyperdriveResourceManager(dir_manager=dir_manager)
+        resource_manager = HyperdriveResourceManager(
+            dir_manager=dir_manager, **hyperdrive_client_kwargs())
         resource_manager.successful_uploads = True
         resource_manager.successful_downloads = True
 
