@@ -1,4 +1,5 @@
 from pathlib import Path
+from subprocess import SubprocessError
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar
 
 from twisted.internet.defer import Deferred
@@ -15,9 +16,10 @@ from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
-    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId
+    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, Prerequisites
 from golem.envs.docker import DockerPayload, DockerPrerequisites
 
+# Keys used by hypervisors for memory and CPU constraints
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
@@ -75,7 +77,10 @@ class DockerCPUEnvironment(Environment):
 
     @classmethod
     def _check_docker_version(cls) -> bool:
-        version_string = DockerCommandHandler.run("version")
+        try:
+            version_string = DockerCommandHandler.run("version")
+        except SubprocessError:
+            return False
         if version_string is None:
             return False
         version = version_string.lstrip("Docker version ").split(",")[0]
@@ -142,21 +147,20 @@ class DockerCPUEnvironment(Environment):
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
-        # TODO: Specify usage counters
         return EnvMetadata(
             id=cls.ENV_ID,
             description=cls.ENV_DESCRIPTION,
-            supported_counters=[],
+            supported_counters=[],  # TODO: Specify usage counters
             custom_metadata={}
         )
 
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
             -> DockerPrerequisites:
-        return DockerPrerequisites(**prerequisites_dict)
+        return DockerPrerequisites(**prerequisites_dict)  # type: ignore
 
-    def prepare_prerequisites(self, prerequisites: DockerPrerequisites) \
-            -> Deferred:
+    def prepare_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+        assert isinstance(prerequisites, DockerPrerequisites)
         if self._status != EnvStatus.ENABLED:
             raise ValueError(f"Cannot prepare prerequisites because environment"
                              f"is in invalid state: '{self._status}'")
@@ -169,7 +173,7 @@ class DockerCPUEnvironment(Environment):
 
     @classmethod
     def parse_config(cls, config_dict: Dict[str, Any]) -> DockerCPUConfig:
-        return DockerCPUConfig(**config_dict)
+        return DockerCPUConfig(**config_dict)  # type: ignore
 
     def config(self) -> DockerCPUConfig:
         return DockerCPUConfig(*self._config)
@@ -206,8 +210,7 @@ class DockerCPUEnvironment(Environment):
 
     def listen(self, event_id: EnvEventId,
                callback: Callable[[EnvEvent], Any]) -> None:
-        # TODO: Specify environment events
-        pass
+        pass  # TODO: Specify environment events
 
     def runtime(self, payload: Payload, config: Optional[EnvConfig]) \
             -> DockerCPURuntime:

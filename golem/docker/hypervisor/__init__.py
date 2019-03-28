@@ -32,6 +32,7 @@ class Hypervisor(ABC):
 
     @classmethod
     def is_available(cls) -> bool:
+        # FIXME: Implement an actual check
         return True
 
     def setup(self) -> None:
