@@ -23,10 +23,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{05F82BC9-D6E4-4D8C-BFC6-E887C083BA79} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{36CB4E64-4AE6-4A04-A47B-012BF8BF528E} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.19.0" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.19.1" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -73,6 +73,7 @@
     <ROW Directory="resources_Dir" Directory_Parent="rendering_Dir" DefaultDir="RESOUR~1|resources"/>
     <ROW Directory="taskcollector.tlog_Dir" Directory_Parent="Release_Dir" DefaultDir="TASKCO~1.TLO|taskcollector.tlog"/>
     <ROW Directory="taskcollector_Dir" Directory_Parent="resources_Dir" DefaultDir="TASKCO~1|taskcollector"/>
+    <ROW Directory="version_Dir" Directory_Parent="TempFolder" DefaultDir="019~1.1|[|ProductVersion]"/>
     <ROW Directory="x64_Dir" Directory_Parent="taskcollector_Dir" DefaultDir="x64"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
@@ -585,7 +586,7 @@
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( False )" Sequence="1622"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1622"/>
     <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
@@ -688,7 +689,7 @@
     <ROW Directory_="APPDIR" SourcePath="Installer\Installer_Win\install_tmp" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.TempFileComponent">
-    <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="TempFolder" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
+    <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="version_Dir" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
     <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="&amp;DockerForWin = 3" Flags="3"/>

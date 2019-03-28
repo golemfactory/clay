@@ -151,6 +151,13 @@ optional arguments:
                         the requestor node's datadir
   --mainnet             use the mainnet environment to run the test (the
                         playbook must also use mainnet)
+  --dump-output-on-crash
+                        dump node output of the crashed node on abnormal
+                        termination of either the provider or requestor node
+                        during the test run
+  --dump-output-on-fail
+                        dump output of both nodes on any test failure
+                        (may result in very large test reports on failures)
 
 ```
 
@@ -219,4 +226,20 @@ To completely disable key reuse and run each test with a new key, specify a
 
 ```
 pytest --disable-key-reuse scripts/node_integration_tests
+```
+
+#### Additional output on test dumps
+
+Generaly, when running tests with `pytest`, you can specify the `-s` and `-v`
+flags to see the specific steps the test playbooks as they progress.
+
+To get even more insight into possible failures without having to look at the
+logs - plus in cases when the nodes fail on the very start and thus fail to
+leave any clues in the logs - you can add either `--dump-output-on-crash`
+or `--dump-output-on-fail` flag to `pytest` to enable output dumps when
+either node crashes or on any test failure respectively.
+
+Example:
+```
+pytest -sv --dump-output-on-crash scripts/node_integration_tests
 ```

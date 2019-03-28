@@ -155,7 +155,8 @@ class TransactionSystem(LoopingCallService):
         )
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
-            raise Exception("Storage already exists, can't override")
+            raise Exception("Storage already exists, can't override. path=%s" %
+                            str(new_storage_path))
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
@@ -413,8 +414,9 @@ class TransactionSystem(LoopingCallService):
             raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
         log.info(
-            "Locking %f GNT and ETH for %d payments",
+            "Locking %.3f GNTB and %.8f ETH for %d payments",
             gnt / denoms.ether,
+            eth / denoms.ether,
             num,
         )
         locked_eth = self.get_locked_eth()
@@ -437,7 +439,7 @@ class TransactionSystem(LoopingCallService):
 
             ))
         log.info(
-            "Unlocking %f GNT and ETH for %d payments",
+            "Unlocking %.3f GNTB for %d payments",
             gnt / denoms.ether,
             num,
         )

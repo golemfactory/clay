@@ -73,6 +73,7 @@ class NodeTestPlaybook:
     node_restart_count = 0
 
     dump_output_on_fail = False
+    dump_output_on_crash = False
 
     @property
     def task_settings_dict(self) -> dict:
@@ -98,13 +99,18 @@ class NodeTestPlaybook:
     def time_elapsed(self):
         return time.time() - self.start_time
 
-    def fail(self, msg=None):
+    def fail(
+            self,
+            msg=None,
+            dump_provider_output=False,
+            dump_requestor_output=False):
         print(msg or "Test run failed after {} seconds on step {}: {}".format(
                 self.time_elapsed, self.current_step, self.current_step_name))
 
-        if self.dump_output_on_fail:
+        if self.dump_output_on_fail or dump_provider_output:
             helpers.print_output(self.provider_output_queue, 'PROVIDER ')
-            helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
+        if self.dump_output_on_fail or dump_requestor_output:
+                helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
 
         self.stop(1)
 
@@ -352,10 +358,14 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file = self.output_path + '/' + \
-            settings.get('name') + '.' + self.output_extension
-        print("Verifying the output file: {}".format(output_file))
-        if Path(output_file).is_file():
+        output_file_name = settings.get('name') + '.' + self.output_extension
+
+        print("Verifying output file: {}".format(output_file_name))
+        found_files = list(
+            Path(self.output_path).glob(f'**/{output_file_name}')
+        )
+
+        if len(found_files) > 0 and found_files[0].is_file():
             print("Output present :)")
             self.next()
         else:
@@ -555,13 +565,19 @@ class NodeTestPlaybook:
                 provider_exit = self.provider_node.poll()
                 helpers.report_termination(provider_exit, "Provider")
                 if provider_exit is not None:
-                    self.fail("Provider exited abnormally.")
+                    self.fail(
+                        "Provider exited abnormally.",
+                        dump_provider_output=self.dump_output_on_crash,
+                    )
 
             if self.requestor_node:
                 requestor_exit = self.requestor_node.poll()
                 helpers.report_termination(requestor_exit, "Requestor")
                 if requestor_exit is not None:
-                    self.fail("Requestor exited abnormally.")
+                    self.fail(
+                        "Requestor exited abnormally.",
+                        dump_requestor_output=self.dump_output_on_crash,
+                    )
 
         try:
             method = self.current_step_method
