@@ -1014,7 +1014,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_download_options(self, *_):
         dm = DirManager(self.path)
-        rm = HyperdriveResourceManager(dm, **hyperdrive_client_kwargs())
+        rm = HyperdriveResourceManager(dm, **hyperdrive_client_kwargs())  # noqa pylint: disable=unexpected-keyword-arg
         self.client.resource_server.resource_manager = rm
         ts = self.ts
 

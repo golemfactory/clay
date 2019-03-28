@@ -611,7 +611,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
         client = Mock(datadir=session.data_dir)
         dir_manager = DirManager(session.data_dir)
 
-        resource_manager = HyperdriveResourceManager(
+        resource_manager = HyperdriveResourceManager(  # noqa pylint: disable=unexpected-keyword-arg
             dir_manager=dir_manager, **hyperdrive_client_kwargs())
         resource_manager.successful_uploads = True
         resource_manager.successful_downloads = True
