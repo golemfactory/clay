@@ -19,6 +19,7 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.network.hyperdrive.client import HyperdriveClient
 from golem.task import taskkeeper
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
@@ -75,14 +76,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
 
         header.max_price = 10.0
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
-
-        header.min_version = golem.__version__
-        self.assertTrue(tk.check_support(header))
-
-        header.max_price = 10.0
         self.assertTrue(tk.check_support(header))
 
         config_desc = mock.Mock()
@@ -93,15 +86,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         config_desc.min_price = 10.0
         tk.change_config(config_desc)
         self.assertTrue(tk.check_support(header))
-
-        header.min_version = "120.0.0"
-        self.assertFalse(tk.check_support(header))
-
-        header.min_version = golem.__version__
-        self.assertTrue(tk.check_support(header))
-
-        header.min_version = "abc"
-        self.assertFalse(tk.check_support(header))
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
@@ -387,10 +371,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.add_task_header(thd)
 
         reasons = tk.get_unsupport_reasons()
-        # 3 tasks with wrong version
-        self.assertIn({'avg': golem.__version__,
-                       'reason': 'app_version',
-                       'ntasks': 3}, reasons)
         # 2 tasks with wrong price
         self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
         # 1 task with wrong environment
@@ -430,7 +410,6 @@ def get_dict_task_header(key_id_seed="kkk"):
         "subtasks_count": 1,
         "max_price": 10,
         "min_version": golem.__version__,
-        "resource_size": 0,
         "estimated_memory": 0,
         'mask': Mask().to_bytes(),
         'timestamp': 0,
@@ -462,7 +441,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 3
-            header.resource_size = 1
 
             test_headers.append(header)
             price_bid = int(random.random() * 100)
@@ -478,8 +456,16 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 price_bid,
                 header.subtask_timeout,
             )
-            ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
+            ttc = msg_factories.tasks.TaskToComputeFactory(
+                price=price,
+                size=1024
+            )
             ttc.compute_task_def = ctd
+            ttc.resources_options = {
+                'client_id': HyperdriveClient.CLIENT_ID,
+                'version': HyperdriveClient.VERSION,
+                'options': {}
+            }
             self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -596,24 +582,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertFalse(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 1
 
-    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_get_task_env(self, dump_mock):
-        ctk = CompTaskKeeper(Path('ignored'))
-        with self.assertLogs(logger, level="WARNING"):
-            assert ctk.get_task_env("task1") is None
-
-        header = get_task_header()
-        task_id1 = header.task_id
-        ctk.add_request(header, 4002)
-
-        header = get_task_header()
-        task_id2 = header.task_id
-        header.environment = "NOTDEFAULT"
-        ctk.add_request(header, 4002)
-
-        assert ctk.get_task_env(task_id2) == "NOTDEFAULT"
-        assert ctk.get_task_env(task_id1) == "DEFAULT"
-
     def test_check_comp_task_def(self):
         ctk = CompTaskKeeper(self.new_path)
         header = get_task_header()
@@ -690,3 +658,15 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.task_package_paths = {}
         ctk.restore()
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
+
+    @mock.patch('golem.core.golem_async.async_run', async_run)
+    def test_resources_options(self):
+        task_path = Path(self.path)
+        self._dump_some_tasks(task_path)
+        ctk = CompTaskKeeper(task_path)
+
+        assert ctk.get_resources_options("unknown") is None
+        subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
+        res = ctk.get_resources_options(subtask_id)
+        assert isinstance(res, dict)
+        assert res['client_id'] == HyperdriveClient.CLIENT_ID

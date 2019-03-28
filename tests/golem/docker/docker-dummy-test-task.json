@@ -7,9 +7,9 @@
       "docker_images":[
         {
           "py/object": "golem.docker.image.DockerImage",
-          "repository": "golemfactory/base",
-          "tag": "1.2",
-          "name": "golemfactory/base:1.2",
+          "repository": "golemfactory/dummy",
+          "tag": "1.1",
+          "name": "golemfactory/dummy:1.1",
           "id": null
         }
       ],
@@ -39,20 +39,18 @@
   "code_dir": "$GOLEM_DIR/apps/dummy/resources/code_dir/",
   "shared_data_files":["$GOLEM_DIR/apps/dummy/test_data/in.data"],
   "out_file_basename": "out",
-  "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Dummy",
-  "main_program_file":"$GOLEM_DIR/apps/dummy/resources/scripts/docker_dummytask.py",
   "subtask_timeout":1200,
   "subtasks_count":5,
   "max_price": 11,
   "docker_images":[
     {
       "py/object": "golem.docker.image.DockerImage",
-      "repository": "golemfactory/base",
-      "tag": "1.2",
-      "name": "golemfactory/base:1.2",
+      "repository": "golemfactory/dummy",
+      "tag": "1.1",
+      "name": "golemfactory/dummy:1.1",
       "id": null
     }
   ],

@@ -2,7 +2,9 @@ from importlib import reload
 
 import unittest.mock as mock
 
-from apps.blender.resources import scenefileeditor
+from apps.blender.resources.images.entrypoints.scripts.render_tools import (
+    scenefileeditor,
+)
 
 from golem.testutils import TempDirFixture
 
@@ -22,18 +24,14 @@ class TestSceneFileEditor(TempDirFixture):
 %(samples)d''')
         # Unfortunatelly on windows you can't open tempfile second time
         # that's why we are leaving with statement and using delete=False.
-        orig_path = scenefileeditor.BLENDER_CROP_TEMPLATE_PATH
-        scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = filepath
-        try:
-            result = scenefileeditor.generate_blender_crop_file(
-                resolution=(1, 2),
-                borders_x=(3.01, 3.02),
-                borders_y=(4.01, 4.02),
-                use_compositing=True,
-                samples=5
-            )
-        finally:
-            scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = orig_path
+        result = scenefileeditor._generate_blender_crop_file(
+            resolution=(1, 2),
+            borders_x=(3.01, 3.02),
+            borders_y=(4.01, 4.02),
+            use_compositing=True,
+            samples=5,
+            template_path=filepath
+        )
         expected = '''1
 2
 3.010
@@ -45,7 +43,7 @@ True
         self.assertEqual(result, expected)
 
     def test_crop_file_generation_full(self):
-        """Mocks blender by providing bpy and tests wether generated script
+        """Mocks blender by providing bpy and tests whether generated script
          acted as expected."""
         resolution = (1, 2)
         borders_x = (3.01, 3.02)
@@ -68,12 +66,13 @@ True
             'use_border': True,
             'use_crop_to_border': True,
         }
-        result = scenefileeditor.generate_blender_crop_file(
+        result = scenefileeditor._generate_blender_crop_file(
             resolution=resolution,
             borders_x=borders_x,
             borders_y=borders_y,
             use_compositing=use_compositing,
-            samples=samples
+            samples=samples,
+            template_path=scenefileeditor.BLENDER_CROP_TEMPLATE_PATH
         )
 
         scene_m = mock.MagicMock()
@@ -100,12 +99,6 @@ True
         # test calls
         bpy_m.ops.render.render.assert_not_called()
         bpy_m.ops.file.report_missing_files.assert_called_once_with()
-
-    @mock.patch("golem.resource.dirmanager")
-    def test_crop_template_path_error(self, mock_manager):
-        mock_manager.find_task_script.return_value = None
-        with self.assertRaises(IOError):
-            reload(scenefileeditor)
 
     def tearDown(self):
         super(TestSceneFileEditor, self).tearDown()

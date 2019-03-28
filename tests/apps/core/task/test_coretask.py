@@ -1,9 +1,12 @@
 import os
 import shutil
 from copy import copy
+from tempfile import TemporaryDirectory
+from typing import Optional
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
+from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.core.task.coretask import (
@@ -22,7 +25,6 @@ from golem.tools.testdirfixture import TestDirFixture
 
 def env_with_file(_self):
     env = environment.Environment()
-    env.main_program_file = "abcde"
     return env
 
 
@@ -79,22 +81,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
-
-    def test_init(self):
-        task_def = TestCoreTask._get_core_task_definition()
-
-        class CoreTaskWrongFile(self.CoreTaskDeabstracted):
-            ENVIRONMENT_CLASS = env_with_file
-
-        with patch("logging.Logger.warning") as log_mock:
-            task = CoreTaskWrongFile(
-                task_definition=task_def,
-                owner=dt_p2p_factory.Node(),
-                resource_size=1024
-            )
-        log_mock.assert_called_once()
-        self.assertIn("Wrong main program file", log_mock.call_args[0][0])
-        self.assertEqual(task.src_code, "")
 
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()
@@ -476,7 +462,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
-        assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images
 
@@ -494,19 +479,17 @@ class TestTaskTypeInfo(TestCase):
 
     def test_init(self):
         tti = CoreTaskTypeInfo("Name1", "Definition1",
-                               "Defaults", "Options", "builder")
+                               "Options", "builder")
         assert tti.name == "Name1"
-        assert tti.defaults == "Defaults"
         assert tti.options == "Options"
         assert tti.task_builder_type == "builder"
         assert tti.definition == "Definition1"
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 
-        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2",
+        tti = CoreTaskTypeInfo("Name2", "Definition2", "Options2",
                                "builder2")
         assert tti.name == "Name2"
-        assert tti.defaults == "Defaults2"
         assert tti.options == "Options2"
         assert tti.task_builder_type == "builder2"
         assert tti.definition == "Definition2"
@@ -514,14 +497,26 @@ class TestTaskTypeInfo(TestCase):
         assert tti.output_file_ext == []
 
     def test_preview_methods(self):
-        assert CoreTaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 
 class TestCoreTaskBuilder(TestCase):
 
-    def _get_core_task_builder(self):
+    @staticmethod
+    def _get_core_task_builder():
         return CoreTaskBuilder(MagicMock(), MagicMock(), MagicMock())
+
+    @staticmethod
+    def _get_task_def_dict(
+            output_path: str,
+            output_format: Optional[str] = ''
+    ) -> dict:
+        return {
+            'options': {
+                'output_path': output_path,
+                'format': output_format
+            }
+        }
 
     def test_init(self):
         builder = self._get_core_task_builder()
@@ -551,17 +546,53 @@ class TestCoreTaskBuilder(TestCase):
         with self.assertRaises(TypeError):
             builder.build()
 
-    def test_get_output_path(self):
+    @freeze_time('2019-01-01 00:00:00')
+    def test_get_output_path_creates_target_dir(self):
         builder = self._get_core_task_builder()
-        mockDict = {}
-        mockDict['options'] = dict(
-            [("output_path", os.getcwd()), ("format", "py")])
+        task_name = 'test_task'
+        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
 
-        class Definition:
-            name = "test_file"  # something doesn't exist
+        with TemporaryDirectory() as output_path:
+            task_def = self._get_task_def_dict(output_path, 'png')
+            mock_definition = MagicMock()
+            mock_definition.name = task_name
 
-        definition = Definition()
-        absolute_path = builder.get_output_path(mockDict, definition)
-        assert absolute_path == os.path.join(os.getcwd(), definition.name)
-        definition.name = "test_coretask"  # something already exist
-        assert absolute_path != os.path.join(os.getcwd(), definition.name)
+            result_path = builder.get_output_path(task_def, mock_definition)
+
+            self.assertEquals(
+                result_path,
+                os.path.join(output_path, task_dir_name, task_name)
+            )
+
+    @freeze_time('2019-01-01 00:00:00')
+    def test_get_output_path_creates_intermediate_dirs(self):
+        builder = self._get_core_task_builder()
+        task_name = 'test_task'
+        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
+        output_suffix = 'some/new/dirs'
+
+        with TemporaryDirectory() as output_path:
+            task_def = self._get_task_def_dict(
+                os.path.join(output_path, output_suffix), 'png')
+            mock_definition = MagicMock()
+            mock_definition.name = task_name
+
+            result_path = builder.get_output_path(task_def, mock_definition)
+
+            self.assertEquals(
+                result_path,
+                os.path.join(output_path, output_suffix,
+                             task_dir_name, task_name)
+            )
+
+    @patch('os.makedirs', side_effect=PermissionError)
+    def test_get_output_path_fails_without_permissions(self, *_):
+        builder = self._get_core_task_builder()
+        task_name = 'test_task'
+        output_path = '/new/path/without/permission'
+        task_def = self._get_task_def_dict(output_path, 'png')
+        mock_definition = MagicMock()
+        mock_definition.name = task_name
+
+        with self.assertRaises(PermissionError):
+            builder.get_output_path(task_def, mock_definition)

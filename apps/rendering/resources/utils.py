@@ -1,13 +1,16 @@
+import cv2
 import logging
 from contextlib import contextmanager
 from typing import Optional
 
+from apps.rendering.resources.imgrepr import OpenCVError
+
 
 @contextmanager
-def handle_image_error(logger: Optional[logging.Logger] = None):
+def handle_opencv_image_error(logger: Optional[logging.Logger] = None):
     """
-    This context manager will catch exceptions that might be thrown by PIL and
-    write them to log.
+    This context manager will catch exceptions that might be thrown by OpenCV
+    and write them to log.
 
     The Result is to get outside the managed context if operation was
     successful.
@@ -38,10 +41,8 @@ def handle_image_error(logger: Optional[logging.Logger] = None):
         result = Result()
         yield result
         result.success = True
-    except KeyError as e:
-        logger.error("Unsupported image format: %s", e)
-    except IOError as e:
-        logger.error("Failed to operate on image: %s", e)
+    except (cv2.error, OpenCVError):
+        logger.exception("Failed to operate on image with OpenCV")
 
 
 @contextmanager

@@ -1,5 +1,6 @@
 # coding: utf-8
 import logging.config
+import json
 import os
 import shutil
 import tempfile
@@ -61,7 +62,6 @@ class TestDockerJob(DockerTestCase):
         job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir,
                         self.work_dir, self.output_dir)
         self.assertEqual(job.image, self.image)
-        self.assertEqual(job.script_src, self.TEST_SCRIPT)
 
         parameters = {'OUTPUT_DIR': '/golem/output',
                       'RESOURCES_DIR': '/golem/resources',
@@ -95,11 +95,12 @@ class TestDockerJob(DockerTestCase):
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(
             image=self.image,
-            script_src=script,
+            entrypoint=f'python3 {script}',
             parameters=params,
             resources_dir=self.resources_dir,
             work_dir=self.work_dir,
             output_dir=self.output_dir,
+            environment=DockerJob.get_environment(),
             host_config={
                 'binds': {
                     self.work_dir: {
@@ -127,7 +128,7 @@ class TestBaseDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.2"
+        return "1.4"
 
     def test_create(self):
         job = self._create_test_job()
@@ -138,16 +139,10 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertIsNotNone(job.resources_dir)
         self.assertIsNotNone(job.output_dir)
         self.assertTrue(job._get_host_params_path().startswith(job.work_dir))
-        self.assertTrue(job._get_host_script_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
-        with open(path, 'rb') as f:
-            lines = f.readlines()
-        d = {}
-        for l in lines:
-            key, val = l.decode('utf-8').split("=")
-            d[key.strip()] = eval(val.strip())  # noqa pylint:disable=eval-used
-        return d
+        with open(path, 'r') as f:
+            return json.load(f)
 
     def _test_params_saved(self, task_params):
         with self._create_test_job(params=task_params) as job:
@@ -163,20 +158,6 @@ class TestBaseDockerJob(TestDockerJob):
         # key has to be a valid Python ident, so we put nonascii chars
         # only in param values:
         self._test_params_saved({"length": "pięćdziesiąt łokci"})
-
-    def _test_script_saved(self, task_script):
-        with self._create_test_job(script=task_script) as job:
-            script_path = job._get_host_script_path()
-            self.assertTrue(path.isfile(script_path))
-            with open(script_path, 'rb') as f:
-                script = f.read().decode('utf-8')
-            self.assertEqual(task_script, script)
-
-    def test_script_saved(self):
-        self._test_script_saved(TestDockerJob.TEST_SCRIPT)
-
-    def test_script_saved_nonascii(self):
-        self._test_script_saved("print u'Halo? Świeci!'\n")
 
     def test_container_created(self):
         with self._create_test_job() as job:
@@ -256,12 +237,13 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
             self.assertIn("Args", info)
-            self.assertEqual(info["Args"], [job._get_container_script_path()])
 
     def test_logs_stdout(self):
         text = "Adventure Time!"
-        src = "print '{}'\n".format(text)
-        with self._create_test_job(script=src) as job:
+        src = "print('{}')\n".format(text)
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(src)
+        with self._create_test_job(script='/golem/resources/custom.py') as job:
             job.start()
             out_file = path.join(self.output_dir, "stdout.log")
             err_file = path.join(self.output_dir, "stderr.log")
@@ -273,7 +255,7 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertEqual(line, text)
 
     def test_logs_stderr(self):
-        with self._create_test_job(script="syntax error!@#$%!") as job:
+        with self._create_test_job(script="/non/existing") as job:
             job.start()
             err_file = path.join(self.output_dir, "stderr.log")
             job.dump_logs(stderr_file=err_file)
@@ -281,22 +263,16 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertEqual(out_files, ["stderr.log"])
         with open(err_file, "r") as out:
             line = out.readline().strip()
-        text = 'File "{}"'.format(job._get_container_script_path())
-        self.assertTrue(line.startswith(text))
-
-    def test_wait(self):
-        src = "import time\ntime.sleep(5)\n"
-        with self._create_test_job(script=src) as job:
-            job.start()
-            self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
-            exit_code = job.wait()
-            self.assertEqual(exit_code, 0)
-            self.assertEqual(job.get_status(), DockerJob.STATE_EXITED)
+        print(line)
+        self.assertTrue(line.find("python3: can't open file") != -1)
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(src)
         with self.assertRaises(requests.exceptions.ConnectionError):
-            with self._create_test_job(script=src) as job:
+            with self._create_test_job(script='/golem/resources/custom.py') \
+                    as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
                 job.wait(1)
@@ -343,8 +319,10 @@ class TestBaseDockerJob(TestDockerJob):
         container_logger.setLevel(prev_level)
 
     def test_working_dir_set(self):
-        script = "import os\nprint os.getcwd()\n"
-        with self._create_test_job(script=script) as job:
+        script = "import os\nprint(os.getcwd())\n"
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(script)
+        with self._create_test_job(script='/golem/resources/custom.py') as job:
             job.start()
             job.wait()
             out_file = path.join(self.output_dir, "stdout.log")
@@ -367,10 +345,12 @@ with open("../output/out.txt", "w") as f:
 """
         sample_text = "Adventure Time!\n"
 
-        with open(path.join(self.resources_dir, "in.txt"), "w") as input:
-            input.write(sample_text)
+        with open(path.join(self.resources_dir, "in.txt"), "w") as f:
+            f.write(sample_text)
+        with open(path.join(self.resources_dir, "copy.py"), "w") as f:
+            f.write(copy_script)
 
-        with self._create_test_job(script=copy_script) as job:
+        with self._create_test_job(script='/golem/resources/copy.py') as job:
             job.start()
             job.wait()
 

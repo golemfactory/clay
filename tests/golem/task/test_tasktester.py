@@ -31,12 +31,12 @@ class TestTaskTester(TestDirFixture, LogTestCase):
     name = 'task1'
 
     def test_init(self):
-        task = Task(Mock(), Mock(), Mock())
+        task = Task(Mock(), Mock())
         task.query_extra_data_for_test_task = Mock()
         self.assertIsNotNone(TaskTester(task, self.path, None, None))
 
     def test_task_computed(self):
-        task = Task(Mock(), Mock(), Mock())
+        task = Task(Mock(), Mock())
 
         result = [{"data": True}, 123]
 
@@ -84,7 +84,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         self.assertTrue("ble" in self.message)
 
     def test_is_success(self):
-        task = Task(Mock(), Mock(), Mock())
+        task = Task(Mock(), Mock())
 
         task.query_extra_data_for_test_task = Mock()
         tt = TaskTester(task, self.path, Mock(), Mock())

@@ -8,18 +8,6 @@ CONFIG_FILENAME = "environments.ini"
 logger = logging.getLogger(__name__)
 
 
-class CommonConfig(object):
-    def __init__(self,
-                 section="Common",
-                 env_version=ENV_VERSION):
-        self._section = section
-
-        ConfigEntry.create_property(section, "environment version", env_version, self, "env_version")
-
-    def section(self):
-        return self._section
-
-
 class NodeConfig(object):
     def __init__(self, environments):
         self._section = "Node"
