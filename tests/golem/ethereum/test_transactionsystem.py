@@ -361,8 +361,12 @@ class WithdrawTest(TransactionSystemBase):
 
     def test_enough_gnt(self):
         amount = 3 * denoms.ether
-        res = self.ets.withdraw(amount, self.dest, 'GNT')
-        assert res == self.gntb_tx
+        currency = 'GNT'
+        res = self.ets.withdraw(amount, self.dest, currency)
+        assert self.dest in res
+        assert str(amount) in res
+        assert currency in res
+        assert self.gntb_tx in res
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             amount,

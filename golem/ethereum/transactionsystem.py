@@ -567,7 +567,9 @@ class TransactionSystem(LoopingCallService):
                     log.error("Failed GNTB withdrawal: %r", receipt)
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
-            return tx_hash
+            return f"Sent {amount} {currency} to: {destination}. " \
+                f"With gas fee: {gas_price}. " \
+                f"Transaction hash (check on etherscan.io): '{tx_hash}'"
 
         raise ValueError('Unknown currency {}'.format(currency))
 
