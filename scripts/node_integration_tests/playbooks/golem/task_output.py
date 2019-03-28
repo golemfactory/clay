@@ -20,10 +20,6 @@ class TaskOutputDirectory(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/debug'
 
-    def step_set_task_in_creation_to_false(self):
-        self.task_in_creation = False
-        self.next()
-
     def step_verify_separate_output_directories(self):
         print('Verifying task output directories.')
 
@@ -51,7 +47,6 @@ class TaskOutputDirectory(NodeTestPlaybook):
         NodeTestPlaybook.step_wait_task_finished,
         NodeTestPlaybook.step_verify_output,
         NodeTestPlaybook.step_get_known_tasks,
-        step_set_task_in_creation_to_false,
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,

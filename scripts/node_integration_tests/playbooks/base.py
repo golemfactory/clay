@@ -301,6 +301,7 @@ class NodeTestPlaybook:
         def on_success(result):
             if result[0]:
                 print("Created task.")
+                self.task_in_creation = False
                 self.next()
             else:
                 msg = result[1]
