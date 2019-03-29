@@ -136,6 +136,7 @@ class DockerTaskTestCase(
                    ".register_handler"):
             with patch('golem.task.taskserver.TaskComputer', TaskComputerExt):
                 task_server = TaskServer(
+                    network=Mock(),
                     node=Mock(),
                     config_desc=ccd,
                     client=self.node.client,

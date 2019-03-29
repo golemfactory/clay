@@ -310,7 +310,7 @@ class BasicProtocol(SessionProtocol):
     # Protocol functions
     def connectionMade(self):
         """Called when new connection is successfully opened"""
-        SessionProtocol.connectionMade(self)
+        super().connectionMade()
         self.opened = True
 
     def dataReceived(self, data):
@@ -463,7 +463,7 @@ class SafeProtocol(ServerProtocol):
         serialized = golem_messages.dump(
             msg,
             self.session.my_private_key,
-            self.session.theirs_public_key,
+            None,  # encryption is handled by libp2p
         )
         length = struct.pack("!L", len(serialized))
         return length + serialized

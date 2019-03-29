@@ -8,6 +8,7 @@ from golem.core import common
 from golem.network import nodeskeeper
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpserver
+from golem.network.transport.session import ConnTypes
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
@@ -28,7 +29,7 @@ class TaskMessagesQueueMixin:
         #   None - PendingConnection
         #   TaskSession - session established
         # Keys are always node_id a.k.a. key_id
-        self.sessions: 'typing.Dict[str, typing.Optional[TaskSession]]' = {}
+        self.task_sessions: 'typing.Dict[str, typing.Optional[TaskSession]]' = {}
 
         for attr_name in (
                 'conn_established_for_type',
@@ -39,18 +40,18 @@ class TaskMessagesQueueMixin:
                 setattr(self, attr_name, {})
 
         self.conn_established_for_type.update({
-            'msg_queue': self.msg_queue_connection_established,
+            ConnTypes.task: self.msg_queue_connection_established,
         })
         self.conn_failure_for_type.update({
-            'msg_queue': self.msg_queue_connection_failure,
+            ConnTypes.task: self.msg_queue_connection_failure,
         })
         self.conn_final_failure_for_type.update({
-            'msg_queue': self.msg_queue_connection_final_failure,
+            ConnTypes.task: self.msg_queue_connection_final_failure,
         })
 
     def initiate_session(self, node_id: str) -> None:
-        if node_id in self.sessions:
-            session = self.sessions[node_id]
+        if node_id in self.task_sessions:
+            session = self.task_sessions[node_id]
             if session is not None:
                 session.read_msg_queue()
             return
@@ -66,7 +67,7 @@ class TaskMessagesQueueMixin:
             )
             return
         result = self._add_pending_request(  # type: ignore
-            'msg_queue',
+            ConnTypes.task,
             node,
             prv_port=node.prv_port,
             pub_port=node.pub_port,
@@ -75,14 +76,14 @@ class TaskMessagesQueueMixin:
             }
         )
         if result:
-            self.sessions[node_id] = None
+            self.task_sessions[node_id] = None
 
     def remove_session_by_node_id(self, node_id):
         try:
-            session = self.sessions[node_id]
+            session = self.task_sessions[node_id]
         except KeyError:
             return
-        del self.sessions[node_id]
+        del self.task_sessions[node_id]
         if session is None:
             return
         self.remove_session(session)
@@ -98,8 +99,8 @@ class TaskMessagesQueueMixin:
             self.initiate_session(node_id)
 
     def sweep_sessions(self):
-        for node_id in self.sessions:
-            session = self.sessions[node_id]
+        for node_id in self.task_sessions:
+            session = self.task_sessions[node_id]
             if session is None:
                 continue
             if session.is_active:
@@ -113,7 +114,7 @@ class TaskMessagesQueueMixin:
             node_id,
     ):
         try:
-            if self.sessions[node_id] is not None:
+            if self.task_sessions[node_id] is not None:
                 # There is a session already established
                 # with this node_id. All messages will be processed
                 # in that other session.
@@ -123,14 +124,15 @@ class TaskMessagesQueueMixin:
             pass
         session.key_id = node_id
         session.conn_id = conn_id
-        self.sessions[node_id] = session
+        self.task_sessions[node_id] = session
         self._mark_connected(  # type: ignore
             conn_id,
             session.address,
             session.port,
         )
         self.forwarded_session_requests.pop(node_id, None)
-        session.send_hello()
+        if not session.verified:
+            session.send_hello()
 
     def msg_queue_connection_failure(self, conn_id, *_args, **_kwargs):
         try:
@@ -156,7 +158,7 @@ class TaskMessagesQueueMixin:
         )
         self.remove_pending_conn(conn_id)
         try:
-            if self.sessions[node_id] is None:
-                del self.sessions[node_id]
+            if self.task_sessions[node_id] is None:
+                del self.task_sessions[node_id]
         except KeyError:
             pass

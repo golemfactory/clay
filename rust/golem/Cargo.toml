@@ -1,15 +1,32 @@
 [package]
 name = "pyext-golem"
 version = "0.1.0"
-authors = ["Golem <tech@golem.network>"]
+authors = ["Golem Tech <tech@golem.network>"]
+edition = "2018"
 
 [lib]
 name = "golem"
-crate-type = ["dylib"]
+crate-type = ["cdylib"]
+
+[workspace]
+members = [
+    "core/peerset",
+    "core/network-libp2p",
+]
+
+[dependencies]
+crossbeam-channel = "0.3"
+env_logger = "0.6"
+futures = "0.1.17"
+log = "0.4"
+spin = "0.5"
 
 [dependencies.cpython]
 version = "0.2"
 features = ["extension-module"]
+
+[dependencies.network]
+path = "core/network"
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["psapi", "processthreadsapi"] }

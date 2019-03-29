@@ -3,6 +3,7 @@ import datetime
 import os
 import time
 import uuid
+from contextlib import contextmanager
 from random import Random
 from unittest import TestCase
 from unittest.mock import (
@@ -36,6 +37,7 @@ from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
@@ -89,6 +91,18 @@ def make_mock_ets(eth=100, gnt=100):
     ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     return ets
+
+
+@contextmanager
+def patch_network_run():
+    def call_established_callback(listen_info):
+        socket_address = SocketAddress('127.0.0.1', 40102)
+        listen_info.established_callback(socket_address)
+
+    with patch('golem.client.NativeNetwork') as net_cls:
+        net_cls.return_value = net_cls
+        net_cls.listen = call_established_callback
+        yield net_cls
 
 
 @patch('golem.client.node_info_str')
@@ -195,7 +209,8 @@ class TestClient(TestClientBase):
         self.client.config_desc.cleaning_enabled = 0
         self.client.config_desc.clean_tasks_older_than_seconds = 0
 
-        self.client.start_network()
+        with patch_network_run():
+            self.client.start_network()
 
         task_cleaner.assert_not_called()
 
@@ -204,13 +219,15 @@ class TestClient(TestClientBase):
         self.client.config_desc.cleaning_enabled = 1
         self.client.config_desc.clean_tasks_older_than_seconds = 1
 
-        self.client.start_network()
+        with patch_network_run():
+            self.client.start_network()
 
         task_cleaner.assert_called()
 
     def test_collect_gossip(self, *_):
-        self.client.start_network()
-        self.client.collect_gossip()
+        with patch_network_run():
+            self.client.start_network()
+            self.client.collect_gossip()
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
@@ -255,7 +272,8 @@ class TestClient(TestClientBase):
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
 
-        self.client.start()
+        with patch_network_run():
+            self.client.start()
         sync_wait(deferred)
 
         self.client.p2pservice.disconnect = Mock(
@@ -273,7 +291,8 @@ class TestClient(TestClientBase):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_pause_resume(self, *_):
-        self.client.start()
+        with patch('golem.client.NativeNetwork'):
+            self.client.start()
 
         assert self.client.p2pservice.active
         assert self.client.task_server.active

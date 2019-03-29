@@ -22,6 +22,7 @@ from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService, \
     RANDOM_DISCONNECT_FRACTION, MAX_STORED_HOSTS
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -34,6 +35,7 @@ class TestSyncSeeds(TestDatabaseWithReactor):
         super().setUp()
         self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.service = P2PService(
+            network=mock.Mock(),
             node=None,
             config_desc=ClientConfigDescriptor(),
             keys_auth=self.keys_auth,
@@ -364,7 +366,7 @@ class TestP2PService(TestDatabaseWithReactor):
         peer.key_id = peer_id
         self.service.want_to_start_task_session(peer.key_id, node_info,
                                                 conn_id)
-        assert peer.send_want_to_start_task_session.called
+        assert not peer.send_want_to_start_task_session.called
 
     def test_get_diagnostic(self):
         m = mock.MagicMock()
@@ -463,31 +465,16 @@ class TestP2PService(TestDatabaseWithReactor):
             seeds.remove(seed)
         assert not seeds
 
-    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket')
-    @mock.patch('golem.network.p2p.p2pservice.'
-                'P2PService._P2PService__connection_established')
-    def test_connect_success(self, connection_established, createSocket):
-        createSocket.return_value = socket = mock.Mock()
-        socket.fileno = mock.Mock(return_value=0)
-        socket.getsockopt = mock.Mock(return_value=None)
-        socket.connect_ex = mock.Mock(return_value=EISCONN)
+    def test_connect(self):
+        self.service.connect(SocketAddress('127.0.0.1', 40102))
+        call_args = self.service.network.connect.call_args[0]
+        assert len(call_args) == 1
+        assert isinstance(call_args[0], TCPConnectInfo)
 
-        addr = SocketAddress('127.0.0.1', 40102)
-        self.service.connect(addr)
-        time.sleep(0.1)
-        assert connection_established.called
-        assert connection_established.call_args[0][0] is not None
-        assert connection_established.call_args[1]['conn_id'] is not None
-
-    @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket',
-                side_effect=Exception('something has failed'))
-    @mock.patch('golem.network.p2p.p2pservice.'
-                'P2PService._P2PService__connection_failure')
-    def test_connect_failure(self, connection_failure, createSocket):
-        addr = SocketAddress('127.0.0.1', 40102)
-        self.service.connect(addr)
-        assert connection_failure.called
-        assert connection_failure.call_args[1]['conn_id'] is not None
+    def test_connect_inactive(self):
+        self.service.active = False
+        self.service.connect(SocketAddress('127.0.0.1', 40102))
+        assert not self.service.network.connect.called
 
     def test_try_to_add_peer(self):
         key_id = 'abcde1234567890'

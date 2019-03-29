@@ -2,7 +2,6 @@ import os
 import uuid
 from unittest import mock as mock
 
-from golem_messages import message
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from golem.client import Client
@@ -107,7 +106,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".HandlersLibrary"
                 ".register_handler"):
             client.task_server = TaskServer(
-                node=dt_p2p_factory.Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
+                network=mock.Mock(),
+                node=dt_p2p_factory.Node(prv_addr='127.0.0.1',
+                                         hyperdrive_prv_port=3282),
                 config_desc=mock.Mock(),
                 client=client,
                 use_docker_manager=False,

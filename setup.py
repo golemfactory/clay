@@ -59,8 +59,8 @@ setup(
     },
     rust_extensions=[
         RustExtension(
-            'rust.golem',
-            'rust/golem/Cargo.toml',
+            target='rust.golem',
+            path='rust/golem/Cargo.toml',
             binding=Binding.RustCPython,
             debug=False,
         ),

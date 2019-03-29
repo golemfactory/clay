@@ -17,6 +17,8 @@ from golem.tools.testwithreactor import TestWithReactor
 
 
 class ASession(object):
+    ProtocolId = 100
+
     def __init__(self, conn):
         self.address = '127.0.0.1'
         self.port = 40102
@@ -148,7 +150,8 @@ class TestNetwork(TestWithReactor):
         # connect
 
         address = SocketAddress('localhost', port)
-        connect_info = TCPConnectInfo([address], _conn_success(0), _conn_failure(0))
+        connect_info = TCPConnectInfo(1, [address],
+                                      _conn_success(0), _conn_failure(0))
         self.connect_success = None
 
         with async_scope(conn_status, 0):
@@ -156,14 +159,16 @@ class TestNetwork(TestWithReactor):
         self.assertTrue(self.connect_success)
 
         address2 = SocketAddress('localhost', port + 1)
-        connect_info_2 = TCPConnectInfo([address2], _conn_success(1), _conn_failure(1))
+        connect_info_2 = TCPConnectInfo(1, [address2],
+                                        _conn_success(1), _conn_failure(1))
         self.connect_success = None
 
         with async_scope(conn_status, 1):
             self.network.connect(connect_info_2)
         self.assertTrue(self.connect_success)
 
-        connect_info_3 = TCPConnectInfo([address, address2], _conn_success(2), _conn_failure(2))
+        connect_info_3 = TCPConnectInfo(1, [address, address2],
+                                        _conn_success(2), _conn_failure(2))
         self.connect_success = None
 
         with async_scope(conn_status, 2):

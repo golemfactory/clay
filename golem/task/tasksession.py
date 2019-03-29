@@ -31,6 +31,7 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.network.transport.tcpnetwork import SafeProtocol
 from golem.ranking.manager.database_manager import (
     get_provider_efficacy,
     get_provider_efficiency,
@@ -103,8 +104,10 @@ class RequestorCheckResult(enum.Enum):
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
-
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
+
+    ConnectionStateType = SafeProtocol
+    ProtocolId = 2
 
     def __init__(self, conn):
         """
@@ -850,9 +853,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.key_id is None:
             self.key_id = msg.node_info.key
             try:
-                existing_session = self.task_server.sessions[self.key_id]
+                existing_session = self.task_server.task_sessions[self.key_id]
             except KeyError:
-                self.task_server.sessions[self.key_id] = self
+                self.task_server.task_sessions[self.key_id] = self
+                self.task_server.peer_sessions[self.key_id] = self
             else:
                 if (existing_session is not None)\
                         and existing_session is not self:
@@ -880,6 +884,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
             return
 
+        self.task_server.add_session(self)
         nodeskeeper.store(msg.node_info)
 
         if send_hello:
@@ -1093,5 +1098,3 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 message.base.ChallengeSolution
             ]
         )
-
-        self.can_be_not_encrypted.extend([message.base.Hello])

@@ -1,6 +1,6 @@
 use cpython::{FromPyObject, ObjectProtocol, PyObject, PyResult, Python};
 
-use marketplace;
+use crate::marketplace;
 
 impl<'source> FromPyObject<'source> for marketplace::Offer {
     fn extract(py: Python, obj: &'source PyObject) -> PyResult<Self> {

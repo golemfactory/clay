@@ -175,7 +175,8 @@ class TestTCPNetworkConnections(unittest.TestCase):
         connect_all = network._TCPNetwork__try_to_connect_to_addresses
         network._TCPNetwork__try_to_connect_to_address = connect
 
-        connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
+        connect_all(TCPConnectInfo(100, self.addresses,
+                                   mock.Mock(), mock.Mock()))
         assert connect.called
 
     def test_with_rate_limiter(self):
@@ -191,6 +192,7 @@ class TestTCPNetworkConnections(unittest.TestCase):
         network._TCPNetwork__try_to_connect_to_address = connect
         network.rate_limiter.call = call
 
-        connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
+        connect_all(TCPConnectInfo(100, self.addresses,
+                                   mock.Mock(), mock.Mock()))
         assert not connect.called
         assert call.called

@@ -133,7 +133,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _get_requestor_tasksession(self, accept_provider=True):
         ts = self._get_task_session()
         ts.key_id = "provider key id"
-        ts.can_be_not_encrypted.append(message.tasks.WantToComputeTask)
         ts.task_server.should_accept_provider.return_value = accept_provider
         ts.task_server.config_desc.max_price = 100
         ts.task_server.keys_auth._private_key = \
@@ -361,7 +360,7 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = self.keys
-        self.task_session.task_server.sessions = {}
+        self.task_session.task_server.task_sessions = {}
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
         self.privkey = self.keys._private_key
@@ -1137,7 +1136,7 @@ class HelloTest(testutils.TempDirFixture):
         )
         self.task_session = TaskSession(conn)
         self.task_session.task_server.config_desc.key_difficulty = 1
-        self.task_session.task_server.sessions = {}
+        self.task_session.task_server.task_sessions = {}
 
     @patch('golem.task.tasksession.TaskSession.send_hello')
     def test_positive(self, mock_hello, *_):

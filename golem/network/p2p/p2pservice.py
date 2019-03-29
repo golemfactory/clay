@@ -26,7 +26,7 @@ from golem.model import KnownHosts, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
-from golem.network.transport.network import ProtocolFactory, SessionFactory
+from golem.network.transport.session import ConnTypes
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper, key_distance
 
@@ -57,11 +57,12 @@ MAX_STORED_HOSTS = 100
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # noqa P2P will be rewritten s00n pylint: disable=too-many-instance-attributes, too-many-public-methods
     def __init__(
-            self,
-            node,
-            config_desc,
-            keys_auth,
-            connect_to_known_hosts=True
+        self,
+        network,
+        node,
+        config_desc,
+        keys_auth,
+        connect_to_known_hosts=True
     ):
         """Create new P2P Server. Listen on port for connections and
            connect to other peers. Keeps up-to-date list of peers information
@@ -70,15 +71,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         :param ClientConfigDescriptor config_desc: configuration options
         :param KeysAuth keys_auth: authorization manager
         """
-        network = tcpnetwork.TCPNetwork(
-            ProtocolFactory(
-                tcpnetwork.SafeProtocol,
-                self,
-                SessionFactory(PeerSession)
-            ),
-            config_desc.use_ipv6,
-            limit_connection_rate=True
-        )
+
         tcpserver.PendingConnectionsServer.__init__(self, config_desc, network)
 
         self.node = node
@@ -89,7 +82,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.metadata_manager = None
         self.resource_port = 0
         self.suggested_address = {}
-        self.suggested_conn_reverse = {}
         self.gossip_keeper = GossipManager()
         self.manager_session = None
         self.metadata_providers: Dict[str, Callable[[], Any]] = {}
@@ -188,6 +180,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             return
 
         connect_info = tcpnetwork.TCPConnectInfo(
+            PeerSession.ProtocolId,
             [socket_address],
             self.__connection_established,
             P2PService.__connection_failure
@@ -416,7 +409,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             peer = self.peers.pop(peer_id, None)
             self.incoming_peers.pop(peer_id, None)
             self.suggested_address.pop(peer_id, None)
-            self.suggested_conn_reverse.pop(peer_id, None)
 
             if peer_id in self.free_peers:
                 self.free_peers.remove(peer_id)
@@ -755,17 +747,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         if super_node_info is None and self.node.is_super_node():
             super_node_info = self.node
 
-        connected_peer = self.peers.get(key_id)
-        if connected_peer:
-            if node_info.key == self.node.key:
-                self.suggested_conn_reverse[key_id] = True
-            connected_peer.send_want_to_start_task_session(
+        if key_id in self.peers:
+            logger.debug("Starting task session with {}".format(key_id))
+            self.task_server.start_task_session(
                 node_info,
                 conn_id,
                 super_node_info
             )
-            logger.debug("Starting task session with %s", key_id)
-            return
 
         msg_snd = False
 
@@ -859,17 +847,22 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({
-            P2PConnTypes.Start: self.__connection_established
+            ConnTypes.p2p: self.__connection_established
         })
 
     def _set_conn_failure(self):
         self.conn_failure_for_type.update({
-            P2PConnTypes.Start: P2PService.__connection_failure
+            ConnTypes.p2p: P2PService.__connection_failure
         })
 
     def _set_conn_final_failure(self):
         self.conn_final_failure_for_type.update({
-            P2PConnTypes.Start: P2PService.__connection_final_failure
+            ConnTypes.p2p: P2PService.__connection_final_failure
+        })
+
+    def _set_protocol_id_for_type(self):
+        self.protocol_id_for_type.update({
+            ConnTypes.p2p: PeerSession.ProtocolId
         })
 
     # In the future it may be changed to something more flexible
@@ -953,7 +946,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 # increment connection trials
                 self.incoming_peers[peer_id]["conn_trials"] += 1
                 self._add_pending_request(
-                    P2PConnTypes.Start,
+                    ConnTypes.p2p,
                     node,
                     prv_port=node.p2p_prv_port,
                     pub_port=node.p2p_pub_port,
@@ -1052,8 +1045,3 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         KnownHosts.delete() \
             .where(KnownHosts.id << to_delete) \
             .execute()
-
-
-class P2PConnTypes(object):
-    """ P2P Connection Types that allows to choose right reaction  """
-    Start = 1

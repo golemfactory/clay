@@ -52,6 +52,11 @@ class ProtocolFactory(Factory):
         self.server = server
         self.session_factory = session_factory
 
+        if session_factory:
+            self.protocol_id = session_factory.session_class.ProtocolId
+        else:
+            self.protocol_id = None
+
     def buildProtocol(self, addr):
         protocol = self.protocol_class(self.server)
         protocol.set_session_factory(self.session_factory)
@@ -60,6 +65,7 @@ class ProtocolFactory(Factory):
 
 class IncomingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
+        self.protocol_id = protocol_factory.protocol_id
         self.protocol_factory = protocol_factory
         self.session_factory = IncomingSessionFactoryWrapper(
             protocol_factory.session_factory)
@@ -72,6 +78,7 @@ class IncomingProtocolFactoryWrapper(Factory):
 
 class OutgoingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
+        self.protocol_id = protocol_factory.protocol_id
         self.protocol_factory = protocol_factory
         self.session_factory = OutgoingSessionFactoryWrapper(
             protocol_factory.session_factory)

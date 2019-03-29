@@ -29,6 +29,7 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
+from golem.core.net.network import ProxyNetwork
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
@@ -53,9 +54,12 @@ from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.p2p.peersession import PeerSessionInfo, PeerSession
 from golem.network.transport import msg_queue
+from golem.network.transport.network import ProtocolFactory, SessionFactory, \
+    IncomingProtocolFactoryWrapper, OutgoingProtocolFactoryWrapper
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.transport.tcpnetwork_helpers import TCPListenInfo
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
@@ -68,6 +72,7 @@ from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.tasksession import TaskSession
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -138,6 +143,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             key=self.keys_auth.key_id,
         )
 
+        self.network = None
         self.p2pservice = None
         self.diag_service = None
 
@@ -358,22 +364,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.debug('Stopped client services')
 
     def start_network(self):
-        logger.info("Starting network ...")
+        logger.info("Initializing network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
-
         logger.debug("Is super node? %s", self.node.is_super_node())
 
-        self.p2pservice = P2PService(
-            self.node,
-            self.config_desc,
-            self.keys_auth,
-            connect_to_known_hosts=self.connect_to_known_hosts
-        )
-        self.p2pservice.add_metadata_provider(
-            'performance', self.environments_manager.get_performance_values)
+        self.network = ProxyNetwork(self.keys_auth._private_key)
 
         self.task_server = TaskServer(
+            self.network,
             self.node,
             self.config_desc,
             self,
@@ -383,11 +382,42 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             apps_manager=self.apps_manager,
             task_finished_cb=self._task_finished_cb,
         )
+        self.p2pservice = P2PService(
+            self.network,
+            self.node,
+            self.config_desc,
+            self.keys_auth,
+            connect_to_known_hosts=self.connect_to_known_hosts
+        )
+
+        self.p2pservice.task_server = self.task_server
+        self.p2pservice.set_resource_server(self.resource_server)
+        self.p2pservice.add_metadata_provider(
+            'performance',
+            self.environments_manager.get_performance_values
+        )
+
+        session_and_service = [
+            (PeerSession, self.p2pservice),
+            (TaskSession, self.task_server),
+        ]
+
+        def wrap_factories(wrapper):
+            return [wrapper(ProtocolFactory(
+                session_class.ConnectionStateType,
+                service,
+                SessionFactory(session_class),
+            )) for session_class, service in session_and_service]
+
+        in_factories = wrap_factories(IncomingProtocolFactoryWrapper)
+        out_factories = wrap_factories(OutgoingProtocolFactoryWrapper)
 
         # Pause p2p and task sessions to prevent receiving messages before
         # the node is ready
         self.pause()
         self._restore_locks()
+
+        self.network.start(in_factories, out_factories)
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,
@@ -466,7 +496,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_cleaner_service.start()
             self._services.append(task_cleaner_service)
 
-        def connect(ports):
+        def connect(address):
+            ports = [address.port]
+
+            self.node.p2p_prv_port = \
+                self.node.prv_port = \
+                self.p2pservice.cur_port = \
+                self.task_server.cur_port = \
+                self.task_server.task_manager.listen_port = address.port
+
+            self.task_server.task_manager.listen_address = address.address
+            self.task_server.task_manager.node = self.node
+
             logger.info(
                 'Golem is listening on addr: %s'
                 ', ports: P2P=%s, Task=%s, Hyperdrive=%r',
@@ -509,22 +550,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                                     data=[to_unicode(e) for e in exceptions])
             sys.exit(1)
 
-        task = Deferred()
-        p2p = Deferred()
-
-        gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
-                                                                    terminate)
-
-        logger.info("Starting p2p server ...")
-        self.p2pservice.task_server = self.task_server
-        self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.start_accepting(listening_established=p2p.callback,
-                                        listening_failure=p2p.errback)
-
-        logger.info("Starting task server ...")
-        self.task_server.start_accepting(listening_established=task.callback,
-                                         listening_failure=task.errback)
-
+        logger.info("Starting network ...")
+        listen_info = TCPListenInfo(self.config_desc.start_port,
+                                    self.config_desc.end_port,
+                                    connect, terminate)
+        self.network.listen(listen_info)
         self.resume()
 
     def _restore_locks(self) -> None:

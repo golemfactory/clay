@@ -101,11 +101,17 @@ mod tests {
     #[test]
     fn order_providers_price_preference() {
         let offers = gen_offers();
-        assert_eq!(order_providers_impl(offers, 1.0, PSI, D), vec![4, 3, 1, 0, 2]);
+        assert_eq!(
+            order_providers_impl(offers, 1.0, PSI, D),
+            vec![4, 3, 1, 0, 2]
+        );
     }
     #[test]
     fn order_providers_reputation_preference() {
         let offers = gen_offers();
-        assert_eq!(order_providers_impl(offers, 0.0, PSI, D), vec![1, 2, 4, 3, 0]);
+        assert_eq!(
+            order_providers_impl(offers, 0.0, PSI, D),
+            vec![1, 2, 4, 3, 0]
+        );
     }
 }

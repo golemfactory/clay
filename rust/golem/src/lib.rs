@@ -1,14 +1,26 @@
+#![allow(non_upper_case_globals)]
+#![allow(unused_variables)]
+
 #[macro_use]
 extern crate cpython;
+extern crate log;
+extern crate env_logger;
+extern crate futures;
+extern crate spin;
 #[cfg(windows)]
 extern crate winapi;
 
 use cpython::{exc, PyErr, PyObject, PyResult, Python};
 
-mod bindings;
+#[macro_use]
+mod python;
+
+mod logger;
 mod marketplace;
+mod net;
 mod os;
 
+mod bindings;
 
 #[allow(non_snake_case)]
 fn os__windows__empty_working_sets(py: Python) -> PyResult<PyObject> {
@@ -21,22 +33,34 @@ fn os__windows__empty_working_sets(py: Python) -> PyResult<PyObject> {
     }
 }
 
-py_module_initializer!(libgolem, initlibgolem, PyInit_golem, |_py, m| {
-    try!(m.add(_py, "__doc__", "Parts of Golem core implemented in Rust"));
-    try!(m.add(
-        _py,
+py_module_initializer!(libgolem, initlibgolem, PyInit_golem, |py, m| {
+    logger::init();
+
+    m.add(py, "__doc__", "Parts of Golem core implemented in Rust")?;
+    m.add(
+        py,
+        "NetworkService",
+        py.get_type::<bindings::net::PyNetworkService>(),
+    )?;
+    m.add(
+        py,
+        "NetworkServiceError",
+        py.get_type::<bindings::net::PyNetworkServiceError>(),
+    )?;
+    m.add(
+        py,
         "marketplace__order_providers",
         py_fn!(
-            _py,
+            py,
             marketplace__order_providers(offers: Vec<marketplace::Offer>) -> PyResult<Vec<usize>> {
                 Ok(marketplace::order_providers(offers))
             }
-        )
-    ));
-    try!(m.add(
-        _py,
+        ),
+    )?;
+    m.add(
+        py,
         "os__windows__empty_working_sets",
-        py_fn!(_py, os__windows__empty_working_sets())
-    ));
+        py_fn!(py, os__windows__empty_working_sets()),
+    )?;
     Ok(())
 });

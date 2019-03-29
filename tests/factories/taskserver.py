@@ -10,6 +10,7 @@ class TaskServer(factory.Factory):
     class Meta:
         model = taskserver.TaskServer
 
+    network = factory.SubFactory('tests.factories.network.NativeNetwork')
     node = factory.SubFactory(
         'golem_messages.factories.datastructures.p2p.Node',
     )

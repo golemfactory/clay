@@ -1,6 +1,7 @@
 import abc
 import logging
 import time
+from enum import Enum
 from typing import Optional
 
 from golem_messages import message
@@ -13,27 +14,17 @@ from .network import Session
 logger = logging.getLogger(__name__)
 
 
-class FileSession(Session, metaclass=abc.ABCMeta):
-    """Abstract class that represents session interface with additional
-       operations for receiving files"""
-
-    @abc.abstractmethod
-    def data_sent(self, extra_data=None):
-        return
-
-    @abc.abstractmethod
-    def full_data_received(self, extra_data=None):
-        return
-
-    @abc.abstractmethod
-    def production_failed(self, extra_data=None):
-        return
+class ConnTypes:
+    p2p = 0
+    task = 1
 
 
-class BasicSession(FileSession):
+class BasicSession(Session):
     """Basic session responsible for managing the connection and reacting
        to different types of messages.
     """
+
+    ProtocolId = 0
 
     def __init__(self, conn):
         """
@@ -116,23 +107,6 @@ class BasicSession(FileSession):
             self.dropped()
             return
 
-    def data_sent(self, extra_data=None):
-        """ All data that should be send in stream mode has been send.
-        :param dict|None extra_data: additional information that may be needed
-        """
-        if self.conn.producer:
-            self.conn.producer.close()
-            self.conn.producer = None
-
-    def production_failed(self, extra_data=None):
-        """ Producer encounter error and stopped sending data in stream mode
-        :param dict|None extra_data: additional information that may be needed
-        """
-        self.dropped()
-
-    def full_data_received(self, extra_data=None):
-        pass
-
     def _send_disconnect(self, reason: message.base.Disconnect.REASON):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
@@ -167,8 +141,6 @@ class BasicSafeSession(BasicSession):
         self.verified = False
         # React to message even if it's self.verified is set to False
         self.can_be_unverified = [message.base.Disconnect]
-        # React to message even if it's not encrypted.
-        self.can_be_not_encrypted = [message.base.Disconnect]
 
     @property
     def theirs_public_key(self):
@@ -211,10 +183,6 @@ class BasicSafeSession(BasicSession):
 
         if not self.verified and msg.__class__ not in self.can_be_unverified:
             self.disconnect(message.base.Disconnect.REASON.Unverified)
-            return False
-
-        if not msg.encrypted and msg.__class__ not in self.can_be_not_encrypted:
-            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return False
 
         return True

@@ -1,0 +1,34 @@
+[package]
+name = "network"
+version = "1.0.0"
+license = "GPL-3.0"
+edition = "2018"
+authors = [
+    "Golem Tech <tech@golem.network",
+    "Parity Technologies <admin@parity.io>"
+]
+
+[lib]
+
+[dependencies]
+bincode = "1.1"
+byteorder = "1.3"
+bytes = "0.4"
+crossbeam-channel = "0.3"
+lazy_static = "1.3"
+log = "0.4"
+parking_lot = "0.7"
+error-chain = "0.12"
+bitflags = "1.0"
+futures = "0.1.17"
+linked-hash-map = "0.5"
+linked_hash_set = "0.1"
+lru-cache = "0.1.1"
+network_libp2p = { package = "network-libp2p", path = "../network-libp2p" }
+peerset = { package = "peerset", path = "../peerset" }
+rand = "0.6"
+serde = "1.0"
+serde_derive = "1.0"
+tokio = "0.1.11"
+tokio-codec = "0.1.1"
+

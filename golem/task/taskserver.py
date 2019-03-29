@@ -29,9 +29,8 @@ from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
 from golem.network.transport import msg_queue
-from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, SafeProtocol)
+from golem.network.transport.session import ConnTypes
+from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer,
 )
@@ -91,6 +90,7 @@ class TaskServer(
         srv_verification.VerificationMixin,
 ):
     def __init__(self,
+                 network,
                  node,
                  config_desc: ClientConfigDescriptor,
                  client,
@@ -132,8 +132,9 @@ class TaskServer(
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
-        self.sessions: Dict[str, TaskSession] = {}
+        self.task_sessions: Dict[str, TaskSession] = {}
         self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.peer_sessions: Dict[str, 'PeerSession'] = {}
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
@@ -156,9 +157,6 @@ class TaskServer(
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
 
-        network = TCPNetwork(
-            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
-            use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         srv_queue.TaskMessagesQueueMixin.__init__(self)
         # instantiate ReceivedMessageHandler connected to self
@@ -416,14 +414,15 @@ class TaskServer(
         self.task_sessions_incoming.add(session)
 
     def disconnect(self):
-        for node_id in list(self.sessions):
+        for node_id in list(self.task_sessions):
             try:
-                task_session = self.sessions[node_id]
+                task_session = self.task_sessions[node_id]
                 if task_session is None:
                     # Pending connection
                     continue
                 task_session.dropped()
-                del self.sessions[node_id]
+                del self.task_sessions[node_id]
+                del self.peer_sessions[node_id]
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error("Error closing session: %s", exc)
 
@@ -474,6 +473,9 @@ class TaskServer(
     def remove_task_header(self, task_id) -> bool:
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
+
+    def add_session(self, session):
+        self.peer_sessions[session.key_id] = session
 
     def set_last_message(self, type_, t, msg, address, port):
         if len(self.last_messages) >= 5:
@@ -852,6 +854,22 @@ class TaskServer(
             self.config_desc.start_port, self.config_desc.end_port))
         # FIXME: some graceful terminations should take place here. #1287
         # sys.exit(0)
+
+    def _add_pending_request(self, request_type, node,  # noqa # pylint: disable=too-many-arguments
+                             prv_port, pub_port, args) -> bool:
+        session = self.peer_sessions.get(node.key)
+        if session:
+            self.conn_established_for_type[request_type](
+                session=session, conn_id=None, **args
+            )
+            return True
+        return super()._add_pending_request(request_type, node, prv_port,
+                                            pub_port, args)
+
+    def _set_protocol_id_for_type(self):
+        self.protocol_id_for_type = {
+            ConnTypes.task: TaskSession.ProtocolId
+        }
 
     #############################
     # SYNC METHODS

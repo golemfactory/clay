@@ -8,10 +8,11 @@ from golem.core.types import Kwargs
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.network.transport.network import Network
 
 from .session import BasicSession
-from .tcpnetwork import TCPNetwork, TCPListeningInfo, TCPListenInfo, \
-    SocketAddress, TCPConnectInfo
+from .tcpnetwork import TCPListeningInfo, TCPListenInfo, SocketAddress, \
+    TCPConnectInfo
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +22,7 @@ class TCPServer:
 
     def __init__(self,
                  config_desc: ClientConfigDescriptor,
-                 network: TCPNetwork) -> None:
+                 network: Network) -> None:
         """
         Create new server
         :param config_desc: config descriptor for listening port
@@ -103,7 +104,7 @@ class PendingConnectionsServer(TCPServer):
 
     def __init__(self,
                  config_desc: ClientConfigDescriptor,
-                 network: TCPNetwork) -> None:
+                 network: Network) -> None:
         """ Create new server
         :param config_desc: config descriptor for listening port
         :param network: network that server will use
@@ -113,12 +114,16 @@ class PendingConnectionsServer(TCPServer):
         self.pending_connections: Dict[str, PendingConnection] = {}
         #  Sessions a.k.a Peers before handshake
         self.pending_sessions: Set[BasicSession] = set()
+        #  Protocol id per connection type
+        self.protocol_id_for_type: Dict[int, int] = {}
         #  Reactions for established connections of certain types
         self.conn_established_for_type: Dict[int, Callable] = {}
         #  Reactions for failed connection attempts of certain types
         self.conn_failure_for_type: Dict[int, Callable] = {}
         #  Reactions for final connection attempts failure
         self.conn_final_failure_for_type: Dict[int, Callable] = {}
+
+        self._set_protocol_id_for_type()
 
         # Set reactions
         self._set_conn_established()
@@ -170,7 +175,8 @@ class PendingConnectionsServer(TCPServer):
                     node_info_str(node.node_name, node.key),
                     [str(socket) for socket in sockets])
 
-        pc = PendingConnection(request_type,
+        pc = PendingConnection(self.protocol_id_for_type[request_type],
+                               request_type,
                                sockets,
                                self.conn_established_for_type[request_type],
                                self.conn_failure_for_type[request_type],
@@ -279,6 +285,9 @@ class PendingConnectionsServer(TCPServer):
     def _set_conn_final_failure(self):
         pass
 
+    def _set_protocol_id_for_type(self):
+        pass
+
     def _mark_connected(self, conn_id, addr, port):
         ad = SocketAddress(addr, port)
         pc = self.pending_connections.get(conn_id)
@@ -304,6 +313,7 @@ class PendingConnection:
 
     # pylint: disable-msg=too-many-arguments
     def __init__(self,
+                 protocol_id: int,
                  type_: int,
                  socket_addresses: List[SocketAddress],
                  established: Optional[Callable] = None,
@@ -319,8 +329,9 @@ class PendingConnection:
         :param kwargs: arguments that should be passed to established or
                        failure function
         """
-        self.connect_info = TCPConnectInfo(socket_addresses, established,
-                                           failure, final_failure, kwargs)
+        self.connect_info = TCPConnectInfo(protocol_id, socket_addresses,
+                                           established, failure, final_failure,
+                                           kwargs)
         self.last_try_time = time.time()
         self.type = type_
         self.status = PenConnStatus.Inactive

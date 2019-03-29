@@ -55,6 +55,7 @@ class PeerSession(BasicSafeSession):
     """ Session for Golem P2P Network. """
 
     ConnectionStateType = SafeProtocol
+    ProtocolId = 1
 
     def __init__(self, conn):
         """
@@ -87,8 +88,6 @@ class PeerSession(BasicSafeSession):
                 message.base.ChallengeSolution,
             ]
         )
-        self.can_be_not_encrypted.append(message.base.Hello)
-
         self.__set_msg_interpretations()
 
     def dropped(self):

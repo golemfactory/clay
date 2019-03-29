@@ -118,6 +118,7 @@ class TaskServerTestBase(LogTestCase,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
                 client=self.client,
@@ -145,6 +146,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd.min_price = 10
         n = dt_p2p_factory.Node()
         ts = TaskServer(
+            network=Mock(),
             node=n,
             config_desc=ccd,
             client=self.client,
@@ -834,6 +836,7 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
                 client=self.client,
@@ -895,8 +898,8 @@ class TestTaskServer2(TaskServerBase):
 
     def test_disconnect(self, *_):
         session_mock = Mock()
-        self.ts.sessions['active_node_id'] = session_mock
-        self.ts.sessions['pending_node_id'] = None
+        self.ts.task_sessions['active_node_id'] = session_mock
+        self.ts.task_sessions['pending_node_id'] = None
         self.ts.disconnect()
         session_mock.dropped.assert_called_once_with()
 
@@ -932,6 +935,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=self.node,
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
