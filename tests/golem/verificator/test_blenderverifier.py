@@ -167,6 +167,7 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
+
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(os.path.join(
             get_golem_path(),
@@ -204,6 +205,43 @@ class TestBlenderVerifier(TempDirFixture):
             # Change crop coordinates for next image verification
             y_crop_cord_step += 30
             y_crop_float_cord_step += 0.2
+
+    def test_docker_sanity_check(self):
+        self.subtask_info['entrypoint'] = \
+            'python3 /golem/entrypoints/test_entrypoint.py'
+        self.subtask_info['samples'] = 30
+        self.subtask_info['scene_file'] = \
+            '/golem/resources/chessboard_400x400_5x5.blend'
+        self.resources = [
+            os.path.join(
+                get_golem_path(),
+                'tests/apps/blender/verification/test_data/'
+                'chessboard_400x400_5x5.blend'
+            ),
+        ]
+        self.subtask_info['resolution'] = [400, 400]
+        self.subtask_info['crops'] = [
+            {
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'borders_x': [0.0, 1.0],
+                'borders_y': [0.0, 0.53]
+            }
+        ]
+        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
+
+        verification_data = {
+            'subtask_info': self.subtask_info,
+            'results': [os.path.join(self.tempdir, 'GolemTask_10001.png')],
+            'reference_data': [],
+            'resources': self.resources,
+            'paths': os.path.dirname(self.resources[0])
+        }
+
+        verifier = BlenderVerifier(verification_data, DockerTaskThread)
+        d = verifier.start_verification()
+
+        sync_wait(d, self.TIMEOUT)
 
 
 class TestUnitBlenderVerifier:
@@ -263,7 +301,9 @@ class TestUnitBlenderVerifier:
                 'frames': [1],
                 'samples': 35,
                 'output_format': 'PNG',
-                'subtask_id': 'qwerty1234'
+                'subtask_id': 'qwerty1234',
+                'entrypoint': 'python3 /golem/entrypoints/'
+                              'verifier_entrypoint.py'
             },
             'resources': mock.sentinel.resources,
             'results': ['/some/other/path/result.png'],
