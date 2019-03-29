@@ -1,6 +1,7 @@
 from pathlib import Path
 from subprocess import SubprocessError
-from typing import Optional, Callable, Any, Dict, List, Type, ClassVar
+from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
+    NamedTuple
 
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -24,7 +25,7 @@ mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
 
-class DockerCPUConfig(EnvConfig):
+class DockerCPUConfig(NamedTuple):
     work_dir: Path
     memory_mb: int = 1024
     cpu_count: int = 1
@@ -157,7 +158,7 @@ class DockerCPUEnvironment(Environment):
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
             -> DockerPrerequisites:
-        return DockerPrerequisites(**prerequisites_dict)  # type: ignore
+        return DockerPrerequisites(**prerequisites_dict)
 
     def prepare_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
         assert isinstance(prerequisites, DockerPrerequisites)
@@ -173,7 +174,7 @@ class DockerCPUEnvironment(Environment):
 
     @classmethod
     def parse_config(cls, config_dict: Dict[str, Any]) -> DockerCPUConfig:
-        return DockerCPUConfig(**config_dict)  # type: ignore
+        return DockerCPUConfig(**config_dict)
 
     def config(self) -> DockerCPUConfig:
         return DockerCPUConfig(*self._config)
@@ -215,7 +216,7 @@ class DockerCPUEnvironment(Environment):
     def runtime(self, payload: Payload, config: Optional[EnvConfig]) \
             -> DockerCPURuntime:
         assert isinstance(payload, DockerPayload)
-        if config:
+        if config is not None:
             assert isinstance(config, DockerCPUConfig)
         else:
             config = self.config()
