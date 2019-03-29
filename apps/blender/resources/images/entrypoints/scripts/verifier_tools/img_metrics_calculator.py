@@ -1,6 +1,8 @@
+import cv2
 import itertools
 import os
 import sys
+import numpy as np
 from pathlib import Path
 from typing import Dict
 
@@ -16,6 +18,9 @@ VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
 PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
 TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
+WHITE = 0
+BLACK = 765
+OFFSET = 30
 
 
 def calculate_metrics(reference_img_path,
@@ -168,7 +173,7 @@ def get_metrics():
 def get_labels_from_metrics(metrics):
     labels = []
     for metric in metrics:
-        labels.extend(metric.get_lables())
+        labels.extend(metric.get_labels())
     return labels
 
 
@@ -193,3 +198,66 @@ def compare_images(image_a, image_b, metrics) -> Dict:
             data[key] = value
 
     return data
+
+
+def convert_image_to_simple_array(image: np.ndarray) -> np.ndarray:
+    """
+    Function for squashing image array in to 0/1 array, which translate to
+    black/white pixel
+    """
+    simpe_array = np.zeros((image.shape[0], image.shape[1]))
+    for x, row in enumerate(image):
+        for y, single_pixel in enumerate(row):
+            pixel_sum = np.sum(single_pixel)
+            if pixel_sum <= WHITE + OFFSET:
+                simpe_array[x, y] = 0
+            elif pixel_sum >= BLACK - OFFSET:
+                simpe_array[x, y] = 1
+            else:
+                raise ValueError("Pixel incomparable. Neither black or white.")
+    return simpe_array
+
+
+def cut_out_crop_from_whole_image(
+        yres_top: int,
+        xres_left: int,
+        crop: np.ndarray,
+        whole_image: np.ndarray
+) -> np.ndarray:
+    crop_from_image = whole_image[
+        yres_top:yres_top + crop.shape[0],
+        xres_left:xres_left + crop.shape[1]
+    ]
+    return crop_from_image
+
+
+def get_raw_verification(
+        crop_path: str,
+        subtask_img_path: str,
+        crop_xres_left: int,
+        crop_yres_top: int,
+        metrics_output_filename: str = 'metrics.txt'
+) -> str:
+    croped_image = cv2.imread(crop_path)
+    subtask_image = cv2.imread(subtask_img_path)
+
+    crop_to_compare = cut_out_crop_from_whole_image(
+        crop_yres_top,
+        crop_xres_left,
+        croped_image,
+        subtask_image
+    )
+    is_result_positive = np.array_equal(
+        convert_image_to_simple_array(croped_image),
+        convert_image_to_simple_array(crop_to_compare)
+    )
+    available_metrics = ImgMetrics.get_metric_classes()
+    stub_data = {
+        element: 'unavailable' for element in
+        get_labels_from_metrics(available_metrics)
+    }
+    if is_result_positive:
+        stub_data['Label'] = VERIFICATION_SUCCESS
+    else:
+        stub_data['Label'] = VERIFICATION_FAIL
+    return ImgMetrics(stub_data).write_to_file(metrics_output_filename)
