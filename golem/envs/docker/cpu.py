@@ -129,8 +129,13 @@ class DockerCPUEnvironment(Environment):
         self._status = EnvStatus.PREPARING
 
         def _prepare():
-            self._hypervisor.setup()
-            self._status = EnvStatus.ENABLED
+            try:
+                self._hypervisor.setup()
+            except Exception:
+                self._status = EnvStatus.DISABLED
+                raise
+            else:
+                self._status = EnvStatus.ENABLED
 
         return deferToThread(_prepare)
 
@@ -141,8 +146,13 @@ class DockerCPUEnvironment(Environment):
         self._status = EnvStatus.CLEANING_UP
 
         def _clean_up():
-            self._hypervisor.quit()
-            self._status = EnvStatus.DISABLED
+            try:
+                self._hypervisor.quit()
+            except Exception:
+                self._status = EnvStatus.ENABLED
+                raise
+            else:
+                self._status = EnvStatus.DISABLED
 
         return deferToThread(_clean_up)
 
