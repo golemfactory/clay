@@ -55,7 +55,7 @@ class TestBlenderVerifier(TempDirFixture):
                 )
             ),
             entrypoint=entrypoint if entrypoint is not None else \
-                'python3 /golem/entrypoints/render_entrypoint.py',
+                'python3 /golem/entrypoints/verifier_entrypoint.py',
             path_root=os.path.dirname(self.resources[0]),
             subtask_id=str(random.randint(1 * 10 ** 36, 9 * 10 ** 36)),
         )
