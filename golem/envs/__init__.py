@@ -15,24 +15,17 @@ EnvEvent = Any  # TODO: Define environment events
 RuntimeEventId = str
 RuntimeEvent = Any  # TODO: Define runtime events
 
+# Environment-wide configuration. Specifies e.g. available resources.
+EnvConfig = Any
 
-class EnvConfig(NamedTuple):
-    """ Environment-wide configuration. Specifies e.g. available resources. """
-    pass
+# Environment-specific requirements for computing a task. Distributed with the
+# task header. Providers are expected to prepare (download, install, etc.)
+# prerequisites in advance no to waste computation time.
+Prerequisites = Any
 
-
-class Payload(NamedTuple):
-    """ A definition for Runtime. Environment-specific description of
-        computation to be run. Received when provider is assigned a subtask. """
-    pass
-
-
-class Prerequisites(NamedTuple):
-    """ Environment-specific requirements for computing a task. Distributed
-        with the task header. Providers are expected to prepare (download,
-        install, etc.) prerequisites in advance no to waste computation time.
-    """
-    pass
+# A definition for Runtime. Environment-specific description of computation to
+# be run. Received when provider is assigned a subtask.
+Payload = Any
 
 
 class EnvSupportStatus(NamedTuple):
@@ -106,6 +99,7 @@ class EnvStatus(Enum):
     PREPARING = 1
     ENABLED = 2
     CLEANING_UP = 3
+    # TODO: Add 'ERROR' status?
 
     def __str__(self) -> str:
         return self.name

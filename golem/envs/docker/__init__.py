@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import NamedTuple, Optional, List, Dict
 
 from golem.core.common import posix_path
-from golem.envs import Payload, Prerequisites
 
 
 class DockerBind(NamedTuple):
@@ -15,7 +14,7 @@ class DockerBind(NamedTuple):
         return posix_path(str(self.source))
 
 
-class DockerPayload(Payload):
+class DockerPayload(NamedTuple):
     image: str
     tag: str
     args: List[str]
@@ -26,6 +25,6 @@ class DockerPayload(Payload):
     work_dir: Optional[str] = None
 
 
-class DockerPrerequisites(Prerequisites):
+class DockerPrerequisites(NamedTuple):
     image: str
     tag: str
