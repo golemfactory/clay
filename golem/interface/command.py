@@ -10,25 +10,25 @@ from golem.interface.exceptions import CommandException, \
     CommandCanceledException
 
 
-def customize_question(
-        question: str,
+def format_with_call_arg(
+        string: str,
         parameter_name: Optional[str],
         function: Callable,
         *args: Any,
         **kwargs: Any
 ) -> str:
     """
-    Helper function that allows to customize confirmation question - it will
-    format the question to include call-time value of `parameter_name` (if it
+    Helper function that allows to customize given string - it will
+    format it to include call-time value of `parameter_name` (if it
     is not `None`) from call args (`*args` or `**kwargs`). If it is not there,
     `TypeError` will be raised.
     :raises `TypeError`
     """
     if parameter_name is None:
-        return question
+        return string
 
     call = inspect.signature(function).bind(*args, **kwargs)
-    return question.format(call.arguments[parameter_name])
+    return string.format(call.arguments[parameter_name])
 
 
 def ask_for_confirmation(
@@ -44,8 +44,8 @@ def ask_for_confirmation(
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             answer = 'maybe'
-            q = customize_question(question, parameter_name, func, *args,
-                                   **kwargs)
+            q = format_with_call_arg(question, parameter_name, func, *args,
+                                     **kwargs)
             while answer not in ['', 'y', 'n']:
                 answer = input(f'{q} (Y/n)').lower()
             if answer != 'n':

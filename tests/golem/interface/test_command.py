@@ -7,7 +7,7 @@ from twisted.internet.defer import Deferred, TimeoutError
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, CommandResult, CommandHelper, \
     group, doc, command, CommandStorage, storage_context, CommandException, \
-    ask_for_confirmation, customize_question
+    ask_for_confirmation, format_with_call_arg
 from golem.interface.exceptions import CommandCanceledException
 
 
@@ -250,12 +250,12 @@ class TestAskForConfirmation:
             )
 
 
-class TestCustomizeQuestion:
+class TestFormatWithCallArg:
     def test_that_question_is_unchanged_if_parameter_is_none(self):
         def _foo(uid):
             pass
         question = 'Do you want do delete user: {}?'
-        result = customize_question(question, None, _foo)
+        result = format_with_call_arg(question, None, _foo)
         assert result == question
 
     def test_that_question_is_changed_if_parameter_is_in_call_args(self):
@@ -264,7 +264,7 @@ class TestCustomizeQuestion:
 
         question = 'Do you want do delete user: {}?'
         actual_parameter = 1
-        result = customize_question(question, 'uid', _foo, actual_parameter)
+        result = format_with_call_arg(question, 'uid', _foo, actual_parameter)
         assert result == question.format(actual_parameter)
 
     def test_that_question_is_changed_if_parameter_is_in_call_kwargs(self):
@@ -272,5 +272,5 @@ class TestCustomizeQuestion:
             pass
         question = 'Do you want do delete user: {}?'
         value = 1
-        result = customize_question(question, 'uid', _foo, uid=value)
+        result = format_with_call_arg(question, 'uid', _foo, uid=value)
         assert result == question.format(value)
