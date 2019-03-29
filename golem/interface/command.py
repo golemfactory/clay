@@ -9,6 +9,8 @@ from typing import Callable, Optional, Any
 from golem.interface.exceptions import CommandException, \
     CommandCanceledException
 
+INCLUDE_CALL_DURATION = 'include_call_duration'
+
 
 def format_with_call_arg(
         string: str,
@@ -29,6 +31,26 @@ def format_with_call_arg(
 
     call = inspect.signature(function).bind(*args, **kwargs)
     return string.format(call.arguments[parameter_name])
+
+
+def customize_output(
+    pattern: str,
+    parameter_name: str,
+    include_call_time: bool = False,
+) -> Callable:
+    def wrapper(func):
+        @functools.wraps(func)
+        def wrapped(*args, **kwargs):
+            new_pattern = format_with_call_arg(pattern, parameter_name, func,
+                                               *args, **kwargs)
+            result = func(*args, **kwargs)
+            if result is None:
+                result = ''
+            result = new_pattern.format(result)
+
+            return result
+        return wrapped
+    return wrapper
 
 
 def ask_for_confirmation(

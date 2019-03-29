@@ -5,7 +5,8 @@ import time
 from copy import deepcopy
 from typing import Text, Dict, Callable
 
-from golem.interface.command import CommandHelper, CommandStorage, command, Argument
+from golem.interface.command import CommandHelper, CommandStorage, command, \
+    Argument, INCLUDE_CALL_DURATION
 from golem.interface.exceptions import ExecutionException, ParsingException, \
     CommandException, CommandCanceledException
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
@@ -55,6 +56,15 @@ def disable_withdraw(
         if 'withdraw' in new_children:
             new_children.pop('withdraw')
     return new_children
+
+
+def optionally_include_run_time(result, started, callback):
+    duration_string = "Completed in {0:.2f} s".format(time.time() - started)
+    if result is None:
+        result = duration_string
+    elif hasattr(callback, INCLUDE_CALL_DURATION):
+        result = result + duration_string
+    return result
 
 
 class CLI(object):
@@ -178,9 +188,7 @@ class CLI(object):
             result = repr(result)
             sys.stderr.write("Formatter error: {}".format(exc))
 
-        if result is None:
-            return "Completed in {0:.2f} s".format(
-                time.time() - started), output
+        result = optionally_include_run_time(result, started, False)
         return result, output
 
     def build(self):
