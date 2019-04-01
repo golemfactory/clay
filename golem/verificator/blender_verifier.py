@@ -110,7 +110,9 @@ class BlenderVerifier(FrameRenderingVerifier):
             output_format=self.subtask_info['output_format'],
             basefilename='crop',
             entrypoint=self.subtask_info['entrypoint'],
-            subtask_info=self.subtask_info,
+            crops=self.subtask_info['crops'],
+            use_compositing=self.subtask_info['use_compositing'],
+            scene_file=self.subtask_info['scene_file']
         )
 
         self.docker_task = self.docker_task_cls(
