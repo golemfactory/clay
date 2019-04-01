@@ -152,13 +152,6 @@ class TestffmpegTask(TempDirFixture):
 
         self.assertEqual(td.output_file, '/tmp/test task.mp4')
 
-    def test_build_ffmpeg_task(self):
-        td = self.tt.task_builder_type.build_definition(self.tt,
-                                                        self._task_dictionary)
-        builder = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
-                                            DirManager(self.tempdir))
-        builder.build()
-
     def test_invalid_extra_data(self):
         with self.assertRaises(AssertionError):
             self.ffmpeg_task._get_extra_data(1)
