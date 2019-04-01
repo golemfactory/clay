@@ -23,11 +23,13 @@ BLACK = 765
 OFFSET = 30
 
 
-def calculate_metrics(reference_img_path,
-                      result_img_path,
-                      xres,
-                      yres,
-                      metrics_output_filename='metrics.txt'):
+def calculate_metrics(
+        reference_img_path,
+        result_img_path,
+        xres,
+        yres,
+        metrics_output_filename='metrics.txt'
+):
     """
     This is the entry point for calculation of metrics between the
     rendered_scene and the sample(cropped_img) generated for comparison.
@@ -38,60 +40,89 @@ def calculate_metrics(reference_img_path,
     :param metrics_output_filename:
     :return:
     """
-
-    cropped_img, scene_crops, rendered_scene = \
-        _load_and_prepare_images_for_comparison(reference_img_path,
-                                                result_img_path,
-                                                xres,
-                                                yres)
-
-    best_crop = None
-    best_img_metrics = None
+    # (cropped_img, scene_crops, rendered_scene) = \
+    (cropped_img, scene_crops) = \
+        _load_and_prepare_images_for_comparison(
+            reference_img_path,
+            result_img_path,
+            xres,
+            yres
+        )
     img_metrics = dict()
     img_metrics['Label'] = VERIFICATION_FAIL
 
-    effective_metrics, classifier, labels, available_metrics = get_metrics()
+    (classifier, labels, available_metrics) = get_metrics()
 
     # First try not offset crop
     # TODO this shouldn't depend on the crops' ordering
     default_crop = scene_crops[0]
-    default_metrics = compare_images(cropped_img, default_crop, available_metrics)
+    print(f"default_crop: {default_crop.getbbox()}")
+    default_metrics = compare_images(
+        cropped_img,
+        default_crop,
+        available_metrics
+    )
     try:
         label = classify_with_tree(default_metrics, classifier, labels)
         default_metrics['Label'] = label
     except Exception as e:
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
-    if default_metrics['Label'] == VERIFICATION_SUCCESS:
-        default_crop.save(CROP_NAME)
-        return ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-    else:
-        # Try offset crops
-        for crop in scene_crops[1:]:
-            try:
-                img_metrics = compare_images(cropped_img, crop, available_metrics)
-                img_metrics['Label'] = classify_with_tree(img_metrics, classifier, labels)
-            except Exception as e:
-                print("There were error %r" % e, file=sys.stderr)
-                img_metrics['Label'] = VERIFICATION_FAIL
-            if img_metrics['Label'] == VERIFICATION_SUCCESS:
-                best_img_metrics = img_metrics
-                best_crop = crop
-                break
-        if best_crop and best_img_metrics:
-            best_crop.save(CROP_NAME)
-            return ImgMetrics(best_img_metrics).write_to_file(metrics_output_filename)
-        else:
-            # We didnt find any better match in offset crops, return the default one
-            default_crop.save(CROP_NAME)
-            path_to_metrics = ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-            return path_to_metrics
 
-    # This is unexpected but handle in case of errors
-    stub_data = {element:-1 for element in get_labels_from_metrics(available_metrics)}
-    stub_data['Label'] = VERIFICATION_FAIL
-    path_to_metrics = ImgMetrics(stub_data).write_to_file(metrics_output_filename)
-    return path_to_metrics
+    # TODO This part need to be commented out if You want to test workaround below
+    default_crop.save(CROP_NAME)
+    return ImgMetrics(default_metrics).write_to_file(
+        metrics_output_filename
+    )
+
+    # TODO Old workaround for comparing 8 crops around the one that's calculated
+    # best_crop = None
+    # best_img_metrics = None
+    # if default_metrics['Label'] == VERIFICATION_SUCCESS:
+    #     default_crop.save(CROP_NAME)
+    #     return ImgMetrics(default_metrics).write_to_file(
+    #         metrics_output_filename
+    #     )
+    # else:
+    #     # Try offset crops
+    #     for crop in scene_crops[1:]:
+    #         try:
+    #             img_metrics = compare_images(
+    #                 cropped_img,
+    #                 crop,
+    #                 available_metrics
+    #             )
+    #             img_metrics['Label'] = classify_with_tree(
+    #                 img_metrics,
+    #                 classifier,
+    #                 labels
+    #             )
+    #         except Exception as e:
+    #             print("There were error %r" % e, file=sys.stderr)
+    #             img_metrics['Label'] = VERIFICATION_FAIL
+    #         if img_metrics['Label'] == VERIFICATION_SUCCESS:
+    #             best_img_metrics = img_metrics
+    #             best_crop = crop
+    #             break
+    #     if best_crop and best_img_metrics:
+    #         best_crop.save(CROP_NAME)
+    #         return ImgMetrics(best_img_metrics).write_to_file(
+    #             metrics_output_filename
+    #         )
+    #     else:
+    #         # We didnt find any better match in offset crops,
+    #         # return the default one
+    #         default_crop.save(CROP_NAME)
+    #         path_to_metrics = ImgMetrics(default_metrics).write_to_file(
+    #             metrics_output_filename
+    #         )
+    #         return path_to_metrics
+    #
+    # stub_data = {
+    #     element: -1 for element in get_labels_from_metrics(available_metrics)
+    # }
+    # stub_data['Label'] = VERIFICATION_FAIL
+    # return ImgMetrics(stub_data).write_to_file(metrics_output_filename)
 
 
 def load_classifier():
@@ -107,11 +138,12 @@ def classify_with_tree(metrics, classifier, feature_labels):
     return results[0].decode('utf-8')
 
 
-def _load_and_prepare_images_for_comparison(reference_img_path,
-                                            result_img_path,
-                                            xres,
-                                            yres):
-
+def _load_and_prepare_images_for_comparison(
+        reference_img_path,
+        result_img_path,
+        xres,
+        yres
+):
     """
     This function prepares (i.e. crops) the rendered_scene so that it will
     fit the sample(cropped_img) generated for comparison.
@@ -125,8 +157,9 @@ def _load_and_prepare_images_for_comparison(reference_img_path,
     rendered_scene = convert_to_png_if_needed(result_img_path)
     reference_img = convert_to_png_if_needed(reference_img_path)
     (crop_width, crop_height) = reference_img.size
+    print(f"xres={xres}, yres={yres}, width={crop_width}, height={crop_height}")
     crops = get_crops(rendered_scene, xres, yres, crop_width, crop_height)
-    return reference_img, crops, rendered_scene
+    return reference_img, crops
 
 
 def get_file_extension_lowercase(file_path):
@@ -167,7 +200,7 @@ def get_metrics():
             for label_part in metric.get_labels():
                 if label_part == label and metric not in effective_metrics:
                     effective_metrics.append(metric)
-    return effective_metrics, classifier, feature_labels, available_metrics
+    return classifier, feature_labels, available_metrics
 
 
 def get_labels_from_metrics(metrics):
