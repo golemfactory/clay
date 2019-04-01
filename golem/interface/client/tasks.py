@@ -8,7 +8,7 @@ from typing import Any, Optional, Tuple
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, \
-    CommandResult, ask_for_confirmation
+    CommandResult, ask_for_confirmation, customize_output
 from golem.task.taskstate import TaskStatus
 
 if typing.TYPE_CHECKING:
@@ -128,6 +128,7 @@ class Tasks:
                                         sort=sort)
 
     @command(arguments=(id_req, force_arg, ), help="Restart a task")
+    @customize_output('Task {} was restarted as a new task with id ', 'id')
     @ask_for_confirmation('Are you sure? Confirm restarting {}', 'id')
     def restart(self, id, force: bool = False):
         deferred = Tasks.client._call('comp.task.restart', id, force=force)  # noqa pylint: disable=protected-access
@@ -148,6 +149,8 @@ class Tasks:
         return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
+    @customize_output('Task {} aborted. To confirm run `golemcli tasks show`',
+                      'id')
     @ask_for_confirmation('Are you sure? Confirm aborting {} task', 'id')
     def abort(self, id):
         deferred = Tasks.client.abort_task(id)
@@ -159,6 +162,9 @@ class Tasks:
         return sync_wait(deferred)
 
     @command(help="Deletes all tasks")
+    @customize_output(
+        'All tasks were purged. To confirm run `golemcli tasks show`',
+    )
     @ask_for_confirmation('Are you sure? Confirm purging all tasks')
     def purge(self):
         deferred = Tasks.client.purge_tasks()
@@ -169,6 +175,9 @@ class Tasks:
         Note: no client-side validation is performed yet.
         This will change in the future
     """)
+    @customize_output(
+        'Task with {} was created. To confirm run `golemcli tasks show`',
+    )
     def create(self, file_name: str, force: bool = False) -> Any:
         with open(file_name) as f:
             task_id, error = self.__create_from_json(f.read(), force=force)

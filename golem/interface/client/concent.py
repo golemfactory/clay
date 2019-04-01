@@ -7,7 +7,7 @@ from golem.interface.command import (
     Argument,
     command,
     group,
-)
+    customize_output)
 
 if typing.TYPE_CHECKING:
     from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
@@ -35,6 +35,8 @@ class Switch:
         )
 
     @command(arguments=(on_off_arg, ))
+    @customize_output('Concent switch turned {}.', 'on_off',
+                      include_call_time=True)
     def turn(self, on_off):
         return sync_wait(self._call(
             ".turn",

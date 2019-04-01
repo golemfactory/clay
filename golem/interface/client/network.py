@@ -1,5 +1,7 @@
 from golem.core.deferred import sync_wait
-from golem.interface.command import group, Argument, command, CommandResult, doc
+from golem.interface.command import group, Argument, command, CommandResult, \
+    doc, customize_output
+from golem.interface.exceptions import CommandException
 from golem.network.transport.tcpnetwork import SocketAddress
 
 
@@ -54,10 +56,11 @@ class Network(object):
         return self.__peers(peers, sort, full)
 
     @command(argument=node_id, help="Block provider")
+    @customize_output('{} blocked.', 'node_id', include_call_time=True)
     def block(self, node_id):
         success, error = sync_wait(self.client.block_node(node_id))
         if not success:
-            return error
+            raise CommandException(error)
 
     @staticmethod
     def __peers(peers, sort, full):

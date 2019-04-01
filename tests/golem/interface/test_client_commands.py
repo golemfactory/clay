@@ -201,11 +201,13 @@ class TestEnvironments(unittest.TestCase):
         self.client = client
 
     def test_enable(self):
+        self.client.enable_environment.return_value = None
         with client_ctx(Environments, self.client):
             Environments().enable('Name')
             self.client.enable_environment.assert_called_with('Name')
 
     def test_disable(self):
+        self.client.disable_environment.return_value = None
         with client_ctx(Environments, self.client):
             Environments().disable('Name')
             self.client.disable_environment.assert_called_with('Name')
@@ -248,6 +250,7 @@ class TestEnvironments(unittest.TestCase):
             min=MinPerformanceMultiplier.MIN,
             max=MinPerformanceMultiplier.MAX,
         )
+        self.client._call.return_value = None
         with client_ctx(Environments, self.client):
             Environments().perf_mult_set(multiplier=anInt)
         self.client._call.assert_called_once_with(
@@ -334,8 +337,10 @@ class TestNetwork(unittest.TestCase):
         with client_ctx(Network, self.client):
             self.client.block_node.return_value = False, 'error_msg'
             network = Network()
-            result = network.block('node_id')
-            self.assertEqual(result, 'error_msg')
+            with self.assertRaises(CommandException) as exc:
+                network.block('node_id')
+
+            self.assertEqual(exc.exception.args[0], 'error_msg')
             self.client.block_node.assert_called_once_with('node_id')
 
     def __assert_peer_result(self, result_1, result_2):
@@ -680,7 +685,8 @@ class TestTasks(TempDirFixture):
     @patch('builtins.input', return_value='')
     def test_basic_commands(self, _mocked_input):
         client = self.client
-
+        # client.abort_task.return_value = None
+        # client.delete_task.return_value = None
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
@@ -697,7 +703,7 @@ class TestTasks(TempDirFixture):
             self.client._call.return_value = 'new_task_id', None
             tasks = Tasks()
             result = tasks.restart('task_id')
-            self.assertEqual(result, 'new_task_id')
+            self.assertIn('new_task_id', result)
             self.client._call.assert_called_once_with(
                 'comp.task.restart',
                 'task_id',

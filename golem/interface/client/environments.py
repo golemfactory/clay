@@ -2,7 +2,8 @@ import typing
 
 from golem.core.deferred import sync_wait
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
-from golem.interface.command import group, Argument, command, CommandResult
+from golem.interface.command import group, Argument, command, CommandResult, \
+    customize_output
 
 if typing.TYPE_CHECKING:
     from golem.rpc.session import ClientProxy
@@ -52,11 +53,13 @@ class Environments(object):
                                         sort=sort)
 
     @command(argument=name, help="Enable environment")
+    @customize_output('env {} enabled.', 'name', include_call_time=True)
     def enable(self, name):
         deferred = Environments.client.enable_environment(name)
         return sync_wait(deferred)
 
     @command(argument=name, help="Disable environment")
+    @customize_output('env {} disabled.', 'name', include_call_time=True)
     def disable(self, name):
         deferred = Environments.client.disable_environment(name)
         return sync_wait(deferred)
@@ -67,6 +70,8 @@ class Environments(object):
         return sync_wait(deferred, timeout=1800)
 
     @command(argument=multiplier, help="Sets accepted performance multiplier")
+    @customize_output('envs perf_mult_set to {}', 'multiplier',
+                      include_call_time=True)
     def perf_mult_set(self, multiplier):
         return sync_wait(
             Environments.client._call(

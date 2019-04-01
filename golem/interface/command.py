@@ -35,7 +35,7 @@ def format_with_call_arg(
 
 def customize_output(
     pattern: str,
-    parameter_name: Optional[str],
+    parameter_name: Optional[str] = None,
     include_call_time: bool = False,
 ) -> Callable:
     """
@@ -61,7 +61,11 @@ def customize_output(
             result = func(*args, **kwargs)
             if result is None:
                 result = ''
-            result = customized_message + result
+            if isinstance(result, str):
+                if '{}' in customized_message:
+                    result = customized_message.format(result)
+                else:
+                    result = customized_message + result
             return result
 
         if include_call_time:
