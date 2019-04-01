@@ -69,7 +69,8 @@ def calculate_metrics(
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
 
-    # TODO This part need to be commented out if You want to test workaround below
+    # TODO This part need to be commented out
+    #  if You want to test workaround below
     default_crop.save(CROP_NAME)
     return ImgMetrics(default_metrics).write_to_file(
         metrics_output_filename

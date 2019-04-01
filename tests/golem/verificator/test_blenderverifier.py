@@ -190,7 +190,8 @@ class TestBlenderVerifier(TempDirFixture):
             verification_data = dict(
                 subtask_info=self._create_subtask_info(
                     borders_y=[
-                        0.8 - y_crop_float_cord_step, 1.0 - y_crop_float_cord_step
+                        0.8 - y_crop_float_cord_step,
+                        1.0 - y_crop_float_cord_step
                     ],
                     outfilebasename=f'GolemTask_{i}'
                 ),

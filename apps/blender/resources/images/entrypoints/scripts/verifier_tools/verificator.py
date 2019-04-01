@@ -143,7 +143,6 @@ def verify(  # pylint: disable=too-many-arguments
         samples,
         frames,
         output_format,
-        basefilename=None,
         crops_count=3,
         crops_borders=None,
         use_raw_verification=False,
