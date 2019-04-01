@@ -102,49 +102,41 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
         cmd.extend(playlist_cmd)
 
     # video settings
-    try:
+    if 'video' in targs and 'codec' in targs['video']:
         vcodec = targs['video']['codec']
         cmd.append("-c:v")
         cmd.append(get_video_encoder(vcodec))
-    except:
-        pass
-    try:
+
+    if 'frame_rate' in targs:
         fps = str(targs['frame_rate'])
         cmd.append("-r")
         cmd.append(fps)
-    except:
-        pass
-    try:
+
+    if 'video' in targs and 'bitrate' in targs['video']:
         vbitrate = targs['video']['bitrate']
         cmd.append("-b:v")
         cmd.append(vbitrate)
-    except:
-        pass
+
     # audio settings
-    try:
+    if 'audio' in targs and 'codec' in targs['audio']:
         acodec = targs['audio']['codec']
         cmd.append("-c:a")
         cmd.append(get_audio_encoder(acodec))
-    except:
-        pass
-    try:
+
+    if 'audio' in targs and 'bitrate' in targs['audio']:
         abitrate = targs['audio']['bitrate']
         cmd.append("-b:a")
         cmd.append(abitrate)
-    except:
-        pass
-    try:
+
+    if 'resolution' in targs:
         res = targs['resolution']
         cmd.append("-vf")
         cmd.append("scale={}:{}".format(res[0], res[1]))
-    except:
-        pass
-    try:
+
+    if 'scaling_alg' in targs:
         scale = targs["scaling_alg"]
         cmd.append("-sws_flags")
         cmd.append("{}".format(scale))
-    except:
-        pass
 
     cmd.append("{}".format(output_playlist_name))
 
