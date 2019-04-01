@@ -205,7 +205,7 @@ class TestBlenderVerifier(TempDirFixture):
 
             # Change crop coordinates for next image verification
             y_crop_cord_step += 30
-            y_crop_float_cord_step += 0.2
+            y_crop_float_cord_step = round(y_crop_float_cord_step + 0.2, 2)
 
     def _prep_sanity_check_data(self):
         self.subtask_info['entrypoint'] = \
