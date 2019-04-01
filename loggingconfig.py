@@ -106,5 +106,13 @@ LOGGING = {
             'propagate': False,
             'handlers': ['console', 'file', ],
         },
+        'docker': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'urllib3': {
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }
