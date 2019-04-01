@@ -207,7 +207,7 @@ class TestBlenderVerifier(TempDirFixture):
             y_crop_cord_step += 30
             y_crop_float_cord_step += 0.2
 
-    def test_docker_sanity_check(self):
+    def _prep_sanity_check_data(self):
         self.subtask_info['entrypoint'] = \
             'python3 /golem/entrypoints/test_entrypoint.py'
         self.subtask_info['samples'] = 30
@@ -230,6 +230,43 @@ class TestBlenderVerifier(TempDirFixture):
             }
         ]
         self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
+
+    @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
+    def test_docker_sanity_check(self):
+        self._prep_sanity_check_data()
+
+        verification_data = {
+            'subtask_info': self.subtask_info,
+            'results': [os.path.join(self.tempdir, 'GolemTask_10001.png')],
+            'reference_data': [],
+            'resources': self.resources,
+            'paths': os.path.dirname(self.resources[0])
+        }
+
+        verifier = BlenderVerifier(verification_data, DockerTaskThread)
+        d = verifier.start_verification()
+
+        sync_wait(d, self.TIMEOUT)
+
+    @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
+    def test_random_crop_widow(self):
+        self._prep_sanity_check_data()
+
+        subtask_height = random.randint(20, 50)
+        subtask_ymin = round(random.randint(0, 100 - subtask_height)/100, 2)
+        subtask_ymax = round(subtask_ymin + subtask_height/100, 2)
+
+        self.subtask_info['crops'] = [
+            {
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'borders_x': [0.0, 1.0],
+                'borders_y': [subtask_ymin, subtask_ymax]
+            }
+        ]
+        self.subtask_info['crop_window'] = [
+            0.0, 1.0, subtask_ymin, subtask_ymax
+        ]
 
         verification_data = {
             'subtask_info': self.subtask_info,
