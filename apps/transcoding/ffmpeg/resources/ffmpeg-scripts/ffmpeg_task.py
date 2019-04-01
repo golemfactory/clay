@@ -86,14 +86,22 @@ def compute_metrics(metrics_params):
 
 def run_ffmpeg(params):
     if params['command'] == "split":
-        do_split(params['path_to_stream'], params['parts'])
+        do_split(
+            params['path_to_stream'],
+            params['parts'])
     elif params['command'] == "transcode":
-        do_transcode(params['track'], params['targs'],
-                     params['output_stream'], params['use_playlist'])
+        do_transcode(
+            params['track'],
+            params['targs'],
+            params['output_stream'],
+            params['use_playlist'])
     elif params['command'] == "merge":
-        do_merge(params['chunks'], params['output_stream'])
+        do_merge(
+            params['chunks'],
+            params['output_stream'])
     elif params['command'] == "compute-metrics":
-        compute_metrics(params["metrics_params"])
+        compute_metrics(
+            params["metrics_params"])
     else:
         print("Invalid command.")
 
