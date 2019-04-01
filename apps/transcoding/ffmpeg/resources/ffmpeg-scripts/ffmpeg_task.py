@@ -1,4 +1,5 @@
 import json
+import re
 import os
 import sys
 
@@ -6,11 +7,14 @@ from ffmpeg_tools import commands, meta
 
 # pylint: disable=import-error
 import m3u8
-from m3u8_utils import create_and_dump_m3u8, join_playlists
+from m3u8_utils import create_and_dump_m3u8
 
 OUTPUT_DIR = "/golem/output"
 RESOURCES_DIR = "/golem/resources"
 PARAMS_FILE = "params.json"
+
+TRANSCODED_VIDEO_REGEX = re.compile(r'_(\d+)_TC\.[^.]+')
+FFCONCAT_LIST_BASENAME = "merge-input.ffconcat"
 
 
 class InvalidCommand(Exception):
@@ -52,16 +56,49 @@ def do_transcode(track, targs, output, use_playlist):
 
 
 def do_merge(chunks, outputfilename):
-    [output_playlist, _] = os.path.splitext(
-        os.path.basename(outputfilename))
-    merged = join_playlists(chunks)
-    merged_filename = os.path.join(RESOURCES_DIR,
-                                   output_playlist + ".m3u8")
-    file = open(merged_filename, 'w')
-    file.write(merged.dumps())
-    file.close()
+    def select_transcoded_video_paths(output_file_paths, output_extension):
+        return [path
+                for path in output_file_paths
+                if path.endswith(f'_TC{output_extension}')]
 
-    commands.merge_videos(merged_filename, outputfilename)
+
+    def sorted_transcoded_video_paths(transcoded_video_paths):
+        path_index = {int(re.findall(TRANSCODED_VIDEO_REGEX, path)[0]): path
+                      for path in transcoded_video_paths}
+        return [value for key, value in sorted(path_index.items())]
+
+
+    def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
+        assert len(chunks) >= 1
+        assert len(set(os.path.dirname(chunk) for chunk in chunks)) == 1, \
+            "Merge won't work if chunks are not all in the same directory"
+
+        # NOTE: The way the ffmpeg merge command works now, the list file
+        # must be in the same directory as the chunks.
+        list_filename = os.path.join(os.path.dirname(chunks[0]), list_basename)
+
+        [_output_basename, output_extension] = os.path.splitext(
+            os.path.basename(output_filename))
+
+        merge_input_files = sorted_transcoded_video_paths(
+            select_transcoded_video_paths(
+                chunks,
+                output_extension))
+        assert all("'" not in path for path in merge_input_files), \
+            "FIXME: Single quotes in file names are not supported yet"
+
+        ffconcat_entries = [f"file '{path}'" for path in merge_input_files]
+
+        with open(list_filename, 'w') as file:
+            file.write('\n'.join(ffconcat_entries))
+
+        return list_filename
+
+    ffconcat_list_filename = build_and_store_ffconcat_list(
+        chunks,
+        outputfilename,
+        FFCONCAT_LIST_BASENAME)
+    commands.merge_videos(ffconcat_list_filename, outputfilename)
 
 
 def compute_metric(cmd, function):
