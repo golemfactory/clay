@@ -76,8 +76,9 @@ class ClientConfigDescriptor(object):
         self.disallow_ip_max_times = 1
 
         self.hyperdrive_port: typing.Optional[int] = None
-        self.hyperdrive_rpc_port: typing.Optional[int] = None
         self.hyperdrive_address: typing.Optional[str] = None
+        self.hyperdrive_rpc_port: typing.Optional[int] = None
+        self.hyperdrive_rpc_address: typing.Optional[str] = None
 
     def __repr__(self):
         return '{}: {}'.format(self.__class__, {

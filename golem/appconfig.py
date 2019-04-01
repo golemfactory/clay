@@ -91,8 +91,9 @@ DISALLOW_ID_MAX_TIMES = 1
 DISALLOW_IP_MAX_TIMES = 1
 
 DEFAULT_HYPERDRIVE_PORT = 3282
+DEFAULT_HYPERDRIVE_ADDRESS = None
 DEFAULT_HYPERDRIVE_RPC_PORT = 3292
-DEFAULT_HYPERDRIVE_ADDRESS = 'localhost'
+DEFAULT_HYPERDRIVE_RPC_ADDRESS = 'localhost'
 
 
 class NodeConfig:
@@ -197,8 +198,9 @@ class AppConfig:
             disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
             #hyperg
             hyperdrive_port=DEFAULT_HYPERDRIVE_PORT,
-            hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
             hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
+            hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
+            hyperdrive_rpc_address=DEFAULT_HYPERDRIVE_RPC_ADDRESS,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)

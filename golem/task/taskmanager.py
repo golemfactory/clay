@@ -116,7 +116,7 @@ class TaskManager(TaskEventListener):
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_temporary_dir,
             client_kwargs={
-                'host': config_desc.hyperdrive_address,
+                'host': config_desc.hyperdrive_rpc_address,
                 'port': config_desc.hyperdrive_rpc_port,
             },
         )
