@@ -66,6 +66,7 @@ def split(input, output_list_file, segment_time):
 
 def split_video_command(input, output_list_file, segment_time):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", input,
            "-hls_time", "{}".format(segment_time),
            "-hls_list_size", "0",
@@ -85,6 +86,7 @@ def transcode_video(track, targs, output, use_playlist):
 
 def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            # process an input file
            "-i",
            # input file
@@ -178,6 +180,7 @@ def merge_videos(input_files, output):
 
 def merge_videos_command(input_file, output):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", input_file,
            "-c", "copy",
            "-mpegts_copyts", "1",
@@ -189,6 +192,7 @@ def merge_videos_command(input_file, output):
 
 def compute_psnr_command(video, reference_video, psnr_frames_file):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", video,
            "-i", reference_video,
            "-lavfi",
@@ -201,6 +205,7 @@ def compute_psnr_command(video, reference_video, psnr_frames_file):
 
 def compute_ssim_command(video, reference_video, ssim_frames_file):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", video,
            "-i", reference_video,
            "-lavfi",
