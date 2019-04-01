@@ -61,9 +61,13 @@ def disable_withdraw(
 def optionally_include_run_time(result, started, callback):
     duration_string = "Completed in {0:.2f} s".format(time.time() - started)
     if result is None:
-        result = duration_string
-    elif hasattr(callback, INCLUDE_CALL_DURATION):
-        result = result + duration_string
+        return duration_string
+    # dirty hack: the original function is wrapped several times...
+    if callback and len(callback.__closure__) > 1 and \
+            hasattr(
+                callback.__closure__[0].cell_contents, INCLUDE_CALL_DURATION
+            ):
+        result = result + ' ' + duration_string
     return result
 
 
@@ -147,6 +151,7 @@ class CLI(object):
         output = sys.stderr
         started = time.time()
 
+        callback = None
         try:
 
             namespace = self.parser.parse_args(args)
@@ -188,7 +193,7 @@ class CLI(object):
             result = repr(result)
             sys.stderr.write("Formatter error: {}".format(exc))
 
-        result = optionally_include_run_time(result, started, False)
+        result = optionally_include_run_time(result, started, callback)
         return result, output
 
     def build(self):

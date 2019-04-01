@@ -35,21 +35,24 @@ def format_with_call_arg(
 
 def customize_output(
     pattern: str,
-    parameter_name: str,
+    parameter_name: Optional[str],
     include_call_time: bool = False,
 ) -> Callable:
     def wrapper(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            new_pattern = format_with_call_arg(pattern, parameter_name, func,
-                                               *args, **kwargs)
+            customized_message = format_with_call_arg(pattern, parameter_name,
+                                                      func, *args, **kwargs)
             result = func(*args, **kwargs)
             if result is None:
                 result = ''
-            result = new_pattern.format(result)
-
+            result = customized_message + result
             return result
+
+        if include_call_time:
+            setattr(wrapped, INCLUDE_CALL_DURATION, 'yes, please')
         return wrapped
+
     return wrapper
 
 
