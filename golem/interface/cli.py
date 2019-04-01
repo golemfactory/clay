@@ -3,7 +3,7 @@ import shlex
 import sys
 import time
 from copy import deepcopy
-from typing import Text, Dict, Callable
+from typing import Text, Dict, Callable, Optional, List
 
 from golem.interface.command import CommandHelper, CommandStorage, command, \
     Argument, INCLUDE_CALL_DURATION
@@ -68,6 +68,64 @@ def optionally_include_run_time(result, started, callback):
                     callback.__closure__[0].cell_contents, INCLUDE_CALL_DURATION
             ):
         result = result + ' ' + duration_string
+    return result
+
+
+def process_hardcoded_settings_output(
+        result: Optional[str],
+        args: List[str],
+        namespace: argparse.Namespace,
+        started: float,
+) -> Optional[str]:
+    # 1. 'settings' and 'set' are not in args, different cmd was executed and
+    # there is nothing to do
+    # 2. If `namespace` doesn't have specific attributes, something must have
+    # gone wrong and result should not be modified
+    if 'settings' not in args or 'set' not in args \
+            or not (hasattr(namespace, 'key') and hasattr(namespace, 'value')):
+        return result
+
+    output_map = {
+        'node_name': lambda v: f'Node name changed to: {v} in '
+                               f'{(time.time() - started):.2f} s.'
+                               ' To confirm run `golemcli settings show`',
+        'accept_tasks': lambda v: f'Your node will{" not" * (int(v) == 0)} accept'
+                                  f' tasks{" (acting as requestor only)" * (int(v) == 0)}.'
+                                  ' To confirm run `golemcli settings show`',
+        'getting_tasks_interval': lambda v: f'Getting tasks interval set to: {v} seconds.'
+                                            ' To confirm run `golemcli settings show`',
+        'getting_peers_interval': lambda v: f'Getting peers interval set to: {v}.'
+                                            ' To confirm run `golemcli settings show`',
+        'task_session_timeout': lambda v: f'Task session timeout set to: {v}.'
+                                          ' To confirm run `golemcli settings show`',
+        'p2p_session_timeout': lambda v: f'p2p session timeout set to: {v}.'
+                                         ' To confirm run `golemcli settings show`',
+        'requesting_trust': lambda v: f'Requesting trust set to: {v}.'
+                                      ' To confirm run `golemcli settings show`',
+        'computing_trust': lambda v: f'Computing trust set to: {v} GNT.'
+                                     ' To confirm run `golemcli settings show`',
+        'min_price': lambda v: f'Minimal price set to: {v} GNT.'
+                               ' To confirm run `golemcli settings show`',
+        'max_price': lambda v: f'Maximum price set to: {v} GNT.'
+                               ' To confirm run `golemcli settings show`',
+        'use_ipv6': lambda v: f'Using ipv6 set to {bool(int(v))}.'
+                              ' To confirm run `golemcli settings show`',
+        'opt_peer_num': lambda v: f'Number of peers to keep set to {v}.'
+                                  ' To confirm run `golemcli settings show`',
+        'send_pings': lambda v: f'Send pings set to {bool(int(v))}.'
+                                ' To confirm run `golemcli settings show`',
+        'pings_interval': lambda v: f'Pings interval set to: {v}.'
+                                    ' To confirm run `golemcli settings show`',
+        'max_memory_size': lambda v: f'Maximal memory size set to: {v}.'
+                                     ' To confirm run `golemcli settings show`',
+        'num_cores': lambda v: f'Number of CPU cores to use set to: {v}.'
+                               ' To confirm run `golemcli settings show`',
+        'enable_talkback': lambda v: f'Talkback enabled: {bool(int(v))}'
+    }
+
+    if namespace.key in output_map:
+        return output_map[namespace.key](namespace.value)
+
     return result
 
 
@@ -152,6 +210,7 @@ class CLI(object):
         started = time.time()
 
         callback = None
+        namespace = None
         try:
 
             namespace = self.parser.parse_args(args)
@@ -193,6 +252,8 @@ class CLI(object):
             result = repr(result)
             sys.stderr.write("Formatter error: {}".format(exc))
 
+        result = process_hardcoded_settings_output(result, args, namespace,
+                                                   started)
         result = optionally_include_run_time(result, started, callback)
         return result, output
 
