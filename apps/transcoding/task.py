@@ -113,7 +113,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                              .join(task_output_dir, x[1]), chunks))
 
         self.task_resources = streams + playlists
-        self.chunks = list(zip(streams, playlists))
+        self.chunks = streams
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
@@ -217,7 +217,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 sid,
                 transcoding_params,
                 perf_index,
-                resources=list(self.chunks[subtask_num])))
+                resources=[self.chunks[subtask_num]]))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
