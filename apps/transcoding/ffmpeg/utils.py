@@ -23,17 +23,78 @@ FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
 FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
+# Suffix used to distinguish the temporary container that has no audio or data
+# streams from a complete video
+VIDEO_ONLY_CONTAINER_SUFFIX = '[video-only]'
+
 logger = logging.getLogger(__name__)
 
 
 class Commands(enum.Enum):
+    EXTRACT = ('extract', '')
     SPLIT = ('split', 'split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE = ('merge', '')
+    REPLACE = ('replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
 
 
 class StreamOperator:
+    def extract_video_streams(self,
+                              input_file_on_host: str,
+                              dir_manager: DirManager,
+                              task_id: str):
+
+        host_dirs = {
+            'tmp': dir_manager.get_task_temporary_dir(task_id),
+            'output': dir_manager.get_task_output_dir(task_id),
+        }
+
+        input_file_basename = os.path.basename(input_file_on_host)
+        input_file_in_container = os.path.join(
+            # FIXME: This is a path on the host but docker will create it in
+            # the container. It's unlikely that there's anything there but
+            # it's not guaranteed.
+            host_dirs['tmp'],
+            input_file_basename)
+
+        (input_file_stem, input_file_extension) = os.path.splitext(
+            input_file_basename)
+        output_file_basename = (
+            input_file_stem +
+            VIDEO_ONLY_CONTAINER_SUFFIX +
+            input_file_extension)
+        output_file_on_host = os.path.join(
+            host_dirs['output'],
+            output_file_basename)
+        output_file_in_container = os.path.join(
+            DockerJob.OUTPUT_DIR,
+            output_file_basename)
+
+        # FIXME: The environment is stored globally. Changing it will affect
+        # containers started by other functions that do not do it themselves.
+        env = ffmpegEnvironment(binds=[DockerBind(
+            Path(input_file_on_host),
+            input_file_in_container,
+            'ro')])
+
+        extra_data = {
+            'entrypoint': FFMPEG_ENTRYPOINT,
+            'command': Commands.EXTRACT.value[0],
+            'input_file': input_file_in_container,
+            'output_file': output_file_in_container,
+            'selected_streams': ['v'],
+        }
+
+        logger.debug(
+            f'Running video stream extraction [params = {extra_data}]')
+        self._do_job_in_container(
+            self._get_dir_mapping(dir_manager, task_id),
+            extra_data,
+            env)
+
+        return output_file_on_host
+
     @HandleError(ValueError, common.not_valid_json)
     def split_video(self, input_stream: str, parts: int,  # noqa pylint: disable=too-many-locals
                     dir_manager: DirManager, task_id: str):
@@ -147,6 +208,60 @@ class StreamOperator:
 
         self._do_job_in_container(dir_mapping, extra_data)
         return os.path.join(output_dir, filename)
+
+    def replace_video_streams(self,
+                              input_file_on_host,
+                              merged_file_basename,
+                              output_file_basename,
+                              task_dir):
+
+        assert os.path.isdir(task_dir), \
+            "Caller is responsible for ensuring that task dir exists."
+        assert os.path.isfile(input_file_on_host), \
+            "Caller is responsible for ensuring that input file exists."
+
+        host_dirs = {
+            'resources': task_dir,
+            'temporary': os.path.join(task_dir, 'merge', 'work'),
+            'work': os.path.join(task_dir, 'merge', 'work'),
+            'output': os.path.join(task_dir, 'merge', 'output'),
+            'logs': os.path.join(task_dir, 'merge', 'output'),
+        }
+        container_files = {
+            # FIXME: /golem/tmp should not be hard-coded.
+            'in': os.path.join(
+                '/golem/tmp',
+                os.path.basename(input_file_on_host)),
+            'merged': os.path.join(DockerJob.OUTPUT_DIR, merged_file_basename),
+            'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
+        }
+        extra_data = {
+            'entrypoint': FFMPEG_ENTRYPOINT,
+            'command': Commands.REPLACE.value[0],
+            'input_file': container_files['in'],
+            'replacement_source': container_files['merged'],
+            'output_file': container_files['out'],
+            'stream_type': 'v',
+        }
+
+        logger.info('Replacing original video streams with merged ones')
+        logger.debug(f'Replace params: {extra_data}')
+
+        # FIXME: The environment is stored globally. Changing it will affect
+        # containers started by other functions that do not do it themselves.
+        env = ffmpegEnvironment(binds=[DockerBind(
+            Path(input_file_on_host),
+            container_files['in'],
+            'ro')])
+
+        self._do_job_in_container(
+            DockerTaskThread.specify_dir_mapping(**host_dirs),
+            extra_data,
+            env)
+
+        logger.info("Video streams replaced successfully!")
+
+        return os.path.join(host_dirs['output'], output_file_basename)
 
     @staticmethod
     def _do_job_in_container(dir_mapping, extra_data: dict,
