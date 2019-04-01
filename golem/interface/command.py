@@ -38,6 +38,21 @@ def customize_output(
     parameter_name: Optional[str],
     include_call_time: bool = False,
 ) -> Callable:
+    """
+    Decorator used to customize function's output based on given `pattern` and
+    call time value of parameter which's name is `parameter_name`.
+    Optionally, function can be tagged with `INCLUDE_CALL_DURATION` which will
+    enforce adding function call's duration to the output.
+
+    When used with @command and/or @ask_for_confirmation the following order
+    should be applied:
+
+    @command(...)
+    @customize_output(...) <--
+    @ask_for_confirmation(...)
+    def foo():
+        # code
+    """
     def wrapper(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
@@ -64,6 +79,15 @@ def ask_for_confirmation(
     Decorator that will ask for confirmation (with given `question`) before
     executing `func`. In case user cancels, `CommandCanceledException` is
     being raised.
+
+    When used with @command and/or @customize_output the following order should
+    be applied:
+
+    @command(...)
+    @customize_output(...)
+    @ask_for_confirmation(...) <--
+    def foo():
+        # code
     """
     def wrapper(func):
         @functools.wraps(func)
