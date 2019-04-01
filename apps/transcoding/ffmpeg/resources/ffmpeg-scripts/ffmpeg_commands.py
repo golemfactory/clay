@@ -127,7 +127,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
         pass
     try:
         abitrate = targs['audio']['bitrate']
-        cmd.append("-c:a")
+        cmd.append("-b:a")
         cmd.append(abitrate)
     except:
         pass
