@@ -327,13 +327,17 @@ class TaskServer(
                 provider_ethereum_public_key=self.get_key_id(),
                 task_header=theader,
             )
-            self.send_message(theader.task_owner.key, wtct)
+            self.send_message(
+                node_id=theader.task_owner.key,
+                msg=wtct,
+            )
             timer.ProviderTTCDelayTimers.start(wtct.task_id)
             self.requested_tasks.add(theader.task_id)
             return theader.task_id
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Cannot send request for task: %s", err)
-            logger.debug("Detailed traceback", exc_info=True)
+            #XXXX
+            logger.warning("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None

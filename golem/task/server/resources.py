@@ -186,8 +186,13 @@ class TaskResourcesMixin:
         try:
             handshake.start(directory)
         except Exception as err:  # pylint: disable=broad-except
-            self._handshake_error(key_id, 'writing nonce to dir "{}": {}'
-                                  .format(directory, err))
+            logger.info(
+                "Can't start handshake. key_id=%s, err=%s",
+                common.short_node_id(key_id),
+                err,
+            )
+            logger.debug("Can't start handshake", exc_info=True)
+            handshake.local_result = False
             return
 
         self.resource_handshakes[key_id] = handshake

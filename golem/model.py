@@ -136,6 +136,7 @@ class EnumFieldBase:
         return value
 
     def python_value(self, value):
+        # pylint: disable=not-callable
         return self.enum_type(value)
 
 
@@ -189,6 +190,9 @@ class DictSerializableJSONField(TextField):
         return json.dumps(value.to_dict())
 
     def python_value(self, value: str) -> DictSerializable:
+        if issubclass(self.objtype, msg_dt.Container):
+            # pylint: disable=not-callable
+            return self.objtype(**json.loads(value))
         return self.objtype.from_dict(json.loads(value))
 
 
@@ -578,6 +582,11 @@ class QueuedMessage(BaseModel):
             f", version={self.msg_version}"
             f", class={self.msg_cls}"
         )
+
+
+class CachedNode(BaseModel):
+    node = CharField(null=False, index=True, unique=True)
+    node_field = NodeField(null=False)
 
 
 def collect_db_models(module: str = __name__):

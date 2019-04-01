@@ -2,6 +2,7 @@ import collections
 import logging
 import typing
 
+from golem.network import nodeskeeper
 from golem.network.transport import msg_queue
 
 if typing.TYPE_CHECKING:
@@ -16,6 +17,14 @@ class TaskMessagesQueueMixin:
     """Message Queue functionality for TaskServer"""
 
     def __init__(self):
+        for attr_name in (
+            'conn_established_for_type',
+            'conn_failure_for_type',
+            'conn_final_failure_for_type',
+        ):
+            if not hasattr(self, attr_name):
+                setattr(self, attr_name, {})
+
         self.conn_established_for_type.update({
             'msg_queue': self.msg_queue_connection_established,
         })
@@ -26,22 +35,20 @@ class TaskMessagesQueueMixin:
             'msg_queue': self.msg_queue_connection_final_failure,
         })
 
-        # FIXME bandaid solution
-        self.remembered_nodes = {}
-
     def send_message(self, node_id: str, msg: 'messages.base.Message'):
-        # XXX Differentiate between node id and key id
         logger.debug('send_message(%r, %r)', node_id, msg)
         msg_queue.put(node_id, msg)
-        # Temporary code to 
+
+        # Temporary code to immidiately initiate session
         node = self.task_keeper.find_newest_node(node_id)
         if node is None:
-            node = self.remembered_nodes.get(node_id)
+            node = nodeskeeper.get(node_id)
             logger.debug("Found in memory %r", node)
         if node is None:
-            logger.debug("Don't have any info about node. node_id=%r", node_id)
-            logger.debug("Known nodes: %r", list(self.remembered_nodes.keys()))
-            wyjeb
+            logger.debug(
+                "Don't have any info about node. Will try later. node_id=%r",
+                node_id,
+            )
             return
         self._add_pending_request(
             'msg_queue',
@@ -70,7 +77,7 @@ class TaskMessagesQueueMixin:
 
     def msg_queue_connection_failure(self, conn_id, *args, **kwargs):
         def cbk(session):
-            self.msg_queue_connection_established(session, *args, **kwargs)
+            self.msg_queue_connection_established(session, conn_id, *args, **kwargs)
         try:
             self.response_list[conn_id].append(cbk)
         except KeyError:
@@ -83,6 +90,6 @@ class TaskMessagesQueueMixin:
             pc.status = PenConnStatus.WaitingAlt
             pc.time = time.time()
 
-    def msg_queue_connection_final_failure(self, *_args, **_kwargs):
+    def msg_queue_connection_final_failure(self, conn_id, *_args, **_kwargs):
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)

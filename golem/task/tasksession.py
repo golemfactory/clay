@@ -12,7 +12,6 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
-from golem_messages.datastructures import p2p as dt_p2p
 from pydispatch import dispatcher
 
 import golem
@@ -24,6 +23,7 @@ from golem.docker.image import DockerImage
 from golem.marketplace import scale_price, Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
+from golem.network import nodeskeeper
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -1043,7 +1043,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
-        self.task_server.remembered_nodes[msg.client_key_id] = msg.node_info
+        nodeskeeper.store(msg.node_info)
 
         if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
