@@ -34,9 +34,9 @@ def format_with_call_arg(
 
 
 def customize_output(
-    pattern: str,
-    parameter_name: Optional[str] = None,
-    include_call_time: bool = False,
+        pattern: str,
+        parameter_name: Optional[str] = None,
+        include_call_time: bool = False,
 ) -> Callable:
     """
     Decorator used to customize function's output based on given `pattern` and
