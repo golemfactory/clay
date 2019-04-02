@@ -63,7 +63,7 @@ def optionally_include_run_time(result, started, callback):
     if result is None:
         return duration_string
     # dirty hack: the original function is wrapped several times...
-    if callback and len(callback.__closure__) > 1 and \
+    if callback and callback.__closure__ and \
             hasattr(
                     callback.__closure__[0].cell_contents, INCLUDE_CALL_DURATION
             ):

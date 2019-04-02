@@ -1,19 +1,20 @@
 import argparse
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, sentinel
 
 from io import StringIO
 
+import pytest
 from twisted.internet import defer
 from twisted.internet.error import ReactorNotRunning
 
 from golem.interface.cli import (
     CLI, _exit, _help, _debug, ArgumentParser, disable_withdraw,
-)
+    process_hardcoded_settings_output, optionally_include_run_time)
 from golem.interface.command import (
     group, doc, argument, identifier, name, command, CommandHelper,
     storage_context,
-)
+    customize_output)
 from golem.interface.exceptions import ParsingException, CommandException
 
 
@@ -406,3 +407,127 @@ class TestAdaptChildren(unittest.TestCase):
             result = disable_withdraw(self.children)
             self.children.pop('withdraw')
             self.assertEqual(result, self.children)
+
+
+class TestProcessHardcodedSettingsOutput:
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.args = ['settings', 'set']
+        self.started = 123456.7
+        self.namespace = Mock(spec=argparse.Namespace)
+        self.namespace.key = 'key'
+        self.namespace.value = 'value'
+
+    def test_output_equals_input_when_not_settings_set_command(self):
+        input_ = sentinel.result
+        args = ['settings', 'get']
+
+        output = process_hardcoded_settings_output(
+            input_,
+            args,
+            self.namespace,
+            self.started
+        )
+
+        assert output == input_
+
+    def test_output_equals_input_when_namespace_is_broken(self):
+        input_ = sentinel.result
+        del self.namespace.key
+
+        output = process_hardcoded_settings_output(
+            input_,
+            self.args,
+            self.namespace,
+            self.started
+        )
+        assert output == input_
+
+    def test_output_equals_input_when_unknown_settings_is_set(self):
+        input_ = sentinel.result
+        self.args += ['unknown_setting', 'whatever']
+        self.namespace.key = 'unknown_setting'
+        self.namespace.value = 'whatever'
+
+        output = process_hardcoded_settings_output(
+            input_,
+            self.args,
+            self.namespace,
+            self.started
+        )
+
+        assert output == input_
+
+    @pytest.mark.parametrize(
+        "key,value,output_part", [
+            ('node_name', 'new', 'Node name changed to: new in'),
+            ('accept_tasks', '0', 'Your node will not accept tasks (acting as requestor only)'),  # noqa pylint: disable=line-too-long
+            ('accept_tasks', '1', 'Your node will accept tasks'),
+            ('getting_tasks_interval', '4', 'Getting tasks interval set to: 4 seconds.'),  # noqa pylint: disable=line-too-long
+            ('getting_peers_interval', '3', 'Getting peers interval set to: 3.'),  # noqa pylint: disable=line-too-long
+            ('task_session_timeout', '7', 'Task session timeout set to: 7.'),
+            ('p2p_session_timeout', '6', 'p2p session timeout set to: 6.'),
+            ('requesting_trust', '1', 'Requesting trust set to: 1.'),
+            ('computing_trust', '2', 'Computing trust set to: 2 GNT.'),
+            ('min_price', '4.0', 'Minimal price set to: 4.0 GNT.'),
+            ('max_price', '9.0', 'Maximum price set to: 9.0 GNT.'),
+            ('use_ipv6', '0', 'Using ipv6 set to False.'),
+            ('use_ipv6', '1', 'Using ipv6 set to True.'),
+            ('opt_peer_num', '8', 'Number of peers to keep set to 8.'),
+            ('send_pings', '0', 'Send pings set to False.'),
+            ('send_pings', '1', 'Send pings set to True.'),
+            ('pings_interval', '2', 'Pings interval set to: 2.'),
+            ('max_memory_size', '1024', 'Maximal memory size set to: 1024.'),
+            ('num_cores', '2', 'Number of CPU cores to use set to: 2.'),
+            ('enable_talkback', '0', 'Talkback enabled: False'),
+            ('enable_talkback', '1', 'Talkback enabled: True'),
+        ]
+    )
+    def test_output_map(self, key, value, output_part):
+        input_ = 'whatever'
+        self.args += [key, value]
+        self.namespace.key = key
+        self.namespace.value = value
+
+        output = process_hardcoded_settings_output(
+            input_,
+            self.args,
+            self.namespace,
+            self.started
+        )
+
+        assert output_part in output
+
+
+class TestOptionallyIncludeRunTime:
+    @pytest.fixture(autouse=True)
+    def setUp(self):
+        self.start = 123456.7
+        self.end = 123458.1
+        self.duration_string = "Completed in {0:.2f} s".format(
+            self.end - self.start)
+
+    def test_output_equals_input(self):
+        input_ = sentinel.result
+        output = optionally_include_run_time(input_, self.start, None)
+        assert output == input_
+
+    def test_output_contains_call_time_if_input_is_none(self):
+        input_ = None
+        with patch('golem.interface.cli.time.time', return_value=self.end):
+            output = optionally_include_run_time(input_, self.start, None)
+            assert output == self.duration_string
+
+    def test_customized_output_with_call_time(self):
+        @customize_output('Deleted user: {} ', ['user_id'],
+                          include_call_time=True)
+        def _foo(user_id):
+            return 'Done!'
+
+        with patch('golem.interface.cli.time.time', return_value=self.end):
+            uid = '777'
+            output = _foo(uid)
+            result = optionally_include_run_time(output, self.start,
+                                                 lambda x: _foo(x))
+            expected = f'Deleted user: {uid} ' + 'Done! ' + self.duration_string
+            assert result == expected
