@@ -128,8 +128,8 @@ class Tasks:
                                         sort=sort)
 
     @command(arguments=(id_req, force_arg, ), help="Restart a task")
-    @customize_output('Task {} was restarted as a new task with id ', 'id')
-    @ask_for_confirmation('Are you sure? Confirm restarting {}', 'id')
+    @customize_output('Task {} was restarted as a new task with id ', ['id'])
+    @ask_for_confirmation('Are you sure? Confirm restarting {}', ['id'])
     def restart(self, id, force: bool = False):
         deferred = Tasks.client._call('comp.task.restart', id, force=force)  # noqa pylint: disable=protected-access
         new_task_id, error = sync_wait(deferred)
@@ -150,8 +150,8 @@ class Tasks:
 
     @command(argument=id_req, help="Abort a task")
     @customize_output('Task {} aborted. To confirm run `golemcli tasks show`',
-                      'id')
-    @ask_for_confirmation('Are you sure? Confirm aborting {} task', 'id')
+                      ['id'])
+    @ask_for_confirmation('Are you sure? Confirm aborting {} task', ['id'])
     def abort(self, id):
         deferred = Tasks.client.abort_task(id)
         return sync_wait(deferred)

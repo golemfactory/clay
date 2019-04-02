@@ -56,7 +56,7 @@ class Network(object):
         return self.__peers(peers, sort, full)
 
     @command(argument=node_id, help="Block provider")
-    @customize_output('{} blocked.', 'node_id', include_call_time=True)
+    @customize_output('{} blocked.', ['node_id'], include_call_time=True)
     def block(self, node_id):
         success, error = sync_wait(self.client.block_node(node_id))
         if not success:

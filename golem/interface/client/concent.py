@@ -35,7 +35,7 @@ class Switch:
         )
 
     @command(arguments=(on_off_arg, ))
-    @customize_output('Concent switch turned {}.', 'on_off',
+    @customize_output('Concent switch turned {}.', ['on_off'],
                       include_call_time=True)
     def turn(self, on_off):
         return sync_wait(self._call(

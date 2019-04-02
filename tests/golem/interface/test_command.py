@@ -239,7 +239,7 @@ class TestAskForConfirmation:
         question = "Do you want to delete user with id: {}?"
 
         @ask_for_confirmation(question,
-                              parameter_name='user_id')
+                              parameters=['user_id'])
         def fun(user_id):
             return user_id + 1
 
@@ -264,7 +264,7 @@ class TestFormatWithCallArg:
 
         question = 'Do you want do delete user: {}?'
         actual_parameter = 1
-        result = format_with_call_arg(question, 'uid', _foo, actual_parameter)
+        result = format_with_call_arg(question, ['uid'], _foo, actual_parameter)
         assert result == question.format(actual_parameter)
 
     def test_that_question_is_changed_if_parameter_is_in_call_kwargs(self):
@@ -272,5 +272,5 @@ class TestFormatWithCallArg:
             pass
         question = 'Do you want do delete user: {}?'
         value = 1
-        result = format_with_call_arg(question, 'uid', _foo, uid=value)
+        result = format_with_call_arg(question, ['uid'], _foo, uid=value)
         assert result == question.format(value)

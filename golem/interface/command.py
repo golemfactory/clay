@@ -4,7 +4,7 @@ import types
 
 from contextlib import contextmanager
 from operator import itemgetter
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, List
 
 from golem.interface.exceptions import CommandException, \
     CommandCanceledException
@@ -14,33 +14,33 @@ INCLUDE_CALL_DURATION = 'include_call_duration'
 
 def format_with_call_arg(
         string: str,
-        parameter_name: Optional[str],
+        parameters: Optional[List[str]],
         function: Callable,
         *args: Any,
         **kwargs: Any
 ) -> str:
     """
     Helper function that allows to customize given string - it will
-    format it to include call-time value of `parameter_name` (if it
+    format it to include call-time values of `parameters` (if it
     is not `None`) from call args (`*args` or `**kwargs`). If it is not there,
     `TypeError` will be raised.
     :raises `TypeError`
     """
-    if parameter_name is None:
+    if parameters is None:
         return string
 
     call = inspect.signature(function).bind(*args, **kwargs)
-    return string.format(call.arguments[parameter_name])
+    return string.format(*[call.arguments[p] for p in parameters])
 
 
 def customize_output(
         pattern: str,
-        parameter_name: Optional[str] = None,
+        parameters: Optional[List[str]] = None,
         include_call_time: bool = False,
 ) -> Callable:
     """
     Decorator used to customize function's output based on given `pattern` and
-    call time value of parameter which's name is `parameter_name`.
+    call time value of parameters which names are in `parameters`.
     Optionally, function can be tagged with `INCLUDE_CALL_DURATION` which will
     enforce adding function call's duration to the output.
 
@@ -56,7 +56,7 @@ def customize_output(
     def wrapper(func):
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
-            customized_message = format_with_call_arg(pattern, parameter_name,
+            customized_message = format_with_call_arg(pattern, parameters,
                                                       func, *args, **kwargs)
             result = func(*args, **kwargs)
             if result is None:
@@ -77,7 +77,7 @@ def customize_output(
 
 def ask_for_confirmation(
         question: str,
-        parameter_name: Optional[str] = None
+        parameters: Optional[List[str]] = None
 ) -> Callable:
     """
     Decorator that will ask for confirmation (with given `question`) before
@@ -97,7 +97,7 @@ def ask_for_confirmation(
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             answer = 'maybe'
-            q = format_with_call_arg(question, parameter_name, func, *args,
+            q = format_with_call_arg(question, parameters, func, *args,
                                      **kwargs)
             while answer not in ['', 'y', 'n']:
                 answer = input(f'{q} (Y/n)').lower()
