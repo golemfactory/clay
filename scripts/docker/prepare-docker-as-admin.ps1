@@ -7,6 +7,10 @@ $PrepareDockerScript = (AI_GetMsiProperty AI_PREPARE_DOCKER_FILE)
 "PrepareDockerScript: " + $PrepareDockerScript
 $CreateShareScript = (AI_GetMsiProperty AI_CREATESHARE_FILE)
 "CreateShareScript: " + $CreateShareScript
+$currentUserName = (AI_GetMsiProperty LogonUser)
+"currentUserName: " + $currentUserName
+
+
 
 # FIXME: LocalAppDataFolder property points to admin's AppData folder
 # $AppDataDir = (AI_GetMsiProperty LocalAppDataFolder)
