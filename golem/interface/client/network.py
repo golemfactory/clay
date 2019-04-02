@@ -35,6 +35,8 @@ class Network(object):
         return status['msg']
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
+    @customize_output('Connected with IP:{} port: {}', ['ip', 'port_'],
+                      include_call_time=True)
     def connect(self, ip, port_):
         try:
             sa = SocketAddress(ip, int(port_))

@@ -301,11 +301,15 @@ class TestNetwork(unittest.TestCase):
 
     def test_connect(self):
         with client_ctx(Network, self.client):
+            ip = '127.0.0.1'
+            port = '25000'
             with self.assertRaises(CommandException):
-                Network().connect('266.266.0.1', '25000')
-                assert not self.client.connect.called
+                Network().connect('266.266.0.1', port)
+            assert not self.client.connect.called
 
-            assert Network().connect('127.0.0.1', '25000') is None
+            result = Network().connect(ip, port)
+            assert ip in result
+            assert port in result
             assert self.client.connect.called
 
     def test_show(self):
