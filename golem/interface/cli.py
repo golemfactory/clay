@@ -77,6 +77,7 @@ def process_hardcoded_settings_output(
         namespace: argparse.Namespace,
         started: float,
 ) -> Optional[str]:
+    # pylint: disable=line-too-long, bad-continuation
     # 1. 'settings' and 'set' are not in args, different cmd was executed and
     # there is nothing to do
     # 2. If `namespace` doesn't have specific attributes, something must have
@@ -89,19 +90,19 @@ def process_hardcoded_settings_output(
         'node_name': lambda v: f'Node name changed to: {v} in '
                                f'{(time.time() - started):.2f} s.'
                                ' To confirm run `golemcli settings show`',
-        'accept_tasks': lambda v: f'Your node will{" not" * (int(v) == 0)} accept'
-                                  f' tasks{" (acting as requestor only)" * (int(v) == 0)}.'
+        'accept_tasks': lambda v: f'Your node will{" not" * (int(v) == 0)} accept'  # noqa
+                                  f' tasks{" (acting as requestor only)" * (int(v) == 0)}.'  # noqa
                                   ' To confirm run `golemcli settings show`',
-        'getting_tasks_interval': lambda v: f'Getting tasks interval set to: {v} seconds.'
-                                            ' To confirm run `golemcli settings show`',
-        'getting_peers_interval': lambda v: f'Getting peers interval set to: {v}.'
-                                            ' To confirm run `golemcli settings show`',
+        'getting_tasks_interval': lambda v: f'Getting tasks interval set to: {v} seconds.'  # noqa
+                                            ' To confirm run `golemcli settings show`',  # noqa
+        'getting_peers_interval': lambda v: f'Getting peers interval set to: {v}.'  # noqa
+                                            ' To confirm run `golemcli settings show`',  # noqa
         'task_session_timeout': lambda v: f'Task session timeout set to: {v}.'
-                                          ' To confirm run `golemcli settings show`',
+                                          ' To confirm run `golemcli settings show`',  # noqa
         'p2p_session_timeout': lambda v: f'p2p session timeout set to: {v}.'
-                                         ' To confirm run `golemcli settings show`',
+                                         ' To confirm run `golemcli settings show`',  # noqa
         'requesting_trust': lambda v: f'Requesting trust set to: {v}.'
-                                      ' To confirm run `golemcli settings show`',
+                                      ' To confirm run `golemcli settings show`',  # noqa
         'computing_trust': lambda v: f'Computing trust set to: {v} GNT.'
                                      ' To confirm run `golemcli settings show`',
         'min_price': lambda v: f'Minimal price set to: {v} GNT.'

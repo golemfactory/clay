@@ -252,25 +252,26 @@ class TestAskForConfirmation:
 
 class TestFormatWithCallArg:
     def test_that_question_is_unchanged_if_parameter_is_none(self):
-        def _foo(uid):
+        def _foo(_uid):
             pass
         question = 'Do you want do delete user: {}?'
         result = format_with_call_arg(question, None, _foo)
         assert result == question
 
     def test_that_question_is_changed_if_parameter_is_in_call_args(self):
-        def _foo(uid):
+        def _foo(_uid):
             pass
 
         question = 'Do you want do delete user: {}?'
         actual_parameter = 1
-        result = format_with_call_arg(question, ['uid'], _foo, actual_parameter)
+        result = format_with_call_arg(question, ['_uid'], _foo,
+                                      actual_parameter)
         assert result == question.format(actual_parameter)
 
     def test_that_question_is_changed_if_parameter_is_in_call_kwargs(self):
-        def _foo(uid):
+        def _foo(_uid):
             pass
         question = 'Do you want do delete user: {}?'
         value = 1
-        result = format_with_call_arg(question, ['uid'], _foo, uid=value)
+        result = format_with_call_arg(question, ['_uid'], _foo, uid=value)
         assert result == question.format(value)

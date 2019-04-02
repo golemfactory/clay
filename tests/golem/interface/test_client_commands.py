@@ -308,8 +308,8 @@ class TestNetwork(unittest.TestCase):
             assert not self.client.connect.called
 
             result = Network().connect(ip, port)
-            assert ip in result
-            assert port in result
+            assert ip in result  # pylint: disable=unsupported-membership-test
+            assert port in result  # pylint: disable=unsupported-membership-test
             assert self.client.connect.called
 
     def test_show(self):
