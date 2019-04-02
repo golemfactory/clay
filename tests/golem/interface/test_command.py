@@ -273,5 +273,5 @@ class TestFormatWithCallArg:
             pass
         question = 'Do you want do delete user: {}?'
         value = 1
-        result = format_with_call_arg(question, ['_uid'], _foo, uid=value)
+        result = format_with_call_arg(question, ['_uid'], _foo, _uid=value)
         assert result == question.format(value)
