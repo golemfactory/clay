@@ -208,7 +208,7 @@ class TaskServer(
 
         for job in jobs:
             try:
-                #logger.debug("TServer sync running: job=%r", job)
+                logger.debug("TServer sync running: job=%r", job)
                 job()
             except Exception:  # pylint: disable=broad-except
                 logger.exception("TaskServer.sync_network job %r failed", job)
@@ -336,8 +336,7 @@ class TaskServer(
             return theader.task_id
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Cannot send request for task: %s", err)
-            #XXXX
-            logger.warning("Detailed traceback", exc_info=True)
+            logger.debug("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None

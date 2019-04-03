@@ -22,7 +22,7 @@ def store(node):
         defaults={'node_field': node, },
     )
     if not created:
-        instance.node = node
+        instance.node_field = node
         instance.save()
 
 def sweep():

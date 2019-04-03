@@ -240,8 +240,6 @@ class TaskResourcesMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self.resource_handshakes.get(key_id)
-
-        # XXX How to determine address?
         options = self.get_share_options(handshake.nonce, None)
         options.timeout = self.HANDSHAKE_TIMEOUT
 
