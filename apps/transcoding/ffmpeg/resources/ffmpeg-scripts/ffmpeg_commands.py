@@ -1,3 +1,4 @@
+import json
 import os
 import re
 import subprocess
@@ -186,25 +187,6 @@ def merge_videos_command(input_file, output):
     return cmd, input_file
 
 
-def get_video_len_command(input_file):
-    cmd = [FFPROBE_COMMAND,
-           "-v", "error",
-           "-select_streams", "v:0",
-           "-show_entries", "stream=duration",
-           "-of", "default=noprint_wrappers=1:nokey=1",
-           input_file
-           ]
-
-    return cmd
-
-
-def get_video_len(input_file):
-    cmd = get_video_len_command(input_file)
-    result = exec_cmd_to_string(cmd)
-
-    return float(result)
-
-
 def compute_psnr_command(video, reference_video, psnr_frames_file):
     cmd = [FFMPEG_COMMAND,
            "-i", video,
@@ -239,6 +221,17 @@ def get_metadata_command(video):
            ]
 
     return cmd
+
+
+def get_video_len(input_file):
+    cmd = get_metadata_command(input_file)
+    result = exec_cmd_to_string(cmd)
+
+    # result should be json
+    metadata = json.loads(result)
+    format_meta = metadata["format"]
+
+    return float(format_meta["duration"])
 
 
 def filter_metric(cmd, regex, log_file):

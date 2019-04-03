@@ -49,10 +49,14 @@ class AudioCodec(Enum):
 
 
 class Container(Enum):
-    MP4 = 'mp4'
-    AVI = 'avi'
-    MKV = 'mkv'
-    TS = 'ts'
+    c_F4V = "f4v"
+    c_3GP = "3gp"
+    c_3G2 = "3g2"
+    c_MP4 = 'mp4'
+    c_AVI = 'avi'
+    c_MKV = 'mkv'
+    c_MPEG = 'mpeg'
+    c_MOV = 'mov'
 
     @staticmethod
     @HandleValueError(unsupported)
@@ -68,11 +72,26 @@ class Container(Enum):
 
 ALL_SUPPORTED_CODECS = ([c for c in VideoCodec], [c for c in AudioCodec])
 CONTAINER_SUPPORTED_CODECS = {
-    Container.AVI: ([VideoCodec.MPEG_4], [AudioCodec.AAC]),
-    Container.MKV: ([], []),
-    Container.MP4: ([VideoCodec.H_264, VideoCodec.H_265, VideoCodec.HEVC,
-                     VideoCodec.MPEG_1, VideoCodec.MPEG_2, VideoCodec.MPEG_4],
-                    [AudioCodec.AAC, AudioCodec.MP3]),
+    Container.c_F4V: (
+        [VideoCodec.H_264], [AudioCodec.AAC, AudioCodec.MP3]),
+    Container.c_AVI: ([VideoCodec.H_264,
+                       VideoCodec.MPEG_1, VideoCodec.MPEG_2],
+                      [AudioCodec.AAC, AudioCodec.MP3]),
+    Container.c_3GP: ([VideoCodec.H_264], [AudioCodec.AAC]),
+    Container.c_MOV: (
+        [VideoCodec.H_265, VideoCodec.HEVC, VideoCodec.H_264,
+         VideoCodec.MPEG_2, VideoCodec.MPEG_1],
+        [AudioCodec.AAC, AudioCodec.MP3]),
+    Container.c_MPEG: (
+        [VideoCodec.MPEG_1, VideoCodec.MPEG_2], [AudioCodec.MP3]),
+    Container.c_3G2: (
+        [VideoCodec.H_264], [AudioCodec.AAC]),
+    Container.c_MKV: ([VideoCodec.H_264, VideoCodec.H_265, VideoCodec.HEVC,
+                       VideoCodec.MPEG_1, VideoCodec.MPEG_2],
+                      [AudioCodec.MP3, AudioCodec.AAC]),
+    Container.c_MP4: ([VideoCodec.H_264, VideoCodec.H_265, VideoCodec.HEVC,
+                       VideoCodec.MPEG_1, VideoCodec.MPEG_2],
+                      [AudioCodec.AAC, AudioCodec.MP3]),
 }
 
 
