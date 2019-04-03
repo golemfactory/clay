@@ -31,7 +31,7 @@ class TestVerificationQueue(TestWithReactor):
         def test_timeout():
             subtask_info = {'subtask_id': 'deadbeef'}
 
-            def verification_finished(subtask_id, verdict, result):
+            def verification_finished(subtask_id, verdict, result):  # noqa pylint:disable=unused-argument
                 d.callback(True)
                 return subtask_id
 
