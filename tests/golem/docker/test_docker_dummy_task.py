@@ -31,7 +31,7 @@ WAIT_TIMEOUT = 60
 
 @ci_skip
 class TestDockerDummyTask(
-    DockerTaskTestCase[DummyTask, DummyTaskBuilder], TestWithReactor
+        DockerTaskTestCase[DummyTask, DummyTaskBuilder], TestWithReactor
 ):
 
     TASK_FILE = "docker-dummy-test-task.json"
