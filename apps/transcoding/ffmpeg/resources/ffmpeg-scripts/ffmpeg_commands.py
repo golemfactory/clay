@@ -66,6 +66,7 @@ def split(input, output_list_file, segment_time):
 
 def split_video_command(input, output_list_file, segment_time):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", input,
            "-hls_time", "{}".format(segment_time),
            "-hls_list_size", "0",
@@ -85,6 +86,7 @@ def transcode_video(track, targs, output, use_playlist):
 
 def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            # process an input file
            "-i",
            # input file
@@ -100,49 +102,41 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
         cmd.extend(playlist_cmd)
 
     # video settings
-    try:
+    if 'video' in targs and 'codec' in targs['video']:
         vcodec = targs['video']['codec']
         cmd.append("-c:v")
         cmd.append(get_video_encoder(vcodec))
-    except:
-        pass
-    try:
+
+    if 'frame_rate' in targs:
         fps = str(targs['frame_rate'])
         cmd.append("-r")
         cmd.append(fps)
-    except:
-        pass
-    try:
+
+    if 'video' in targs and 'bitrate' in targs['video']:
         vbitrate = targs['video']['bitrate']
         cmd.append("-b:v")
         cmd.append(vbitrate)
-    except:
-        pass
+
     # audio settings
-    try:
+    if 'audio' in targs and 'codec' in targs['audio']:
         acodec = targs['audio']['codec']
         cmd.append("-c:a")
         cmd.append(get_audio_encoder(acodec))
-    except:
-        pass
-    try:
+
+    if 'audio' in targs and 'bitrate' in targs['audio']:
         abitrate = targs['audio']['bitrate']
         cmd.append("-b:a")
         cmd.append(abitrate)
-    except:
-        pass
-    try:
+
+    if 'resolution' in targs:
         res = targs['resolution']
         cmd.append("-vf")
         cmd.append("scale={}:{}".format(res[0], res[1]))
-    except:
-        pass
-    try:
+
+    if 'scaling_alg' in targs:
         scale = targs["scaling_alg"]
         cmd.append("-sws_flags")
         cmd.append("{}".format(scale))
-    except:
-        pass
 
     cmd.append("{}".format(output_playlist_name))
 
@@ -178,6 +172,7 @@ def merge_videos(input_files, output):
 
 def merge_videos_command(input_file, output):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", input_file,
            "-c", "copy",
            "-mpegts_copyts", "1",
@@ -189,6 +184,7 @@ def merge_videos_command(input_file, output):
 
 def compute_psnr_command(video, reference_video, psnr_frames_file):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", video,
            "-i", reference_video,
            "-lavfi",
@@ -201,6 +197,7 @@ def compute_psnr_command(video, reference_video, psnr_frames_file):
 
 def compute_ssim_command(video, reference_video, ssim_frames_file):
     cmd = [FFMPEG_COMMAND,
+           "-nostdin",
            "-i", video,
            "-i", reference_video,
            "-lavfi",
