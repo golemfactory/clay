@@ -1,6 +1,7 @@
 import os
 import shutil
 from copy import copy
+from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Optional
 from unittest import TestCase
@@ -43,13 +44,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             pass
 
     @staticmethod
-    def _get_core_task_definition():
+    def _get_core_task_definition(output_file: Optional[str] = ''):
         task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "deadbeef"
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
+        task_definition.output_file = output_file
         return task_definition
 
     def test_instantiation(self):
@@ -82,8 +84,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
 
-    def _get_core_task(self):
-        task_def = TestCoreTask._get_core_task_definition()
+    def _get_core_task(self, output_file: Optional[str] = ''):
+        task_def = TestCoreTask._get_core_task_definition(output_file)
         task = self.CoreTaskDeabstracted(
             task_definition=task_def,
             owner=dt_p2p_factory.Node(),
@@ -465,6 +467,21 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images
 
+    def test_task_init_creates_output_dir(self):
+        with TemporaryDirectory() as base_path:
+            output_file = os.path.join(base_path, 'some/output/file.png')
+
+            self._get_core_task(output_file=output_file)
+
+            self.assertTrue(Path(output_file).parent.exists())
+
+    @patch('pathlib.Path.mkdir', side_effect=PermissionError)
+    def test_task_init_fails_without_permissions(self, *_):
+        output_file = '/some/path/without/permission'
+
+        with self.assertRaises(PermissionError):
+            self._get_core_task(output_file=output_file)
+
 
 class TestLogKeyError(LogTestCase):
 
@@ -547,7 +564,7 @@ class TestCoreTaskBuilder(TestCase):
             builder.build()
 
     @freeze_time('2019-01-01 00:00:00')
-    def test_get_output_path_creates_target_dir(self):
+    def test_get_output_path_returns_correct_path(self):
         builder = self._get_core_task_builder()
         task_name = 'test_task'
         task_dir_name = f'{task_name}_2019-01-01_00-00-00'
@@ -563,36 +580,3 @@ class TestCoreTaskBuilder(TestCase):
                 result_path,
                 os.path.join(output_path, task_dir_name, task_name)
             )
-
-    @freeze_time('2019-01-01 00:00:00')
-    def test_get_output_path_creates_intermediate_dirs(self):
-        builder = self._get_core_task_builder()
-        task_name = 'test_task'
-        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
-        output_suffix = 'some/new/dirs'
-
-        with TemporaryDirectory() as output_path:
-            task_def = self._get_task_def_dict(
-                os.path.join(output_path, output_suffix), 'png')
-            mock_definition = MagicMock()
-            mock_definition.name = task_name
-
-            result_path = builder.get_output_path(task_def, mock_definition)
-
-            self.assertEquals(
-                result_path,
-                os.path.join(output_path, output_suffix,
-                             task_dir_name, task_name)
-            )
-
-    @patch('os.makedirs', side_effect=PermissionError)
-    def test_get_output_path_fails_without_permissions(self, *_):
-        builder = self._get_core_task_builder()
-        task_name = 'test_task'
-        output_path = '/new/path/without/permission'
-        task_def = self._get_task_def_dict(output_path, 'png')
-        mock_definition = MagicMock()
-        mock_definition.name = task_name
-
-        with self.assertRaises(PermissionError):
-            builder.get_output_path(task_def, mock_definition)

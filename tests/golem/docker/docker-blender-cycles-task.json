@@ -43,7 +43,6 @@
     900
   ],
   "output_format":"PNG",
-  "output_file":"hel.png",
   "optimize_total":false,
   "estimated_memory":0,
   "timeout":14400,
@@ -60,5 +59,6 @@
       "id": null
     }
   ],
-  "concent_enabled": false
+  "concent_enabled": false,
+  "output_file": "/tmp/output.png"
 }
