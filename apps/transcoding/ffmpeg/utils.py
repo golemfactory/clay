@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import shutil
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
@@ -71,22 +72,19 @@ class StreamOperator:
 
     def _prepare_merge_job(self, task_dir, chunks):
         try:
-            resources_dir = task_dir
-            output_dir = os.path.join(resources_dir, 'merge', 'output')
+            resources_dir = os.path.join(task_dir, 'merge', 'resources')
+            output_dir = os.path.join(task_dir, 'merge', 'output')
             os.makedirs(output_dir)
-            work_dir = os.path.join(resources_dir, 'merge', 'work')
+            work_dir = os.path.join(task_dir, 'merge', 'work')
             os.makedirs(work_dir)
         except OSError:
             raise ffmpegException("Failed to prepare video \
                 merge directory structure")
-        files = self._collect_files(resources_dir, chunks)
-        return resources_dir, output_dir, work_dir, list(
-            map(lambda chunk: chunk.replace(resources_dir,
-                                            DockerJob.RESOURCES_DIR),
-                files))
+        files = self._collect_files(task_dir, chunks, resources_dir)
+        return resources_dir, output_dir, work_dir, files
 
     @staticmethod
-    def _collect_files(dir, files):
+    def _collect_files(dir, files, resources_dir):
         # each chunk must be in the same directory
         results = list()
         for file in files:
@@ -98,7 +96,16 @@ class StreamOperator:
 
             results.append(file)
 
-        return results
+        # Copy files to docker resources directory
+        for result in results:
+            result_filename = os.path.basename(result)
+            target_filepath = os.path.join(resources_dir, result_filename)
+            shutil.move(result, target_filepath)
+
+        return [path.replace(resources_dir,
+                             DockerJob.RESOURCES_DIR)
+                    for path in results]
+
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
@@ -116,7 +123,7 @@ class StreamOperator:
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(output=output_dir,
                                                            temporary=work_dir,
-                                                           resources=task_dir,
+                                                           resources=resources_dir,
                                                            logs=output_dir,
                                                            work=work_dir)
 
