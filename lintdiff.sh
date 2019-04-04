@@ -66,14 +66,13 @@ diff-lines() {
     local path=
     local line=
     while read; do
-        esc=$'\033'
         if [[ $REPLY =~ ---\ (a/)?.* ]]; then
             continue
-        elif [[ $REPLY =~ \+\+\+\ (b/)?([^[:blank:]$esc]+).* ]]; then
+        elif [[ $REPLY =~ \+\+\+\ (b/)?([^[:blank:]]+).* ]]; then
             path=${BASH_REMATCH[2]}
         elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
             line=${BASH_REMATCH[2]}
-        elif [[ $REPLY =~ ^($esc\[[0-9;]+m)*\+ ]]; then
+        elif [[ $REPLY =~ ^\+ ]]; then
             echo "$path:$line:"
             ((line++))
         fi
@@ -111,7 +110,7 @@ if [ -n "$diff" ]; then
 
     # Remove lines from findings based on lines changed
     diff_line_file="$(mktemp tmp-golem-changed-lines.XXXXXXXXXX -t)"
-    git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines > "$diff_line_file" || true
+    git diff --no-color --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines > "$diff_line_file" || true
     CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")"
     rm "$diff_line_file"
 
