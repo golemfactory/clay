@@ -207,7 +207,7 @@ class AppConfig:
         return cls(cfg, cfg_file)
 
     def __repr__(self):
-        return '{}: {}'.format(self.__class__, {
+        return '<{}: {}>'.format(self.__class__, {
             prop: self.get_node_property(prop)()
             for prop in self._cfg.get_node_config().prop_names
         })
