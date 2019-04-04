@@ -60,7 +60,7 @@ cleanup_artifacts() {
     git checkout "$CURRENT_BRANCH" -- || exit 1
 }
 
-diff-lines() {
+list-added-lines-from-diff() {
     # Function taken from: https://stackoverflow.com/questions/8259851/using-git-diff-how-can-i-get-added-and-modified-lines-numbers
     # Adjusted the 'echo' line to not print the line content.
     local path=
@@ -110,7 +110,7 @@ if [ -n "$diff" ]; then
 
     # Remove lines from findings based on lines changed
     diff_line_file="$(mktemp tmp-golem-changed-lines.XXXXXXXXXX -t)"
-    git diff --no-color --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines > "$diff_line_file" || true
+    git diff --no-color --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | list-added-lines-from-diff > "$diff_line_file" || true
     CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")"
     rm "$diff_line_file"
 
