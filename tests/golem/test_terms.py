@@ -71,10 +71,7 @@ class TestTermsOfUseBase(TestWithDatabase):
 class TermsOfUseContentsTest(unittest.TestCase):
     def assertContentsValid(self, contents):
         matched = re.search(
-            "(["
-            "^a-zA-Z0-9_"
-            "\\n\\<\\>\\/\\.\\:\\\"\\=\\x20\\(\\)\\,\\;\\'\\-\\%"
-            "])",
+            r"([^a-zA-Z0-9_\n\<\>\/\.\:\"\=\x20\(\)\,\;\'\-\%])",
             contents, flags=re.DOTALL)
 
         try:
