@@ -594,7 +594,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         @defer.inlineCallbacks
-        def _offer_chosen(is_chosen: bool) -> None:
+        def _offer_chosen(is_chosen: bool):
             if not self.conn.opened:
                 logger.info(
                     "Provider disconnected. task_id=%r, node=%r",
@@ -629,14 +629,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_assign(reasons.NoMoreSubtasks)
                 return
 
-            resources_result = yield add_resources(
-                self.task_server.client,
-                ctd["resources"],
-                msg.task_id,
-                common.deadline_to_timeout(ctd["deadline"])
-            )
-            ctd["resources"] = self.task_server.get_resources(msg.task_id)
-            logger.info("resources_result: %r", resources_result)
+            if ctd["resources"]:
+                resources_result = yield add_resources(
+                    self.task_server.client,
+                    ctd["resources"],
+                    msg.task_id,
+                    common.deadline_to_timeout(ctd["deadline"])
+                )
+                ctd["resources"] = self.task_server.get_resources(msg.task_id)
+                logger.info("resources_result: %r", resources_result)
             logger.info(
                 "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
                 msg.task_id,

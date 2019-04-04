@@ -24,6 +24,7 @@ from twisted.internet.defer import Deferred
 import golem
 from golem import model, testutils
 from golem.core import variables
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -31,10 +32,14 @@ from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
+from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import taskstate
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.testutils import TempDirFixture
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
@@ -81,7 +86,7 @@ def _offerpool_add(*_):
 @patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 @patch('golem.task.tasksession.get_provider_efficiency', Mock())
 @patch('golem.task.tasksession.get_provider_efficacy', Mock())
-class TaskSessionTaskToComputeTest(TempDirFixture):
+class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
         self.maxDiff = None
@@ -98,6 +103,16 @@ class TaskSessionTaskToComputeTest(TempDirFixture):
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
+        dir_manager = DirManager(self.path)
+        resource_manager = HyperdriveResourceManager(
+            dir_manager=dir_manager,
+        )
+
+        server.client.resource_server = BaseResourceServer(
+            resource_manager=resource_manager,
+            dir_manager=dir_manager,
+            client=server.client
+        )
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -251,8 +266,9 @@ class TaskSessionTaskToComputeTest(TempDirFixture):
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
 
-        print(ts2.task_server.get_resources(mt.task_id))
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
+        ctd["resources"] = self.additional_dir_content([5, [2], [4]])
+        ctd["deadline"] = timeout_to_deadline(120)
         task_state = self._set_task_state()
 
         ts2.task_manager.get_next_subtask.return_value = ctd
@@ -262,6 +278,12 @@ class TaskSessionTaskToComputeTest(TempDirFixture):
         options = HyperdriveClientOptions("CLI1", 0.3)
         ts2.task_server.get_share_options.return_value = options
         ts2.interpret(mt)
+        started = time.time()
+        while ts2.conn.send_message.call_args is None:
+            if time.time() - started > 10:
+                self.fail("Test timed out")
+            time.sleep(0.1)
+
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
         expected = [
