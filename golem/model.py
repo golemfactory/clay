@@ -588,6 +588,20 @@ class CachedNode(BaseModel):
     node = CharField(null=False, index=True, unique=True)
     node_field = NodeField(null=False)
 
+    def __str__(self):
+        # pylint: disable=no-member
+        node_name = self.node_field.node_name if self.node_field else ''
+        node_id = self.node or ''
+        return (
+            f"{common.node_info_str(node_name, node_id)}"
+        )
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
+            f" {self}>"
+        )
+
 
 def collect_db_models(module: str = __name__):
     return inspect.getmembers(

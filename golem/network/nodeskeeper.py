@@ -1,8 +1,6 @@
-import datetime
 import logging
 
-from dateutil.relativedelta import relativedelta
-
+from golem import decorators
 from golem import model
 
 logger = logging.getLogger(__name__)
@@ -27,9 +25,15 @@ def store(node):
 
 def sweep():
     """Sweeps ancient entries"""
-    oldest_allowed = datetime.datetime.now() - relativedelta(months=1)
+    subq = model.CachedNode.select(
+        model.CachedNode.node,
+    ).order_by(
+        model.CachedNode.modified_date.desc(),
+    ).limit(1000)
     count = model.CachedNode.delete().where(
-        model.CachedNode.modified_date < oldest_allowed,
+        model.CachedNode.node.not_in(subq),
     ).execute()
     if count:
         logger.info('Sweeped ancient nodes from cache. count=%d', count)
+
+sweep_daily = decorators.daily()(sweep)
