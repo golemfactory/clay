@@ -66,11 +66,11 @@ diff-lines() {
     local path=
     local line=
     while read; do
-        if [[ $REPLY =~ ---\ (a/)?.* ]]; then
+        if [[ $REPLY =~ ^---\ (a/)?.* ]]; then
             continue
-        elif [[ $REPLY =~ \+\+\+\ (b/)?([^[:blank:]]+).* ]]; then
+        elif [[ $REPLY =~ ^\+\+\+\ (b/)?([^[:blank:]]+).* ]]; then
             path=${BASH_REMATCH[2]}
-        elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
+        elif [[ $REPLY =~ ^@@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
             line=${BASH_REMATCH[2]}
         elif [[ $REPLY =~ ^\+ ]]; then
             echo "$path:$line:"
