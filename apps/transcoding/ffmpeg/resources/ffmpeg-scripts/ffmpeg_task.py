@@ -10,6 +10,7 @@ import m3u8
 from m3u8_utils import create_and_dump_m3u8
 
 OUTPUT_DIR = "/golem/output"
+WORK_DIR = "/golem/work"
 RESOURCES_DIR = "/golem/resources"
 PARAMS_FILE = "params.json"
 
@@ -53,6 +54,18 @@ def do_split(path_to_stream, parts):
     results_file = os.path.join(OUTPUT_DIR, "split-results.json")
     with open(results_file, 'w') as f:
         json.dump(results, f)
+
+
+def do_extract_and_split(input_file, parts):
+    input_basename = os.path.basename(input_file)
+    [input_stem, input_extension] = os.path.splitext(input_basename)
+
+    intermediate_file = os.path.join(
+        WORK_DIR,
+        f"{input_stem}[video-only]{input_extension}")
+
+    do_extract(input_file, intermediate_file, ['v'])
+    do_split(intermediate_file, parts)
 
 
 def do_transcode(track, targs, output, use_playlist):
@@ -135,6 +148,18 @@ def do_replace(input_file,
         stream_type)
 
 
+def do_merge_and_replace(input_file, chunks, output_file):
+    output_basename = os.path.basename(output_file)
+    [output_stem, output_extension] = os.path.splitext(output_basename)
+
+    intermediate_file = os.path.join(
+        WORK_DIR,
+        f"{output_stem}[video-only]{output_extension}")
+
+    do_merge(chunks, intermediate_file)
+    do_replace(input_file, intermediate_file, output_file, 'v')
+
+
 def compute_metric(cmd, function):
     video_path = os.path.join(RESOURCES_DIR, cmd["video"])
     reference_path = os.path.join(RESOURCES_DIR, cmd["reference"])
@@ -173,6 +198,10 @@ def run_ffmpeg(params):
         do_split(
             params['path_to_stream'],
             params['parts'])
+    elif params['command'] == "extract-and-split":
+        do_extract_and_split(
+            params['input_file'],
+            params['parts'])
     elif params['command'] == "transcode":
         do_transcode(
             params['track'],
@@ -189,6 +218,11 @@ def run_ffmpeg(params):
             params['replacement_source'],
             params['output_file'],
             params['stream_type'])
+    elif params['command'] == "merge-and-replace":
+        do_merge_and_replace(
+            params['input_file'],
+            params['chunks'],
+            params['output_file'])
     elif params['command'] == "compute-metrics":
         compute_metrics(
             params["metrics_params"])
