@@ -1076,11 +1076,22 @@ class TaskServer(
         session.send_hello()
         session.result_received(subtask_id, full_path_files)
 
-    def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, _conn_id, _extracted_package, key_id, subtask_id: str):
+    @classmethod
+    def _connection_for_task_verification_result_failure(
+            cls,
+            conn_id,
+            extracted_package,
+            key_id,
+            subtask_id: str,
+        ):
         logger.warning("Failed to establish a session to deliver "
                        "the verification result for %s to the provider %s",
                        subtask_id, key_id)
+        logger.debug(
+            "conn_id=%r, extracted_package=%r",
+            conn_id,
+            extracted_package,
+        )
 
     # SYNC METHODS
     #############################
@@ -1206,7 +1217,7 @@ class TaskServer(
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_failure,
             TASK_CONN_TYPES['task_verification_result']:
-                self.__connection_for_task_verification_result_failure,
+                self._connection_for_task_verification_result_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -1220,7 +1231,7 @@ class TaskServer(
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_final_failure,
             TASK_CONN_TYPES['task_verification_result']:
-                self.__connection_for_task_verification_result_failure,
+                self._connection_for_task_verification_result_failure,
         })
 
 
