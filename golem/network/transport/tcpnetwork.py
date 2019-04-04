@@ -307,15 +307,6 @@ class BasicProtocol(SessionProtocol):
         """
         self.transport.loseConnection()
 
-    def close_now(self):
-        """
-        Close connection ASAP, doesn't flush the write buffer or wait for
-        the producer to finish
-        :return:
-        """
-        self.opened = False
-        self.transport.abortConnection()
-
     # Protocol functions
     def connectionMade(self):
         """Called when new connection is successfully opened"""

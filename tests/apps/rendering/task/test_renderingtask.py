@@ -7,7 +7,8 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
+    OpenCVError
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
                                                RenderingTaskBuilderError,
@@ -31,7 +32,8 @@ def _get_test_exr(alt=False):
     else:
         filename = 'testfile2.EXR'
 
-    return path.join(path.dirname(path.dirname(path.abspath(__file__))), "resources", filename)
+    return path.join(path.dirname(path.dirname(path.abspath(__file__))),
+                     "resources", filename)
 
 
 class RenderingTaskMock(RenderingTask):
@@ -59,7 +61,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3600.0
         task_definition.subtask_timeout = 600
-        task_definition.main_scene_file=files[1]
+        task_definition.main_scene_file = files[1]
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
         task_definition.output_format = ".png"
@@ -78,35 +80,32 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2}
-        tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header.task_id)
        # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
        # makedirs(tmp_dir)
         img = rt._open_preview()
         for i in range(int(round(rt.res_x * rt.scale_factor))):
             for j in range(int(round(rt.res_y * rt.scale_factor))):
-                img.putpixel((i, j), (1, 255, 255))
-        img.save(rt.preview_file_path, PREVIEW_EXT)
-        img.close()
+                img.set_pixel((i, j), (1, 255, 255))
+        img.save_with_extension(rt.preview_file_path, PREVIEW_EXT)
         rt._remove_from_preview("xxyyzz")
         img = rt._open_preview()
 
         max_x, max_y = 800 - 1, 600 - 1
 
-        assert img.getpixel((0, 0)) == (1, 255, 255)
-        assert img.getpixel((max_x, 0)) == (1, 255, 255)
-        assert img.getpixel((0, 5)) == (1, 255, 255)
-        assert img.getpixel((max_x, 5)) == (1, 255, 255)
+        assert img.get_pixel((0, 0)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 0)) == (1, 255, 255)
+        assert img.get_pixel((0, 5)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 5)) == (1, 255, 255)
 
         for i in range(6, 12):
-            assert img.getpixel((0, i)) == (0, 0, 0)
-            assert img.getpixel((max_x, i)) == (0, 0, 0)
+            assert img.get_pixel((0, i)) == (0, 0, 0)
+            assert img.get_pixel((max_x, i)) == (0, 0, 0)
 
-        assert img.getpixel((0, 13)) == (1, 255, 255)
-        assert img.getpixel((max_x, 13)) == (1, 255, 255)
-        assert img.getpixel((0, max_y)) == (1, 255, 255)
-        assert img.getpixel((max_x, max_y)) == (1, 255, 255)
+        assert img.get_pixel((0, 13)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 13)) == (1, 255, 255)
+        assert img.get_pixel((0, max_y)) == (1, 255, 255)
+        assert img.get_pixel((max_x, max_y)) == (1, 255, 255)
 
-        img.close()
 
     def test_update_task_state(self):
         task = self.task
@@ -128,19 +127,16 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task = self.task
         preview = task._open_preview()
         assert path.isfile(task.preview_file_path)
-        assert preview.mode == "RGB"
-        assert preview.size == (800, 600)
-        preview.close()
+        assert preview.get_channels() == OpenCVImgRepr.RGB
+        assert preview.get_size() == (800, 600)
 
-        preview = task._open_preview("RGBA")
-        assert preview.mode == "RGB"
-        assert preview.size == (800, 600)
-        preview.close()
+        preview = task._open_preview(OpenCVImgRepr.RGB)
+        assert preview.get_channels() == OpenCVImgRepr.RGB
+        assert preview.get_size() == (800, 600)
         remove(task.preview_file_path)
-        preview = task._open_preview("RGBA", "PNG")
-        assert preview.mode == "RGBA"
-        assert preview.size == (800, 600)
-        preview.close()
+        preview = task._open_preview(OpenCVImgRepr.RGBA, "PNG")
+        assert preview.get_channels() == OpenCVImgRepr.RGBA
+        assert preview.get_size() == (800, 600)
 
     def test_restart_subtask(self):
         task = self.task
@@ -274,7 +270,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         self.task.res_x = 10
         self.task.res_y = 20
 
-        self.task._put_collected_files_together(output_name, [exr1, exr2], "paste")
+        self.task._put_collected_files_together(output_name, [exr1, exr2],
+                                                "paste")
         assert load_img(output_name) is not None
 
     def test_get_task_collector_path(self):
@@ -282,7 +279,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
         mock_is_windows = Mock()
         mock_is_windows.return_value = False
-        with patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
+        with patch(target="apps.rendering.task.renderingtask.is_windows",
+                   new=mock_is_windows):
             linux_path = self.task._get_task_collector_path()
             mock_is_windows.return_value = True
 
@@ -294,12 +292,12 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             ))
 
     def test_update_task_preview_ioerror(self):
-        e = IOError("test message")
-        with patch("PIL.Image.open", side_effect=e), \
+        e = OpenCVError("test message")
+        with patch("apps.rendering.resources.imgrepr.OpenCVImgRepr."
+                   "from_image_file", side_effect=e), \
                 patch("apps.rendering.task.renderingtask.logger") as logger:
             self.task._update_task_preview()
-            assert logger.error.called
-            assert logger.error.call_args[0][1] == e
+            assert logger.exception.called
 
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
@@ -342,13 +340,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.subtasks_count = 33
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
-
-    def test_get_output_path(self):
-        td = TaskDefinition()
-        td.name = "MY task"
-        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
-        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
-            path.join("/dir3/dir4", "MY task.txt")
 
     def test_build_definition_minimal(self):
         # given
@@ -404,9 +395,6 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
         assert definition.max_price == 250000000000000000
         assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
-        output_file = self.task_dict['name'] + "." + \
-            self.task_dict['options']['format']
-        assert definition.output_file == self.path + os.sep + output_file
 
     def test_timeout_too_short(self):
         # given

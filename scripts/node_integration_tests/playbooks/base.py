@@ -37,6 +37,9 @@ class NodeTestPlaybook:
     provider_enabled = True
     requestor_enabled = True
 
+    provider_opts: typing.Dict[str, typing.Any] = {}
+    requestor_opts: typing.Dict[str, typing.Any] = {}
+
     nodes_root: typing.Optional[Path] = None
     provider_node = None
     requestor_node = None
@@ -59,7 +62,7 @@ class NodeTestPlaybook:
 
     task_package = None
     task_settings = 'default'
-    task_dict = None
+    task_dict: dict
 
     reconnect_attempts_left = 7
     reconnect_countdown_initial = 10
@@ -70,6 +73,7 @@ class NodeTestPlaybook:
     node_restart_count = 0
 
     dump_output_on_fail = False
+    dump_output_on_crash = False
 
     @property
     def task_settings_dict(self) -> dict:
@@ -95,13 +99,18 @@ class NodeTestPlaybook:
     def time_elapsed(self):
         return time.time() - self.start_time
 
-    def fail(self, msg=None):
+    def fail(
+            self,
+            msg=None,
+            dump_provider_output=False,
+            dump_requestor_output=False):
         print(msg or "Test run failed after {} seconds on step {}: {}".format(
                 self.time_elapsed, self.current_step, self.current_step_name))
 
-        if self.dump_output_on_fail:
+        if self.dump_output_on_fail or dump_provider_output:
             helpers.print_output(self.provider_output_queue, 'PROVIDER ')
-            helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
+        if self.dump_output_on_fail or dump_requestor_output:
+                helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
 
         self.stop(1)
 
@@ -174,6 +183,38 @@ class NodeTestPlaybook:
 
         return self.call_requestor('net.ident.key',
                               on_success=on_success, on_error=on_error)
+
+    def step_configure_provider(self):
+        if not self.provider_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured provider")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring provider")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.provider_opts,
+                                  on_success=on_success, on_error=on_error)
+
+    def step_configure_requestor(self):
+        if not self.requestor_opts:
+            self.next()
+            return
+
+        def on_success(_):
+            print("Configured requestor")
+            self.next()
+
+        def on_error(_):
+            print("failed configuring requestor")
+            self.fail()
+
+        return self.call_provider('env.opts.update', self.requestor_opts,
+                                  on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
         def on_success(result):
@@ -317,10 +358,14 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file = self.output_path + '/' + \
-            settings.get('name') + '.' + self.output_extension
-        print("Verifying the output file: {}".format(output_file))
-        if Path(output_file).is_file():
+        output_file_name = settings.get('name') + '.' + self.output_extension
+
+        print("Verifying output file: {}".format(output_file_name))
+        found_files = list(
+            Path(self.output_path).glob(f'**/{output_file_name}')
+        )
+
+        if len(found_files) > 0 and found_files[0].is_file():
             print("Output present :)")
             self.next()
         else:
@@ -415,6 +460,8 @@ class NodeTestPlaybook:
     initial_steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
+        step_configure_provider,
+        step_configure_requestor,
         step_get_provider_network_info,
         step_ensure_requestor_network,
         step_connect_nodes,
@@ -518,13 +565,19 @@ class NodeTestPlaybook:
                 provider_exit = self.provider_node.poll()
                 helpers.report_termination(provider_exit, "Provider")
                 if provider_exit is not None:
-                    self.fail("Provider exited abnormally.")
+                    self.fail(
+                        "Provider exited abnormally.",
+                        dump_provider_output=self.dump_output_on_crash,
+                    )
 
             if self.requestor_node:
                 requestor_exit = self.requestor_node.poll()
                 helpers.report_termination(requestor_exit, "Requestor")
                 if requestor_exit is not None:
-                    self.fail("Requestor exited abnormally.")
+                    self.fail(
+                        "Requestor exited abnormally.",
+                        dump_requestor_output=self.dump_output_on_crash,
+                    )
 
         try:
             method = self.current_step_method
@@ -590,4 +643,3 @@ class NodeTestPlaybook:
 
         self.stop_nodes()
         self.exit_code = exit_code
-

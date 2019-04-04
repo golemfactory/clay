@@ -27,12 +27,12 @@ class TestGolemCLI(unittest.TestCase):
         with patch.object(sys, 'argv', ['program', '-m']):
             start()
             args, kwargs = logger.warning.call_args
-            self.assertIn('removing', args[0])
+            self.assertNotIn('-m', args[0])
 
         with patch.object(sys, 'argv', ['program']):
             start()
             args, kwargs = logger.warning.call_args
-            self.assertIn('adding', args[0])
+            self.assertIn('--mainnet', args[0])
 
     @patch('builtins.open', mock_open())
     @patch('os.path.isfile', side_effect=[True])

@@ -24,8 +24,3 @@ def get_min_max_y(task_num, parts, res_y):
 class AdvanceVerificationOptions(object):
     def __init__(self):
         self.type = 'forFirst'
-
-class AdvanceRenderingVerificationOptions(AdvanceVerificationOptions):
-    def __init__(self):
-        AdvanceVerificationOptions.__init__(self)
-        self.probability = 0.01

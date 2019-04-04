@@ -20,7 +20,6 @@ from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
@@ -152,11 +151,10 @@ class DockerTaskTestCase(
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 
-        assert isinstance(task_computer.resource_manager, ResourcesManager)
         resource_dir = Path(
-            task_computer.resource_manager.get_resource_dir(task_id))
+            task_computer.dir_manager.get_task_resource_dir(task_id))
         temp_dir = Path(
-            task_computer.resource_manager.get_temporary_dir(task_id))
+            task_computer.dir_manager.get_task_temporary_dir(task_id))
         self.dirs_to_remove.append(resource_dir)
         self.dirs_to_remove.append(temp_dir)
 
@@ -173,7 +171,7 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.task_resource_collected(ctd['task_id'])
+        result = task_computer.resource_collected(ctd['task_id'])
         self.assertTrue(result)
 
         task_thread = None

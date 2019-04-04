@@ -214,6 +214,10 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.task_manager.check_next_subtask.return_value = False
         ts2.interpret(mt)
+        ts2.task_manager.check_next_subtask.assert_called_once_with(
+            mt.task_id,
+            mt.price,
+        )
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
@@ -574,8 +578,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def test_result_rejected_with_concent(self):
         srr = self._get_srr(concent=True)
-        self.task_session.task_server.client.funds_locker\
-            .sum_locks.return_value = (0,)
 
         def concent_deposit(**_):
             result = Deferred()
@@ -594,14 +596,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
 
     # pylint: disable=too-many-statements
-    @classmethod
-    def test_react_to_task_to_compute(cls):
+    def test_react_to_task_to_compute(self):
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
         ts.task_computer.has_assigned_task.return_value = False
         ts.concent_service.enabled = False
-        ts.send = Mock()
+        ts.send = Mock(side_effect=lambda msg: print(f"send {msg}"))
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
@@ -613,6 +614,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         reasons = message.tasks.CannotComputeTask.REASON
 
         def __reset_mocks():
+            ts.send.reset_mock()
             ts.task_manager.reset_mock()
             ts.task_computer.reset_mock()
             conn.reset_mock()
@@ -641,7 +643,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
 
-        def _prepare_and_react(compute_task_def):
+        def _prepare_and_react(compute_task_def, resource_size=102400):
             msg = msg_factories.tasks.TaskToComputeFactory(
                 compute_task_def=compute_task_def,
             )
@@ -656,6 +658,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 .task_headers[msg.task_id].subtasks_count = 10
             ts.task_server.client.transaction_system.get_available_gnt\
                 .return_value = msg.price * 10
+            ts.task_server.config_desc.max_resource_size = resource_size
             ts._react_to_task_to_compute(msg)
             return msg
 
@@ -673,23 +676,28 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         conn.close.assert_not_called()
 
+        def __assert_failure(ts, conn, reason):
+            ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+            ts.task_computer.session_closed.assert_called_with()
+            assert conn.close.called
+            ts.send.assert_called_once_with(ANY)
+            msg = ts.send.call_args[0][0]
+            self.assertIsInstance(msg, message.tasks.CannotComputeTask)
+            self.assertIs(msg.reason, reason)
+
         # Wrong key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn, reasons.WrongKey)
 
         # Wrong task owner key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn, reasons.WrongKey)
 
         # Wrong return port -> failure
         __reset_mocks()
@@ -697,9 +705,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.pub_port = 0
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn, reasons.WrongAddress)
 
         # Proper port and key -> proper execution
         __reset_mocks()
@@ -707,6 +713,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         _prepare_and_react(ctd)
         conn.close.assert_not_called()
+
+        # Wrong data size -> failure
+        __reset_mocks()
+        _prepare_and_react(ctd, 1024)
+        __assert_failure(ts, conn, reasons.ResourcesTooBig)
 
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
@@ -725,10 +736,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
         _prepare_and_react(ctd)
-        assert ts.err_msg == reasons.WrongEnvironment
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn, reasons.WrongEnvironment)
 
         # Envrionment is Docker environment but with different images -> failure
         __reset_mocks()
@@ -739,10 +747,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 DockerImage("dockerix/xiii")
             ])
         _prepare_and_react(ctd)
-        assert ts.err_msg == reasons.WrongDockerImages
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn, reasons.WrongDockerImages)
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
@@ -755,7 +760,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         cancel = session.concent_service.cancel_task_message
 
-        ttc = msg_factories.tasks.TaskToComputeFactory()
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            concent_enabled=True,
+        )
         task_id = ttc.task_id
         subtask_id = ttc.subtask_id
 
@@ -834,7 +841,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 ),
                 subtask_timeout=1,
                 max_price=1,
-                resource_size=1,
             ),
             20,
         )
@@ -958,7 +964,7 @@ class WaitingForResultsTestCase(
             password='',
         )
         self.ts.task_server.get_key_id.return_value = "key_id"
-        self.ts.key_id = requestor_keys.ecc.raw_pubkey
+        self.ts.key_id = requestor_keys.key_id
         self.ts.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
 
