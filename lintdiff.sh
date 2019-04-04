@@ -112,8 +112,10 @@ if [ -n "$diff" ]; then
     echo "$diff"
 
     # Remove lines from findings based on lines changed
-    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines) || true
-    CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
+    diff_line_file="$(mktemp tmp-golem-changed-lines.XXXXXXXXXX -t)"
+    git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines > "$diff_line_file" || true
+    CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")"
+    rm "$diff_line_file"
 
     echo -e "\n\nChanged lines findings:\n"
     echo "$CHANGED_DIFF"
