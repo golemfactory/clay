@@ -15,17 +15,36 @@ EnvEvent = Any  # TODO: Define environment events
 RuntimeEventId = str
 RuntimeEvent = Any  # TODO: Define runtime events
 
-# Environment-wide configuration. Specifies e.g. available resources.
-EnvConfig = Any
 
-# Environment-specific requirements for computing a task. Distributed with the
-# task header. Providers are expected to prepare (download, install, etc.)
-# prerequisites in advance no to waste computation time.
-Prerequisites = Any
+class Serializable(ABC):
 
-# A definition for Runtime. Environment-specific description of computation to
-# be run. Received when provider is assigned a subtask.
-Payload = Any
+    @abstractmethod
+    def to_dict(self) -> Dict[str, Any]:
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def from_dict(cls, dict_: Dict[str, Any]) -> 'Serializable':
+        raise NotImplementedError
+
+
+class EnvConfig(Serializable, ABC):
+    """ Environment-wide configuration. Specifies e.g. available resources. """
+
+
+class Prerequisites(Serializable, ABC):
+    """
+    Environment-specific requirements for computing a task. Distributed with the
+    task header. Providers are expected to prepare (download, install, etc.)
+    prerequisites in advance no to waste computation time.
+    """
+
+
+class Payload(Serializable, ABC):
+    """
+    A definition for Runtime. Environment-specific description of computation to
+    be run. Received when provider is assigned a subtask.
+    """
 
 
 class EnvSupportStatus(NamedTuple):
@@ -173,8 +192,16 @@ class Environment(ABC):
         """ Register a listener for a given type of Environment events. """
         raise NotImplementedError
 
+    @classmethod
     @abstractmethod
-    def runtime(self, payload: Payload, config: Optional[EnvConfig]) \
+    def parse_payload(cls, payload_dict: Dict[str, Any]) \
+            -> Payload:
+        """ Build Payload struct from supplied dictionary. Returned value
+            is of appropriate type for calling runtime(). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def runtime(self, payload: Payload, config: Optional[EnvConfig] = None) \
             -> Runtime:
         """ Create a Runtime from the given Payload. Optionally, override
             current config with the supplied one (it is however not guaranteed
