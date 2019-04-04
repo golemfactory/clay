@@ -52,7 +52,7 @@ class HyperdriveClient(IClient):
         self._headers = {'content-type': 'application/json'}
 
     def __repr__(self):
-        return '{} at {}'.format(self.CLIENT_ID, self._url)
+        return f'<{self.__class__.__name__} {self.CLIENT_ID} at {self._url}>'
 
     @classmethod
     def build_options(cls, peers=None, **kwargs):
