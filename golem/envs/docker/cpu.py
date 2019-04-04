@@ -25,10 +25,24 @@ mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
 
-class DockerCPUConfig(NamedTuple):
+class DockerCPUConfigData(NamedTuple):
     work_dir: Path
     memory_mb: int = 1024
     cpu_count: int = 1
+
+
+class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
+    """ This exists because NamedTuple must be single superclass """
+
+    def to_dict(self) -> Dict[str, Any]:
+        dict_ = self._asdict()
+        dict_['work_dir'] = str(dict_['work_dir'])
+        return dict_
+
+    @classmethod
+    def from_dict(cls, dict_: Dict[str, Any]) -> 'DockerCPUConfig':
+        work_dir = Path(dict_.pop('work_dir'))
+        return DockerCPUConfig(work_dir=work_dir, **dict_)
 
 
 class DockerCPURuntime(Runtime):
@@ -201,12 +215,13 @@ class DockerCPUEnvironment(Environment):
         self._constrain_hypervisor(config)
         self._config = DockerCPUConfig(*config)
 
-    def _validate_config(self, config: DockerCPUConfig) -> None:
+    @classmethod
+    def _validate_config(cls, config: DockerCPUConfig) -> None:
         if not config.work_dir.is_dir():
             raise ValueError(f"Invalid working directory: '{config.work_dir}'")
-        if config.memory_mb < self.MIN_MEMORY_MB:
+        if config.memory_mb < cls.MIN_MEMORY_MB:
             raise ValueError(f"Not enough memory: {config.memory_mb} MB")
-        if config.cpu_count < self.MIN_CPU_COUNT:
+        if config.cpu_count < cls.MIN_CPU_COUNT:
             raise ValueError(f"Not enough CPUs: {config.cpu_count}")
 
     def _constrain_hypervisor(self, config: DockerCPUConfig) -> None:
@@ -223,7 +238,11 @@ class DockerCPUEnvironment(Environment):
                callback: Callable[[EnvEvent], Any]) -> None:
         pass  # TODO: Specify environment events
 
-    def runtime(self, payload: Payload, config: Optional[EnvConfig]) \
+    @classmethod
+    def parse_payload(cls, payload_dict: Dict[str, Any]) -> DockerPayload:
+        return DockerPayload.from_dict(payload_dict)
+
+    def runtime(self, payload: Payload, config: Optional[EnvConfig] = None) \
             -> DockerCPURuntime:
         assert isinstance(payload, DockerPayload)
         if config is not None:
