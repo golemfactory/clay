@@ -8,13 +8,10 @@ from golem_messages.register import library
 from scripts.node_integration_tests import helpers
 
 
-from .concent_base import ConcentTestPlaybook
+from ..concent_base import ConcentTestPlaybook
 
 
-class ForceReport(ConcentTestPlaybook):
-    provider_node_script = 'provider/impatient_frct'
-    requestor_node_script = 'requestor/no_ack_rct'
-
+class Playbook(ConcentTestPlaybook):
     task_finished = False
     ack_rct_received = False
     ack_rct_deadline = None

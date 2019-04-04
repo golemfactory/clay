@@ -1,7 +1,7 @@
-from ..test_config_base import TestConfigBase
+from ...test_config_base import TestConfigBase
 
 
 class TestConfig(TestConfigBase):
     def __init__(self):
         super().__init__()
-        self.task_settings = 'jpeg'
+        self.task_settings = 'jpg'

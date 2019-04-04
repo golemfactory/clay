@@ -1,14 +1,9 @@
 import typing
 
-from ..base import NodeTestPlaybook
+from ...base import NodeTestPlaybook
 
 
-class RestartFrame(NodeTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
-    requestor_node_script_2 = 'requestor/always_accept_provider'
-    task_settings = 'default'
-
+class Playbook(NodeTestPlaybook):
     def step_restart_task_frame(self):
         def on_success(result):
             print(f'Restarted frame from task: {self.task_id}.')
