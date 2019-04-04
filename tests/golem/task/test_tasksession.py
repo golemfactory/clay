@@ -375,7 +375,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ):
             ts2.interpret(rct)
 
-    def test_react_to_hello_nodeskeeper_stor(self, mock_store, *_):
+    def test_react_to_hello_nodeskeeper_store(self, mock_store, *_):
         msg = msg_factories.base.HelloFactory()
         self.task_session._react_to_hello(msg)
         mock_store.assert_called_once_with(msg.node_info)

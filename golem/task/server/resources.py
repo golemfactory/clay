@@ -1,6 +1,7 @@
 import logging
 import os
 from typing import (
+    Dict,
     Iterable,
     Optional,
     TYPE_CHECKING,
@@ -33,7 +34,7 @@ class TaskResourcesMixin:
     HANDSHAKE_TIMEOUT = 20  # s
     NONCE_TASK = 'nonce'
 
-    resource_handshakes: dict
+    resource_handshakes: Dict[str, ResourceHandshake]
     task_manager: 'taskmanager.TaskManager'
 
     @property

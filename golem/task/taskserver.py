@@ -232,9 +232,7 @@ class TaskServer(
             env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
-        """Requests task
-
-        Possibly after successful resource handshake.
+        """Requests task possibly after successful resource handshake.
         """
         try:
             task_header: dt_tasks.TaskHeader = self.task_keeper.task_headers[

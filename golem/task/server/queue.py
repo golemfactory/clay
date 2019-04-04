@@ -42,7 +42,7 @@ class TaskMessagesQueueMixin:
         logger.debug('send_message(%r, %r)', node_id, msg)
         msg_queue.put(node_id, msg)
 
-        # Temporary code to immidiately initiate session
+        # Temporary code to immediately initiate session
         node = self.task_keeper.find_newest_node(node_id)
         if node is None:
             node = nodeskeeper.get(node_id)
