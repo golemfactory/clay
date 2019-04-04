@@ -53,6 +53,7 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         task_id = str(uuid.uuid4())
         output_name = 'test.mp4'
         playlist_dir = self.dir_manager.get_task_output_dir(task_id)
+
         chunks = self.stream_operator.split_video(
             self.RESOURCE_STREAM, parts,
             self.dir_manager, task_id)
@@ -71,8 +72,10 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
             assert os.path.isfile(transcoded)
             tc_playlists.append(transcoded)
 
+        playlist_dir_content = [os.path.join(playlist_dir, file) for file in os.listdir(playlist_dir)]
+        
         self.stream_operator.merge_video(output_name, playlist_dir,
-                                         tc_playlists)
+                                         playlist_dir_content)
         assert os.path.isfile(os.path.join(playlist_dir, 'merge',
                                            'output', output_name))
 
@@ -84,7 +87,9 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         with self.assertRaises(ffmpegException):
             self.stream_operator._collect_files(self.tempdir,
                                                 ['/tmp/testtest_TC.m3u8',
-                                                 '/tmp/testtest_TC.ts'])
+                                                 '/tmp/testtest_TC.ts'],
+                                                 os.path.join(self.tempdir,
+                                                 "merge/resources"))
 
     def test_collect_files_second_result_nonexistent(self):
         result_path = self.RESOURCE_STREAM.replace(
@@ -95,7 +100,9 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         with self.assertRaises(ffmpegException):
             self.stream_operator._collect_files(self.tempdir,
                                                 [result_path,
-                                                 '/tmp/test1234.mp4'])
+                                                 '/tmp/test1234.mp4'],
+                                                 os.path.join(self.tempdir,
+                                                 "merge/resources"))
 
     def test_collect_results(self):
         result_path = self.RESOURCE_STREAM.replace(
@@ -103,16 +110,20 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         shutil.copy2(self.RESOURCE_STREAM, result_path)
         assert os.path.isfile(result_path)
         results = self.stream_operator. \
-            _collect_files(self.tempdir, [result_path])
+            _collect_files(self.tempdir, [result_path],
+                            os.path.join(self.tempdir, "merge/resources"))
         assert len(results) == 1
-        assert results[0] == result_path
+        
+        # _collect_files returns paths in docker filesystem
+        assert results[0] == os.path.join("/golem/resources", os.path.basename(self.RESOURCE_STREAM))
 
     def test_prepare_merge_job(self):
         resource_dir, output_dir, work_dir, chunks = \
             self.stream_operator._prepare_merge_job(self.tempdir, [])
 
         assert len(chunks) == 0
-        assert resource_dir == self.tempdir
+        assert resource_dir == os.path.join(self.tempdir,
+                                          'merge', 'resources')
         assert os.path.isdir(output_dir)
         assert output_dir == os.path.join(self.tempdir,
                                           'merge', 'output')

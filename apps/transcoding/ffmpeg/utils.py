@@ -73,6 +73,7 @@ class StreamOperator:
     def _prepare_merge_job(self, task_dir, chunks):
         try:
             resources_dir = os.path.join(task_dir, 'merge', 'resources')
+            os.makedirs(resources_dir)
             output_dir = os.path.join(task_dir, 'merge', 'output')
             os.makedirs(output_dir)
             work_dir = os.path.join(task_dir, 'merge', 'work')
@@ -97,12 +98,15 @@ class StreamOperator:
             results.append(file)
 
         # Copy files to docker resources directory
+        os.makedirs(resources_dir, exist_ok=True)
+
         for result in results:
             result_filename = os.path.basename(result)
             target_filepath = os.path.join(resources_dir, result_filename)
             shutil.move(result, target_filepath)
 
-        return [path.replace(resources_dir,
+        # Translate paths to docker filesystem
+        return [path.replace(dir,
                              DockerJob.RESOURCES_DIR)
                     for path in results]
 
