@@ -1411,9 +1411,9 @@ class TaskVerificationResultTest(TaskServerTestBase):
             '__connection_for_task_verification_result_established')
         self.assertEqual(
             pc.failure.func.__name__,
-            '__connection_for_task_verification_result_failure',
+            '_connection_for_task_verification_result_failure',
         )
         self.assertEqual(
             pc.final_failure.func.__name__,
-            '__connection_for_task_verification_result_failure',
+            '_connection_for_task_verification_result_failure',
         )
