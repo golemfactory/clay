@@ -1,6 +1,5 @@
 import logging
 
-from golem import decorators
 from golem import model
 
 logger = logging.getLogger(__name__)
@@ -35,5 +34,3 @@ def sweep():
     ).execute()
     if count:
         logger.info('Sweeped ancient nodes from cache. count=%d', count)
-
-sweep_daily = decorators.daily()(sweep)

@@ -30,7 +30,6 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
-from golem.network import nodeskeeper
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
@@ -205,7 +204,6 @@ class TaskServer(
                 concent.process_messages_received_from_concent,
                 concent_service=self.client.concent_service,
             ),
-            nodeskeeper.sweep_daily,
         )
 
         for job in jobs:
