@@ -1,6 +1,11 @@
 import logging
 import os
-from typing import Iterable, Optional, Union
+from typing import (
+    Iterable,
+    Optional,
+    TYPE_CHECKING,
+    Union,
+)
 import requests
 
 from golem_messages import message
@@ -15,6 +20,10 @@ from golem.resource.hyperdrive import resource as hpd_resource
 from golem.resource.resourcehandshake import ResourceHandshake
 
 
+if TYPE_CHECKING:
+    from golem.task import taskmanager
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -23,6 +32,9 @@ class TaskResourcesMixin:
 
     HANDSHAKE_TIMEOUT = 20  # s
     NONCE_TASK = 'nonce'
+
+    resource_handshakes: dict
+    task_manager: 'taskmanager.TaskManager'
 
     @property
     def resource_manager(self):

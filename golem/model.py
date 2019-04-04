@@ -182,7 +182,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype: Optional[DictSerializable] = None
+    objtype: DictSerializable
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -190,9 +190,9 @@ class DictSerializableJSONField(TextField):
         return json.dumps(value.to_dict())
 
     def python_value(self, value: str) -> DictSerializable:
-        if issubclass(self.objtype, msg_dt.Container):
+        if issubclass(self.objtype, msg_dt.Container):  # type: ignore
             # pylint: disable=not-callable
-            return self.objtype(**json.loads(value))
+            return self.objtype(**json.loads(value))  # type: ignore
         return self.objtype.from_dict(json.loads(value))
 
 

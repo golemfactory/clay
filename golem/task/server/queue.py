@@ -8,6 +8,7 @@ from golem.network.transport import msg_queue
 if typing.TYPE_CHECKING:
     from golem_messages import message
 
+    from golem.task import taskkeeper
     from golem.task.tasksession import TaskSession
 
 
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 class TaskMessagesQueueMixin:
     """Message Queue functionality for TaskServer"""
+
+    task_keeper: 'taskkeeper.TaskHeaderKeeper'
 
     def __init__(self):
         for attr_name in (
@@ -35,7 +38,7 @@ class TaskMessagesQueueMixin:
             'msg_queue': self.msg_queue_connection_final_failure,
         })
 
-    def send_message(self, node_id: str, msg: 'messages.base.Message'):
+    def send_message(self, node_id: str, msg: 'message.base.Message'):
         logger.debug('send_message(%r, %r)', node_id, msg)
         msg_queue.put(node_id, msg)
 
@@ -50,7 +53,7 @@ class TaskMessagesQueueMixin:
                 node_id,
             )
             return
-        self._add_pending_request(
+        self._add_pending_request(  # type: ignore
             'msg_queue',
             node,
             prv_port=node.prv_port,
@@ -66,7 +69,7 @@ class TaskMessagesQueueMixin:
         conn_id,
         node_id,
     ):
-        self.new_session_prepare(
+        self.new_session_prepare(  # type: ignore
             session=session,
             key_id=node_id,
             conn_id=conn_id,

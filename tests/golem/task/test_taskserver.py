@@ -156,7 +156,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header.task_id
-        task_owner_key = task_header.task_owner.key
+        task_owner_key = task_header.task_owner.key  # pylint: disable=no-member
         self.ts.start_handshake(
             key_id=task_owner_key,
             task_id=task_id,
