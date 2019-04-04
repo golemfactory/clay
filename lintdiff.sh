@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # Checks if new lint messages have appeared
 
 FETCH_ORIGIN=origin
@@ -92,8 +92,8 @@ commit=$(git rev-parse HEAD)
 git checkout "$CURRENT_BRANCH" -- .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo $@
-$@ >$REF_OUT
-check_errcode $?
+$@ > $REF_OUT && errcode=0 || errcode=$?
+check_errcode $errcode
 
 # Now take back the checked out config, go back to the new branch
 git reset --hard HEAD
@@ -103,16 +103,16 @@ trap - EXIT
 commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo $@
-$@ >$CURRENT_OUT
-check_errcode $?
+$@ > $CURRENT_OUT && errcode=0 || errcode=$?
+check_errcode $errcode
 
-diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
+diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT)) || true
 if [ -n "$diff" ]; then
     echo -e "New findings:\n"
     echo "$diff"
 
     # Remove lines from findings based on lines changed
-    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
+    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines) || true
     CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
 
     echo -e "\n\nChanged lines findings:\n"
