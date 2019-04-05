@@ -3,7 +3,7 @@
 
 import peewee as pw
 
-SCHEMA_VERSION = 24
+SCHEMA_VERSION = 26
 
 
 def migrate(migrator, database, fake=False, **kwargs):
@@ -13,6 +13,9 @@ def migrate(migrator, database, fake=False, **kwargs):
 
         class Meta:
             db_table = "dockerwhitelist"
+
+    migrator.sql("INSERT INTO dockerwhitelist(repository) "
+                 "VALUES ('golemfactory')")
 
 
 def rollback(migrator, database, fake=False, **kwargs):

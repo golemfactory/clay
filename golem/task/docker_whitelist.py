@@ -25,7 +25,8 @@ class DockerWhitelist:
         return True
 
     @staticmethod
-    def is_whitelisted(repository: str) -> bool:
+    def is_whitelisted(image_name: str) -> bool:
+        repository = image_name.split('/')[0]
         query = \
             golem.model.DockerWhitelist.select().where(
                 golem.model.DockerWhitelist.repository == repository,
