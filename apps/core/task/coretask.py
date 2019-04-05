@@ -1,9 +1,7 @@
-import atexit
 from datetime import datetime
 import decimal
 import logging
 import os
-from pathlib import Path
 import time
 from typing import (
     Any,
@@ -115,11 +113,6 @@ class CoreTask(Task):
 
         task_timeout = task_definition.timeout
         self._deadline = timeout_to_deadline(task_timeout)
-
-        # output directory setup
-        self.output_file = task_definition.output_file
-        self.get_output_directory().mkdir(parents=True, exist_ok=True)
-        atexit.register(self._on_exit)
 
         # resources stuff
         self.task_resources = list(
@@ -341,19 +334,6 @@ class CoreTask(Task):
             'progress': self.get_progress()
         }
 
-    def _on_exit(self):
-        """
-        This is a cleanup function which should be run once the task object is
-        deleted or the program terminates. Removes the task output directory if
-        it is empty.
-        :return:
-        """
-        try:
-            # This will only succeed if the directory is empty
-            self.get_output_directory().rmdir()
-        except OSError:
-            pass
-
     def _new_compute_task_def(self, subtask_id, extra_data,
                               perf_index=0):
         ctd = golem_messages.message.ComputeTaskDef()
@@ -475,9 +455,6 @@ class CoreTask(Task):
             if subtask['status'].is_finishing()
             and subtask['node_id'] == node_id
         ]
-
-    def get_output_directory(self) -> Path:
-        return Path(self.output_file).resolve().parent
 
     def get_resources(self):
         return self.task_resources

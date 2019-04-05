@@ -1,7 +1,6 @@
 import os
 import shutil
 from copy import copy
-from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Optional
 from unittest import TestCase
@@ -44,14 +43,13 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             pass
 
     @staticmethod
-    def _get_core_task_definition(output_file: Optional[str] = ''):
+    def _get_core_task_definition():
         task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "deadbeef"
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
-        task_definition.output_file = output_file
         return task_definition
 
     def test_instantiation(self):
@@ -84,8 +82,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
 
-    def _get_core_task(self, output_file: Optional[str] = ''):
-        task_def = TestCoreTask._get_core_task_definition(output_file)
+    def _get_core_task(self):
+        task_def = TestCoreTask._get_core_task_definition()
         task = self.CoreTaskDeabstracted(
             task_definition=task_def,
             owner=dt_p2p_factory.Node(),
@@ -466,21 +464,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['extra_data'] == extra_data
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images
-
-    def test_task_init_creates_output_dir(self):
-        with TemporaryDirectory() as base_path:
-            output_file = os.path.join(base_path, 'some/output/file.png')
-
-            self._get_core_task(output_file=output_file)
-
-            self.assertTrue(Path(output_file).parent.exists())
-
-    @patch('pathlib.Path.mkdir', side_effect=PermissionError)
-    def test_task_init_fails_without_permissions(self, *_):
-        output_file = '/some/path/without/permission'
-
-        with self.assertRaises(PermissionError):
-            self._get_core_task(output_file=output_file)
 
 
 class TestLogKeyError(LogTestCase):

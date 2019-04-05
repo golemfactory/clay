@@ -1098,6 +1098,7 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
 # pylint: disable=too-many-ancestors
 class TestTaskServer2(TaskServerBase):
 
+    @patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
     def test_results(self, trust, *_):

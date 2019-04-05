@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 from golem.task.taskkeeper import TaskHeaderKeeper
 from golem.task.server.resources import TaskResourcesMixin
 from golem.testutils import TestWithClient
