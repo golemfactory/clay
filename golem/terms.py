@@ -31,7 +31,7 @@ class TermsOfUseBase:
 
 class TermsOfUse(TermsOfUseBase):
     ACCEPTED_KEY = 'terms_of_use_accepted'
-    VERSION = 3
+    VERSION = 4
     PATH = Path('golem/TERMS.html')
 
 
