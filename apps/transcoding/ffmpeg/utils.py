@@ -102,7 +102,7 @@ class StreamOperator:
         for file in files:
             if not os.path.isfile(file):
                 raise ffmpegException("Missing result file: {}".format(file))
-            elif os.path.dirname(file) != dir:
+            if os.path.dirname(file) != dir:
                 raise ffmpegException("Result file: {} should be in the \
                 proper directory: {}".format(file, dir))
 
