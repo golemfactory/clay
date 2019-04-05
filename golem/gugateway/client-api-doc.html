@@ -696,18 +696,12 @@ margin-bottom: 20px;
   <script>
     // Script section to load models into a JS Var
     var defs = {}
-        defs["Events"] = {
-  "type" : "array",
-  "description" : "Events array. Every item has id and exactly one of remaining fields filled.\n",
-  "items" : {
-    "$ref" : "#/definitions/Events_inner"
-  }
-};
-        defs["Events_inner"] = {
+        defs["Event"] = {
   "required" : [ "eventId" ],
   "properties" : {
     "eventId" : {
-      "$ref" : "#/definitions/Uuid"
+      "type" : "integer",
+      "format" : "int64"
     },
     "task" : {
       "$ref" : "#/definitions/Task"
@@ -721,6 +715,14 @@ margin-bottom: 20px;
     "subtaskVerification" : {
       "$ref" : "#/definitions/SubtaskVerification"
     }
+  },
+  "description" : "Every item has id and exactly one of remaining fields filled."
+};
+        defs["Events"] = {
+  "type" : "array",
+  "description" : "Events array.",
+  "items" : {
+    "$ref" : "#/definitions/Event"
   }
 };
         defs["Message"] = {
@@ -752,17 +754,18 @@ margin-bottom: 20px;
   "description" : "Binary content (files) required to execute subtask"
 };
         defs["Subscription"] = {
-  "required" : [ "maxCpuCores", "maxDiskSize", "maxMemorySize", "minPrice" ],
+  "required" : [ "maxCpuCores", "maxDiskSize", "maxMemorySize", "minPriceGnt" ],
   "properties" : {
     "name" : {
       "type" : "string"
     },
-    "minPrice" : {
-      "type" : "integer",
-      "description" : "minimal accepted price in 10e-18 GNT"
+    "minPriceGnt" : {
+      "type" : "number",
+      "format" : "double",
+      "description" : "minimal accepted price in GNT"
     },
     "performance" : {
-      "type" : "integer",
+      "type" : "number",
       "format" : "float"
     },
     "maxCpuCores" : {
@@ -823,8 +826,7 @@ margin-bottom: 20px;
   }
 };
         defs["Subtask"] = {
-  "type" : "object",
-  "required" : [ "deadline", "price", "subtaskId", "taskId" ],
+  "required" : [ "deadline", "priceGnt", "subtaskId", "taskId" ],
   "properties" : {
     "taskId" : {
       "$ref" : "#/definitions/Uuid"
@@ -832,10 +834,10 @@ margin-bottom: 20px;
     "subtaskId" : {
       "$ref" : "#/definitions/Uuid"
     },
-    "price" : {
-      "type" : "integer",
-      "format" : "int64",
-      "description" : "total subtask price in 10e-18 GNT computed as `task_max_price * subtask_timeout`\n"
+    "priceGnt" : {
+      "type" : "number",
+      "format" : "double",
+      "description" : "total subtask price in GNT computed as `task_max_price * subtask_timeout`\n"
     },
     "deadline" : {
       "type" : "integer",
@@ -846,10 +848,15 @@ margin-bottom: 20px;
       "items" : {
         "$ref" : "#/definitions/Subtask_dockerImages"
       }
+    },
+    "extraData" : {
+      "type" : "object",
+      "additionalProperties" : {
+        "type" : "string"
+      }
     }
   },
-  "description" : "Subtask is a part of task supossed to be executed by a provider, which submited task computation willingness.\n",
-  "additionalProperties" : { }
+  "description" : "Subtask is a part of task supossed to be executed by a provider, which submited task computation willingness.\n"
 };
         defs["SubtaskResult"] = {
   "required" : [ "path", "status" ],
@@ -905,8 +912,7 @@ margin-bottom: 20px;
   }
 };
         defs["Task"] = {
-  "type" : "object",
-  "required" : [ "deadline", "maxPrice", "subtaskTimeout", "subtasksCount", "taskId" ],
+  "required" : [ "deadline", "maxPriceGnt", "subtaskTimeout", "subtasksCount", "taskId" ],
   "properties" : {
     "taskId" : {
       "$ref" : "#/definitions/Uuid"
@@ -931,18 +937,17 @@ margin-bottom: 20px;
       "type" : "integer",
       "format" : "int64"
     },
-    "maxPrice" : {
-      "type" : "integer",
-      "format" : "int64",
-      "description" : "in 10e-18 GNT per second of computation"
+    "maxPriceGnt" : {
+      "type" : "number",
+      "format" : "double",
+      "description" : "in GNT per second of computation"
     },
     "minVersion" : {
       "type" : "string",
       "description" : "minimal Golem version"
     }
   },
-  "description" : "A basic unit of work requested in Golem Network. Upon computation it is divided into a smaller chunks - subtasks. Number of subtasks is defined by the requestor.\n",
-  "additionalProperties" : { }
+  "description" : "A basic unit of work requested in Golem Network. Upon computation it is divided into a smaller chunks - subtasks. Number of subtasks is defined by the requestor.\n"
 };
         defs["TaskType"] = {
   "type" : "string",

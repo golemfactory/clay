@@ -1,13 +1,13 @@
 {
     "type": "Blender",
     "compute_on": "cpu",
-    "name": "Golem Task",
-    "timeout": "10:00:00",
-    "subtask_timeout": "10:00:00",
-    "subtasks_count": 1,
-    "bid": 0.2,
+    "name": "Horse 3s",
+    "timeout": "00:05:00",
+    "subtask_timeout": "00:01:00",
+    "subtasks_count": 3,
+    "bid": 3.3,
     "resources": [
-        "/Users/tworec/git/golem/apps/blender/benchmark/test_task/cube.blend"
+        "/Users/tworec/git/golem/golem/gugateway/horse.blend"
     ],
     "options": {
         "frame_count": 1,

@@ -289,7 +289,7 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
                 logger.info('want task %s for %s', task_id, subs)
                 return _json_response('OK')
         except KeyError as e:
-            return _not_found(f'task {e}')
+            return _not_found(f'key {e}')
     else:
         return _not_found(f'task {task_id}')
 
@@ -302,9 +302,10 @@ def task_info(node_id: str, task_id: str) -> (str, int):
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if task_id in subs.events:
+        # TODO: add subscription.get_task()
+        if task_id in subs.tasks:
             logger.debug('task info %s for %s', task_id, subs)
-            return json.dumps(subs.events[task_id].task.to_json_dict())
+            return json.dumps(subs.tasks[task_id].task.to_json_dict())
     else:
         return _not_found(f'task {task_id}')
 
@@ -317,7 +318,8 @@ def confirm_subtask(node_id, subtask_id) -> (str, int):
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if subtask_id in subs.events:
+        # TODO: add subscription.get_subtask()
+        if subtask_id in subs.subtasks:
             logger.info('started subtask %s for %s', subtask_id, subs)
             subs.increment(SubtaskStatus.started)
             return _json_response('OK')
@@ -333,9 +335,10 @@ def subtask_info(node_id, subtask_id) -> (str, int):
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if subtask_id in subs.events:
+        # TODO: add subscription.get_subtask()
+        if subtask_id in subs.subtasks:
             logger.debug('subtask info %s for %s', subtask_id, subs)
-            return json.dumps(subs.events[subtask_id].subtask.to_json_dict())
+            return json.dumps(subs.subtasks[subtask_id].subtask.to_json_dict())
     else:
         return _not_found(f'subtask {subtask_id}')
 
@@ -394,7 +397,7 @@ def fetch_events(node_id: str, task_type: str) -> (str, int):
     try:
         subs = subscriptions[node_id][TaskType.match(task_type)]
 
-        logger.debug('events for subscription %s', subs)
+        # logger.debug('events for subscription %s', subs)
         return json.dumps([e.to_json_dict()
                            for e in subs.events_after(last_event_id)])
     except (InvalidTaskType, RuntimeError) as e:

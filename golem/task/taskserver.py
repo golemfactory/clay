@@ -215,12 +215,15 @@ class TaskServer(
                      task_id: Optional[str] = None,
                      performance: Optional[float] = None,
                      eth_pub_key: Optional[str] = None,
+#                    keys_auth: bool = None,
                     ) -> Optional[str]:
         """Chooses random task from network to compute on our machine"""
         if task_id is not None:
             theader = self.task_keeper.task_headers[task_id]
         else:
             theader = self.task_keeper.get_task(self.requested_tasks)
+
+#        self.keys_auth = keys_auth or self.keys_auth;
 
         if theader is None:
             return None
@@ -970,6 +973,7 @@ class TaskServer(
                             key_id: str,
                             conn_id: str):
         self.remove_forwarded_session_request(key_id)
+        # TODO: fix naming
         session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
