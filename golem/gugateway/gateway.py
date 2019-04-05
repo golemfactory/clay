@@ -37,22 +37,44 @@ def start(client: Client) -> None:
         pass
 
 
+class DirectDispatcherMiddleware(object):
+
+    def __init__(self, app, mounts=None):
+        self.app = app
+        self.mounts = mounts or {}
+
+    def __call__(self, environ, start_response):
+        script = environ.get('PATH_INFO', '')
+        path_info = ''
+        while '/' in script:
+            if script in self.mounts:
+                app = self.mounts[script]
+                break
+            script, last_item = script.rsplit('/', 1)
+            path_info = '/%s%s' % (last_item, path_info)
+        else:
+            app = self.mounts.get(script, self.app)
+        return app(environ, start_response)
+
+
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
 def _start(port: int) -> None:
     logger.info(f'Starting "Golem Unlimited Gateway" on port: {port}')
+
+    dav_app = _create_dav_app(port)
+
+    japp = DirectDispatcherMiddleware(app, {'/dav': dav_app })
+
     reactor.listenTCP(
-        port, Site(WSGIResource(reactor, reactor.getThreadPool(), app)))
+        port, Site(WSGIResource(reactor, reactor.getThreadPool(), japp)))
 
-    _start_web_dav(port + 10)
-
-
-def _start_web_dav(port):
+def _create_dav_app(port):
     global golem_client
     root_path = golem_client.task_manager.root_path
     config = {
         "port": port,
         "provider_mapping": {
-            "/": root_path,
+            "/dav": root_path,
         },
         # TODO: dir browser is not secure
         'middleware_stack': [
@@ -104,14 +126,11 @@ def _start_web_dav(port):
     logger.info(f'Starting "Golem Unlimited WebDav" on port: {port}')
     try:
         wsgidav._base_logger.propagate = True
-        dav_app = WrappedWsgiDAVApp(WsgiDAVApp(config))
+        return WrappedWsgiDAVApp(WsgiDAVApp(config))
     except DAVError as err:
         import traceback
         logger.error("wsgiDav error: %r:\n%s", err, traceback.format_exc())
         raise err
-
-    reactor.listenTCP(
-        port, Site(WSGIResource(reactor, reactor.getThreadPool(), dav_app)))
 
 
 class WrappedWsgiDAVApp:
