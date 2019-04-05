@@ -288,29 +288,6 @@ class TestMetadata(TestCase):
             metadata.description, DockerCPUEnvironment.ENV_DESCRIPTION)
 
 
-class TestParsePrerequisites(TestCase):
-
-    def test_missing_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_prerequisites({})
-
-    def test_extra_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_prerequisites({
-                'image': 'repo/img',
-                'tag': '1.0',
-                'extra': 'value'
-            })
-
-    def test_ok(self):
-        prereqs = DockerCPUEnvironment.parse_prerequisites({
-            'image': 'repo/img',
-            'tag': '1.0'
-        })
-        self.assertEqual(prereqs.image, 'repo/img')
-        self.assertEqual(prereqs.tag, '1.0')
-
-
 class TestPreparePrerequisites(TestDockerCPUEnv):
 
     def test_wrong_type(self):
@@ -331,44 +308,6 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.prepare_prerequisites(prereqs)
         return self.assertFailure(deferred, OSError)
-
-
-class TestParseConfig(TestCase):
-
-    def test_missing_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_config({})
-
-    def test_extra_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_config({
-                'work_dir': Mock(),
-                'memory_mb': 2000,
-                'cpu_count': 2,
-                'extra': 'value'
-            })
-
-    def test_default_values(self):
-        work_dir = Mock()
-        config = DockerCPUEnvironment.parse_config({
-            'work_dir': work_dir
-        })
-
-        self.assertEqual(config.work_dir, work_dir)
-        self.assertIsNotNone(config.memory_mb)
-        self.assertIsNotNone(config.cpu_count)
-
-    def test_custom_values(self):
-        work_dir = Mock()
-        config = DockerCPUEnvironment.parse_config({
-            'work_dir': work_dir,
-            'memory_mb': 2137,
-            'cpu_count': 12
-        })
-
-        self.assertEqual(config.work_dir, work_dir)
-        self.assertEqual(config.memory_mb, 2137)
-        self.assertEqual(config.cpu_count, 12)
 
 
 class TestUpdateConfig(TestDockerCPUEnv):
@@ -475,48 +414,6 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
             mem: 1000,
             cpu: 1
         })
-
-
-class TestParsePayload(TestCase):
-
-    def test_missing_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_payload({})
-
-    def test_extra_values(self):
-        with self.assertRaises(TypeError):
-            DockerCPUEnvironment.parse_payload({
-                'image': 'image',
-                'tag': 'tag',
-                'extra': 'value'
-            })
-
-    def test_default_values(self):
-        payload = DockerCPUEnvironment.parse_payload({
-            'image': 'image',
-            'tag': 'tag',
-        })
-        self.assertIsNotNone(payload.args)
-        self.assertIsNotNone(payload.binds)
-        self.assertIsNotNone(payload.env)
-
-    def test_custom_values(self):
-        payload = DockerCPUEnvironment.parse_payload({
-            'image': 'image',
-            'tag': 'tag',
-            'args': ['arg1'],
-            'env': {'var': 'value'},
-            'command': 'cmd',
-            'user': 'user',
-            'work_dir': '/tmp/'
-        })
-        self.assertEqual(payload.image, 'image')
-        self.assertEqual(payload.tag, 'tag')
-        self.assertEqual(payload.args, ['arg1'])
-        self.assertEqual(payload.env, {'var': 'value'})
-        self.assertEqual(payload.command, 'cmd')
-        self.assertEqual(payload.user, 'user')
-        self.assertEqual(payload.work_dir, '/tmp/')
 
 
 class TestRuntime(TestDockerCPUEnv):
