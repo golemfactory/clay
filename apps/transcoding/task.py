@@ -3,7 +3,7 @@ import logging
 import os
 from shutil import move
 from threading import Lock
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 import golem_messages.message
 
@@ -29,14 +29,18 @@ logger = logging.getLogger(__name__)
 
 class TranscodingTaskOptions(Options):
     class AudioParams:
-        def __init__(self, codec: AudioCodec = None, bitrate: str = None):
+        def __init__(self,
+                     codec: Optional[AudioCodec] = None,
+                     bitrate: Optional[str] = None):
             self.codec = codec
             self.bitrate = bitrate
 
     class VideoParams:
-        def __init__(self, codec: VideoCodec = None, bitrate: str = None,
-                     frame_rate: int = None,
-                     resolution: Tuple[int, int] = None):
+        def __init__(self,
+                     codec: Optional[VideoCodec] = None,
+                     bitrate: Optional[str] = None,
+                     frame_rate: Optional[int] = None,
+                     resolution: Optional[Tuple[int, int]] = None):
             self.codec = codec
             self.bitrate = bitrate
             self.frame_rate = frame_rate
@@ -58,13 +62,14 @@ class TranscodingTaskDefinition(TaskDefinition):
 
 
 class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
-    def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs):
+    def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs) \
+            -> None:
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
         self.lock = Lock()
-        self.chunks = list()
-        self.collected_files = list()
+        self.chunks: List[str] = list()
+        self.collected_files: List[str] = list()
         self.task_dir = ""
 
     def __getstate__(self):
@@ -195,7 +200,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             sid = self.create_subtask_id()
 
             subtask_num = self._get_next_subtask()
-            subtask = {}
+            subtask: Dict[str, Any] = {}
             transcoding_params = self._get_extra_data(subtask_num)
             subtask['perf'] = perf_index
             subtask['node_id'] = node_id
@@ -232,10 +237,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
 
 class TranscodingTaskBuilder(CoreTaskBuilder):
-    SUPPORTED_FILE_TYPES = []
-    SUPPORTED_VIDEO_CODECS = []
-    SUPPORTED_AUDIO_CODECS = []
-    TASK_CLASS = TranscodingTask
+    SUPPORTED_FILE_TYPES: List[Container] = []
+    SUPPORTED_VIDEO_CODECS: List[VideoCodec] = []
+    SUPPORTED_AUDIO_CODECS: List[AudioCodec] = []
 
     @classmethod
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
