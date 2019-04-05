@@ -3,8 +3,9 @@ import os
 import sys
 
 # pylint: disable=import-error
-from ffmpeg_tools import commands, meta
 import m3u8
+
+from ffmpeg_tools import commands, meta
 from m3u8_utils import create_and_dump_m3u8, join_playlists
 
 OUTPUT_DIR = "/golem/output"
