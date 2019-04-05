@@ -1,7 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from golem.envs import Environment, EnvironmentManager
+from golem.envs import Environment
+from golem.envs.manager import EnvironmentManager
 
 
 class TestEnvironmentManager(TestCase):
