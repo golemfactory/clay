@@ -69,7 +69,7 @@ class StreamOperator:
 
         with open(split_result_file) as f:
             params = json.load(f)  # FIXME: check status of splitting
-            if params.get('status', 'Success') is not 'Success':
+            if params.get('status', 'Success') != 'Success':
                 raise ffmpegException('Splitting video failed')
 
             streams_list = list(map(lambda x: (x.get('video_segment'),
