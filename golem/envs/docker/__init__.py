@@ -2,7 +2,8 @@ from pathlib import Path
 from typing import NamedTuple, Optional, List, Dict, Any
 
 from golem.core.common import posix_path
-from golem.envs import Payload, Serializable, Prerequisites
+from golem.core.simpleserializer import DictSerializable
+from golem.envs import Payload, Prerequisites
 
 
 class DockerBindData(NamedTuple):
@@ -11,7 +12,7 @@ class DockerBindData(NamedTuple):
     mode: str = 'rw'
 
 
-class DockerBind(DockerBindData, Serializable):
+class DockerBind(DockerBindData, DictSerializable):
     """ This exists because NamedTuple must be single superclass """
 
     def to_dict(self) -> Dict[str, Any]:
@@ -19,10 +20,11 @@ class DockerBind(DockerBindData, Serializable):
         dict_['source'] = str(dict_['source'])
         return dict_
 
-    @classmethod
-    def from_dict(cls, dict_: Dict[str, Any]) -> 'DockerBind':
-        source = Path(dict_.pop('source'))
-        return DockerBind(source=source, **dict_)
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'DockerBind':
+        data = data.copy()
+        source = Path(data.pop('source'))
+        return DockerBind(source=source, **data)
 
     @property
     def source_as_posix(self) -> str:
@@ -48,12 +50,13 @@ class DockerPayload(DockerPayloadData, Payload):
         dict_['binds'] = [bind.to_dict() for bind in dict_['binds']]
         return dict_
 
-    @classmethod
-    def from_dict(cls, dict_: Dict[str, Any]) -> 'DockerPayload':
-        args = dict_.pop('args', [])
-        env = dict_.pop('env', {})
-        binds = [DockerBind.from_dict(b) for b in dict_.pop('binds', [])]
-        return DockerPayload(args=args, env=env, binds=binds, **dict_)
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'DockerPayload':
+        data = data.copy()
+        args = data.pop('args', [])
+        env = data.pop('env', {})
+        binds = [DockerBind.from_dict(b) for b in data.pop('binds', [])]
+        return DockerPayload(args=args, env=env, binds=binds, **data)
 
 
 class DockerPrerequisitesData(NamedTuple):
@@ -67,6 +70,6 @@ class DockerPrerequisites(DockerPrerequisitesData, Prerequisites):
     def to_dict(self) -> Dict[str, Any]:
         return self._asdict()
 
-    @classmethod
-    def from_dict(cls, dict_: Dict[str, Any]) -> 'DockerPrerequisites':
-        return DockerPrerequisites(**dict_)
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'DockerPrerequisites':
+        return DockerPrerequisites(**data)
