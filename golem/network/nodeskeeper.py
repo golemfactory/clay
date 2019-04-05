@@ -1,5 +1,6 @@
 import logging
 
+from golem import decorators
 from golem import model
 
 logger = logging.getLogger(__name__)
@@ -22,6 +23,7 @@ def store(node):
         instance.node_field = node
         instance.save()
 
+@decorators.run_with_db()
 def sweep():
     """Sweeps ancient entries"""
     subq = model.CachedNode.select(
