@@ -87,7 +87,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         logger.debug('Initialization of FFmpegTask')
 
         task_id = self.task_definition.task_id
-        task_output_dir = dir_manager.get_task_output_dir(task_id)        
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
 
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
@@ -243,12 +243,12 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
-                              dict: Dict[str, Any]):
-        task_def = super().build_full_definition(task_type, dict)
+                              dictionary: Dict[str, Any]):
+        task_def = super().build_full_definition(task_type, dictionary)
 
         try:
             presets = cls._get_presets(task_def.options.input_stream_path)
-            options = dict.get('options', {})
+            options = dictionary.get('options', {})
             video_options = options.get('video', {})
             audio_options = options.get('audio', {})
 
@@ -274,7 +274,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             task_def.options.video_params = video_params
             task_def.options.output_container = output_container
             task_def.options.audio_params = audio_params
-            task_def.options.name = dict.get('name', '')
+            task_def.options.name = dictionary.get('name', '')
 
             logger.debug(
                 'Transcoding task definition has been built [definition={}]'
@@ -303,10 +303,14 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,
-                                 dict: Dict[str, Any]):
+                                 dictionary: Dict[str, Any]):
         df = super(TranscodingTaskBuilder, cls).build_minimal_definition(
-            task_type, dict)
-        stream = cls._get_required_field(dict, 'resources', is_type_of(list))[0]
+            task_type, dictionary)
+        stream = cls._get_required_field(
+            dictionary,
+            'resources',
+            is_type_of(list),
+        )[0]
         df.options.input_stream_path = stream
         return df
 
@@ -323,9 +327,11 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         return {'container': 'mp4'}
 
     @classmethod
-    def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
-            -> Any:
-        v = dict.get(key)
+    def _get_required_field(cls,
+                            dictionary,
+                            key: str,
+                            validator=lambda _: True) -> Any:
+        v = dictionary.get(key)
         if not v or not validator(v):
             raise TranscodingTaskBuilderException(
                 'Field {} is required in the task definition'.format(key))
