@@ -358,10 +358,14 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file = self.output_path + '/' + \
-            settings.get('name') + '.' + self.output_extension
-        print("Verifying the output file: {}".format(output_file))
-        if Path(output_file).is_file():
+        output_file_name = settings.get('name') + '.' + self.output_extension
+
+        print("Verifying output file: {}".format(output_file_name))
+        found_files = list(
+            Path(self.output_path).glob(f'**/{output_file_name}')
+        )
+
+        if len(found_files) > 0 and found_files[0].is_file():
             print("Output present :)")
             self.next()
         else:
