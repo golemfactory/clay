@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from subprocess import SubprocessError
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
@@ -19,6 +20,8 @@ from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
     RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, Prerequisites
 from golem.envs.docker import DockerPayload, DockerPrerequisites
+
+logger = logging.getLogger(__name__)
 
 # Keys used by hypervisors for memory and CPU constraints
 mem = CONSTRAINT_KEYS['mem']
@@ -82,23 +85,29 @@ class DockerCPUEnvironment(Environment):
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:
+        logger.info('Checking environment support status...')
         if not DockerCommandHandler.docker_available():
             return EnvSupportStatus(False, "Docker executable not found")
         if not cls._check_docker_version():
             return EnvSupportStatus(False, "Wrong docker version")
         if cls._get_hypervisor_class() is None:
             return EnvSupportStatus(False, "No supported hypervisor found")
+        logger.info('Environment supported.')
         return EnvSupportStatus(True)
 
     @classmethod
     def _check_docker_version(cls) -> bool:
+        logger.info('Checking docker version...')
         try:
             version_string = DockerCommandHandler.run("version")
         except SubprocessError:
+            logger.info('Checking docker version failed.')
             return False
         if version_string is None:
+            logger.info('Docker version returned no output.')
             return False
         version = version_string.lstrip("Docker version ").split(",")[0]
+        logger.info('Found docker version: %s', version)
         return version in cls.SUPPORTED_DOCKER_VERSIONS
 
     @classmethod
@@ -141,14 +150,17 @@ class DockerCPUEnvironment(Environment):
             raise ValueError(f"Cannot prepare because environment is in "
                              f"invalid state: '{self._status}'")
         self._status = EnvStatus.PREPARING
+        logger.info("Preparing environment...")
 
         def _prepare():
             try:
                 self._hypervisor.setup()
             except Exception:
+                logger.exception("Preparing environment failed.")
                 self._status = EnvStatus.DISABLED
                 raise
             else:
+                logger.info("Environment successfully enabled.")
                 self._status = EnvStatus.ENABLED
 
         return deferToThread(_prepare)
@@ -158,14 +170,17 @@ class DockerCPUEnvironment(Environment):
             raise ValueError(f"Cannot clean up because environment is in "
                              f"invalid state: '{self._status}'")
         self._status = EnvStatus.CLEANING_UP
+        logger.info("Cleaning up environment...")
 
         def _clean_up():
             try:
                 self._hypervisor.quit()
             except Exception:
+                logger.exception("Cleaning up environment failed.")
                 self._status = EnvStatus.ENABLED
                 raise
             else:
+                logger.info("Environment successfully disabled.")
                 self._status = EnvStatus.DISABLED
 
         return deferToThread(_clean_up)
@@ -189,10 +204,17 @@ class DockerCPUEnvironment(Environment):
         if self._status != EnvStatus.ENABLED:
             raise ValueError(f"Cannot prepare prerequisites because environment"
                              f"is in invalid state: '{self._status}'")
+        logger.info("Preparing prerequisites...")
 
         def _prepare():
             args = [f"{prerequisites.image}:{prerequisites.tag}"]
-            DockerCommandHandler.run("pull", args=args)
+            try:
+                DockerCommandHandler.run("pull", args=args)
+            except Exception:
+                logger.exception("Preparing prerequisites failed.")
+                raise
+            else:
+                logger.info("Prerequisites prepared.")
 
         return deferToThread(_prepare)
 
@@ -208,21 +230,25 @@ class DockerCPUEnvironment(Environment):
         if self._status != EnvStatus.DISABLED:
             raise ValueError(
                 "Config can be updated only when the environment is disabled")
+        logger.info("Updating environment configuration...")
 
         self._validate_config(config)
         if config.work_dir != self._config.work_dir:
             self._hypervisor.update_work_dir(config.work_dir)
         self._constrain_hypervisor(config)
         self._config = DockerCPUConfig(*config)
+        logger.info("Configuration updated.")
 
     @classmethod
     def _validate_config(cls, config: DockerCPUConfig) -> None:
+        logger.info("Validating configuration...")
         if not config.work_dir.is_dir():
             raise ValueError(f"Invalid working directory: '{config.work_dir}'")
         if config.memory_mb < cls.MIN_MEMORY_MB:
             raise ValueError(f"Not enough memory: {config.memory_mb} MB")
         if config.cpu_count < cls.MIN_CPU_COUNT:
             raise ValueError(f"Not enough CPUs: {config.cpu_count}")
+        logger.info("Configuration positively validated.")
 
     def _constrain_hypervisor(self, config: DockerCPUConfig) -> None:
         current = self._hypervisor.constraints()
@@ -231,8 +257,18 @@ class DockerCPUEnvironment(Environment):
             cpu: config.cpu_count
         }
         if target != current:
-            with self._hypervisor.reconfig_ctx():
-                self._hypervisor.constrain(**target)
+            logger.info("Hypervisor configuration differs. "
+                        "Reconfiguring hypervisor...")
+            try:
+                with self._hypervisor.reconfig_ctx():
+                    self._hypervisor.constrain(**target)
+            except Exception:
+                logger.exception("Reconfiguring hypervisor failed.")
+                raise
+            else:
+                logger.info("Hypervisor successfully reconfigured.")
+        else:
+            logger.info("No need to reconfigure hypervisor.")
 
     def listen(self, event_id: EnvEventId,
                callback: Callable[[EnvEvent], Any]) -> None:
@@ -249,5 +285,6 @@ class DockerCPUEnvironment(Environment):
             assert isinstance(config, DockerCPUConfig)
         else:
             config = self.config()
+        logger.info("Creating runtime...")
         return DockerCPURuntime(payload, config)
 

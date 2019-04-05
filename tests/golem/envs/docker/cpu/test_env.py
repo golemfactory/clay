@@ -197,6 +197,10 @@ class TestDockerCPUEnv(TestCase):
         get_hypervisor.return_value.instance.return_value = self.hypervisor
         self.env = DockerCPUEnvironment(self.config)
 
+        logger_patch = patch('logger')
+        self.logger = logger_patch.start()
+        self.addCleanup(logger_patch.stop)
+
 
 class TestPrepare(TestDockerCPUEnv):
 
@@ -223,6 +227,7 @@ class TestPrepare(TestDockerCPUEnv):
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.DISABLED)
+            self.logger.exception.assert_called_once()
         deferred.addCallback(_check)
 
         return deferred
@@ -263,6 +268,7 @@ class TestCleanup(TestDockerCPUEnv):
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.ENABLED)
+            self.logger.exception.assert_called_once()
         deferred.addCallback(_check)
 
         return deferred
