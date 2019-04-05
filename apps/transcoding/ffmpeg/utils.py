@@ -151,11 +151,16 @@ class StreamOperator:
             EnvironmentsManager().add_environment(env)
 
         dtt = DockerTaskThread(
-            docker_images=[DockerImage(
-                repository=FFMPEG_DOCKER_IMAGE, tag=FFMPEG_DOCKER_TAG)],
+            docker_images=[
+                DockerImage(
+                    repository=FFMPEG_DOCKER_IMAGE,
+                    tag=FFMPEG_DOCKER_TAG
+                )
+            ],
             extra_data=extra_data,
             dir_mapping=dir_mapping,
-            timeout=timeout)
+            timeout=timeout
+        )
 
         dtt.run()
         if dtt.error:
