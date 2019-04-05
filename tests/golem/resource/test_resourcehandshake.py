@@ -10,15 +10,13 @@ from golem_messages import message
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from twisted.internet.defer import Deferred
 
-from golem.network.hyperdrive.client import HyperdriveClientOptions, \
-    HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
 from golem.task.acl import get_acl
-from golem.testutils import TempDirFixture, DatabaseFixture
+from golem.testutils import TempDirFixture
 
 
 class TestResourceHandshake(TempDirFixture):

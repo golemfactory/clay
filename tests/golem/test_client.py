@@ -20,6 +20,9 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem import model
 from golem import testutils
+from golem.appconfig import (
+    DEFAULT_HYPERDRIVE_RPC_PORT, DEFAULT_HYPERDRIVE_RPC_ADDRESS
+)
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, \
@@ -110,6 +113,10 @@ def make_client(*_, **kwargs):
         'use_monitor': False,
         'concent_variant': CONCENT_CHOICES['disabled'],
     }
+    default_kwargs['config_desc'].hyperdrive_rpc_address = \
+        DEFAULT_HYPERDRIVE_RPC_ADDRESS
+    default_kwargs['config_desc'].hyperdrive_rpc_port = \
+        DEFAULT_HYPERDRIVE_RPC_PORT
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
     return client
