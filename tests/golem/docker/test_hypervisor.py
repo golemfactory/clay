@@ -52,13 +52,16 @@ def command(self, key, machine_name=None, args=None, shell=False):
 
 class MockHypervisor(DockerMachineHypervisor):
     # pylint: disable=method-hidden
-
     def __init__(self, manager=None, **_kwargs):
         super().__init__(manager or mock.Mock())
         self.recover_ctx = self.ctx
         self.restart_ctx = self.ctx
         self.reconfig_ctx = self.ctx
         self.constrain = mock.Mock()
+
+    @classmethod
+    def is_available(cls) -> bool:
+        return True
 
     @contextmanager
     def ctx(self, name=None, *_):

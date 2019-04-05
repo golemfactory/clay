@@ -42,8 +42,8 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
         dict_['work_dir'] = str(dict_['work_dir'])
         return dict_
 
-    @classmethod
-    def from_dict(cls, dict_: Dict[str, Any]) -> 'DockerCPUConfig':
+    @staticmethod
+    def from_dict(dict_: Dict[str, Any]) -> 'DockerCPUConfig':
         work_dir = Path(dict_.pop('work_dir'))
         return DockerCPUConfig(work_dir=work_dir, **dict_)
 
@@ -101,10 +101,10 @@ class DockerCPUEnvironment(Environment):
         try:
             version_string = DockerCommandHandler.run("version")
         except SubprocessError:
-            logger.info('Checking docker version failed.')
+            logger.exception('Checking docker version failed.')
             return False
         if version_string is None:
-            logger.info('Docker version returned no output.')
+            logger.error('Docker version returned no output.')
             return False
         version = version_string.lstrip("Docker version ").split(",")[0]
         logger.info('Found docker version: %s', version)
@@ -199,7 +199,7 @@ class DockerCPUEnvironment(Environment):
             -> DockerPrerequisites:
         return DockerPrerequisites(**prerequisites_dict)
 
-    def prepare_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
         assert isinstance(prerequisites, DockerPrerequisites)
         if self._status != EnvStatus.ENABLED:
             raise ValueError(f"Cannot prepare prerequisites because environment"

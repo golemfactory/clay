@@ -4,6 +4,8 @@ from typing import Any, Callable, Dict, List, Optional, NamedTuple
 
 from twisted.internet.defer import Deferred
 
+from golem.core.simpleserializer import DictSerializable
+
 CounterId = str
 CounterUsage = Any
 
@@ -16,31 +18,19 @@ RuntimeEventId = str
 RuntimeEvent = Any  # TODO: Define runtime events
 
 
-class Serializable(ABC):
-
-    @abstractmethod
-    def to_dict(self) -> Dict[str, Any]:
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def from_dict(cls, dict_: Dict[str, Any]) -> 'Serializable':
-        raise NotImplementedError
-
-
-class EnvConfig(Serializable, ABC):
+class EnvConfig(DictSerializable, ABC):
     """ Environment-wide configuration. Specifies e.g. available resources. """
 
 
-class Prerequisites(Serializable, ABC):
+class Prerequisites(DictSerializable, ABC):
     """
     Environment-specific requirements for computing a task. Distributed with the
     task header. Providers are expected to prepare (download, install, etc.)
-    prerequisites in advance no to waste computation time.
+    prerequisites in advance not to waste computation time.
     """
 
 
-class Payload(Serializable, ABC):
+class Payload(DictSerializable, ABC):
     """
     A definition for Runtime. Environment-specific description of computation to
     be run. Received when provider is assigned a subtask.
@@ -160,11 +150,11 @@ class Environment(ABC):
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
             -> Prerequisites:
         """ Build Prerequisites struct from supplied dictionary. Returned value
-            is of appropriate type for calling prepare_prerequisites(). """
+            is of appropriate type for calling install_prerequisites(). """
         raise NotImplementedError
 
     @abstractmethod
-    def prepare_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
         """ Prepare Prerequisites for running a computation. Assumes current
             status is 'ENABLED'. """
         raise NotImplementedError

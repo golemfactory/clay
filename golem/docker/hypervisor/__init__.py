@@ -31,9 +31,9 @@ class Hypervisor(ABC):
         self._work_dir: Optional[Path] = None
 
     @classmethod
+    @abstractmethod
     def is_available(cls) -> bool:
-        # FIXME: Implement an actual check
-        return True
+        raise NotImplementedError
 
     def setup(self) -> None:
         if not self.vm_running():

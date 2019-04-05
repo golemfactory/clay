@@ -76,15 +76,19 @@ class TestSupported(TestCase):
 
 class TestCheckDockerVersion(TestCase):
 
+    @patch('logger')
     @patch_handler('run', side_effect=SubprocessError)
-    def test_command_error(self, run):
+    def test_command_error(self, run, logger):
         self.assertFalse(DockerCPUEnvironment._check_docker_version())
         run.assert_called_with('version')
+        logger.exception.assert_called_once()
 
+    @patch('logger')
     @patch_handler('run', return_value=None)
-    def test_no_version(self, run):
+    def test_no_version(self, run, logger):
         self.assertFalse(DockerCPUEnvironment._check_docker_version())
         run.assert_called_with('version')
+        logger.error.assert_called_once()
 
     @patch_handler('run', return_value='(╯°□°)╯︵ ┻━┻')
     def test_invalid_version_string(self, run):
@@ -298,12 +302,12 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
 
     def test_wrong_type(self):
         with self.assertRaises(AssertionError):
-            self.env.prepare_prerequisites(object())
+            self.env.install_prerequisites(object())
 
     def test_env_disabled(self):
         prereqs = Mock(spec=DockerPrerequisites)
         with self.assertRaises(ValueError):
-            self.env.prepare_prerequisites(prereqs)
+            self.env.install_prerequisites(prereqs)
 
     def test_pull_image_error(self):
         run_patch = patch_handler("run", side_effect=OSError)
@@ -312,7 +316,7 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
 
         self.env._status = EnvStatus.ENABLED
         prereqs = Mock(spec=DockerPrerequisites)
-        deferred = self.env.prepare_prerequisites(prereqs)
+        deferred = self.env.install_prerequisites(prereqs)
         return self.assertFailure(deferred, OSError)
 
 
