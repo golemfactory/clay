@@ -506,6 +506,21 @@ class TaskHeaderKeeper:
 
         return self.tasks_by_owner[owner_key_id]
 
+    def find_newest_node(self, node_id) -> typing.Optional[dt_p2p.Node]:
+        node: typing.Optional[dt_p2p.Node] = None
+        timestamp: int = 0
+        task_ids = self._get_tasks_by_owner_set(owner_key_id=node_id)
+        for task_id in task_ids:
+            try:
+                task_header: dt_tasks.TaskHeader = self.task_headers[task_id]
+            except KeyError:
+                continue
+            if task_header.timestamp < timestamp:
+                continue
+            node = task_header.task_owner
+            timestamp = task_header.timestamp
+        return node
+
     def check_max_tasks_per_owner(self, owner_key_id):
         owner_task_set = self._get_tasks_by_owner_set(owner_key_id)
 

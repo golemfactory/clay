@@ -6,6 +6,7 @@ import typing
 import golem_messages
 from golem_messages import exceptions as msg_exceptions
 
+from golem import decorators
 from golem import model
 from golem.core import variables
 
@@ -65,6 +66,7 @@ def waiting() -> typing.Iterator[str]:
         yield db_row.node
 
 
+@decorators.run_with_db()
 def sweep() -> None:
     """Sweep ancient messages"""
     with READ_LOCK:

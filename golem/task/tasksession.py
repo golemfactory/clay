@@ -23,6 +23,7 @@ from golem.docker.image import DockerImage
 from golem.marketplace import scale_price, Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
+from golem.network import nodeskeeper
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
@@ -457,6 +458,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
+                node_info=self.task_server.client.node,
             ),
             send_unverified=True
         )
@@ -582,7 +584,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Can not accept offer: Resource handshake is'
                            ' required. task_id=%r, node=%r',
                            msg.task_id, node_name_id)
-            self._start_handshake(self.key_id)
+            self.task_server.start_handshake(self.key_id)
             return
 
         elif self._handshake_in_progress(self.key_id):
@@ -1040,6 +1042,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.key_id is None:
             self.key_id = msg.client_key_id
             send_hello = True
+
+        nodeskeeper.store(msg.node_info)
 
         if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
