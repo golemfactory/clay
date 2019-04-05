@@ -16,7 +16,8 @@ import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.transcoding.common import TranscodingException
-from apps.transcoding.ffmpeg.utils import StreamOperator
+from apps.transcoding.ffmpeg.utils import StreamOperator, \
+    VIDEO_ONLY_CONTAINER_SUFFIX
 from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -97,10 +98,15 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         input_file = self.task_resources[0]
 
         stream_operator = StreamOperator()
+        video_only_file = stream_operator.extract_video_streams(
+            input_file,
+            dir_manager,
+            task_id)
         chunks, video_metadata = stream_operator.split_video(
-            input_file, self.task_definition.subtasks_count,
-            dir_manager, task_id)
-
+            video_only_file,
+            self.task_definition.subtasks_count,
+            dir_manager,
+            task_id)
         if len(chunks) < self.total_tasks:
             logger.warning('%d subtasks was requested but video splitting '
                            'process resulted in %d chunks.',
@@ -161,15 +167,32 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         logger.info('Merging video [task_id = %s]',
                     self.task_definition.task_id)
 
+        output_basename = os.path.basename(self.task_definition.output_file)
+        (output_stem, output_extension) = os.path.splitext(output_basename)
+        merged_basename = (
+            output_stem +
+            VIDEO_ONLY_CONTAINER_SUFFIX + '_TC' +
+            output_extension)
+
+        assert len(self.task_definition.resources) == 1, \
+            "Assumption: input file is the only resource in a transcoding task"
+        input_file = next(iter(self.task_definition.resources))
+
         stream_operator = StreamOperator()
-        path = stream_operator.merge_video(
-            os.path.basename(self.task_definition.output_file),
-            self.task_dir, self.collected_files)
+        stream_operator.merge_video(
+            merged_basename,
+            self.task_dir,
+            self.collected_files)
+        output_file = stream_operator.replace_video_streams(
+            input_file,
+            merged_basename,
+            output_basename,
+            self.task_dir)
 
         # Move result to desired location.
         os.makedirs(os.path.dirname(self.task_definition.output_file),
                     exist_ok=True)
-        move(path, self.task_definition.output_file)
+        move(output_file, self.task_definition.output_file)
 
         logger.info("Video merged successfully [task_id = %s]",
                     self.task_definition.task_id)
