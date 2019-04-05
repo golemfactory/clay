@@ -495,7 +495,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
-            self.p2pservice.connect_to_network()
 
             if self.monitor:
                 self.diag_service.register(self.p2pservice,
@@ -518,8 +517,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
 
-        self.resume()
-
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
@@ -529,6 +526,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+
+        self.resume()
 
     def _restore_locks(self) -> None:
         assert self.task_server is not None
@@ -582,9 +581,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 service.stop()
 
         if self.p2pservice:
+            logger.debug("Pausing p2pservice")
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
+            logger.debug("Pausing task_server")
             yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
