@@ -181,6 +181,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
+
         failed_subtask = next(iter(subtasks), None)
         if failed_subtask:
             logger.debug('Subtask {} was failed, so let resent it'
@@ -188,11 +189,11 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             failed_subtask['status'] = SubtaskStatus.resent
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
-        else:
-            assert self.last_task < self.total_tasks
-            curr = self.last_task + 1
-            self.last_task = curr
-            return curr - 1
+
+        assert self.last_task < self.total_tasks
+        curr = self.last_task + 1
+        self.last_task = curr
+        return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
