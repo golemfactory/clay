@@ -15,6 +15,17 @@ MIN_LENGTH = 5
 MIN_SCORE = 2
 
 
+def _format_response(response_dict: Dict) -> str:
+    amount = response_dict['amount']
+    currency = response_dict['currency']
+    destination = response_dict['destination']
+    gas_price = response_dict['gas_price']
+    tx_hash = response_dict['tx_hash']
+    return f"Sent {amount} {currency} to: {destination}. " \
+        f"With gas fee: {gas_price}. " \
+        f"Transaction hash (check on etherscan.io): '{tx_hash}'"
+
+
 @group(help="Manage account")
 class Account:
     client = None
@@ -130,12 +141,16 @@ class Account:
             gas_price) -> str:
         assert Account.client is not None
         amount = str(int(Decimal(amount) * denoms.ether))
-        return sync_wait(Account.client.withdraw(
-            amount,
-            destination,
-            currency,
-            int(gas_price) if gas_price else None,
-        ))
+        return sync_wait(
+            _format_response(
+                Account.client.withdraw(
+                    amount,
+                    destination,
+                    currency,
+                    int(gas_price) if gas_price else None,
+                )
+            )
+        )
 
     @command(help="Trigger graceful shutdown of your golem")
     def shutdown(self) -> str:  # pylint: disable=no-self-use

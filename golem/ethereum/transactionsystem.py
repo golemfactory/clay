@@ -516,7 +516,7 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str,
-            gas_price: Optional[int] = None) -> str:
+            gas_price: Optional[int] = None) -> Dict[str, Any]:
         self._sci: SmartContractsInterface
         assert self._sci is not None
 
@@ -568,9 +568,13 @@ class TransactionSystem(LoopingCallService):
                     log.error("Failed GNTB withdrawal: %r", receipt)
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
-            return f"Sent {amount} {currency} to: {destination}. " \
-                f"With gas fee: {gas_price}. " \
-                f"Transaction hash (check on etherscan.io): '{tx_hash}'"
+            return {
+                'amount': amount,
+                'currency': currency,
+                'destination': destination,
+                'gas_price': gas_price,
+                'th_hash': tx_hash
+            }
 
         raise ValueError('Unknown currency {}'.format(currency))
 
