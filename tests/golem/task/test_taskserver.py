@@ -117,6 +117,7 @@ class TaskServerTestBase(LogTestCase,
                 client=self.client,
                 use_docker_manager=False,
             )
+        self.ts.resource_manager.storage.get_dir.return_value = self.tempdir
 
     def tearDown(self):
         LogTestCase.tearDown(self)
@@ -127,6 +128,7 @@ class TaskServerTestBase(LogTestCase,
 
 
 class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
+    @patch('twisted.internet.task', create=True)
     @patch(
         'golem.network.concent.handlers_library.HandlersLibrary'
         '.register_handler',
@@ -154,6 +156,16 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header.task_id
+        task_owner_key = task_header.task_owner.key  # pylint: disable=no-member
+        self.ts.start_handshake(
+            key_id=task_owner_key,
+            task_id=task_id,
+        )
+        handshake = self.ts.resource_handshakes[task_owner_key]
+        handshake.local_result = True
+        handshake.remote_result = True
+        self.ts.get_environment_by_id = Mock(return_value=None)
+        self.ts.get_key_id = Mock(return_value='0'*128)
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
@@ -247,6 +259,18 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.verify_header_sig = lambda x: True
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
+        task_id = task_header.task_id
+        # pylint: disable=no-member
+        task_owner_key = task_header.task_owner.key
+        self.ts.start_handshake(
+            key_id=task_owner_key,
+            task_id=task_id,
+        )
+        handshake = self.ts.resource_handshakes[task_owner_key]
+        handshake.local_result = True
+        handshake.remote_result = True
+        self.ts.get_environment_by_id = Mock(return_value=None)
+        self.ts.get_key_id = Mock(return_value='0'*128)
 
         fd, result_file = tempfile.mkstemp()
         os.close(fd)
@@ -992,12 +1016,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
-        rm = Mock(build_client_options=Mock(return_value=built_options))
-        self.ts._get_resource_manager = Mock(return_value=rm)
+        self.ts.resource_manager.build_client_options\
+            .return_value=built_options
 
-        assert self.ts.get_download_options(
-            received_options=None,
-        ) is built_options
+        self.assertIs(
+            self.ts.get_download_options(received_options=None),
+            built_options,
+        )
 
         assert self.ts.get_download_options(
             received_options={'options': {'peers': ['Invalid']}},
@@ -1183,9 +1208,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.task_manager.delete_task = Mock(
             side_effect=self.ts.task_manager.delete_task
         )
-        self.ts._get_resource_manager = Mock(
-            return_value=self.resource_manager
-        )
+        self.ts.client.resource_server.resource_manager = self.resource_manager
         self.ts.task_manager.dump_task = Mock()
         self.task_count = 3
 

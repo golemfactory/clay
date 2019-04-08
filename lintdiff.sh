@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -e
 # Checks if new lint messages have appeared
 
 FETCH_ORIGIN=origin
@@ -60,24 +60,43 @@ cleanup_artifacts() {
     git checkout "$CURRENT_BRANCH" -- || exit 1
 }
 
-diff-lines() {
+list-added-lines-from-diff() {
     # Function taken from: https://stackoverflow.com/questions/8259851/using-git-diff-how-can-i-get-added-and-modified-lines-numbers
     # Adjusted the 'echo' line to not print the line content.
+    # EDIT 2019-04-04: A few more fixes and tweaks but I won't be listing them here. See git log.
     local path=
     local line=
     while read; do
-        esc=$'\033'
-        if [[ $REPLY =~ ---\ (a/)?.* ]]; then
+        if [[ $REPLY =~ ^---\ (a/)?.* ]]; then
+            # A line that looks like one of these:
+            # --- a/apps/rendering/resources/utils.py
+            # --- /dev/null
+            #
+            # Skip it. It does not provide any useful information here.
             continue
-        elif [[ $REPLY =~ \+\+\+\ (b/)?([^[:blank:]$esc]+).* ]]; then
+        elif [[ $REPLY =~ ^\+\+\+\ (b/)?([^[:blank:]]+).* ]]; then
+            # A line that looks like this:
+            # +++ a/apps/rendering/resources/utils.py
+            # +++ /dev/null
+            #
+            # It tells us which file now contains lines marked as added in the diff.
+            # If it's /dev/null, the file has been removed. We should just ignore the
+            # lines from a removed file but this will happen automatically because they
+            # all start with a - sign.
             path=${BASH_REMATCH[2]}
-        elif [[ $REPLY =~ @@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
+        elif [[ $REPLY =~ ^@@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,[0-9]+)?\ @@.* ]]; then
+            # A line that looks like this:
+            # @@ -6,2 +4,0 @@ from typing import Optional
+            #
+            # It tells us, among other things, the line number that the next line
+            # marked as added in the diff is located now at.
             line=${BASH_REMATCH[2]}
-        elif [[ $REPLY =~ ^($esc\[[0-9;]+m)*([\ +-]) ]]; then
+        elif [[ $REPLY =~ ^\+ ]]; then
+            # All the other lines should start either with + or -
+            # We're only interested in thos starting with + because only they exist
+            # in the code that has been fed to the linter.
             echo "$path:$line:"
-            if [[ ${BASH_REMATCH[2]} != - ]]; then
-                ((line++))
-            fi
+            ((line++))
         fi
     done
 }
@@ -92,8 +111,8 @@ commit=$(git rev-parse HEAD)
 git checkout "$CURRENT_BRANCH" -- .pylintrc setup.cfg
 echo "Checking branch $REF_BRANCH, commit: $commit..."
 echo $@
-$@ >$REF_OUT
-check_errcode $?
+$@ > $REF_OUT && errcode=0 || errcode=$?
+check_errcode $errcode
 
 # Now take back the checked out config, go back to the new branch
 git reset --hard HEAD
@@ -103,17 +122,19 @@ trap - EXIT
 commit=$(git rev-parse HEAD)
 echo "Checking branch $CURRENT_BRANCH, commit: $commit..."
 echo $@
-$@ >$CURRENT_OUT
-check_errcode $?
+$@ > $CURRENT_OUT && errcode=0 || errcode=$?
+check_errcode $errcode
 
-diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT))
+diff=$(diff --old-line-format="" --unchanged-line-format="" -w <(sort $REF_OUT) <(sort $CURRENT_OUT)) || true
 if [ -n "$diff" ]; then
     echo -e "New findings:\n"
     echo "$diff"
 
     # Remove lines from findings based on lines changed
-    DIFF_LINES=$(git diff --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | diff-lines)
-    CHANGED_DIFF=$(echo "$diff" | grep -F "$DIFF_LINES")
+    diff_line_file="$(mktemp tmp-golem-changed-lines.XXXXXXXXXX -t)"
+    git diff --no-color --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | list-added-lines-from-diff > "$diff_line_file" || true
+    CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")"
+    rm "$diff_line_file"
 
     echo -e "\n\nChanged lines findings:\n"
     echo "$CHANGED_DIFF"
