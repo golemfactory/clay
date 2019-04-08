@@ -36,6 +36,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import taskstate
+from golem.task.result.resultpackage import ZipPackager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.testutils import TempDirFixture
@@ -266,7 +267,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
+        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id,
+                                           subtask_id="subtask1")
         ctd["resources"] = self.additional_dir_content([5, [2], [4]])
         ctd["deadline"] = timeout_to_deadline(120)
         task_state = self._set_task_state()
@@ -277,6 +279,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
         options = HyperdriveClientOptions("CLI1", 0.3)
         ts2.task_server.get_share_options.return_value = options
+        new_path = os.path.join(self.path, "tempzip")
+        zp = ZipPackager()
+        _, hash_ = zp.create(new_path, ctd["resources"])
         ts2.interpret(mt)
         started = time.time()
         while ts2.conn.send_message.call_args is None:
@@ -293,10 +298,10 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ['requestor_ethereum_public_key', self.requestor_key],
             ['compute_task_def', ctd],
             ['want_to_compute_task', (False, (mt.header, mt.sig, mt.slots()))],
-            ['package_hash', 'sha1:' + task_state.package_hash],
+            ['package_hash', 'sha1:' + hash_],
             ['concent_enabled', self.use_concent],
             ['price', 1],
-            ['size', task_state.package_size],
+            ['size', os.path.getsize(new_path)],
             ['ethsig', ms.ethsig],
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
                                    'options': {}}],

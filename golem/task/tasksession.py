@@ -629,14 +629,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_assign(reasons.NoMoreSubtasks)
                 return
 
+            resources_result = None
             if ctd["resources"]:
                 resources_result = yield add_resources(
                     self.task_server.client,
                     ctd["resources"],
-                    msg.task_id,
+                    ctd["subtask_id"],
                     common.deadline_to_timeout(ctd["deadline"])
                 )
-                ctd["resources"] = self.task_server.get_resources(msg.task_id)
+                resources = self.task_server.get_resources(ctd['subtask_id'])
+                ctd["resources"] = resources
                 logger.info("resources_result: %r", resources_result)
             logger.info(
                 "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
@@ -650,6 +652,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.price,
                 task.header.subtask_timeout,
             )
+            if resources_result:
+                _, _, package_hash, package_size = resources_result
+            else:
+                package_hash = task_state.package_hash
+                package_size = task_state.package_size
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
@@ -657,12 +664,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 requestor_public_key=task.header.task_owner.key,
                 requestor_ethereum_public_key=task.header.task_owner.key,
                 provider_id=self.key_id,
-                package_hash='sha1:' + task_state.package_hash,
+                package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=task_state.package_size,
+                size=package_size,
                 resources_options=self.task_server.get_share_options(
-                    ctd['task_id'], self.address).__dict__
+                    ctd['subtask_id'], self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
