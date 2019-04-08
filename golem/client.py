@@ -47,6 +47,7 @@ from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
@@ -54,6 +55,7 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.transport import msg_queue
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.ranking import Ranking
@@ -166,6 +168,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
+            DailyJobsService(),
         ]
 
         clean_resources_older_than = \
@@ -408,7 +411,22 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         logger.info("Starting resource server ...")
 
-        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager = HyperdriveDaemonManager(
+            self.datadir,
+            daemon_config={
+                k: v for k, v in {
+                    'host': self.config_desc.hyperdrive_address,
+                    'port': self.config_desc.hyperdrive_port,
+                    'rpc_host': self.config_desc.hyperdrive_rpc_address,
+                    'rpc_port': self.config_desc.hyperdrive_rpc_port,
+                }.items()
+                if v is not None
+            },
+            client_config={
+                'port': self.config_desc.hyperdrive_rpc_port,
+                'host': self.config_desc.hyperdrive_rpc_address,
+            }
+        )
         self.daemon_manager.start()
 
         hyperdrive_addrs = self.daemon_manager.public_addresses(
@@ -425,7 +443,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         resource_manager = HyperdriveResourceManager(
             dir_manager=dir_manager,
-            daemon_address=hyperdrive_addrs
+            daemon_address=hyperdrive_addrs,
+            client_kwargs={
+                'host': self.config_desc.hyperdrive_rpc_address,
+                'port': self.config_desc.hyperdrive_rpc_port,
+            },
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
@@ -1567,3 +1589,24 @@ class MaskUpdateService(LoopingCallService):
                 num_bits=self._update_num_bits)
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
+
+
+class DailyJobsService(LoopingCallService):
+    def __init__(self):
+        super().__init__(
+            interval_seconds=timedelta(days=1).total_seconds(),
+        )
+
+    def _run(self) -> None:
+        jobs = (
+            nodeskeeper.sweep,
+            msg_queue.sweep,
+        )
+        logger.info('Running daily jobs')
+        for job in jobs:
+            try:
+                job()
+            except Exception as e:  # pylint: disable=broad-except
+                logger.warning("Daily job failed. job=%r, e=%s", job, e)
+                logger.debug("Details", exc_info=True)
+        logger.info('Finished daily jobs')

@@ -1,4 +1,6 @@
 import pathlib
+import re
+import unittest
 from unittest.mock import patch
 
 from faker import Faker
@@ -64,3 +66,28 @@ class TestTermsOfUseBase(TestWithDatabase):
         """
         read_mock.return_value = content
         self.assertEqual(self.terms.show(), content)
+
+
+class TermsOfUseContentsTest(unittest.TestCase):
+    def assertContentsValid(self, contents):
+        matched = re.search(
+            r"([^a-zA-Z0-9_\n\<\>\/\.\:\"\=\x20\(\)\,\;\'\-\%])",
+            contents, flags=re.DOTALL)
+
+        try:
+            bad_char = matched.group(1)
+        except AttributeError:
+            bad_char = ''
+
+        self.assertFalse(
+            matched,
+            msg="Found unacceptable character {} ({})".format(
+                bad_char, bad_char.encode('utf-8').hex()
+            )
+        )
+
+    def test_tos_contents_valid(self):
+        self.assertContentsValid(terms.TermsOfUse.show())
+
+    def test_concent_tos_contents_valid(self):
+        self.assertContentsValid(terms.ConcentTermsOfUse.show())

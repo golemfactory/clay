@@ -596,15 +596,11 @@ class CoreTaskBuilder(TaskBuilder):
             definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
-        base_path = options['output_path']
         output_dir_name = definition.name + \
             datetime.now().strftime(cls.OUTPUT_DIR_TIME_FORMAT)
-        full_output_path = os.path.join(base_path, output_dir_name)
-
-        os.makedirs(full_output_path, exist_ok=True)
 
         return cls.get_nonexistent_path(
-            full_output_path,
+            os.path.join(options['output_path'], output_dir_name),
             definition.name,
             options.get('format', '')
         )
