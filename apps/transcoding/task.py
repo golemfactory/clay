@@ -16,8 +16,7 @@ import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.transcoding.common import TranscodingException
-from apps.transcoding.ffmpeg.utils import StreamOperator, \
-    VIDEO_ONLY_CONTAINER_SUFFIX
+from apps.transcoding.ffmpeg.utils import StreamOperator
 from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -164,24 +163,15 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                     self.task_definition.task_id)
 
         output_basename = os.path.basename(self.task_definition.output_file)
-        (output_stem, output_extension) = os.path.splitext(output_basename)
-        merged_basename = (
-            output_stem +
-            VIDEO_ONLY_CONTAINER_SUFFIX + '_TC' +
-            output_extension)
 
         assert len(self.task_definition.resources) == 1, \
             "Assumption: input file is the only resource in a transcoding task"
         input_file = next(iter(self.task_definition.resources))
 
         stream_operator = StreamOperator()
-        stream_operator.merge_video(
-            merged_basename,
-            self.task_dir,
-            self.collected_files)
-        output_file = stream_operator.replace_video_streams(
+        output_file = stream_operator.merge_and_replace_video_streams(
             input_file,
-            merged_basename,
+            self.collected_files,
             output_basename,
             self.task_dir)
 

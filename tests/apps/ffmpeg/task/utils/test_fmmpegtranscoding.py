@@ -50,7 +50,7 @@ class TestffmpegTranscoding(TempDirFixture):
                 1, self.dir_manager,
                 str(uuid.uuid4()))
 
-    def test_extract_split_and_merge_video(self):
+    def test_extract_split_merge_and_replace_video(self):
         parts = 2
         task_id = str(uuid.uuid4())
         output_name = 'test.mp4'
@@ -75,13 +75,21 @@ class TestffmpegTranscoding(TempDirFixture):
             assert os.path.isfile(transcoded_segment)
             tc_segments.append(transcoded_segment)
 
-        self.stream_operator.merge_video(output_name, output_dir, tc_segments)
+        self.stream_operator.merge_and_replace_video_streams(
+            self.RESOURCE_STREAM,
+            tc_segments,
+            output_name,
+            output_dir)
         assert os.path.isfile(os.path.join(output_dir, 'merge',
                                            'output', output_name))
 
-    def test_merge_video_empty_dir(self):
+    def test_merge_and_replace_video_empty_dir(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator.merge_video('output.mp4', self.tempdir, [])
+            self.stream_operator.merge_and_replace_video_streams(
+                self.RESOURCE_STREAM,
+                [],
+                'output.mp4',
+                self.tempdir)
 
     def test_collect_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
@@ -147,12 +155,13 @@ class TestffmpegTranscoding(TempDirFixture):
                     '/tmp/testtest_TC.ts',
                 ])
 
-    def test_merge_nonexistent_files(self):
+    def test_merge_and_replace_nonexistent_files(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator.merge_video('output.mp4',
-                                             self.tempdir,
-                                             ['test_TC.m3u8', 'test_TC.ts'])
-
+            self.stream_operator.merge_and_replace_video_streams(
+                self.RESOURCE_STREAM,
+                ['test_TC.m3u8', 'test_TC.ts'],
+                'output.mp4',
+                self.tempdir)
 
 class TestffmpegDockerJob(TestDockerJob):
     def _get_test_repository(self):

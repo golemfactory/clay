@@ -33,8 +33,7 @@ logger = logging.getLogger(__name__)
 class Commands(enum.Enum):
     EXTRACT_AND_SPLIT = ('extract-and-split', 'split-results.json')
     TRANSCODE = ('transcode', '')
-    MERGE = ('merge', '')
-    REPLACE = ('replace', '')
+    MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
 
 
@@ -157,61 +156,37 @@ class StreamOperator:
             for path in results
         ]
 
-    def merge_video(self, filename, task_dir, chunks_on_host):
-        (host_dirs, chunks_in_container) = self._prepare_merge_job(
-            task_dir,
-            chunks_on_host)
-
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.MERGE.value[0],
-            'output_stream': os.path.join(DockerJob.OUTPUT_DIR, filename),
-            'chunks': chunks_in_container,
-        }
-
-        logger.debug('Merge params: %s', extra_data)
-
-        dir_mapping = DockerTaskThread.specify_dir_mapping(**host_dirs)
-        self._do_job_in_container(dir_mapping, extra_data)
-        return os.path.join(host_dirs['output'], filename)
-
-    def replace_video_streams(self,
-                              input_file_on_host,
-                              merged_file_basename,
-                              output_file_basename,
-                              task_dir):
+    def merge_and_replace_video_streams(self,
+                                        input_file_on_host,
+                                        chunks_on_host,
+                                        output_file_basename,
+                                        task_dir):
 
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
         assert os.path.isfile(input_file_on_host), \
             "Caller is responsible for ensuring that input file exists."
 
-        host_dirs = {
-            'resources': task_dir,
-            'temporary': os.path.join(task_dir, 'merge', 'work'),
-            'work': os.path.join(task_dir, 'merge', 'work'),
-            'output': os.path.join(task_dir, 'merge', 'output'),
-            'logs': os.path.join(task_dir, 'merge', 'output'),
-        }
+        (host_dirs, chunks_in_container) = self._prepare_merge_job(
+            task_dir,
+            chunks_on_host)
+
         container_files = {
             # FIXME: /golem/tmp should not be hard-coded.
             'in': os.path.join(
                 '/golem/tmp',
                 os.path.basename(input_file_on_host)),
-            'merged': os.path.join(DockerJob.OUTPUT_DIR, merged_file_basename),
             'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
         }
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.REPLACE.value[0],
+            'command': Commands.MERGE_AND_REPLACE.value[0],
             'input_file': container_files['in'],
-            'replacement_source': container_files['merged'],
+            'chunks': chunks_in_container,
             'output_file': container_files['out'],
-            'stream_type': 'v',
         }
 
-        logger.info('Replacing original video streams with merged ones')
-        logger.debug(f'Replace params: {extra_data}')
+        logger.debug('Merge and replace params: %s', extra_data)
 
         # FIXME: The environment is stored globally. Changing it will affect
         # containers started by other functions that do not do it themselves.
@@ -224,8 +199,6 @@ class StreamOperator:
             DockerTaskThread.specify_dir_mapping(**host_dirs),
             extra_data,
             env)
-
-        logger.info("Video streams replaced successfully!")
 
         return os.path.join(host_dirs['output'], output_file_basename)
 
