@@ -123,16 +123,20 @@ class TestffmpegTranscoding(TempDirFixture):
         resource_dir, output_dir, work_dir, chunks = \
             self.stream_operator._prepare_merge_job(self.tempdir, [])
 
-        assert chunks == []
-        assert resource_dir == os.path.join(self.tempdir,
-                                            'merge', 'resources')
-        assert os.path.isdir(output_dir)
-        assert output_dir == os.path.join(self.tempdir,
-                                          'merge', 'output')
-        assert os.path.isdir(output_dir)
-        assert work_dir == os.path.join(self.tempdir,
-                                        'merge', 'work')
-        assert os.path.isdir(work_dir)
+        self.assertEqual(len(chunks), 0)
+        self.assertEqual(
+            resource_dir,
+            os.path.join(self.tempdir, 'merge', 'resources')
+        )
+        self.assertTrue(os.path.isdir(output_dir))
+        self.assertEqual(
+            output_dir,
+            os.path.join(self.tempdir, 'merge', 'output'))
+        self.assertTrue(os.path.isdir(output_dir))
+        self.assertEqual(
+            work_dir,
+            os.path.join(self.tempdir, 'merge', 'work'))
+        self.assertTrue(os.path.isdir(work_dir))
 
     def test_prepare_merge_job_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
