@@ -1,6 +1,7 @@
 import logging
 
 import os
+import typing
 from collections import Iterable, Sized
 from functools import partial
 from twisted.internet.defer import Deferred
@@ -74,12 +75,18 @@ def log_error(msg, exc):
 
 class HyperdriveResourceManager(ClientHandler):
 
-    def __init__(self, dir_manager, daemon_address=None, config=None,
-                 resource_dir_method=None):
-
+    def __init__(  # noqa pylint: disable=too-many-arguments
+            self, dir_manager, daemon_address=None, config=None,  # noqa pylint: disable=unused-argument
+            resource_dir_method=None,
+            client_kwargs: typing.Optional[dict] = None,
+    ) -> None:
         super().__init__(config)
 
-        self.client = HyperdriveAsyncClient(**self.config.client)
+        self.client = HyperdriveAsyncClient(  # type: ignore
+            **self.config.client, **(client_kwargs or {}))
+        logger.info("Initializing %s, using %s",
+                    self.__class__.__name__, self.client)
+
         self.storage = ResourceStorage(dir_manager, resource_dir_method or
                                        dir_manager.get_task_resource_dir)
 

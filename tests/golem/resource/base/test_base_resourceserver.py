@@ -14,6 +14,8 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
 from golem.tools import testwithreactor
 
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
+
 node_name = 'test_suite'
 
 
@@ -66,7 +68,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         shutil.copy(test_dir_file, test_dir_file_copy)
 
-        self.resource_manager = DummyResourceManager(self.dir_manager)
+        self.resource_manager = DummyResourceManager(
+            self.dir_manager, **hyperdrive_client_kwargs())
         self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
@@ -180,7 +183,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         relative = [[r.hash, r.files] for r in resources]
 
         new_server = BaseResourceServer(
-            DummyResourceManager(self.dir_manager),
+            DummyResourceManager(
+                self.dir_manager, **hyperdrive_client_kwargs()),
             DirManager(self.path, '2'),
             self.keys_auth,
             self.client

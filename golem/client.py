@@ -408,7 +408,22 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         logger.info("Starting resource server ...")
 
-        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager = HyperdriveDaemonManager(
+            self.datadir,
+            daemon_config={
+                k: v for k, v in {
+                    'host': self.config_desc.hyperdrive_address,
+                    'port': self.config_desc.hyperdrive_port,
+                    'rpc_host': self.config_desc.hyperdrive_rpc_address,
+                    'rpc_port': self.config_desc.hyperdrive_rpc_port,
+                }.items()
+                if v is not None
+            },
+            client_config={
+                'port': self.config_desc.hyperdrive_rpc_port,
+                'host': self.config_desc.hyperdrive_rpc_address,
+            }
+        )
         self.daemon_manager.start()
 
         hyperdrive_addrs = self.daemon_manager.public_addresses(
@@ -425,7 +440,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         resource_manager = HyperdriveResourceManager(
             dir_manager=dir_manager,
-            daemon_address=hyperdrive_addrs
+            daemon_address=hyperdrive_addrs,
+            client_kwargs={
+                'host': self.config_desc.hyperdrive_rpc_address,
+                'port': self.config_desc.hyperdrive_rpc_port,
+            },
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,

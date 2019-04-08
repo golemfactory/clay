@@ -16,6 +16,8 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -82,8 +84,11 @@ class TaskManager(TaskEventListener):
 
     def __init__(
             self, node, keys_auth, root_path,
+            config_desc: ClientConfigDescriptor,
             tasks_dir="tasks", task_persistence=True,
-            apps_manager=AppsManager(), finished_cb=None):
+            apps_manager=AppsManager(),
+            finished_cb=None,
+    ):
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -110,6 +115,10 @@ class TaskManager(TaskEventListener):
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_temporary_dir,
+            client_kwargs={
+                'host': config_desc.hyperdrive_rpc_address,
+                'port': config_desc.hyperdrive_rpc_port,
+            },
         )
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager

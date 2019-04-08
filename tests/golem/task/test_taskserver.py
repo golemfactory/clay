@@ -21,6 +21,7 @@ from golem_messages.utils import encode_hex as encode_key_id
 from requests import HTTPError
 
 from golem import testutils
+from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import node_info_str
 from golem.core.keysauth import KeysAuth
@@ -42,6 +43,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.resultpackage import ExtractedPackageFactory
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
@@ -108,6 +110,8 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.ccd.init_from_app_config(
+            AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
         self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
@@ -219,6 +223,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         return_value=SupportStatus(True),
     )
     def test_request_task_concent_required(self, *_):
+        self.ts.config_desc.min_price = 0
         self.ts.client.concent_service.enabled = True
         self.ts.task_archiver = Mock()
         keys_auth = KeysAuth(self.path, 'prv_key', '')
@@ -238,8 +243,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust, *_):
-        ccd = ClientConfigDescriptor()
-        ccd.min_price = 11
+        self.ts.config_desc.min_price = 11
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         n = task_header.task_owner
@@ -1010,7 +1014,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_download_options(self, *_):
         dm = DirManager(self.path)
-        rm = HyperdriveResourceManager(dm)
+        rm = HyperdriveResourceManager(dm, **hyperdrive_client_kwargs())  # noqa pylint: disable=unexpected-keyword-arg
         self.client.resource_server.resource_manager = rm
         ts = self.ts
 

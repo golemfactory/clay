@@ -1,4 +1,5 @@
 import copy
+import itertools
 import logging
 import os
 import subprocess
@@ -18,6 +19,7 @@ logger = logging.getLogger('golem.resources')
 
 
 GOLEM_HYPERDRIVE_VERSION = '0.2.4'
+GOLEM_HYPERDRIVE_LOGFILE = 'hyperg.log'
 
 
 class HyperdriveDaemonManager(object):
@@ -25,11 +27,15 @@ class HyperdriveDaemonManager(object):
     _executable = 'hyperg'
     _min_version = semantic_version.Version(GOLEM_HYPERDRIVE_VERSION)
 
-    def __init__(self, datadir, **hyperdrive_config):
-        super(HyperdriveDaemonManager, self).__init__()
-
+    def __init__(
+            self,
+            datadir,
+            daemon_config: Optional[dict] = None,
+            client_config: Optional[dict] = None
+    ) -> None:
         self._addresses = None
-        self._config = hyperdrive_config
+        self._config = client_config or {}
+        self._daemon_config = daemon_config or {}
 
         # monitor and restart if process dies
         self._monitor = ProcessMonitor()
@@ -43,17 +49,28 @@ class HyperdriveDaemonManager(object):
             logger.warning("Creating HyperG logsdir: %s", logsdir)
             os.makedirs(logsdir)
 
+        self._daemon_config.update(
+            db=self._dir,
+            logfile=os.path.join(logsdir, GOLEM_HYPERDRIVE_LOGFILE)
+        )
+
         self._command = [
             self._executable,
-            '--db', self._dir,
-            '--logfile', os.path.join(logsdir, "hyperg.log"),
-        ]
+        ] + list(itertools.chain.from_iterable(
+            [('--' + k, str(v)) for k, v in self._daemon_config.items()]
+        ))
 
-    def addresses(self):
+    def __str__(self):
+        return self._executable
+
+    def addresses(self, suppress_warning=False):
         try:
             return self._get_addresses()
         except requests.ConnectionError:
-            logger.warning('Cannot connect to Hyperdrive daemon')
+            if not suppress_warning:
+                import traceback
+                traceback.print_stack()
+                logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 
     def version(self) -> Optional[semantic_version.Version]:
@@ -105,11 +122,13 @@ class HyperdriveDaemonManager(object):
 
     @report_calls(Component.hyperdrive, 'instance.connect')
     def _start(self, *_):
-        self._check_version()
+        version = self._check_version()
 
         # do not supervise already running processes
-        addresses = self.addresses()
+        addresses = self.addresses(suppress_warning=True)
         if addresses:
+            logger.info("%s %s already started. addresses=%s",
+                        self._executable, version, addresses)
             return
 
         process = self._create_sub()
@@ -120,12 +139,16 @@ class HyperdriveDaemonManager(object):
         else:
             raise RuntimeError("Cannot start {}".format(self._executable))
 
+        logger.info("%s %s started. Listening on %s.",
+                    self._executable, version, self.addresses())
+
     @report_calls(Component.hyperdrive, 'instance.version')
     def _check_version(self):
         version = self.version()
         if version < self._min_version:
             raise RuntimeError('HyperG version {} is required'
                                .format(self._min_version))
+        return version
 
     @report_calls(Component.hyperdrive, 'instance.check')
     def _create_sub(self):
@@ -141,7 +164,7 @@ class HyperdriveDaemonManager(object):
         deadline = time.time() + timeout
 
         while time.time() < deadline:
-            addresses = self.addresses()
+            addresses = self.addresses(suppress_warning=True)
             if addresses:
                 return
             time.sleep(1.)
