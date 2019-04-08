@@ -5,10 +5,6 @@ import sys
 
 from ffmpeg_tools import commands, meta
 
-# pylint: disable=import-error
-import m3u8
-from m3u8_utils import create_and_dump_m3u8
-
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
 RESOURCES_DIR = "/golem/resources"
@@ -27,26 +23,21 @@ def do_extract(input_file, output_file, selected_streams):
 
 
 def do_split(path_to_stream, parts):
-
     video_metadata = commands.get_metadata_json(path_to_stream)
     video_length = meta.get_duration(video_metadata)
-    split_file = commands.split_video(path_to_stream,
-                                      OUTPUT_DIR, video_length / parts)
-    m3u8_main_list = m3u8.load(split_file)
+    segment_list_path = commands.split_video(
+        path_to_stream,
+        OUTPUT_DIR,
+        video_length / parts)
 
-    results = dict()
-    segments_list = list()
+    with open(segment_list_path) as segment_list_file:
+        segment_filenames = segment_list_file.read().splitlines()
 
-    for segment in m3u8_main_list.segments:
-        segment_info = dict()
-
-        segment_info["video_segment"] = segment.uri
-
-        segments_list.append(segment_info)
-
-    results["main_list"] = split_file
-    results["segments"] = segments_list
-    results["metadata"] = video_metadata
+    results = {
+        "main_list": segment_list_path,
+        "segments": [{"video_segment": s} for s in segment_filenames],
+        "metadata": video_metadata,
+    }
 
     results_file = os.path.join(OUTPUT_DIR, "split-results.json")
     with open(results_file, 'w') as f:
