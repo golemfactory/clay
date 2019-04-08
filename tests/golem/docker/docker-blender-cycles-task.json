@@ -43,7 +43,7 @@
     900
   ],
   "output_format":"PNG",
-  "output_file": "/tmp/output.png",
+  "output_file": "output.png",
   "optimize_total":false,
   "estimated_memory":0,
   "timeout":14400,

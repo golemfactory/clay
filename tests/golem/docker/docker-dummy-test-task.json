@@ -55,5 +55,5 @@
     }
   ],
   "concent_enabled": false,
-  "output_file": "/tmp/output.png"
+  "output_file": "output.png"
 }
