@@ -1284,15 +1284,14 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             logger.error.assert_called_once()
             restart.assert_called_once_with('new_subtask_id')
 
-    def test_add_new_task_creates_output_directory(self, *_):
+    def test_add_new_task_creates_output_directory(self, mock_get_dir, *_):
+        output_dir_mock = Mock()
+        mock_get_dir.return_value = output_dir_mock
         task_definition = Mock()
         task_definition.output_file = '/some/output/file.png'
         task_mock = self._get_task_mock(task_definition=task_definition)
 
-        output_dir_mock = Mock()
-        with patch('golem.task.taskmanager.TaskManager._get_task_output_dir',
-                   return_value=output_dir_mock):
-            self.tm.add_new_task(task_mock)
+        self.tm.add_new_task(task_mock)
 
         output_dir_mock.mkdir.assert_called_once_with(
             exist_ok=True,
@@ -1300,38 +1299,37 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         )
 
     @freeze_time()
-    def test_check_timeouts_removes_output_directory(self, *_):
+    def test_check_timeouts_removes_output_directory(self, mock_get_dir, *_):
         output_dir_mock = Mock()
-        with patch('golem.task.taskmanager.TaskManager._get_task_output_dir',
-                   return_value=output_dir_mock):
-            mock_task_def = Mock()
-            mock_task_def.output_file = 'some/output/file.png'
-            start_time = datetime.datetime.now()
+        mock_get_dir.return_value = output_dir_mock
+        task_definition = Mock()
+        task_definition.output_file = 'some/output/file.png'
+        start_time = datetime.datetime.now()
 
-            with freeze_time(start_time):
-                task = self._get_task_mock(
-                    timeout=1, task_definition=mock_task_def)
+        with freeze_time(start_time):
+            task = self._get_task_mock(
+                timeout=1, task_definition=task_definition)
 
-                self.tm.add_new_task(task)
-                output_dir_mock.mkdir.assert_called_once_with(
-                    exist_ok=True,
-                    parents=True
-                )
+            self.tm.add_new_task(task)
+            output_dir_mock.mkdir.assert_called_once_with(
+                exist_ok=True,
+                parents=True
+            )
 
-                self.tm.start_task(task.header.task_id)
-                self.assertIn(
-                    self.tm.tasks_states['xyz'].status,
-                    self.tm.activeStatus,
-                )
+            self.tm.start_task(task.header.task_id)
+            self.assertIn(
+                self.tm.tasks_states['xyz'].status,
+                self.tm.activeStatus,
+            )
 
-            with freeze_time(start_time + datetime.timedelta(seconds=2)):
-                self.tm.check_timeouts()
+        with freeze_time(start_time + datetime.timedelta(seconds=2)):
+            self.tm.check_timeouts()
 
-                output_dir_mock.rmdir.assert_called_once()
-                self.assertIs(
-                    self.tm.tasks_states['xyz'].status,
-                    TaskStatus.timeout,
-                )
+            output_dir_mock.rmdir.assert_called_once()
+            self.assertIs(
+                self.tm.tasks_states['xyz'].status,
+                TaskStatus.timeout,
+            )
 
 
 class TestCopySubtaskResults(DatabaseFixture):
