@@ -43,6 +43,7 @@
     900
   ],
   "output_format":"PNG",
+  "output_file": "/tmp/output.png",
   "optimize_total":false,
   "estimated_memory":0,
   "timeout":14400,
@@ -59,6 +60,5 @@
       "id": null
     }
   ],
-  "concent_enabled": false,
-  "output_file": "/tmp/output.png"
+  "concent_enabled": false
 }

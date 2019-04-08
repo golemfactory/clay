@@ -1278,7 +1278,6 @@ class TestConcentInitialization(TestClientBase):
         )
 
 
-
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):
     PEP8_FILES = [
         "golem/client.py",

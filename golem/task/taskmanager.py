@@ -267,8 +267,9 @@ class TaskManager(TaskEventListener):
         `/some/output/dir`.
         """
         output_dir = self._get_task_output_dir(task_def)
-        if output_dir:
-            output_dir.mkdir(parents=True, exist_ok=True)
+        if not output_dir:
+            return
+        output_dir.mkdir(parents=True, exist_ok=True)
 
     def _try_remove_task_output_dir(self, task_def: TaskDefinition):
         """
@@ -276,18 +277,20 @@ class TaskManager(TaskEventListener):
         This will only succeed if the directory is empty.
         """
         output_dir = self._get_task_output_dir(task_def)
-        if output_dir:
-            try:
-                output_dir.rmdir()
-            except OSError:
-                pass
+        if not output_dir:
+            return
+
+        try:
+            output_dir.rmdir()
+        except OSError:
+            pass
 
     @staticmethod
     def _get_task_output_dir(task_def: TaskDefinition) -> Optional[Path]:
-        if task_def.output_file:
-            return Path(task_def.output_file).resolve().parent
+        if not task_def.output_file:
+            return None
 
-        return None
+        return Path(task_def.output_file).resolve().parent
 
     @staticmethod
     def _migrate_status_to_enum(state: TaskState) -> None:
