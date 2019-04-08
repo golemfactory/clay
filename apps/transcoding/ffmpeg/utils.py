@@ -97,9 +97,9 @@ class StreamOperator:
             if params.get('status', 'Success') != 'Success':
                 raise ffmpegException('Splitting video failed')
 
-            streams_list = list(map(lambda x: (x.get('video_segment'),
-                                               x.get('playlist')),
-                                    params.get('segments', [])))
+            streams_list = list(map(
+                lambda x: x.get('video_segment'),
+                params.get('segments', [])))
             logger.info(
                 "Stream %s has successfully passed the "
                 "extract+split operation. Segments: %s",

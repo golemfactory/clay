@@ -40,9 +40,6 @@ def do_split(path_to_stream, parts):
     for segment in m3u8_main_list.segments:
         segment_info = dict()
 
-        filename = create_and_dump_m3u8(OUTPUT_DIR, segment)
-
-        segment_info["playlist"] = os.path.basename(filename)
         segment_info["video_segment"] = segment.uri
 
         segments_list.append(segment_info)
