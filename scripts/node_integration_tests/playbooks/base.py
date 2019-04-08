@@ -219,8 +219,10 @@ class NodeTestPlaybook:
     def step_get_provider_network_info(self):
         def on_success(result):
             if result.get('listening') and result.get('port_statuses'):
-                self.provider_port = list(result.get('port_statuses').keys())[0]
-                print("Provider's port: {}".format(self.provider_port))
+                provider_ports = list(result.get('port_statuses').keys())
+                self.provider_port = provider_ports[0]
+                print("Provider's port: {} (all: {})".format(
+                    self.provider_port, provider_ports))
                 self.next()
             else:
                 print("Waiting for Provider's network info...")
@@ -232,8 +234,8 @@ class NodeTestPlaybook:
     def step_ensure_requestor_network(self):
         def on_success(result):
             if result.get('listening') and result.get('port_statuses'):
-                requestor_port = list(result.get('port_statuses').keys())[0]
-                print("Requestor's port: {}".format(requestor_port))
+                requestor_ports = list(result.get('port_statuses').keys())
+                print("Requestor's listening on: {}".format(requestor_ports))
                 self.next()
             else:
                 print("Waiting for Requestor's network info...")
