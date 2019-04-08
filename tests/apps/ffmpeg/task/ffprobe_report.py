@@ -5,6 +5,10 @@ from typing import Any, Collection, Dict, List, Optional, Tuple, Union
 from apps.transcoding.ffmpeg.utils import StreamOperator
 
 
+class UnsupportedCodecType(Exception):
+    pass
+
+
 class FfprobeFormatReport:
     ATTRIBUTES_TO_COMPARE = {
         'format_name',
@@ -16,6 +20,41 @@ class FfprobeFormatReport:
 
     def __init__(self, raw_report: dict) -> None:
         self._raw_report = raw_report
+
+    @classmethod
+    def _create_stream_report(cls, raw_stream_report: dict) -> \
+            'FfprobeStreamReport':
+        codec_type_to_report_class = {
+            'video':    FfprobeVideoStreamReport,
+            'audio':    FfprobeAudioStreamReport,
+            'subtitle': FfprobeSubtitleStreamReport,
+            'data':     FfprobeDataStreamReport,
+        }
+
+        codec_type = raw_stream_report['codec_type']
+        if codec_type not in codec_type_to_report_class:
+            raise UnsupportedCodecType(
+                f"Unexpected codec type: {codec_type}. "
+                f"A new stream report class is needed to handle it."
+            )
+
+        report_class = codec_type_to_report_class[codec_type]
+        return report_class(raw_stream_report)
+
+    @classmethod
+    def _create_stream_reports(cls, raw_report: dict) -> \
+            List['FfprobeStreamReport']:
+        if 'streams' not in raw_report:
+            return []
+
+        return [
+            cls._create_stream_report(raw_stream_report)
+            for raw_stream_report in raw_report['streams']
+        ]
+
+    @property
+    def stream_reports(self) -> List['FfprobeStreamReport']:
+        return self._create_stream_reports(raw_report)
 
     @property
     def stream_types(self) -> Dict[str, int]:
