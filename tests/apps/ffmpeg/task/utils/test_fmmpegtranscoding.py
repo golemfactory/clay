@@ -189,7 +189,6 @@ class TestffmpegDockerJob(TestDockerJob):
             },
             'output_stream': out_stream_path,
             'command': Commands.TRANSCODE.value[0],
-            'use_playlist': 0,
             'script_filepath': FFMPEG_BASE_SCRIPT
         }
 

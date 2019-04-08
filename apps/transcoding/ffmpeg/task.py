@@ -66,7 +66,6 @@ class ffmpegTask(TranscodingTask):
                 'format': transcoding_options.output_container.value
             },
             'output_stream': output_stream,
-            'use_playlist': transcoding_options.use_playlist,
             'command': Commands.TRANSCODE.value[0],
             'entrypoint': FFMPEG_ENTRYPOINT
         }
