@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class Commands(enum.Enum):
-    EXTRACT = ('extract', '')
-    SPLIT = ('split', 'split-results.json')
+    EXTRACT_AND_SPLIT = ('extract-and-split', 'split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE = ('merge', '')
     REPLACE = ('replace', '')
@@ -40,10 +39,12 @@ class Commands(enum.Enum):
 
 
 class StreamOperator:
-    def extract_video_streams(self,
-                              input_file_on_host: str,
-                              dir_manager: DirManager,
-                              task_id: str):
+    @HandleError(ValueError, common.not_valid_json)
+    def extract_video_streams_and_split(self, # noqa pylint: disable=too-many-locals
+                                        input_file_on_host: str,
+                                        parts: int,
+                                        dir_manager: DirManager,
+                                        task_id: str):
 
         host_dirs = {
             'tmp': dir_manager.get_task_temporary_dir(task_id),
@@ -58,19 +59,6 @@ class StreamOperator:
             host_dirs['tmp'],
             input_file_basename)
 
-        (input_file_stem, input_file_extension) = os.path.splitext(
-            input_file_basename)
-        output_file_basename = (
-            input_file_stem +
-            VIDEO_ONLY_CONTAINER_SUFFIX +
-            input_file_extension)
-        output_file_on_host = os.path.join(
-            host_dirs['output'],
-            output_file_basename)
-        output_file_in_container = os.path.join(
-            DockerJob.OUTPUT_DIR,
-            output_file_basename)
-
         # FIXME: The environment is stored globally. Changing it will affect
         # containers started by other functions that do not do it themselves.
         env = ffmpegEnvironment(binds=[DockerBind(
@@ -80,47 +68,22 @@ class StreamOperator:
 
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.EXTRACT.value[0],
+            'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
-            'output_file': output_file_in_container,
-            'selected_streams': ['v'],
+            'parts': parts,
         }
 
         logger.debug(
-            f'Running video stream extraction [params = {extra_data}]')
-        self._do_job_in_container(
+            'Running video stream extraction and splitting '
+            '[params = %s]',
+            extra_data)
+        result = self._do_job_in_container(
             self._get_dir_mapping(dir_manager, task_id),
             extra_data,
             env)
 
-        return output_file_on_host
-
-    @HandleError(ValueError, common.not_valid_json)
-    def split_video(self, input_stream: str, parts: int,  # noqa pylint: disable=too-many-locals
-                    dir_manager: DirManager, task_id: str):
-        name = os.path.basename(input_stream)
-
-        tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
-        stream_container_path = os.path.join(tmp_task_dir, name)
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
-
-        env = ffmpegEnvironment(binds=[
-            DockerBind(Path(input_stream), stream_container_path, 'ro')])
-
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.SPLIT.value[0],
-            'path_to_stream': stream_container_path,
-            'parts': parts
-        }
-        logger.debug('Running video splitting [params = %s]', extra_data)
-
-        result = self._do_job_in_container(
-            self._get_dir_mapping(dir_manager, task_id),
-            extra_data, env)
-
-        split_result_file = os.path.join(task_output_dir,
-                                         Commands.SPLIT.value[1])
+        split_result_file = os.path.join(host_dirs['output'],
+                                         Commands.EXTRACT_AND_SPLIT.value[1])
         output_files = result.get('data', [])
         if split_result_file not in output_files:
             raise ffmpegException('Result file {} does not exist'.
@@ -138,11 +101,11 @@ class StreamOperator:
             streams_list = list(map(lambda x: (x.get('video_segment'),
                                                x.get('playlist')),
                                     params.get('segments', [])))
-
-            logger.info('Stream %s was successfully split to %s',
-                        input_stream,
-                        streams_list)
-
+            logger.info(
+                "Stream %s has successfully passed the "
+                "extract+split operation. Segments: %s",
+                input_file_on_host,
+                streams_list)
             return streams_list, params.get('metadata', {})
 
     def _prepare_merge_job(self, task_dir, chunks):

@@ -98,12 +98,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         input_file = self.task_resources[0]
 
         stream_operator = StreamOperator()
-        video_only_file = stream_operator.extract_video_streams(
+        chunks, video_metadata = stream_operator.extract_video_streams_and_split(
             input_file,
-            dir_manager,
-            task_id)
-        chunks, video_metadata = stream_operator.split_video(
-            video_only_file,
             self.task_definition.subtasks_count,
             dir_manager,
             task_id)
