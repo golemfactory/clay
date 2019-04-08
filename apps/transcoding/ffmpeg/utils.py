@@ -108,19 +108,27 @@ class StreamOperator:
                 streams_list)
             return streams_list, params.get('metadata', {})
 
-    def _prepare_merge_job(self, task_dir, chunks):
+    def _prepare_merge_job(self, task_dir, chunks_on_host):
+        host_dirs = {
+            'resources': os.path.join(task_dir, 'merge', 'resources'),
+            'temporary': os.path.join(task_dir, 'merge', 'work'),
+            'work': os.path.join(task_dir, 'merge', 'work'),
+            'output': os.path.join(task_dir, 'merge', 'output'),
+            'logs': os.path.join(task_dir, 'merge', 'output'),
+        }
+
         try:
-            resources_dir = os.path.join(task_dir, 'merge', 'resources')
-            os.makedirs(resources_dir)
-            output_dir = os.path.join(task_dir, 'merge', 'output')
-            os.makedirs(output_dir)
-            work_dir = os.path.join(task_dir, 'merge', 'work')
-            os.makedirs(work_dir)
+            os.makedirs(host_dirs['resources'])
+            os.makedirs(host_dirs['output'])
+            os.makedirs(host_dirs['work'])
         except OSError:
-            raise ffmpegException("Failed to prepare video \
-                merge directory structure")
-        files = self._collect_files(task_dir, chunks, resources_dir)
-        return resources_dir, output_dir, work_dir, files
+            raise ffmpegException(
+                "Failed to prepare video merge directory structure")
+        chunks_in_container = self._collect_files(
+            task_dir, chunks_on_host,
+            host_dirs['resources'])
+
+        return (host_dirs, chunks_in_container)
 
     @staticmethod
     def _collect_files(directory, files, resources_dir):
@@ -149,28 +157,23 @@ class StreamOperator:
             for path in results
         ]
 
-    def merge_video(self, filename, task_dir, chunks):
-        resources_dir, output_dir, work_dir, chunks = \
-            self._prepare_merge_job(task_dir, chunks)
+    def merge_video(self, filename, task_dir, chunks_on_host):
+        (host_dirs, chunks_in_container) = self._prepare_merge_job(
+            task_dir,
+            chunks_on_host)
 
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.MERGE.value[0],
             'output_stream': os.path.join(DockerJob.OUTPUT_DIR, filename),
-            'chunks': chunks,
+            'chunks': chunks_in_container,
         }
 
         logger.debug('Merge params: %s', extra_data)
 
-        dir_mapping = DockerTaskThread.specify_dir_mapping(
-            output=output_dir,
-            temporary=work_dir,
-            resources=resources_dir,
-            logs=output_dir,
-            work=work_dir)
-
+        dir_mapping = DockerTaskThread.specify_dir_mapping(**host_dirs)
         self._do_job_in_container(dir_mapping, extra_data)
-        return os.path.join(output_dir, filename)
+        return os.path.join(host_dirs['output'], filename)
 
     def replace_video_streams(self,
                               input_file_on_host,

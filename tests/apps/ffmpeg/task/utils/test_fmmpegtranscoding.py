@@ -118,29 +118,34 @@ class TestffmpegTranscoding(TempDirFixture):
                                               self.RESOURCE_STREAM))
 
     def test_prepare_merge_job(self):
-        resource_dir, output_dir, work_dir, chunks = \
-            self.stream_operator._prepare_merge_job(self.tempdir, [])
+        merge_job_info = self.stream_operator._prepare_merge_job(
+            self.tempdir,
+            [])
+        (host_dirs, chunks_in_container) = merge_job_info
 
-        self.assertEqual(len(chunks), 0)
+        self.assertEqual(len(chunks_in_container), 0)
         self.assertEqual(
-            resource_dir,
+            host_dirs['resources'],
             os.path.join(self.tempdir, 'merge', 'resources')
         )
-        self.assertTrue(os.path.isdir(output_dir))
+        self.assertTrue(os.path.isdir(host_dirs['output']))
         self.assertEqual(
-            output_dir,
+            host_dirs['output'],
             os.path.join(self.tempdir, 'merge', 'output'))
-        self.assertTrue(os.path.isdir(output_dir))
+        self.assertTrue(os.path.isdir(host_dirs['output']))
         self.assertEqual(
-            work_dir,
+            host_dirs['work'],
             os.path.join(self.tempdir, 'merge', 'work'))
-        self.assertTrue(os.path.isdir(work_dir))
+        self.assertTrue(os.path.isdir(host_dirs['work']))
 
     def test_prepare_merge_job_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator._prepare_merge_job(self.tempdir,
-                                                    ['/tmp/testtest_TC.m3u8',
-                                                     '/tmp/testtest_TC.ts'])
+            self.stream_operator._prepare_merge_job(
+                self.tempdir,
+                [
+                    '/tmp/testtest_TC.m3u8',
+                    '/tmp/testtest_TC.ts',
+                ])
 
     def test_merge_nonexistent_files(self):
         with self.assertRaises(ffmpegException):
