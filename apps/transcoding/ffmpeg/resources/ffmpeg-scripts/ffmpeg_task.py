@@ -13,6 +13,10 @@ RESOURCES_DIR = "/golem/resources"
 PARAMS_FILE = "params.json"
 
 
+class InvalidCommand(Exception):
+    pass
+
+
 def do_split(path_to_stream, parts):
 
     video_metadata = commands.get_metadata_json(path_to_stream)
@@ -107,7 +111,7 @@ def run_ffmpeg(params):
         compute_metrics(
             params["metrics_params"])
     else:
-        print("Invalid command.")
+        raise InvalidCommand(f"Invalid command: {params['command']}")
 
 
 def run():
