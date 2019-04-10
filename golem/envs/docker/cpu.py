@@ -7,7 +7,9 @@ from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
+from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
+from golem.docker.client import local_client
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor import Hypervisor
@@ -50,7 +52,8 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
 
 class DockerCPURuntime(Runtime):
 
-    def __init__(self, payload: DockerPayload, config: DockerCPUConfig) -> None:
+    def __init__(self, payload: DockerPayload, host_config: Dict[str, Any]) \
+            -> None:
         pass
 
     def start(self) -> Deferred:
@@ -80,8 +83,33 @@ class DockerCPUEnvironment(Environment):
 
     SUPPORTED_DOCKER_VERSIONS: ClassVar[List[str]] = ['18.06.1-ce']
 
-    MIN_MEMORY_MB = 1024
-    MIN_CPU_COUNT = 1
+    MIN_MEMORY_MB: ClassVar[int] = 1024
+    MIN_CPU_COUNT: ClassVar[int] = 1
+
+    NETWORK_MODE: ClassVar[str] = 'none'
+    DNS_SERVERS: ClassVar[List[str]] = []
+    DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
+    DROPPED_KERNEL_CAPABILITIES: ClassVar[List[str]] = [
+        'audit_control',
+        'audit_write',
+        'mac_admin',
+        'mac_override',
+        'mknod',
+        'net_admin',
+        'net_bind_service',
+        'net_raw',
+        'setfcap',
+        'setpcap',
+        'sys_admin',
+        'sys_boot',
+        'sys_chroot',
+        'sys_module',
+        'sys_nice',
+        'sys_pacct',
+        'sys_resource',
+        'sys_time',
+        'sys_tty_config'
+    ]
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:
@@ -286,5 +314,26 @@ class DockerCPUEnvironment(Environment):
         else:
             config = self.config()
         logger.info("Creating runtime...")
-        return DockerCPURuntime(payload, config)
+        host_config = self._create_host_config(config, payload)
+        return DockerCPURuntime(payload, host_config)
 
+    def _create_host_config(
+            self, config: DockerCPUConfig, payload: DockerPayload) \
+            -> Dict[str, Any]:
+
+        cpus = hardware.cpus()[:config.cpu_count]
+        cpuset_cpus = ','.join(map(str, cpus))
+        mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
+        binds = self._hypervisor.create_volumes(payload.binds)
+
+        client = local_client()
+        return client.create_host_config(
+            cpuset_cpus=cpuset_cpus,
+            mem_limit=mem_limit,
+            binds=binds,
+            privileged=False,
+            network_mode=self.NETWORK_MODE,
+            dns=self.DNS_SERVERS,
+            dns_search=self.DNS_SEARCH_DOMAINS,
+            cap_drop=self.DROPPED_KERNEL_CAPABILITIES
+        )
