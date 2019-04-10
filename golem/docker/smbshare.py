@@ -9,7 +9,7 @@ from golem.core.windows import run_powershell
 
 SCRIPT_PATH = path.join(
     get_golem_path(), 'scripts', 'docker', 'create-share.ps1')
-SCRIPT_TIMEOUT = 120  # seconds
+SCRIPT_TIMEOUT = 180  # seconds
 
 
 def create_share(user_name: str, shared_dir_path: Path) -> None:
