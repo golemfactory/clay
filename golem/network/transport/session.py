@@ -98,12 +98,8 @@ class BasicSession(FileSession):
         """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting.
         """
-        logger.info(
-            "Disconnecting %r:%r reason: %r",
-            self.address,
-            self.port,
-            reason,
-        )
+        logger.info("Sending disconnect message. reason=%s, address=%s:%r",
+                    reason.name, self.address, self.port,)
         if self.conn.opened:
             self._send_disconnect(reason)
             self.dropped()
@@ -146,8 +142,8 @@ class BasicSession(FileSession):
         return True
 
     def _react_to_disconnect(self, msg):
-        logger.info("Disconnect reason: %r", msg.reason)
-        logger.info("Closing %s:%s", self.address, self.port)
+        logger.info("Received disconnect message. reason=%s, address=%s:%r",
+                    msg.reason.name, self.address, self.port)
         self.dropped()
 
 
