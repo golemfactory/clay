@@ -133,14 +133,14 @@ if [ -n "$diff" ]; then
     # Remove lines from findings based on lines changed
     diff_line_file="$(mktemp tmp-golem-changed-lines.XXXXXXXXXX -t)"
     git diff --no-color --unified=0 "$REF_BRANCH" "$CURRENT_BRANCH" | list-added-lines-from-diff > "$diff_line_file" || true
-    CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")"
+    CHANGED_DIFF="$(echo "$diff" | grep --fixed-strings --file "$diff_line_file")" || true
     rm "$diff_line_file"
 
     echo -e "\n\nChanged lines findings:\n"
     echo "$CHANGED_DIFF"
 
     # Remove warning lines starting with W
-    CHANGED_ERR=$(echo "$CHANGED_DIFF" | grep -v -e '^W')
+    CHANGED_ERR=$(echo "$CHANGED_DIFF" | grep -v -e '^W') || true
     if [ -n "$CHANGED_ERR" ]; then
         exit 1
     fi
