@@ -20,6 +20,7 @@ class FfprobeFormatReport:
 
     def __init__(self, raw_report: dict) -> None:
         self._raw_report = raw_report
+        self._stream_reports = self._create_stream_reports(raw_report)
 
     @classmethod
     def _create_stream_report(cls, raw_stream_report: dict) -> \
@@ -54,7 +55,7 @@ class FfprobeFormatReport:
 
     @property
     def stream_reports(self) -> List['FfprobeStreamReport']:
-        return self._create_stream_reports(raw_report)
+        return self._stream_reports
 
     @property
     def stream_types(self) -> Dict[str, int]:
