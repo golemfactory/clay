@@ -329,10 +329,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
 
-    @staticmethod
-    def uses_volumes() -> bool:
-        return True
-
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         hostname = self._get_hostname_for_sharing()
         return {

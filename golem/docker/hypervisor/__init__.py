@@ -164,11 +164,11 @@ class Hypervisor(ABC):
     def update_work_dir(self, work_dir: Path) -> None:
         self._work_dir = work_dir
 
-    @staticmethod
-    def uses_volumes() -> bool:
-        return False
-
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
-        if self.uses_volumes():
-            raise NotImplementedError
-        return {}
+        return {
+            bind.source_as_posix: {
+                'bind': bind.target,
+                'mode': bind.mode
+            }
+            for bind in binds
+        }
