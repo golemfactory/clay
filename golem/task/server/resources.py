@@ -12,9 +12,9 @@ import requests
 from golem_messages import message
 
 from golem.core import common
+from golem.core import variables
 from golem.core.common import deadline_to_timeout
 from golem.core.hostaddress import ip_address_private
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     to_hyperg_peer
 from golem.resource.hyperdrive import resource as hpd_resource
@@ -166,8 +166,10 @@ class TaskResourcesMixin:
 
         # Create a list of private addresses
         prv_addresses = [node.prv_addr] + node.prv_addresses
-        peers = [to_hyperg_peer(a, node.hyperdrive_prv_port)
-                 for a in prv_addresses[:MAX_CONNECT_SOCKET_ADDRESSES - 1]]
+        peers = [
+            to_hyperg_peer(a, node.hyperdrive_prv_port)
+            for a in prv_addresses[:variables.MAX_CONNECT_SOCKET_ADDRESSES - 1]
+        ]
 
         # If connected to a private address, pub_peer is the least important one
         prefer_prv = ip_address_private(address) if address else False
@@ -231,11 +233,12 @@ class TaskResourcesMixin:
             return
         logger.info(
             'Resource handshake timeout. node=%s',
-            short_node_id(key_id),
+            common.short_node_id(key_id),
         )
-        self.acl.disallow(
-            key_id,
-            timeput_seconds=2 * 3600,
+        self.disallow_node(
+            node_id=key_id,
+            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE,
+            persist=False,
         )
         del self.resource_handshakes[key_id]
 

@@ -4,6 +4,8 @@ import typing
 import uuid
 
 from golem_messages import message
+
+from golem.core import variables
 from golem.core.common import short_node_id
 
 logger = logging.getLogger('golem.resources')
@@ -217,8 +219,10 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.acl.disallow(key_id,
-                                      timeout_seconds=self.PEER_BLOCK_TIMEOUT)
+        self.task_server.acl.disallow(
+            key_id,
+            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE,
+        )
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
