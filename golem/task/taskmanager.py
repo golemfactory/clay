@@ -16,7 +16,10 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+
 from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -83,8 +86,11 @@ class TaskManager(TaskEventListener):
 
     def __init__(
             self, node, keys_auth, root_path,
+            config_desc: ClientConfigDescriptor,
             tasks_dir="tasks", task_persistence=True,
-            apps_manager=AppsManager(), finished_cb=None):
+            apps_manager=AppsManager(),
+            finished_cb=None,
+    ):
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -111,6 +117,10 @@ class TaskManager(TaskEventListener):
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_temporary_dir,
+            client_kwargs={
+                'host': config_desc.hyperdrive_rpc_address,
+                'port': config_desc.hyperdrive_rpc_port,
+            },
         )
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager
@@ -186,6 +196,8 @@ class TaskManager(TaskEventListener):
         self.tasks_states[task_id] = ts
         logger.info("Task %s added", task_id)
 
+        self._create_task_output_dir(task.task_definition)
+
         self.notice_task_updated(task_id,
                                  op=TaskOp.CREATED,
                                  persist=False)
@@ -254,6 +266,41 @@ class TaskManager(TaskEventListener):
                          task_id, filepath)
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
+
+    def _create_task_output_dir(self, task_def: TaskDefinition):
+        """
+        Creates the output directory for a task along with any parents,
+        if necessary. The path is obtained from `output_file` field in the
+        task's definition.
+        For example, for an output file with the following path:
+        `/some/output/dir/result.png` the created directory will be:
+        `/some/output/dir`.
+        """
+        output_dir = self._get_task_output_dir(task_def)
+        if not output_dir:
+            return
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _try_remove_task_output_dir(self, task_def: TaskDefinition):
+        """
+        Attempts to remove the output directory from a given task definition.
+        This will only succeed if the directory is empty.
+        """
+        output_dir = self._get_task_output_dir(task_def)
+        if not output_dir:
+            return
+
+        try:
+            output_dir.rmdir()
+        except OSError:
+            pass
+
+    @staticmethod
+    def _get_task_output_dir(task_def: TaskDefinition) -> Optional[Path]:
+        if not task_def.output_file:
+            return None
+
+        return Path(task_def.output_file).resolve().parent
 
     @staticmethod
     def _migrate_status_to_enum(state: TaskState) -> None:
@@ -832,6 +879,7 @@ class TaskManager(TaskEventListener):
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 # TODO: t.tell_it_has_timeout()?
                 self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
+                self._try_remove_task_output_dir(t.task_definition)
         return nodes_with_timeouts
 
     def get_progresses(self):
