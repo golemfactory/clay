@@ -108,6 +108,27 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
         self.assertEqual(diff, [])
 
     @parameterized.expand(
+        (video_file, resolution)
+        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for resolution in (
+            (320, 240),
+        )
+    )
+    @pytest.mark.slow
+    def test_split_and_merge_with_resolution_change(self,
+                                                    video_file,
+                                                    resolution):
+        operation = SimulatedTranscodingOperation(
+            task_executor=self,
+            experiment_name="resolution change",
+            resource_dir=self.RESOURCES,
+            tmp_dir=self.tempdir)
+        operation.attach_to_report_set(self._ffprobe_report_set)
+        operation.request_resolution_change(resolution)
+        (_input_report, _output_report, diff) = operation.run(video_file)
+        self.assertEqual(diff, [])
+
+    @parameterized.expand(
         (video_file, subtasks_count)
         for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
         for subtasks_count in (1, 6, 10)
