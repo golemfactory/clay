@@ -126,6 +126,8 @@ class DockerJob:
 
         host_cfg = client.create_host_config(**self.host_config)
 
+        # FIXME: Make the entrypoint.sh behaviour consistent between Windows
+        #  and other OSes. See issue #4102
         if is_windows():
             command = self.entrypoint
         else:
