@@ -201,11 +201,6 @@ class ResourceHandshakeSessionMixin:
         self.task_server.task_computer.session_closed()
         self.dropped()
 
-    def _handshake_timeout(self, key_id):
-        handshake = self._get_handshake(key_id)
-        if handshake and not handshake.success():
-            self._handshake_error(key_id, 'timeout')
-
     # ########################
     #      ACCESS HELPERS
     # ########################

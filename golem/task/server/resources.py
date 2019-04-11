@@ -222,6 +222,23 @@ class TaskResourcesMixin:
             lambda *_: self._handshake_timeout(self.key_id)
         )
 
+    def _handshake_timeout(self, key_id):
+        try:
+            handshake = self.resource_handshakes[key_id]
+        except KeyError:
+            return
+        if handshake.success():
+            return
+        logger.info(
+            'Resource handshake timeout. node=%s',
+            short_node_id(key_id),
+        )
+        self.acl.disallow(
+            key_id,
+            timeput_seconds=2 * 3600,
+        )
+        del self.resource_handshakes[key_id]
+
     # ########################
     #       SHARE NONCE
     # ########################
