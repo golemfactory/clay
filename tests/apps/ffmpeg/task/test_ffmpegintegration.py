@@ -100,6 +100,25 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
 
+    @parameterized.expand(
+        (video_file, subtasks_count)
+        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for subtasks_count in (1, 6, 10)
+    )
+    @pytest.mark.slow
+    def test_split_and_merge_with_different_subtask_counts(self,
+                                                           video_file,
+                                                           subtasks_count):
+        operation = SimulatedTranscodingOperation(
+            task_executor=self,
+            experiment_name="number of subtasks",
+            resource_dir=self.RESOURCES,
+            tmp_dir=self.tempdir)
+        operation.attach_to_report_set(self._ffprobe_report_set)
+        operation.request_subtasks_count(subtasks_count)
+        (_input_report, _output_report, diff) = operation.run(video_file)
+        self.assertEqual(diff, [])
+
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
