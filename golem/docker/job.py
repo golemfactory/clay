@@ -126,11 +126,16 @@ class DockerJob:
 
         host_cfg = client.create_host_config(**self.host_config)
 
+        if is_windows():
+            command = self.entrypoint
+        else:
+            command = [self.entrypoint]
+
         self.container = client.create_container(
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=self.entrypoint,
+            command=command,
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )
