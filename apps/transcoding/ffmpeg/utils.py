@@ -193,13 +193,20 @@ class StreamOperator:
                                                     resources=resources,
                                                     logs=logs, work=work)
 
-    def get_metadata(self, input_files: List[str], task_dir: str) -> dict:
+    def get_metadata(self,
+                     input_files: List[str],
+                     resources_dir: str,
+                     work_dir: str,
+                     output_dir: str) -> dict:
+
+        assert os.path.isdir(resources_dir)
+        assert all([
+            os.path.isfile(os.path.join(resources_dir, input_file))
+            for input_file in input_files
+        ])
+
         try:
-            resources_dir = task_dir
-            output_dir = os.path.join(task_dir, 'metadata_output')
-            work_dir = os.path.join(task_dir, 'metadata_work')
-            os.makedirs(output_dir)
-            os.makedirs(work_dir)
+            os.makedirs(output_dir, exist_ok=True)
         except OSError:
             raise ffmpegException(
                 "Failed to prepare directory structure for get_metadata")
