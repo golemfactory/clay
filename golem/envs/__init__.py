@@ -64,8 +64,21 @@ class Runtime(ABC):
         particular Environment that was used to create this object. """
 
     @abstractmethod
+    def prepare(self) -> Deferred:
+        """ Prepare the Runtime to be started. Assumes current status is
+            'CREATED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def cleanup(self) -> Deferred:
+        """ Clean up after the Runtime has finished running. Assumes current
+            status is 'STOPPED' or 'FAILURE'. In the latter case it is not
+            guaranteed that the cleanup will be successful. """
+        raise NotImplementedError
+
+    @abstractmethod
     def start(self) -> Deferred:
-        """ Start the computation. Assumes current status is 'CREATED'. """
+        """ Start the computation. Assumes current status is 'PREPARED'. """
         raise NotImplementedError
 
     @abstractmethod

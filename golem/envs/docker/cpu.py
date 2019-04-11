@@ -1,8 +1,10 @@
 import logging
+from functools import wraps
 from pathlib import Path
 from subprocess import SubprocessError
+from threading import Lock
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
-    NamedTuple
+    NamedTuple, Union, Sequence
 
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -54,7 +56,111 @@ class DockerCPURuntime(Runtime):
 
     def __init__(self, payload: DockerPayload, host_config: Dict[str, Any]) \
             -> None:
-        pass
+        image = f"{payload.image}:{payload.tag}"
+        volumes = [bind.target for bind in payload.binds]
+        command = [payload.command] + payload.args
+        client = local_client()
+
+        self._status = RuntimeStatus.CREATED
+        self._status_lock = Lock()
+        self._container_id: Optional[str] = None
+        self._container_config = client.create_container_config(
+            image=image,
+            volumes=volumes,
+            command=command,
+            user=payload.user,
+            environment=payload.env,
+            working_dir=payload.work_dir,
+            host_config=host_config
+        )
+
+    def _change_status(
+            self,
+            from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
+            to_status: RuntimeStatus) -> None:
+        """ Assert that current Runtime status is the given one and change to
+            another one. Using lock to ensure atomicity. """
+
+        if isinstance(from_status, RuntimeStatus):
+            from_status = [from_status]
+
+        with self._status_lock:
+            if self._status not in from_status:
+                exp_status = "or ".join(map(str, from_status))
+                raise ValueError(f"Invalid status. Expected: {exp_status}")
+            self._status = to_status
+
+    def _wrap_status_change(
+            self,
+            success_status: RuntimeStatus,
+            error_status: RuntimeStatus = RuntimeStatus.FAILURE,
+            success_msg: Optional[str] = None,
+            error_msg: Optional[str] = None
+    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
+        """ Wrap function. If it fails log error_msg, set status to
+            error_status, and re-raise the exception. Otherwise log success_msg
+            and set status to success_status. Setting status uses lock. """
+
+        def wrapper(func: Callable[[], None]):
+
+            @wraps(func)
+            def wrapped():
+                try:
+                    func()
+                except Exception:
+                    if error_msg:
+                        logger.exception(error_msg)
+                    with self._status_lock:
+                        self._status = error_status
+                    raise
+                else:
+                    if success_msg:
+                        logger.info(success_msg)
+                    with self._status_lock:
+                        self._status = success_status
+
+            return wrapped
+
+        return wrapper
+
+    def prepare(self) -> Deferred:
+        self._change_status(
+            from_status=RuntimeStatus.CREATED,
+            to_status=RuntimeStatus.PREPARING)
+        logger.info("Preparing runtime...")
+
+        @self._wrap_status_change(
+            success_status=RuntimeStatus.PREPARED,
+            success_msg="Container successfully created.",
+            error_msg="Creating container failed.")
+        def _prepare():
+            client = local_client()
+            result = client.create_container_from_config(self._container_config)
+
+            container_id = result.get("Id")
+            assert isinstance(container_id, str), "Invalid container ID"
+            self._container_id = container_id
+
+            for warning in result.get("Warnings", []):
+                logger.warning("Container creation warning: %s", warning)
+
+        return deferToThread(_prepare)
+
+    def cleanup(self) -> Deferred:
+        self._change_status(
+            from_status=[RuntimeStatus.FAILURE, RuntimeStatus.STOPPED],
+            to_status=RuntimeStatus.CLEANING_UP)
+        logger.info("Cleaning up runtime...")
+
+        @self._wrap_status_change(
+            success_status=RuntimeStatus.TORN_DOWN,
+            success_msg=f"Container '{self._container_id}' removed.",
+            error_msg=f"Failed to remove container '{self._container_id}'")
+        def _cleanup():
+            client = local_client()
+            client.remove_container(self._container_id)
+
+        return deferToThread(_cleanup)
 
     def start(self) -> Deferred:
         raise NotImplementedError
@@ -313,7 +419,7 @@ class DockerCPUEnvironment(Environment):
             assert isinstance(config, DockerCPUConfig)
         else:
             config = self.config()
-        logger.info("Creating runtime...")
+
         host_config = self._create_host_config(config, payload)
         return DockerCPURuntime(payload, host_config)
 
