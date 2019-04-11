@@ -1,19 +1,31 @@
 import os
 import logging
 
+from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.formats import Container
 from ffmpeg_tools.validation import UnsupportedVideoCodec
+
+from parameterized import parameterized
+import pytest
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
+from tests.apps.ffmpeg.task.simulated_transcoding_operation import \
+    SimulatedTranscodingOperation
 
 logger = logging.getLogger(__name__)
 
 
 @ci_skip
 class FfmpegIntegrationTestCase(TestTaskIntegration):
+
+    VIDEO_FILES = [
+        "test_video.mp4",
+        "test_video2.mp4",
+    ]
 
     def setUp(self):
         super(FfmpegIntegrationTestCase, self).setUp()
@@ -49,6 +61,44 @@ class FfmpegIntegrationTestCase(TestTaskIntegration):
 
 @ci_skip
 class TestffmpegIntegration(FfmpegIntegrationTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        cls._ffprobe_report_set = None
+        # Uncomment this to enable report generation:
+        #from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
+        #cls._ffprobe_report_set = FfprobeReportSet()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
+        if cls._ffprobe_report_set is not None:
+            print(cls._ffprobe_report_set.to_markdown())
+
+    @parameterized.expand(
+        (video_file, video_codec, container)
+        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for video_codec, container in [
+            (VideoCodec.H_264, Container.c_AVI),
+        ]
+    )
+    @pytest.mark.slow
+    def test_split_and_merge_with_codec_change(self,
+                                               video_file,
+                                               video_codec,
+                                               container):
+        operation = SimulatedTranscodingOperation(
+            task_executor=self,
+            experiment_name="codec change",
+            resource_dir=self.RESOURCES,
+            tmp_dir=self.tempdir)
+        operation.attach_to_report_set(self._ffprobe_report_set)
+        operation.request_video_codec_change(video_codec)
+        operation.request_container_change(container)
+        (_input_report, _output_report, diff) = operation.run(video_file)
+        self.assertEqual(diff, [])
 
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_simple_case(self):
