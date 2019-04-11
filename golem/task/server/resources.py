@@ -17,11 +17,13 @@ from golem.core.hostaddress import ip_address_private
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     to_hyperg_peer
+from golem.network.transport import msg_queue
 from golem.resource.hyperdrive import resource as hpd_resource
 from golem.resource.resourcehandshake import ResourceHandshake
 
 
 if TYPE_CHECKING:
+    # pylint: disable=unused-import
     from golem.task import taskmanager
 
 
@@ -244,12 +246,12 @@ class TaskResourcesMixin:
         )
 
         os.remove(handshake.file)
-        self.send_message(
+        msg_queue.put(
             node_id=key_id,
             msg=message.resources.ResourceHandshakeStart(
                 resource=handshake.hash, options=options.__dict__,
             ),
-    )
+        )
 
     def _share_handshake_nonce(self, key_id):
         handshake = self.resource_handshakes.get(key_id)

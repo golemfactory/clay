@@ -5,22 +5,19 @@ import typing
 
 import golem_messages
 from golem_messages import exceptions as msg_exceptions
+from golem_messages import message
 
 from golem import decorators
 from golem import model
 from golem.core import variables
 
 
-if typing.TYPE_CHECKING:
-    # pylint: disable=ungrouped-imports,unused-import
-    from golem_messages import message
-
-
 logger = logging.getLogger(__name__)
 READ_LOCK = threading.Lock()
 
 
-def put(node_id: str, msg: 'message.base.Base') -> None:
+def put(node_id: str, msg: message.base.Message) -> None:
+    assert not isinstance(msg, message.base.Disconnect)
     db_model = model.QueuedMessage.from_message(node_id, msg)
     db_model.save()
 

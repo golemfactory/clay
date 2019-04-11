@@ -5,7 +5,7 @@ import datetime
 import enum
 import logging
 import time
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, Optional
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
@@ -25,6 +25,7 @@ from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
 from golem.network.concent import helpers as concent_helpers
+from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.ranking.manager.database_manager import (
@@ -88,7 +89,7 @@ def copy_and_sign(msg: message.base.Message, private_key) \
     Copy is made only if original is unsigned.
     """
     if msg.sig is None:
-        # If message is delayed in msgs_to_send then will
+        # If message is delayed in queue then will
         # overcome this by making a signed copy
         msg = copy.copy(msg)
         msg.sign_message(private_key)
@@ -138,7 +139,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.key_id: Optional[str] = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
-        self.msgs_to_send = []
         self.__set_msg_interpretations()
 
     @property
@@ -156,6 +156,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @property
     def concent_service(self):
         return self.task_server.client.concent_service
+
+    @property
+    def is_active(self) -> bool:
+        if not self.conn.opened:
+            return False
+        inactivity: float = time.time() - self.last_message_time
+        if inactivity > self.task_server.config_desc.task_session_timeout:
+            return False
+        return True
 
     ########################
     # BasicSession methods #
@@ -180,7 +189,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def dropped(self):
         """ Close connection """
         BasicSafeSession.dropped(self)
-        self.task_server.remove_task_session(self)
+        self.task_server.remove_session_by_node_id(self.key_id)
 
     #######################
     # SafeSession methods #
@@ -194,261 +203,36 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def my_public_key(self) -> bytes:
         return self.task_server.keys_auth.public_key
 
-    ###################################
-    # IMessageHistoryProvider methods #
-    ###################################
-
-    def _subtask_to_task(self, sid, local_role):
-        if local_role == Actor.Provider:
-            return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
-        elif local_role == Actor.Requestor:
-            return self.task_manager.subtask2task_mapping.get(sid)
-        return None
+    def verify_owners(self, msg):
+        if self.concent_service.available:
+            concent_key = self.concent_service.variant['pubkey']
+        else:
+            concent_key = None
+        try:
+            msg.verify_owners(
+                requestor_public_key=msg_utils.decode_hex(self.key_id),
+                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
+                concent_public_key=concent_key,
+            )
+        except msg_exceptions.MessageError:
+            node_id = common.short_node_id(self.key_id)
+            logger.info(
+                'Dropping invalid %(msg_class)s.'
+                ' sender_node_id: %(node_id)s, task_id: %(task_id)s,'
+                ' subtask_id: %(subtask_id)s',
+                {
+                    'msg_class': msg.__class__.__name__,
+                    'node_id': node_id,
+                    'task_id': msg.task_id,
+                    'subtask_id': msg.subtask_id,
+                },
+            )
+            logger.debug('Invalid message received', exc_info=True)
+            return
 
     #######################
     # FileSession methods #
     #######################
-
-    def result_received(self, subtask_id: str, result_files: List[str]):
-        """ Inform server about received result
-        """
-        def send_verification_failure():
-            self._reject_subtask_result(
-                subtask_id,
-                reason=message.tasks.SubtaskResultsRejected.REASON
-                .VerificationNegative
-            )
-
-        def verification_finished():
-            logger.debug("Verification finished handler.")
-            if not self.task_manager.verify_subtask(subtask_id):
-                logger.debug("Verification failure. subtask_id=%r", subtask_id)
-                send_verification_failure()
-                self.dropped()
-                return
-
-            task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
-
-            report_computed_task = get_task_message(
-                message_class_name='ReportComputedTask',
-                node_id=self.key_id,
-                task_id=task_id,
-                subtask_id=subtask_id
-            )
-            task_to_compute = report_computed_task.task_to_compute
-
-            # FIXME Remove in 0.20
-            if not task_to_compute.sig:
-                task_to_compute.sign_message(self.my_private_key)
-
-            config_desc = self.task_server.config_desc
-            if config_desc.disallow_node_timeout_seconds is not None:
-                # Experimental feature. Try to spread subtasks fairly amongst
-                # providers.
-                self.task_server.disallow_node(
-                    node_id=task_to_compute.provider_id,
-                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
-                    persist=False,
-                )
-            if config_desc.disallow_ip_timeout_seconds is not None:
-                # Experimental feature. Try to spread subtasks fairly amongst
-                # providers.
-                self.task_server.disallow_ip(
-                    ip=self.address,
-                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
-                )
-
-            payment_processed_ts = self.task_server.accept_result(
-                subtask_id,
-                self.key_id,
-                task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
-            )
-
-            response_msg = message.tasks.SubtaskResultsAccepted(
-                report_computed_task=report_computed_task,
-                payment_ts=payment_processed_ts,
-            )
-            self.send(response_msg)
-            history.add(
-                copy_and_sign(
-                    msg=response_msg,
-                    private_key=self.my_private_key,
-                ),
-                node_id=task_to_compute.provider_id,
-                local_role=Actor.Requestor,
-                remote_role=Actor.Provider,
-            )
-            self.dropped()
-
-        self.task_manager.computed_task_received(
-            subtask_id,
-            result_files,
-            verification_finished
-        )
-
-    def _reject_subtask_result(self, subtask_id, reason):
-        logger.debug('_reject_subtask_result(%r, %r)', subtask_id, reason)
-
-        self.task_server.reject_result(subtask_id, self.key_id)
-        self.send_result_rejected(subtask_id, reason)
-
-    # TODO address, port and eth_account should be in node_info
-    # (or shouldn't be here at all). Issue #2403
-    def send_report_computed_task(
-            self,
-            task_result,
-            address,
-            port,
-            node_info):
-        """ Send task results after finished computations
-        :param WaitingTaskResult task_result: finished computations result
-                                              with additional information
-        :param str address: task result owner address
-        :param int port: task result owner port
-        :param Node node_info: information about this node
-        :return:
-        """
-        extra_data = []
-
-        node_name = self.task_server.get_node_name()
-
-        task_to_compute = get_task_message(
-            message_class_name='TaskToCompute',
-            node_id=self.key_id,
-            task_id=task_result.task_id,
-            subtask_id=task_result.subtask_id
-        )
-
-        if not task_to_compute:
-            return
-
-        client_options = self.task_server.get_share_options(task_result.task_id,
-                                                            self.address)
-
-        report_computed_task = message.tasks.ReportComputedTask(
-            task_to_compute=task_to_compute,
-            node_name=node_name,
-            address=address,
-            port=port,
-            key_id=self.task_server.get_key_id(),
-            node_info=node_info.to_dict(),
-            extra_data=extra_data,
-            size=task_result.result_size,
-            package_hash='sha1:' + task_result.package_sha1,
-            multihash=task_result.result_hash,
-            secret=task_result.result_secret,
-            options=client_options.__dict__,
-        )
-
-        self.send(report_computed_task)
-        report_computed_task = copy_and_sign(
-            msg=report_computed_task,
-            private_key=self.my_private_key,
-        )
-        history.add(
-            msg=report_computed_task,
-            node_id=self.key_id,
-            local_role=Actor.Provider,
-            remote_role=Actor.Requestor,
-        )
-
-        # if the Concent is not available in the context of this subtask
-        # we can only assume that `ReportComputedTask` above reaches
-        # the Requestor safely
-
-        if not task_to_compute.concent_enabled:
-            logger.debug(
-                "Concent not enabled for this task, "
-                "skipping `ForceReportComputedTask`. "
-                "task_id=%r, "
-                "subtask_id=%r, ",
-                task_to_compute.task_id,
-                task_to_compute.subtask_id,
-            )
-            return
-
-        # we're preparing the `ForceReportComputedTask` here and
-        # scheduling the dispatch of that message for later
-        # (with an implicit delay in the concent service's `submit` method).
-        #
-        # though, should we receive the acknowledgement for
-        # the `ReportComputedTask` sent above before the delay elapses,
-        # the `ForceReportComputedTask` message to the Concent will be
-        # cancelled and thus, never sent to the Concent.
-
-        delayed_forcing_msg = message.concents.ForceReportComputedTask(
-            report_computed_task=report_computed_task,
-            result_hash='sha1:' + task_result.package_sha1
-        )
-        logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
-
-        self.concent_service.submit_task_message(
-            task_result.subtask_id,
-            delayed_forcing_msg,
-        )
-
-    def send_task_failure(self, subtask_id, err_msg):
-        """ Inform task owner that an error occurred during task computation
-        :param str subtask_id:
-        :param err_msg: error message that occurred during computation
-        """
-
-        task_id = self._subtask_to_task(subtask_id, Actor.Provider)
-
-        task_to_compute = get_task_message(
-            message_class_name='TaskToCompute',
-            node_id=self.key_id,
-            task_id=task_id,
-            subtask_id=subtask_id
-        )
-
-        if not task_to_compute:
-            logger.warning("Could not retrieve TaskToCompute"
-                           " for subtask_id: %s, task_id: %s",
-                           subtask_id, task_id)
-            return
-
-        self.send(
-            message.tasks.TaskFailure(
-                task_to_compute=task_to_compute,
-                err=err_msg
-            )
-        )
-
-    def send_result_rejected(self, subtask_id, reason):
-        """
-        Inform that result doesn't pass the verification or that
-        the verification was not possible
-
-        :param str subtask_id: subtask that has wrong result
-        :param SubtaskResultsRejected.Reason reason: the rejection reason
-        """
-
-        task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
-
-        report_computed_task = get_task_message(
-            message_class_name='ReportComputedTask',
-            node_id=self.key_id,
-            task_id=task_id,
-            subtask_id=subtask_id
-        )
-
-        response_msg = message.tasks.SubtaskResultsRejected(
-            report_computed_task=report_computed_task,
-            reason=reason,
-        )
-        self.send(response_msg)
-        response_msg = copy_and_sign(
-            msg=response_msg,
-            private_key=self.my_private_key,
-        )
-        history.add(
-            response_msg,
-            node_id=report_computed_task.task_to_compute.provider_id,
-            local_role=Actor.Requestor,
-            remote_role=Actor.Provider,
-        )
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -463,12 +247,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             send_unverified=True
         )
 
-    def send_start_session_response(self, conn_id):
-        """Inform that this session was started as an answer for a request
-           to start task session
-        :param uuid conn_id: connection id for reference
-        """
-        self.send(message.tasks.StartSessionResponse(conn_id=conn_id))
+    def read_msg_queue(self):
+        if not self.key_id:
+            return
+        if not self.verified:
+            return
+        for msg in msg_queue.get(self.key_id):
+            self.send(msg)
 
     #########################
     # Reactions to messages #
@@ -594,14 +379,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def _offer_chosen(is_chosen: bool) -> None:
-            if not self.conn.opened:
-                logger.info(
-                    "Provider disconnected. task_id=%r, node=%r",
-                    msg.task_id,
-                    node_name_id,
-                )
-                return
-
             if not is_chosen:
                 logger.info(
                     "Provider not chosen by marketplace. task_id=%r, node=%r",
@@ -784,9 +561,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         self.task_manager.comp_task_keeper.receive_subtask(msg)
-        self.task_server.add_task_session(
-            ctd['subtask_id'], self
-        )
         if not self.task_server.task_given(self.key_id, ctd, msg.price):
             _cannot_compute(None)
             return
@@ -804,37 +578,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self,
             msg: message.tasks.WaitingForResults,
     ):
-        if self.concent_service.available:
-            concent_key = self.concent_service.variant['pubkey']
-        else:
-            concent_key = None
-        try:
-            msg.verify_owners(
-                requestor_public_key=msg_utils.decode_hex(self.key_id),
-                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
-                concent_public_key=concent_key,
-            )
-        except msg_exceptions.MessageError:
-            node_id = common.short_node_id(self.key_id)
-            logger.info(
-                'Dropping invalid WaitingForResults.'
-                ' sender_node_id: %(node_id)s, task_id: %(task_id)s,'
-                ' subtask_id: %(subtask_id)s',
-                {
-                    'node_id': node_id,
-                    'task_id': msg.task_id,
-                    'subtask_id': msg.subtask_id,
-                },
-            )
-            logger.debug('Invalid WaitingForResults received', exc_info=True)
-            return
+        self.verify_owners(msg)
         self.task_server.subtask_waiting(
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
         )
         self.task_computer.session_closed()
-        if not self.msgs_to_send:
-            self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
@@ -875,6 +624,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
+        self.verify_owners(msg)
+
         subtask_id = msg.subtask_id
         if not self.check_provider_for_subtask(subtask_id):
             self.dropped()
@@ -885,29 +636,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
-        self.task_server.add_task_session(
-            msg.subtask_id, self
-        )
-
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,
             ecc=self.task_server.keys_auth.ecc,
         )
         self.send(returned_msg)
         if not isinstance(returned_msg, message.tasks.AckReportComputedTask):
-            self.dropped()
             return
-
-        def after_success():
-            self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
         def after_error():
             if msg.task_to_compute.concent_enabled:
                 return
             # in case of resources failure, if we're not using the Concent
             # we're immediately sending a rejection message to the Provider
-            self._reject_subtask_result(
-                subtask_id,
+            self.task_server.send_result_rejected(
+                report_computed_task=msg,
                 reason=message.tasks.SubtaskResultsRejected.REASON
                 .ResourcesFailure,
             )
@@ -915,12 +658,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 'Error downloading task result'
             )
-            self.dropped()
 
         task_server_helpers.computed_task_reported(
             task_server=self.task_server,
             report_computed_task=msg,
-            after_success=after_success,
             after_error=after_error,
         )
 
@@ -1041,6 +782,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if self.key_id is None:
             self.key_id = msg.client_key_id
+            try:
+                existing_session = self.task_server.sessions[self.key_id]
+            except KeyError:
+                self.task_server.sessions[self.key_id] = self
+            else:
+                if (existing_session is not None)\
+                        and not existing_session is self:
+                    node_name = getattr(msg.node_info, 'node_name', '')
+                    logger.debug(
+                        'Duplicated session. Dropping. node=%s',
+                        common.node_info_str(node_name, self.key_id),
+                    )
+                    self.dropped()
+                    return
             send_hello = True
 
         nodeskeeper.store(msg.node_info)
@@ -1078,14 +833,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.key_id is None:
             return
 
-        if self.rand_val == msg.rand_val:
-            self.verified = True
-            self.task_server.verified_conn(self.conn_id, )
-            for msg_ in self.msgs_to_send:
-                self.send(msg_)
-            self.msgs_to_send = []
-        else:
+        if self.rand_val != msg.rand_val:
             self.disconnect(message.base.Disconnect.REASON.Unverified)
+
+        self.verified = True
+        self.task_server.verified_conn(self.conn_id, )
+        self.read_msg_queue()
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
@@ -1147,8 +900,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            self.key_id, msg.subtask_id)
 
     def send(self, msg, send_unverified=False):
+        if self.key_id and not self.conn.opened:
+            msg_queue.put(self.key_id, msg)
+            return
         if not self.verified and not send_unverified:
-            self.msgs_to_send.append(msg)
+            if not self.key_id:
+                raise RuntimeError('Connection unverified')
+            msg_queue.put(self.key_id, msg)
             return
         BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(

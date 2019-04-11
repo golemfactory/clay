@@ -1,7 +1,17 @@
 import logging
+import typing
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
+
+from golem import model
+from golem.core import common
+from golem.network import history
+from golem.network.transport import msg_queue
+
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.network.p2p.local_node import LocalNode
 
 logger = logging.getLogger(__name__)
 
@@ -79,4 +89,132 @@ def computed_task_reported(
         error=on_error,
         client_options=client_options,
         output_dir=output_dir
+    )
+
+def send_report_computed_task(task_server, waiting_task_result) -> None:
+    """ Send task results after finished computations
+    """
+    from golem.task.tasksession import copy_and_sign
+    task_to_compute = history.get(
+        message_class_name='TaskToCompute',
+        node_id=waiting_task_result.owner.key,
+        task_id=waiting_task_result.task_id,
+        subtask_id=waiting_task_result.subtask_id
+    )
+
+    if not task_to_compute:
+        logger.warning(
+            "I won't report computed task. TTC missing."
+            " node=%s, task_id=%r, subtask_id=%r",
+            common.node_info_str(
+                waiting_task_result.owner.node_name,
+                waiting_task_result.owner.key,
+            ),
+            waiting_task_result.task_id,
+            waiting_task_result.subtask_id,
+        )
+        return
+
+    i_am: LocalNode = task_server.node
+    client_options = task_server.get_share_options(
+        waiting_task_result.task_id,
+        waiting_task_result.owner.prv_addr,
+    )
+
+    report_computed_task = message.tasks.ReportComputedTask(
+        task_to_compute=task_to_compute,
+        node_name=i_am.node_name,
+        address=i_am.prv_addr,
+        port=task_server.cur_port,
+        key_id=i_am.key,
+        node_info=i_am.to_dict(),
+        extra_data=[],
+        size=waiting_task_result.result_size,
+        package_hash='sha1:' + waiting_task_result.package_sha1,
+        multihash=waiting_task_result.result_hash,
+        secret=waiting_task_result.result_secret,
+        options=client_options.__dict__,
+    )
+
+    msg_queue.put(
+        waiting_task_result.owner.key,
+        report_computed_task,
+    )
+    report_computed_task = copy_and_sign(
+        msg=report_computed_task,
+        private_key=task_server.key_auth._private_key,  # noqa pylint: disable=protected-access
+    )
+    history.add(
+        msg=report_computed_task,
+        node_id=waiting_task_result.owner.key,
+        local_role=model.Actor.Provider,
+        remote_role=model.Actor.Requestor,
+    )
+
+    # if the Concent is not available in the context of this subtask
+    # we can only assume that `ReportComputedTask` above reaches
+    # the Requestor safely
+
+    if not task_to_compute.concent_enabled:
+        logger.debug(
+            "Concent not enabled for this task, "
+            "skipping `ForceReportComputedTask`. "
+            "task_id=%r, "
+            "subtask_id=%r, ",
+            task_to_compute.task_id,
+            task_to_compute.subtask_id,
+        )
+        return
+
+    # we're preparing the `ForceReportComputedTask` here and
+    # scheduling the dispatch of that message for later
+    # (with an implicit delay in the concent service's `submit` method).
+    #
+    # though, should we receive the acknowledgement for
+    # the `ReportComputedTask` sent above before the delay elapses,
+    # the `ForceReportComputedTask` message to the Concent will be
+    # cancelled and thus, never sent to the Concent.
+
+    delayed_forcing_msg = message.concents.ForceReportComputedTask(
+        report_computed_task=report_computed_task,
+        result_hash='sha1:' + waiting_task_result.package_sha1
+    )
+    logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
+
+    task_server.client.concent_service.submit_task_message(
+        waiting_task_result.subtask_id,
+        delayed_forcing_msg,
+    )
+
+
+def send_task_failure(waiting_task_failure) -> None:
+    """Inform task owner that an error occurred during task computation
+    """
+
+    task_to_compute = history.get(
+        message_class_name='TaskToCompute',
+        node_id=waiting_task_failure.owner.key,
+        task_id=waiting_task_failure.task_id,
+        subtask_id=waiting_task_failure.subtask_id
+    )
+
+    if not task_to_compute:
+        logger.warning(
+            "I won't report task failure. TTC missing."
+            " node=%s, task_id=%r, subtask_id=%r",
+            common.node_info_str(
+                waiting_task_failure.owner.node_name,
+                waiting_task_failure.owner.key,
+            ),
+            waiting_task_failure.task_id,
+            waiting_task_failure.subtask_id,
+        )
+        return
+
+    msg_queue.put(
+        waiting_task_failure.owner.key,
+        message.tasks.TaskFailure(
+            task_to_compute=task_to_compute,
+            err=waiting_task_failure.err_msg
+        ),
     )

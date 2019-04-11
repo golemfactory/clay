@@ -16,6 +16,7 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem import model
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -941,6 +942,17 @@ class TaskManager(TaskEventListener):
         t.update_task_state(ts)
 
         return ts
+
+    def subtask_to_task(
+            self,
+            subtask_id: str,
+            local_role: model.Actor,
+    ) -> Optional[str]:
+        if local_role == model.Actor.Provider:
+            return self.comp_task_keeper.subtask_to_task.get(subtask_id)
+        elif local_role == model.Actor.Requestor:
+            return self.subtask2task_mapping.get(subtask_id)
+        return None
 
     def get_subtasks(self, task_id) -> Optional[List[str]]:
         """
