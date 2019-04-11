@@ -104,6 +104,24 @@ _TASK_SETTINGS = {
         },
         'compute_on': 'gpu',
     },
+    '4k': {
+        'type': "Blender",
+        'name': 'test task',
+        'timeout': "0:20:00",
+        "subtask_timeout": "0:19:50",
+        "subtasks_count": 1,
+        "bid": 1.0,
+        "resources": [],
+        "options": {
+            "output_path": '',
+            "format": "PNG",
+            "resolution": [
+                4096,
+                2160,
+            ]
+        }
+    },
+
 }
 
 
