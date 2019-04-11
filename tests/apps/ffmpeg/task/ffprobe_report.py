@@ -288,11 +288,20 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
 
     @property
     def resolution(self) -> Union[Collection, Tuple[Collection, Any, Any]]:
-        return (
-            self._raw_report.get('resolution', None),
-            self._raw_report.get('width', None),
-            self._raw_report.get('height', None),
-        )
+        resolution = self._raw_report.get('resolution', None)
+        width = self._raw_report.get('width', None)
+        height = self._raw_report.get('height', None)
+
+        if resolution is None and width is not None and height is not None:
+            return (width, height)
+        if resolution is not None and width is None and height is None:
+            return resolution
+
+        is_collection = isinstance(resolution, Collection)
+        if is_collection and tuple(resolution) == (width, height):
+            return resolution
+
+        return (resolution, width, height)
 
     @property
     def pixel_format(self) -> Optional[str]:
