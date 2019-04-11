@@ -136,6 +136,7 @@ class EnumFieldBase:
         return value
 
     def python_value(self, value):
+        # pylint: disable=not-callable
         return self.enum_type(value)
 
 
@@ -181,7 +182,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype: Optional[DictSerializable] = None
+    objtype: DictSerializable
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -189,6 +190,9 @@ class DictSerializableJSONField(TextField):
         return json.dumps(value.to_dict())
 
     def python_value(self, value: str) -> DictSerializable:
+        if issubclass(self.objtype, msg_dt.Container):  # type: ignore
+            # pylint: disable=not-callable
+            return self.objtype(**json.loads(value))  # type: ignore
         return self.objtype.from_dict(json.loads(value))
 
 
@@ -577,6 +581,25 @@ class QueuedMessage(BaseModel):
             f" node={common.short_node_id(node)}"
             f", version={self.msg_version}"
             f", class={self.msg_cls}"
+        )
+
+
+class CachedNode(BaseModel):
+    node = CharField(null=False, index=True, unique=True)
+    node_field = NodeField(null=False)
+
+    def __str__(self):
+        # pylint: disable=no-member
+        node_name = self.node_field.node_name if self.node_field else ''
+        node_id = self.node or ''
+        return (
+            f"{common.node_info_str(node_name, node_id)}"
+        )
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
+            f" {self}>"
         )
 
 

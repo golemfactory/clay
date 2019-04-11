@@ -547,7 +547,7 @@ class TestCoreTaskBuilder(TestCase):
             builder.build()
 
     @freeze_time('2019-01-01 00:00:00')
-    def test_get_output_path_creates_target_dir(self):
+    def test_get_output_path_returns_correct_path(self):
         builder = self._get_core_task_builder()
         task_name = 'test_task'
         task_dir_name = f'{task_name}_2019-01-01_00-00-00'
@@ -563,36 +563,3 @@ class TestCoreTaskBuilder(TestCase):
                 result_path,
                 os.path.join(output_path, task_dir_name, task_name)
             )
-
-    @freeze_time('2019-01-01 00:00:00')
-    def test_get_output_path_creates_intermediate_dirs(self):
-        builder = self._get_core_task_builder()
-        task_name = 'test_task'
-        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
-        output_suffix = 'some/new/dirs'
-
-        with TemporaryDirectory() as output_path:
-            task_def = self._get_task_def_dict(
-                os.path.join(output_path, output_suffix), 'png')
-            mock_definition = MagicMock()
-            mock_definition.name = task_name
-
-            result_path = builder.get_output_path(task_def, mock_definition)
-
-            self.assertEquals(
-                result_path,
-                os.path.join(output_path, output_suffix,
-                             task_dir_name, task_name)
-            )
-
-    @patch('os.makedirs', side_effect=PermissionError)
-    def test_get_output_path_fails_without_permissions(self, *_):
-        builder = self._get_core_task_builder()
-        task_name = 'test_task'
-        output_path = '/new/path/without/permission'
-        task_def = self._get_task_def_dict(output_path, 'png')
-        mock_definition = MagicMock()
-        mock_definition.name = task_name
-
-        with self.assertRaises(PermissionError):
-            builder.get_output_path(task_def, mock_definition)
