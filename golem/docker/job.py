@@ -130,7 +130,7 @@ class DockerJob:
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=[self.entrypoint],
+            command=self.entrypoint,
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )
