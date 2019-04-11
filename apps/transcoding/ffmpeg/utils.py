@@ -228,6 +228,19 @@ class StreamOperator:
         logger.debug('Command params: %s', extra_data)
 
         job_result = self._do_job_in_container(dir_mapping, extra_data)
+        if 'data' not in job_result:
+            raise ffmpegException(
+                "Failed to obtain video metadata. "
+                "'data' not found in the returned JSON.")
+
+        if len(job_result['data']) < len(input_files):
+            raise ffmpegException(
+                "Failed to obtain video metadata. "
+                "Missing output for at least one input file.")
+
+        if len(job_result['data']) > len(input_files):
+            raise ffmpegException(
+                "Failed to obtain video metadata. Too many results.")
 
         logger.info('Video metadata obtained successfully!')
         return job_result
