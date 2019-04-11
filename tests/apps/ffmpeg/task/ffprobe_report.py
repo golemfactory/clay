@@ -289,6 +289,13 @@ class FfprobeFormatReport:
                     ))
         return list_of_reports
 
+    def __repr__(self):
+        messages = []
+        for attr in self.ATTRIBUTES_TO_COMPARE:
+            messages.append(f'{attr}: {str(getattr(self, attr))}')
+        return f'FfprobeFormatReport({", ".join(messages)}. ' \
+            f'Streams: {self.stream_reports.__repr__()})'
+
 
 class FuzzyDuration:
     def __init__(self, duration: Union[float, int], tolerance: float) -> None:
@@ -441,6 +448,12 @@ class FfprobeStreamReport:
 
     def __eq__(self, other):
         return len(self.diff(other)) == 0
+
+    def __repr__(self):
+        messages = []
+        for attr in self.ATTRIBUTES_TO_COMPARE:
+            messages.append(f'{attr}: {str(getattr(self, attr))}')
+        return f'{type(self).__name__}({", ".join(messages)} )'
 
 
 class FfprobeAudioAndVideoStreamReport(FfprobeStreamReport):
