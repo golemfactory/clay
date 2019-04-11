@@ -61,9 +61,6 @@ class ResourceHandshake:
 
 
 class ResourceHandshakeSessionMixin:
-
-    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
-
     def __init__(self):
         self._interpretation = getattr(self, '_interpretation', dict())
         self.__set_msg_interpretations()
