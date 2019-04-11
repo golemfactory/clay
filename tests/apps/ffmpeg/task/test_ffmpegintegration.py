@@ -131,6 +131,25 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
         self.assertEqual(diff, [])
 
     @parameterized.expand(
+        (video_file, frame_rate)
+        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for frame_rate in ('25/1', '25/2')
+    )
+    @pytest.mark.slow
+    def test_split_and_merge_with_frame_rate_change(self,
+                                                    video_file,
+                                                    frame_rate):
+        operation = SimulatedTranscodingOperation(
+            task_executor=self,
+            experiment_name="frame rate change",
+            resource_dir=self.RESOURCES,
+            tmp_dir=self.tempdir)
+        operation.attach_to_report_set(self._ffprobe_report_set)
+        operation.request_frame_rate_change(frame_rate)
+        (_input_report, _output_report, diff) = operation.run(video_file)
+        self.assertEqual(diff, [])
+
+    @parameterized.expand(
         (video_file, subtasks_count)
         for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
         for subtasks_count in (1, 6, 10)
