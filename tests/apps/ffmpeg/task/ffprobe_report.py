@@ -15,6 +15,41 @@ class UnsupportedCodecType(Exception):
     pass
 
 
+def number_if_possible(value: Any) -> Any:
+    if not isinstance(value, (str, bytes)):
+        return value
+
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        pass
+
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        pass
+
+    return value
+
+
+def fuzzy_duration_if_possible(value: Any, tolerance: float) -> Any:
+    converted_value = number_if_possible(value)
+
+    if isinstance(converted_value, (int, float)):
+        return FuzzyDuration(converted_value, tolerance)
+
+    return converted_value
+
+
+def fuzzy_int_if_possible(value: Any, tolerance_percent: int) -> Any:
+    converted_value = number_if_possible(value)
+
+    if isinstance(converted_value, int):
+        return FuzzyInt(converted_value, tolerance_percent)
+
+    return converted_value
+
+
 class FfprobeFormatReport:
     ATTRIBUTES_TO_COMPARE = {
         'format_name',
