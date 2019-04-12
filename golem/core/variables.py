@@ -81,7 +81,7 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules # noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules # noqa
     """
-    NUM: ClassVar[int] = 31
+    NUM: ClassVar[int] = 32
     POSTFIX: ClassVar[str] = ''
     ID: ClassVar[str] = str(NUM) + POSTFIX
 
