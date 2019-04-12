@@ -310,14 +310,16 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
             self.env.install_prerequisites(prereqs)
 
     def test_pull_image_error(self):
-        run_patch = patch_handler("run", side_effect=OSError)
-        run_patch.start()
-        self.addCleanup(run_patch.stop)
+        client_mock = MagicMock()
+        client_mock.return_value.pull.side_effect = ValueError
+        client_patch = patch("local_client", client_mock)
+        client_patch.start()
+        self.addCleanup(client_patch.stop)
 
         self.env._status = EnvStatus.ENABLED
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.install_prerequisites(prereqs)
-        return self.assertFailure(deferred, OSError)
+        return self.assertFailure(deferred, ValueError)
 
 
 class TestUpdateConfig(TestDockerCPUEnv):

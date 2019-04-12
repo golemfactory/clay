@@ -2,10 +2,12 @@ import logging
 from functools import wraps
 from pathlib import Path
 from subprocess import SubprocessError
-from threading import Lock
+from threading import Lock, Thread
+from time import sleep
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
-    NamedTuple, Union, Sequence
+    NamedTuple, Union, Sequence, Tuple
 
+from docker.errors import APIError
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
@@ -54,6 +56,11 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
 
 class DockerCPURuntime(Runtime):
 
+    CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
+    CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]
+
+    STATUS_UPDATE_INTERVAL = 1.0  # seconds
+
     def __init__(self, payload: DockerPayload, host_config: Dict[str, Any]) \
             -> None:
         image = f"{payload.image}:{payload.tag}"
@@ -63,6 +70,7 @@ class DockerCPURuntime(Runtime):
 
         self._status = RuntimeStatus.CREATED
         self._status_lock = Lock()
+        self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
         self._container_config = client.create_container_config(
             image=image,
@@ -87,7 +95,8 @@ class DockerCPURuntime(Runtime):
         with self._status_lock:
             if self._status not in from_status:
                 exp_status = "or ".join(map(str, from_status))
-                raise ValueError(f"Invalid status. Expected: {exp_status}")
+                raise ValueError(
+                    f"Invalid status: {self._status}. Expected: {exp_status}")
             self._status = to_status
 
     def _wrap_status_change(
@@ -122,6 +131,52 @@ class DockerCPURuntime(Runtime):
             return wrapped
 
         return wrapper
+
+    def _inspect_container(self) -> Tuple[str, int]:
+        """ Inspect Docker container associated with this runtime. Returns
+            (status, exit_code) tuple. """
+        assert self._container_id is not None
+        client = local_client()
+        inspection = client.inspect_container(self._container_id)
+        state = inspection["State"]
+        return state["Status"], state["ExitCode"]
+
+    def _update_status(self) -> None:
+        """ Periodically check status of the container and update the Runtime's
+            status accordingly. Assumes the container has been started and not
+            removed. Uses lock for status read & write. """
+        while True:
+            sleep(self.STATUS_UPDATE_INTERVAL)
+            logger.debug("Updating runtime status...")
+
+            with self._status_lock:
+                if self._status != RuntimeStatus.RUNNING:
+                    logger.info("Runtime is no longer running. "
+                                "Stopping status update thread.")
+                    return
+
+                try:
+                    container_status, exit_code = self._inspect_container()
+                except (APIError, KeyError):
+                    logger.exception("Error inspecting container.")
+                    self._status = RuntimeStatus.FAILURE
+                    return
+
+                if container_status in self.CONTAINER_RUNNING:
+                    logger.debug("Container still running, no status update.")
+                    continue
+
+                elif container_status in self.CONTAINER_STOPPED:
+                    logger.info("Container stopped.")
+                    self._status = RuntimeStatus.STOPPED if exit_code == 0 \
+                        else RuntimeStatus.FAILURE
+                    return
+
+                else:
+                    logger.error(
+                        f"Unexpected container status: '{container_status}'")
+                    self._status = RuntimeStatus.FAILURE
+                    return
 
     def prepare(self) -> Deferred:
         self._change_status(
@@ -163,13 +218,58 @@ class DockerCPURuntime(Runtime):
         return deferToThread(_cleanup)
 
     def start(self) -> Deferred:
-        raise NotImplementedError
+        self._change_status(
+            from_status=RuntimeStatus.PREPARED,
+            to_status=RuntimeStatus.STARTING)
+        logger.info("Starting container '%s'...", self._container_id)
+
+        @self._wrap_status_change(
+            success_status=RuntimeStatus.STARTED,
+            success_msg=f"Container '{self._container_id}' started.",
+            error_msg=f"Starting container '{self._container_id}' failed.")
+        def _start():
+            client = local_client()
+            client.start(self._container_id)
+
+        def _spawn_status_update_thread():
+            logger.debug("Spawning status update thread...")
+            self._status_update_thread = Thread(target=self._update_status)
+            self._status_update_thread.start()
+            logger.debug("Status update thread spawned.")
+
+        deferred_start = deferToThread(_start)
+        deferred_start.addCallback(_spawn_status_update_thread)
+        return deferred_start
 
     def stop(self) -> Deferred:
-        raise NotImplementedError
+        with self._status_lock:
+            if self._status != RuntimeStatus.RUNNING:
+                raise ValueError(f"Invalid status: {self._status}")
+        logger.info("Stopping container '%s'...", self._container_id)
+
+        @self._wrap_status_change(
+            success_status=RuntimeStatus.STOPPED,
+            success_msg=f"Container '{self._container_id}' stopped.",
+            error_msg=f"Stopping container '{self._container_id}' failed.")
+        def _stop():
+            client = local_client()
+            client.stop(self._container_id)
+
+        def _join_status_update_thread():
+            logger.debug("Joining status update thread...")
+            self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
+            if self._status_update_thread.is_alive():
+                logger.warning("Failed to join status update thread.")
+            else:
+                logger.debug("Status update thread joined.")
+
+        deferred_stop = deferToThread(_stop)
+        deferred_stop.addCallback(_join_status_update_thread)
+        return deferred_stop
 
     def status(self) -> RuntimeStatus:
-        raise NotImplementedError
+        with self._status_lock:
+            return self._status
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
@@ -341,9 +441,12 @@ class DockerCPUEnvironment(Environment):
         logger.info("Preparing prerequisites...")
 
         def _prepare():
-            args = [f"{prerequisites.image}:{prerequisites.tag}"]
             try:
-                DockerCommandHandler.run("pull", args=args)
+                client = local_client()
+                client.pull(
+                    prerequisites.image,
+                    tag=prerequisites.tag
+                )
             except Exception:
                 logger.exception("Preparing prerequisites failed.")
                 raise
