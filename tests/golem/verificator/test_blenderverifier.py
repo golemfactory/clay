@@ -253,6 +253,8 @@ class TestBlenderVerifier(TempDirFixture):
     def test_random_crop_widow(self):
         self._prep_sanity_check_data()
 
+        # todo review: Non deterministic test. We expected test for randomly chosen values
+        # but they should be hardcoded in test. Otherwise it's difficult to reproduce results.
         subtask_height = random.randint(20, 50)
         subtask_ymin = round(random.randint(0, 100 - subtask_height)/100, 2)
         subtask_ymax = round(subtask_ymin + subtask_height/100, 2)
