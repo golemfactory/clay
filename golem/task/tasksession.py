@@ -802,9 +802,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     return
             send_hello = True
 
-        nodeskeeper.store(msg.node_info)
-
-        if msg.proto_id != variables.PROTOCOL_CONST.ID:
+        if (msg.proto_id != variables.PROTOCOL_CONST.ID)\
+                or (msg.node_info is None):
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
@@ -817,12 +816,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.key_id,
                 self.task_server.config_desc.key_difficulty):
             logger.info(
-                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
-                msg.node_info.node_name, self.address, self.port,
+                "Key from %s (%s:%d) is not difficult enough (%d < %d).",
+                common.node_info_str(
+                    msg.node_info.node_name,
+                    msg.client_key_id,
+                ),
+                self.address, self.port,
                 KeysAuth.get_difficulty(self.key_id),
                 self.task_server.config_desc.key_difficulty)
             self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
             return
+
+        nodeskeeper.store(msg.node_info)
 
         if send_hello:
             self.send_hello()
