@@ -697,6 +697,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     def build_dictionary(cls, definition):
         dictionary = super().build_dictionary(definition)
         dictionary['options']['compositing'] = definition.options.compositing
+        dictionary['options']['samples'] = definition.options.samples
         return dictionary
 
     @classmethod
