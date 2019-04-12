@@ -305,27 +305,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert self.session.task_server.task_computer.session_closed.called
         assert not self.session.disconnect.called
 
-    def test_handshake_timeout(self, *_):
-        self.session._block_peer = Mock()
-        self.session._finalize_handshake = Mock()
-
-        self.session._handshake_timeout(self.session.key_id)
-        assert not self.session._block_peer.called
-        assert not self.session._finalize_handshake.called
-        assert not self.session.task_server.task_computer.session_closed.called
-        assert not self.session.dropped.called
-
-        handshake = ResourceHandshake()
-        handshake.local_result = False
-        handshake.remote_result = True
-        self._set_handshake(self.session.key_id, handshake)
-
-        self.session._handshake_timeout(self.session.key_id)
-        assert self.session._block_peer.called
-        assert self.session._finalize_handshake.called
-        assert self.session.task_server.task_computer.session_closed.called
-        assert self.session.dropped.called
-
     def test_get_set_remove_handshake(self, *_):
         handshake = ResourceHandshake()
         key_id = self.session.key_id
