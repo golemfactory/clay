@@ -7,9 +7,9 @@ from golem_messages.factories import tasks as tasks_factories
 from golem import testutils
 from golem.network import nodeskeeper
 from golem.task import taskkeeper
-from golem.task.server import queue as srv_queue
+from golem.task.server import queue_ as srv_queue
 
-class TestTaskResourcesMixin(
+class TestTaskQueueMixin(
         testutils.DatabaseFixture,
         testutils.TestWithClient,
 ):
@@ -17,6 +17,7 @@ class TestTaskResourcesMixin(
         super().setUp()
         self.server = srv_queue.TaskMessagesQueueMixin()
         self.server._add_pending_request = mock.MagicMock()
+        self.server._mark_connected = mock.MagicMock()
         self.server.task_manager = self.client.task_manager
         self.server.client = self.client
         self.server.task_keeper = taskkeeper.TaskHeaderKeeper(
@@ -26,9 +27,8 @@ class TestTaskResourcesMixin(
         )
         self.server.new_session_prepare = mock.MagicMock()
         self.server.remove_pending_conn = mock.MagicMock()
-        self.server.remove_responses = mock.MagicMock()
-        self.server.response_list = {}
         self.server.pending_connections = {}
+        self.server.forwarded_session_requests = {}
 
         self.message = tasks_factories.ReportComputedTaskFactory()
         self.node_id = self.message.task_to_compute.want_to_compute_task\
@@ -77,7 +77,6 @@ class TestTaskResourcesMixin(
             self.conn_id,
             node_id=self.node_id,
         )
-        self.server.response_list[self.conn_id][0](self.session)
         mock_established.assert_called_once_with(
             self.session,
             self.conn_id,

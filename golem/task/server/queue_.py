@@ -1,4 +1,3 @@
-import collections
 import logging
 import time
 import typing
@@ -62,8 +61,7 @@ class TaskMessagesQueueMixin:
                 node_id,
             )
             return
-        self.sessions[node_id] = None
-        self._add_pending_request(  # type: ignore
+        result = self._add_pending_request(  # type: ignore
             'msg_queue',
             node,
             prv_port=node.prv_port,
@@ -72,6 +70,8 @@ class TaskMessagesQueueMixin:
                 'node_id': node_id,
             }
         )
+        if result:
+            self.sessions[node_id] = None
 
     def remove_session_by_node_id(self, node_id):
         try:
@@ -112,29 +112,21 @@ class TaskMessagesQueueMixin:
             conn_id,
             node_id,
     ):
-        if self.sessions[node_id] is not None:
-            # There is a session already established
-            session.dropped()
-            return
+        try:
+            if self.sessions[node_id] is not None:
+                # There is a session already established
+                session.dropped()
+                return
+        except KeyError:
+            pass
         session.key_id = node_id
         session.conn_id = conn_id
         self.sessions[node_id] = session
         self._mark_connected(conn_id, session.address, session.port)
-        self.remove_forwarded_session_request(node_id)
+        self.forwarded_session_requests.pop(node_id)
         session.send_hello()
 
-    def msg_queue_connection_failure(self, conn_id, *args, **kwargs):
-        def cbk(session):
-            self.msg_queue_connection_established(
-                session,
-                conn_id,
-                *args,
-                **kwargs,
-            )
-        try:
-            self.response_list[conn_id].append(cbk)
-        except KeyError:
-            self.response_list[conn_id] = collections.deque([cbk])
+    def msg_queue_connection_failure(self, conn_id, *_args, **_kwargs):
         try:
             pc = self.pending_connections[conn_id]
         except KeyError:
@@ -151,6 +143,5 @@ class TaskMessagesQueueMixin:
             **_kwargs,
     ):
         self.remove_pending_conn(conn_id)
-        self.remove_responses(conn_id)
         if self.sessions[node_id] is None:
             del self.sessions[node_id]

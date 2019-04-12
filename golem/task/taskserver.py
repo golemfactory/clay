@@ -137,7 +137,6 @@ class TaskServer(
         self.min_trust = 0.0
 
         self.last_messages = []
-        self.last_message_time_threshold = config_desc.task_session_timeout
 
         self.results_to_send = {}
         self.failures_to_send = {}
@@ -147,7 +146,6 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.response_list = {}
         self.acl = get_acl(Path(client.datadir),
                            max_times=config_desc.disallow_id_max_times)
         self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
@@ -188,7 +186,7 @@ class TaskServer(
                 timeout=timeout,
             ),
             self._sync_pending,
-            self.__send_waiting_results,
+            self._send_waiting_results,
             self.task_computer.run,
             self.task_connections_helper.sync,
             self._sync_forwarded_session_requests,
@@ -414,7 +412,7 @@ class TaskServer(
         self.task_sessions_incoming.add(session)
 
     def disconnect(self):
-        for node_id in self.sessions:
+        for node_id in list(self.sessions):
             try:
                 task_session = self.sessions[node_id]
                 if task_session is None:
@@ -644,21 +642,6 @@ class TaskServer(
     def get_computing_trust(self, node_id):
         return self.client.get_computing_trust(node_id)
 
-    def start_task_session(self, node_info, super_node_info, conn_id):
-        msg_queue.put(
-            node_info.key,
-            message.tasks.StartSessionResponse(conn_id=ans_conn_id),
-        )
-
-    def respond_to(self, key_id, session, conn_id):
-        self.remove_pending_conn(conn_id)
-        responses = self.response_list.get(conn_id, None)
-
-        if responses:
-            while responses:
-                res = responses.popleft()
-                res(session)
-
     def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
         """ Change node info into tcp addresses. Adds a suggested address.
         :param Node node_info: node information
@@ -692,19 +675,9 @@ class TaskServer(
     def quit(self):
         self.task_computer.quit()
 
-    def remove_responses(self, conn_id):
-        self.response_list.pop(conn_id, None)
-
-    def final_conn_failure(self, conn_id):
-        self.remove_responses(conn_id)
-        super(TaskServer, self).final_conn_failure(conn_id)
-
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
-
-    def remove_forwarded_session_request(self, key_id):
-        return self.forwarded_session_requests.pop(key_id, None)
 
     def get_min_performance_for_task(self, task: Task) -> float:
         env = self.get_environment_by_id(task.header.environment)
@@ -852,12 +825,13 @@ class TaskServer(
     def _sync_forwarded_session_requests(self):
         now = time.time()
         for key_id, data in list(self.forwarded_session_requests.items()):
-            if data:
-                if now - data['time'] >= self.forwarded_session_request_timeout:
-                    logger.debug('connection timeout: %s', data)
-                    self.final_conn_failure(data['conn_id'])
-                    self.remove_forwarded_session_request(key_id)
-            else:
+            if not data:
+                self.forwarded_session_requests.pop(key_id)
+                continue
+            if now - data['time'] >= self.forwarded_session_request_timeout:
+                logger.debug('connection timeout: %s', data)
+                self.final_conn_failure(data['conn_id'])
+                self.remove_forwarded_session_request(key_id)
                 self.forwarded_session_requests.pop(key_id)
 
     def _get_factory(self):
@@ -886,9 +860,9 @@ class TaskServer(
         for node_id in nodes_with_timeouts:
             Trust.COMPUTED.decrease(node_id)
 
-    def __send_waiting_results(self):
+    def _send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):
-            wtr = self.results_to_send[subtask_id]
+            wtr: WaitingTaskResult = self.results_to_send[subtask_id]
             now = time.time()
 
             if not wtr.already_sending:
@@ -900,7 +874,7 @@ class TaskServer(
                         waiting_task_result=wtr,
                     )
 
-        for wtf in list(self.failures_to_send.items()):
+        for wtf in list(self.failures_to_send.values()):
             helpers.send_task_failure(
                 waiting_task_failure=wtf,
             )

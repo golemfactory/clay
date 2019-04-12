@@ -275,8 +275,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     def setUp(self):
         super().setUp()
         random.seed()
+        XXX
         self.task_session = TaskSession(Mock())
-        self.task_session.key_id = 'unittest_key_id'
+        self.task_session.key_id = 'deadbeef'
         self.task_session.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
         keys_auth = KeysAuth(
@@ -286,6 +287,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = keys_auth
+        self.task_session.task_server.sessions = {}
         self.pubkey = keys_auth.public_key
         self.privkey = keys_auth._private_key
 
@@ -417,53 +419,42 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def test_react_to_hello_key_not_difficult(self, *_):
         # given
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = 80
-        ts.disconnect = Mock()
-        ts.send = Mock()
+        self.task_session.task_server.config_desc.key_difficulty = 80
 
         key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
+        msg = msg_factories.base.HelloFactory(
+            client_key_id=key_id,
+            node_info=dt_p2p_factory.Node(),
+            proto_id=variables.PROTOCOL_CONST.ID,
+        )
 
         # when
         with self.assertLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
+            self.task_session._react_to_hello(msg)
 
         # then
-        ts.disconnect.assert_called_with(
+        self.task_session.disconnect.assert_called_with(
             message.base.Disconnect.REASON.KeyNotDifficult)
 
-    def test_react_to_hello_key_difficult(self, *_):
+    @patch('golem.task.tasksession.TaskSession.send')
+    def test_react_to_hello_key_difficult(self, send_mock, *_):
         # given
         difficulty = 4
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = difficulty
-        ts.disconnect = Mock()
-        ts.send = Mock()
+        self.task_session.key_id = None
+        self.task_session.task_server.config_desc.key_difficulty = difficulty
 
         ka = KeysAuth(datadir=self.path, difficulty=difficulty,
                       private_key_name='prv', password='')
-        peer_info = MagicMock()
-        peer_info.key = ka.key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=ka.key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
+        msg = msg_factories.base.HelloFactory(
+            client_key_id=ka.key_id,
+            proto_id=variables.PROTOCOL_CONST.ID,
+        )
 
         # when
         with self.assertNoLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
+            self.task_session._react_to_hello(msg)
         # then
-        self.assertTrue(ts.send.called)
+        send_mock.assert_called()
 
     @patch('golem.task.tasksession.get_task_message')
     def test_result_received(self, get_msg_mock, *_):

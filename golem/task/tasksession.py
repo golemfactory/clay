@@ -203,7 +203,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def my_public_key(self) -> bytes:
         return self.task_server.keys_auth.public_key
 
-    def verify_owners(self, msg):
+    def verify_owners(self, msg) -> bool:
         if self.concent_service.available:
             concent_key = self.concent_service.variant['pubkey']
         else:
@@ -228,7 +228,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 },
             )
             logger.debug('Invalid message received', exc_info=True)
-            return
+            return False
+        return True
 
     #######################
     # FileSession methods #
@@ -578,7 +579,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self,
             msg: message.tasks.WaitingForResults,
     ):
-        self.verify_owners(msg)
+        if not self.verify_owners(msg):
+            return
         self.task_server.subtask_waiting(
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
@@ -624,7 +626,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        self.verify_owners(msg)
+        if not self.verify_owners(msg):
+            return
 
         subtask_id = msg.subtask_id
         if not self.check_provider_for_subtask(subtask_id):
@@ -777,6 +780,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_hello(self, msg):
         if not self.conn.opened:
+            logger.info("Hello received after connection closed. msg=%s", msg)
             return
         send_hello = False
 
@@ -788,7 +792,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.task_server.sessions[self.key_id] = self
             else:
                 if (existing_session is not None)\
-                        and not existing_session is self:
+                        and existing_session is not self:
                     node_name = getattr(msg.node_info, 'node_name', '')
                     logger.debug(
                         'Duplicated session. Dropping. node=%s',
@@ -841,7 +845,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.read_msg_queue()
 
     def _react_to_start_session_response(self, msg):
-        self.task_server.respond_to(self.key_id, self, msg.conn_id)
+        raise NotImplementedError(
+            "Implement reversed task session request #4005",
+        )
 
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
@@ -920,7 +926,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def check_provider_for_subtask(self, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         if node_id != self.key_id:
-            logger.warning('Received message about subtask %r from diferrent '
+            logger.warning('Received message about subtask %r from different '
                            'node %r than expected %r', subtask_id,
                            self.key_id, node_id)
             return False
