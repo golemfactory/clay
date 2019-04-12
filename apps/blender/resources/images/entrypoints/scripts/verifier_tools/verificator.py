@@ -10,6 +10,7 @@ from .img_metrics_calculator import calculate_metrics, get_raw_verification
 
 
 
+# todo review: too many blank lines
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
         if crop.id == id:
@@ -17,6 +18,10 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
+# todo review: this function is too long
+# todo review: name should indicate that a list of Crop instances is also
+#  returned  - find better name
+# todo review: clarify what are "params" - find better name
 def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
         subtask_border,
         scene_file_path,
@@ -39,7 +44,9 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
     crops: List[Crop] = []
     crops_render_data = []
 
+    # todo review: clean the TODO
     if crops_borders:  # TODO: Allow verification with given crops_border!
+        # todo review: rename to "crop_id"
         idx = 0
         for border in crops_borders:
             crop = Crop.create_from_region(
@@ -89,12 +96,20 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
     return crops, params
 
 
+# todo review: this function shouldn't know anything about the
+#  raw verification's existence.
+# todo review: clarify what are "results" - find better name
+# todo review: clarify what are "crops" (images? paths to images? instances of
+#  Crop class?) - find better name
+# todo review: "subtask_file_paths" suggests this function operates on more than
+#  one subtask, find better name
 def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
     verdict = True
 
     for crop_data in results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops)
 
+        # todo review: clean it up
         # TODO: Used with the old generate_single_random_crop_data
         left, top = crop.get_relative_top_left()
         left, top = crop.pixel_region.left, crop.pixel_region.top
@@ -170,6 +185,10 @@ def verify(  # pylint: disable=too-many-arguments
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
+    # todo review: clarify what "crops" are, unless it becomes obvious after
+    #  renaming "prepare_params"
+    # todo review: clarify what "params" are, unless it becomes obvious after
+    #  renaming "prepare_params"
     crops, params = prepare_params(subtask_border, scene_file_path, resolution,
                                    samples, frames, output_format, crops_count,
                                    crops_borders)

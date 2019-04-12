@@ -248,6 +248,7 @@ class TestBlenderVerifier(TempDirFixture):
 
         sync_wait(d, self.TIMEOUT)
 
+    # todo review: typo
     @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
     def test_random_crop_widow(self):
         self._prep_sanity_check_data()

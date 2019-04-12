@@ -63,6 +63,7 @@ class VerificationQueue:
         if self.can_run:
             entry, verifier_cls = self._next()
             if entry and verifier_cls:
+                # todo review: verifier_cls is of wrong type (Optional)
                 self._run(entry, verifier_cls)
 
     def _next(self) -> Tuple[Optional[VerificationTask],
