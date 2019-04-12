@@ -18,11 +18,12 @@ from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
 from apps.appsmanager import AppsManager
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
+from golem import model
 from golem import testutils
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.local_node import LocalNode
@@ -1330,6 +1331,30 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 self.tm.tasks_states['xyz'].status,
                 TaskStatus.timeout,
             )
+
+    def test_subtask_to_task(self, *_):
+        task_keeper = Mock(subtask_to_task=dict())
+        mapping = dict()
+
+        self.tm.comp_task_keeper = task_keeper
+        self.tm.subtask2task_mapping = mapping
+        task_keeper.subtask_to_task['sid_1'] = 'task_1'
+        mapping['sid_2'] = 'task_2'
+
+        self.assertEqual(
+            self.tm.subtask_to_task('sid_1', model.Actor.Provider),
+            'task_1',
+        )
+        self.assertEqual(
+            self.tm.subtask_to_task('sid_2', model.Actor.Requestor),
+            'task_2',
+        )
+        self.assertIsNone(
+            self.tm.subtask_to_task('sid_2', model.Actor.Provider),
+        )
+        self.assertIsNone(
+            self.tm.subtask_to_task('sid_1', model.Actor.Requestor),
+        )
 
 
 class TestCopySubtaskResults(DatabaseFixture):
