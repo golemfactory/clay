@@ -29,6 +29,11 @@ class FfmpegIntegrationTestCase(TestTaskIntegration):
 
     def setUp(self):
         super(FfmpegIntegrationTestCase, self).setUp()
+
+        # We'll be comparing output from FfprobeFormatReport.diff() which
+        # can be long but we still want to see it all.
+        self.maxDiff = None
+
         self.RESOURCES = os.path.join(os.path.dirname(
             os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.tt = ffmpegTaskTypeInfo()
