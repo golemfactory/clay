@@ -82,7 +82,6 @@ class VerificationMixin:
                 local_role=model.Actor.Requestor,
                 remote_role=model.Actor.Provider,
             )
-            self.dropped()
 
         self.task_manager.computed_task_received(
             subtask_id,
