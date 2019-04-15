@@ -65,7 +65,10 @@ class DockerCPURuntime(Runtime):
             -> None:
         image = f"{payload.image}:{payload.tag}"
         volumes = [bind.target for bind in payload.binds]
-        command = [payload.command] + payload.args
+        if payload.command is not None:
+            command: Optional[List[str]] = [payload.command] + payload.args
+        else:
+            command = None
         client = local_client()
 
         self._status = RuntimeStatus.CREATED
