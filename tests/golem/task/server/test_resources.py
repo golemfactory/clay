@@ -59,7 +59,7 @@ class TestResourceHandhsake(TestWithClient):
             self.key_id,
             self.server.resource_handshakes,
         )
-        mock_timer.assert_called_once_with()
+        mock_timer.assert_called_once_with(self.key_id)
         mock_share.assert_called_once_with(self.key_id)
 
     @mock.patch(

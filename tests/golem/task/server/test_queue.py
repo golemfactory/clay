@@ -2,10 +2,11 @@
 from unittest import mock
 import uuid
 
+from freezegun import freeze_time
 from golem_messages.factories import tasks as tasks_factories
 
 from golem import testutils
-from golem.network import nodeskeeper
+from golem.network.transport import tcpserver
 from golem.task import taskkeeper
 from golem.task.server import queue_ as srv_queue
 
@@ -25,7 +26,6 @@ class TestTaskQueueMixin(
             node=self.client.node,
             min_price=0
         )
-        self.server.new_session_prepare = mock.MagicMock()
         self.server.remove_pending_conn = mock.MagicMock()
         self.server.pending_connections = {}
         self.server.forwarded_session_requests = {}
@@ -36,52 +36,25 @@ class TestTaskQueueMixin(
         self.session = mock.MagicMock()
         self.conn_id = str(uuid.uuid4())
 
-    @mock.patch("golem.network.transport.msg_queue.put")
-    def test_send_message(self, mock_put, *_):
-        nodeskeeper.store(
-            self.message.task_to_compute.want_to_compute_task.task_header\
-                .task_owner,
-        )
-        self.server.send_message(
-            node_id=self.node_id,
-            msg=self.message,
-        )
-        mock_put.assert_called_once_with(
-            self.node_id,
-            self.message,
-        )
-
-    @mock.patch("golem.network.transport.msg_queue.get")
-    def test_conn_established(self, mock_get, *_):
-        mock_get.return_value = [self.message, ]
+    def test_conn_established(self, *_):
         self.server.msg_queue_connection_established(
             self.session,
             self.conn_id,
             self.node_id,
         )
-        self.server.new_session_prepare.assert_called_once_with(
-            session=self.session,
-            key_id=self.node_id,
-            conn_id=self.conn_id,
-        )
+        self.assertEqual(self.node_id, self.session.key_id)
+        self.assertEqual(self.conn_id, self.session.conn_id)
         self.session.send_hello.assert_called_once_with()
-        mock_get.assert_called_once_with(self.node_id)
-        self.session.send.assert_called_once_with(self.message)
 
-    @mock.patch(
-        "golem.task.server.queue.TaskMessagesQueueMixin"
-        ".msg_queue_connection_established",
-    )
-    def test_conn_failure(self, mock_established, *_):
+    @freeze_time('2019-04-15 11:15:00')
+    def test_conn_failure(self, *_):
+        pc = self.server.pending_connections[self.conn_id] = mock.MagicMock()
         self.server.msg_queue_connection_failure(
             self.conn_id,
             node_id=self.node_id,
         )
-        mock_established.assert_called_once_with(
-            self.session,
-            self.conn_id,
-            node_id=self.node_id,
-        )
+        self.assertEqual(pc.status, tcpserver.PenConnStatus.WaitingAlt)
+        self.assertEqual(pc.time, 1555326900.0)
 
     def test_conn_final_failure(self, *_):
         self.server.msg_queue_connection_final_failure(

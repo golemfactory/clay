@@ -142,7 +142,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
     )
     report_computed_task = copy_and_sign(
         msg=report_computed_task,
-        private_key=task_server.key_auth._private_key,  # noqa pylint: disable=protected-access
+        private_key=task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
     )
     history.add(
         msg=report_computed_task,

@@ -88,7 +88,6 @@ class TaskMessagesQueueMixin:
             message.base.Disconnect.REASON.NoMoreMessages,
         )
         self.remove_pending_conn(session.conn_id)
-        self.remove_responses(session.conn_id)
         if session.task_computer is not None:
             # XXX ???
             session.task_computer.session_timeout()
@@ -123,7 +122,7 @@ class TaskMessagesQueueMixin:
         session.conn_id = conn_id
         self.sessions[node_id] = session
         self._mark_connected(conn_id, session.address, session.port)
-        self.forwarded_session_requests.pop(node_id)
+        self.forwarded_session_requests.pop(node_id, None)
         session.send_hello()
 
     def msg_queue_connection_failure(self, conn_id, *_args, **_kwargs):
@@ -143,5 +142,8 @@ class TaskMessagesQueueMixin:
             **_kwargs,
     ):
         self.remove_pending_conn(conn_id)
-        if self.sessions[node_id] is None:
-            del self.sessions[node_id]
+        try:
+            if self.sessions[node_id] is None:
+                del self.sessions[node_id]
+        except KeyError:
+            pass

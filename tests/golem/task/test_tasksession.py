@@ -816,13 +816,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         service = history.MessageHistoryService.instance
         service.add_sync(nmsg_dict)
 
-    def assert_submit_task_message(self, subtask_id, wtr):
-        self.ts.concent_service.submit_task_message.assert_called_once_with(
-            subtask_id, ANY)
-
-        msg = self.ts.concent_service.submit_task_message.call_args[0][1]
-        self.assertEqual(msg.result_hash, 'sha1:' + wtr.package_sha1)
-
 
 class GetTaskMessageTest(TestCase):
     def test_get_task_message(self):
@@ -1066,6 +1059,7 @@ class HelloTest(testutils.TempDirFixture):
         )
         self.task_session = TaskSession(conn)
         self.task_session.task_server.config_desc.key_difficulty = 1
+        self.task_session.task_server.sessions = {}
 
     @patch('golem.task.tasksession.TaskSession.send_hello')
     def test_positive(self, mock_hello, *_):

@@ -44,7 +44,6 @@ from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
-from tests.factories.resultpackage import ExtractedPackageFactory
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
 

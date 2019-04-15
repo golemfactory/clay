@@ -134,11 +134,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
+        # set in server.queue.msg_queue_connection_established()
         self.conn_id = None  # connection id
-        # set in TaskServer.new_session_prepare()
         self.key_id: Optional[str] = None
-        # messages waiting to be send (because connection hasn't been
-        # verified yet)
+
         self.__set_msg_interpretations()
 
     @property
@@ -203,15 +202,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def my_public_key(self) -> bytes:
         return self.task_server.keys_auth.public_key
 
-    def verify_owners(self, msg) -> bool:
+    def verify_owners(self, msg, my_role) -> bool:
         if self.concent_service.available:
             concent_key = self.concent_service.variant['pubkey']
         else:
             concent_key = None
+        if my_role is Actor.Provider:
+            requestor_key = msg_utils.decode_hex(self.key_id)
+            provider_key = self.task_server.keys_auth.ecc.raw_pubkey
+        else:
+            requestor_key = self.task_server.keys_auth.ecc.raw_pubkey
+            provider_key = msg_utils.decode_hex(self.key_id)
         try:
             msg.verify_owners(
-                requestor_public_key=msg_utils.decode_hex(self.key_id),
-                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
+                requestor_public_key=requestor_key,
+                provider_public_key=provider_key,
                 concent_public_key=concent_key,
             )
         except msg_exceptions.MessageError:
@@ -579,7 +584,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self,
             msg: message.tasks.WaitingForResults,
     ):
-        if not self.verify_owners(msg):
+        if not self.verify_owners(msg, my_role=Actor.Provider):
             return
         self.task_server.subtask_waiting(
             task_id=msg.task_id,
@@ -626,7 +631,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
-        if not self.verify_owners(msg):
+        if not self.verify_owners(msg, my_role=Actor.Requestor):
             return
 
         subtask_id = msg.subtask_id
