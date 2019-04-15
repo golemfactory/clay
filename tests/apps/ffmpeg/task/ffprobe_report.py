@@ -304,7 +304,7 @@ class FfprobeFormatReport:
     @classmethod
     def build(cls,
               tmp_dir: str,
-              *video_paths: str) -> List['FfprobeFormatReport']:
+              video_paths: List[str]) -> List['FfprobeFormatReport']:
         dirs_and_basenames: dict = {}
         for path in video_paths:
             dirname, basename = os.path.split(path)
