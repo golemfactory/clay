@@ -20,6 +20,7 @@ class TaskMessagesQueueMixin:
     """Message Queue functionality for TaskServer"""
 
     task_keeper: 'taskkeeper.TaskHeaderKeeper'
+    forwarded_session_requests: typing.Dict[str, dict]
 
     def __init__(self):
         # None - PendingConnection
@@ -121,7 +122,11 @@ class TaskMessagesQueueMixin:
         session.key_id = node_id
         session.conn_id = conn_id
         self.sessions[node_id] = session
-        self._mark_connected(conn_id, session.address, session.port)
+        self._mark_connected(  # type: ignore
+            conn_id,
+            session.address,
+            session.port,
+        )
         self.forwarded_session_requests.pop(node_id, None)
         session.send_hello()
 

@@ -826,13 +826,12 @@ class TaskServer(
         now = time.time()
         for key_id, data in list(self.forwarded_session_requests.items()):
             if not data:
-                self.forwarded_session_requests.pop(key_id)
+                del self.forwarded_session_requests[key_id]
                 continue
             if now - data['time'] >= self.forwarded_session_request_timeout:
                 logger.debug('connection timeout: %s', data)
+                del self.forwarded_session_requests[key_id]
                 self.final_conn_failure(data['conn_id'])
-                self.remove_forwarded_session_request(key_id)
-                self.forwarded_session_requests.pop(key_id)
 
     def _get_factory(self):
         return self.factory(self)

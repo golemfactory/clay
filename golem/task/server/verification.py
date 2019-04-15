@@ -1,4 +1,5 @@
 import logging
+import typing
 
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
@@ -8,9 +9,17 @@ from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.result.resultmanager import ExtractedPackage
 
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.core import keysauth
+    from golem.task import taskmanager
+
 logger = logging.getLogger(__name__)
 
 class VerificationMixin:
+    keys_auth: 'keysauth.KeysAuth'
+    task_manager: 'taskmanager.TaskManager'
+
     def verify_results(
             self,
             report_computed_task: message.tasks.ReportComputedTask,
@@ -104,7 +113,10 @@ class VerificationMixin:
 
         node = dt_p2p.Node(**report_computed_task.node_info)
 
-        self.reject_result(report_computed_task.subtask_id, node.node_id)
+        self.reject_result(  # type: ignore
+            report_computed_task.subtask_id,
+            node.node_id,
+        )
 
         response_msg = message.tasks.SubtaskResultsRejected(
             report_computed_task=report_computed_task,
@@ -114,7 +126,7 @@ class VerificationMixin:
 
         response_msg = copy_and_sign(
             msg=response_msg,
-            private_key=self.my_private_key,
+            private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
         )
         history.add(
             response_msg,
