@@ -1,3 +1,5 @@
+# todo review: rename file to "subtask_verification_state.py" or move here other
+#  constants related to verification
 from enum import Enum
 
 

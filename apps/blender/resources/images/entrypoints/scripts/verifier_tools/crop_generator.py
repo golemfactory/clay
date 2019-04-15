@@ -7,6 +7,8 @@ WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 
 
+# todo review: this class' name should indicate it uses floating point
+#  coordinates
 class Region:
 
     def __init__(
@@ -31,6 +33,9 @@ class PixelRegion:
         self.bottom = bottom
 
 
+# todo review: this shouldn't be a separate class, move and rename its
+#  attributes (with indication that they describe subtask) and methods to Crop,
+#  where they logically belong
 class SubImage:
 
     CROP_RELATIVE_SIZE = 0.1
@@ -38,13 +43,23 @@ class SubImage:
     MIN_CROP_SIZE = 8
 
     def __init__(self, region: Region, resolution: List[int]) -> None:
+        # todo review: rename "region" after renaming "Region" class
         self.region = region
         self.pixel_region = self.calculate_pixels(region, resolution[0],
                                                   resolution[1])
+        # todo review: rename "width" to "width_pixels", analogically for
+        #  "height"
         self.width = self.pixel_region.right - self.pixel_region.left
         self.height = self.pixel_region.top - self.pixel_region.bottom
+        # todo review: rename this attribute so the name describes resolution of
+        #  what it is. Isn't it redundant with respect to self.width and
+        #  self.height?
         self.resolution = resolution
 
+    # todo review: should use instance's attributes instead of taking external
+    #  arguments "region", "width", "height" (shouldn't be static)
+    # todo review: rename this method to
+    #  "transform_floating_point_coordinates_to_pixels"
     @staticmethod
     def calculate_pixels(region: Region, width: int,
                          height: int) -> PixelRegion:
@@ -57,6 +72,8 @@ class SubImage:
         # doubles
         # Here numpy is used to emulate this loss of precision when assigning
         # double to float:
+        # todo review: write helper function for these expressions and use it
+        #  where possible. Move above comment to it
         left = math.floor(
             numpy.float32(region.left) * numpy.float32(width) +
             SubImage.PIXEL_OFFSET)
@@ -100,8 +117,13 @@ class Crop:
     def __init__(
             self,
             id_: int,
+            # todo review: rename, it's unclear what this argument and
+            #  corresponding variable store
             subimage: SubImage,
+            # todo review: rename (pixel_region of what?)
             pixel_region=None,
+            # todo review: rename, it's unclear what this argument and
+            #  corresponding variable store
             crop_region=None
     ) -> None:
         self.id = id_
@@ -109,6 +131,8 @@ class Crop:
         self.pixel_region = pixel_region
         self.crop_region = crop_region
 
+    # todo review: SubImage contains Region, passing "crop_region" is redundant
+    # todo review: should be a constructor
     @staticmethod
     def create_from_region(id: int, crop_region: Region, subimage: SubImage):
         crop = Crop(id, subimage)
@@ -120,6 +144,7 @@ class Crop:
         )
         return crop
 
+    # todo review: same as in "create_from_region"
     @staticmethod
     def create_from_pixel_region(
             id_: int,
@@ -135,16 +160,19 @@ class Crop:
 
     def get_relative_top_left(self) -> Tuple[int, int]:
         # get top left corner of crop in relation to particular subimage
+        # todo review: typo? Abbreviation?
         print("Sumimag top=%r -  crop.top=%r" % (
             self.subimage.region.top, self.pixel_region.top))
         y = self.subimage.pixel_region.top - self.pixel_region.top
         print("X=%r, Y=%r" % (self.pixel_region.left, y))
         return self.pixel_region.left, y
 
+    # todo review: apply changes analogical to SubImage's "calculate_pixels"
     @staticmethod
     def calculate_borders(pixel_region: PixelRegion, width: int,
                           height: int) -> Region:
 
+        # todo review: write helper function for these expressions
         left = numpy.float32(
             (numpy.float32(pixel_region.left) + SubImage.PIXEL_OFFSET) /
             numpy.float32(width))
@@ -164,6 +192,7 @@ class Crop:
         return Region(left, top, right, bottom)
 
 
+# todo review: remove it if it's "old"
 def generate_single_random_crop_data_old(
         subimage: SubImage,
         crop_size_px: Tuple[int, int],
@@ -216,36 +245,54 @@ def _get_random_interval_within_boundaries(
     return interval_begin, interval_end
 
 
+# todo review: break this function into smaller ones, it's completely
+#  unreadable in this form
+# todo review: this should be a constructor of Crop class
 def generate_single_random_crop_data(  # pylint: disable=too-many-locals
         subimage: SubImage, id_: int
 ) -> Crop:
 
+    # todo review: you have a constant for number 0.1, use it
+    # todo review: rename to relative_crop_size_x, relative_crop_size_y
     crop_size_x = 0.1
     crop_size_y = 0.1
+    # todo review: you have a constant for number 8, use it
     # check resolution, make sure that crop is greather then 8px.
+    # todo review: why 0.01? Explain, is it arbitrary or this number comes from
+    #  some reasoning?
     while crop_size_x * subimage.resolution[0] < 8:
         crop_size_x += 0.01
     while crop_size_y * subimage.resolution[1] < 8:
         crop_size_y += 0.01
     print(f"crop_size_x: {crop_size_x}, crop_size_y: {crop_size_y}")
 
+    # todo review: rename variables below, it's unclear what they store (scene
+    #  is stored in .blend file and crop isn't created here yet - not making
+    #  much sens)
+    # todo review: add underscore between x/y and min/max
     crop_scene_xmax = subimage.region.right
     crop_scene_xmin = subimage.region.left
     crop_scene_ymax = subimage.region.bottom
     crop_scene_ymin = subimage.region.top
 
+    # todo review: rename variables below to something more descriptive.
+    #  Analogically for the "pixel" equivalents (x_pixel_min, ...)
     x_difference = round((crop_scene_xmax - crop_size_x) * 100, 2)
     x_min = random.randint(int(crop_scene_xmin * 100), int(x_difference)) / 100
     x_max = round(x_min + crop_size_x, 2)
     print(f"x_difference={x_difference}, x_min={x_min}, x_max={x_max}")
+    # todo review: looks a lot like a code duplication, create helper function
     y_difference = round((crop_scene_ymax - crop_size_y) * 100, 2)
     y_min = random.randint(int(crop_scene_ymin * 100), int(y_difference)) / 100
     y_max = round(y_min + crop_size_y, 2)
     print(f"y_difference={y_difference}, y_min={y_min}, y_max={y_max}")
 
+    # todo review: write helper function for these expressions
     x_pixel_min = math.floor(
         numpy.float32(subimage.resolution[0]) * numpy.float32(x_min)
     )
+    # todo review: don't reuse x_pixel_min variable, find name properly
+    #  describing its first (or second?) occurrence's sens
     x_pixel_min = x_pixel_min - math.floor(
         numpy.float32(crop_scene_xmin) * numpy.float32(subimage.resolution[0])
     )

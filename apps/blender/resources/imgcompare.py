@@ -1,3 +1,4 @@
+# todo review: this code isn't used anywhere, should be removed
 from apps.rendering.resources.imgrepr import load_img
 
 

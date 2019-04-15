@@ -1,3 +1,6 @@
+# todo review: rename file to "image_format_converter.py"
+# todo review: fix PEP8 inconsistencies
+# todo review: camelCase function names
 
 import numpy as np
 from PIL import Image

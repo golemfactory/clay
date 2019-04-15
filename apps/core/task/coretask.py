@@ -205,6 +205,7 @@ class CoreTask(Task):
             logger.info("Not accepting results for %s", subtask_id)
             return
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
+        # todo review: It's not place for defining verifier entrypoint
         self.subtasks_given[subtask_id]['entrypoint'] = \
             "python3 /golem/entrypoints/verifier_entrypoint.py"
         self.interpret_task_results(subtask_id, task_result)
