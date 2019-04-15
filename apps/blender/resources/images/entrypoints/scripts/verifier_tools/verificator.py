@@ -97,7 +97,7 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
 
 
 # todo review: this function shouldn't know anything about the
-#  raw verification's existence.
+#  raw verification's existence. The whole file shouldn't know about it.
 # todo review: clarify what are "results" - find better name
 # todo review: clarify what are "crops" (images? paths to images? instances of
 #  Crop class?) - find better name

@@ -34,8 +34,7 @@ VERIFICATION_FAIL = "FALSE"
 PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
 TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
 # todo review: this is image_metrics_calculator.py, it's not a good place for
-#  the alternative verification method used only in tests. At least move it to a
-#  separate file.
+#  the alternative verification method used only in tests.
 WHITE = 0
 BLACK = 765
 OFFSET = 30
@@ -273,7 +272,7 @@ def compare_images(image_a, image_b, metrics) -> Dict:
 
 
 # todo review: functions below are used only in tests, they should be moved to
-#  a separate file, preferably in the tests directory (check comment in line 36)
+#  a file in the tests directory (check comment in line 36)
 # todo review: function's name should describe what it actually does, so it
 #  should contain information about squashing pixel values to black and white
 def convert_image_to_simple_array(image: np.ndarray) -> np.ndarray:
@@ -343,4 +342,6 @@ def get_raw_verification(
         stub_data['Label'] = VERIFICATION_SUCCESS
     else:
         stub_data['Label'] = VERIFICATION_FAIL
+    # todo review: writing to file won't be necessary after moving raw
+    #  verification to tests
     return ImgMetrics(stub_data).write_to_file(metrics_output_filename)
