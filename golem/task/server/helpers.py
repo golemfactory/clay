@@ -115,7 +115,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         )
         return
 
-    i_am: LocalNode = task_server.node
+    my_node: LocalNode = task_server.node
     client_options = task_server.get_share_options(
         waiting_task_result.task_id,
         waiting_task_result.owner.prv_addr,
@@ -123,11 +123,11 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
 
     report_computed_task = message.tasks.ReportComputedTask(
         task_to_compute=task_to_compute,
-        node_name=i_am.node_name,
-        address=i_am.prv_addr,
+        node_name=my_node.node_name,
+        address=my_node.prv_addr,
         port=task_server.cur_port,
-        key_id=i_am.key,
-        node_info=i_am.to_dict(),
+        key_id=my_node.key,
+        node_info=my_node.to_dict(),
         extra_data=[],
         size=waiting_task_result.result_size,
         package_hash='sha1:' + waiting_task_result.package_sha1,
