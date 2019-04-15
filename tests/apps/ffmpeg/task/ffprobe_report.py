@@ -302,7 +302,9 @@ class FfprobeFormatReport:
         return len(self.diff(other)) == 0
 
     @classmethod
-    def build(cls, *video_paths: str) -> List['FfprobeFormatReport']:
+    def build(cls,
+              tmp_dir: str,
+              *video_paths: str) -> List['FfprobeFormatReport']:
         dirs_and_basenames: dict = {}
         for path in video_paths:
             dirname, basename = os.path.split(path)
@@ -314,10 +316,12 @@ class FfprobeFormatReport:
         list_of_reports = []
         stream_operator = StreamOperator()
 
-        for key in dirs_and_basenames:
+        for i, key in enumerate(dirs_and_basenames):
             metadata = stream_operator.get_metadata(
                 dirs_and_basenames[key],
-                key
+                key,
+                os.path.join(tmp_dir, f"get-metadata-work-{i}/"),
+                os.path.join(tmp_dir, f"get-metadata-output-{i}/"),
             )
             for path in metadata['data']:
                 with open(path) as metadata_file:
