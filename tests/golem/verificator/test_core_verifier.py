@@ -22,6 +22,8 @@ class TestCoreVerifier(TempDirFixture):
             results=files,
             subtask_info=self.subtask_info,
         )
+        # todo review: You changed CoreVerifier constructor signature. Are you sure what all places that calls
+        #  argumentless constructor was also changed?
         self.core_verifier = CoreVerifier(self.verification_data)
         self.utcnow = datetime.utcnow()
 
