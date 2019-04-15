@@ -11,6 +11,7 @@ from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
@@ -136,6 +137,7 @@ class EnumFieldBase:
         return value
 
     def python_value(self, value):
+        # pylint: disable=not-callable
         return self.enum_type(value)
 
 
@@ -181,7 +183,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype: Optional[DictSerializable] = None
+    objtype: DictSerializable
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -189,6 +191,9 @@ class DictSerializableJSONField(TextField):
         return json.dumps(value.to_dict())
 
     def python_value(self, value: str) -> DictSerializable:
+        if issubclass(self.objtype, msg_dt.Container):  # type: ignore
+            # pylint: disable=not-callable
+            return self.objtype(**json.loads(value))  # type: ignore
         return self.objtype.from_dict(json.loads(value))
 
 
@@ -233,8 +238,11 @@ class PaymentDetails(DictSerializable):
     def from_dict(data: dict) -> 'PaymentDetails':
         det = PaymentDetails()
         det.__dict__.update(data)
-        if det.__dict__['node_info']:
-            det.__dict__['node_info'] = dt_p2p.Node(**data['node_info'])
+        if data['node_info']:
+            try:
+                det.node_info = dt_p2p.Node(**data['node_info'])
+            except msg_exceptions.FieldError:
+                det.node_info = None
         return det
 
     def __eq__(self, other: object) -> bool:
@@ -577,6 +585,25 @@ class QueuedMessage(BaseModel):
             f" node={common.short_node_id(node)}"
             f", version={self.msg_version}"
             f", class={self.msg_cls}"
+        )
+
+
+class CachedNode(BaseModel):
+    node = CharField(null=False, index=True, unique=True)
+    node_field = NodeField(null=False)
+
+    def __str__(self):
+        # pylint: disable=no-member
+        node_name = self.node_field.node_name if self.node_field else ''
+        node_id = self.node or ''
+        return (
+            f"{common.node_info_str(node_name, node_id)}"
+        )
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
+            f" {self}>"
         )
 
 

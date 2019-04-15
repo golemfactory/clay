@@ -10,6 +10,7 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch, ANY, Mock, MagicMock
 
+import faker
 from golem_messages import factories as msg_factories
 from golem_messages import idgenerator
 from golem_messages import message
@@ -19,6 +20,7 @@ from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 from pydispatch import dispatcher
 
+import twisted.internet.address
 from twisted.internet.defer import Deferred
 
 import golem
@@ -44,6 +46,8 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
+
+fake = faker.Faker()
 
 
 def fill_slots(msg):
@@ -175,35 +179,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.conn.server.task_manager.tasks_states[self.task_id] = task_state
         return task_state
 
-    def test_want_to_compute_task(self):
-        ts = self._get_task_session()
-        ts._handshake_required = Mock(return_value=False)
-        params = self._get_task_parameters()
-        ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[self.task_id] = dt_tasks_factory.TaskHeaderFactory(
-            task_id=self.task_id
-        )
-        ts.concent_service.enabled = False
-        ts.request_task(
-            params['node_name'],
-            self.task_id,
-            params['perf_index'],
-            params['price'],
-            params['max_resource_size'],
-            params['max_memory_size'],
-        )
-        ts.conn.send_message.assert_called_once()
-        mt = ts.conn.send_message.call_args[0][0]
-        self.assertIsInstance(mt, message.tasks.WantToComputeTask)
-        self.assertEqual(mt.node_name, params['node_name'])
-        self.assertEqual(mt.task_id, self.task_id)
-        self.assertEqual(mt.perf_index, params['perf_index'])
-        self.assertEqual(mt.price, params['price'])
-        self.assertEqual(mt.max_resource_size, params['max_resource_size'])
-        self.assertEqual(mt.max_memory_size, params['max_memory_size'])
-        self.assertEqual(mt.provider_public_key, self.provider_key)
-        self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
-
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_cannot_assign_task_provider_not_accepted(self, *_):
         mt = self._get_wtct()
@@ -329,11 +304,12 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 # pylint:enable=no-member
 
 
+@patch("golem.network.nodeskeeper.store")
 class TestTaskSession(ConcentMessageMixin, LogTestCase,
                       testutils.TempDirFixture):
 
     def setUp(self):
-        super(TestTaskSession, self).setUp()
+        super().setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
         self.task_session.key_id = 'unittest_key_id'
@@ -350,15 +326,17 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.privkey = keys_auth._private_key
 
     @patch('golem.task.tasksession.TaskSession.send')
-    def test_hello(self, send_mock):
+    def test_hello(self, send_mock, *_):
         self.task_session.conn.server.get_key_id.return_value = key_id = \
             'key id%d' % (random.random() * 1000,)
+        node = dt_p2p_factory.Node()
+        self.task_session.task_server.client.node = node
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
             ['proto_id', variables.PROTOCOL_CONST.ID],
             ['node_name', None],
-            ['node_info', None],
+            ['node_info', node.to_dict()],
             ['port', None],
             ['client_ver', golem.__version__],
             ['client_key_id', key_id],
@@ -376,7 +354,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     @patch(
         'golem.network.history.add',
     )
-    def test_send_report_computed_task(self, add_mock, get_mock):
+    def test_send_report_computed_task(self, add_mock, get_mock, *_):
         ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
@@ -433,93 +411,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ):
             ts2.interpret(rct)
 
-    def test_react_to_hello_protocol_version(self):
-        # given
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = 0
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=-1)
-        fill_slots(msg)
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # then
-        ts.disconnect.assert_called_with(
-            message.base.Disconnect.REASON.ProtocolVersion)
-
-        # re-given
-        msg.proto_id = variables.PROTOCOL_CONST.ID
-
-        # re-when
-        with self.assertNoLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # re-then
-        self.assertTrue(ts.send.called)
-
-    def test_react_to_hello_key_not_difficult(self):
-        # given
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = 80
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # then
-        ts.disconnect.assert_called_with(
-            message.base.Disconnect.REASON.KeyNotDifficult)
-
-    def test_react_to_hello_key_difficult(self):
-        # given
-        difficulty = 4
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = difficulty
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
-                      private_key_name='prv', password='')
-        peer_info = MagicMock()
-        peer_info.key = ka.key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=ka.key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
-
-        # when
-        with self.assertNoLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-        # then
-        self.assertTrue(ts.send.called)
-
     @patch('golem.task.tasksession.get_task_message')
-    def test_result_received(self, get_msg_mock):
+    def test_result_received(self, get_msg_mock, *_):
         conn = Mock()
         conn.send_message.side_effect = lambda msg: msg._fake_sign()
         ts = TaskSession(conn)
@@ -584,7 +477,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             self.task_session._react_to_subtask_results_rejected(srr)
         dropped.assert_called_once_with()
 
-    def test_result_rejected(self):
+    def test_result_rejected(self, *_):
         dispatch_listener = Mock()
         dispatcher.connect(dispatch_listener, signal='golem.message')
 
@@ -603,12 +496,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             sender=ANY,
         )
 
-    def test_result_rejected_with_wrong_key(self):
+    def test_result_rejected_with_wrong_key(self, *_):
         srr = self._get_srr(key2='notmine')
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_not_called()
 
-    def test_result_rejected_with_concent(self):
+    def test_result_rejected_with_concent(self, *_):
         srr = self._get_srr(concent=True)
 
         def concent_deposit(**_):
@@ -628,7 +521,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
 
     # pylint: disable=too-many-statements
-    def test_react_to_task_to_compute(self):
+    def test_react_to_task_to_compute(self, *_):
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
@@ -782,7 +675,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __assert_failure(ts, conn, reasons.WrongDockerImages)
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_ack_reject_report_computed_task(self):
+    def test_react_to_ack_reject_report_computed_task(self, *_):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
@@ -840,7 +733,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
-    def test_subtask_to_task(self):
+    def test_subtask_to_task(self, *_):
         task_keeper = Mock(subtask_to_task=dict())
         mapping = dict()
 
@@ -855,15 +748,18 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_cannot_assign_task(self):
+    def test_react_to_cannot_assign_task(self, *_):
         self._test_react_to_cannot_assign_task()
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_cannot_assign_task_with_wrong_sender(self):
+    def test_react_to_cannot_assign_task_with_wrong_sender(self, *_):
         self._test_react_to_cannot_assign_task("KEY_ID2", expected_requests=1)
 
-    def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
-                                          expected_requests=0):
+    def _test_react_to_cannot_assign_task(
+            self,
+            key_id="KEY_ID",
+            expected_requests=0,
+    ):
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(
             dt_tasks_factory.TaskHeaderFactory(
@@ -882,9 +778,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg_cat._fake_sign()
         self.task_session.key_id = key_id
         self.task_session._react_to_cannot_assign_task(msg_cat)
-        assert task_keeper.active_tasks["abc"].requests == expected_requests
+        self.assertEqual(
+            task_keeper.active_tasks["abc"].requests,
+            expected_requests,
+        )
 
-    def test_react_to_want_to_compute_no_handshake(self):
+    def test_react_to_want_to_compute_no_handshake(self, *_):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -895,14 +794,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = True
 
-        ts._start_handshake = Mock()
-
         with self.assertLogs(logger, level='WARNING'):
             ts._react_to_want_to_compute_task(mock_msg)
 
-        ts._start_handshake.assert_called_with(ts.key_id)
+        ts.task_server.start_handshake.assert_called_once_with(ts.key_id)
 
-    def test_react_to_want_to_compute_handshake_busy(self):
+    def test_react_to_want_to_compute_handshake_busy(self, *_):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -919,7 +816,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         with self.assertLogs(logger, level='WARNING'):
             ts._react_to_want_to_compute_task(mock_msg)
 
-    def test_react_to_want_to_compute_invalid_task_header_signature(self):
+    def test_react_to_want_to_compute_invalid_task_header_signature(self, *_):
         different_requestor_keys = cryptography.ECCx(None)
         provider_keys = cryptography.ECCx(None)
         wtct = msg_factories.tasks.WantToComputeTaskFactory(
@@ -938,7 +835,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(sent_msg.reason,
                          message.tasks.CannotAssignTask.REASON.NotMyTask)
 
-    def test_react_to_want_to_compute_not_my_task_id(self):
+    def test_react_to_want_to_compute_not_my_task_id(self, *_):
         provider_keys = cryptography.ECCx(None)
         wtct = msg_factories.tasks.WantToComputeTaskFactory(
             sign__privkey=provider_keys.raw_privkey,
@@ -1393,3 +1290,103 @@ class ReportComputedTaskTest(
         self.assertGreater(stm.call_args_list[0][0][2], datetime.timedelta(0))
         # ensure the second one is not
         self.assertEqual(len(stm.call_args_list[1][0]), 2)
+
+
+@patch('golem.task.tasksession.TaskSession.disconnect')
+@patch("golem.network.nodeskeeper.store")
+class HelloTest(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.msg = msg_factories.base.HelloFactory(
+            client_key_id='deadbeef',
+            node_info=dt_p2p_factory.Node(),
+            proto_id=variables.PROTOCOL_CONST.ID,
+        )
+        addr = twisted.internet.address.IPv4Address(
+            type='TCP',
+            host=fake.ipv4(),
+            port=fake.random_int(min=1, max=2**16-1),
+        )
+        conn = MagicMock(
+            transport=MagicMock(
+                getPeer=MagicMock(return_value=addr),
+            ),
+        )
+        self.task_session = TaskSession(conn)
+        self.task_session.task_server.config_desc.key_difficulty = 1
+
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    def test_positive(self, mock_hello, *_):
+        self.task_session._react_to_hello(self.msg)
+        mock_hello.assert_called_once_with()
+
+    def test_react_to_hello_nodeskeeper_store(
+            self,
+            mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.task_session._react_to_hello(self.msg)
+        mock_store.assert_called_once_with(self.msg.node_info)
+        mock_disconnect.assert_not_called()
+
+    def test_react_to_hello_empty_node_info(
+            self,
+            mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.msg.node_info = None
+        self.task_session._react_to_hello(self.msg)
+        mock_store.assert_not_called()
+        mock_disconnect.assert_called_once_with(
+            message.base.Disconnect.REASON.ProtocolVersion,
+        )
+
+    def test_react_to_hello_invalid_protocol_version(
+            self,
+            _mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.msg.proto_id = -1
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            self.task_session._react_to_hello(self.msg)
+
+        # then
+        mock_disconnect.assert_called_once_with(
+            message.base.Disconnect.REASON.ProtocolVersion)
+
+    def test_react_to_hello_key_not_difficult(
+            self,
+            _mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        # given
+        self.task_session.task_server.config_desc.key_difficulty = 80
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            self.task_session._react_to_hello(self.msg)
+
+        # then
+        mock_disconnect.assert_called_with(
+            message.base.Disconnect.REASON.KeyNotDifficult,
+        )
+
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    def test_react_to_hello_key_difficult(self, mock_hello, *_):
+        # given
+        difficulty = 4
+        self.task_session.task_server.config_desc.key_difficulty = difficulty
+        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
+                      private_key_name='prv', password='')
+        self.msg.client_key_id = ka.key_id
+
+        # when
+        self.task_session._react_to_hello(self.msg)
+        # then
+        mock_hello.assert_called_once_with()

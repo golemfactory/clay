@@ -54,5 +54,6 @@
       "id": null
     }
   ],
-  "concent_enabled": false
+  "concent_enabled": false,
+  "output_file": "output.png"
 }

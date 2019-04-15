@@ -23,6 +23,7 @@ class TempDirFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         logging.basicConfig(level=logging.DEBUG)
         if cls.root_dir is None:
             if is_osx():
@@ -154,7 +155,7 @@ class PEP8MixIn(object):
     in this attribute.
     """
 
-    def test_conformance(self):
+    def test_conformance(self, *_):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(
             ignore=pycodestyle.DEFAULT_IGNORE.split(','),

@@ -17,11 +17,12 @@ from golem.resource.hyperdrive.resourcesmanager import \
     default_argument_value
 from golem.testutils import TempDirFixture
 from tests.golem.resource.base.common import AddGetResources
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
 
 def running():
     try:
-        return HyperdriveClient().id()
+        return HyperdriveClient(**hyperdrive_client_kwargs(wrapped=False)).id()
     except ConnectionError:
         return False
 
@@ -74,7 +75,8 @@ class TestResourceManagerBase(ResourceSetUp):
 
     def setUp(self):
         super().setUp()
-        self.resource_manager = DummyResourceManager(self.dir_manager)
+        self.resource_manager = DummyResourceManager(
+            self.dir_manager, **hyperdrive_client_kwargs())
 
     def test_copy_files(self):
         old_resource_dir = self.resource_manager.storage.get_root()
@@ -190,7 +192,10 @@ class TestHyperdriveResourceManager(TempDirFixture):
         self.task_id = str(uuid.uuid4())
         self.handle_retries = Mock()
         self.dir_manager = DirManager(self.tempdir)
-        self.resource_manager = HyperdriveResourceManager(self.dir_manager)
+        self.resource_manager = HyperdriveResourceManager(  # noqa pylint: disable=unexpected-keyword-arg
+            self.dir_manager,
+            **hyperdrive_client_kwargs()
+        )
         self.resource_manager._handle_retries = self.handle_retries
 
         file_name = 'test_file'

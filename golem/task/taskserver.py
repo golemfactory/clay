@@ -45,17 +45,18 @@ from golem.ranking.manager.database_manager import (
     update_requestor_efficiency,
 )
 from golem.rpc import utils as rpc_utils
+from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.task.timer import ProviderTimer
 from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
-from .server import resources
 from .server import concent
+from .server import queue as srv_queue
+from .server import resources
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -68,7 +69,7 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 def _calculate_price(min_price: int, requestor_id: str) -> int:
-    r = min_price * (1.0 + ProviderTimer.thirst)
+    r = min_price * (1.0 + timer.ProviderTimer.thirst)
     v_paid = get_requestor_paid_sum(requestor_id)
     v_assigned = get_requestor_assigned_sum(requestor_id)
     c = min_price
@@ -80,7 +81,9 @@ def _calculate_price(min_price: int, requestor_id: str) -> int:
 
 class TaskServer(
         PendingConnectionsServer,
-        resources.TaskResourcesMixin):
+        resources.TaskResourcesMixin,
+        srv_queue.TaskMessagesQueueMixin,
+):
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
@@ -105,6 +108,7 @@ class TaskServer(
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
+            config_desc=config_desc,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -155,6 +159,7 @@ class TaskServer(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
+        srv_queue.TaskMessagesQueueMixin.__init__(self)
         # instantiate ReceivedMessageHandler connected to self
         # to register in golem.network.concent.handlers_library
         from golem.network.concent import \
@@ -227,11 +232,27 @@ class TaskServer(
         return self.task_keeper.environments_manager.get_environment_by_id(
             env_id)
 
+    def request_task_by_id(self, task_id: str) -> None:
+        """Requests task possibly after successful resource handshake.
+        """
+        try:
+            task_header: dt_tasks.TaskHeader = self.task_keeper.task_headers[
+                task_id
+            ]
+        except KeyError:
+            logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
+            return
+        self._request_task(task_header)
+
     def request_task(self) -> Optional[str]:
         """Chooses random task from network to compute on our machine"""
-        theader = self.task_keeper.get_task(self.requested_tasks)
-        if theader is None:
+        task_header: dt_tasks.TaskHeader = \
+            self.task_keeper.get_task(self.requested_tasks)
+        if task_header is None:
             return None
+        return self._request_task(task_header)
+
+    def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
@@ -252,50 +273,69 @@ class TaskServer(
                         }),
                     )
 
-            if supported.is_ok():
-                price = _calculate_price(
-                    self.config_desc.min_price,
+            if not supported.is_ok():
+                logger.debug(
+                    "Support status. task_id=%s supported=%s",
+                    theader.task_id,
+                    supported,
+                )
+                if self.task_archiver:
+                    self.task_archiver.add_support_status(
+                        theader.task_id,
+                        supported,
+                    )
+                return None
+
+            # Check handshake
+            handshake = self.resource_handshakes.get(theader.task_owner.key)
+            if not handshake:
+                logger.debug(
+                    "Starting handshake. key_id=%r, task_id=%r",
                     theader.task_owner.key,
+                    theader.task_id,
                 )
-                price = min(price, theader.max_price)
-                self.task_manager.add_comp_task_request(
-                    theader=theader, price=price)
-                args = {
-                    'node_name': self.config_desc.node_name,
-                    'key_id': theader.task_owner.key,
-                    'task_id': theader.task_id,
-                    'estimated_performance': performance,
-                    'price': price,
-                    'max_resource_size': self.config_desc.max_resource_size,
-                    'max_memory_size': self.config_desc.max_memory_size,
-                }
-
-                node = theader.task_owner
-                added = self._add_pending_request(
-                    TASK_CONN_TYPES['task_request'],
-                    node,
-                    prv_port=node.prv_port,
-                    pub_port=node.pub_port,
-                    args=args
+                self.start_handshake(
+                    key_id=theader.task_owner.key,
+                    task_id=theader.task_id,
                 )
-                if added:
-                    self.requested_tasks.add(theader.task_id)
-                    return theader.task_id
+                return None
+            if not handshake.success():
+                logger.debug(
+                    "Handshake still in progress. key_id=%r, task_id=%r",
+                    theader.task_owner.key,
+                    theader.task_id,
+                )
+                return None
 
-                supported = supported.join(SupportStatus.err({
-                    UnsupportReason.NODE_INFORMATION: node.__dict__
-                }))
-
-            logger.debug(
-                "Support status. task_id=%s supported=%s",
-                theader.task_id,
-                supported,
+            # Send WTCT
+            price = _calculate_price(
+                self.config_desc.min_price,
+                theader.task_owner.key,
             )
-            if self.task_archiver:
-                self.task_archiver.add_support_status(theader.task_id,
-                                                      supported)
-        except Exception as err:
-            logger.warning("Cannot send request for task: {}".format(err))
+            price = min(price, theader.max_price)
+            self.task_manager.add_comp_task_request(
+                theader=theader, price=price)
+            wtct = message.tasks.WantToComputeTask(
+                node_name=self.config_desc.node_name,
+                perf_index=performance,
+                price=price,
+                max_resource_size=self.config_desc.max_resource_size,
+                max_memory_size=self.config_desc.max_memory_size,
+                concent_enabled=self.client.concent_service.enabled,
+                provider_public_key=self.get_key_id(),
+                provider_ethereum_public_key=self.get_key_id(),
+                task_header=theader,
+            )
+            self.send_message(
+                node_id=theader.task_owner.key,
+                msg=wtct,
+            )
+            timer.ProviderTTCDelayTimers.start(wtct.task_id)
+            self.requested_tasks.add(theader.task_id)
+            return theader.task_id
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning("Cannot send request for task: %s", err)
+            logger.debug("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None
@@ -578,7 +618,7 @@ class TaskServer(
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id)
             environment = self.get_environment_by_id(header.environment)
-            computation_time = ProviderTimer.time
+            computation_time = timer.ProviderTimer.time
 
             update_requestor_efficiency(
                 node_id=keeper.get_node_for_task_id(task_id),
