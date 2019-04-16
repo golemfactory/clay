@@ -651,7 +651,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                     320,
                     240
                 ],
-                "samples": 0
+                "samples": 150
             }
         }
 
