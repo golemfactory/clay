@@ -38,3 +38,11 @@ class TranscodingException(Exception):
 
 class TranscodingTaskBuilderException(Exception):
     pass
+
+
+class VideoCodecNotSupportedByContainer(TranscodingTaskBuilderException):
+    pass
+
+
+class AudioCodecNotSupportedByContainer(TranscodingTaskBuilderException):
+    pass
