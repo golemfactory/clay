@@ -671,10 +671,25 @@ class ClientProvider:
         return result
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
-    def get_fragments(self, task_id: str) -> Optional[Dict[int, List[Dict]]]:
+    def get_fragments(self, task_id: str) ->\
+            Tuple[Optional[Dict[int, List[Dict]]], Optional[str]]:
+        """
+        Returns the task fragments for a given rendering task. A single task
+        fragment is a collection of subtasks referring to the same, common part
+        of the whole task. Fragments are identified using incremental integer
+        indices.
+        :param task_id: Task ID of the rendering task for which fragments should
+        be obtained.
+        :return: A dictionary where keys are the fragment indices and values are
+        lists of subtasks asssociated with a given fragment. Returns None
+        (along with an error message) if the task is not known or it is not a
+        rendering task.
+        """
         task = self.task_manager.tasks.get(task_id)
-        if task is None or not isinstance(task, RenderingTask):
-            return None
+        if task is None:
+            return None, f"Task not found: '{task_id}'"
+        if not isinstance(task, RenderingTask):
+            return None, f"Incorrect task type: '{task.__class__.__name__}'"
 
         fragments: Dict[int, List[Dict]] = {}
 
@@ -686,4 +701,4 @@ class ClientProvider:
                 extra_data['subtask_id'])
             fragments[extra_data['start_task']].append(subtask)
 
-        return fragments
+        return fragments, None

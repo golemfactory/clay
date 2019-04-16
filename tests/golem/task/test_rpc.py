@@ -12,6 +12,7 @@ from mock import Mock
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
+from apps.dummy.task.dummytask import DummyTask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
@@ -763,9 +764,27 @@ class TestGetFragments(ProviderBase):
         }
         self.client.task_server.task_manager.tasks[task_id] = mock_task
 
-        task_fragments = self.provider.get_fragments(task_id)
+        task_fragments, error = self.provider.get_fragments(task_id)
 
         self.assertTrue(len(task_fragments) == subtasks_count)
         self.assertTrue(len(task_fragments[1]) == 1)
         self.assertTrue(len(task_fragments[2]) == 3)
         self.assertTrue(len(task_fragments[3]) == 0)
+
+    def test_task_not_found(self, *_):
+        task_id = str(uuid.uuid4())
+
+        task_fragments, error = self.provider.get_fragments(task_id)
+
+        self.assertIsNone(task_fragments)
+        self.assertTrue('Task not found' in error)
+
+    def test_wrong_task_type(self, *_):
+        task_id = str(uuid.uuid4())
+        mock_task = Mock(spec=DummyTask)
+        self.client.task_server.task_manager.tasks[task_id] = mock_task
+
+        task_fragments, error = self.provider.get_fragments(task_id)
+
+        self.assertIsNone(task_fragments)
+        self.assertTrue('Incorrect task type' in error)
