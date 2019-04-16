@@ -16,7 +16,8 @@ class VerificationTask:
         if deadline_to_timeout(self.deadline) > 0:
             if self.verifier.simple_verification(self.kwargs):
                 return self.verifier.start_verification(self.kwargs)
-            return succeed(self.verifier.verification_completed())
+            return False
+            #return succeed(self.verifier.verification_completed())
         else:
             return succeed(self.verifier.task_timeout(self.subtask_id))
 
