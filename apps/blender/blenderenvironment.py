@@ -17,7 +17,7 @@ class BlenderEnvironment(DockerEnvironment):
 class BlenderNVGPUEnvironment(BlenderEnvironment):
 
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
-    DOCKER_TAG = "1.2"
+    DOCKER_TAG = "1.3"
     ENV_ID = "BLENDER_NVGPU"
     SHORT_DESCRIPTION = "Blender + NVIDIA GPU (www.blender.org)"
 
