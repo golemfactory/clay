@@ -172,8 +172,6 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
-
-    # todo review: too many blank lines
     # todo review: what does that `test` test? By the way, I do not see any asserts
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(os.path.join(
@@ -181,27 +179,25 @@ class TestBlenderVerifier(TempDirFixture):
             'tests/apps/blender/verification/test_data',
             'GolemTask_10001.png',
         ))
-        # todo review: typo
-        y_crop_cord_step = 0
-        y_crop_float_cord_step = 0.0
-        # todo review: typo
-        splited_images = {}
+        y_crop_coordinate_step = 0
+        y_crop_float_coordinate_step = 0.0
+        split_images = {}
         for i in range(1, 6):
             # Split image to cropped parts
-            splited_images[f'image_part_{i}'] = \
-                result_image[y_crop_cord_step:y_crop_cord_step + 30, 0:150]
+            split_images[f'image_part_{i}'] = \
+                result_image[y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150]
 
             # Store images in temporary directory to load them to verification
             # todo review: can you use just a variable instead of using a dict. You do not need a dict actually
             temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
-            cv2.imwrite(temp_path, splited_images[f'image_part_{i}'])
+            cv2.imwrite(temp_path, split_images[f'image_part_{i}'])
 
             # Create clear verification_data for every crop image
             verification_data = dict(
                 subtask_info=self._create_subtask_info(
                     borders_y=[
-                        0.8 - y_crop_float_cord_step,
-                        1.0 - y_crop_float_cord_step
+                        0.8 - y_crop_float_coordinate_step,
+                        1.0 - y_crop_float_coordinate_step
                     ],
                     outfilebasename=f'GolemTask_{i}'
                 ),
@@ -214,8 +210,8 @@ class TestBlenderVerifier(TempDirFixture):
             sync_wait(d, self.TIMEOUT)
 
             # Change crop coordinates for next image verification
-            y_crop_cord_step += 30
-            y_crop_float_cord_step = round(y_crop_float_cord_step + 0.2, 2)
+            y_crop_coordinate_step += 30
+            y_crop_float_coordinate_step = round(y_crop_float_coordinate_step + 0.2, 2)
 
     def _prep_sanity_check_data(self):
         self.subtask_info['entrypoint'] = \
@@ -261,8 +257,7 @@ class TestBlenderVerifier(TempDirFixture):
         sync_wait(d, self.TIMEOUT)
 
     @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
-    # todo review: typo
-    def test_random_crop_widow(self):
+    def test_random_crop_window(self):
         self._prep_sanity_check_data()
 
         # todo review: non-deterministic test. We expected test for "randomly

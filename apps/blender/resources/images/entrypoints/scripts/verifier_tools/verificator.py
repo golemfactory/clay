@@ -6,11 +6,9 @@ from ..render_tools import blender_render as blender
 
 from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, \
     generate_single_random_crop_data, Crop
-from .img_metrics_calculator import calculate_metrics, get_raw_verification
+from .image_metrics_calculator import calculate_metrics, get_raw_verification
 
 
-
-# todo review: too many blank lines
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
         if crop.id == id:
@@ -46,25 +44,24 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
 
     # todo review: clean the TODO
     if crops_borders:  # TODO: Allow verification with given crops_border!
-        # todo review: rename to "crop_id"
-        idx = 0
+        crop_id = 0
         for border in crops_borders:
             crop = Crop.create_from_region(
-                idx,
+                crop_id,
                 Region(border[0], border[1], border[2], border[3]),
                 subimage
             )
             crops_render_data.append(
                 {
                     "id": crop.id,
-                    "outfilebasename": "crop" + str(idx) + '_',
+                    "outfilebasename": "crop" + str(crop_id) + '_',
                     "borders_x": [crop.crop_region.left,
                                   crop.crop_region.right],
                     "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
                 }
             )
             crops.append(crop)
-            idx += 1
+            crop_id += 1
     else:
         for i in range(0, crops_count):
             crop = generate_single_random_crop_data(

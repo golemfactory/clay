@@ -10,10 +10,9 @@ import OpenEXR
 from PIL import Image
 
 from . import decision_tree
-from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
+from .image_format_converter import convert_tga_to_png, convert_exr_to_png
 from .imgmetrics import ImgMetrics
 
-# todo review: replace "img" abbreviation with "image" in this file's name
 
 # todo review: refer to crops as "providers_result_crop" and "reference_crop",
 #  now it's not clear which one was cut out from image and which one was
@@ -21,9 +20,6 @@ from .imgmetrics import ImgMetrics
 #  "rendered_scene". Variables which are pointing to uncropped provider's result
 #  should contain this information in name ("providers_result_uncropped", for
 #  instance)
-
-# todo review: when referring to crop's coordinates indicate which corner they
-#  describe (for instance top_left_corner_x)
 
 
 # todo review: rename this variable and the file so they indicate which
@@ -41,38 +37,34 @@ OFFSET = 30
 
 
 def calculate_metrics(
-        reference_img_path,
-        result_img_path,
-        xres,
-        yres,
+        reference_crop_path,
+        providers_result_image,
+        top_left_corner_x,
+        top_left_corner_y,
         metrics_output_filename='metrics.txt'
 ):
     # todo review: remove the workaround instead of commenting it
-    # todo review: xres and yres params aren't resolution, rename them to
-    #  "top_left_corner_x", "top_left_corner_y". Apply also to other functions
-    # todo review: rename "result_img_path" in accordance to the guidelines in
-    #  the comment from line 18
     """
     This is the entry point for calculation of metrics between the
-    rendered_scene and the sample(cropped_img) generated for comparison.
-    :param reference_img_path:
-    :param result_img_path:
-    :param xres: x position of crop (left, top)
-    :param yres: y position of crop (left, top)
+    rendered_scene and the sample(cropped_image) generated for comparison.
+    :param reference_crop_path:
+    :param providers_result_image:
+    :param top_left_corner_x: x position of crop (left, top)
+    :param top_left_corner_y: y position of crop (left, top)
     :param metrics_output_filename:
     :return:
     """
     # todo review: remove comment below
-    # (cropped_img, scene_crops, rendered_scene) = \
-    (cropped_img, scene_crops) = \
+    # (cropped_image, scene_crops, rendered_scene) = \
+    (cropped_image, scene_crops) = \
         _load_and_prepare_images_for_comparison(
-            reference_img_path,
-            result_img_path,
-            xres,
-            yres
+            reference_crop_path,
+            providers_result_image,
+            top_left_corner_x,
+            top_left_corner_y
         )
-    img_metrics = dict()
-    img_metrics['Label'] = VERIFICATION_FAIL
+    image_metrics = dict()
+    image_metrics['Label'] = VERIFICATION_FAIL
 
     (classifier, labels, available_metrics) = get_metrics()
 
@@ -84,7 +76,7 @@ def calculate_metrics(
     default_crop = scene_crops[0]
     print(f"default_crop: {default_crop.getbbox()}")
     default_metrics = compare_images(
-        cropped_img,
+        cropped_image,
         default_crop,
         available_metrics
     )
@@ -106,7 +98,7 @@ def calculate_metrics(
     # todo review: get rid of it
     # TODO Old workaround for comparing 8 crops around the one that's calculated
     # best_crop = None
-    # best_img_metrics = None
+    # best_image_metrics = None
     # if default_metrics['Label'] == VERIFICATION_SUCCESS:
     #     default_crop.save(CROP_NAME)
     #     return ImgMetrics(default_metrics).write_to_file(
@@ -116,26 +108,26 @@ def calculate_metrics(
     #     # Try offset crops
     #     for crop in scene_crops[1:]:
     #         try:
-    #             img_metrics = compare_images(
-    #                 cropped_img,
+    #             image_metrics = compare_images(
+    #                 cropped_image,
     #                 crop,
     #                 available_metrics
     #             )
-    #             img_metrics['Label'] = classify_with_tree(
-    #                 img_metrics,
+    #             image_metrics['Label'] = classify_with_tree(
+    #                 image_metrics,
     #                 classifier,
     #                 labels
     #             )
     #         except Exception as e:
     #             print("There were error %r" % e, file=sys.stderr)
-    #             img_metrics['Label'] = VERIFICATION_FAIL
-    #         if img_metrics['Label'] == VERIFICATION_SUCCESS:
-    #             best_img_metrics = img_metrics
+    #             image_metrics['Label'] = VERIFICATION_FAIL
+    #         if image_metrics['Label'] == VERIFICATION_SUCCESS:
+    #             best_image_metrics = image_metrics
     #             best_crop = crop
     #             break
-    #     if best_crop and best_img_metrics:
+    #     if best_crop and best_image_metrics:
     #         best_crop.save(CROP_NAME)
-    #         return ImgMetrics(best_img_metrics).write_to_file(
+    #         return ImgMetrics(best_image_metrics).write_to_file(
     #             metrics_output_filename
     #         )
     #     else:
@@ -171,53 +163,52 @@ def classify_with_tree(metrics, classifier, feature_labels):
 
 # todo review: this should generate 1 crop instead of 9
 def _load_and_prepare_images_for_comparison(
-        reference_img_path,
-        result_img_path,
-        xres,
-        yres
+        reference_crop_path,
+        result_image_path,
+        top_left_corner_x,
+        top_left_corner_y
 ):
     """
     This function prepares (i.e. crops) the rendered_scene so that it will
-    fit the sample(cropped_img) generated for comparison.
+    fit the sample(cropped_image) generated for comparison.
 
-    :param reference_img_path:
-    :param result_img_path:
-    :param xres: x position of crop (left, top)
-    :param yres: y position of crop (left, top)
+    :param reference_crop_path:
+    :param result_image_path:
+    :param top_left_corner_x: x position of crop (left, top)
+    :param top_left_corner_y: y position of crop (left, top)
     :return:
     """
-    rendered_scene = convert_to_png_if_needed(result_img_path)
+    rendered_scene = convert_to_png_if_needed(result_image_path)
     # todo review: rename to "reference_crop"
-    reference_img = convert_to_png_if_needed(reference_img_path)
-    (crop_width, crop_height) = reference_img.size
-    print(f"xres={xres}, yres={yres}, width={crop_width}, height={crop_height}")
-    crops = get_crops(rendered_scene, xres, yres, crop_width, crop_height)
-    return reference_img, crops
+    reference_image = convert_to_png_if_needed(reference_crop_path)
+    (crop_width, crop_height) = reference_image.size
+    print(f"top_left_corner_x={top_left_corner_x}, top_left_corner_y={top_left_corner_y}, width={crop_width}, height={crop_height}")
+    crops = get_providers_result_crop(rendered_scene, top_left_corner_x, top_left_corner_y, crop_width, crop_height)
+    return reference_image, crops
 
 
 def get_file_extension_lowercase(file_path):
     return os.path.splitext(file_path)[1][1:].lower()
 
 
-def convert_to_png_if_needed(img_path):
-    extension = get_file_extension_lowercase(img_path)
-    name = os.path.basename(img_path)
+def convert_to_png_if_needed(image_path):
+    extension = get_file_extension_lowercase(image_path)
+    name = os.path.basename(image_path)
     file_name = os.path.join("/tmp/", name)
     if extension == "exr":
-        channels = OpenEXR.InputFile(img_path).header()['channels']
+        channels = OpenEXR.InputFile(image_path).header()['channels']
         if 'RenderLayer.Combined.R' in channels:
             sys.exit("There is no support for OpenEXR multilayer")
-        ConvertEXRToPNG(img_path, file_name)
+        convert_exr_to_png(image_path, file_name)
     elif extension == "tga":
-        ConvertTGAToPNG(img_path, file_name)
+        convert_tga_to_png(image_path, file_name)
     else:
-        file_name = img_path
+        file_name = image_path
     return Image.open(file_name)
 
 
 # todo review: should return only one crop
-# todo review: rename to get_providers_result_crop
-def get_crops(rendered_scene, x, y, width, height):
+def get_providers_result_crop(rendered_scene, x, y, width, height):
     offsets = itertools.product([0, -1, 1], repeat=2)
     crops = [rendered_scene.crop((x + x_offset, y + y_offset,
                                   x + width + x_offset,
@@ -257,7 +248,7 @@ def compare_images(image_a, image_b, metrics) -> Dict:
     :return: ImgMetrics
     """
 
-    """imageA/B are images read by: PIL.Image.open(img.png)"""
+    """imageA/B are images read by: PIL.Image.open(image.png)"""
     (crop_height, crop_width) = image_a.size
     crop_resolution = str(crop_height) + "x" + str(crop_width)
 
@@ -280,57 +271,52 @@ def convert_image_to_simple_array(image: np.ndarray) -> np.ndarray:
     Function for squashing image array in to 0/1 array, which translate to
     black/white pixel
     """
-    # todo review: typo in word "simple"
-    simpe_array = np.zeros((image.shape[0], image.shape[1]))
+    simple_array = np.zeros((image.shape[0], image.shape[1]))
     for x, row in enumerate(image):
         for y, single_pixel in enumerate(row):
             pixel_sum = np.sum(single_pixel)
             if pixel_sum <= WHITE + OFFSET:
-                simpe_array[x, y] = 0
+                simple_array[x, y] = 0
             elif pixel_sum >= BLACK - OFFSET:
-                simpe_array[x, y] = 1
+                simple_array[x, y] = 1
             else:
                 raise ValueError("Pixel incomparable. Neither black or white.")
-    return simpe_array
+    return simple_array
 
 
-# todo review: xres_left, yres_top - check comment in line 18
-# todo review: stick to (x,y) order
 # todo review: why are you implementing another function for cropping instead of
 #  using previously written functions used for real verification?
 def cut_out_crop_from_whole_image(
-        yres_top: int,
-        xres_left: int,
+        top_left_corner_x: int,
+        top_left_corner_y: int,
         crop: np.ndarray,
         whole_image: np.ndarray
 ) -> np.ndarray:
     crop_from_image = whole_image[
-        yres_top:yres_top + crop.shape[0],
-        xres_left:xres_left + crop.shape[1]
+        top_left_corner_y:top_left_corner_y + crop.shape[0],
+        top_left_corner_x:top_left_corner_x + crop.shape[1]
     ]
     return crop_from_image
 
 
-# todo review: xres, yres - as above
 def get_raw_verification(
         crop_path: str,
-        subtask_img_path: str,
+        subtask_image_path: str,
         crop_xres_left: int,
         crop_yres_top: int,
         metrics_output_filename: str = 'metrics.txt'
 ) -> str:
-    # todo review: typo - should be "cropped"
-    croped_image = cv2.imread(crop_path)
-    subtask_image = cv2.imread(subtask_img_path)
+    cropped_image = cv2.imread(crop_path)
+    subtask_image = cv2.imread(subtask_image_path)
 
     crop_to_compare = cut_out_crop_from_whole_image(
-        crop_yres_top,
         crop_xres_left,
-        croped_image,
+        crop_yres_top,
+        cropped_image,
         subtask_image
     )
     is_result_positive = np.array_equal(
-        convert_image_to_simple_array(croped_image),
+        convert_image_to_simple_array(cropped_image),
         convert_image_to_simple_array(crop_to_compare)
     )
     available_metrics = ImgMetrics.get_metric_classes()

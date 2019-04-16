@@ -160,8 +160,7 @@ class Crop:
 
     def get_relative_top_left(self) -> Tuple[int, int]:
         # get top left corner of crop in relation to particular subimage
-        # todo review: typo? Abbreviation?
-        print("Sumimag top=%r -  crop.top=%r" % (
+        print("Subimage top=%r -  crop.top=%r" % (
             self.subimage.region.top, self.pixel_region.top))
         y = self.subimage.pixel_region.top - self.pixel_region.top
         print("X=%r, Y=%r" % (self.pixel_region.left, y))
@@ -253,38 +252,36 @@ def generate_single_random_crop_data(  # pylint: disable=too-many-locals
 ) -> Crop:
 
     # todo review: you have a constant for number 0.1, use it
-    # todo review: rename to relative_crop_size_x, relative_crop_size_y
-    crop_size_x = 0.1
-    crop_size_y = 0.1
+    relative_crop_size_x = 0.1
+    relative_crop_size_y = 0.1
     # todo review: you have a constant for number 8, use it
     # check resolution, make sure that crop is greather then 8px.
     # todo review: why 0.01? Explain, is it arbitrary or this number comes from
     #  some reasoning?
-    while crop_size_x * subimage.resolution[0] < 8:
-        crop_size_x += 0.01
-    while crop_size_y * subimage.resolution[1] < 8:
-        crop_size_y += 0.01
-    print(f"crop_size_x: {crop_size_x}, crop_size_y: {crop_size_y}")
+    while relative_crop_size_x * subimage.resolution[0] < 8:
+        relative_crop_size_x += 0.01
+    while relative_crop_size_y * subimage.resolution[1] < 8:
+        relative_crop_size_y += 0.01
+    print(f"relative_crop_size_x: {relative_crop_size_x}, relative_crop_size_y: {relative_crop_size_y}")
 
     # todo review: rename variables below, it's unclear what they store (scene
     #  is stored in .blend file and crop isn't created here yet - not making
     #  much sens)
-    # todo review: add underscore between x/y and min/max
-    crop_scene_xmax = subimage.region.right
-    crop_scene_xmin = subimage.region.left
-    crop_scene_ymax = subimage.region.bottom
-    crop_scene_ymin = subimage.region.top
+    crop_scene_x_max = subimage.region.right
+    crop_scene_x_min = subimage.region.left
+    crop_scene_y_max = subimage.region.bottom
+    crop_scene_y_min = subimage.region.top
 
     # todo review: rename variables below to something more descriptive.
     #  Analogically for the "pixel" equivalents (x_pixel_min, ...)
-    x_difference = round((crop_scene_xmax - crop_size_x) * 100, 2)
-    x_min = random.randint(int(crop_scene_xmin * 100), int(x_difference)) / 100
-    x_max = round(x_min + crop_size_x, 2)
+    x_difference = round((crop_scene_x_max - relative_crop_size_x) * 100, 2)
+    x_min = random.randint(int(crop_scene_x_min * 100), int(x_difference)) / 100
+    x_max = round(x_min + relative_crop_size_x, 2)
     print(f"x_difference={x_difference}, x_min={x_min}, x_max={x_max}")
     # todo review: looks a lot like a code duplication, create helper function
-    y_difference = round((crop_scene_ymax - crop_size_y) * 100, 2)
-    y_min = random.randint(int(crop_scene_ymin * 100), int(y_difference)) / 100
-    y_max = round(y_min + crop_size_y, 2)
+    y_difference = round((crop_scene_y_max - relative_crop_size_y) * 100, 2)
+    y_min = random.randint(int(crop_scene_y_min * 100), int(y_difference)) / 100
+    y_max = round(y_min + relative_crop_size_y, 2)
     print(f"y_difference={y_difference}, y_min={y_min}, y_max={y_max}")
 
     # todo review: write helper function for these expressions
@@ -294,19 +291,19 @@ def generate_single_random_crop_data(  # pylint: disable=too-many-locals
     # todo review: don't reuse x_pixel_min variable, find name properly
     #  describing its first (or second?) occurrence's sens
     x_pixel_min = x_pixel_min - math.floor(
-        numpy.float32(crop_scene_xmin) * numpy.float32(subimage.resolution[0])
+        numpy.float32(crop_scene_x_min) * numpy.float32(subimage.resolution[0])
     )
     x_pixel_max = math.floor(
         numpy.float32(subimage.resolution[0]) * numpy.float32(x_max)
     )
     print(f"x_pixel_min={x_pixel_min}, x_pixel_max={x_pixel_max}")
     y_pixel_max = math.floor(
-        numpy.float32(crop_scene_ymax) * numpy.float32(subimage.resolution[1])
+        numpy.float32(crop_scene_y_max) * numpy.float32(subimage.resolution[1])
     ) - math.floor(
         numpy.float32(subimage.resolution[1]) * numpy.float32(y_max)
     )
     y_pixel_min = math.floor(
-        numpy.float32(crop_scene_ymax) * numpy.float32(subimage.resolution[1])
+        numpy.float32(crop_scene_y_max) * numpy.float32(subimage.resolution[1])
     ) - math.floor(
         numpy.float32(subimage.resolution[1]) * numpy.float32(y_min)
     )
