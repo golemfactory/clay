@@ -3,7 +3,7 @@ import random
 import shutil
 import time
 from unittest import mock
-from typing import List, Optional
+from typing import Iterable, Collection
 import cv2
 
 from golem_messages.message import ComputeTaskDef
@@ -26,80 +26,58 @@ from golem.verificator.blender_verifier import BlenderVerifier
 class TestBlenderVerifier(TempDirFixture):
     TIMEOUT = 150
 
-    # todo review: please use "real" default arguments instead of if/else logic
-    def _create_basic_subtask_info(  # pylint: disable=too-many-arguments
+    def _create_basic_subtask_info(
             self,
-            resolution: Optional[List[int]] = None,
-            samples: Optional[int] = None,
-            borders_y: Optional[List[float]] = None,
-            entrypoint: Optional[str] = None,
-            outfilebasename: Optional[str] = None,
+            borders_y: Iterable[float] = (0.0, 1.0),
+            outfilebasename: str = "GolemTask_1",
     ) -> dict:
         return dict(
             scene_file='/golem/resources/bmw.blend',
-            resolution=resolution if resolution is not None else [150, 150],
+            resolution=[150, 150],
             use_compositing=False,
-            samples=samples if samples is not None else 35,
+            samples=35,
             frames=[1],
             output_format='PNG',
             use_frames=False,
             start_task=1,
             total_tasks=1,
-            # todo review: what is the point of that casting dict -> list?
-            crops=list(
-                dict(
-                    outfilebasename=outfilebasename if \
-                        outfilebasename is not None else "GolemTask_1",
-                    borders_x=[0.0, 1.0],
-                    borders_y=(
-                        borders_y if borders_y is not None else [0.0, 1.0]
-                    ),
-                )
-            ),
-            entrypoint=entrypoint if entrypoint is not None else \
-                'python3 /golem/entrypoints/verifier_entrypoint.py',
+            crops=[dict(
+                outfilebasename=outfilebasename,
+                borders_x=[0.0, 1.0],
+                borders_y=list(borders_y),
+            )],
+            entrypoint='python3 /golem/entrypoints/verifier_entrypoint.py',
             path_root=os.path.dirname(self.resources[0]),
             subtask_id=str(random.randint(1 * 10 ** 36, 9 * 10 ** 36)),
         )
 
-    # todo review: please use "real" default arguments instead of if/else logic
-    def _create_subtask_info(  # pylint: disable=too-many-arguments
+    def _create_subtask_info(
             self,
-            resolution: Optional[List[int]] = None,
-            samples: Optional[int] = None,
-            borders_y: Optional[List[float]] = None,
-            entrypoint: Optional[str] = None,
-            outfilebasename: Optional[str] = None,
+            borders_y: Collection[float] = (0.0, 1.0),
+            outfilebasename: str = "GolemTask_1"
     ) -> dict:
-        # todo review: What is the point of: dict -> kwargs -> dict?
-        return dict(
-            **self._create_basic_subtask_info(
-                resolution,
-                samples,
-                borders_y,
-                entrypoint,
-                outfilebasename
-            ),
+        borders_y = list(borders_y)
+        subtask_info = self._create_basic_subtask_info(
+            borders_y=borders_y,
+            outfilebasename=outfilebasename
+        )
+        subtask_info.update(
             ctd=ComputeTaskDef(
                 deadline=time.time() + 3600,
                 docker_images=[
                     DockerImage('golemfactory/blender', tag='1.9').to_dict()
                 ],
-                # todo review: What is the point of: dict -> kwargs -> dict?
-                extra_data=dict(**self._create_basic_subtask_info(
-                    resolution,
-                    samples,
-                    borders_y,
-                    entrypoint,
-                    outfilebasename,
-                ))
+                extra_data=self._create_basic_subtask_info(
+                    borders_y=borders_y,
+                    outfilebasename=outfilebasename
+                )
             ),
-            crop_window=[0.0, 1.0, borders_y[0], borders_y[1]] \
-                if borders_y is not None else [0.0, 1.0, 0.0, 1.0],
+            crop_window=[0.0, 1.0, borders_y[0], borders_y[1]],
             tmp_dir=self.tempdir,
             subtask_timeout=600,
             parts=1,
         )
+        return subtask_info
 
     def setUp(self):
         # pylint: disable=R0915
