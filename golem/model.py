@@ -11,6 +11,7 @@ from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
@@ -237,8 +238,11 @@ class PaymentDetails(DictSerializable):
     def from_dict(data: dict) -> 'PaymentDetails':
         det = PaymentDetails()
         det.__dict__.update(data)
-        if det.__dict__['node_info']:
-            det.__dict__['node_info'] = dt_p2p.Node(**data['node_info'])
+        if data['node_info']:
+            try:
+                det.node_info = dt_p2p.Node(**data['node_info'])
+            except msg_exceptions.FieldError:
+                det.node_info = None
         return det
 
     def __eq__(self, other: object) -> bool:

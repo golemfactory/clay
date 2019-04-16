@@ -10,6 +10,7 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch, ANY, Mock, MagicMock
 
+import faker
 from golem_messages import factories as msg_factories
 from golem_messages import idgenerator
 from golem_messages import message
@@ -19,6 +20,7 @@ from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 from pydispatch import dispatcher
 
+import twisted.internet.address
 from twisted.internet.defer import Deferred
 
 import golem
@@ -37,6 +39,8 @@ from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
+
+fake = faker.Faker()
 
 
 def fill_slots(msg):
@@ -374,96 +378,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             return_value=msg_factories.tasks.AckReportComputedTaskFactory()
         ):
             ts2.interpret(rct)
-
-    def test_react_to_hello_nodeskeeper_store(self, mock_store, *_):
-        msg = msg_factories.base.HelloFactory()
-        self.task_session._react_to_hello(msg)
-        mock_store.assert_called_once_with(msg.node_info)
-
-    def test_react_to_hello_protocol_version(self, *_):
-        # given
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = 0
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=-1)
-        fill_slots(msg)
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # then
-        ts.disconnect.assert_called_with(
-            message.base.Disconnect.REASON.ProtocolVersion)
-
-        # re-given
-        msg.proto_id = variables.PROTOCOL_CONST.ID
-
-        # re-when
-        with self.assertNoLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # re-then
-        self.assertTrue(ts.send.called)
-
-    def test_react_to_hello_key_not_difficult(self, *_):
-        # given
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = 80
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        key_id = 'deadbeef'
-        peer_info = MagicMock()
-        peer_info.key = key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-
-        # then
-        ts.disconnect.assert_called_with(
-            message.base.Disconnect.REASON.KeyNotDifficult)
-
-    def test_react_to_hello_key_difficult(self, *_):
-        # given
-        difficulty = 4
-        conn = MagicMock()
-        ts = TaskSession(conn)
-        ts.task_server.config_desc = Mock()
-        ts.task_server.config_desc.key_difficulty = difficulty
-        ts.disconnect = Mock()
-        ts.send = Mock()
-
-        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
-                      private_key_name='prv', password='')
-        peer_info = MagicMock()
-        peer_info.key = ka.key_id
-        msg = message.base.Hello(
-            port=1, node_name='node2', client_key_id=ka.key_id,
-            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
-        fill_slots(msg)
-
-        # when
-        with self.assertNoLogs(logger, level='INFO'):
-            ts._react_to_hello(msg)
-        # then
-        self.assertTrue(ts.send.called)
 
     @patch('golem.task.tasksession.get_task_message')
     def test_result_received(self, get_msg_mock, *_):
@@ -1344,3 +1258,103 @@ class ReportComputedTaskTest(
         self.assertGreater(stm.call_args_list[0][0][2], datetime.timedelta(0))
         # ensure the second one is not
         self.assertEqual(len(stm.call_args_list[1][0]), 2)
+
+
+@patch('golem.task.tasksession.TaskSession.disconnect')
+@patch("golem.network.nodeskeeper.store")
+class HelloTest(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.msg = msg_factories.base.HelloFactory(
+            client_key_id='deadbeef',
+            node_info=dt_p2p_factory.Node(),
+            proto_id=variables.PROTOCOL_CONST.ID,
+        )
+        addr = twisted.internet.address.IPv4Address(
+            type='TCP',
+            host=fake.ipv4(),
+            port=fake.random_int(min=1, max=2**16-1),
+        )
+        conn = MagicMock(
+            transport=MagicMock(
+                getPeer=MagicMock(return_value=addr),
+            ),
+        )
+        self.task_session = TaskSession(conn)
+        self.task_session.task_server.config_desc.key_difficulty = 1
+
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    def test_positive(self, mock_hello, *_):
+        self.task_session._react_to_hello(self.msg)
+        mock_hello.assert_called_once_with()
+
+    def test_react_to_hello_nodeskeeper_store(
+            self,
+            mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.task_session._react_to_hello(self.msg)
+        mock_store.assert_called_once_with(self.msg.node_info)
+        mock_disconnect.assert_not_called()
+
+    def test_react_to_hello_empty_node_info(
+            self,
+            mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.msg.node_info = None
+        self.task_session._react_to_hello(self.msg)
+        mock_store.assert_not_called()
+        mock_disconnect.assert_called_once_with(
+            message.base.Disconnect.REASON.ProtocolVersion,
+        )
+
+    def test_react_to_hello_invalid_protocol_version(
+            self,
+            _mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        self.msg.proto_id = -1
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            self.task_session._react_to_hello(self.msg)
+
+        # then
+        mock_disconnect.assert_called_once_with(
+            message.base.Disconnect.REASON.ProtocolVersion)
+
+    def test_react_to_hello_key_not_difficult(
+            self,
+            _mock_store,
+            mock_disconnect,
+            *_,
+    ):
+        # given
+        self.task_session.task_server.config_desc.key_difficulty = 80
+
+        # when
+        with self.assertLogs(logger, level='INFO'):
+            self.task_session._react_to_hello(self.msg)
+
+        # then
+        mock_disconnect.assert_called_with(
+            message.base.Disconnect.REASON.KeyNotDifficult,
+        )
+
+    @patch('golem.task.tasksession.TaskSession.send_hello')
+    def test_react_to_hello_key_difficult(self, mock_hello, *_):
+        # given
+        difficulty = 4
+        self.task_session.task_server.config_desc.key_difficulty = difficulty
+        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
+                      private_key_name='prv', password='')
+        self.msg.client_key_id = ka.key_id
+
+        # when
+        self.task_session._react_to_hello(self.msg)
+        # then
+        mock_hello.assert_called_once_with()
