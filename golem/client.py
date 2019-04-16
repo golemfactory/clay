@@ -18,7 +18,6 @@ from twisted.internet.defer import (
     Deferred)
 
 from apps.appsmanager import AppsManager
-from apps.rendering.task.renderingtask import RenderingTask
 import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
@@ -879,27 +878,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return subtasks
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
-
-    @rpc_utils.expose('comp.task.rendering.task_fragments')
-    def get_fragments(self, task_id: str) -> Optional[Dict[int, List[Dict]]]:
-        if not self.task_server:
-            return None
-
-        task = self.task_server.task_manager.tasks.get(task_id)
-        if task is None or not isinstance(task, RenderingTask):
-            return None
-
-        fragments: Dict[int, List[Dict]] = {}
-
-        for subtask_index in range(1, task.total_tasks + 1):
-            fragments[subtask_index] = []
-
-        for extra_data in task.subtasks_given.values():
-            subtask = self.task_server.task_manager.get_subtask_dict(
-                extra_data['subtask_id'])
-            fragments[extra_data['start_task']].append(subtask)
-
-        return fragments
 
     @rpc_utils.expose('comp.task.subtask')
     def get_subtask(self, subtask_id: str) \

@@ -3,6 +3,7 @@ import copy
 from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
+import uuid
 
 import faker
 from ethereum.utils import denoms
@@ -11,6 +12,7 @@ from mock import Mock
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
+from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
@@ -730,3 +732,40 @@ class TestGetEstimatedCost(ProviderBase):
             subtasks,
         )
         self.transaction_system.eth_for_deposit.assert_called_once_with()
+
+
+@mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
+            return_value=Mock())
+class TestGetFragments(ProviderBase):
+
+    def test_get_fragments(self, *_):
+        task_id = str(uuid.uuid4())
+        subtasks_count = 3
+        mock_task = Mock(spec=RenderingTask)
+        mock_task.total_tasks = subtasks_count
+        mock_task.subtasks_given = {
+            'subtask-uuid-1': {
+                'subtask_id': 'subtask-uuid-1',
+                'start_task': 1,
+            },
+            'subtask-uuid-2': {
+                'subtask_id': 'subtask-uuid-2',
+                'start_task': 2,
+            },
+            'subtask-uuid-3': {
+                'subtask_id': 'subtask-uuid-3',
+                'start_task': 2,
+            },
+            'subtask-uuid-4': {
+                'subtask_id': 'subtask-uuid-4',
+                'start_task': 2,
+            },
+        }
+        self.client.task_server.task_manager.tasks[task_id] = mock_task
+
+        task_fragments = self.provider.get_fragments(task_id)
+
+        self.assertTrue(len(task_fragments) == subtasks_count)
+        self.assertTrue(len(task_fragments[1]) == 1)
+        self.assertTrue(len(task_fragments[2]) == 3)
+        self.assertTrue(len(task_fragments[3]) == 0)

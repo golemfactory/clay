@@ -18,7 +18,6 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred, inlineCallbacks
 
-from apps.rendering.task.renderingtask import RenderingTask
 from golem import model
 from golem import testutils
 from golem.appconfig import (
@@ -42,7 +41,7 @@ from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus, SubtaskStatus
+from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
@@ -393,6 +392,7 @@ class TestClient(TestClientBase):
             2,
             deadline,
         )
+
 
 class TestClientRestartSubtasks(TestClientBase):
 
@@ -1165,40 +1165,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', -1, True)
-
-    @patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
-           return_value=Mock())
-    def test_get_fragments(self, *_):
-        task_id = str(uuid.uuid4())
-        subtasks_count = 3
-        mock_task = Mock(spec=RenderingTask)
-        mock_task.total_tasks = subtasks_count
-        mock_task.subtasks_given = {
-            'subtask-uuid-1': {
-                'subtask_id': 'subtask-uuid-1',
-                'start_task': 1,
-            },
-            'subtask-uuid-2': {
-                'subtask_id': 'subtask-uuid-2',
-                'start_task': 2,
-            },
-            'subtask-uuid-3': {
-                'subtask_id': 'subtask-uuid-3',
-                'start_task': 2,
-            },
-            'subtask-uuid-4': {
-                'subtask_id': 'subtask-uuid-4',
-                'start_task': 2,
-            },
-        }
-        self.client.task_server.task_manager.tasks[task_id] = mock_task
-
-        task_fragments = self.client.get_fragments(task_id)
-
-        self.assertTrue(len(task_fragments) == subtasks_count)
-        self.assertTrue(len(task_fragments[1]) == 1)
-        self.assertTrue(len(task_fragments[2]) == 3)
-        self.assertTrue(len(task_fragments[3]) == 0)
 
     @classmethod
     def __new_incoming_peer(cls):
