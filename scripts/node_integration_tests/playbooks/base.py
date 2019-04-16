@@ -13,12 +13,11 @@ from twisted.internet import _sslverify  # pylint: disable=protected-access
 from scripts.node_integration_tests.rpc.client import RPCClient
 from scripts.node_integration_tests import helpers, tasks
 
-from scripts.node_integration_tests.params import (
-    REQUESTOR_RPC_PORT, PROVIDER_RPC_PORT
-)
-
-
 from golem.rpc.cert import CertificateError
+
+if typing.TYPE_CHECKING:
+    from .test_config_base import TestConfigBase, NodeConfig
+
 
 _sslverify.platformTrust = lambda: None
 
@@ -29,16 +28,6 @@ class NodeTestPlaybook:
     start_time = None
 
     _loop = None
-
-    provider_datadir = None
-    requestor_datadir = None
-    provider_node_script: typing.Optional[str] = None
-    requestor_node_script: typing.Optional[str] = None
-    provider_enabled = True
-    requestor_enabled = True
-
-    provider_opts: typing.Dict[str, typing.Any] = {}
-    requestor_opts: typing.Dict[str, typing.Any] = {}
 
     nodes_root: typing.Optional[Path] = None
     provider_node = None
@@ -60,10 +49,6 @@ class NodeTestPlaybook:
     output_path = None
     subtasks = None
 
-    task_package = None
-    task_settings = 'default'
-    task_dict: dict
-
     reconnect_attempts_left = 7
     reconnect_countdown_initial = 10
     reconnect_countdown = None
@@ -72,12 +57,9 @@ class NodeTestPlaybook:
 
     node_restart_count = 0
 
-    dump_output_on_fail = False
-    dump_output_on_crash = False
-
     @property
     def task_settings_dict(self) -> dict:
-        return tasks.get_settings(self.task_settings)
+        return tasks.get_settings(self.config.task_settings)
 
     @property
     def output_extension(self):
@@ -107,10 +89,10 @@ class NodeTestPlaybook:
         print(msg or "Test run failed after {} seconds on step {}: {}".format(
                 self.time_elapsed, self.current_step, self.current_step_name))
 
-        if self.dump_output_on_fail or dump_provider_output:
+        if self.config.dump_output_on_fail or dump_provider_output:
             helpers.print_output(self.provider_output_queue, 'PROVIDER ')
-        if self.dump_output_on_fail or dump_requestor_output:
-                helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
+        if self.config.dump_output_on_fail or dump_requestor_output:
+            helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
 
         self.stop(1)
 
@@ -185,7 +167,12 @@ class NodeTestPlaybook:
                               on_success=on_success, on_error=on_error)
 
     def step_configure_provider(self):
-        if not self.provider_opts:
+        provider_config = self.config.current_provider
+        if provider_config is None:
+            self.fail("provider node config is not defined")
+            return
+
+        if not provider_config.opts:
             self.next()
             return
 
@@ -197,11 +184,16 @@ class NodeTestPlaybook:
             print("failed configuring provider")
             self.fail()
 
-        return self.call_provider('env.opts.update', self.provider_opts,
+        return self.call_provider('env.opts.update', provider_config.opts,
                                   on_success=on_success, on_error=on_error)
 
     def step_configure_requestor(self):
-        if not self.requestor_opts:
+        requestor_config = self.config.current_requestor
+        if requestor_config is None:
+            self.fail("requestor node config is not defined")
+            return
+
+        if not requestor_config.opts:
             self.next()
             return
 
@@ -213,7 +205,7 @@ class NodeTestPlaybook:
             print("failed configuring requestor")
             self.fail()
 
-        return self.call_provider('env.opts.update', self.requestor_opts,
+        return self.call_provider('env.opts.update', requestor_config.opts,
                                   on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
@@ -298,7 +290,7 @@ class NodeTestPlaybook:
 
     def step_create_task(self):
         print("Output path: {}".format(self.output_path))
-        print("Task dict: {}".format(self.task_dict))
+        print("Task dict: {}".format(self.config.task_dict))
 
         def on_success(result):
             if result[0]:
@@ -316,7 +308,8 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            return self.call_requestor('comp.task.create', self.task_dict,
+            return self.call_requestor('comp.task.create',
+                                       self.config.task_dict,
                                   on_success=on_success,
                                   on_error=self.print_error)
 
@@ -431,26 +424,7 @@ class NodeTestPlaybook:
 
     def step_restart_nodes(self):
         print("Starting nodes again")
-        self.node_restart_count += 1
-
-        # replace the the nodes with different versions
-        if self.provider_enabled:
-            provider_replacement_script = getattr(
-                self,
-                'provider_node_script_%s' % (self.node_restart_count + 1),
-                None,
-            )
-            if provider_replacement_script:
-                self.provider_node_script = provider_replacement_script
-
-        if self.requestor_enabled:
-            requestor_replacement_script = getattr(
-                self,
-                'requestor_node_script_%s' % (self.node_restart_count + 1),
-                None,
-            )
-            if requestor_replacement_script:
-                self.requestor_node_script = requestor_replacement_script
+        self.config.use_next_nodes()
 
         self.task_in_creation = False
         time.sleep(60)
@@ -504,10 +478,15 @@ class NodeTestPlaybook:
                        on_success=lambda x: print(x),
                        on_error=lambda: None,
                        **kwargs):
+        requestor_config = self.config.current_requestor
+        if requestor_config is None:
+            self.fail("requestor node config is not defined")
+            return
+
         return self._call_rpc(
             method,
-            port=int(REQUESTOR_RPC_PORT),
-            datadir=self.requestor_datadir,
+            port=requestor_config.rpc_port,
+            datadir=requestor_config.datadir,
             *args,
             on_success=on_success,
             on_error=on_error,
@@ -518,10 +497,15 @@ class NodeTestPlaybook:
                       on_success=lambda x: print(x),
                       on_error=None,
                       **kwargs):
+        provider_config = self.config.current_provider
+        if provider_config is None:
+            self.fail("provider node config is not defined")
+            return
+
         return self._call_rpc(
             method,
-            port=int(PROVIDER_RPC_PORT),
-            datadir=self.provider_datadir,
+            port=provider_config.rpc_port,
+            datadir=provider_config.datadir,
             *args,
             on_success=on_success,
             on_error=on_error,
@@ -529,22 +513,23 @@ class NodeTestPlaybook:
         )
 
     def start_nodes(self):
-        print("Provider data directory: %s" % self.provider_datadir)
-        print("Requestor data directory: %s" % self.requestor_datadir)
-
-        if self.provider_enabled:
+        provider_config = self.config.current_provider
+        if provider_config is not None:
+            print("Provider config: {}".format(repr(provider_config)))
             self.provider_node = helpers.run_golem_node(
-                self.provider_node_script,
-                '--datadir', self.provider_datadir,
+                provider_config.script,
+                provider_config.make_args(),
                 nodes_root=self.nodes_root,
             )
             self.provider_output_queue = helpers.get_output_queue(
                 self.provider_node)
 
-        if self.requestor_enabled:
+        requestor_config = self.config.current_requestor
+        if requestor_config is not None:
+            print("Requestor config: {}".format(repr(requestor_config)))
             self.requestor_node = helpers.run_golem_node(
-                self.requestor_node_script,
-                '--datadir', self.requestor_datadir,
+                requestor_config.script,
+                requestor_config.make_args(),
                 nodes_root=self.nodes_root,
             )
 
@@ -569,7 +554,7 @@ class NodeTestPlaybook:
                 if provider_exit is not None:
                     self.fail(
                         "Provider exited abnormally.",
-                        dump_provider_output=self.dump_output_on_crash,
+                        dump_provider_output=self.config.dump_output_on_crash,
                     )
 
             if self.requestor_node:
@@ -578,7 +563,7 @@ class NodeTestPlaybook:
                 if requestor_exit is not None:
                     self.fail(
                         "Requestor exited abnormally.",
-                        dump_requestor_output=self.dump_output_on_crash,
+                        dump_requestor_output=self.config.dump_output_on_crash,
                     )
 
         try:
@@ -597,31 +582,41 @@ class NodeTestPlaybook:
             self.fail()
             return
 
-    def __init__(self, **kwargs) -> None:
-        if not self.provider_node_script and self.provider_enabled:
-            raise NotImplementedError(
-                "`provider_node_script` unset and not explicitly disabled.")
+    def __init__(self, config: 'TestConfigBase') -> None:
+        self.config = config
 
-        if not self.requestor_node_script and self.requestor_enabled:
-            raise NotImplementedError(
-                "`requestor_node_script` unset and not explicitly disabled.")
+        def setup_datadir(
+                role: str,
+                node_configs:
+                'typing.Union[None, NodeConfig, typing.List[NodeConfig]]') \
+                -> None:
+            if node_configs is None:
+                return
+            if isinstance(node_configs, list):
+                datadir: typing.Optional[str] = None
+                for node_config in node_configs:
+                    if node_config.datadir is None:
+                        if datadir is None:
+                            datadir = helpers.mkdatadir(role)
+                        node_config.datadir = datadir
+            else:
+                if node_configs.datadir is None:
+                    node_configs.datadir = helpers.mkdatadir(role)
 
-        for attr, val in kwargs.items():
-            setattr(self, attr, val)
+        setup_datadir('requestor', config.requestor)
+        setup_datadir('provider', config.provider)
 
-        self.output_path = tempfile.mkdtemp()
-        self.task_dict = helpers.construct_test_task(
-            task_package_name=self.task_package,
-            output_path=self.output_path,
-            task_settings=self.task_settings,
-        )
+        self.output_path = tempfile.mkdtemp(
+            prefix="golem-integration-test-output-")
+        helpers.set_task_output_path(self.config.task_dict, self.output_path)
 
         self.start_nodes()
         self.started = True
 
     @classmethod
-    def start(cls, *args, **kwargs):
-        playbook = cls(*args, **kwargs)
+    def start(cls: 'typing.Type[NodeTestPlaybook]', config: 'TestConfigBase') \
+            -> 'NodeTestPlaybook':
+        playbook = cls(config)
         playbook.start_time = time.time()
         playbook._loop = task.LoopingCall(playbook.run)
         d = playbook._loop.start(cls.INTERVAL, False)

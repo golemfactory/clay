@@ -1,12 +1,9 @@
 from scripts.node_integration_tests import helpers
 
-from .concent_base import ConcentTestPlaybook
+from ..concent_base import ConcentTestPlaybook
 
 
-class ForceDownload(ConcentTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/fail_results'
-
+class Playbook(ConcentTestPlaybook):
     forced_download_successful = False
 
     def step_wait_task_finished(self):
