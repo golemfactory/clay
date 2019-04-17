@@ -23,8 +23,10 @@ class TaskMessagesQueueMixin:
     forwarded_session_requests: typing.Dict[str, dict]
 
     def __init__(self):
-        # None - PendingConnection
-        # TaskSession - session established
+        # Possible values of .sessions:
+        #   None - PendingConnection
+        #   TaskSession - session established
+        # Keys are always node_id a.k.a. key_id
         self.sessions: 'typing.Dict[str, typing.Optional[TaskSession]]' = {}
 
         for attr_name in (
