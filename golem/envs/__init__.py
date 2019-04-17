@@ -48,12 +48,11 @@ class RuntimeStatus(Enum):
     PREPARING = 1
     PREPARED = 2
     STARTING = 3
-    STARTED = 4
-    RUNNING = 5
-    STOPPED = 6
-    CLEANING_UP = 7
-    TORN_DOWN = 8
-    FAILURE = 9
+    RUNNING = 4
+    STOPPED = 5
+    CLEANING_UP = 6
+    TORN_DOWN = 7
+    FAILURE = 8
 
     def __str__(self) -> str:
         return self.name

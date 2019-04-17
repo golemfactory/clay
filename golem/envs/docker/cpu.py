@@ -227,7 +227,7 @@ class DockerCPURuntime(Runtime):
         logger.info("Starting container '%s'...", self._container_id)
 
         @self._wrap_status_change(
-            success_status=RuntimeStatus.STARTED,
+            success_status=RuntimeStatus.RUNNING,
             success_msg=f"Container '{self._container_id}' started.",
             error_msg=f"Starting container '{self._container_id}' failed.")
         def _start():
