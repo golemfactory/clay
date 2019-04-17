@@ -216,8 +216,8 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
 
     @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
-    # todo review: we don't understand where this name came from. Please rename
-    #  it to something more intuitive
+    # todo review: WILL BE RENAMED WHEN TEST CHANGES; we don't understand where
+    #  this name came from. Please rename it to something more intuitive
     def test_docker_sanity_check(self):
         self._prep_sanity_check_data()
 
@@ -238,9 +238,7 @@ class TestBlenderVerifier(TempDirFixture):
     def test_random_crop_window(self):
         self._prep_sanity_check_data()
 
-        # todo review: non-deterministic test. We expected test for "randomly
-        #  chosen" values, but they should be hardcoded in the test. Otherwise
-        #  it's difficult to reproduce results
+        random.seed(0)
         subtask_height = random.randint(20, 50)
         subtask_ymin = round(random.randint(0, 100 - subtask_height)/100, 2)
         subtask_ymax = round(subtask_ymin + subtask_height/100, 2)
