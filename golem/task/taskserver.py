@@ -405,7 +405,7 @@ class TaskServer(
             session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
             return
         logger.debug(
-            'Incoming TaskSession. host=%r, port=%r',
+            'Incoming TaskSession. address=%s:%d',
             session.address,
             session.port,
         )
