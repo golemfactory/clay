@@ -673,8 +673,8 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \
             typing.Tuple[
-                typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
-                typing.Optional[str]
+                    typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
+                    typing.Optional[str]
             ]:
         """
         Returns the task fragments for a given rendering task. A single task
