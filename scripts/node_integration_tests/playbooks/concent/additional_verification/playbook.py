@@ -3,12 +3,10 @@ import time
 
 from scripts.node_integration_tests import helpers
 
-from .concent_base import ConcentTestPlaybook
+from ..concent_base import ConcentTestPlaybook
 
 
-class AdditionalVerification(ConcentTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/reject_results'
+class Playbook(ConcentTestPlaybook):
     concent_verification_timeout = None
 
     def step_wait_task_started(self):

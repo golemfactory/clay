@@ -1,19 +1,12 @@
-#!/usr/bin/env python
 import datetime
 import time
 
 from scripts.node_integration_tests import helpers
 
-from .concent_base import ConcentTestPlaybook
+from ..concent_base import ConcentTestPlaybook
 
 
-class ForcePayment(ConcentTestPlaybook):
-    provider_node_script = 'provider/day_backwards'
-    requestor_node_script = 'requestor/day_backwards_dont_pay'
-
-    provider_node_script_2 = 'provider/debug'
-    requestor_node_script_2 = 'requestor/dont_pay'
-
+class Playbook(ConcentTestPlaybook):
     force_payment_timeout = None
     force_payment_committed_timeout = None
 
