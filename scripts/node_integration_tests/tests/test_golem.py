@@ -57,5 +57,5 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         self.assertEqual(exit_code, 0)
 
     def test_task_output_directory(self):
-        exit_code = self._run_test('golem.task_output.TaskOutputDirectory')
+        exit_code = self._run_test('golem.task_output')
         self.assertEqual(exit_code, 0)

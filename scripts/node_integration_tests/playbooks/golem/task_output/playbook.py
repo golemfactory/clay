@@ -2,10 +2,10 @@ from datetime import datetime
 from pathlib import Path
 import typing
 
-from ..base import NodeTestPlaybook
+from ...base import NodeTestPlaybook
 
 
-class TaskOutputDirectory(NodeTestPlaybook):
+class Playbook(NodeTestPlaybook):
     """
     This test covers:
     * Ensuring there is no output overwriting when the same task is requested
@@ -16,9 +16,6 @@ class TaskOutputDirectory(NodeTestPlaybook):
         format (e.g. 'some_task_2019-01-01_12-00-00').
     """
     OUTPUT_DIR_TIME_FORMAT = '%Y-%m-%d_%H-%M-%S'
-
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
 
     def step_verify_separate_output_directories(self):
         print('Verifying task output directories.')
