@@ -1,15 +1,15 @@
-http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.flv                                                                                   standalone      jellyfish            5
+http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.flv                                                                                   standalone      jellyfish            4
 http://mirrors.standaloneinstaller.com/video-sample/grb_2.flv                                                                                                       standalone      grb2                 5
 http://mirrors.standaloneinstaller.com/video-sample/page18-movie-4.flv                                                                                              standalone      page18               5
 http://mirrors.standaloneinstaller.com/video-sample/star_trails.flv                                                                                                 standalone      startrails           5
 http://mirrors.standaloneinstaller.com/video-sample/video-sample.flv                                                                                                standalone      videosample          5
 
 http://mirrors.standaloneinstaller.com/video-sample/dolbycanyon.3gp                                                                                                 standalone      dolbycanyon          bad
-http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.3gp                                                                                   standalone      jellyfish            5
+http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.3gp                                                                                   standalone      jellyfish            4
 http://mirrors.standaloneinstaller.com/video-sample/page18-movie-4.3gp                                                                                              standalone      page18               5
 http://mirrors.standaloneinstaller.com/video-sample/small.3gp                                                                                                       standalone      small                5
 http://mirrors.standaloneinstaller.com/video-sample/star_trails.3gp                                                                                                 standalone      startrails           5
-http://mirrors.standaloneinstaller.com/video-sample/TRA3106.3gp                                                                                                     standalone      tra3106              5
+http://mirrors.standaloneinstaller.com/video-sample/TRA3106.3gp                                                                                                     standalone      tra3106              4
 https://sample-videos.com/video123/3gp/144/big_buck_bunny_144p_1mb.3gp                                                                                              sample          bigbuckbunny         5
 
 http://mirrors.standaloneinstaller.com/video-sample/DLP_PART_2_768k.mov                                                                                             standalone      dlppart2             5
@@ -27,8 +27,8 @@ https://archive.org/download/RelaxAtTheRiverLakeCCBYNatureClip/Relax%20at%20the%
 http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.mkv                                                                                   standalone      jellyfish            5
 http://dl5.webmfiles.org/video-h265.mkv                                                                                                                             h265files       alps                 5
 
-http://mirrors.standaloneinstaller.com/video-sample/P6090053.mov                                                                                                    standalone      p6090053             5
-http://mirrors.standaloneinstaller.com/video-sample/TRA3106.avi                                                                                                     standalone      tra3106              5
+http://mirrors.standaloneinstaller.com/video-sample/P6090053.mov                                                                                                    standalone      p6090053             3
+http://mirrors.standaloneinstaller.com/video-sample/TRA3106.avi                                                                                                     standalone      tra3106              1
 https://archive.org/download/MoonCloseUpFreeStockFootage/Moon%20Close%20Up%20PhotoJPEG.mov                                                                          beachfront      mooncloseup          bad
 https://archive.org/download/MoonAndCloudsTimeLapse2/MoonAndClouds2Photojpeg.mov                                                                                    beachfront      moonandclouds        bad
 
@@ -36,12 +36,12 @@ http://mirrors.standaloneinstaller.com/video-sample/lion-sample.mpeg            
 
 http://mirrors.standaloneinstaller.com/video-sample/dolbycanyon.vob                                                                                                 standalone      dolbycanyon          bad
 http://mirrors.standaloneinstaller.com/video-sample/grb_2.vob                                                                                                       standalone      grb2                 5
-http://mirrors.standaloneinstaller.com/video-sample/grb_2.mpg                                                                                                       standalone      grb2                 5
+http://mirrors.standaloneinstaller.com/video-sample/grb_2.mpg                                                                                                       standalone      grb2                 1
 http://mirrors.standaloneinstaller.com/video-sample/small.vob                                                                                                       standalone      small                5
 http://mirrors.standaloneinstaller.com/video-sample/small.mpg                                                                                                       standalone      small                bad
 http://mirrors.standaloneinstaller.com/video-sample/TRA3106.mpeg                                                                                                    standalone      tra3106              bad
 http://mirrors.standaloneinstaller.com/video-sample/video-sample.mpg                                                                                                standalone      videosample          bad
-https://archive.org/download/DandelionroyaltyFreeStockVideo/Dandelion.mpeg                                                                                          beachfront      dandelion            5
+https://archive.org/download/DandelionroyaltyFreeStockVideo/Dandelion.mpeg                                                                                          beachfront      dandelion            2
 
 http://mirrors.standaloneinstaller.com/video-sample/page18-movie-4.avi                                                                                              standalone      page18               5
 http://mirrors.standaloneinstaller.com/video-sample/Panasonic_HDC_TM_700_P_50i.avi                                                                                  standalone      panasonic            5
