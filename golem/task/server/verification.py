@@ -85,7 +85,7 @@ class VerificationMixin:
             history.add(
                 msg_utils.copy_and_sign(
                     msg=response_msg,
-                    private_key=self.my_private_key,
+                    private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
                 ),
                 node_id=task_to_compute.provider_id,
                 local_role=model.Actor.Requestor,
