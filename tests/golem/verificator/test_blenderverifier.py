@@ -150,7 +150,7 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
-    # todo review: what does that `test` test? By the way, I do not see any asserts
+    # todo review: DONE IN DOCS what does that `test` test? By the way, I do not see any asserts
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(os.path.join(
             get_golem_path(),
@@ -166,7 +166,7 @@ class TestBlenderVerifier(TempDirFixture):
                 result_image[y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150]
 
             # Store images in temporary directory to load them to verification
-            # todo review: can you use just a variable instead of using a dict. You do not need a dict actually
+            # todo review: DONE IN DOCS can you use just a variable instead of using a dict. You do not need a dict actually
             temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
             cv2.imwrite(temp_path, split_images[f'image_part_{i}'])
 
