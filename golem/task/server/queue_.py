@@ -114,6 +114,8 @@ class TaskMessagesQueueMixin:
         try:
             if self.sessions[node_id] is not None:
                 # There is a session already established
+                # with this node_id. All messages will be processed
+                # in that other session.
                 session.dropped()
                 return
         except KeyError:
