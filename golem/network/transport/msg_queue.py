@@ -17,7 +17,8 @@ READ_LOCK = threading.Lock()
 
 
 def put(node_id: str, msg: message.base.Message) -> None:
-    assert not isinstance(msg, message.base.Disconnect)
+    assert not isinstance(msg, message.base.Disconnect),\
+        "Disconnect message shouldn't be in a queue"
     db_model = model.QueuedMessage.from_message(node_id, msg)
     db_model.save()
 
