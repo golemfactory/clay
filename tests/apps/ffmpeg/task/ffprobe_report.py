@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Collection, Dict, List, Optional, Tuple, Union
+from typing import Any, Collection, Dict, List, Optional, Set, Tuple, Union
 
 from apps.transcoding.ffmpeg.utils import StreamOperator
 
@@ -9,6 +9,8 @@ DiffDict = Dict[str, Any]
 Diff = List[DiffDict]
 StreamOverrides = Dict[str, Any]
 FileOverrides = Dict[str, StreamOverrides]
+StreamExcludes = Set[str]
+FileExcludes = Dict[str, Set[str]]
 
 
 class UnsupportedCodecType(Exception):
@@ -161,6 +163,7 @@ class FfprobeFormatReport:
                                 modified_stream_reports:
                                 List['FfprobeStreamReport'],
                                 overrides: Optional[FileOverrides] = None,
+                                excludes: Optional[FileExcludes] = None,
                                ) -> Diff:
         assert len(
             set(r.codec_type for r in original_stream_reports) |
@@ -169,6 +172,8 @@ class FfprobeFormatReport:
 
         if overrides is None:
             overrides = {}
+        if excludes is None:
+            excludes = {}
 
         diffs: Diff = []
 
@@ -181,6 +186,10 @@ class FfprobeFormatReport:
                     overrides.get(
                         modified_stream_reports[modified_idx].codec_type,
                         {},
+                    ),
+                    excludes.get(
+                        modified_stream_reports[modified_idx].codec_type,
+                        set(),
                     ),
                 )
                 assert new_diff is not None
@@ -225,6 +234,7 @@ class FfprobeFormatReport:
                       original_stream_reports: List['FfprobeStreamReport'],
                       modified_stream_reports: List['FfprobeStreamReport'],
                       overrides: Optional[FileOverrides] = None,
+                      excludes: Optional[FileExcludes] = None,
                      ) -> Diff:
 
         original_reports_by_type = cls._classify_streams(
@@ -244,6 +254,7 @@ class FfprobeFormatReport:
                 original_reports_by_type.get(codec_type, []),
                 modified_reports_by_type.get(codec_type, []),
                 overrides,
+                excludes,
             )
 
         return stream_differences
@@ -255,9 +266,12 @@ class FfprobeFormatReport:
                          attributes_to_compare: Collection[str],
                          original_report: 'FfprobeFormatReport',
                          modified_report: 'FfprobeFormatReport',
-                         overrides: Optional[StreamOverrides] = None) -> Diff:
+                         overrides: Optional[StreamOverrides] = None,
+                         excludes: Optional[StreamExcludes] = None) -> Diff:
         if overrides is None:
             overrides = {}
+        if excludes is None:
+            excludes = set()
 
         differences = []
         for attribute in attributes_to_compare:
@@ -267,7 +281,7 @@ class FfprobeFormatReport:
                 getattr(modified_report, attribute),
             )
 
-            if modified_value != original_value:
+            if attribute not in excludes and modified_value != original_value:
                 diff_dict = {
                     'location': 'format',
                     'attribute': attribute,
@@ -281,19 +295,22 @@ class FfprobeFormatReport:
 
     def diff(self,
              modified_report: 'FfprobeFormatReport',
-             overrides: Optional[FileOverrides] = None) -> Diff:
+             overrides: Optional[FileOverrides] = None,
+             excludes: Optional[FileExcludes] = None) -> Diff:
 
         format_differences = self._diff_attributes(
             self.ATTRIBUTES_TO_COMPARE,
             self,
             modified_report,
             overrides.get('format', {}) if overrides is not None else None,
+            excludes.get('format', set()) if excludes is not None else None,
         )
 
         stream_differences = self._diff_streams(
             self.stream_reports,
             modified_report.stream_reports,
             overrides,
+            excludes,
         )
 
         return format_differences + stream_differences
@@ -446,13 +463,16 @@ class FfprobeStreamReport:
                          attributes_to_compare: Collection[str],
                          original_stream_report: 'FfprobeStreamReport',
                          modified_stream_report: 'FfprobeStreamReport',
-                         overrides: Optional[StreamOverrides] = None) -> Diff:
+                         overrides: Optional[StreamOverrides] = None,
+                         excludes: Optional[StreamExcludes] = None) -> Diff:
 
         assert (original_stream_report.codec_type ==
                 modified_stream_report.codec_type)
 
         if overrides is None:
             overrides = {}
+        if excludes is None:
+            excludes = set()
 
         differences = []
         for attribute in attributes_to_compare:
@@ -463,6 +483,7 @@ class FfprobeStreamReport:
             )
 
             if (
+                    attribute not in excludes and
                     modified_value != original_value
             ):
                 diff_dict = {
@@ -478,13 +499,15 @@ class FfprobeStreamReport:
 
     def diff(self,
              modified_stream_report: 'FfprobeStreamReport',
-             overrides: Optional[StreamOverrides] = None) -> Diff:
+             overrides: Optional[StreamOverrides] = None,
+             excludes: Optional[StreamExcludes] = None) -> Diff:
 
         return self._diff_attributes(
             self.ATTRIBUTES_TO_COMPARE,
             self,
             modified_stream_report,
             overrides,
+            excludes,
         )
 
     def __eq__(self, other):
