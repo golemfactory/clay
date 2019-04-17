@@ -24,13 +24,14 @@ function print_frame_types() {
 }
 
 
+mkdir --parents "$output_dir/download/"
 mkdir --parents "$output_dir/original/"
 mkdir --parents "$output_dir/good/"
 mkdir --parents "$output_dir/bad/"
 
 i=1
 grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_name video_name max_duration; do
-    original_file="$output_dir/original/$i-$(basename "$url")"
+    original_file="$output_dir/download/$i-$(basename "$url")"
 
     echo "Downloading $(basename "$url")"
     curl "$url"                       \
@@ -39,20 +40,22 @@ grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_na
         --location
 
     input_i_frame_count="$(print_frame_types "$original_file" | grep I | wc -l)"
+    meta_name="$(./build-name.sh "$original_file")"
+    file_name="$source_name-$video_name$meta_name.$(get_extension "$original_file")"
+    renamed_original_file="$output_dir/original/$file_name"
+    mv "$original_file" "$renamed_original_file"
+    echo "Renamed to $(basename "$renamed_original_file")"
 
     if [[ "$max_duration" == "bad" ]]; then
         echo "File $(basename "$url") ($input_i_frame_count key frames) marked as bad. Not splitting"
-        cp --link "$original_file" "$output_dir/bad/" 2> /dev/null || cp "$original_file" "$output_dir/bad/"
+        cp --link "$renamed_original_file" "$output_dir/bad/" 2> /dev/null || cp "$renamed_original_file" "$output_dir/bad/"
         i=$(( ++i ))
         continue
     fi
 
-    meta_name="$(./build-name.sh "$original_file")"
-    file_name="$source_name-$video_name$meta_name.$(get_extension "$original_file")"
-
-    echo "Cutting $file_name ($input_i_frame_count key frames) down to $max_duration seconds"
+    echo "Cutting $renamed_original_file ($input_i_frame_count key frames) down to $max_duration seconds"
     "$(dirname ${BASH_SOURCE[0]})/shorten-video.sh" \
-        "$original_file"                            \
+        "$renamed_original_file"                    \
         "$output_dir/good/$file_name"               \
         "$output_dir/tmp-splits"                    \
         "$max_duration"
