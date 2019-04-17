@@ -53,6 +53,13 @@ class FfprobeFormatReport:
             for raw_stream_report in raw_report['streams']
         ]
 
+    def select_streams(self, stream_type: str) -> List['FfprobeStreamReport']:
+        return [
+            stream
+            for stream in self._stream_reports
+            if stream.codec_type == stream_type
+        ]
+
     @property
     def stream_reports(self) -> List['FfprobeStreamReport']:
         return self._stream_reports
