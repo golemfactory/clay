@@ -231,6 +231,8 @@ class DummyTask(Task):
 
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
+        if verification_finished is not None:
+            verification_finished()
 
     def get_resources(self):
         return self.task_resources
