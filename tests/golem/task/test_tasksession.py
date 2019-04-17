@@ -46,6 +46,8 @@ from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
+from tests.factories import hyperdrive
+
 
 fake = faker.Faker()
 
@@ -111,6 +113,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         dir_manager = DirManager(self.path)
         resource_manager = HyperdriveResourceManager(
             dir_manager=dir_manager,
+            **hyperdrive.hyperdrive_client_kwargs()
         )
 
         server.client.resource_server = BaseResourceServer(
