@@ -32,6 +32,18 @@ class ffmpegException(Exception):
     pass
 
 
+class ffmpegExtractSplitError(ffmpegException):
+    pass
+
+
+class ffmpegTranscodingError(ffmpegException):
+    pass
+
+
+class ffmpegMergeReplaceError(ffmpegException):
+    pass
+
+
 class TranscodingException(Exception):
     pass
 
