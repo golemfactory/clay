@@ -16,34 +16,14 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     return None
 
 
-# todo review: this function is too long
-# todo review: name should indicate that a list of Crop instances is also
-#  returned  - find better name
-# todo review: clarify what are "params" - find better name
-def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
-        subtask_border,
-        scene_file_path,
-        resolution,
-        samples,
-        frames,
-        output_format,
+def prepare_crops(
+        subimage,
+        crops_borders,
         crops_count=3,
-        crops_borders=None
 ):
-    subimage = SubImage(
-        Region(
-            subtask_border[0],
-            subtask_border[1],
-            subtask_border[2],
-            subtask_border[3]
-        ),
-        resolution
-    )
-    crops: List[Crop] = []
+    crops_details: List[Crop] = []
     crops_render_data = []
-
-    # todo review: clean the TODO
-    if crops_borders:  # TODO: Allow verification with given crops_border!
+    if crops_borders:
         crop_id = 0
         for border in crops_borders:
             crop = Crop.create_from_region(
@@ -60,7 +40,7 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
                     "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
                 }
             )
-            crops.append(crop)
+            crops_details.append(crop)
             crop_id += 1
     else:
         for i in range(0, crops_count):
@@ -77,7 +57,32 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
                     "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
                 }
             )
-            crops.append(crop)
+            crops_details.append(crop)
+    return (crops_details, crops_render_data)
+
+
+def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, too-many-arguments
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_borders,
+        crops_count=3,
+
+):
+    subimage = SubImage(
+        Region(
+            subtask_border[0],
+            subtask_border[1],
+            subtask_border[2],
+            subtask_border[3]
+        ),
+        resolution
+    )
+
+    (crops_details, crops_render_data) = prepare_crops(subimage, crops_borders, crops_count)
 
     params = {
         "scene_file": scene_file_path,
@@ -90,7 +95,7 @@ def prepare_params(  # pylint: disable=too-many-locals, too-many-arguments
         "crops": crops_render_data
     }
 
-    return crops, params
+    return (crops_details, params)
 
 
 # todo review: this function shouldn't know anything about the
@@ -182,16 +187,17 @@ def verify(  # pylint: disable=too-many-arguments
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
-    # todo review: clarify what "crops" are, unless it becomes obvious after
-    #  renaming "prepare_params"
-    # todo review: clarify what "params" are, unless it becomes obvious after
-    #  renaming "prepare_params"
-    crops, params = prepare_params(subtask_border, scene_file_path, resolution,
-                                   samples, frames, output_format, crops_count,
-                                   crops_borders)
+    (crops_details, blender_render_parameters) = prepare_data_for_blender_verification(subtask_border,
+                                                                                       scene_file_path,
+                                                                                       resolution,
+                                                                                       samples,
+                                                                                       frames,
+                                                                                       output_format,
+                                                                                       crops_count,
+                                                                                       crops_borders)
 
-    results = blender.render(params, mounted_paths)
+    results = blender.render(blender_render_parameters, mounted_paths)
 
     print(results)
 
-    make_verdict(subtask_file_paths, crops, results, use_raw_verification)
+    make_verdict(subtask_file_paths, crops_details, results, use_raw_verification)
