@@ -30,10 +30,6 @@ mkdir --parents "$output_dir/bad/"
 
 grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_name video_name max_duration; do
     original_file="$output_dir/original/$(basename "$url")"
-    if [[ -e "$original_file" ]]; then
-        echo "Skipping already downloaded file $original_file"
-        continue
-    fi
 
     echo "Downloading $(basename "$url")"
     curl "$url"                       \
