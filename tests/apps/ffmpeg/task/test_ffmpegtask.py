@@ -119,7 +119,7 @@ class TestffmpegTask(TempDirFixture):
             self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_different_codecs(self):
-        params = [('avi', 'mpeg4', 'aac'), ('mp4', 'h264', 'aac')]
+        params = [('mov', 'h265', 'aac'), ('mp4', 'h264', 'aac')]
         d = self._task_dictionary
 
         for container, vcodec, acodec in params:
