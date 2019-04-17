@@ -147,10 +147,8 @@ def calculate_metrics(
 
 
 def load_classifier():
-    # todo review: first element of the pair returned by DecisionTree.load is
-    #  the decision tree, make variables below indicate this fact
-    data = decision_tree.DecisionTree.load(TREE_PATH)
-    return data[0], data[1]
+    classifier, feature_labels = decision_tree.DecisionTree.load(TREE_PATH)
+    return classifier, feature_labels
 
 
 def classify_with_tree(metrics, classifier, feature_labels):
