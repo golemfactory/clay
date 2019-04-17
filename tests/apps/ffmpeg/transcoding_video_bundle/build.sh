@@ -3,6 +3,15 @@
 output_dir="$1"
 
 
+function get_extension {
+    local file_path="$1"
+
+    local file_basename="$(basename "$file_path")"
+    local file_extension="${file_basename##*.}"
+
+    printf "%s" $file_extension
+}
+
 function print_frame_types() {
     local input_file="$1"
 
@@ -19,26 +28,29 @@ mkdir --parents "$output_dir/original/"
 mkdir --parents "$output_dir/good/"
 mkdir --parents "$output_dir/bad/"
 
-grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_name video_name max_duration file_name; do
-    original_file="$output_dir/original/$file_name"
+grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_name video_name max_duration; do
+    original_file="$output_dir/original/$(basename "$url")"
     if [[ -e "$original_file" ]]; then
         echo "Skipping already downloaded file $original_file"
         continue
     fi
 
-    echo "Downloading $file_name"
+    echo "Downloading $(basename "$url")"
     curl "$url"                       \
         --output     "$original_file" \
         --user-agent ""               \
         --location
 
+    input_i_frame_count="$(print_frame_types "$original_file" | grep I | wc -l)"
+
     if [[ "$max_duration" == "bad" ]]; then
-        echo "File $file_name ($input_i_frame_count key frames) marked as bad. Not splitting"
+        echo "File $(basename "$url") ($input_i_frame_count key frames) marked as bad. Not splitting"
         cp --link "$original_file" "$output_dir/bad/" 2> /dev/null || cp "$original_file" "$output_dir/bad/"
         continue
     fi
 
-    input_i_frame_count="$(print_frame_types "$original_file" | grep I | wc -l)"
+    meta_name="$(./build-name.sh "$original_file")"
+    file_name="$source_name-$video_name$meta_name.$(get_extension "$original_file")"
 
     echo "Cutting $file_name ($input_i_frame_count key frames) down to $max_duration seconds"
     "$(dirname ${BASH_SOURCE[0]})/shorten-video.sh" \
