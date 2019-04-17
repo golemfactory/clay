@@ -321,6 +321,8 @@ class TaskHeaderKeeper:
         self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
+        # ids of tasks that are computing on this node
+        self.running_tasks = []
         # results of tasks' support checks
         self.support_status = {}
         # tasks that were removed from network recently, so they won't
@@ -525,7 +527,9 @@ class TaskHeaderKeeper:
         if len(owner_task_set) <= self.max_tasks_per_requestor:
             return
 
-        by_age = sorted(owner_task_set,
+        not_running = [x for x in owner_task_set if x not in self.running_tasks]
+
+        by_age = sorted(not_running,
                         key=lambda tid: self.last_checking[tid])
 
         # leave alone the first (oldest) max_tasks_per_requestor
@@ -650,3 +654,14 @@ class TaskHeaderKeeper:
                 avg = None
             ret.append({'reason': reason.value, 'ntasks': count, 'avg': avg})
         return ret
+
+    def task_started(self, task_id):
+        self.running_tasks.append(task_id)
+
+    def task_ended(self, task_id):
+        try:
+            self.running_tasks.remove(task_id)
+        except ValueError:
+            logger.warning("Can not remove running task, already removed. "
+                           "Maybe the callback is called twice. task_id=%r",
+                           task_id)

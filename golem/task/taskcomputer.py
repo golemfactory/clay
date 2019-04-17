@@ -154,19 +154,21 @@ class TaskComputer(object):
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
+        fallback_error = "Wrong result format"
         try:
             subtask = self.assigned_subtask
             assert subtask is not None
             self.assigned_subtask = None
+            task_id = subtask['task_id']
+            task_header = self.task_server.task_keeper.task_headers[task_id]
             # get paid for max working time,
             # thus task withholding won't make profit
-            task_header = \
-                self.task_server.task_keeper.task_headers[subtask['task_id']]
             work_time_to_be_paid = task_header.subtask_timeout
 
         except KeyError:
-            logger.error("No subtask with id %r", subtask_id)
-            return
+            fallback_error = "Task header not found in task keeper"
+            logger.error("%s. task_id=%r, subtask_id=%r",
+                         fallback_error, task_id, subtask_id)
 
         was_success = False
 
@@ -205,7 +207,7 @@ class TaskComputer(object):
             self.task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
-                "Wrong result format",
+                fallback_error,
             )
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
@@ -406,6 +408,7 @@ class TaskComputer(object):
         with self.lock:
             self.counting_thread = tt
 
+        self.task_server.task_keeper.task_started(task_id)
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
@@ -420,6 +423,7 @@ class TaskComputer(object):
 
         with self.lock:
             self.counting_thread = None
+        self.task_server.task_keeper.task_ended(ctd['task_id'])
         if self.finished_cb:
             self.finished_cb()
 
