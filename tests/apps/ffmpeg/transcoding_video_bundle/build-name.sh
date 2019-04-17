@@ -78,6 +78,11 @@ width="$(ffprobe_get_stream_attribute "$input_file" "v:0" width)"
 height="$(ffprobe_get_stream_attribute "$input_file" "v:0" height)"
 
 duration="$(ffprobe_show_entries "$input_file" format=duration)"
+if [[ "$duration" == "N/A" ]]; then
+    duration_string="_"
+else
+    duration_string="$(printf "%.0fs" "$duration")"
+fi
 
 video_stream_count="$(ffprobe -show_entries stream=codec_type -select_streams v -of default=noprint_wrappers=1:nokey=1 -hide_banner -v error "$input_file" | wc -l)"
 audio_stream_count="$(ffprobe -show_entries stream=codec_type -select_streams a -of default=noprint_wrappers=1:nokey=1 -hide_banner -v error "$input_file" | wc -l)"
@@ -99,8 +104,10 @@ p_frame_count="$(echo -n "$frames" | sed 's/[^P]//g' | wc --chars)"
 b_frame_count="$(echo -n "$frames" | sed 's/[^B]//g' | wc --chars)"
 
 frame_rate="$(ffprobe_get_stream_attribute "$input_file" "v:0" r_frame_rate)"
-frame_rate_float=$(
-    python -c "print($frame_rate)"
-)
+if [[ "$frame_rate" != "0/0" ]]; then
+    frame_rate_string="$(printf "%gfps" "$(python -c "print($frame_rate)")")"
+else
+    frame_rate_string="_"
+fi
 
-printf "[%s,%sx%s,%.0fs,%s,i%dp%db%d,%gfps]\n" "$codecs" "$width" "$height" "$duration" "$stream_counts" "$i_frame_count" "$p_frame_count" "$b_frame_count" "$frame_rate_float"
+printf "[%s,%sx%s,%s,%s,i%dp%db%d,%s]\n" "$codecs" "$width" "$height" "$duration_string" "$stream_counts" "$i_frame_count" "$p_frame_count" "$b_frame_count" "$frame_rate_string"
