@@ -54,8 +54,6 @@ def calculate_metrics(
     :param metrics_output_filename:
     :return:
     """
-    # todo review: remove comment below
-    # (cropped_image, scene_crops, rendered_scene) = \
     (cropped_image, scene_crops) = \
         _load_and_prepare_images_for_comparison(
             reference_crop_path,
@@ -68,16 +66,12 @@ def calculate_metrics(
 
     (classifier, labels, available_metrics) = get_metrics()
 
-    # todo review: this is no longer relevant when only one crop is being
-    #  compared, clean it up
-    # todo review: rename "default_crop" to "providers_result_crop"
-    # First try not offset crop
     # TODO this shouldn't depend on the crops' ordering
-    default_crop = scene_crops[0]
-    print(f"default_crop: {default_crop.getbbox()}")
+    providers_result_crop = scene_crops[0]
+    print(f"default_crop: {providers_result_crop.getbbox()}")
     default_metrics = compare_images(
         cropped_image,
-        default_crop,
+        providers_result_crop,
         available_metrics
     )
     try:
@@ -87,63 +81,10 @@ def calculate_metrics(
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
 
-    # todo review: clean it up
-    # TODO This part need to be commented out
-    #  if You want to test workaround below
-    default_crop.save(CROP_NAME)
+    providers_result_crop.save(CROP_NAME)
     return ImgMetrics(default_metrics).write_to_file(
         metrics_output_filename
     )
-
-    # todo review: get rid of it
-    # TODO Old workaround for comparing 8 crops around the one that's calculated
-    # best_crop = None
-    # best_image_metrics = None
-    # if default_metrics['Label'] == VERIFICATION_SUCCESS:
-    #     default_crop.save(CROP_NAME)
-    #     return ImgMetrics(default_metrics).write_to_file(
-    #         metrics_output_filename
-    #     )
-    # else:
-    #     # Try offset crops
-    #     for crop in scene_crops[1:]:
-    #         try:
-    #             image_metrics = compare_images(
-    #                 cropped_image,
-    #                 crop,
-    #                 available_metrics
-    #             )
-    #             image_metrics['Label'] = classify_with_tree(
-    #                 image_metrics,
-    #                 classifier,
-    #                 labels
-    #             )
-    #         except Exception as e:
-    #             print("There were error %r" % e, file=sys.stderr)
-    #             image_metrics['Label'] = VERIFICATION_FAIL
-    #         if image_metrics['Label'] == VERIFICATION_SUCCESS:
-    #             best_image_metrics = image_metrics
-    #             best_crop = crop
-    #             break
-    #     if best_crop and best_image_metrics:
-    #         best_crop.save(CROP_NAME)
-    #         return ImgMetrics(best_image_metrics).write_to_file(
-    #             metrics_output_filename
-    #         )
-    #     else:
-    #         # We didnt find any better match in offset crops,
-    #         # return the default one
-    #         default_crop.save(CROP_NAME)
-    #         path_to_metrics = ImgMetrics(default_metrics).write_to_file(
-    #             metrics_output_filename
-    #         )
-    #         return path_to_metrics
-    #
-    # stub_data = {
-    #     element: -1 for element in get_labels_from_metrics(available_metrics)
-    # }
-    # stub_data['Label'] = VERIFICATION_FAIL
-    # return ImgMetrics(stub_data).write_to_file(metrics_output_filename)
 
 
 def load_classifier():
