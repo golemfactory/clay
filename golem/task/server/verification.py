@@ -72,7 +72,7 @@ class VerificationMixin:
 
             payment_processed_ts = self.accept_result(
                 subtask_id,
-                self.key_id,
+                report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
                 task_to_compute.price,
             )
