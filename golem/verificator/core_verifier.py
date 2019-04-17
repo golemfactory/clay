@@ -4,7 +4,7 @@ from datetime import datetime
 
 from twisted.internet.defer import Deferred
 
-from golem.verificator.constants import SubtaskVerificationState
+from golem.verificator.subtask_verification_state import SubtaskVerificationState
 
 logger = logging.getLogger('golem.verificator.core_verifier')
 
