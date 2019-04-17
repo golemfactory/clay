@@ -1,9 +1,11 @@
 import datetime
+from functools import partial
 import time
 
 from scripts.node_integration_tests import helpers
 
 from ..concent_base import ConcentTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(ConcentTestPlaybook):
@@ -20,14 +22,14 @@ class Playbook(ConcentTestPlaybook):
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        return self.call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return self.call(NodeId.requestor, 'comp.task', self.task_id,
+                         on_success=on_success)
 
     def step_wait_task_rejected(self):
         sra = "SubtaskResultsAccepted"
         srr = "SubtaskResultsRejected"
         verification_received = helpers.search_output(
-            self.provider_output_queue,
+            self.output_queues[NodeId.provider],
             '.*' + sra + '.*|.*' + srr + '.*',
         )
 
@@ -60,8 +62,8 @@ class Playbook(ConcentTestPlaybook):
                     print("{} ... ".format(result['status']))
                     time.sleep(10)
 
-            return self.call_requestor('comp.task', self.task_id,
-                           on_success=on_success, on_error=self.print_error)
+            return self.call(NodeId.requestor, 'comp.task', self.task_id,
+                             on_success=on_success)
 
     def step_wait_settled(self):
         if not self.concent_verification_timeout:
@@ -85,7 +87,7 @@ class Playbook(ConcentTestPlaybook):
             '.*' + '.*|.*'.join(fail_triggers + settled_trigger) + '.*'
 
         log_match = helpers.search_output(
-            self.provider_output_queue,
+            self.output_queues[NodeId.provider],
             log_match_pattern,
         )
 
@@ -98,7 +100,7 @@ class Playbook(ConcentTestPlaybook):
                 return
             if any([t in match for t in settled_trigger]):
                 print("Concent verification successful.")
-                self.success()
+                self.next()
                 return
 
         if datetime.datetime.now() > self.concent_verification_timeout:

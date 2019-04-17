@@ -1,79 +1,55 @@
+from functools import partial
 import queue
 import typing
 
 from scripts.node_integration_tests import helpers
 
 from ..base import NodeTestPlaybook
+from ..test_config_base import NodeId
 
 
 class ConcentTestPlaybook(NodeTestPlaybook):
-    def step_clear_requestor_output(self):
-        helpers.clear_output(self.requestor_output_queue)
+    def step_clear_output(self, node_id: NodeId):
+        helpers.clear_output(self.output_queues[node_id])
         self.next()
 
-    def step_clear_provider_output(self):
-        helpers.clear_output(self.provider_output_queue)
-        self.next()
-
-    def _step_is_concent_off(self, role):
-        call_method = getattr(self, 'call_' + role)
-
+    def step_check_is_concent_off(self, node_id: NodeId):
         def on_success(result):
             if result is True:
-                print("Concent unexpectedly already enabled for %s...", role)
+                print(f"Concent unexpectedly already enabled for"
+                      " {node_id.value}...")
             return self.next()
 
-        return call_method('golem.concent.switch', on_success=on_success)
+        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
 
-    def step_is_provider_concent_off(self):
-        return self._step_is_concent_off('provider')
-
-    def step_is_requestor_concent_off(self):
-        return self._step_is_concent_off('requestor')
-
-    def _step_enable_concent(self, role):
-        call_method = getattr(self, 'call_' + role)
-
+    def step_enable_concent(self, node_id: NodeId):
         def on_success(_):
             self.next()
 
         def on_error(result):
-            print("Error enabling Concent for %s" % role)
+            print(f"Error enabling Concent for {node_id.value}")
             self.fail()
 
-        return call_method(
+        return self.call(
+            node_id,
             'golem.concent.switch.turn', 1,
             on_success=on_success, on_error=on_error,
         )
 
-    def step_enable_provider_concent(self):
-        return self._step_enable_concent('provider')
-
-    def step_enable_requestor_concent(self):
-        return self._step_enable_concent('requestor')
-
-    def _step_ensure_concent_on(self, role):
-        call_method = getattr(self, 'call_' + role)
-
+    def step_ensure_concent_on(self, node_id: NodeId):
         def on_success(result):
             if result is True:
-                print("Enabled Concent for %s." % role)
+                print(f"Enabled Concent for {node_id.value}.")
                 self.next()
             else:
                 self.fail(
                     "Failed to enable Concent for %s... (result=%r)" % (
-                        role, result
+                        node_id.value, result
                     )
                 )
             return self.next()
 
-        return call_method('golem.concent.switch', on_success=on_success)
-
-    def step_ensure_provider_concent_on(self):
-        return self._step_ensure_concent_on('provider')
-
-    def step_ensure_requestor_concent_on(self):
-        return self._step_ensure_concent_on('requestor')
+        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
 
     @staticmethod
     def check_concent_logs(
@@ -134,14 +110,14 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         return None, None
 
     initial_steps = NodeTestPlaybook.initial_steps + (
-        step_is_provider_concent_off,
-        step_enable_provider_concent,
-        step_ensure_provider_concent_on,
+        partial(step_check_is_concent_off, node_id=NodeId.provider),
+        partial(step_enable_concent, node_id=NodeId.provider),
+        partial(step_ensure_concent_on, node_id=NodeId.provider),
 
-        step_is_requestor_concent_off,
-        step_enable_requestor_concent,
-        step_ensure_requestor_concent_on,
+        partial(step_check_is_concent_off, node_id=NodeId.requestor),
+        partial(step_enable_concent, node_id=NodeId.requestor),
+        partial(step_ensure_concent_on, node_id=NodeId.requestor),
 
-        step_clear_requestor_output,
-        step_clear_provider_output,
+        partial(step_clear_output, node_id=NodeId.requestor),
+        partial(step_clear_output, node_id=NodeId.provider),
     )
