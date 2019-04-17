@@ -1,10 +1,10 @@
 import time
 import typing
 
-from ..base import NodeTestPlaybook
+from ...base import NodeTestPlaybook
 
 
-class TaskTimeoutAndRestart(NodeTestPlaybook):
+class Playbook(NodeTestPlaybook):
     """
     Reproduces a scenario where:
     * Requestor has a a task with 2 subtasks,
@@ -22,10 +22,6 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
       allowing the task as a whole to finish successfully this time.
 
     """
-    provider_node_script = 'provider/no_wtct_after_ttc'
-    requestor_node_script = 'requestor/debug'
-    task_settings = '2_short'
-    provider_node_script_2 = 'provider/debug'
     previous_task_id = None
 
     def step_wait_subtask_completed(self):

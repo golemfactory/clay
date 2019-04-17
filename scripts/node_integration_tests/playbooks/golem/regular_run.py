@@ -1,6 +1,5 @@
-from ..base import NodeTestPlaybook
+from ..test_config_base import TestConfigBase
 
 
-class RegularRun(NodeTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
+class TestConfig(TestConfigBase):
+    pass

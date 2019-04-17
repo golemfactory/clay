@@ -41,7 +41,6 @@ from golem.task import taskstate
 from golem.task.result.resultpackage import ZipPackager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
-from golem.testutils import TempDirFixture
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
 
@@ -111,6 +110,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
         dir_manager = DirManager(self.path)
+        # noqa pylint: disable=unexpected-keyword-arg
         resource_manager = HyperdriveResourceManager(
             dir_manager=dir_manager,
             **hyperdrive.hyperdrive_client_kwargs()

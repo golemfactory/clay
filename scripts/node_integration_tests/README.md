@@ -121,7 +121,7 @@ you to specify additional parameters.
 example:
 
 ```
-./scripts/node_integration_tests/run_test.py golem.regular_run.RegularRun
+./scripts/node_integration_tests/run_test.py golem.regular_run
 ```
 
 full usage:
@@ -131,13 +131,13 @@ run_test.py [-h] [--task-package TASK_PACKAGE]
             [--task-settings TASK_SETTINGS]
             [--provider-datadir PROVIDER_DATADIR]
             [--requestor-datadir REQUESTOR_DATADIR] [--mainnet]
-            playbook_class
+            test_path
 
 Runs a single test playbook.
 
 positional arguments:
-  playbook_class        a dot-separated path to the playbook class within
-                        `playbooks`, e.g. golem.regular_run.RegularRun
+  test_path             a dot-separated path to the playbook class within
+                        `playbooks`, e.g. golem.regular_run
 
 optional arguments:
   -h, --help            show this help message and exit
