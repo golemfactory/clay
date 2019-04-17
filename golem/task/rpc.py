@@ -5,7 +5,7 @@ import functools
 import logging
 import os.path
 import re
-from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
+import typing
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -332,7 +332,7 @@ def _start_task(client, task, resource_server_result):
 
 @defer.inlineCallbacks
 def enqueue_new_task(client, task, force=False) \
-            -> Generator[defer.Deferred, Any, taskbase.Task]:
+            -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
     validate_client(client)
     task_id = task.header.task_id
@@ -426,7 +426,7 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
     def create_task(self, task_dict, force=False) \
-            -> Tuple[Optional[str], Optional[str]]:
+            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
@@ -488,7 +488,7 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
     def restart_task(self, task_id: str, force: bool = False) \
-            -> Tuple[Optional[str], Optional[str]]:
+            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
@@ -546,7 +546,7 @@ class ClientProvider:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: Dict[str, SubtaskState] =\
+        frame_subtasks: typing.Dict[str, SubtaskState] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
@@ -572,7 +572,7 @@ class ClientProvider:
     def restart_subtasks_from_task(
             self,
             task_id: str,
-            subtask_ids: Iterable[str],
+            subtask_ids: typing.Iterable[str],
             force: bool = False,
     ):
         logger.debug('restart_subtasks_from_task. task_id=%r, subtask_ids=%r,'
@@ -652,7 +652,7 @@ class ClientProvider:
             .transaction_system.eth_for_batch_payment(
                 options['subtasks_count'],
             )
-        estimated_gnt_deposit: Tuple[int, int] = \
+        estimated_gnt_deposit: typing.Tuple[int, int] = \
             msg_helpers.requestor_deposit_amount(
                 estimated_gnt,
             )
@@ -671,8 +671,11 @@ class ClientProvider:
         return result
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
-    def get_fragments(self, task_id: str) ->\
-            Tuple[Optional[Dict[int, List[Dict]]], Optional[str]]:
+    def get_fragments(self, task_id: str) -> \
+            typing.Tuple[
+                typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
+                typing.Optional[str]
+            ]:
         """
         Returns the task fragments for a given rendering task. A single task
         fragment is a collection of subtasks referring to the same, common part
@@ -691,7 +694,7 @@ class ClientProvider:
         if not isinstance(task, RenderingTask):
             return None, f"Incorrect task type: '{task.__class__.__name__}'"
 
-        fragments: Dict[int, List[Dict]] = {}
+        fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
 
         for subtask_index in range(1, task.total_tasks + 1):
             fragments[subtask_index] = []
