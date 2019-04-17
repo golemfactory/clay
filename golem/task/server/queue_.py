@@ -91,9 +91,6 @@ class TaskMessagesQueueMixin:
             message.base.Disconnect.REASON.NoMoreMessages,
         )
         self.remove_pending_conn(session.conn_id)
-        if session.task_computer is not None:
-            # XXX ???
-            session.task_computer.session_timeout()
 
     def connect_to_nodes(self):
         for node_id in msg_queue.waiting():

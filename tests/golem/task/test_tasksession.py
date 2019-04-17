@@ -406,7 +406,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_server.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
         # No source code in the local environment -> failure
@@ -445,7 +444,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         env.get_source_code.return_value = "print 'Hello world'"
         msg = _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
-        ts.task_computer.session_closed.assert_not_called()
         ts.task_server.task_given.assert_called_with(
             header.task_owner.key,
             ctd,
@@ -455,7 +453,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         def __assert_failure(ts, conn, reason):
             ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-            ts.task_computer.session_closed.assert_called_with()
             assert conn.close.called
             ts.send.assert_called_once_with(ANY)
             msg = ts.send.call_args[0][0]
@@ -500,7 +497,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         ctd['extra_data']['src_code'] = "print 'Hello world!'"
         msg = _prepare_and_react(ctd)
-        ts.task_computer.session_closed.assert_not_called()
         ts.task_server.task_given.assert_called_with(
             header.task_owner.key,
             ctd,

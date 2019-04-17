@@ -49,12 +49,6 @@ def drop_after_attr_error(*args, **_):
     args[0].dropped()
 
 
-def call_task_computer_and_drop_after_attr_error(*args, **_):
-    logger.warning("Attribute error occured(2)", exc_info=True)
-    args[0].task_computer.session_closed()
-    args[0].dropped()
-
-
 def get_task_message(
         message_class_name,
         node_id,
@@ -106,9 +100,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
-    handle_attr_error_with_task_computer = common.HandleAttributeError(
-        call_task_computer_and_drop_after_attr_error
-    )
 
     def __init__(self, conn):
         """
@@ -445,7 +436,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
     # pylint: disable=too-many-return-statements
-    @handle_attr_error_with_task_computer
+    @handle_attr_error
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
         ctd: Optional[message.tasks.ComputeTaskDef] = msg.compute_task_def
@@ -453,7 +444,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if ctd is None or want_to_compute_task is None:
             logger.debug(
                 'TaskToCompute without ctd or want_to_compute_task: %r', msg)
-            self.task_computer.session_closed()
             self.dropped()
             return
 
@@ -464,7 +454,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug(
                 'WantToComputeTask attached to TaskToCompute is not signed '
                 'with key: %r.', want_to_compute_task.provider_public_key)
-            self.task_computer.session_closed()
             self.dropped()
             return
 
@@ -482,7 +471,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     reason=reason,
                 ),
             )
-            self.task_computer.session_closed()
             self.dropped()
 
         reasons = message.tasks.CannotComputeTask.REASON
@@ -575,7 +563,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
         )
-        self.task_computer.session_closed()
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
@@ -611,7 +598,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if msg.reason is reasons.TaskFinished:
             self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
-        self.task_computer.session_closed()
         self.dropped()
 
     @history.requestor_history
