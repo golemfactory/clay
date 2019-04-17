@@ -7,13 +7,10 @@ from golem_messages.factories.tasks import ReportComputedTaskFactory
 
 from scripts.node_integration_tests import helpers
 
-from .concent_base  import ConcentTestPlaybook
+from ..concent_base  import ConcentTestPlaybook
 
 
-class ForceAccept(ConcentTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/no_sra'
-
+class Playbook(ConcentTestPlaybook):
     task_finished = False
     sra_received = False
     sra_deadline = None

@@ -3,13 +3,10 @@ import typing
 
 from scripts.node_integration_tests import helpers
 
-from ..base import NodeTestPlaybook
+from ...base import NodeTestPlaybook
 
 
-class RegularRun(NodeTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
-
+class Playbook(NodeTestPlaybook):
     def step_wait_task_finished(self):
         verification_rejected = helpers.search_output(
             self.provider_output_queue, '.*SubtaskResultsRejected.*'

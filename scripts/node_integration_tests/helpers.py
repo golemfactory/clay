@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import os
 import pathlib
 import queue
@@ -50,18 +51,27 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
     print("%s shut down correctly." % node_type)
 
 
-def run_golem_node(node_type: str, *args,
-                   nodes_root: typing.Optional[pathlib.Path] = None):
+def _params_from_dict(d: typing.Dict[str, typing.Any]) -> typing.List[str]:
+    return list(
+        itertools.chain.from_iterable(
+            [k, str(v)] if v is not None else [k] for k, v in d.items()
+        )
+    )
+
+
+def run_golem_node(
+        node_type: str,
+        args: typing.Dict[str, typing.Any],
+        nodes_root: typing.Optional[pathlib.Path] = None
+        ) -> subprocess.Popen:
     node_file = node_type + '.py'
-    cwd = nodes_root or pathlib.Path(os.path.realpath(__file__)).parent
+    cwd = pathlib.Path(__file__).resolve().parent
     node_script = str(cwd / 'nodes' / node_file)
-    node_process = subprocess.Popen(
-        args=['python', node_script, *args],
+    return subprocess.Popen(
+        args=['python', node_script, *_params_from_dict(args)],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-
-    return node_process
 
 
 def get_output_queue(process: subprocess.Popen) -> queue.Queue:
@@ -107,13 +117,16 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
     return None
 
 
-def construct_test_task(task_package_name, output_path, task_settings):
+def construct_test_task(task_package_name, task_settings):
     settings = tasks.get_settings(task_settings)
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
     tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
     settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
-    settings['options']['output_path'] = output_path
     return settings
+
+
+def set_task_output_path(task_dict: dict, output_path: str) -> None:
+    task_dict['options']['output_path'] = output_path
 
 
 def timeout_to_seconds(timeout_str: str):
