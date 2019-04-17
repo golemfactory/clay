@@ -339,6 +339,8 @@ class TestTaskIntegration(TempDirFixture):
         tempdir = self.task_manager.dir_manager.get_task_temporary_dir(
             task.task_definition.task_id)
 
+        tempdir = os.path.join(tempdir, ctd["subtask_id"])
+
         return self._run_test_job(task, tempdir, extra_data)
 
     @staticmethod
