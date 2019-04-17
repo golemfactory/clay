@@ -104,7 +104,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
 
     if not task_to_compute:
         logger.warning(
-            "I won't report computed task. TTC missing."
+            "Cannot send ReportComputedTask. TTC missing."
             " node=%s, task_id=%r, subtask_id=%r",
             common.node_info_str(
                 waiting_task_result.owner.node_name,
@@ -200,7 +200,7 @@ def send_task_failure(waiting_task_failure) -> None:
 
     if not task_to_compute:
         logger.warning(
-            "I won't report task failure. TTC missing."
+            "Cannot send TaskFailure. TTC missing."
             " node=%s, task_id=%r, subtask_id=%r",
             common.node_info_str(
                 waiting_task_failure.owner.node_name,
