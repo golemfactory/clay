@@ -98,34 +98,35 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
     return (crops_details, params)
 
 
-# todo review: this function shouldn't know anything about the
+# todo review: WILL BE CHANGED DURING TEST CHANGE
+#  this function shouldn't know anything about the
 #  raw verification's existence. The whole file shouldn't know about it.
+
 # todo review: clarify what are "results" - find better name
+
 # todo review: clarify what are "crops" (images? paths to images? instances of
 #  Crop class?) - find better name
+
 # todo review: "subtask_file_paths" suggests this function operates on more than
 #  one subtask, find better name
-def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
+def make_verdict(providers_result_images_paths, crops_details, results, use_raw_verification):
     verdict = True
 
     for crop_data in results:
-        crop = get_crop_with_id(crop_data['crop']['id'], crops)
+        crop = get_crop_with_id(crop_data['crop']['id'], crops_details)
 
-        # todo review: clean it up
-        # TODO: Used with the old generate_single_random_crop_data
-        left, top = crop.get_relative_top_left()
         left, top = crop.pixel_region.left, crop.pixel_region.top
         print('borders_x: ', crop_data['crop']['borders_x'])
         print('borders_y: ', crop_data['crop']['borders_y'])
         print("left: " + str(left))
         print("top: " + str(top))
 
-        for crop, subtask in zip(crop_data['results'], subtask_file_paths):
+        for crop, providers_result_image_path in zip(crop_data['results'], providers_result_images_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
             if not use_raw_verification:
                 results_path = calculate_metrics(
                     crop_path,
-                    subtask,
+                    providers_result_image_path,
                     left, top,
                     metrics_output_filename=os.path.join(
                         OUTPUT_DIR,
@@ -134,7 +135,7 @@ def make_verdict(subtask_file_paths, crops, results, use_raw_verification):
             else:
                 results_path = get_raw_verification(
                     crop_path,
-                    subtask,
+                    providers_result_image_path,
                     left,
                     top,
                     metrics_output_filename=os.path.join(
