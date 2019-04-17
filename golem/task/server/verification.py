@@ -81,7 +81,7 @@ class VerificationMixin:
                 report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
-            msg_queue.put(node.node_id, response_msg)
+            msg_queue.put(node.key, response_msg)
             history.add(
                 msg_utils.copy_and_sign(
                     msg=response_msg,
@@ -122,14 +122,14 @@ class VerificationMixin:
 
         self.reject_result(  # type: ignore
             report_computed_task.subtask_id,
-            node.node_id,
+            node.key,
         )
 
         response_msg = message.tasks.SubtaskResultsRejected(
             report_computed_task=report_computed_task,
             reason=reason,
         )
-        msg_queue.put(node.node_id, response_msg)
+        msg_queue.put(node.key, response_msg)
 
         response_msg = msg_utils.copy_and_sign(
             msg=response_msg,
