@@ -116,6 +116,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
+    ets.add_payment_info.return_value = 1555511982
     return ets
 
 
