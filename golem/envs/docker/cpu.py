@@ -145,41 +145,45 @@ class DockerCPURuntime(Runtime):
         return state["Status"], state["ExitCode"]
 
     def _update_status(self) -> None:
-        """ Periodically check status of the container and update the Runtime's
-            status accordingly. Assumes the container has been started and not
+        """ check status of the container and update the Runtime's status
+            accordingly. Assumes the container has been started and not
             removed. Uses lock for status read & write. """
-        while True:
-            sleep(self.STATUS_UPDATE_INTERVAL)
+
+        with self._status_lock:
+            if self._status != RuntimeStatus.RUNNING:
+                return
+
             logger.debug("Updating runtime status...")
 
-            with self._status_lock:
-                if self._status != RuntimeStatus.RUNNING:
-                    logger.info("Runtime is no longer running. "
-                                "Stopping status update thread.")
-                    return
+            try:
+                container_status, exit_code = self._inspect_container()
+            except (APIError, KeyError):
+                logger.exception("Error inspecting container.")
+                self._status = RuntimeStatus.FAILURE
+                return
 
-                try:
-                    container_status, exit_code = self._inspect_container()
-                except (APIError, KeyError):
-                    logger.exception("Error inspecting container.")
-                    self._status = RuntimeStatus.FAILURE
-                    return
+            if container_status in self.CONTAINER_RUNNING:
+                logger.debug("Container still running, no status update.")
 
-                if container_status in self.CONTAINER_RUNNING:
-                    logger.debug("Container still running, no status update.")
-                    continue
+            elif container_status in self.CONTAINER_STOPPED:
+                logger.info("Container stopped.")
+                self._status = RuntimeStatus.STOPPED if exit_code == 0 \
+                    else RuntimeStatus.FAILURE
 
-                elif container_status in self.CONTAINER_STOPPED:
-                    logger.info("Container stopped.")
-                    self._status = RuntimeStatus.STOPPED if exit_code == 0 \
-                        else RuntimeStatus.FAILURE
-                    return
+            else:
+                logger.error(
+                    f"Unexpected container status: '{container_status}'")
+                self._status = RuntimeStatus.FAILURE
 
-                else:
-                    logger.error(
-                        f"Unexpected container status: '{container_status}'")
-                    self._status = RuntimeStatus.FAILURE
-                    return
+    def _update_status_loop(self) -> None:
+        """ Periodically call _update_status(). Stop when the container is no
+            longer running. """
+        while self.status() == RuntimeStatus.RUNNING:
+            self._update_status()
+            sleep(self.STATUS_UPDATE_INTERVAL)
+
+        logger.info("Runtime is no longer running. "
+                    "Stopping status update thread.")
 
     def prepare(self) -> Deferred:
         self._change_status(
@@ -236,7 +240,7 @@ class DockerCPURuntime(Runtime):
 
         def _spawn_status_update_thread():
             logger.debug("Spawning status update thread...")
-            self._status_update_thread = Thread(target=self._update_status)
+            self._status_update_thread = Thread(target=self._update_status_loop)
             self._status_update_thread.start()
             logger.debug("Status update thread spawned.")
 
