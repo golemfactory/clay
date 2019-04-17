@@ -4,6 +4,7 @@ import typing
 
 from golem_messages import message
 
+from golem.core import common
 from golem.network import nodeskeeper
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpserver
@@ -147,6 +148,12 @@ class TaskMessagesQueueMixin:
             *_args,
             **_kwargs,
     ):
+        logger.debug(
+            "Final connection failure for TaskSession."
+            " conn_id=%s, node_id=%s",
+            conn_id,
+            common.short_node_id(node_id),
+        )
         self.remove_pending_conn(conn_id)
         try:
             if self.sessions[node_id] is None:
