@@ -84,10 +84,11 @@ def do_merge(chunks, outputfilename):
             select_transcoded_video_paths(
                 chunks,
                 output_extension))
-        assert all("'" not in path for path in merge_input_files), \
-            "FIXME: Single quotes in file names are not supported yet"
 
-        ffconcat_entries = [f"file '{path}'" for path in merge_input_files]
+        ffconcat_entries = [
+            "file '{}'".format(path.replace("'", "\\'"))
+            for path in merge_input_files
+        ]
 
         with open(list_filename, 'w') as file:
             file.write('\n'.join(ffconcat_entries))
