@@ -1,6 +1,5 @@
 # pylint: disable=too-many-lines
 
-import copy
 import datetime
 import enum
 import logging
@@ -79,20 +78,6 @@ def get_task_message(
             task_id,
             subtask_id,
         )
-    return msg
-
-
-def copy_and_sign(msg: message.base.Message, private_key) \
-        -> message.base.Message:
-    """Returns signed shallow copy of message
-
-    Copy is made only if original is unsigned.
-    """
-    if msg.sig is None:
-        # If message is delayed in queue then will
-        # overcome this by making a signed copy
-        msg = copy.copy(msg)
-        msg.sign_message(private_key)
     return msg
 
 
@@ -441,7 +426,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
             history.add(
-                msg=copy_and_sign(
+                msg=msg_utils.copy_and_sign(
                     msg=ttc,
                     private_key=self.my_private_key,
                 ),

@@ -3,6 +3,7 @@ import typing
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from golem_messages import utils as msg_utils
 
 from golem import model
 from golem.core import common
@@ -94,7 +95,6 @@ def computed_task_reported(
 def send_report_computed_task(task_server, waiting_task_result) -> None:
     """ Send task results after finished computations
     """
-    from golem.task.tasksession import copy_and_sign
     task_to_compute = history.get(
         message_class_name='TaskToCompute',
         node_id=waiting_task_result.owner.key,
@@ -140,7 +140,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         waiting_task_result.owner.key,
         report_computed_task,
     )
-    report_computed_task = copy_and_sign(
+    report_computed_task = msg_utils.copy_and_sign(
         msg=report_computed_task,
         private_key=task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
     )

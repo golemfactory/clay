@@ -2,6 +2,7 @@ import logging
 import typing
 
 from golem_messages import message
+from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
 
 from golem import model
@@ -25,7 +26,6 @@ class VerificationMixin:
             report_computed_task: message.tasks.ReportComputedTask,
             extracted_package: ExtractedPackage,
     ) -> None:
-        from golem.task.tasksession import copy_and_sign
 
         node = dt_p2p.Node(**report_computed_task.node_info)
         subtask_id = report_computed_task.subtask_id
@@ -74,7 +74,7 @@ class VerificationMixin:
             )
             msg_queue.put(node.node_id, response_msg)
             history.add(
-                copy_and_sign(
+                msg_utils.copy_and_sign(
                     msg=response_msg,
                     private_key=self.my_private_key,
                 ),
@@ -102,7 +102,6 @@ class VerificationMixin:
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
 
-        from golem.task.tasksession import copy_and_sign
 
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',
@@ -123,7 +122,7 @@ class VerificationMixin:
         )
         msg_queue.put(node.node_id, response_msg)
 
-        response_msg = copy_and_sign(
+        response_msg = msg_utils.copy_and_sign(
             msg=response_msg,
             private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
         )
