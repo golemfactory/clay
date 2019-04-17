@@ -6,6 +6,7 @@ from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
 
 from golem import model
+from golem.core import common
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.result.resultmanager import ExtractedPackage
@@ -29,6 +30,14 @@ class VerificationMixin:
 
         node = dt_p2p.Node(**report_computed_task.node_info)
         subtask_id = report_computed_task.subtask_id
+        logger.info(
+            'Verifying results. node=%s, subtask_id=%s',
+            common.node_info_str(
+                node.node_name,
+                node.key,
+            ),
+            subtask_id,
+        )
         result_files = extracted_package.get_full_path_files()
 
         def verification_finished():
