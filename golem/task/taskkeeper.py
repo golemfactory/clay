@@ -3,7 +3,7 @@ import logging
 import pathlib
 import pickle
 import time
-import typing
+from typing import Dict, List, Optional, Set
 
 import random
 from collections import Counter
@@ -25,7 +25,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.taskproviderstats import ProviderStatsManager
 
-logger = logging.getLogger('golem.task.taskkeeper')
+logger = logging.getLogger(__name__)
 
 
 def compute_subtask_value(price: int, computation_time: int) -> int:
@@ -107,20 +107,20 @@ class CompTaskKeeper:
         tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
+        self.active_tasks: Dict[str, CompTaskInfo] = {}
 
         # information about resource options for subtask
-        self.resources_options: typing.Dict[str, typing.Optional[
+        self.resources_options: Dict[str, Optional[
             HyperdriveClientOptions]] = {}
 
         # price information per last task request
-        self.active_task_offers: typing.Dict[str, int] = {}
+        self.active_task_offers: Dict[str, int] = {}
 
         # subtask_id to task_id mapping
-        self.subtask_to_task: typing.Dict[str, str] = {}
+        self.subtask_to_task: Dict[str, str] = {}
 
         # task_id to package paths mapping
-        self.task_package_paths: typing.Dict[str, list] = {}
+        self.task_package_paths: Dict[str, list] = {}
 
         # stats
         self.provider_stats_manager = ProviderStatsManager()
@@ -263,15 +263,15 @@ class CompTaskKeeper:
             return False
         return True
 
-    def get_task_id_for_subtask(self, subtask_id: str) -> typing.Optional[str]:
+    def get_task_id_for_subtask(self, subtask_id: str) -> Optional[str]:
         return self.subtask_to_task.get(subtask_id)
 
     @handle_key_error
-    def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
+    def get_node_for_task_id(self, task_id) -> Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
     def get_resources_options(self, subtask_id: str) -> \
-            typing.Optional[HyperdriveClientOptions]:
+            Optional[HyperdriveClientOptions]:
         return self.resources_options.get(subtask_id)
 
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
@@ -305,12 +305,12 @@ class CompTaskKeeper:
         self.dump()
 
     def add_package_paths(
-            self, task_id: str, package_paths: typing.List[str]) -> None:
+            self, task_id: str, package_paths: List[str]) -> None:
         self.task_package_paths[task_id] = package_paths
         self.dump()
 
     def get_package_paths(
-            self, task_id: str) -> typing.Optional[typing.List[str]]:
+            self, task_id: str) -> Optional[List[str]]:
         return self.task_package_paths.get(task_id, None)
 
 
@@ -331,18 +331,20 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
+        self.task_headers: Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
-        self.supported_tasks = []
+        self.supported_tasks: List[str] = []
+        # ids of tasks that are computing on this node
+        self.running_tasks: List[str] = []
         # results of tasks' support checks
-        self.support_status = {}
+        self.support_status: Dict[str, SupportStatus] = {}
         # tasks that were removed from network recently, so they won't
         # be added again to task_headers
-        self.removed_tasks = {}
+        self.removed_tasks: Dict[str, float] = {}
         # task ids by owner
-        self.tasks_by_owner: typing.Dict[str, set] = {}
+        self.tasks_by_owner: Dict[str, set] = {}
         # Keep track which tasks were checked when
-        self.last_checking: typing.Dict[str, datetime.datetime] = {}
+        self.last_checking: Dict[str, datetime.datetime] = {}
 
         self.min_price = min_price
         self.verification_timeout = verification_timeout
@@ -400,7 +402,7 @@ class TaskHeaderKeeper:
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
 
-    def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
+    def get_support_status(self, task_id) -> Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
         :param task_id: id of the task
         :return SupportStatus|None: the support status
@@ -506,8 +508,8 @@ class TaskHeaderKeeper:
 
         return self.tasks_by_owner[owner_key_id]
 
-    def find_newest_node(self, node_id) -> typing.Optional[dt_p2p.Node]:
-        node: typing.Optional[dt_p2p.Node] = None
+    def find_newest_node(self, node_id) -> Optional[dt_p2p.Node]:
+        node: Optional[dt_p2p.Node] = None
         timestamp: int = 0
         task_ids = self._get_tasks_by_owner_set(owner_key_id=node_id)
         for task_id in task_ids:
@@ -578,7 +580,7 @@ class TaskHeaderKeeper:
         self.removed_tasks[task_id] = time.time()
         return True
 
-    def get_owner(self, task_id) -> typing.Optional[str]:
+    def get_owner(self, task_id) -> Optional[str]:
         """ Returns key_id of task owner or None if there is no information
         about this task.
         """
@@ -589,8 +591,8 @@ class TaskHeaderKeeper:
 
     def get_task(
             self,
-            exclude: typing.Optional[typing.Set[str]] = None
-    ) -> typing.Optional[dt_tasks.TaskHeader]:
+            exclude: Optional[Set[str]] = None
+    ) -> Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
