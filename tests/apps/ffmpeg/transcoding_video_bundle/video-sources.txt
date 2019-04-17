@@ -71,7 +71,7 @@ https://archive.org/download/MoonCloseUpFreeStockFootage/Moon%20Close%20Up%20WMV
 https://archive.org/download/SleepingBee/SleepingBeeWmv.wmv                                                                                                         beachfront      sleepingbee          5
 https://users.wfu.edu/yipcw/atg/vid/katamari-star8-10s.wmv                                                                                                          wfu             katamari             5
 
-https://github.com/Matroska-Org/matroska-test-files/raw/8d787c3c4e51fea562d1297be06c5b4c51ac6468/test_files/test1.mkv                                               matroska        test1                bad
+https://github.com/Matroska-Org/matroska-test-files/raw/8d787c3c4e51fea562d1297be06c5b4c51ac6468/test_files/test1.mkv                                               matroska        test1                1
 
 https://github.com/Matroska-Org/matroska-test-files/raw/8d787c3c4e51fea562d1297be06c5b4c51ac6468/test_files/test4.mkv                                               matroska        test4                bad
 http://techslides.com/demos/sample-videos/small.ogv                                                                                                                 techslides      small                bad
