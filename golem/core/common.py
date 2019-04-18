@@ -236,13 +236,14 @@ def retry(exc_cls, count: int):
     return decorator
 
 
+# pylint: disable=too-many-branches,too-many-locals
 def config_logging(
         suffix='',
         datadir=None,
         loglevel=None,
         config_desc=None,
         formatter_prefix='',  # prefix added to every logged line
-    ):
+):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING

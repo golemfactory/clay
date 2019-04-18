@@ -594,8 +594,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id,
             msg.reason,
         )
+        self.task_server.requested_tasks.discard(msg.task_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if msg.reason is reasons.TaskFinished:
+            # Requestor doesn't want us to ask again
             self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
         self.dropped()
