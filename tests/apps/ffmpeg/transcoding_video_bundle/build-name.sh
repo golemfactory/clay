@@ -7,6 +7,13 @@ log_level=error
 function ffprobe_show_entries {
     local input_file="$1"
     local query="$2"
+    local stream="$3"
+
+    if [[ "$stream" != "" ]]; then
+        stream_selector="-select_streams $stream"
+    else
+        stream_selector=""
+    fi
 
     raw_result="$(
         # NOTE: ffprobe output in the compact format looks more or less like this:
@@ -39,6 +46,7 @@ function ffprobe_show_entries {
         #   'side_data' it's going to get stripped too.
         ffprobe                                          \
             -v            error                          \
+            $stream_selector                             \
             -show_entries "$query"                       \
             -of           "compact=nokey=1"              \
             "$input_file"                                   |
