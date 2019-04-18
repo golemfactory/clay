@@ -8,13 +8,47 @@ function ffprobe_show_entries {
     local input_file="$1"
     local query="$2"
 
-    printf "%s" $(
-        ffprobe                                              \
-            -v            error                              \
-            -show_entries "$query"                           \
-            -of           default=noprint_wrappers=1:nokey=1 \
-            "$input_file"
-    )
+    raw_result="$(
+        # NOTE: ffprobe output in the compact format looks more or less like this:
+        #
+        # ```
+        # program|stream|vp9
+        # program|stream|h264
+        # program|stream|aac
+        # program|stream|subrip
+        # program|stream|subrip
+        #
+        # stream|vp9
+        # stream|h264
+        # stream|aac
+        # stream|subrip
+        # stream|subripside_data|
+        # ```
+        #
+        # The extra processing after the ffprobe call below is meant to strip the unnecessary stuff:
+        # 1) If the container supports programs (like mpegts does for example), ffprobe prints stream
+        #    info multiple times: once on its own and then again for each program. We use grep
+        #    to filter out lines starting with 'program|stream|' and keep only those starting
+        #    with 'stream|'.
+        # 2) There are empty lines between sections. They get in the way when we want to use
+        #    `wc --lines` to count the returned items so we strip them too.
+        # 3) Some containers (e.g. webm) can store so called 'side data'. It should start
+        #    on a new line just like 'stream|' but for some reason with 'nokey=1' ffprobe
+        #    omits the newline. I don't see a way to tell ffprobe not to do it so we just
+        #    strip it with a regex if present but it's not foolproof. If a field contains
+        #   'side_data' it's going to get stripped too.
+        ffprobe                                          \
+            -v            error                          \
+            -show_entries "$query"                       \
+            -of           "compact=nokey=1"              \
+            "$input_file"                                   |
+            grep --invert-match --regexp "^program|stream|" |
+            grep --invert-match --regexp "^$"               |
+            cut --delimiter '|' --field 2
+    )"
+
+    result="${raw_result%side_data}"
+    printf "%s" "$result"
 }
 
 function ffprobe_get_stream_attribute {
