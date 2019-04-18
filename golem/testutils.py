@@ -313,7 +313,7 @@ class TestTaskIntegration(TempDirFixture):
             os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
             shutil.move(provider_result, requestor_result)
 
-        return results
+        return requestor_results
 
     def execute_task(self, task_def):
         task: Task = self._add_task(task_def)
