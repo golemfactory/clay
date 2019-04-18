@@ -211,17 +211,17 @@ class TaskResourcesMixin:
             return
 
         self.resource_handshakes[key_id] = handshake
-        self._start_handshake_timer()
+        self._start_handshake_timer(key_id)
         self._share_handshake_nonce(key_id)
 
-    def _start_handshake_timer(self):
+    def _start_handshake_timer(self, key_id):
         from twisted.internet import task
         from twisted.internet import reactor
 
         task.deferLater(
             reactor,
             self.HANDSHAKE_TIMEOUT,
-            lambda *_: self._handshake_timeout(self.key_id)
+            lambda *_: self._handshake_timeout(key_id)
         )
 
     def _handshake_timeout(self, key_id):
