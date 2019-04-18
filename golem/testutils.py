@@ -247,32 +247,25 @@ class TestTaskIntegration(TempDirFixture):
     def dont_remove_dirs_on_failed_test(fun):
         def wrapper(self):
             fun(self)
-            self.TEST_FAILED = False
+            # If test fails, we won't reach this point, but tearDown
+            # will be called and directories won't be removed.
+            self.REMOVE_TMP_DIRS = True
         return wrapper
 
     @staticmethod
     def check_file_existence(filename):
-        return lambda: os.path.isfile(filename)
+        return os.path.isfile(filename)
 
     @staticmethod
     def check_dir_existence(dir_path):
-        return lambda: os.path.isdir(dir_path)
-
-    @staticmethod
-    def run_asserts(assertions):
-        for a in assertions:
-            try:
-                assert a()
-            except AssertionError:
-                self.TEST_FAILED = True
-                raise
+        return os.path.isdir(dir_path)
 
     def setUp(self):
         super(TestTaskIntegration, self).setUp()
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator will
-        # set this variable to False on the end of test.
-        self.TEST_FAILED = True
+        # set this variable to True on the end of test.
+        self.REMOVE_TMP_DIRS = False
 
         # build mock node
         self.node = dt_p2p_factory.Node()
@@ -309,10 +302,24 @@ class TestTaskIntegration(TempDirFixture):
     def _get_provider_dir(self, subtask_id):
         return os.path.join(self.tempdir, "mock-provider", subtask_id)
 
+    def _collect_results_from_provider(self, results, task_id, subtask_id):
+        task_dir = self.dir_manager.get_task_temporary_dir(task_id)
+        subtasks_results_dir = os.path.join(task_dir, subtask_id)
+
+        requestor_results = [ os.path.join(subtasks_results_dir,
+            os.path.basename(result)) for result in results]
+
+        for provider_result, requestor_result in zip(results, requestor_results):
+            os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
+            shutil.move(provider_result, requestor_result)
+
+        return results
+
     def execute_task(self, task_def):
         task: Task = self._add_task(task_def)
+        task_id = task.task_definition.task_id
 
-        self.task_manager.start_task(task.task_definition.task_id)
+        self.task_manager.start_task(task_id)
         for i in range(task.task_definition.subtasks_count):
             ctd: ComputeTaskDef = self.task_manager. \
                 get_next_subtask(node_id=self.node_id,
@@ -325,15 +332,19 @@ class TestTaskIntegration(TempDirFixture):
                                  max_resource_size=10000000000,
                                  max_memory_size=10000000000,
                                  address='127.0.0.1')
+
+            subtask_id = ctd["subtask_id"]
+
             result = self._execute_subtask(task, ctd)
+            result = self._collect_results_from_provider(result, task_id, subtask_id)
 
             self.task_manager.computed_task_received(
-                subtask_id=ctd['subtask_id'],
+                subtask_id=subtask_id,
                 result=result,
                 verification_finished=None)
 
-            # all results are moved to the parent dir
-            task.accept_results(ctd['subtask_id'], list(
+            # all results are moved to the parent dir inside computed_task_received
+            task.accept_results(subtask_id, list(
                 map(lambda res: outer_dir_path(res), result)))
 
             # finish subtask
@@ -342,9 +353,9 @@ class TestTaskIntegration(TempDirFixture):
     def _execute_subtask(self, task, ctd):
 
         extra_data = ctd["extra_data"]
-        tempdir = self._get_provider_dir(ctd["subtask_id"])
+        provider_tempdir = self._get_provider_dir(ctd["subtask_id"])
 
-        return self._run_test_job(task, tempdir, extra_data)
+        return self._run_test_job(task, provider_tempdir, extra_data)
 
     @staticmethod
     def _copy_resources(task, resources_dir):
@@ -392,7 +403,7 @@ class TestTaskIntegration(TempDirFixture):
 
 
     def tearDown(self):
-        if not self.TEST_FAILED:
+        if self.REMOVE_TMP_DIRS:
             if os.path.isdir(self.tempdir):
                 shutil.rmtree(self.tempdir)  
 
