@@ -238,7 +238,7 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.start(self._container_id)
 
-        def _spawn_status_update_thread():
+        def _spawn_status_update_thread(_):
             logger.debug("Spawning status update thread...")
             self._status_update_thread = Thread(target=self._update_status_loop)
             self._status_update_thread.start()
@@ -262,7 +262,7 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.stop(self._container_id)
 
-        def _join_status_update_thread():
+        def _join_status_update_thread(_):
             logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
