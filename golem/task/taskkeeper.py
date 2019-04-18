@@ -322,7 +322,7 @@ class TaskHeaderKeeper:
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # ids of tasks that are computing on this node
-        self.running_tasks: typing.List[str] = []
+        self.running_tasks: typing.Set[str] = set()
         # results of tasks' support checks
         self.support_status = {}
         # tasks that were removed from network recently, so they won't
@@ -524,10 +524,10 @@ class TaskHeaderKeeper:
     def check_max_tasks_per_owner(self, owner_key_id):
         owner_task_set = self._get_tasks_by_owner_set(owner_key_id)
 
-        if len(owner_task_set) <= self.max_tasks_per_requestor:
-            return
+        not_running = owner_task_set - self.running_tasks
 
-        not_running = [x for x in owner_task_set if x not in self.running_tasks]
+        if len(not_running) <= self.max_tasks_per_requestor:
+            return
 
         by_age = sorted(not_running,
                         key=lambda tid: self.last_checking[tid])
@@ -663,7 +663,7 @@ class TaskHeaderKeeper:
         return ret
 
     def task_started(self, task_id):
-        self.running_tasks.append(task_id)
+        self.running_tasks.add(task_id)
 
     def task_ended(self, task_id):
         try:
