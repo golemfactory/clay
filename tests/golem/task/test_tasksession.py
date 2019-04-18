@@ -1132,3 +1132,25 @@ class HelloTest(testutils.TempDirFixture):
         self.task_session._react_to_hello(self.msg)
         # then
         mock_hello.assert_called_once_with()
+
+
+class TestDisconnect(TestCase):
+    def setUp(self):
+        addr = twisted.internet.address.IPv4Address(
+            type='TCP',
+            host=fake.ipv4(),
+            port=fake.random_int(min=1, max=2**16-1),
+        )
+        conn = MagicMock(
+            transport=MagicMock(
+                getPeer=MagicMock(return_value=addr),
+            ),
+        )
+        self.task_session = TaskSession(conn)
+
+    def test_unverified_without_key_id(self, *_):
+        self.assertIsNone(self.task_session.key_id)
+        self.assertFalse(self.task_session.verified)
+        self.task_session.disconnect(
+            message.base.Disconnect.REASON.NoMoreMessages,
+        )

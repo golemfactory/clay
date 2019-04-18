@@ -888,6 +888,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            "an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
+    def disconnect(self, reason: message.base.Disconnect.REASON):
+        if not self.conn.opened:
+            return
+        if not (self.verified and self.key_id):
+            self.dropped()
+            return
+        super().disconnect(reason)
+
     def send(self, msg, send_unverified=False):
         if self.key_id and not self.conn.opened:
             msg_queue.put(self.key_id, msg)
