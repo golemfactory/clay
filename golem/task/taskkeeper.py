@@ -335,7 +335,7 @@ class TaskHeaderKeeper:
         # ids of tasks that this node may try to compute
         self.supported_tasks: typing.List[str] = []
         # ids of tasks that are computing on this node
-        self.running_tasks = []
+        self.running_tasks: typing.List[str] = []
         # results of tasks' support checks
         self.support_status: typing.Dict[str, SupportStatus] = {}
         # tasks that were removed from network recently, so they won't
