@@ -303,6 +303,9 @@ class TestTaskIntegration(TempDirFixture):
         return os.path.join(self.tempdir, "mock-provider", subtask_id)
 
     def _collect_results_from_provider(self, results, task_id, subtask_id):
+
+        logger.debug("Collecting results from provider {}".format(str(results)))
+
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
 
