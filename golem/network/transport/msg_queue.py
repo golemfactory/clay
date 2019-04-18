@@ -14,10 +14,16 @@ from golem.core import variables
 
 logger = logging.getLogger(__name__)
 READ_LOCK = threading.Lock()
+# CLasses that aren't allowed in queue
+FORBIDDEN_CLASSES = (
+    message.base.Disconnect,
+    message.base.Hello,
+    message.base.RandVal,
+)
 
 
 def put(node_id: str, msg: message.base.Message) -> None:
-    assert not isinstance(msg, message.base.Disconnect),\
+    assert not isinstance(msg, FORBIDDEN_CLASSES),\
         "Disconnect message shouldn't be in a queue"
     db_model = model.QueuedMessage.from_message(node_id, msg)
     db_model.save()
