@@ -101,18 +101,15 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
 # todo review: WILL BE CHANGED DURING TEST CHANGE
 #  this function shouldn't know anything about the
 #  raw verification's existence. The whole file shouldn't know about it.
-
-# todo review: clarify what are "results" - find better name
-
-# todo review: clarify what are "crops" (images? paths to images? instances of
-#  Crop class?) - find better name
-
-# todo review: "subtask_file_paths" suggests this function operates on more than
-#  one subtask, find better name
-def make_verdict(providers_result_images_paths, crops_details, results, use_raw_verification):
+def make_verdict(
+        providers_result_images_paths,
+        crops_details,
+        reference_results,
+        use_raw_verification
+):
     verdict = True
 
-    for crop_data in results:
+    for crop_data in reference_results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops_details)
 
         left, top = crop.pixel_region.left, crop.pixel_region.top
@@ -121,7 +118,8 @@ def make_verdict(providers_result_images_paths, crops_details, results, use_raw_
         print("left: " + str(left))
         print("top: " + str(top))
 
-        for crop, providers_result_image_path in zip(crop_data['results'], providers_result_images_paths):
+        for crop, providers_result_image_path in zip(
+                crop_data['results'], providers_result_images_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
             if not use_raw_verification:
                 results_path = calculate_metrics(
@@ -131,7 +129,7 @@ def make_verdict(providers_result_images_paths, crops_details, results, use_raw_
                     metrics_output_filename=os.path.join(
                         OUTPUT_DIR,
                         crop_data['crop']['outfilebasename'] + "metrics.txt")
-                    )
+                )
             else:
                 results_path = get_raw_verification(
                     crop_path,
