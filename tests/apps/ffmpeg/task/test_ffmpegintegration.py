@@ -14,6 +14,7 @@ class TestffmpegIntegration(TestTaskIntegration):
             os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.tt = ffmpegTaskTypeInfo()
 
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -42,6 +43,7 @@ class TestffmpegIntegration(TestTaskIntegration):
 
         self.run_asserts(asserts)
 
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_nonexistent_output_dir(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
@@ -73,6 +75,7 @@ class TestffmpegIntegration(TestTaskIntegration):
 
         self.run_asserts(asserts)
 
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'test_nonexistent_video.mp4')
@@ -100,6 +103,7 @@ class TestffmpegIntegration(TestTaskIntegration):
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
 
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_invalid_resource_stream(self):
         resource_stream = os.path.join(self.RESOURCES, 'invalid_test_video.mp4')
         result_file = os.path.join(self.root_dir,
@@ -126,6 +130,7 @@ class TestffmpegIntegration(TestTaskIntegration):
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
 
+    @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')

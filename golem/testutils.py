@@ -243,7 +243,12 @@ class PEP8MixIn(object):
 
 
 class TestTaskIntegration(TempDirFixture):
-    TEST_FAILED = False
+
+    def dont_remove_dirs_on_failed_test(fun):
+        def wrapper(self):
+            fun(self)
+            self.TEST_FAILED = False
+        return wrapper
 
     @staticmethod
     def check_file_existence(filename):
@@ -259,16 +264,15 @@ class TestTaskIntegration(TempDirFixture):
             try:
                 assert a()
             except AssertionError:
-                TestTaskIntegration.TEST_FAILED = True
+                self.TEST_FAILED = True
                 raise
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        TestTaskIntegration.TEST_FAILED = False
 
     def setUp(self):
         super(TestTaskIntegration, self).setUp()
+
+        # Assume that test failed. @dont_remove_dirs_on_failed_test decorator will
+        # set this variable to False on the end of test.
+        self.TEST_FAILED = True
 
         # build mock node
         self.node = dt_p2p_factory.Node()
@@ -280,7 +284,7 @@ class TestTaskIntegration(TempDirFixture):
             SystemRandom().choice(string.ascii_lowercase + string.digits) for _
             in range(8))
         self.task = None
-        self.dir_manager = DirManager(self.root_dir)
+        self.dir_manager = DirManager(self.tempdir)
 
         # load all apps to be enabled for tests
         app_manager = AppsManager()
@@ -291,7 +295,7 @@ class TestTaskIntegration(TempDirFixture):
                                   password="test")
 
         self.task_manager = TestTaskManager(self.node, self.keys_auth,
-                                            self.root_dir,
+                                            self.tempdir,
                                             apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
@@ -301,6 +305,9 @@ class TestTaskIntegration(TempDirFixture):
         task = self.task_manager.create_task(task_dict)
         self.task_manager.add_new_task(task)
         return task
+
+    def _get_provider_dir(self, subtask_id):
+        return os.path.join(self.tempdir, "mock-provider", subtask_id)
 
     def execute_task(self, task_def):
         task: Task = self._add_task(task_def)
@@ -335,11 +342,7 @@ class TestTaskIntegration(TempDirFixture):
     def _execute_subtask(self, task, ctd):
 
         extra_data = ctd["extra_data"]
-
-        tempdir = self.task_manager.dir_manager.get_task_temporary_dir(
-            task.task_definition.task_id)
-
-        tempdir = os.path.join(tempdir, ctd["subtask_id"])
+        tempdir = self._get_provider_dir(ctd["subtask_id"])
 
         return self._run_test_job(task, tempdir, extra_data)
 
@@ -387,7 +390,9 @@ class TestTaskIntegration(TempDirFixture):
             raise Exception(dtt.error_msg)
         return dtt.result.get('data')
 
-    @classmethod
-    def tearDownClass(cls):
-        if not TestTaskIntegration.TEST_FAILED:
-            shutil.rmtree(cls.root_dir)
+
+    def tearDown(self):
+        if not self.TEST_FAILED:
+            if os.path.isdir(self.tempdir):
+                shutil.rmtree(self.tempdir)  
+
