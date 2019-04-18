@@ -2,6 +2,8 @@
 
 output_dir="$1"
 
+index_file="$output_dir/index.md"
+
 
 function get_extension {
     local file_path="$1"
@@ -29,6 +31,9 @@ mkdir --parents "$output_dir/original/"
 mkdir --parents "$output_dir/good/"
 mkdir --parents "$output_dir/bad/"
 
+printf "| %110s | %120s |\n" "File name" "Source URL" > "$index_file"
+printf "| %110s | %120s |\n" | tr " " "-"            >> "$index_file"
+
 i=1
 grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_name video_name max_duration; do
     original_file="$output_dir/download/$i-$(basename "$url")"
@@ -49,6 +54,8 @@ grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_na
     if [[ "$max_duration" == "bad" ]]; then
         echo "File $(basename "$url") ($input_i_frame_count key frames) marked as bad. Not splitting"
         cp --link "$renamed_original_file" "$output_dir/bad/" 2> /dev/null || cp "$renamed_original_file" "$output_dir/bad/"
+
+        printf "| %110s | %120s |\n" "$(basename "$renamed_original_file")" "$url" >> "$index_file"
         i=$(( ++i ))
         continue
     fi
@@ -61,5 +68,6 @@ grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_na
         "$max_duration"
     echo
 
+    printf "| %110s | %120s |\n" "$(basename "$renamed_original_file")" "$url" >> "$index_file"
     i=$(( ++i ))
 done
