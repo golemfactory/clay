@@ -103,4 +103,4 @@ frame_rate_float=$(
     python -c "print($frame_rate)"
 )
 
-printf "[%s,%sx%s,%.0fs,%s,i%dp%db%d,fps%.2f]\n" "$codecs" "$width" "$height" "$duration" "$stream_counts" "$i_frame_count" "$p_frame_count" "$b_frame_count" "$frame_rate_float"
+printf "[%s,%sx%s,%.0fs,%s,i%dp%db%d,%gfps]\n" "$codecs" "$width" "$height" "$duration" "$stream_counts" "$i_frame_count" "$p_frame_count" "$b_frame_count" "$frame_rate_float"
