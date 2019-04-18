@@ -18,8 +18,8 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
 
 def prepare_crops(
         subimage,
-        crops_borders,
         crops_count=3,
+        crops_borders=None,
 ):
     crops_details: List[Crop] = []
     crops_render_data = []
@@ -68,8 +68,8 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         samples,
         frames,
         output_format,
-        crops_borders,
         crops_count=3,
+        crops_borders=None,
 
 ):
     subimage = SubImage(
@@ -82,7 +82,7 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         resolution
     )
 
-    (crops_details, crops_render_data) = prepare_crops(subimage, crops_borders, crops_count)
+    (crops_details, crops_render_data) = prepare_crops(subimage, crops_count, crops_borders)
 
     params = {
         "scene_file": scene_file_path,
