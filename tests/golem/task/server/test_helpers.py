@@ -1,5 +1,6 @@
 import pathlib
 import time
+import unittest
 from unittest import mock
 
 import faker
@@ -133,3 +134,28 @@ class TestSendReportComputedTask(testutils.TempDirFixture):
             self.wtr,
         )
         self.task_server.client.concent_service.submit.assert_not_called()
+
+
+@mock.patch(
+    'golem.network.history.MessageHistoryService.get_sync_as_message',
+)
+@mock.patch("golem.network.transport.msg_queue.put")
+class TestSendTaskFailure(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.wtf = factories.taskserver.WaitingTaskFailureFactory()
+        self.ttc = msg_factories.tasks.TaskToComputeFactory(
+            task_id=self.wtf.task_id,
+            subtask_id=self.wtf.subtask_id,
+            compute_task_def__deadline=int(time.time()) + 3600,
+        )
+
+    def test_no_task_to_compute(self, put_mock, get_mock, *_):
+        get_mock.return_value = None
+        helpers.send_task_failure(self.wtf)
+        put_mock.assert_not_called()
+
+    def test_basic(self, put_mock, get_mock, *_):
+        get_mock.return_value = self.ttc
+        helpers.send_task_failure(self.wtf)
+        put_mock.assert_called_once()
