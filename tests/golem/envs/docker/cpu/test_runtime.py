@@ -53,8 +53,13 @@ class TestInit(TestCase):
 
 class TestDockerCPURuntime(TestCase):
 
-    @patch('local_client')
-    def setUp(self, local_client) -> None:
+    def setUp(self) -> None:
+        super().setUp()
+
+        client_patch = patch('local_client')
+        self.client = client_patch.start()()
+        self.addCleanup(client_patch.stop)
+
         payload = DockerPayload(
             image='repo/img',
             tag='1.0',
@@ -63,7 +68,7 @@ class TestDockerCPURuntime(TestCase):
             env={}
         )
         self.runtime = DockerCPURuntime(payload, {})
-        self.container_config = local_client().create_container_config()
+        self.container_config = self.client.create_container_config()
 
         # We want to make sure that status is being set and read using lock.
         # RLock enables us to check whether it's owned by the current thread.
@@ -80,11 +85,16 @@ class TestDockerCPURuntime(TestCase):
             return object.__setattr__(obj, name, value)
 
         get_patch = patch_runtime('__getattribute__', _getattribute)
-        set_patch = patch_runtime('__setattr__', _setattr)
         get_patch.start()
-        set_patch.start()
         self.addCleanup(get_patch.stop)
+
+        set_patch = patch_runtime('__setattr__', _setattr)
+        set_patch.start()
         self.addCleanup(set_patch.stop)
+
+        logger_patch = patch('logger')
+        self.logger = logger_patch.start()
+        self.addCleanup(logger_patch.stop)
 
 
 class TestChangeStatus(TestDockerCPURuntime):
@@ -110,8 +120,7 @@ class TestChangeStatus(TestDockerCPURuntime):
 
 class TestWrapStatusChange(TestDockerCPURuntime):
 
-    @patch('logger')
-    def test_error(self, logger):
+    def test_error(self):
         func = Mock(side_effect=ValueError)
         error_msg = "test error"
         wrapper = self.runtime._wrap_status_change(
@@ -123,11 +132,10 @@ class TestWrapStatusChange(TestDockerCPURuntime):
         with self.assertRaises(ValueError):
             wrapped()
 
-        logger.exception.assert_called_once_with(error_msg)
+        self.logger.exception.assert_called_once_with(error_msg)
         self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
         
-    @patch('logger')
-    def test_success(self, logger):
+    def test_success(self):
         func = Mock()
         success_msg = "test success"
         wrapper = self.runtime._wrap_status_change(
@@ -138,21 +146,19 @@ class TestWrapStatusChange(TestDockerCPURuntime):
         
         wrapped()
         
-        logger.info.assert_called_once_with(success_msg)
+        self.logger.info.assert_called_once_with(success_msg)
         self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
 
 
 class TestInspectContainer(TestDockerCPURuntime):
 
-    @patch('local_client')
-    def test_no_container_id(self, _):
+    def test_no_container_id(self):
         with self.assertRaises(AssertionError):
             self.runtime._inspect_container()
 
-    @patch('local_client')
-    def test_ok(self, local_client):
+    def test_ok(self):
         self.runtime._container_id = "container_id"
-        local_client().inspect_container.return_value = {
+        self.client.inspect_container.return_value = {
             "State": {
                 "Status": "running",
                 "ExitCode": 0
@@ -161,7 +167,7 @@ class TestInspectContainer(TestDockerCPURuntime):
 
         status, exit_code = self.runtime._inspect_container()
 
-        local_client().inspect_container.assert_called_once_with("container_id")
+        self.client.inspect_container.assert_called_once_with("container_id")
         self.assertEqual(status, "running")
         self.assertEqual(exit_code, 0)
 
@@ -184,12 +190,11 @@ class TestUpdateStatus(TestDockerCPURuntime):
             self.runtime._update_status()
             self.assertEqual(self.runtime.status(), exp_status)
 
-    @patch('logger')
-    def test_docker_api_error(self, logger):
+    def test_docker_api_error(self):
         self._generic_test(
             exp_status=RuntimeStatus.FAILURE,
             inspect_error=APIError("error"))
-        logger.exception.assert_called_once()
+        self.logger.exception.assert_called_once()
 
     def test_container_running(self):
         self._generic_test(
@@ -211,12 +216,11 @@ class TestUpdateStatus(TestDockerCPURuntime):
             exp_status=RuntimeStatus.FAILURE,
             inspect_result=("dead", -1234))
 
-    @patch('logger')
-    def test_container_unexpected_status(self, logger):
+    def test_container_unexpected_status(self):
         self._generic_test(
             exp_status=RuntimeStatus.FAILURE,
             inspect_result=("(╯°□°)╯︵ ┻━┻", 0))
-        logger.error.assert_called_once()
+        self.logger.error.assert_called_once()
 
 
 class TestUpdateStatusLoop(TestDockerCPURuntime):
