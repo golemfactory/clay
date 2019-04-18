@@ -88,7 +88,7 @@ i_frame_count="$(echo -n "$frames" | sed 's/[^I]//g' | wc --chars)"
 p_frame_count="$(echo -n "$frames" | sed 's/[^P]//g' | wc --chars)"
 b_frame_count="$(echo -n "$frames" | sed 's/[^B]//g' | wc --chars)"
 
-frame_rate="$(ffprobe_show_entries "$input_file" stream=r_frame_rate "v:0")"
+frame_rate="$(ffprobe_show_entries "$input_file" stream=avg_frame_rate "v:0")"
 if [[ "$frame_rate" != "0/0" ]]; then
     frame_rate_string="$(printf "%gfps" "$(python -c "print($frame_rate)")")"
 else
