@@ -392,6 +392,18 @@ class TestTaskIntegration(TempDirFixture):
             os.makedirs(docker_dir, exist_ok=True)
         return dirs
 
+    def _log_docker_logs(self, dtt):
+        stdout_file = dtt.dir_mapping.logs / dtt.STDOUT_FILE
+        stderr_file = dtt.dir_mapping.logs / dtt.STDERR_FILE
+
+        with open(stdout_file, "r") as myfile:
+            content=myfile.read()
+            logger.info("Docker stdout:\n {}".format(content))
+
+        with open(stderr_file, "r") as myfile:
+            content=myfile.read()
+            logger.info("Docker stderr:\n {}".format(content))
+
     def _run_test_job(self, task, root_dir, params):
 
         [resources_dir, work_dir, output_dir] = self._create_docker_dirs(
@@ -419,6 +431,8 @@ class TestTaskIntegration(TempDirFixture):
         logger.info("Content of docker resources directory: {}".format(os.listdir(resources_dir)))
         logger.info("Content of docker work directory: {}".format(os.listdir(work_dir)))
         logger.info("Content of docker output directory: {}".format(os.listdir(output_dir)))
+
+        self._log_docker_logs(dtt)
 
         if dtt.error:
             raise Exception(dtt.error_msg)
