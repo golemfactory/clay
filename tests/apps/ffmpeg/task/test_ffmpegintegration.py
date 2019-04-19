@@ -78,8 +78,6 @@ class TestffmpegIntegration(TestTaskIntegration):
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
-        assert False
-
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
