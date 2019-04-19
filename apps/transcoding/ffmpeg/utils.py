@@ -96,15 +96,15 @@ class StreamOperator:
         return resources_dir, output_dir, work_dir, files
 
     @staticmethod
-    def _collect_files(dir, files, resources_dir):
+    def _collect_files(directory, files, resources_dir):
         # each chunk must be in the same directory
         results = list()
         for file in files:
             if not os.path.isfile(file):
                 raise ffmpegException("Missing result file: {}".format(file))
-            if os.path.dirname(file) != dir:
+            if os.path.dirname(file) != directory:
                 raise ffmpegException("Result file: {} should be in the \
-                proper directory: {}".format(file, dir))
+                proper directory: {}".format(file, directory))
 
             results.append(file)
 
@@ -117,7 +117,10 @@ class StreamOperator:
             shutil.move(result, target_filepath)
 
         # Translate paths to docker filesystem
-        return [path.replace(dir, DockerJob.RESOURCES_DIR) for path in results]
+        return [
+            path.replace(directory, DockerJob.RESOURCES_DIR)
+            for path in results
+        ]
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
