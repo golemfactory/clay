@@ -57,7 +57,7 @@ class TranscodingTaskDefinition(TaskDefinition):
         self.options = TranscodingTaskOptions()
 
 
-class TranscodingTask(CoreTask):
+class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
     def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs):
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
