@@ -4,8 +4,7 @@ from typing import List, Optional
 
 from ..render_tools import blender_render as blender
 
-from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, \
-    generate_single_random_crop_data, Crop
+from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, Crop
 from .image_metrics_calculator import calculate_metrics, get_raw_verification
 
 
@@ -23,41 +22,42 @@ def prepare_crops(
 ):
     crops_details: List[Crop] = []
     crops_render_data = []
-    if crops_borders:
-        crop_id = 0
-        for border in crops_borders:
-            crop = Crop.create_from_region(
-                crop_id,
-                Region(border[0], border[1], border[2], border[3]),
-                subimage
-            )
-            crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename": "crop" + str(crop_id) + '_',
-                    "borders_x": [crop.crop_region.left,
-                                  crop.crop_region.right],
-                    "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
-                }
-            )
-            crops_details.append(crop)
-            crop_id += 1
-    else:
-        for i in range(0, crops_count):
-            crop = generate_single_random_crop_data(
-                subimage,
-                i
-            )
-            crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename": "crop" + str(i) + '_',
-                    "borders_x": [crop.crop_region.left,
-                                  crop.crop_region.right],
-                    "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
-                }
-            )
-            crops_details.append(crop)
+    # if crops_borders:
+    #     crop_id = 0
+    #     for border in crops_borders:
+    #         crop = Crop.create_from_region(
+    #             crop_id,
+    #             Region(border[0], border[1], border[2], border[3]),
+    #             subimage
+    #         )
+    #         crops_render_data.append(
+    #             {
+    #                 "id": crop.id,
+    #                 "outfilebasename": "crop" + str(crop_id) + '_',
+    #                 "borders_x": [crop.crop_region.left,
+    #                               crop.crop_region.right],
+    #                 "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
+    #             }
+    #         )
+    #         crops_details.append(crop)
+    #         crop_id += 1
+    # else:
+    for crop_id in range(0, crops_count):
+        # crop = generate_single_random_crop_data(
+        crop = Crop(
+            crop_id,
+            subimage,
+        )
+        crops_render_data.append(
+            {
+                "id": crop.id,
+                "outfilebasename": "crop" + str(crop_id) + '_',
+                "borders_x": [crop.crop_region.left,
+                              crop.crop_region.right],
+                "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
+            }
+        )
+        crops_details.append(crop)
     return (crops_details, crops_render_data)
 
 
