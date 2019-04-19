@@ -396,13 +396,19 @@ class TestTaskIntegration(TempDirFixture):
         stdout_file = dtt.dir_mapping.logs / dtt.STDOUT_FILE
         stderr_file = dtt.dir_mapping.logs / dtt.STDERR_FILE
 
-        with open(stdout_file, "r") as myfile:
-            content=myfile.read()
-            logger.info("Docker stdout:\n{}".format(content))
+        if os.path.exists(stdout_file) and os.path.isfile(stdout_file):
+            with open(stdout_file, "r") as myfile:
+                content=myfile.read()
+                logger.info("Docker stdout:\n{}".format(content))
+        else:
+            logger.error("Docker stdout file {} doesn't exist.".format(stdout_file))
 
-        with open(stderr_file, "r") as myfile:
-            content=myfile.read()
-            logger.info("Docker stderr:\n{}".format(content))
+        if os.path.exists(stderr_file) and os.path.isfile(stderr_file):
+            with open(stderr_file, "r") as myfile:
+                content=myfile.read()
+                logger.info("Docker stderr:\n{}".format(content))
+        else:
+            logger.error("Docker stderr file {} doesn't exist.".format(stderr_file))
 
     def _run_test_job(self, task, root_dir, params):
 
