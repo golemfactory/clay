@@ -229,6 +229,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         options = HyperdriveClientOptions("CLI1", 0.3)
         ts2.task_server.get_share_options.return_value = options
         ts2.interpret(mt)
+        ts2.conn.send_message.assert_called_once()
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
         expected = [
@@ -1153,4 +1154,33 @@ class TestDisconnect(TestCase):
         self.assertFalse(self.task_session.verified)
         self.task_session.disconnect(
             message.base.Disconnect.REASON.NoMoreMessages,
+        )
+
+
+@patch('golem.task.tasksession.TaskSession._cannot_assign_task')
+class TestOfferChosen(TestCase):
+    def setUp(self):
+        addr = twisted.internet.address.IPv4Address(
+            type='TCP',
+            host=fake.ipv4(),
+            port=fake.random_int(min=1, max=2**16-1),
+        )
+        conn = MagicMock(
+            transport=MagicMock(
+                getPeer=MagicMock(return_value=addr),
+            ),
+        )
+        self.task_session = TaskSession(conn)
+        self.msg = msg_factories.tasks.WantToComputeTaskFactory()
+
+    def test_ctd_is_none(self, mock_cat, *_):
+        self.task_session.task_manager.get_next_subtask.return_value = None
+        self.task_session._offer_chosen(
+            msg=self.msg,
+            node_id='deadbeef',
+            is_chosen=True,
+        )
+        mock_cat.assert_called_once_with(
+            self.msg.task_id,
+            message.tasks.CannotAssignTask.REASON.NoMoreSubtasks,
         )
