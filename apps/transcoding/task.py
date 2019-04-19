@@ -118,13 +118,20 @@ class TranscodingTask(CoreTask):
         self.collected_files.extend(results)
 
     def _merge_video(self):
+        logger.info('Merging video [task_id = {}]'.format(self.task_definition.task_id))
+        
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(
             os.path.basename(self.task_definition.output_file),
             self.task_dir, self.collected_files)
+        
+        # Move result to desired location.
         os.makedirs(os.path.dirname(self.task_definition.output_file),
                     exist_ok=True)
         move(path, self.task_definition.output_file)
+
+        logger.info("Video merged successfully [task_id = {}]".format(self.task_definition.task_id))
+
         return True
 
     def _get_next_subtask(self):

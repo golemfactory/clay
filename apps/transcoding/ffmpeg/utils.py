@@ -121,7 +121,6 @@ class StreamOperator:
             'chunks': chunks
         }
 
-        logger.info('Merging video')
         logger.debug('Merge params: {}'.format(extra_data))
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(output=output_dir,
@@ -131,8 +130,6 @@ class StreamOperator:
                                                            work=work_dir)
 
         self._do_job_in_container(dir_mapping, extra_data)
-
-        logger.info("Video merged successfully!")
         return os.path.join(output_dir, filename)
 
     @staticmethod

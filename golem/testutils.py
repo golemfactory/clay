@@ -304,7 +304,7 @@ class TestTaskIntegration(TempDirFixture):
 
     def _collect_results_from_provider(self, results, task_id, subtask_id):
 
-        logger.debug("Collecting results from provider {}".format(str(results)))
+        logger.info("Collecting results from mock provider {}".format(str(results)))
 
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
@@ -316,11 +316,15 @@ class TestTaskIntegration(TempDirFixture):
             os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
             shutil.move(provider_result, requestor_result)
 
+        logger.info("Collected results from mock provider moved to {}".format(str(requestor_results)))
+
         return requestor_results
 
     def execute_task(self, task_def):
         task: Task = self._add_task(task_def)
         task_id = task.task_definition.task_id
+
+        logger.info("Executing test task [task_id = {}] on mocked provider.".format(task_id))
 
         self.task_manager.start_task(task_id)
         for i in range(task.task_definition.subtasks_count):
@@ -338,8 +342,13 @@ class TestTaskIntegration(TempDirFixture):
 
             subtask_id = ctd["subtask_id"]
 
+            logger.info("Executing test subtask {}/{} [subtask_id = {}] [task_id = {}] on mocked provider.".format(
+                i+1, task.task_definition.subtasks_count, subtask_id, task_id))
+
             result = self._execute_subtask(task, ctd)
             result = self._collect_results_from_provider(result, task_id, subtask_id)
+
+            logger.info("Executing TaskManager.computed_task_received [subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
 
             self.task_manager.computed_task_received(
                 subtask_id=subtask_id,
@@ -347,6 +356,8 @@ class TestTaskIntegration(TempDirFixture):
                 verification_finished=None)
 
             # all results are moved to the parent dir inside computed_task_received
+            logger.info("Executing task.accept_results [subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
+
             task.accept_results(subtask_id, list(
                 map(lambda res: outer_dir_path(res), result)))
 
