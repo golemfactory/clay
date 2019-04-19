@@ -102,9 +102,10 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             dir_manager, task_id)
 
         if len(chunks) < self.total_tasks:
-            logger.warning('{} subtasks was requested but video splitting '
-                           'process resulted in {} chunks.'
-                           .format(self.total_tasks, len(chunks)))
+            logger.warning('%d subtasks was requested but video splitting '
+                           'process resulted in %d chunks.',
+                           self.total_tasks,
+                           len(chunks))
 
         streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
                            .join(task_output_dir, x[0]), chunks))
@@ -145,10 +146,10 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
             self.num_tasks_received += 1
 
-            logger.info("Task {} - transcoded {} of {} chunks".
-                        format(self.task_definition.task_id,
-                               self.num_tasks_received,
-                               self.total_tasks))
+            logger.info("Task %s - transcoded %d of %d chunks",
+                        self.task_definition.task_id,
+                        self.num_tasks_received,
+                        self.total_tasks)
 
             if self.num_tasks_received == self.total_tasks:
                 self._merge_video()
@@ -157,8 +158,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         self.collected_files.extend(results)
 
     def _merge_video(self):
-        logger.info('Merging video [task_id = {}]'.format(
-            self.task_definition.task_id))
+        logger.info('Merging video [task_id = %s]',
+                    self.task_definition.task_id)
 
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(
@@ -170,22 +171,22 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                     exist_ok=True)
         move(path, self.task_definition.output_file)
 
-        logger.info("Video merged successfully [task_id = {}]".format(
-            self.task_definition.task_id))
+        logger.info("Video merged successfully [task_id = %s]",
+                    self.task_definition.task_id)
 
         return True
 
     def _get_next_subtask(self):
-        logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
-            self.task_definition.task_id))
+        logger.debug('Getting next task [type=trancoding, task_id=%s]',
+                     self.task_definition.task_id)
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
 
         failed_subtask = next(iter(subtasks), None)
         if failed_subtask:
-            logger.debug('Subtask {} was failed, so let resent it'
-                         .format(failed_subtask['subtask_id']))
+            logger.debug('Subtask %s was failed, so let resent it',
+                         failed_subtask['subtask_id'])
             failed_subtask['status'] = SubtaskStatus.resent
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
@@ -285,8 +286,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             task_def.options.name = dictionary.get('name', '')
 
             logger.debug(
-                'Transcoding task definition has been built [definition={}]'
-                .format(task_def.__dict__))
+                'Transcoding task definition has been built [definition=%s]',
+                task_def.__dict__)
 
             return task_def
 
