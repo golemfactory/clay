@@ -25,6 +25,8 @@ class FfprobeReportSet:
     def _describe_ffprobe_report_diff(cls, diff: Diff) -> str:
         output_lines = []
 
+        stream_mismatch_found = False
+        stream_types_different = False
         for diff_dict in diff:
             if diff_dict['reason'] == "Different attribute values":
                 line = "`{}.{}`: `{}` -> `{}`".format(
@@ -33,16 +35,24 @@ class FfprobeReportSet:
                     diff_dict['modified_value'],
                     diff_dict['original_value'],
                 )
+
+                if (diff_dict['location'] == 'format' and
+                        diff_dict['attribute'] == 'stream_types'):
+                    stream_types_different = True
+
             elif diff_dict['reason'] == "No matching stream":
-                line = "{}#{} -> #{}".format(
-                    diff_dict['location'],
-                    diff_dict['original_stream_index'],
-                    diff_dict['modified_stream_index'],
-                )
+                # We can skip this one because the difference will show up
+                # in the stream_types dict anyway if the diff is consistent.
+                stream_mismatch_found = True
+                continue
             else:
                 assert False, "Unrecognized 'reason'; add it above"
 
             output_lines.append(line)
+
+        assert stream_types_different == stream_mismatch_found, \
+            "Inconsistent diff. " \
+            "stream_types must differ too if there are mismatched streams."
 
         if len(output_lines) == 0:  # pylint: disable=len-as-condition
             return "OK"
