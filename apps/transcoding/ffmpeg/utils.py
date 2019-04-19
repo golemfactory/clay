@@ -4,6 +4,7 @@ import logging
 import os
 from pathlib import Path
 import shutil
+from typing import Optional
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
@@ -147,7 +148,7 @@ class StreamOperator:
 
     @staticmethod
     def _do_job_in_container(dir_mapping, extra_data: dict,
-                             env: Environment = None,
+                             env: Optional[Environment] = None,
                              timeout: int = 120):
 
         if env:
