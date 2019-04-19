@@ -398,11 +398,11 @@ class TestTaskIntegration(TempDirFixture):
 
         with open(stdout_file, "r") as myfile:
             content=myfile.read()
-            logger.info("Docker stdout:\n {}".format(content))
+            logger.info("Docker stdout:\n{}".format(content))
 
         with open(stderr_file, "r") as myfile:
             content=myfile.read()
-            logger.info("Docker stderr:\n {}".format(content))
+            logger.info("Docker stderr:\n{}".format(content))
 
     def _run_test_job(self, task, root_dir, params):
 
