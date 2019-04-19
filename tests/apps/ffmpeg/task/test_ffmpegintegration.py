@@ -68,11 +68,7 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        logger.info("Starting test_nonexistent_output_dir execute_task")
-        
         self.execute_task(task_def)
-
-        logger.info("Finished test_nonexistent_output_dir execute_task")
 
         self.assertTrue(TestTaskIntegration.check_file_existence(result_file))
         self.assertTrue(TestTaskIntegration.check_dir_existence(

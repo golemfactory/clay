@@ -374,6 +374,8 @@ class TestTaskIntegration(TempDirFixture):
     @staticmethod
     def _copy_resources(task, resources_dir):
 
+        logger.info("Copy files to docker resources directory {}".format(resources_dir))
+
         for res in task.task_resources:
             shutil.copy(res, resources_dir)
 
@@ -410,9 +412,17 @@ class TestTaskIntegration(TempDirFixture):
                                dir_mapping=dir_mapping,
                                timeout=task.task_definition.subtask_timeout)
 
+        logger.info("Running docker image {} on mock provider".format(image))
+
         dtt.run()
+
+        logger.info("Content of docker resources directory: {}".format(os.listdir(resources_dir)))
+        logger.info("Content of docker work directory: {}".format(os.listdir(work_dir)))
+        logger.info("Content of docker output directory: {}".format(os.listdir(output_dir)))
+
         if dtt.error:
             raise Exception(dtt.error_msg)
+
         return dtt.result.get('data')
 
 
