@@ -106,9 +106,7 @@ class StreamOperator:
             shutil.move(result, target_filepath)
 
         # Translate paths to docker filesystem
-        return [path.replace(dir,
-                             DockerJob.RESOURCES_DIR)
-                    for path in results]
+        return [path.replace(dir, DockerJob.RESOURCES_DIR) for path in results]
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
@@ -123,11 +121,12 @@ class StreamOperator:
 
         logger.debug('Merge params: {}'.format(extra_data))
 
-        dir_mapping = DockerTaskThread.specify_dir_mapping(output=output_dir,
-                                                           temporary=work_dir,
-                                                           resources=resources_dir,
-                                                           logs=output_dir,
-                                                           work=work_dir)
+        dir_mapping = DockerTaskThread.specify_dir_mapping(
+            output=output_dir,
+            temporary=work_dir,
+            resources=resources_dir,
+            logs=output_dir,
+            work=work_dir)
 
         self._do_job_in_container(dir_mapping, extra_data)
         return os.path.join(output_dir, filename)

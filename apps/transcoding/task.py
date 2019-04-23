@@ -107,9 +107,9 @@ class TranscodingTask(CoreTask):
             self.num_tasks_received += 1
 
             logger.info("Task {} - transcoded {} of {} chunks".
-                        format( self.task_definition.task_id,
-                                self.num_tasks_received,
-                                self.total_tasks))
+                        format(self.task_definition.task_id,
+                               self.num_tasks_received,
+                               self.total_tasks))
 
             if self.num_tasks_received == self.total_tasks:
                 self._merge_video()
@@ -118,7 +118,8 @@ class TranscodingTask(CoreTask):
         self.collected_files.extend(results)
 
     def _merge_video(self):
-        logger.info('Merging video [task_id = {}]'.format(self.task_definition.task_id))
+        logger.info('Merging video [task_id = {}]'.format(
+            self.task_definition.task_id))
         
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(
@@ -130,7 +131,8 @@ class TranscodingTask(CoreTask):
                     exist_ok=True)
         move(path, self.task_definition.output_file)
 
-        logger.info("Video merged successfully [task_id = {}]".format(self.task_definition.task_id))
+        logger.info("Video merged successfully [task_id = {}]".format(
+            self.task_definition.task_id))
 
         return True
 
