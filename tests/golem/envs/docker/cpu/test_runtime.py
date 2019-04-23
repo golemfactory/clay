@@ -26,7 +26,6 @@ class TestInit(TestCase):
             image='repo/img',
             tag='1.0',
             command='cmd',
-            args=['arg1', 'arg2'],
             binds=[Mock(spec=DockerBind)],
             env={'key': 'value'},
             user='user',
@@ -37,7 +36,7 @@ class TestInit(TestCase):
 
         local_client().create_container_config.assert_called_once_with(
             image='repo/img:1.0',
-            command=['cmd', 'arg1', 'arg2'],
+            command='cmd',
             volumes=[payload.binds[0].target],
             environment={'key': 'value'},
             user='user',
@@ -63,7 +62,6 @@ class TestDockerCPURuntime(TestCase):
         payload = DockerPayload(
             image='repo/img',
             tag='1.0',
-            args=[],
             binds=[],
             env={}
         )

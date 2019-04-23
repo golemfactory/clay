@@ -24,7 +24,6 @@ class TestFromDict(TestCase):
             'tag': '1.0',
         })
 
-        self.assertEqual(payload.args, [])
         self.assertEqual(payload.binds, [])
         self.assertEqual(payload.env, {})
 
@@ -34,7 +33,6 @@ class TestFromDict(TestCase):
         payload = DockerPayload.from_dict({
             'image': 'repo/img',
             'tag': '1.0',
-            'args': ['arg1'],
             'env': {'var': 'value'},
             'command': 'cmd',
             'user': 'user',
@@ -46,7 +44,6 @@ class TestFromDict(TestCase):
         self.assertEqual(payload, DockerPayload(
             image='repo/img',
             tag='1.0',
-            args=['arg1'],
             env={'var': 'value'},
             command='cmd',
             user='user',
@@ -62,7 +59,6 @@ class TestToDict(TestCase):
         payload_dict = DockerPayload(
             image='repo/img',
             tag='1.0',
-            args=['arg1'],
             env={'var': 'value'},
             command='cmd',
             user='user',
@@ -73,7 +69,6 @@ class TestToDict(TestCase):
         self.assertEqual(payload_dict, {
             'image': 'repo/img',
             'tag': '1.0',
-            'args': ['arg1'],
             'env': {'var': 'value'},
             'command': 'cmd',
             'user': 'user',

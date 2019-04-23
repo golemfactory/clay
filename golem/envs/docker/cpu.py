@@ -65,10 +65,6 @@ class DockerCPURuntime(Runtime):
             -> None:
         image = f"{payload.image}:{payload.tag}"
         volumes = [bind.target for bind in payload.binds]
-        if payload.command is not None:
-            command: Optional[List[str]] = [payload.command] + payload.args
-        else:
-            command = None
         client = local_client()
 
         self._status = RuntimeStatus.CREATED
@@ -78,7 +74,7 @@ class DockerCPURuntime(Runtime):
         self._container_config = client.create_container_config(
             image=image,
             volumes=volumes,
-            command=command,
+            command=payload.command,
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
@@ -97,7 +93,7 @@ class DockerCPURuntime(Runtime):
 
         with self._status_lock:
             if self._status not in from_status:
-                exp_status = "or ".join(map(str, from_status))
+                exp_status = " or ".join(map(str, from_status))
                 raise ValueError(
                     f"Invalid status: {self._status}. Expected: {exp_status}")
             self._status = to_status
