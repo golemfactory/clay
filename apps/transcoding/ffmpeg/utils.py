@@ -16,8 +16,8 @@ from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
 
-FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg'
-FFMPEG_DOCKER_TAG = '1.0'
+FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg-experimental'
+FFMPEG_DOCKER_TAG = '0.91'
 FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
