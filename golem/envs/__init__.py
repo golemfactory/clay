@@ -1,6 +1,10 @@
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, NamedTuple
+from functools import wraps
+from logging import Logger, getLogger
+from threading import Lock
+from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
+    Sequence
 
 from twisted.internet.defer import Deferred
 
@@ -62,6 +66,61 @@ class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
 
+    def __init__(self, logger: Optional[Logger] = None) -> None:
+        self._logger = logger or getLogger(__name__)
+        self._status = RuntimeStatus.CREATED
+        self._status_lock = Lock()
+
+    def _change_status(
+            self,
+            from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
+            to_status: RuntimeStatus) -> None:
+        """ Assert that current Runtime status is the given one and change to
+            another one. Using lock to ensure atomicity. """
+
+        if isinstance(from_status, RuntimeStatus):
+            from_status = [from_status]
+
+        with self._status_lock:
+            if self._status not in from_status:
+                exp_status = " or ".join(map(str, from_status))
+                raise ValueError(
+                    f"Invalid status: {self._status}. Expected: {exp_status}")
+            self._status = to_status
+
+    def _wrap_status_change(
+            self,
+            success_status: RuntimeStatus,
+            error_status: RuntimeStatus = RuntimeStatus.FAILURE,
+            success_msg: Optional[str] = None,
+            error_msg: Optional[str] = None
+    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
+        """ Wrap function. If it fails log error_msg, set status to
+            error_status, and re-raise the exception. Otherwise log success_msg
+            and set status to success_status. Setting status uses lock. """
+
+        def wrapper(func: Callable[[], None]):
+
+            @wraps(func)
+            def wrapped():
+                try:
+                    func()
+                except Exception:
+                    if error_msg:
+                        self._logger.exception(error_msg)
+                    with self._status_lock:
+                        self._status = error_status
+                    raise
+                else:
+                    if success_msg:
+                        self._logger.info(success_msg)
+                    with self._status_lock:
+                        self._status = success_status
+
+            return wrapped
+
+        return wrapper
+
     @abstractmethod
     def prepare(self) -> Deferred:
         """ Prepare the Runtime to be started. Assumes current status is
@@ -85,10 +144,10 @@ class Runtime(ABC):
         """ Interrupt the computation. Assumes current status is 'RUNNING'. """
         raise NotImplementedError
 
-    @abstractmethod
     def status(self) -> RuntimeStatus:
         """ Get the current status of the Runtime. """
-        raise NotImplementedError
+        with self._status_lock:
+            return self._status
 
     @abstractmethod
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
