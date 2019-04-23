@@ -63,12 +63,12 @@ class DockerCPURuntime(Runtime):
 
     def __init__(self, payload: DockerPayload, host_config: Dict[str, Any]) \
             -> None:
+        super().__init__(logger=logger)
+
         image = f"{payload.image}:{payload.tag}"
         volumes = [bind.target for bind in payload.binds]
         client = local_client()
 
-        self._status = RuntimeStatus.CREATED
-        self._status_lock = Lock()
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
         self._container_config = client.create_container_config(
@@ -80,56 +80,6 @@ class DockerCPURuntime(Runtime):
             working_dir=payload.work_dir,
             host_config=host_config
         )
-
-    def _change_status(
-            self,
-            from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
-            to_status: RuntimeStatus) -> None:
-        """ Assert that current Runtime status is the given one and change to
-            another one. Using lock to ensure atomicity. """
-
-        if isinstance(from_status, RuntimeStatus):
-            from_status = [from_status]
-
-        with self._status_lock:
-            if self._status not in from_status:
-                exp_status = " or ".join(map(str, from_status))
-                raise ValueError(
-                    f"Invalid status: {self._status}. Expected: {exp_status}")
-            self._status = to_status
-
-    def _wrap_status_change(
-            self,
-            success_status: RuntimeStatus,
-            error_status: RuntimeStatus = RuntimeStatus.FAILURE,
-            success_msg: Optional[str] = None,
-            error_msg: Optional[str] = None
-    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
-        """ Wrap function. If it fails log error_msg, set status to
-            error_status, and re-raise the exception. Otherwise log success_msg
-            and set status to success_status. Setting status uses lock. """
-
-        def wrapper(func: Callable[[], None]):
-
-            @wraps(func)
-            def wrapped():
-                try:
-                    func()
-                except Exception:
-                    if error_msg:
-                        logger.exception(error_msg)
-                    with self._status_lock:
-                        self._status = error_status
-                    raise
-                else:
-                    if success_msg:
-                        logger.info(success_msg)
-                    with self._status_lock:
-                        self._status = success_status
-
-            return wrapped
-
-        return wrapper
 
     def _inspect_container(self) -> Tuple[str, int]:
         """ Inspect Docker container associated with this runtime. Returns
@@ -269,10 +219,6 @@ class DockerCPURuntime(Runtime):
         deferred_stop = deferToThread(_stop)
         deferred_stop.addCallback(_join_status_update_thread)
         return deferred_stop
-
-    def status(self) -> RuntimeStatus:
-        with self._status_lock:
-            return self._status
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError

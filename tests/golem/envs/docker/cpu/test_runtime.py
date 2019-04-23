@@ -90,9 +90,15 @@ class TestDockerCPURuntime(TestCase):
         set_patch.start()
         self.addCleanup(set_patch.stop)
 
-        logger_patch = patch('logger')
-        self.logger = logger_patch.start()
-        self.addCleanup(logger_patch.stop)
+        log_warning_patch = patch('logger.warning')
+        log_error_patch = patch('logger.error')
+        log_exception_patch = patch('logger.exception')
+        self.log_warning = log_warning_patch.start()
+        self.log_error = log_error_patch.start()
+        self.log_exception = log_exception_patch.start()
+        self.addCleanup(log_warning_patch.stop)
+        self.addCleanup(log_error_patch.stop)
+        self.addCleanup(log_exception_patch.stop)
 
     def _generic_test_invalid_status(self, method, valid_statuses):
         def _test(status):
@@ -104,59 +110,6 @@ class TestDockerCPURuntime(TestCase):
 
         for status in set(RuntimeStatus) - valid_statuses:
             _test(status)
-
-
-class TestChangeStatus(TestDockerCPURuntime):
-
-    def test_wrong_single_status(self):
-        with self.assertRaises(ValueError):
-            self.runtime._change_status(
-                from_status=RuntimeStatus.STOPPED,
-                to_status=RuntimeStatus.RUNNING)
-
-    def test_wrong_multiple_statuses(self):
-        with self.assertRaises(ValueError):
-            self.runtime._change_status(
-                from_status=[RuntimeStatus.STOPPED, RuntimeStatus.FAILURE],
-                to_status=RuntimeStatus.RUNNING)
-
-    def test_ok(self):
-        self.runtime._change_status(
-            from_status=RuntimeStatus.CREATED,
-            to_status=RuntimeStatus.RUNNING)
-        self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
-
-
-class TestWrapStatusChange(TestDockerCPURuntime):
-
-    def test_error(self):
-        func = Mock(side_effect=ValueError)
-        error_msg = "test error"
-        wrapper = self.runtime._wrap_status_change(
-            success_status=RuntimeStatus.RUNNING,
-            error_msg=error_msg
-        )
-        wrapped = wrapper(func)
-
-        with self.assertRaises(ValueError):
-            wrapped()
-
-        self.logger.exception.assert_called_once_with(error_msg)
-        self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
-
-    def test_success(self):
-        func = Mock()
-        success_msg = "test success"
-        wrapper = self.runtime._wrap_status_change(
-            success_status=RuntimeStatus.RUNNING,
-            success_msg=success_msg
-        )
-        wrapped = wrapper(func)
-
-        wrapped()
-
-        self.logger.info.assert_called_once_with(success_msg)
-        self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
 
 
 class TestInspectContainer(TestDockerCPURuntime):
@@ -203,7 +156,7 @@ class TestUpdateStatus(TestDockerCPURuntime):
         self._generic_test(
             exp_status=RuntimeStatus.FAILURE,
             inspect_error=APIError("error"))
-        self.logger.exception.assert_called_once()
+        self.log_exception.assert_called_once()
 
     def test_container_running(self):
         self._generic_test(
@@ -229,7 +182,7 @@ class TestUpdateStatus(TestDockerCPURuntime):
         self._generic_test(
             exp_status=RuntimeStatus.FAILURE,
             inspect_result=("(╯°□°)╯︵ ┻━┻", 0))
-        self.logger.error.assert_called_once()
+        self.log_error.assert_called_once()
 
 
 class TestUpdateStatusLoop(TestDockerCPURuntime):
@@ -279,7 +232,7 @@ class TestPrepare(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
-            self.logger.exception.assert_called_once()
+            self.log_exception.assert_called_once()
         deferred.addCallback(_check)
 
         return deferred
@@ -295,7 +248,7 @@ class TestPrepare(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
-            self.logger.exception.assert_called_once()
+            self.log_exception.assert_called_once()
         deferred.addCallback(_check)
 
         return deferred
@@ -314,9 +267,9 @@ class TestPrepare(TestDockerCPURuntime):
             self.assertEqual(self.runtime._container_id, "Id")
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
-            self.logger.exception.assert_not_called()
+            self.log_exception.assert_not_called()
 
-            warning_calls = self.logger.warning.call_args_list
+            warning_calls = self.log_warning.call_args_list
             self.assertEqual(len(warning_calls), 2)
             self.assertIn("foo", warning_calls[0][0])
             self.assertIn("bar", warning_calls[1][0])
@@ -336,8 +289,8 @@ class TestPrepare(TestDockerCPURuntime):
             self.assertEqual(self.runtime._container_id, "Id")
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
-            self.logger.exception.assert_not_called()
-            self.logger.warning.assert_not_called()
+            self.log_exception.assert_not_called()
+            self.log_warning.assert_not_called()
 
         deferred.addCallback(_check)
 
@@ -364,7 +317,7 @@ class TestCleanup(TestDockerCPURuntime):
         def _check(_):
             self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.remove_container.assert_called_once_with("Id")
-            self.logger.exception.assert_called_once()
+            self.log_exception.assert_called_once()
 
         deferred.addCallback(_check)
 
@@ -381,7 +334,7 @@ class TestCleanup(TestDockerCPURuntime):
         def _check(_):
             self.assertEqual(self.runtime.status(), RuntimeStatus.TORN_DOWN)
             self.client.remove_container.assert_called_once_with("Id")
-            self.logger.exception.assert_not_called()
+            self.log_exception.assert_not_called()
 
         deferred.addCallback(_check)
 
@@ -415,7 +368,7 @@ class TestStart(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.assertIsNone(self.runtime._status_update_thread)
             self.client.start.assert_called_once_with("Id")
-            self.logger.exception.assert_called_once()
+            self.log_exception.assert_called_once()
             self.update_status_loop.assert_not_called()
 
         deferred.addCallback(_check)
@@ -433,7 +386,7 @@ class TestStart(TestDockerCPURuntime):
         def _check(_):
             self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
             self.client.start.assert_called_once_with("Id")
-            self.logger.exception.assert_not_called()
+            self.log_exception.assert_not_called()
 
             self.assertIsInstance(self.runtime._status_update_thread, Thread)
             self.runtime._status_update_thread.join(0.1)
@@ -464,8 +417,8 @@ class TestStop(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_not_called()
-            self.logger.exception.assert_called_once()
-            self.logger.warning.assert_not_called()
+            self.log_exception.assert_called_once()
+            self.log_warning.assert_not_called()
 
         deferred.addCallback(_check)
 
@@ -484,8 +437,8 @@ class TestStop(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.STOPPED)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
-            self.logger.exception.assert_not_called()
-            self.logger.warning.assert_called_once()
+            self.log_exception.assert_not_called()
+            self.log_warning.assert_called_once()
 
         deferred.addCallback(_check)
 
@@ -504,8 +457,8 @@ class TestStop(TestDockerCPURuntime):
             self.assertEqual(self.runtime.status(), RuntimeStatus.STOPPED)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
-            self.logger.exception.assert_not_called()
-            self.logger.warning.assert_not_called()
+            self.log_exception.assert_not_called()
+            self.log_warning.assert_not_called()
 
         deferred.addCallback(_check)
 
