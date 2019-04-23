@@ -1,9 +1,9 @@
-import os
 import random
 import shutil
 import time
 from unittest import mock
 from typing import Iterable, Collection
+from os import path
 import cv2
 
 from golem_messages.message import ComputeTaskDef
@@ -17,6 +17,8 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
 from golem.verificator.blender_verifier import BlenderVerifier
+from tests.golem.verificator.test_utils.helpers import find_crop_files_in_path, \
+    are_pixels_equal, find_crops_positions
 
 
 @pytest.mark.slow
@@ -47,7 +49,7 @@ class TestBlenderVerifier(TempDirFixture):
                 borders_y=list(borders_y),
             )],
             entrypoint='python3 /golem/entrypoints/verifier_entrypoint.py',
-            path_root=os.path.dirname(self.resources[0]),
+            path_root=path.dirname(self.resources[0]),
             subtask_id=str(random.randint(1 * 10 ** 36, 9 * 10 ** 36)),
         )
 
@@ -89,7 +91,7 @@ class TestBlenderVerifier(TempDirFixture):
             work_dir=self.new_path,
             in_background=True)
         self.resources = [
-            os.path.join(
+            path.join(
                 get_golem_path(),
                 'tests/apps/blender/verification/test_data/bmw.blend'),
         ]
@@ -101,9 +103,9 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
         for result in results:
-            result_path = os.path.join(self.tempdir, result)
+            result_path = path.join(self.tempdir, result)
             shutil.copyfile(
-                os.path.join(
+                path.join(
                     get_golem_path(),
                     'tests/apps/blender/verification/test_data',
                     result,
@@ -113,7 +115,7 @@ class TestBlenderVerifier(TempDirFixture):
             verification_data['results'].append(result_path)
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data['paths'] = os.path.dirname(self.resources[0])
+        verification_data['paths'] = path.dirname(self.resources[0])
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
@@ -152,7 +154,7 @@ class TestBlenderVerifier(TempDirFixture):
 
     # todo review: DONE IN DOCS what does that `test` test? By the way, I do not see any asserts
     def test_multiple_subtasks_in_task(self):
-        result_image = cv2.imread(os.path.join(
+        result_image = cv2.imread(path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
             'GolemTask_10001.png',
@@ -167,7 +169,7 @@ class TestBlenderVerifier(TempDirFixture):
 
             # Store images in temporary directory to load them to verification
             # todo review: DONE IN DOCS can you use just a variable instead of using a dict. You do not need a dict actually
-            temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
+            temp_path = path.join(self.tempdir, f'GolemTask_1000{i}.png')
             cv2.imwrite(temp_path, split_images[f'image_part_{i}'])
 
             # Create clear verification_data for every crop image
@@ -181,7 +183,7 @@ class TestBlenderVerifier(TempDirFixture):
                 ),
                 results=[temp_path],
                 resources=self.resources,
-                paths=os.path.dirname(self.resources[0]),
+                paths=path.dirname(self.resources[0]),
             )
             verifier = BlenderVerifier(verification_data, DockerTaskThread)
             d = verifier.start_verification()
@@ -192,13 +194,11 @@ class TestBlenderVerifier(TempDirFixture):
             y_crop_float_coordinate_step = round(y_crop_float_coordinate_step + 0.2, 2)
 
     def _prep_sanity_check_data(self):
-        self.subtask_info['entrypoint'] = \
-            'python3 /golem/entrypoints/test_entrypoint.py'
         self.subtask_info['samples'] = 30
         self.subtask_info['scene_file'] = \
             '/golem/resources/chessboard_400x400_5x5.blend'
         self.resources = [
-            os.path.join(
+            path.join(
                 get_golem_path(),
                 'tests/apps/blender/verification/test_data/'
                 'chessboard_400x400_5x5.blend'
@@ -208,25 +208,32 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['crops'] = [
             {
                 'outfilebasename':
-                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                    'chessboard_{}'.format(self.subtask_info['start_task']),
                 'borders_x': [0.0, 1.0],
                 'borders_y': [0.0, 0.53]
             }
         ]
         self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
 
-    @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
-    # todo review: WILL BE RENAMED WHEN TEST CHANGES; we don't understand where
-    #  this name came from. Please rename it to something more intuitive
-    def test_docker_sanity_check(self):
+    def test_cropping_mechanism(self):
         self._prep_sanity_check_data()
 
+        result = 'chessboard_10001.png'
+        result_path = path.join(self.tempdir, result)
+        shutil.copyfile(
+            path.join(
+                get_golem_path(),
+                'tests/apps/blender/verification/test_data',
+                result,
+            ),
+            result_path,
+        )
         verification_data = {
             'subtask_info': self.subtask_info,
-            'results': [os.path.join(self.tempdir, 'GolemTask_10001.png')],
+            'results': [result_path],
             'reference_data': [],
             'resources': self.resources,
-            'paths': os.path.dirname(self.resources[0])
+            'paths': path.dirname(self.resources[0])
         }
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
@@ -234,6 +241,19 @@ class TestBlenderVerifier(TempDirFixture):
 
         sync_wait(d, self.TIMEOUT)
 
+        crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
+        crop_positions = find_crops_positions(
+            path.join(self.tempdir, 'logs', 'stdout.log')
+        )
+        for crop_path, position in zip(crops_paths, crop_positions):
+            assert are_pixels_equal(
+                crop_path,
+                result_path,
+                position[0],
+                position[1],
+            ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
+
+    # TODO: decide how to provide input (provider's result) for this test
     @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
     def test_random_crop_window(self):
         self._prep_sanity_check_data()
@@ -242,6 +262,17 @@ class TestBlenderVerifier(TempDirFixture):
         subtask_height = random.randint(20, 50)
         subtask_ymin = round(random.randint(0, 100 - subtask_height)/100, 2)
         subtask_ymax = round(subtask_ymin + subtask_height/100, 2)
+
+        result = 'chessboard_10001.png'
+        result_path = path.join(self.tempdir, result)
+        shutil.copyfile(
+            path.join(
+                get_golem_path(),
+                'tests/apps/blender/verification/test_data',
+                result,
+            ),
+            result_path,
+        )
 
         self.subtask_info['crops'] = [
             {
@@ -257,16 +288,29 @@ class TestBlenderVerifier(TempDirFixture):
 
         verification_data = {
             'subtask_info': self.subtask_info,
-            'results': [os.path.join(self.tempdir, 'GolemTask_10001.png')],
+            'results': [result_path],
+            # 'results': [path.join(self.tempdir, 'GolemTask_10001.png')],
             'reference_data': [],
             'resources': self.resources,
-            'paths': os.path.dirname(self.resources[0])
+            'paths': path.dirname(self.resources[0])
         }
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
 
         sync_wait(d, self.TIMEOUT)
+
+        crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
+        crop_positions = find_crops_positions(
+            path.join(self.tempdir, 'logs', 'stdout.log')
+        )
+        for crop_path, position in zip(crops_paths, crop_positions):
+            assert are_pixels_equal(
+                crop_path,
+                result_path,
+                position[0],
+                position[1],
+            ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
 
 
 class TestUnitBlenderVerifier:
