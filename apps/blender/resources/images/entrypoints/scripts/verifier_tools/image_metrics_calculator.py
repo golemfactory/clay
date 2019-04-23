@@ -1,7 +1,5 @@
-import cv2
 import os
 import sys
-import numpy as np
 from pathlib import Path
 from typing import Dict
 
@@ -18,12 +16,6 @@ VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
 PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
 TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
-# todo review: WILL BE CHANGED DURING TEST CHANGE
-#  this is image_metrics_calculator.py, it's not a good place for
-#  the alternative verification method used only in tests.
-WHITE = 0
-BLACK = 765
-OFFSET = 30
 
 
 def calculate_metrics(
@@ -189,78 +181,3 @@ def compare_images(image_a, image_b, metrics) -> Dict:
             data[key] = value
 
     return data
-
-
-# todo review: WILL BE CHANGED DURING TEST CHANGE
-#  functions below are used only in tests, they should be moved to
-#  a file in the tests directory (check comment in line 36)
-# todo review: WILL BE CHANGED DURING TEST CHANGE
-#  function's name should describe what it actually does, so it
-#  should contain information about squashing pixel values to black and white
-def convert_image_to_simple_array(image: np.ndarray) -> np.ndarray:
-    """
-    Function for squashing image array in to 0/1 array, which translate to
-    black/white pixel
-    """
-    simple_array = np.zeros((image.shape[0], image.shape[1]))
-    for x, row in enumerate(image):
-        for y, single_pixel in enumerate(row):
-            pixel_sum = np.sum(single_pixel)
-            if pixel_sum <= WHITE + OFFSET:
-                simple_array[x, y] = 0
-            elif pixel_sum >= BLACK - OFFSET:
-                simple_array[x, y] = 1
-            else:
-                raise ValueError("Pixel incomparable. Neither black or white.")
-    return simple_array
-
-
-# todo review: WILL BE CHANGED DURING TEST CHANGE
-#  why are you implementing another function for cropping instead of
-#  using previously written functions used for real verification?
-def cut_out_crop_from_whole_image(
-        top_left_corner_x: int,
-        top_left_corner_y: int,
-        crop: np.ndarray,
-        whole_image: np.ndarray
-) -> np.ndarray:
-    crop_from_image = whole_image[
-        top_left_corner_y:top_left_corner_y + crop.shape[0],
-        top_left_corner_x:top_left_corner_x + crop.shape[1]
-    ]
-    return crop_from_image
-
-
-def get_raw_verification(
-        crop_path: str,
-        subtask_image_path: str,
-        crop_xres_left: int,
-        crop_yres_top: int,
-        metrics_output_filename: str = 'metrics.txt'
-) -> str:
-    cropped_image = cv2.imread(crop_path)
-    subtask_image = cv2.imread(subtask_image_path)
-
-    crop_to_compare = cut_out_crop_from_whole_image(
-        crop_xres_left,
-        crop_yres_top,
-        cropped_image,
-        subtask_image
-    )
-    is_result_positive = np.array_equal(
-        convert_image_to_simple_array(cropped_image),
-        convert_image_to_simple_array(crop_to_compare)
-    )
-    available_metrics = ImgMetrics.get_metric_classes()
-    stub_data = {
-        element: 'unavailable' for element in
-        get_labels_from_metrics(available_metrics)
-    }
-    if is_result_positive:
-        stub_data['Label'] = VERIFICATION_SUCCESS
-    else:
-        stub_data['Label'] = VERIFICATION_FAIL
-    # todo review: WILL BE CHANGED DURING TEST CHANGE
-    #  writing to file won't be necessary after moving raw
-    #  verification to tests
-    return ImgMetrics(stub_data).write_to_file(metrics_output_filename)

@@ -32,5 +32,3 @@ RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
 ADD entrypoints/scripts/verifier_tools/ /golem/entrypoints/scripts/verifier_tools/
 ADD entrypoints/verifier_entrypoint.py /golem/entrypoints/
-ADD entrypoints/scripts/render_tools /golem/entrypoints/scripts/render_tools/
-ADD entrypoints/test_entrypoint.py /golem/entrypoints/

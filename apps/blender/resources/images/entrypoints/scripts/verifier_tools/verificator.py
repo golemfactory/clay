@@ -5,7 +5,7 @@ from typing import List, Optional
 from ..render_tools import blender_render as blender
 
 from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, Crop
-from .image_metrics_calculator import calculate_metrics, get_raw_verification
+from .image_metrics_calculator import calculate_metrics
 
 
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
@@ -98,14 +98,10 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
     return (crops_details, params)
 
 
-# todo review: WILL BE CHANGED DURING TEST CHANGE
-#  this function shouldn't know anything about the
-#  raw verification's existence. The whole file shouldn't know about it.
 def make_verdict(
         providers_result_images_paths,
         crops_details,
         reference_results,
-        use_raw_verification
 ):
     verdict = True
 
@@ -121,26 +117,14 @@ def make_verdict(
         for crop, providers_result_image_path in zip(
                 crop_data['results'], providers_result_images_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
-            if not use_raw_verification:
-                results_path = calculate_metrics(
-                    crop_path,
-                    providers_result_image_path,
-                    left, top,
-                    metrics_output_filename=os.path.join(
-                        OUTPUT_DIR,
-                        crop_data['crop']['outfilebasename'] + "metrics.txt")
-                )
-            else:
-                results_path = get_raw_verification(
-                    crop_path,
-                    providers_result_image_path,
-                    left,
-                    top,
-                    metrics_output_filename=os.path.join(
-                        OUTPUT_DIR,
-                        crop_data['crop']['outfilebasename'] + "metrics.txt"
-                    ),
-                )
+            results_path = calculate_metrics(
+                crop_path,
+                providers_result_image_path,
+                left, top,
+                metrics_output_filename=os.path.join(
+                    OUTPUT_DIR,
+                    crop_data['crop']['outfilebasename'] + "metrics.txt")
+            )
             print("results_path: ", results_path)
             with open(results_path, 'r') as f:
                 data = json.load(f)
@@ -161,7 +145,6 @@ def verify(  # pylint: disable=too-many-arguments
         output_format,
         crops_count=3,
         crops_borders=None,
-        use_raw_verification=False,
 ):
     """
     Function will verify image with crops rendered from given blender
@@ -199,4 +182,4 @@ def verify(  # pylint: disable=too-many-arguments
 
     print(results)
 
-    make_verdict(subtask_file_paths, crops_details, results, use_raw_verification)
+    make_verdict(subtask_file_paths, crops_details, results)
