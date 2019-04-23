@@ -34,7 +34,6 @@ class DockerBind(DockerBindData, DictSerializable):
 class DockerPayloadData(NamedTuple):
     image: str
     tag: str
-    args: List[str]
     binds: List[DockerBind]
     env: Dict[str, str]
     command: Optional[str] = None
@@ -53,10 +52,9 @@ class DockerPayload(DockerPayloadData, Payload):
     @staticmethod
     def from_dict(data: Dict[str, Any]) -> 'DockerPayload':
         data = data.copy()
-        args = data.pop('args', [])
         env = data.pop('env', {})
         binds = [DockerBind.from_dict(b) for b in data.pop('binds', [])]
-        return DockerPayload(args=args, env=env, binds=binds, **data)
+        return DockerPayload(env=env, binds=binds, **data)
 
 
 class DockerPrerequisitesData(NamedTuple):
