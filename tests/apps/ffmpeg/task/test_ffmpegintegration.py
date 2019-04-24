@@ -41,8 +41,9 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        self.execute_task(task_def)
-        self.assertTrue(TestTaskIntegration.check_file_existence(result_file))
+        task = self.execute_task(task_def)
+        result = task.task_definition.output_file
+        self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_nonexistent_output_dir(self):
@@ -68,9 +69,10 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        self.execute_task(task_def)
-
-        self.assertTrue(TestTaskIntegration.check_file_existence(result_file))
+        task = self.execute_task(task_def)
+        
+        result = task.task_definition.output_file
+        self.assertTrue(TestTaskIntegration.check_file_existence(result))
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
