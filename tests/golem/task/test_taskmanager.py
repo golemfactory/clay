@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+import unittest
 from unittest.mock import Mock, patch, MagicMock
 
 from faker import Faker
@@ -1436,3 +1437,30 @@ class TestCopySubtaskResults(DatabaseFixture):
         )
         deferred.addCallback(verify)
         return deferred
+
+
+@patch('golem.core.statskeeper.StatsKeeper._get_or_create')
+class TestTaskFinished(unittest.TestCase):
+    def setUp(self):
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            self.tm = TaskManager(
+                node=dt_p2p_factory.Node(),
+                keys_auth=MagicMock(spec=KeysAuth),
+                root_path='/tmp',
+                config_desc=ClientConfigDescriptor(),
+                task_persistence=False
+            )
+        self.task_id = str(uuid.uuid4())
+        self.tm.tasks_states[self.task_id] = TaskState()
+
+    def test_not_started(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.notStarted
+        self.assertFalse(self.tm.task_finished(self.task_id))
+
+    def test_waiting(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.waiting
+        self.assertFalse(self.tm.task_finished(self.task_id))
+
+    def test_finished(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.finished
+        self.assertTrue(self.tm.task_finished(self.task_id))
