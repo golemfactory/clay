@@ -249,10 +249,9 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(ctd['extra_data'], subtask['transcoding_params'])
         self.assertEqual(ctd['docker_images'], [di.to_dict() for di in
                                                 ffmpeg_task.docker_images])
-        self.assertEqual(ctd['deadline'],
-                         min(timeout_to_deadline(
-                             ffmpeg_task.header.subtask_timeout),
-                             ffmpeg_task.header.deadline))
+        self.assertEqual(ctd['deadline'], min(
+            timeout_to_deadline(ffmpeg_task.header.subtask_timeout),
+            ffmpeg_task.header.deadline))
 
     def test_resources_distributed_per_subtasks(self):
         ffmpeg_task = self._build_ffmpeg_task(
