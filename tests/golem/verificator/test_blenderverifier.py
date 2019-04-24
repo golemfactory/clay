@@ -1,13 +1,16 @@
+import math
 import random
 import shutil
 import time
-from unittest import mock
-from typing import Iterable, Collection
 from os import path
-import cv2
+from typing import Iterable, Collection
+from unittest import mock
 
-from golem_messages.message import ComputeTaskDef
+import cv2
+import numpy as np
 import pytest
+from PIL import Image
+from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait
@@ -17,7 +20,8 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
 from golem.verificator.blender_verifier import BlenderVerifier
-from tests.golem.verificator.test_utils.helpers import find_crop_files_in_path, \
+from tests.golem.verificator.test_utils.helpers import \
+    find_crop_files_in_path, \
     are_pixels_equal, find_crops_positions
 
 
@@ -241,55 +245,36 @@ class TestBlenderVerifier(TempDirFixture):
 
         sync_wait(d, self.TIMEOUT)
 
-        crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
-        crop_positions = find_crops_positions(
-            path.join(self.tempdir, 'logs', 'stdout.log')
-        )
-        for crop_path, position in zip(crops_paths, crop_positions):
-            assert are_pixels_equal(
-                crop_path,
-                result_path,
-                position[0],
-                position[1],
-            ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
+        self._assert_crops_match(result_path)
 
-    # TODO: decide how to provide input (provider's result) for this test
-    @pytest.mark.skip(reason="Need new version of docker image on dockerhub.")
     def test_random_crop_window(self):
         self._prep_sanity_check_data()
 
-        random.seed(0)
-        subtask_height = random.randint(20, 50)
-        subtask_ymin = round(random.randint(0, 100 - subtask_height)/100, 2)
-        subtask_ymax = round(subtask_ymin + subtask_height/100, 2)
+        subtask_y_min, subtask_y_max = self._generate_random_float_coordinates()
 
-        result = 'chessboard_10001.png'
-        result_path = path.join(self.tempdir, result)
-        shutil.copyfile(
-            path.join(
-                get_golem_path(),
-                'tests/apps/blender/verification/test_data',
-                result,
-            ),
-            result_path,
+        full_image_path = path.join(
+            get_golem_path(),
+            'tests/apps/blender/verification/test_data',
+            'chessboard_400x400_full.png'
         )
+        result_path = self._prepare_image_fragment(full_image_path,
+                                                   subtask_y_min, subtask_y_max)
 
         self.subtask_info['crops'] = [
             {
                 'outfilebasename':
                     'GolemTask_{}'.format(self.subtask_info['start_task']),
                 'borders_x': [0.0, 1.0],
-                'borders_y': [subtask_ymin, subtask_ymax]
+                'borders_y': [subtask_y_min, subtask_y_max]
             }
         ]
         self.subtask_info['crop_window'] = [
-            0.0, 1.0, subtask_ymin, subtask_ymax
+            0.0, 1.0, subtask_y_min, subtask_y_max
         ]
 
         verification_data = {
             'subtask_info': self.subtask_info,
             'results': [result_path],
-            # 'results': [path.join(self.tempdir, 'GolemTask_10001.png')],
             'reference_data': [],
             'resources': self.resources,
             'paths': path.dirname(self.resources[0])
@@ -300,10 +285,14 @@ class TestBlenderVerifier(TempDirFixture):
 
         sync_wait(d, self.TIMEOUT)
 
+        self._assert_crops_match(result_path)
+
+    def _assert_crops_match(self, result_path):
         crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
         crop_positions = find_crops_positions(
             path.join(self.tempdir, 'logs', 'stdout.log')
         )
+        assert len(crops_paths) > 0, "There were no crops produced"
         for crop_path, position in zip(crops_paths, crop_positions):
             assert are_pixels_equal(
                 crop_path,
@@ -311,6 +300,30 @@ class TestBlenderVerifier(TempDirFixture):
                 position[0],
                 position[1],
             ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
+
+    def _prepare_image_fragment(self, image_path, y_min, y_max):
+        result = 'chessboard_fragment.png'
+        result_path = path.join(self.tempdir, result)
+
+        image = Image.open(image_path)
+        image_fragment = image.crop(
+            (
+                0,
+                math.floor(np.float32(y_min) * np.float32(image.height)),
+                image.width,
+                math.floor(np.float32(y_max) * np.float32(image.height))
+            )
+        )
+        image_fragment.save(result_path)
+        return result_path
+
+    @staticmethod
+    def _generate_random_float_coordinates():
+        random.seed(0)
+        span = random.randint(20, 50)
+        beginning = round(random.randint(0, 100 - span) / 100, 2)
+        end = round(beginning + span / 100, 2)
+        return beginning, end
 
 
 class TestUnitBlenderVerifier:

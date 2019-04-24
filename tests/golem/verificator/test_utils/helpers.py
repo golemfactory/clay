@@ -93,19 +93,3 @@ def are_pixels_equal(
         round_to_black_and_white(crop_to_compare)
     )
     return is_result_positive
-
-
-# tempdir = '/tmp/golem-tests-mq24sd6q/test_cropping_mechanism7tnd29q4'
-# crop_paths = find_crop_files_in_path(os.path.join(tempdir, 'output'))
-# pprint(crop_paths)
-#
-# print('-' * 10)
-# positions = find_crops_positions(os.path.join(tempdir, 'logs', 'stdout.log'))
-#
-# pprint(positions)
-# # counter = 0
-# # for x, y in positions:
-# #     counter += 1
-# #     print(f'(x={x}, y={y})')
-# #
-# # print(f"Dlugosc ok?: {len(crop_paths) == counter}")
