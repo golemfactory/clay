@@ -536,8 +536,10 @@ class TaskHeaderKeeper:
         # headers, remove the rest
         to_remove = by_age[self.max_tasks_per_requestor:]
 
-        logger.warning("Too many tasks from %s, dropping %d tasks",
-                       owner_key_id, len(to_remove))
+        logger.warning(
+            "Too many tasks, dropping %d tasks. owner=%s, ids_to_remove=%r",
+            len(to_remove), common.short_node_id(owner_key_id), to_remove
+        )
 
         for tid in to_remove:
             self.remove_task_header(tid)
@@ -547,6 +549,11 @@ class TaskHeaderKeeper:
         return: False if task was already removed
         """
         if task_id in self.removed_tasks:
+            return False
+
+        if task_id in self.running_tasks:
+            logger.warning("Can not remove task header, task is running. "
+                           "task_id=%s", task_id)
             return False
 
         try:
