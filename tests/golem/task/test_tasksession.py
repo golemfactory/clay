@@ -93,6 +93,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.provider_key = encode_hex(self.provider_keys.raw_pubkey)
 
         self.task_manager = Mock(tasks_states={}, tasks={})
+        self.task_manager.task_finished.return_value = False
         server = Mock(task_manager=self.task_manager)
         server.get_key_id = lambda: self.provider_key
         server.get_share_options.return_value = None
@@ -177,6 +178,21 @@ class TaskSessionTaskToComputeTest(TestCase):
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
+
+    def test_cannot_assign_task_finished(self, *_):
+        wtct: message.tasks.WantToComputeTask = self._get_wtct()
+        session = self._get_requestor_tasksession()
+        self._fake_add_task()
+        self._set_task_state()
+        self.task_manager.task_finished.return_value = True
+        session.interpret(wtct)
+        session.conn.send_message.assert_called_once()
+        response = session.conn.send_message.call_args[0][0]
+        self.assertIsInstance(response, message.tasks.CannotAssignTask)
+        self.assertIs(
+            response.reason,
+            message.tasks.CannotAssignTask.REASON.TaskFinished,
+        )
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_cannot_assign_task_wrong_ctd(self, *_):
@@ -290,6 +306,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = keys_auth
+        self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = keys_auth.public_key
         self.privkey = keys_auth._private_key
 

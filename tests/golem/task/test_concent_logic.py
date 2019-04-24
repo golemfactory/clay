@@ -13,7 +13,6 @@ from golem_messages import constants as msg_constants
 from golem_messages import cryptography
 from golem_messages import factories
 from golem_messages import message
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 from twisted.internet.defer import Deferred
@@ -57,6 +56,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             .concent_balance.return_value = (self.msg.price * 10) * 2
         self.task_session.task_server.client.transaction_system\
             .concent_timelock.return_value = 0
+        self.task_session.task_manager.task_finished.return_value = False
 
     def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
         send_mock.assert_not_called()
@@ -203,6 +203,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
         task.header = task_header
+        self.task_session.task_manager.task_finished.return_value = False
         self.task_session.task_manager.tasks = {
             task_id: task,
         }
@@ -357,6 +358,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
             self.requestor_keys.raw_privkey
         self.task_session.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
+        self.task_session.task_manager.task_finished.return_value = False
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)
