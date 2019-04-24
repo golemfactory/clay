@@ -1,7 +1,7 @@
 import golem.model
 
 
-class DockerWhitelist:
+class Whitelist:
     @classmethod
     def add(cls, repository: str) -> bool:
         """

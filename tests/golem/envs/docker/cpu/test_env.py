@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 from subprocess import SubprocessError
 from unittest.mock import patch as _patch, Mock, MagicMock
@@ -309,6 +310,12 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
         with self.assertRaises(ValueError):
             self.env.install_prerequisites(prereqs)
 
+    def _patch_whitelist(self, return_value):
+        # Has to use twisted's patch because standard one doesn't work with
+        # Deferreds very well
+        whitelist = Mock(is_whitelisted=Mock(return_value=return_value))
+        self.patch(sys.modules['golem.envs.docker.cpu'], 'Whitelist', whitelist)
+
     def test_pull_image_error(self):
         client_mock = MagicMock()
         client_mock.return_value.pull.side_effect = ValueError
@@ -317,9 +324,21 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
         self.addCleanup(client_patch.stop)
 
         self.env._status = EnvStatus.ENABLED
+        self._patch_whitelist(True)
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.install_prerequisites(prereqs)
         return self.assertFailure(deferred, ValueError)
+
+    def test_not_whitelisted(self):
+        self.env._status = EnvStatus.ENABLED
+        self._patch_whitelist(False)
+        prereqs = Mock(spec=DockerPrerequisites)
+        deferred = self.env.install_prerequisites(prereqs)
+
+        def _check(return_value):
+            self.assertFalse(return_value)
+        deferred.addCallback(_check)
+        return deferred
 
 
 class TestUpdateConfig(TestDockerCPUEnv):

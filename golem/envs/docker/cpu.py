@@ -26,6 +26,7 @@ from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
     RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, Prerequisites
 from golem.envs.docker import DockerPayload, DockerPrerequisites
+from golem.envs.docker.whitelist import Whitelist
 
 logger = logging.getLogger(__name__)
 
@@ -390,6 +391,12 @@ class DockerCPUEnvironment(Environment):
         logger.info("Preparing prerequisites...")
 
         def _prepare():
+            if not Whitelist.is_whitelisted(prerequisites.image):
+                logger.debug(
+                    "Docker image %s not whitelisted",
+                    prerequisites.image,
+                )
+                return False
             try:
                 client = local_client()
                 client.pull(
@@ -401,6 +408,7 @@ class DockerCPUEnvironment(Environment):
                 raise
             else:
                 logger.info("Prerequisites prepared.")
+            return True
 
         return deferToThread(_prepare)
 
