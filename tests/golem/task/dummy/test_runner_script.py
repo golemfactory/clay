@@ -102,6 +102,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         mock_config_logging.assert_called_once_with(
             datadir=mock.ANY,
             loglevel='DEBUG',
+            formatter_prefix="Ppid ",
         )
         client.quit()
 

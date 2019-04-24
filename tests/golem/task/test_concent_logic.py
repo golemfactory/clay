@@ -179,6 +179,10 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         task_session_dropped.assert_called_once()
 
 
+@mock.patch(
+    'golem.task.tasksession.TaskSession.verify_owners',
+    return_value=True,
+)
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
@@ -189,7 +193,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
                 private_key_name='priv_key',
                 password='password',
             )
-        self.task_session.key_id = "KEY_ID"
+        self.task_session.key_id = "deadbeef"
         self.msg = factories.tasks.ReportComputedTaskFactory()
         self.msg._fake_sign()
         self.now = datetime.datetime.utcnow()
@@ -211,9 +215,9 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
         ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = "KEY_ID"
+        ctk.get_node_for_task_id.return_value = self.task_session.key_id
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
-            "KEY_ID"
+            self.task_session.key_id
         task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
             taskstate.SubtaskState()
         subtask_state.deadline = self.msg.task_to_compute.compute_task_def[
@@ -231,25 +235,23 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             self.assertEqual(getattr(msg, attr_name), kwargs[attr_name])
 
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
-    def test_subtask_id_unknown(self, dropped_mock):
+    def test_subtask_id_unknown(self, dropped_mock, *_):
         "Drop if subtask is unknown"
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
             None
         self.task_session._react_to_report_computed_task(self.msg)
         dropped_mock.assert_called_once_with()
-        self.task_session.task_manager.get_node_id_for_subtask.return_value = \
-            "KEY_ID"
 
-    @mock.patch('golem.task.tasksession.TaskSession.dropped')
-    def test_spoofed_task_to_compute(self, dropped_mock):
+    @mock.patch('golem.task.tasksession.TaskSession.send')
+    def test_spoofed_task_to_compute(self, send_mock, verify_mock, *_):
         "Drop if task_to_compute is spoofed"
-        self.msg.task_to_compute.sig = b'31337'
+        verify_mock.return_value = False
         self.task_session._react_to_report_computed_task(self.msg)
-        dropped_mock.assert_called_once_with()
+        send_mock.assert_not_called()
 
     @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_task_deadline_not_found(self, send_mock, get_mock):
+    def test_task_deadline_not_found(self, send_mock, get_mock, *_):
         "Reject if subtask timeout unreachable"
         get_mock.return_value = []
         self.task_session.task_server.task_keeper.task_headers = {}
@@ -261,7 +263,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
 
     @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_subtask_deadline(self, send_mock, get_mock):
+    def test_subtask_deadline(self, send_mock, get_mock, *_):
         "Reject after subtask timeout"
         get_mock.return_value = []
         after_deadline = self.now \
@@ -278,7 +280,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         'golem.network.history.MessageHistoryService.get_sync_as_message'
     )
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_cannot_compute_task_received(self, send_mock, get_mock):
+    def test_cannot_compute_task_received(self, send_mock, get_mock, *_):
         "Reject if CannotComputeTask received"
         get_mock.return_value = unwanted_msg = \
             factories.tasks.CannotComputeTaskFactory(
@@ -293,7 +295,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         )
 
     @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_task_failure_received(self, send_mock):
+    def test_task_failure_received(self, send_mock, *_):
         "Reject if TaskFailure received"
         unwanted_msg = factories.tasks.TaskFailureFactory(
             subtask_id=self.msg.subtask_id,

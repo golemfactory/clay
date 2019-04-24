@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
-from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -70,7 +70,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc2.last_checking = 10 ** 10
 
         tc2.run()
-        tc2.session_timeout()
 
     def test_resource_failure(self):
         task_server = self.task_server
@@ -299,15 +298,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         )
 
         compute_task(*args, **kwargs)
-        assert task_computer.session_closed.called
         assert not start.called
 
         header = mock.Mock(deadline=time.time() + 3600)
         task_computer.task_server.task_keeper.task_headers[task_id] = header
-        task_computer.session_closed.reset_mock()
 
         compute_task(*args, **kwargs)
-        assert not task_computer.session_closed.called
         assert start.called
 
     @staticmethod
