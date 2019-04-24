@@ -46,6 +46,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
             self.keys.raw_pubkey
+        self.task_session.task_server.config_desc.max_resource_size = \
+            1024 * 1024 * 1024 * 100
         self.task_session.task_server.task_keeper\
             .task_headers[self.msg.task_id]\
             .subtasks_count = 10
@@ -415,6 +417,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
+        task.header.max_price = 0
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
 

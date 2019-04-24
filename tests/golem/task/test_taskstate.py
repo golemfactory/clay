@@ -52,8 +52,6 @@ class TestSubtaskState(unittest.TestCase):
         )
         assert ss_dict['status'] == SubtaskStatus.starting.value
 
-        assert ss_dict.get('value') is None
-
         assert ss_dict['stdout'] == "path/to/file"
         assert ss_dict['stderr'] == "path/to/file2"
         assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]

@@ -42,6 +42,12 @@ class TaskClient(object):
         with self._lock:
             self._started += 1
 
+    def cancel(self):
+        with self._lock:
+            if self._finishing == self._started:
+                self._finishing = max(self._finishing - 1, 0)
+            self._started = max(self._started - 1, 0)
+
     def finish(self):
         with self._lock:
             self._finishing += 1

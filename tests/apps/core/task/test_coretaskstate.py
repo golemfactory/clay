@@ -44,34 +44,6 @@ class TestCoreTaskStateStyle(TestCase, PEP8MixIn):
     ]
 
 
-class TestTaskDefinition(TestCase):
-
-    def test_preset(self):
-        tdf = TaskDefinition()
-        tdf.subtasks_count = 12
-        tdf.options.name = "OptionsName"
-        tdf.optimize_total = True
-        tdf.verification_options = "Option"
-        preset = tdf.make_preset()
-        assert len(preset) == 4
-        assert preset["options"].name == "OptionsName"
-        assert preset["verification_options"] == "Option"
-        assert preset["subtasks_count"] == 12
-        assert preset["optimize_total"]
-
-        tdf2 = TaskDefinition()
-        assert tdf2.options.name == ""
-        assert tdf2.verification_options is None
-        assert tdf2.subtasks_count == 0
-        assert not tdf2.optimize_total
-
-        tdf2.load_preset(preset)
-        assert tdf2.options.name == "OptionsName"
-        assert tdf2.verification_options == "Option"
-        assert tdf2.subtasks_count == 12
-        assert tdf2.optimize_total
-
-
 class TestPicklesFrom_0_17_1(TestCase):
     def setUp(self):
         self.task_definition = TaskDefinition()

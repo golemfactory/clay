@@ -142,9 +142,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def connect_to_network(self):
         # pylint: disable=singleton-comparison
+        logger.debug("Connecting to seeds")
         self.connect_to_seeds()
         if not self.connect_to_known_hosts:
             return
+
+        logger.debug("Connecting to known hosts")
 
         for host in KnownHosts.select() \
                 .where(KnownHosts.is_seed == False)\
@@ -153,10 +156,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             ip_address = host.ip_address
             port = host.port
 
-            logger.debug("Connecting to {}:{}".format(ip_address, port))
+            logger.debug("Connecting to %s:%s ...", ip_address, port)
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
+                logger.debug("Connected!")
             except Exception as exc:
                 logger.error("Cannot connect to host {}:{}: {}"
                              .format(ip_address, port, exc))
@@ -168,6 +172,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         for _ in range(len(self.seeds)):
             ip_address, port = self._get_next_random_seed()
+            logger.debug("Connecting to %s:%s ...", ip_address, port)
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
@@ -175,6 +180,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 logger.error("Cannot connect to seed %s:%s: %s",
                              ip_address, port, exc)
                 continue
+            logger.debug("Connected!")
             break  # connected
 
     def connect(self, socket_address):
@@ -220,7 +226,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         except Exception as err:
             logger.error(
-                "Couldn't add known peer %r:%r : %s",
+                "Couldn't add known peer %s:%s - %s",
                 ip_address,
                 port,
                 err
@@ -329,8 +335,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer.key_id
         logger.info(
-            "Adding peer %s, key id difficulty: %r",
+            "Adding peer. node=%s, address=%s:%s, key_difficulty=%r",
             node_info_str(peer.node_name, key_id),
+            peer.address, peer.port,
             self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:
@@ -365,17 +372,16 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer_info["node"].key
         node_name = peer_info["node"].node_name
-        add_peer = force or self.__is_new_peer(key_id)
-        add_peer = add_peer and self._is_address_valid(peer_info["address"],
-                                                       peer_info["port"])
-        if not add_peer:
+        if not self._is_address_valid(peer_info["address"], peer_info["port"]):
+            return
+        if not (force or self.__is_new_peer(key_id)):
             return
 
         logger.info(
-            "add peer to incoming. address=%r:%r, node=%s",
+            "Adding peer to incoming. node=%s, address=%s:%s",
+            node_info_str(node_name, key_id),
             peer_info["address"],
             peer_info["port"],
-            node_info_str(node_name, key_id)
         )
 
         self.incoming_peers[key_id] = {
@@ -565,12 +571,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         self.suggested_address[client_key_id] = addr
 
-    def get_suggested_conn_reverse(self, client_key_id):
-        return self.suggested_conn_reverse.get(client_key_id, False)
-
-    def set_suggested_conn_reverse(self, client_key_id, value=True):
-        self.suggested_conn_reverse[client_key_id] = value
-
     def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
         """ Change node info into tcp addresses. Adds a suggested address.
         :param Node node_info: node information
@@ -639,9 +639,21 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         alpha = alpha or self.peer_keeper.concurrency
 
         if node_key_id is None:
-            peers = list(self.peers.values())
-            alpha = min(alpha, len(peers))
-            neighbours = random.sample(peers, alpha)
+            # PeerSession doesn't have listen_port
+            # before it receives Hello message.
+            # Also sometimes golem will send bogus Hello(port=0, …).
+            # It's taken from p2p_service.cur_port.
+            # We're not interested in such peers because
+            # they'll be rejected by ._is_address_valid() in .try_to_add_peer()
+            sessions: List[PeerSession] = [
+                peer_session for peer_session in self.peers.values()
+                if self._is_address_valid(
+                    peer_session.address,
+                    peer_session.listen_port,
+                )
+            ]
+            alpha = min(alpha, len(sessions))
+            neighbours: List[PeerSession] = random.sample(sessions, alpha)
 
             def _mapper_session(session: PeerSession) -> dt_p2p.Peer:
                 return dt_p2p.Peer({
@@ -651,7 +663,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 })
             return [_mapper_session(session) for session in neighbours]
 
-        neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
+        node_neighbours: List[dt_p2p.Node] = self.peer_keeper.neighbours(
+            node_key_id, alpha
+        )
 
         def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
             return dt_p2p.Peer({
@@ -660,7 +674,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 "node": peer,
             })
 
-        return [_mapper(peer) for peer in neighbours]
+        return [_mapper(peer) for peer in node_neighbours if
+                self._is_address_valid(peer.prv_addr, peer.prv_port)]
 
     # Resource functions
     #############################
@@ -730,6 +745,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                                           node with public ip that took part
                                           in message transport
         """
+        # TODO #4005
         if not self.task_server.task_connections_helper.is_new_conn_request(
                 key_id, node_info):
             self.task_server.remove_pending_conn(conn_id)
@@ -742,13 +758,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         connected_peer = self.peers.get(key_id)
         if connected_peer:
             if node_info.key == self.node.key:
-                self.set_suggested_conn_reverse(key_id)
+                self.suggested_conn_reverse[key_id] = True
             connected_peer.send_want_to_start_task_session(
                 node_info,
                 conn_id,
                 super_node_info
             )
-            logger.debug("Starting task session with {}".format(key_id))
+            logger.debug("Starting task session with %s", key_id)
             return
 
         msg_snd = False
@@ -960,7 +976,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def __sync_peer_keeper(self):
         self.__remove_sessions_to_end_from_peer_keeper()
-        peers_to_find = self.peer_keeper.sync()
+        peers_to_find: Dict[int, List[dt_p2p.Node]] = self.peer_keeper.sync()
         self.__remove_sessions_to_end_from_peer_keeper()
         if peers_to_find:
             self.send_find_nodes(peers_to_find)

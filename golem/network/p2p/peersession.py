@@ -91,9 +91,6 @@ class PeerSession(BasicSafeSession):
 
         self.__set_msg_interpretations()
 
-    def __str__(self):
-        return "{} : {}".format(self.address, self.port)
-
     def dropped(self):
         """
         Close connection and inform p2p service about disconnection
@@ -150,7 +147,7 @@ class PeerSession(BasicSafeSession):
         if self.conn_type is None:
             raise Exception('Connection type (client/server) unknown')
         logger.info(
-            "Starting peer session %r:%r",
+            "Starting peer session. address=%s:%r",
             self.address,
             self.port
         )
@@ -280,7 +277,7 @@ class PeerSession(BasicSafeSession):
         if proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
-                " for node %r:%r",
+                " for node %s:%r",
                 proto_id,
                 variables.PROTOCOL_CONST.ID,
                 self.address,
@@ -332,9 +329,6 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        if not isinstance(msg.peers, list):
-            return
-
         peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
@@ -367,7 +361,9 @@ class PeerSession(BasicSafeSession):
         self.send(message.p2p.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
+        logger.debug("Running handler for `Tasks`. msg=%r", msg)
         for t in msg.tasks:
+            logger.debug("Task information received. task header: %r", t)
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(
                     message.base.Disconnect.REASON.BadProtocol
@@ -510,9 +506,6 @@ class PeerSession(BasicSafeSession):
         self.verified = True
 
         if self.p2p_service.enough_peers():
-            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
-                .format(self.node_name, self.address, self.port)
-            logger.info(logger_msg)
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
             self.disconnect(message.base.Disconnect.REASON.TooManyPeers)
 
@@ -530,11 +523,12 @@ class PeerSession(BasicSafeSession):
         if p:
             if p != self and p.conn.opened:
                 logger.warning(
-                    "PEER DUPLICATED: %r %r : %r AND %r : %r",
+                    "Peer duplicated. new=%r (%s:%r), old=%r (%s:%r)",
                     p.node_name,
                     p.address,
                     p.port,
                     self.node_name,
+                    self.address,
                     self.port
                 )
                 self.disconnect(message.base.Disconnect.REASON.DuplicatePeers)

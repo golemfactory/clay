@@ -3,6 +3,7 @@ import logging
 import os
 from pathlib import Path
 import subprocess
+import time
 from typing import Any, ClassVar, Dict, Iterable, List, Optional
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
@@ -15,7 +16,7 @@ import psutil
 from pydispatch import dispatcher
 
 from golem import hardware
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, retry
 from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
@@ -82,21 +83,21 @@ class HyperVHypervisor(DockerMachineHypervisor):
         no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
-    BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
-                      "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
+    BOOT2DOCKER_URL = "https://golem-bootdocker.cdn.golem.network/boot2docker" \
+                      "/v18.09.1-golem/boot2docker-v18.09.1-golem.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
     VOLUME_DRIVER = "cifs"
     SMB_PORT = "445"
+    REMOVE_VM_RETRY_LIMIT = 10
 
-    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
+    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts')
     GET_VSWITCH_SCRIPT_PATH = \
-        os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
-    START_VM_SCRIPT_PATH = \
-        os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
-    SCRIPT_TIMEOUT = 5  # seconds
-    START_VM_TIMEOUT = 60  # seconds
+        os.path.join(SCRIPTS_PATH, 'docker', 'get-default-vswitch.ps1')
+    GET_HYPERV_SCRIPT_PATH = \
+        os.path.join(SCRIPTS_PATH, 'virtualization', 'get-hyperv-state.ps1')
+    START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -158,6 +159,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
             'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
         self.start_vm(vm_name)
 
+    @retry(
+        (subprocess.CalledProcessError, RuntimeError),
+        count=START_VM_RETRIES
+    )
     def start_vm(self, name: Optional[str] = None) -> None:
         name = name or self._vm_name
         constr = self.constraints()
@@ -174,16 +179,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         try:
             # The windows VM fails to start when too much memory is assigned
-            logger.info("Hyper-V: Starting VM %s ...", name)
-            run_powershell(
-                script=self.START_VM_SCRIPT_PATH,
-                args=[
-                    '-VMName', name,
-                    '-IPTimeoutSeconds', str(self.START_VM_TIMEOUT)
-                ],
-                timeout=self.START_VM_TIMEOUT
-            )
-            logger.info("Hyper-V: VM %s started successfully", name)
+            super().start_vm(name)
         except subprocess.CalledProcessError:
             logger.error(
                 "Hyper-V: VM failed to start, this can be caused "
@@ -192,10 +188,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def is_available(cls) -> bool:
-        command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = run_powershell(command=command)
-            return output == "Hyper-V"
+            return run_powershell(script=cls.GET_HYPERV_SCRIPT_PATH) == 'True'
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
             return False
@@ -239,13 +233,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def _failed_to_create(self, vm_name: Optional[str] = None):
         name = vm_name or self._vm_name
         logger.error(
-            f'{ self.DRIVER_NAME}: VM failed to create, this can be '
+            f'{self.DRIVER_NAME}: VM failed to create, this can be '
             'caused by insufficient RAM or HD free on the host machine')
-        try:
-            self.command('rm', name, args=['-f'])
-        except subprocess.CalledProcessError:
+
+        # Removing the VM sometimes fails so let's try a few times
+        for _ in range(self.REMOVE_VM_RETRY_LIMIT):
+            if name not in self.vms:
+                break
+
+            try:
+                self.command('rm', name, args=['-f'])
+            except subprocess.CalledProcessError:
+                logger.warning(f'{self.DRIVER_NAME}: Attempt to remove '
+                               f'machine "{name}" failed')
+            time.sleep(0.5)
+
+        else:
+            # Log error if all attempts failed
             logger.error(
-                f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
+                f'{self.DRIVER_NAME}: Failed to clean up a (possible) '
                 'corrupt machine, please run: '
                 f'`docker-machine rm -y -f {name}`')
 
@@ -257,7 +263,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.debug('raw hyperv info: summary=%r, memory=%r',
                          summary, mem_settings)
             result = dict()
-            result[CONSTRAINT_KEYS['mem']] = mem_settings['Limit']
+            result[CONSTRAINT_KEYS['mem']] = mem_settings['Reservation']
             result[CONSTRAINT_KEYS['cpu']] = summary['NumberOfProcessors']
             return result
         except (OSWinException, KeyError):
@@ -303,7 +309,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _get_vswitch_name(cls) -> str:
-        return run_powershell(script=cls.GET_VSWITCH_SCRIPT_PATH)
+        return run_powershell(
+            script=cls.GET_VSWITCH_SCRIPT_PATH)
 
     @classmethod
     def _get_hostname_for_sharing(cls) -> str:

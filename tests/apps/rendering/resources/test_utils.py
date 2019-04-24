@@ -1,44 +1,11 @@
-import io
 import unittest
-from unittest.mock import Mock
-
-from PIL import Image
 
 from golem import testutils
-from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.resources.utils import handle_none
 
 
 class TestPEP8(unittest.TestCase, testutils.PEP8MixIn):
     PEP8_FILES = ['apps/rendering/resources/utils.py']
-
-
-class TestHandleImageError(unittest.TestCase):
-    def test_save_image(self):
-        logger = Mock()
-        with handle_image_error(logger), \
-                Image.new('RGB', (1, 1)) as image, \
-                io.BytesIO() as b:
-            image.save(b, 'PNG')
-            assert b.getvalue()
-        assert not logger.error.called
-
-    def test_save_image_key_error(self):
-        logger = Mock()
-        with handle_image_error(logger), \
-                Image.new('RGB', (1, 1)) as image, \
-                io.BytesIO() as b:
-            image.save(b, 'UNKNOWN EXTENSION')
-            assert b.getvalue() == b''
-        assert logger.error.called
-
-    def test_save_image_io_error(self):
-        logger = Mock()
-        with handle_image_error(logger), \
-                Image.new('RGB', (1, 1)) as image, \
-                io.BytesIO() as b:
-            b.write = Mock(side_effect=IOError("fail"))
-            image.save(b, 'PNG')
-        assert logger.error.called
 
 
 class TestHandleNone(unittest.TestCase):

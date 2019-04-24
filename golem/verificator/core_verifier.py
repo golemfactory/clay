@@ -1,8 +1,7 @@
 import logging
 import os
-import threading
 from datetime import datetime
-from .verifier import (StateVerifier, SubtaskVerificationState, Verifier)
+from .verifier import (StateVerifier, SubtaskVerificationState)
 
 from twisted.internet.defer import Deferred
 
@@ -28,7 +27,7 @@ class CoreVerifier(StateVerifier):
         if not results:
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return False
-        
+
         for result in results:
             if not os.path.isfile(result) or not\
                     self._verify_result(verification_data):
@@ -49,4 +48,3 @@ class CoreVerifier(StateVerifier):
         """ Override this to change verification method
         """
         return True
-
