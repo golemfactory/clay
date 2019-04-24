@@ -1489,3 +1489,52 @@ class TestTaskFinished(unittest.TestCase):
     def test_finished(self, *_):
         self.tm.tasks_states[self.task_id].status = TaskStatus.finished
         self.assertTrue(self.tm.task_finished(self.task_id))
+
+
+@patch('golem.core.statskeeper.StatsKeeper._get_or_create')
+class TestNeedsComputation(unittest.TestCase):
+    def setUp(self):
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            self.tm = TaskManager(
+                node=dt_p2p_factory.Node(),
+                keys_auth=MagicMock(spec=KeysAuth),
+                root_path='/tmp',
+                config_desc=ClientConfigDescriptor(),
+                task_persistence=False
+            )
+        dummy_path = '/fiu/bzdziu'
+        self.task_id = str(uuid.uuid4())
+        self.tm.tasks_states[self.task_id] = TaskState()
+        definition = TaskDefinition()
+        definition.options = Mock()
+        definition.output_format = Mock()
+        definition.task_id = self.task_id
+        definition.task_type = "blender"
+        definition.subtask_timeout = 3671
+        definition.timeout = 3671 * 10
+        definition.max_price = 1 * 10 ** 18
+        definition.resolution = [1920, 1080]
+        definition.resources = [str(uuid.uuid4()) for _ in range(5)]
+        #definition.output_file = os.path.join(self.tempdir, 'somefile')
+        definition.main_scene_file = dummy_path
+        definition.options.frames = [1]
+        self.task = BlenderRenderTask(
+            task_definition=definition,
+            owner=dt_p2p_factory.Node(
+                node_name='node',
+            ),
+            total_tasks=1,
+            root_path=dummy_path,
+        )
+        self.tm.tasks[self.task_id] = self.task
+
+    def test_finished(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.finished
+        self.assertFalse(self.tm.task_needs_computation(self.task_id))
+
+    def test_task_doesnt_need_computation(self, *_):
+        self.task.last_task = self.task.total_tasks
+        self.assertFalse(self.tm.task_needs_computation(self.task_id))
+
+    def test_needs_computation(self, *_):
+        self.assertTrue(self.tm.task_needs_computation(self.task_id))
