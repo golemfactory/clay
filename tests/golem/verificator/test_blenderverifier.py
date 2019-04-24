@@ -156,7 +156,6 @@ class TestBlenderVerifier(TempDirFixture):
             'Subtask computation failed with exit code 1',
         )
 
-    # todo review: DONE IN DOCS what does that `test` test? By the way, I do not see any asserts
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(path.join(
             get_golem_path(),
@@ -165,16 +164,14 @@ class TestBlenderVerifier(TempDirFixture):
         ))
         y_crop_coordinate_step = 0
         y_crop_float_coordinate_step = 0.0
-        split_images = {}
         for i in range(1, 6):
             # Split image to cropped parts
-            split_images[f'image_part_{i}'] = \
+            split_image = \
                 result_image[y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150]
 
             # Store images in temporary directory to load them to verification
-            # todo review: DONE IN DOCS can you use just a variable instead of using a dict. You do not need a dict actually
             temp_path = path.join(self.tempdir, f'GolemTask_1000{i}.png')
-            cv2.imwrite(temp_path, split_images[f'image_part_{i}'])
+            cv2.imwrite(temp_path, split_image)
 
             # Create clear verification_data for every crop image
             verification_data = dict(
@@ -197,7 +194,7 @@ class TestBlenderVerifier(TempDirFixture):
             y_crop_coordinate_step += 30
             y_crop_float_coordinate_step = round(y_crop_float_coordinate_step + 0.2, 2)
 
-    def _prep_sanity_check_data(self):
+    def _prepare_subtask_info_for_cropping_tests(self, y_min, y_max):
         self.subtask_info['samples'] = 30
         self.subtask_info['scene_file'] = \
             '/golem/resources/chessboard_400x400_5x5.blend'
@@ -214,14 +211,12 @@ class TestBlenderVerifier(TempDirFixture):
                 'outfilebasename':
                     'chessboard_{}'.format(self.subtask_info['start_task']),
                 'borders_x': [0.0, 1.0],
-                'borders_y': [0.0, 0.53]
+                'borders_y': [y_min, y_max]
             }
         ]
-        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 0.53]
+        self.subtask_info['crop_window'] = [0.0, 1.0, y_min, y_max]
 
     def test_cropping_mechanism(self):
-        self._prep_sanity_check_data()
-
         result = 'chessboard_10001.png'
         result_path = path.join(self.tempdir, result)
         shutil.copyfile(
@@ -232,13 +227,11 @@ class TestBlenderVerifier(TempDirFixture):
             ),
             result_path,
         )
-        verification_data = {
-            'subtask_info': self.subtask_info,
-            'results': [result_path],
-            'reference_data': [],
-            'resources': self.resources,
-            'paths': path.dirname(self.resources[0])
-        }
+        verification_data = self._prepare_verification_data(
+            result_path,
+            y_min=0.0,
+            y_max=0.53
+        )
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
@@ -248,8 +241,6 @@ class TestBlenderVerifier(TempDirFixture):
         self._assert_crops_match(result_path)
 
     def test_random_crop_window(self):
-        self._prep_sanity_check_data()
-
         subtask_y_min, subtask_y_max = self._generate_random_float_coordinates()
 
         full_image_path = path.join(
@@ -257,28 +248,16 @@ class TestBlenderVerifier(TempDirFixture):
             'tests/apps/blender/verification/test_data',
             'chessboard_400x400_full.png'
         )
-        result_path = self._prepare_image_fragment(full_image_path,
-                                                   subtask_y_min, subtask_y_max)
-
-        self.subtask_info['crops'] = [
-            {
-                'outfilebasename':
-                    'GolemTask_{}'.format(self.subtask_info['start_task']),
-                'borders_x': [0.0, 1.0],
-                'borders_y': [subtask_y_min, subtask_y_max]
-            }
-        ]
-        self.subtask_info['crop_window'] = [
-            0.0, 1.0, subtask_y_min, subtask_y_max
-        ]
-
-        verification_data = {
-            'subtask_info': self.subtask_info,
-            'results': [result_path],
-            'reference_data': [],
-            'resources': self.resources,
-            'paths': path.dirname(self.resources[0])
-        }
+        result_path = self._prepare_image_fragment(
+            full_image_path,
+            subtask_y_min,
+            subtask_y_max
+        )
+        verification_data = self._prepare_verification_data(
+            result_path,
+            subtask_y_min,
+            subtask_y_max
+        )
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
@@ -286,6 +265,17 @@ class TestBlenderVerifier(TempDirFixture):
         sync_wait(d, self.TIMEOUT)
 
         self._assert_crops_match(result_path)
+
+    def _prepare_verification_data(self, result_path, y_min, y_max):
+        self._prepare_subtask_info_for_cropping_tests(y_min, y_max)
+        verification_data = {
+            'subtask_info': self.subtask_info,
+            'results': [result_path],
+            'reference_data': [],
+            'resources': self.resources,
+            'paths': path.dirname(self.resources[0])
+        }
+        return verification_data
 
     def _assert_crops_match(self, result_path):
         crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
