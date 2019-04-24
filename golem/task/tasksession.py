@@ -320,7 +320,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        if not self.task_manager.task_needs_computation(msg.task_id):
+        if self.task_manager.task_finished(msg.task_id):
             logger.debug(
                 "TaskFinished. task_id=%s, provider=%s",
                 msg.task_id,

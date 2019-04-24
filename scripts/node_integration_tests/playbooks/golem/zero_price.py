@@ -1,17 +1,13 @@
-from ..base import NodeTestPlaybook
+from ..test_config_base import TestConfigBase
 
 
-class ZeroPrice(NodeTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
-
-    provider_opts = {
-        'min_price': 0,
-    }
-    requestor_opts = {
-        'max_price': 0,
-    }
-
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
+class TestConfig(TestConfigBase):
+    def __init__(self):
+        super().__init__()
+        self.provider.opts = {
+            'min_price': 0,
+        }
+        self.requestor.opts = {
+            'max_price': 0,
+        }
         self.task_dict['bid'] = 0

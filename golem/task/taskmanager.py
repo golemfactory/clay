@@ -128,6 +128,12 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
+        self.FINISHED_STATUS = frozenset([
+            TaskStatus.finished,
+            TaskStatus.aborted,
+            TaskStatus.timeout,
+            TaskStatus.restarted,
+        ])
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -385,9 +391,12 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
-    def task_needs_computation(self, task_id: str) -> bool:
+    def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        if task_status not in self.activeStatus:
+        return task_status in self.FINISHED_STATUS
+
+    def task_needs_computation(self, task_id: str) -> bool:
+        if self.task_finished(task_id):
             logger.info(
                 f'task is not active: {task_id}, status: {task_status}')
             return False
