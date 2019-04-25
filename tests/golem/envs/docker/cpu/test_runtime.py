@@ -1,5 +1,5 @@
 from threading import RLock, Thread
-from unittest.mock import Mock, patch as _patch
+from unittest.mock import Mock, patch as _patch, call
 
 import pytest
 from docker.errors import APIError
@@ -7,7 +7,7 @@ from twisted.trial.unittest import TestCase
 
 from golem.envs import RuntimeStatus
 from golem.envs.docker import DockerPayload, DockerBind
-from golem.envs.docker.cpu import DockerCPURuntime
+from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput
 
 
 def patch(name: str, *args, **kwargs):
@@ -463,3 +463,135 @@ class TestStop(TestDockerCPURuntime):
         deferred.addCallback(_check)
 
         return deferred
+
+
+class TestStdout(TestDockerCPURuntime):
+
+    @patch_runtime('_get_output', side_effect=ValueError)
+    def test_error(self, _):
+        with self.assertRaises(ValueError):
+            self.runtime.stdout()
+
+    @patch_runtime('_get_output')
+    def test_ok(self, get_output):
+        result = self.runtime.stdout(encoding="utf-8")
+        get_output.assert_called_once_with(stdout=True, encoding="utf-8")
+        self.assertEqual(result, get_output.return_value)
+
+
+class TestStderr(TestDockerCPURuntime):
+
+    @patch_runtime('_get_output', side_effect=ValueError)
+    def test_error(self, _):
+        with self.assertRaises(ValueError):
+            self.runtime.stderr()
+
+    @patch_runtime('_get_output')
+    def test_ok(self, get_output):
+        result = self.runtime.stderr(encoding="utf-8")
+        get_output.assert_called_once_with(stderr=True, encoding="utf-8")
+        self.assertEqual(result, get_output.return_value)
+
+
+class TestGetOutput(TestDockerCPURuntime):
+
+    def test_invalid_status(self):
+        self._generic_test_invalid_status(
+            method=self.runtime._get_output,
+            valid_statuses={
+                RuntimeStatus.RUNNING,
+                RuntimeStatus.STOPPED,
+                RuntimeStatus.FAILURE}
+        )
+
+    @patch_runtime('_update_status')
+    @patch_runtime('_get_raw_output')
+    def test_running(self, get_raw_output, update_status):
+        with self.runtime._status_lock:
+            self.runtime._status = RuntimeStatus.RUNNING
+
+        result = self.runtime._get_output(stdout=True, encoding="utf-8")
+        get_raw_output.assert_called_once_with(stdout=True, stream=True)
+        update_status.assert_called_once()
+        self.assertIsInstance(result, DockerOutput)
+        self.assertEqual(result._raw_output, get_raw_output.return_value)
+        self.assertEqual(result._encoding, "utf-8")
+
+    @patch_runtime('_update_status')
+    @patch_runtime('_get_raw_output')
+    def test_stopped(self, get_raw_output, update_status):
+        with self.runtime._status_lock:
+            self.runtime._status = RuntimeStatus.STOPPED
+
+        result = self.runtime._get_output(stdout=True, encoding="utf-8")
+        get_raw_output.assert_called_once_with(stdout=True, stream=False)
+        update_status.assert_called_once()
+        self.assertIsInstance(result, DockerOutput)
+        self.assertEqual(result._raw_output, get_raw_output.return_value)
+        self.assertEqual(result._encoding, "utf-8")
+
+    @patch_runtime('_update_status')
+    @patch_runtime('_get_raw_output')
+    def test_stopped_in_the_meantime(self, get_raw_output, update_status):
+        with self.runtime._status_lock:
+            self.runtime._status = RuntimeStatus.RUNNING
+
+        def _update_status():
+            with self.runtime._status_lock:
+                self.runtime._status = RuntimeStatus.STOPPED
+        update_status.side_effect = _update_status
+        raw_output = Mock()
+        get_raw_output.side_effect = [None, raw_output]
+
+        result = self.runtime._get_output(stdout=True, encoding="utf-8")
+        get_raw_output.assert_has_calls([
+            call(stdout=True, stream=True),
+            call(stdout=True, stream=False)])
+        update_status.assert_called_once()
+        self.assertIsInstance(result, DockerOutput)
+        self.assertEqual(result._raw_output, raw_output)
+        self.assertEqual(result._encoding, "utf-8")
+
+
+class TestGetRawOutput(TestDockerCPURuntime):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.runtime._container_id = "container_id"
+
+    def test_no_arguments(self):
+        with self.assertRaises(AssertionError):
+            self.runtime._get_raw_output()
+
+    def test_container_id_missing(self):
+        self.runtime._container_id = None
+        with self.assertRaises(AssertionError):
+            self.runtime._get_raw_output(stdout=True)
+
+    def test_client_error(self):
+        self.client.attach.side_effect = APIError("")
+        result = self.runtime._get_raw_output(stdout=True)
+        self.assertEqual(result, [])
+        self.log_exception.assert_called_once()
+
+    def test_stdout_stream(self):
+        result = self.runtime._get_raw_output(stdout=True, stream=True)
+        self.assertEqual(result, self.client.attach.return_value)
+        self.client.attach.assert_called_once_with(
+            container=self.runtime._container_id,
+            stdout=True,
+            stderr=False,
+            logs=True,
+            stream=True
+        )
+
+    def test_stderr_non_stream(self):
+        result = self.runtime._get_raw_output(stderr=True, stream=False)
+        self.assertEqual(result, [self.client.attach.return_value])
+        self.client.attach.assert_called_once_with(
+            container=self.runtime._container_id,
+            stdout=False,
+            stderr=True,
+            logs=True,
+            stream=False
+        )

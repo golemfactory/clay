@@ -251,6 +251,7 @@ class DockerCPURuntime(Runtime):
             containing single `bytes` object with all output data. An empty
             list is returned if error occurs. """
 
+        assert stdout or stderr
         assert self._container_id is not None
         logger.debug("Attaching to output of container '%s'...")
         client = local_client()
