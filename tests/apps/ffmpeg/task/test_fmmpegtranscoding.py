@@ -15,8 +15,11 @@ from golem.resource.dirmanager import DirManager
 from golem.testutils import TempDirFixture
 from tests.golem.docker.test_docker_image import DockerTestCase
 from tests.golem.docker.test_docker_job import TestDockerJob
+from golem.tools.ci import ci_skip
 
 
+
+@ci_skip
 class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
     def setUp(self):
         super(TestffmpegTranscoding, self).setUp()

@@ -5,11 +5,13 @@ from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
+from golem.tools.ci import ci_skip
 
 
 logger = logging.getLogger(__name__)
 
 
+@ci_skip
 class TestffmpegIntegration(TestTaskIntegration):
 
     def setUp(self):

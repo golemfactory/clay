@@ -15,11 +15,12 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 
 
 # TODO: test invalid video file
 
-
+@ci_skip
 class TestffmpegTask(TempDirFixture):
     def setUp(self):
         super(TestffmpegTask, self).setUp()
