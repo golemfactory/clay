@@ -25,6 +25,7 @@ from twisted.internet.defer import Deferred
 
 import golem
 from golem import model, testutils
+from golem.config.active import EthereumConfig
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
@@ -130,9 +131,9 @@ class TaskSessionTaskToComputeTest(TestCase):
         }
 
     def _get_wtct(self):
-        msg = message.tasks.WantToComputeTask(
+        msg = msg_factories.tasks.WantToComputeTaskFactory(
             concent_enabled=self.use_concent,
-            **self._get_task_parameters()
+            **self._get_task_parameters(),
         )
         msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member
         return msg
@@ -229,59 +230,66 @@ class TaskSessionTaskToComputeTest(TestCase):
         ))
         assert not ts2.task_manager.task_computation_failure.called
 
-    @patch('golem.network.history.MessageHistoryService.instance')
-    def test_request_task(self, *_):
-        mt = self._get_wtct()
-        ts2 = self._get_requestor_tasksession(accept_provider=True)
+    def _fake_send_ttc(self):
+        wtct = self._get_wtct()
+        ts = self._get_requestor_tasksession(accept_provider=True)
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(task_id=wtct.task_id)
         task_state = self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = ctd
-        ts2.task_manager.should_wait_for_node.return_value = False
-        ts2.conn.send_message.side_effect = \
+        ts.task_manager.get_next_subtask.return_value = ctd
+        ts.task_manager.should_wait_for_node.return_value = False
+        ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
         options = HyperdriveClientOptions("CLI1", 0.3)
-        ts2.task_server.get_share_options.return_value = options
-        ts2.interpret(mt)
-        ts2.conn.send_message.assert_called_once()
-        ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, message.tasks.TaskToCompute)
+        ts.task_server.get_share_options.return_value = options
+        ts.interpret(wtct)
+        ts.conn.send_message.assert_called_once()
+        ttc = ts.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ttc, message.tasks.TaskToCompute)
+        return ttc, wtct, ctd, task_state, ts
+
+    @patch('golem.network.history.MessageHistoryService.instance')
+    def test_request_task(self, *_):
+        ttc, wtct, ctd, task_state, ts = self._fake_send_ttc()
         expected = [
             ['requestor_id', self.requestor_key],
-            ['provider_id', ts2.key_id],
+            ['provider_id', ts.key_id],
             ['requestor_public_key', self.requestor_key],
             ['requestor_ethereum_public_key', self.requestor_key],
             ['compute_task_def', ctd],
-            ['want_to_compute_task', (False, (mt.header, mt.sig, mt.slots()))],
+            ['want_to_compute_task',
+             (False, (wtct.header, wtct.sig, wtct.slots()))],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
-            ['ethsig', ms.ethsig],
+            ['ethsig', ttc.ethsig],
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
                                    'options': {}}],
+            ['promissory_note_sig',
+             ttc.get_promissory_note().sign(self.requestor_keys.raw_privkey)],
+            ['concent_promissory_note_sig',
+             ttc.get_concent_promissory_note(
+                 EthereumConfig.deposit_contract_address
+             ).sign(
+                 self.requestor_keys.raw_privkey)],
         ]
-        self.assertCountEqual(ms.slots(), expected)
+        self.assertCountEqual(ttc.slots(), expected)
 
     def test_task_to_compute_eth_signature(self):
-        wtct = self._get_wtct()
-        ts2 = self._get_requestor_tasksession(accept_provider=True)
-        self._fake_add_task()
-
-        ctd = message.tasks.ComputeTaskDef(task_id=wtct.task_id)
-        self._set_task_state()
-
-        ts2.task_manager.get_next_subtask.return_value = ctd
-        ts2.task_manager.should_wait_for_node.return_value = False
-        options = HyperdriveClientOptions("CLI1", 0.3)
-        ts2.task_server.get_share_options.return_value = options
-        ts2.interpret(wtct)
-        ttc = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ttc, message.tasks.TaskToCompute)
+        ttc, wtct, ctd, task_state, ts = self._fake_send_ttc()
         self.assertEqual(ttc.requestor_ethereum_public_key, self.requestor_key)
         self.assertTrue(ttc.verify_ethsig())
+
+    def test_task_to_compute_promissory_notes(self):
+        ttc, _, __, ___, ____ = self._fake_send_ttc()
+        self.assertTrue(ttc.verify_promissory_note())
+        self.assertTrue(ttc.verify_concent_promissory_note(
+            EthereumConfig.deposit_contract_address
+        ))
+
 
 # pylint:enable=no-member
 
@@ -335,9 +343,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     def _get_srr(self, key2=None, concent=False):
         key1 = 'known'
         key2 = key2 or key1
-        srr = msg_factories.tasks.SubtaskResultsRejectedFactory(
-            report_computed_task__task_to_compute__concent_enabled=concent
-        )
+        srr = msg_factories.tasks.SubtaskResultsRejectedFactory(**{
+            'report_computed_task__task_to_compute__concent_enabled': concent,
+            'report_computed_task__'
+            'task_to_compute__'
+            'want_to_compute_task__'
+            'provider_public_key': encode_hex(self.pubkey)
+        })
         srr._fake_sign()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = key1
@@ -388,9 +400,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         stm.assert_called()
         kwargs = stm.call_args_list[0][1]
         self.assertEqual(kwargs['subtask_id'], srr.subtask_id)
-        self.assertIsInstance(kwargs['msg'],
-                              message.concents.SubtaskResultsVerify)
-        self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
+        srv = kwargs['msg']
+        self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
+        self.assertEqual(srv.subtask_results_rejected, srr)
+        self.assertTrue(srv.verify_concent_promissory_note(
+            EthereumConfig.deposit_contract_address
+        ))
 
     # pylint: disable=too-many-statements
     def test_react_to_task_to_compute(self, *_):
