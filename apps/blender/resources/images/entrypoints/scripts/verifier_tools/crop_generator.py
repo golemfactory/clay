@@ -95,17 +95,23 @@ class Crop:
         crop_scene_y_max = subimage.region.bottom
         crop_scene_y_min = subimage.region.top
 
+        print(f'-> crop_scene_x_min={crop_scene_x_min}')
+        print(f'-> crop_scene_x_max={crop_scene_x_max}')
+        print(f'-> crop_scene_y_min={crop_scene_y_min}')
+        print(f'-> crop_scene_y_max={crop_scene_y_max}')
+
+
         # todo review: rename variables below to something more descriptive.
         #  Analogically for the "pixel" equivalents (x_pixel_min, ...)
-        x_difference = round((crop_scene_x_max - relative_crop_size_x) * 100, 2)
-        x_min = random.randint(int(crop_scene_x_min * 100),
-                               int(x_difference)) / 100
+        x_difference = round((crop_scene_x_max - relative_crop_size_x) * 100)
+        x_min = random.randint(round(crop_scene_x_min * 100),
+                               x_difference) / 100
         x_max = round(x_min + relative_crop_size_x, 2)
         print(f"x_difference={x_difference}, x_min={x_min}, x_max={x_max}")
         # todo review: looks a lot like a code duplication, create helper function
-        y_difference = round((crop_scene_y_max - relative_crop_size_y) * 100, 2)
-        y_min = random.randint(int(crop_scene_y_min * 100),
-                               int(y_difference)) / 100
+        y_difference = round((crop_scene_y_max - relative_crop_size_y) * 100)
+        y_min = random.randint(round(crop_scene_y_min * 100),
+                               y_difference) / 100
         y_max = round(y_min + relative_crop_size_y, 2)
         print(f"y_difference={y_difference}, y_min={y_min}, y_max={y_max}")
         return Region(
