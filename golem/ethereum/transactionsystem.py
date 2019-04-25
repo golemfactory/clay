@@ -728,7 +728,7 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         if not self._config.FAUCET_ENABLED:
             return
-        if self._eth_balance < 0.01 * denoms.ether:
+        if self._eth_balance < 0.005 * denoms.ether:
             log.info("Requesting tETH from faucet")
             tETH_faucet_donate(self._sci.get_eth_address())
             return
