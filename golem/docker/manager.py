@@ -143,6 +143,14 @@ class DockerManager(DockerConfigManager):
         host_config = dict(self._container_host_config)
         if self.hypervisor:
             host_config['binds'] = self.hypervisor.create_volumes(binds)
+        else:
+            host_config['binds'] = {
+                bind.source_as_posix: {
+                    'bind': bind.target,
+                    'mode': bind.mode
+                }
+                for bind in binds
+            }
         return host_config
 
     def constrain(self, restart_vm: bool = True, **params) -> bool:
