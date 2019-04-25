@@ -798,7 +798,6 @@ class TaskManager(TaskEventListener):
         task_id = self.subtask2task_mapping[subtask_id]
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.subtask_progress = 1.0
-        ss.subtask_rem_time = 0.0
         ss.subtask_status = SubtaskStatus.finished
         ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
         ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
@@ -827,7 +826,6 @@ class TaskManager(TaskEventListener):
         task.computation_failed(subtask_id, ban_node)
 
         subtask_state.subtask_progress = 1.0
-        subtask_state.subtask_rem_time = 0.0
         subtask_state.subtask_status = SubtaskStatus.failure
         subtask_state.stderr = str(err)
 

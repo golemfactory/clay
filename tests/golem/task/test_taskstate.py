@@ -29,7 +29,6 @@ class TestSubtaskState(unittest.TestCase):
         ss.time_started = get_timestamp_utc()
         ss.deadline = timeout_to_deadline(ss.time_started + 5)
         ss.extra_data = {"param1": 1323, "param2": "myparam"}
-        ss.subtask_rem_time = deadline_to_timeout(ss.deadline) - ss.time_started
         ss.subtask_status = SubtaskStatus.starting
         ss.value = 138
         ss.stdout = "path/to/file"
@@ -45,11 +44,6 @@ class TestSubtaskState(unittest.TestCase):
 
         assert ss_dict.get('deadline') is None
         assert ss_dict.get('extra_data') is None
-
-        self.assertAlmostEqual(
-            ss_dict['time_remaining'],
-            5.0,
-        )
         assert ss_dict['status'] == SubtaskStatus.starting.value
 
         assert ss_dict['stdout'] == "path/to/file"

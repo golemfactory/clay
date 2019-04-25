@@ -471,7 +471,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.verification_finished.call_count == 1
         assert t.finished["xxyyzz"]
         assert ss.subtask_progress == 1.0
-        assert ss.subtask_rem_time == 0.0
         assert ss.subtask_status == SubtaskStatus.finished
         assert self.tm.tasks_states["xyz"].status == TaskStatus.finished
         checker([("xyz", ctd['subtask_id'], SubtaskOp.FINISHED),
@@ -524,7 +523,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         ss = self.tm.tasks_states["qwe"].subtask_states["qqwwee"]
         assert ss.subtask_status == SubtaskStatus.failure
         assert ss.subtask_progress == 1.0
-        assert ss.subtask_rem_time == 0.0
         assert ss.stderr == "something went wrong"
         with self.assertLogs(logger, level="WARNING"):
             (handler, checker) = self._connect_signal_handler()
@@ -1444,7 +1442,6 @@ class TestCopySubtaskResults(DatabaseFixture):
                 'new_subtask_id', old_subtask, results)
 
             self.assertEqual(new_subtask_state.subtask_progress, 1.0)
-            self.assertEqual(new_subtask_state.subtask_rem_time, 0.0)
             self.assertEqual(
                 new_subtask_state.subtask_status, SubtaskStatus.finished)
             self.assertEqual(new_subtask_state.stdout, 'stdout')

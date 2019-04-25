@@ -57,8 +57,6 @@ class SubtaskState(object):
         self.deadline = 0
         self.price = 0
         self.extra_data = {}
-        # FIXME: subtask_rem_time is always equal 0 (#2562)
-        self.subtask_rem_time = 0
         self.subtask_status: SubtaskStatus = SubtaskStatus.starting
         self.stdout = ""
         self.stderr = ""
@@ -72,7 +70,6 @@ class SubtaskState(object):
             'status': self.subtask_status.value,
             'progress': self.subtask_progress,
             'time_started': self.time_started,
-            'time_remaining': self.subtask_rem_time,
             'results': [to_unicode(r) for r in self.results],
             'stderr': to_unicode(self.stderr),
             'stdout': to_unicode(self.stdout),
