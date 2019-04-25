@@ -17,11 +17,13 @@ from golem.core.common import deadline_to_timeout
 from golem.core.hostaddress import ip_address_private
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     to_hyperg_peer
+from golem.network.transport import msg_queue
 from golem.resource.hyperdrive import resource as hpd_resource
 from golem.resource.resourcehandshake import ResourceHandshake
 
 
 if TYPE_CHECKING:
+    # pylint: disable=unused-import
     from golem.task import taskmanager
 
 
@@ -211,17 +213,17 @@ class TaskResourcesMixin:
             return
 
         self.resource_handshakes[key_id] = handshake
-        self._start_handshake_timer()
+        self._start_handshake_timer(key_id)
         self._share_handshake_nonce(key_id)
 
-    def _start_handshake_timer(self):
+    def _start_handshake_timer(self, key_id):
         from twisted.internet import task
         from twisted.internet import reactor
 
         task.deferLater(
             reactor,
             self.HANDSHAKE_TIMEOUT,
-            lambda *_: self._handshake_timeout(self.key_id)
+            lambda *_: self._handshake_timeout(key_id)
         )
 
     def _handshake_timeout(self, key_id):
@@ -264,12 +266,12 @@ class TaskResourcesMixin:
         )
 
         os.remove(handshake.file)
-        self.send_message(
+        msg_queue.put(
             node_id=key_id,
             msg=message.resources.ResourceHandshakeStart(
                 resource=handshake.hash, options=options.__dict__,
             ),
-    )
+        )
 
     def _share_handshake_nonce(self, key_id):
         handshake = self.resource_handshakes.get(key_id)

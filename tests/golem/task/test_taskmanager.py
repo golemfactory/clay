@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+import unittest
 from unittest.mock import Mock, patch, MagicMock
 
 from faker import Faker
@@ -18,11 +19,12 @@ from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
 from apps.appsmanager import AppsManager
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
+from golem import model
 from golem import testutils
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.local_node import LocalNode
@@ -1331,6 +1333,30 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 TaskStatus.timeout,
             )
 
+    def test_subtask_to_task(self, *_):
+        task_keeper = Mock(subtask_to_task=dict())
+        mapping = dict()
+
+        self.tm.comp_task_keeper = task_keeper
+        self.tm.subtask2task_mapping = mapping
+        task_keeper.subtask_to_task['sid_1'] = 'task_1'
+        mapping['sid_2'] = 'task_2'
+
+        self.assertEqual(
+            self.tm.subtask_to_task('sid_1', model.Actor.Provider),
+            'task_1',
+        )
+        self.assertEqual(
+            self.tm.subtask_to_task('sid_2', model.Actor.Requestor),
+            'task_2',
+        )
+        self.assertIsNone(
+            self.tm.subtask_to_task('sid_2', model.Actor.Provider),
+        )
+        self.assertIsNone(
+            self.tm.subtask_to_task('sid_1', model.Actor.Requestor),
+        )
+
 
 class TestCopySubtaskResults(DatabaseFixture):
 
@@ -1436,3 +1462,79 @@ class TestCopySubtaskResults(DatabaseFixture):
         )
         deferred.addCallback(verify)
         return deferred
+
+
+@patch('golem.core.statskeeper.StatsKeeper._get_or_create')
+class TestTaskFinished(unittest.TestCase):
+    def setUp(self):
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            self.tm = TaskManager(
+                node=dt_p2p_factory.Node(),
+                keys_auth=MagicMock(spec=KeysAuth),
+                root_path='/tmp',
+                config_desc=ClientConfigDescriptor(),
+                task_persistence=False
+            )
+        self.task_id = str(uuid.uuid4())
+        self.tm.tasks_states[self.task_id] = TaskState()
+
+    def test_not_started(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.notStarted
+        self.assertFalse(self.tm.task_finished(self.task_id))
+
+    def test_waiting(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.waiting
+        self.assertFalse(self.tm.task_finished(self.task_id))
+
+    def test_finished(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.finished
+        self.assertTrue(self.tm.task_finished(self.task_id))
+
+
+@patch('golem.core.statskeeper.StatsKeeper._get_or_create')
+class TestNeedsComputation(unittest.TestCase):
+    def setUp(self):
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            self.tm = TaskManager(
+                node=dt_p2p_factory.Node(),
+                keys_auth=MagicMock(spec=KeysAuth),
+                root_path='/tmp',
+                config_desc=ClientConfigDescriptor(),
+                task_persistence=False
+            )
+        dummy_path = '/fiu/bzdziu'
+        self.task_id = str(uuid.uuid4())
+        self.tm.tasks_states[self.task_id] = TaskState()
+        definition = TaskDefinition()
+        definition.options = Mock()
+        definition.output_format = Mock()
+        definition.task_id = self.task_id
+        definition.task_type = "blender"
+        definition.subtask_timeout = 3671
+        definition.timeout = 3671 * 10
+        definition.max_price = 1 * 10 ** 18
+        definition.resolution = [1920, 1080]
+        definition.resources = [str(uuid.uuid4()) for _ in range(5)]
+        #definition.output_file = os.path.join(self.tempdir, 'somefile')
+        definition.main_scene_file = dummy_path
+        definition.options.frames = [1]
+        self.task = BlenderRenderTask(
+            task_definition=definition,
+            owner=dt_p2p_factory.Node(
+                node_name='node',
+            ),
+            total_tasks=1,
+            root_path=dummy_path,
+        )
+        self.tm.tasks[self.task_id] = self.task
+
+    def test_finished(self, *_):
+        self.tm.tasks_states[self.task_id].status = TaskStatus.finished
+        self.assertFalse(self.tm.task_needs_computation(self.task_id))
+
+    def test_task_doesnt_need_computation(self, *_):
+        self.task.last_task = self.task.total_tasks
+        self.assertFalse(self.tm.task_needs_computation(self.task_id))
+
+    def test_needs_computation(self, *_):
+        self.assertTrue(self.tm.task_needs_computation(self.task_id))

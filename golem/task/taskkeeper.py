@@ -25,7 +25,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.taskproviderstats import ProviderStatsManager
 
-logger = logging.getLogger('golem.task.taskkeeper')
+logger = logging.getLogger(__name__)
 
 
 def compute_subtask_value(price: int, computation_time: int) -> int:
@@ -57,7 +57,7 @@ class CompTaskInfo:
     def __init__(self, header: dt_tasks.TaskHeader) -> None:
         self.header = header
         self.requests = 1
-        self.subtasks: dict = {}
+        self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, 0)
@@ -120,7 +120,7 @@ class CompTaskKeeper:
         self.subtask_to_task: typing.Dict[str, str] = {}
 
         # task_id to package paths mapping
-        self.task_package_paths: typing.Dict[str, list] = {}
+        self.task_package_paths: typing.Dict[str, typing.List[str]] = {}
 
         # stats
         self.provider_stats_manager = ProviderStatsManager()
@@ -333,14 +333,14 @@ class TaskHeaderKeeper:
         # all computing tasks that this node knows about
         self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
-        self.supported_tasks = []
+        self.supported_tasks: typing.List[str] = []
         # results of tasks' support checks
-        self.support_status = {}
+        self.support_status: typing.Dict[str, SupportStatus] = {}
         # tasks that were removed from network recently, so they won't
         # be added again to task_headers
-        self.removed_tasks = {}
+        self.removed_tasks: typing.Dict[str, float] = {}
         # task ids by owner
-        self.tasks_by_owner: typing.Dict[str, set] = {}
+        self.tasks_by_owner: typing.Dict[str, typing.Set[str]] = {}
         # Keep track which tasks were checked when
         self.last_checking: typing.Dict[str, datetime.datetime] = {}
 

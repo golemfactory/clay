@@ -18,6 +18,7 @@ from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 
+from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
@@ -127,6 +128,12 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
+        self.FINISHED_STATUS = frozenset([
+            TaskStatus.finished,
+            TaskStatus.aborted,
+            TaskStatus.timeout,
+            TaskStatus.restarted,
+        ])
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -384,11 +391,20 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
-    def task_needs_computation(self, task_id: str) -> bool:
+    def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        if task_status not in self.activeStatus:
+        return task_status in self.FINISHED_STATUS
+
+    def task_needs_computation(self, task_id: str) -> bool:
+        if self.task_finished(task_id):
+            task_status = self.tasks_states[task_id].status
             logger.info(
-                f'task is not active: {task_id}, status: {task_status}')
+                'task is not active: %(task_id)s, status: %(task_status)s',
+                {
+                    'task_id': task_id,
+                    'task_status': task_status,
+                }
+            )
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
@@ -721,6 +737,7 @@ class TaskManager(TaskEventListener):
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result,
                                verification_finished):
+        logger.debug("Computed task received. subtask_id=%s", subtask_id)
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -738,6 +755,7 @@ class TaskManager(TaskEventListener):
 
         @TaskManager.handle_generic_key_error
         def verification_finished_():
+            logger.debug("Verification finished. subtask_id=%s", subtask_id)
             ss = self.__set_subtask_state_finished(subtask_id)
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
@@ -989,6 +1007,17 @@ class TaskManager(TaskEventListener):
         t.update_task_state(ts)
 
         return ts
+
+    def subtask_to_task(
+            self,
+            subtask_id: str,
+            local_role: model.Actor,
+    ) -> Optional[str]:
+        if local_role == model.Actor.Provider:
+            return self.comp_task_keeper.subtask_to_task.get(subtask_id)
+        elif local_role == model.Actor.Requestor:
+            return self.subtask2task_mapping.get(subtask_id)
+        return None
 
     def get_subtasks(self, task_id) -> Optional[List[str]]:
         """
