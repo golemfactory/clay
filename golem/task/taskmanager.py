@@ -16,6 +16,10 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+
+from golem import model
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -82,8 +86,11 @@ class TaskManager(TaskEventListener):
 
     def __init__(
             self, node, keys_auth, root_path,
+            config_desc: ClientConfigDescriptor,
             tasks_dir="tasks", task_persistence=True,
-            apps_manager=AppsManager(), finished_cb=None):
+            apps_manager=AppsManager(),
+            finished_cb=None,
+    ):
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -110,6 +117,10 @@ class TaskManager(TaskEventListener):
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_temporary_dir,
+            client_kwargs={
+                'host': config_desc.hyperdrive_rpc_address,
+                'port': config_desc.hyperdrive_rpc_port,
+            },
         )
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager
@@ -117,6 +128,12 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
+        self.FINISHED_STATUS = frozenset([
+            TaskStatus.finished,
+            TaskStatus.aborted,
+            TaskStatus.timeout,
+            TaskStatus.restarted,
+        ])
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -184,6 +201,8 @@ class TaskManager(TaskEventListener):
         self.tasks[task_id] = task
         self.tasks_states[task_id] = ts
         logger.info("Task %s added", task_id)
+
+        self._create_task_output_dir(task.task_definition)
 
         self.notice_task_updated(task_id,
                                  op=TaskOp.CREATED,
@@ -253,6 +272,41 @@ class TaskManager(TaskEventListener):
                          task_id, filepath)
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
+
+    def _create_task_output_dir(self, task_def: TaskDefinition):
+        """
+        Creates the output directory for a task along with any parents,
+        if necessary. The path is obtained from `output_file` field in the
+        task's definition.
+        For example, for an output file with the following path:
+        `/some/output/dir/result.png` the created directory will be:
+        `/some/output/dir`.
+        """
+        output_dir = self._get_task_output_dir(task_def)
+        if not output_dir:
+            return
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+    def _try_remove_task_output_dir(self, task_def: TaskDefinition):
+        """
+        Attempts to remove the output directory from a given task definition.
+        This will only succeed if the directory is empty.
+        """
+        output_dir = self._get_task_output_dir(task_def)
+        if not output_dir:
+            return
+
+        try:
+            output_dir.rmdir()
+        except OSError:
+            pass
+
+    @staticmethod
+    def _get_task_output_dir(task_def: TaskDefinition) -> Optional[Path]:
+        if not task_def.output_file:
+            return None
+
+        return Path(task_def.output_file).resolve().parent
 
     @staticmethod
     def _migrate_status_to_enum(state: TaskState) -> None:
@@ -337,11 +391,20 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
-    def task_needs_computation(self, task_id: str) -> bool:
+    def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        if task_status not in self.activeStatus:
+        return task_status in self.FINISHED_STATUS
+
+    def task_needs_computation(self, task_id: str) -> bool:
+        if self.task_finished(task_id):
+            task_status = self.tasks_states[task_id].status
             logger.info(
-                f'task is not active: {task_id}, status: {task_status}')
+                'task is not active: %(task_id)s, status: %(task_status)s',
+                {
+                    'task_id': task_id,
+                    'task_status': task_status,
+                }
+            )
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
@@ -374,10 +437,17 @@ class TaskManager(TaskEventListener):
             max_resource_size, max_memory_size, address,
         )
 
+        if node_id == self.keys_auth.key_id:
+            logger.warning("No subtasks for self")
+            return None
+
         if not self.is_my_task(task_id):
             return None
 
-        if not self.check_next_subtask(node_id, node_name, task_id, price):
+        if not self.check_next_subtask(task_id, price):
+            return None
+
+        if not self.task_needs_computation(task_id):
             return None
 
         if self.should_wait_for_node(task_id, node_id):
@@ -468,40 +538,33 @@ class TaskManager(TaskEventListener):
             logger.warning("Client has failed on subtask within this task"
                            " and is banned from it. node_id=%s, task_id=%s",
                            short_node_id(node_id), task_id)
-
+            return True
         return False
 
-    def check_next_subtask(  # noqa pylint: disable=too-many-arguments
-            self, node_id, node_name, task_id, price):
-        """ Check next subtask from task <task_id> to give to node with
-        id <node_id> and name. The returned tuple can be used to find the reason
-        and handle accordingly.
-        :param node_id:
-        :param node_name:
-        :param task_id:
-        :param price:
-        :return bool: Function returns a boolean.
-        The return value describes if the task is able to be assigned
-        """
+    def check_next_subtask(self, task_id: str, price: int) -> bool:
+        """Check next subtask from task <task_id> with given price limit"""
         logger.debug(
-            'check_next_subtask(%r, %r, %r, %r)',
-            node_id, node_name, task_id, price,
+            'check_next_subtask(%r, %r)',
+            task_id,
+            price,
         )
         if not self.is_my_task(task_id):
-            logger.info("Cannot find task in my tasks. task_id=%s, provider=%s",
-                        task_id, node_info_str(node_name, node_id))
+            logger.info("Cannot find task in my tasks. task_id=%s",
+                        task_id)
             return False
 
         task = self.tasks[task_id]
-
         if task.header.max_price < price:
-            return False
-
-        if not self.task_needs_computation(task_id):
-            logger.info(
-                'Task does not need computation. task_id=%s, provider=%s',
-                task_id,
-                node_info_str(node_name, node_id)
+            logger.debug(
+                'Requested price too high.'
+                ' task_id=%(task_id)s,'
+                ' task.header.max_price=%(task_price)s,'
+                ' requested_price=%(price)s',
+                {
+                    'task_id': task_id,
+                    'price': price,
+                    'task_price': task.header.max_price,
+                },
             )
             return False
 
@@ -674,6 +737,7 @@ class TaskManager(TaskEventListener):
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result,
                                verification_finished):
+        logger.debug("Computed task received. subtask_id=%s", subtask_id)
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -691,10 +755,12 @@ class TaskManager(TaskEventListener):
 
         @TaskManager.handle_generic_key_error
         def verification_finished_():
+            logger.debug("Verification finished. subtask_id=%s", subtask_id)
             ss = self.__set_subtask_state_finished(subtask_id)
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.subtask_status = SubtaskStatus.failure
+                ss.stderr = "[GOLEM] Not accepted"
                 self.notice_task_updated(
                     task_id,
                     subtask_id=subtask_id,
@@ -830,6 +896,7 @@ class TaskManager(TaskEventListener):
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 # TODO: t.tell_it_has_timeout()?
                 self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
+                self._try_remove_task_output_dir(t.task_definition)
         return nodes_with_timeouts
 
     def get_progresses(self):
@@ -940,6 +1007,17 @@ class TaskManager(TaskEventListener):
         t.update_task_state(ts)
 
         return ts
+
+    def subtask_to_task(
+            self,
+            subtask_id: str,
+            local_role: model.Actor,
+    ) -> Optional[str]:
+        if local_role == model.Actor.Provider:
+            return self.comp_task_keeper.subtask_to_task.get(subtask_id)
+        elif local_role == model.Actor.Requestor:
+            return self.subtask2task_mapping.get(subtask_id)
+        return None
 
     def get_subtasks(self, task_id) -> Optional[List[str]]:
         """

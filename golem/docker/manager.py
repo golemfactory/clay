@@ -52,11 +52,11 @@ class DockerManager(DockerConfigManager):
                 ***************************************************************
                 No supported VM hypervisor was found.
                 Golem will not be able to compute anything.
-                hypervisor.setup() returned {}
+                hypervisor.setup() returned {!r}
                 ***************************************************************
                 """.format(e)
             )
-            raise EnvironmentError
+            raise EnvironmentError("No VM hypervisor found.")
 
         try:
             # We're checking the availability of "docker" command line utility
@@ -69,11 +69,11 @@ class DockerManager(DockerConfigManager):
                 ***************************************************************
                 Docker is not available, not building images.
                 Golem will not be able to compute anything.
-                Command 'docker info' returned {}
+                Command 'docker info' returned {!r}
                 ***************************************************************
                 """.format(err)
             )
-            raise EnvironmentError
+            raise EnvironmentError("Docker unavailable.")
 
         try:
             self.pull_images()

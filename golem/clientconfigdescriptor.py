@@ -69,6 +69,21 @@ class ClientConfigDescriptor(object):
         self.mask_update_interval = 0
         self.mask_update_num_bits = 0
 
+        self.disallow_node_timeout_seconds: typing.Optional[int] = None
+        self.disallow_ip_timeout_seconds: typing.Optional[int] = None
+
+        self.disallow_id_max_times = 1
+        self.disallow_ip_max_times = 1
+
+        self.hyperdrive_port: typing.Optional[int] = None
+        self.hyperdrive_address: typing.Optional[str] = None
+        self.hyperdrive_rpc_port: typing.Optional[int] = None
+        self.hyperdrive_rpc_address: typing.Optional[str] = None
+
+    def __repr__(self):
+        return '{}: {}'.format(self.__class__, {
+            v: getattr(self, v) for v in vars(self)})
+
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig

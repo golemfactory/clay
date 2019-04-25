@@ -14,6 +14,7 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
+from apps.rendering.task.renderingtask import RenderingTask
 from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
@@ -99,7 +100,7 @@ def validate_client(client: Client):
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
+            'toggle shutdown mode off to create new tasks.')
     if client.task_server is None:
         raise CreateTaskError("Golem is not ready")
 
@@ -299,7 +300,7 @@ def _inform_subsystems(client, task, packager_result):
         task.header.deadline,
     )
 
-    resource_server_result = yield client.resource_server.add_task(
+    resource_server_result = yield client.resource_server.add_resources(
         package_path,
         package_sha1,
         task_id,
@@ -668,3 +669,39 @@ class ClientProvider:
         }
         logger.info('Estimated task cost. result=%r', result)
         return result
+
+    @rpc_utils.expose('comp.task.rendering.task_fragments')
+    def get_fragments(self, task_id: str) -> \
+            typing.Tuple[
+                    typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
+                    typing.Optional[str]
+            ]:
+        """
+        Returns the task fragments for a given rendering task. A single task
+        fragment is a collection of subtasks referring to the same, common part
+        of the whole task. Fragments are identified using incremental integer
+        indices.
+        :param task_id: Task ID of the rendering task for which fragments should
+        be obtained.
+        :return: A dictionary where keys are the fragment indices and values are
+        lists of subtasks asssociated with a given fragment. Returns None
+        (along with an error message) if the task is not known or it is not a
+        rendering task.
+        """
+        task = self.task_manager.tasks.get(task_id)
+        if task is None:
+            return None, f"Task not found: '{task_id}'"
+        if not isinstance(task, RenderingTask):
+            return None, f"Incorrect task type: '{task.__class__.__name__}'"
+
+        fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
+
+        for subtask_index in range(1, task.total_tasks + 1):
+            fragments[subtask_index] = []
+
+        for extra_data in task.subtasks_given.values():
+            subtask = self.task_manager.get_subtask_dict(
+                extra_data['subtask_id'])
+            fragments[extra_data['start_task']].append(subtask)
+
+        return fragments, None

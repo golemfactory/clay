@@ -12,7 +12,7 @@ from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.appconfig import MIN_PRICE
-from golem.core.common import timeout_to_deadline, get_timestamp_utc
+from golem.core import common
 from golem.task.taskbase import Task, AcceptClientVerdict
 
 
@@ -41,6 +41,10 @@ class DummyTaskParameters(object):
         self.subtask_data_size = subtask_data_size
         self.result_size = result_size
         self.difficulty = difficulty
+
+    def __str__(self):
+        import pprint
+        return pprint.pformat(self.__dict__)
 
 
 # pylint: disable=too-many-locals
@@ -79,13 +83,13 @@ class DummyTask(Task):
             task_id=task_id,
             task_owner=task_owner,
             environment=environment,
-            deadline=timeout_to_deadline(14400),
+            deadline=common.timeout_to_deadline(14400),
             subtask_timeout=1200,
             subtasks_count=num_subtasks,
             estimated_memory=0,
             max_price=MIN_PRICE,
             min_version=golem.__version__,
-            timestamp=int(get_timestamp_utc()),
+            timestamp=int(common.get_timestamp_utc()),
         )
 
         # load the script to be run remotely from the file in the current dir
@@ -113,8 +117,12 @@ class DummyTask(Task):
         self.subtask_results = {}
         self.assigned_nodes = {}
         self.assigned_subtasks = {}
-        self.total_tasks = 1
         self._lock = Lock()
+        print(
+            "Task created."
+            f" num_subtasks={num_subtasks}"
+            f" params={params}"
+        )
 
     def __setstate__(self, state):
         super(DummyTask, self).__setstate__(state)
@@ -174,6 +182,11 @@ class DummyTask(Task):
             # assign a task
             self.assigned_nodes[node_id] = subtask_id
             self.assigned_subtasks[subtask_id] = node_id
+        print(
+            "Subtask assigned"
+            f" subtask_id={subtask_id}"
+            f" node_id={common.short_node_id(node_id)}"
+        )
 
         # create subtask-specific data, 4 bits go for one char (hex digit)
         data = random.getrandbits(self.task_params.subtask_data_size * 4)
@@ -183,7 +196,7 @@ class DummyTask(Task):
         subtask_def = ComputeTaskDef()
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
-        subtask_def['deadline'] = timeout_to_deadline(5 * 60)
+        subtask_def['deadline'] = common.timeout_to_deadline(5 * 60)
         subtask_def['extra_data'] = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
@@ -199,7 +212,12 @@ class DummyTask(Task):
         # Check if self.subtask_results contains a non None result
         # for each subtack.
         if not len(self.subtask_results) == self.subtasks_count:
+            print(
+                "Results vs Count: "
+                f"{len(self.subtask_results)} != {self.subtasks_count}",
+            )
             return False
+        print(f"subtask results: {self.subtask_results}")
         return all(self.subtask_results.values())
 
     def verify_subtask(self, subtask_id):
@@ -221,6 +239,11 @@ class DummyTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
+        print(
+            "Computation finished"
+            f" subtask_id: {subtask_id}"
+            f" task_result: {task_result}"
+        )
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
@@ -231,6 +254,8 @@ class DummyTask(Task):
 
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
+        if verification_finished is not None:
+            verification_finished()
 
     def get_resources(self):
         return self.task_resources
@@ -255,7 +280,10 @@ class DummyTask(Task):
         print('DummyTask.abort called')
 
     def update_task_state(self, task_state):
-        print('DummyTask.update_task_state called')
+        print(
+            'DummyTask.update_task_state called'
+            f" task_state={task_state}"
+        )
 
     def get_active_tasks(self):
         return self.assigned_subtasks
@@ -287,7 +315,8 @@ class DummyTask(Task):
             return []
 
     def accept_client(self, node_id):
-        print('DummyTask.accept_client called node_id=%r '
-              '- WIP: move more responsibilities from query_extra_data',
-              node_id)
+        print(
+            "DummyTask.accept_client called"
+            f" node_id={common.short_node_id(node_id)}"
+        )
         return

@@ -236,7 +236,14 @@ def retry(exc_cls, count: int):
     return decorator
 
 
-def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
+# pylint: disable=too-many-branches,too-many-locals
+def config_logging(
+        suffix='',
+        datadir=None,
+        loglevel=None,
+        config_desc=None,
+        formatter_prefix='',  # prefix added to every logged line
+):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -247,6 +254,8 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
+    for formatter in LOGGING.get('formatters', {}).values():
+        formatter['format'] = f"{formatter_prefix}{formatter['format']}"
     for handler_name, handler in LOGGING.get('handlers', {}).items():
         if 'filename' in handler:
             handler['filename'] %= {

@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
-from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -70,7 +70,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc2.last_checking = 10 ** 10
 
         tc2.run()
-        tc2.session_timeout()
 
     def test_resource_failure(self):
         task_server = self.task_server
@@ -80,7 +79,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_id = 'xyz'
         subtask_id = 'xxyyzz'
 
-        tc.task_resource_failure(task_id, 'reason')
+        tc.resource_failure(task_id, 'reason')
         assert not task_server.send_task_failed.called
 
         tc.assigned_subtask = ComputeTaskDef(
@@ -88,7 +87,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             subtask_id=subtask_id,
         )
 
-        tc.task_resource_failure(task_id, 'reason')
+        tc.resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
     def test_computation(self):  # pylint: disable=too-many-statements
@@ -129,7 +128,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_server.request_resource.assert_called_with(
             "xyz", "xxyyzz", ["abcd", "efgh"])
 
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_collected("xyz")
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
@@ -137,7 +136,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_collected("xyz")
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
@@ -166,7 +165,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
                              timeout_to_deadline(5))
         tc.task_server.request_resource.assert_called_with(
             "xyz", "aabbcc", ["abcd", "efgh"])
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertIsNone(tc.counting_thread)
@@ -180,7 +179,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "print('Hello world')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with(
@@ -194,7 +193,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         self.assertIsNotNone(tc.counting_thread)
         self.assertGreater(tc.counting_thread.time_to_compute, 10)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
@@ -203,7 +202,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['subtask_id'] = "xxyyzz2"
         ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         tt = tc.counting_thread
@@ -299,15 +298,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         )
 
         compute_task(*args, **kwargs)
-        assert task_computer.session_closed.called
         assert not start.called
 
         header = mock.Mock(deadline=time.time() + 3600)
         task_computer.task_server.task_keeper.task_headers[task_id] = header
-        task_computer.session_closed.reset_mock()
 
         compute_task(*args, **kwargs)
-        assert not task_computer.session_closed.called
         assert start.called
 
     @staticmethod

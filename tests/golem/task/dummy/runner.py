@@ -59,7 +59,7 @@ def override_ip_info(*_, **__):
     return '1.2.3.4', 40102
 
 
-def create_client(datadir):
+def create_client(datadir, node_name):
     # executed in a subprocess
     from golem.network.stun import pystun
     pystun.get_ip_info = override_ip_info
@@ -70,6 +70,7 @@ def create_client(datadir):
     config_desc.init_from_app_config(app_config)
     config_desc.key_difficulty = 0
     config_desc.use_upnp = False
+    config_desc.node_name = node_name
 
     from golem.core.keysauth import KeysAuth
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
@@ -115,6 +116,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
+    ets.add_payment_info.return_value = int(time.time())
     return ets
 
 
@@ -147,9 +149,13 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    config_logging(
+        datadir=datadir,
+        loglevel="DEBUG",
+        formatter_prefix="RQ   ",
+    )
 
-    client = create_client(datadir)
+    client = create_client(datadir, '[Requestor] DUMMY')
     client.are_terms_accepted = lambda: True
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
@@ -184,7 +190,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     return client  # Used in tests, with mocked reactor
 
 
-def run_computing_node(datadir, peer_address, fail_after=None):
+def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
     client = None
 
     def shutdown():
@@ -203,9 +209,13 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    config_logging(
+        datadir=datadir,
+        loglevel="DEBUG",
+        formatter_prefix=f"P{provider_id} ",
+    )
 
-    client = create_client(datadir)
+    client = create_client(datadir, f'[Provider{ provider_id }] DUMMY')
     client.are_terms_accepted = lambda: True
     client.start()
     client.task_server.task_computer.support_direct_computation = True
@@ -280,11 +290,12 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Start computing nodes in a separate processes
     computing_procs = []
-    for n in range(0, num_computing_nodes):
+    for n in range(num_computing_nodes):
         compdir = path.join(datadir, COMPUTING_NODE_KIND + str(n))
         cmdline = [
             sys.executable, "-u", __file__, COMPUTING_NODE_KIND,
-            compdir, requestor_address
+            compdir, requestor_address,
+            f"{n+1}/{num_computing_nodes}",
         ]
         if node_failure_times and len(node_failure_times) > n:
             # Simulate failure of a computing node
@@ -362,14 +373,19 @@ def dispatch(args):
         # second arg is the data dir,
         # third arg is the number of subtasks.
         run_requesting_node(args[2], int(args[3]))
-    elif len(args) in [4, 5] and args[1] == COMPUTING_NODE_KIND:
+    elif len(args) in [5, 6] and args[1] == COMPUTING_NODE_KIND:
         # I'm a computing node,
         # second arg is the data dir,
         # third arg is the address to connect to,
-        # forth arg is the timeout (optional).
-        fail_after = float(args[4]) if len(args) == 5 else None
-        run_computing_node(args[2], SocketAddress.parse(args[3]),
-                           fail_after=fail_after)
+        # fourth arg is provider_id
+        # fifth arg is the timeout (optional).
+        fail_after = float(args[5]) if len(args) == 6 else None
+        run_computing_node(
+            args[2],
+            SocketAddress.parse(args[3]),
+            fail_after=fail_after,
+            provider_id=args[4],
+        )
     elif len(args) == 1:
         # I'm the main script, run simulation
         error_msg = run_simulation(num_computing_nodes=2, num_subtasks=4,

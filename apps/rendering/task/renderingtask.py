@@ -1,21 +1,23 @@
 import logging
 import math
 import os
-from typing import Type
+from typing import Type, TYPE_CHECKING
 
-from PIL import Image, ImageChops
 from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.imgrepr import load_as_pil
-from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
+from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verificator.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
-from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
+
+if TYPE_CHECKING:
+    from golem.docker.environment import DockerEnvironment
+
 
 MIN_TIMEOUT = 60
 SUBTASK_MIN_TIMEOUT = 60
@@ -30,7 +32,7 @@ logger = logging.getLogger("apps.rendering")
 # pylint: disable-msg=too-many-instance-attributes,abstract-method
 class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
-    ENVIRONMENT_CLASS = None  # type: Type[DockerEnvironment]
+    ENVIRONMENT_CLASS: 'Type[DockerEnvironment]'
 
     @classmethod
     def _get_task_collector_path(cls):
@@ -122,22 +124,21 @@ class RenderingTask(CoreTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
-    @handle_image_error(logger)
+    @handle_opencv_image_error(logger)
     def _update_preview(self, new_chunk_file_path, num_start):
-        with handle_none(load_as_pil(new_chunk_file_path),
-                         raise_if_none=IOError("load_as_pil failed")) as img, \
-                self._open_preview() as img_current, \
-                ImageChops.add(img_current, img) as img_added:
-            img_added.save(self.preview_file_path, PREVIEW_EXT)
+            img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
+            img_current = self._open_preview()
+            img_current.add(img)
+            img_current.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):
         subtask = self.subtasks_given[subtask_id]
         empty_color = (0, 0, 0)
-        with handle_image_error(logger), \
-                self._open_preview() as img:
+        with handle_opencv_image_error(logger):
+            img = self._open_preview()
             self._mark_task_area(subtask, img, empty_color)
-            img.save(self.preview_file_path, PREVIEW_EXT)
+            img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _update_task_preview(self):
         sent_color = (0, 255, 0)
@@ -147,9 +148,8 @@ class RenderingTask(CoreTask):
         preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                           preview_name))
 
-        with handle_image_error(logger), \
-                self._open_preview() as img_task:
-
+        with handle_opencv_image_error(logger):
+            img_task = self._open_preview()
             subtasks_given = dict(self.subtasks_given)
             for sub in subtasks_given.values():
                 if sub['status'].is_active():
@@ -158,7 +158,7 @@ class RenderingTask(CoreTask):
                                      SubtaskStatus.restarted]:
                     self._mark_task_area(sub, img_task, failed_color)
 
-            img_task.save(preview_task_file_path, PREVIEW_EXT)
+            img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
 
         self._update_preview_task_file_path(preview_task_file_path)
 
@@ -177,7 +177,7 @@ class RenderingTask(CoreTask):
         )
         for i in range(0, x):
             for j in range(upper, lower):
-                img_task.putpixel((i, j), color)
+                img_task.set_pixel((i, j), color)
 
     def _put_collected_files_together(self, output_file_name, files, arg):
         task_collector_path = self._get_task_collector_path()
@@ -220,7 +220,7 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
+    def _open_preview(self, mode=OpenCVImgRepr.RGB, ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode
          and extension. Extension should be compatible with selected mode. """
         if self.preview_file_path is None or not os.path.exists(
@@ -229,20 +229,19 @@ class RenderingTask(CoreTask):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                               preview_name))
 
-            with handle_image_error(logger), \
-                    Image.new(mode,
-                              (int(round(self.res_x * self.scale_factor)),
-                               int(round(self.res_y * self.scale_factor)))) \
-                    as img:
+            with handle_opencv_image_error(logger):
+                img = OpenCVImgRepr.empty(
+                    int(round(self.res_x * self.scale_factor)),
+                    int(round(self.res_y * self.scale_factor)), channels=mode)
                 logger.debug('Saving new preview: %r', self.preview_file_path)
-                img.save(self.preview_file_path, ext)
+                img.save_with_extension(self.preview_file_path, ext)
 
         logger.debug(
             'Opening preview: %r, exists?: %s',
             self.preview_file_path,
             os.path.exists(self.preview_file_path)
         )
-        return Image.open(self.preview_file_path)
+        return OpenCVImgRepr.from_image_file(self.preview_file_path)
 
     def _use_outer_task_collector(self):
         unsupported_formats = ['EXR', 'EPS']

@@ -1,11 +1,11 @@
 import logging
-from datetime import datetime
-from typing import Iterable, List
+from datetime import datetime, timedelta
+from typing import Iterable, List, Optional
 
 from eth_utils import encode_hex
 
 from golem.core.common import to_unicode, datetime_to_timestamp_utc
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -72,12 +72,23 @@ class PaymentsDatabase(object):
             return None
 
     @staticmethod
-    def get_newest_payment(num=30):
+    def get_newest_payment(num: Optional[int] = None,
+                           interval: Optional[timedelta] = None):
         """ Return specific number of recently modified payments
-        :param num: number of payments to return
+        :param num: Number of payments to return. Unlimited if None.
+        :param interval: Return payments from last interval of time. Unlimited
+                         if None.
         :return:
         """
-        query = Payment.select().order_by(Payment.modified_date.desc()).limit(num)
+        query = Payment.select().order_by(Payment.modified_date.desc())
+
+        if interval is not None:
+            then = datetime.now() - interval
+            query = query.where(Payment.modified_date >= then)
+
+        if num is not None:
+            query = query.limit(num)
+
         return query.execute()
 
 
@@ -88,7 +99,8 @@ class PaymentsKeeper:
         """ Create new payments keeper instance"""
         self.db = PaymentsDatabase()
 
-    def get_list_of_all_payments(self):
+    def get_list_of_all_payments(self, num: Optional[int] = None,
+                                 interval: Optional[timedelta] = None):
         # This data is used by UI.
         return [{
             "subtask": to_unicode(payment.subtask),
@@ -100,7 +112,7 @@ class PaymentsKeeper:
             "transaction": to_unicode(payment.details.tx),
             "created": datetime_to_timestamp_utc(payment.created_date),
             "modified": datetime_to_timestamp_utc(payment.modified_date)
-        } for payment in self.db.get_newest_payment()]
+        } for payment in self.db.get_newest_payment(num, interval)]
 
     def finished_subtasks(
             self,

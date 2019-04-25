@@ -1,15 +1,9 @@
 # Block for declaring the script parameters.
 Param(
-    $createShareFolder = "",
+    $createShareScript = "",
     $appDataDir = "",
     $currentUserName = ""
 )
-if (Get-Command "AI_GetMsiProperty" -errorAction SilentlyContinue)
-{
-    $createShareFolder = (AI_GetMsiProperty TempFolder)
-    $appDataDir = (AI_GetMsiProperty LocalAppDataFolder)
-    $currentUserName = (AI_GetMsiProperty LogonUser)
-}
 
 $ErrorActionPreference = "Stop"
 
@@ -31,8 +25,6 @@ if( ! $currentGolemUser )
 "createShareFolder: " + $createShareFolder
 "appDataDir: " + $appDataDir
 
-$createShareScript = $createShareFolder + "create-share.ps1"
-"createShareScript: " + $createShareScript
 
 $golemDataDir = $appDataDir + "\golem\golem\default"
 $mainnetDir = $golemDataDir + "\mainnet\ComputerRes"

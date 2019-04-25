@@ -24,19 +24,29 @@ class DockerForMac(Hypervisor):
         cpu='cpus',
         mem='memoryMiB',
     )
+    DAEMON_CONFIG_FILE = os.path.expanduser(
+        "~/.docker/daemon.json"
+    )
+
+    DNS_SERVERS = [
+        '1.1.1.1',  # Cloudflare
+        '208.67.222.222',  # OpenDNS
+        '8.8.8.8',  # Google
+    ]
 
     def setup(self) -> None:
         if self.vm_running():
             # wait until Docker is ready
             self.COMMAND_HANDLER.wait_until_started()
         else:
+            self._configure_daemon()
             self.start_vm()
 
     @classmethod
     def is_available(cls) -> bool:
         return os.path.exists(cls.COMMAND_HANDLER.APP)
 
-    def create(self, name: Optional[str] = None, **params) -> bool:
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
         # We do not control VM creation
         return False
 
@@ -71,6 +81,10 @@ class DockerForMac(Hypervisor):
 
         return constraints
 
+    def _configure_daemon(self) -> None:
+        update = {'dns': self.DNS_SERVERS}
+        self._update_daemon_config(update)
+
     def _read_config(self) -> Dict:
         if not os.path.exists(self.CONFIG_FILE):
             self.start_vm()
@@ -86,3 +100,33 @@ class DockerForMac(Hypervisor):
 
         with open(self.CONFIG_FILE, 'w') as config_file:
             json.dump(config, config_file)
+
+    def _read_daemon_config(self) -> Dict:
+        if not os.path.exists(self.DAEMON_CONFIG_FILE):
+            return dict()
+
+        with open(self.DAEMON_CONFIG_FILE) as config_file:
+            return json.load(config_file)
+
+    def _update_daemon_config(self, update: Dict) -> None:
+        config = self._read_daemon_config()
+        config.update(update)
+
+        docker_dir = os.path.dirname(self.DAEMON_CONFIG_FILE)
+        os.makedirs(docker_dir, mode=0o750, exist_ok=True)
+
+        with open(self.DAEMON_CONFIG_FILE, 'w') as config_file:
+            json.dump(config, config_file)
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
+    def restart_ctx(self, name: Optional[str] = None):
+        if self.vm_running():
+            self.stop_vm()
+        yield name
+        self.start_vm()
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
+    def recover_ctx(self, name: Optional[str] = None):
+        self.restart_ctx(name)

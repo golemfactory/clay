@@ -18,6 +18,8 @@ from golem.task.tasksession import TaskSession
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
+
 
 class AddGetResources(TempDirFixture, LogTestCase):
 
@@ -42,7 +44,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
-        client_1.resource_server.resource_manager.add_task(
+        client_1.resource_server.resource_manager.add_resources(
             resources, self.task_id, async_=False)
 
     def tearDown(self):
@@ -79,7 +81,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         cls = self._resource_manager_class
         resource_manager = cls.__new__(cls)
-        resource_manager.__init__(dir_manager)
+        resource_manager.__init__(dir_manager, **hyperdrive_client_kwargs())
 
         database = Database(
             db,
