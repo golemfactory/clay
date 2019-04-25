@@ -4,7 +4,7 @@ from functools import wraps
 from logging import Logger, getLogger
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence
+    Sequence, Iterable
 
 from twisted.internet.defer import Deferred
 
@@ -60,6 +60,20 @@ class RuntimeStatus(Enum):
 
     def __str__(self) -> str:
         return self.name
+
+
+class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
+    """ A handle for reading output (either stdout or stderr) from a running
+        Runtime. Yielded items are output lines. Output could be either raw
+        (bytes) or decoded (str). """
+
+    def __init__(self, encoding: Optional[str] = None) -> None:
+        self._encoding = encoding
+
+    def _decode(self, line: bytes) -> Union[str, bytes]:
+        if self._encoding:
+            return line.decode(self._encoding)
+        return line
 
 
 class Runtime(ABC):
@@ -148,6 +162,22 @@ class Runtime(ABC):
         """ Get the current status of the Runtime. """
         with self._status_lock:
             return self._status
+
+    @abstractmethod
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDOUT stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
+            (however, in the last case output might not be available)."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDERR stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
+            (however, in the last case output might not be available). """
+        raise NotImplementedError
 
     @abstractmethod
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:

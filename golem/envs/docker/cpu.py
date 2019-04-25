@@ -1,11 +1,10 @@
 import logging
-from functools import wraps
 from pathlib import Path
 from subprocess import SubprocessError
-from threading import Lock, Thread
+from threading import Thread
 from time import sleep
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
-    NamedTuple, Union, Sequence, Tuple
+    NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
 from twisted.internet.defer import Deferred
@@ -24,7 +23,8 @@ from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
-    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, Prerequisites
+    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, \
+    Prerequisites, RuntimeOutput
 from golem.envs.docker import DockerPayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -55,8 +55,30 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
         return DockerCPUConfig(work_dir=work_dir, **dict_)
 
 
-class DockerCPURuntime(Runtime):
+class DockerOutput(RuntimeOutput):
 
+    def __init__(
+            self, raw_output: Iterable[bytes], encoding: Optional[str] = None
+    ) -> None:
+        super().__init__(encoding=encoding)
+        self._raw_output = raw_output
+
+    def __iter__(self) -> Iterator[Union[str, bytes]]:
+        buffer = b""
+
+        for chunk in self._raw_output:
+            buffer += chunk
+            lines = buffer.split(b"\n")
+            buffer = lines.pop()
+
+            for line in lines:
+                yield self._decode(line + b"\n")  # Keep the newline character
+
+        if buffer:
+            yield self._decode(buffer)
+
+
+class DockerCPURuntime(Runtime):
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
     CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]
 
@@ -220,6 +242,59 @@ class DockerCPURuntime(Runtime):
         deferred_stop = deferToThread(_stop)
         deferred_stop.addCallback(_join_status_update_thread)
         return deferred_stop
+
+    def _get_raw_output(self, stdout=False, stderr=False, stream=True) \
+            -> Iterable[bytes]:
+        """ Attach to the output (STDOUT or STDERR) of a container. If stream
+            is True the returned value is an iterator that advances when
+            something is printed by the container. Otherwise, it is a list
+            containing single `bytes` object with all output data. An empty
+            list is returned if error occurs. """
+
+        assert self._container_id is not None
+        logger.debug("Attaching to output of container '%s'...")
+        client = local_client()
+
+        try:
+            raw_output = client.attach(
+                container=self._container_id,
+                stdout=stdout, stderr=stderr, logs=True, stream=stream)
+            logger.debug("Successfully attached to output.")
+            # If not using stream the output is a single `bytes` object
+            return raw_output if stream else [raw_output]
+        except APIError:
+            logger.exception("Error attaching to container's output.")
+            return []
+
+    def _get_output(self, encoding: Optional[str] = None, **kwargs) \
+            -> RuntimeOutput:
+        """ Get output (STDERR or STDOUT) of this Runtime. """
+        status = self.status()
+        if status not in [RuntimeStatus.RUNNING, RuntimeStatus.STOPPED,
+                          RuntimeStatus.FAILURE]:
+            raise ValueError(f"Invalid status: '{status}'")
+
+        raw_output: Iterable[bytes] = []
+
+        if self.status() == RuntimeStatus.RUNNING:
+            raw_output = self._get_raw_output(stream=True, **kwargs)
+
+        # If container is no longer running the stream will not work (it just
+        # hangs forever). So we have to get all the output 'offline'.
+        # Status update is needed because the container may have stopped
+        # between checking and attaching to the output.
+        self._update_status()
+        if self.status() != RuntimeStatus.RUNNING:
+            logger.debug("Container no longer running. Getting offline output.")
+            raw_output = self._get_raw_output(stream=False, **kwargs)
+
+        return DockerOutput(raw_output, encoding=encoding)
+
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        return self._get_output(stdout=True, encoding=encoding)
+
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        return self._get_output(stderr=True, encoding=encoding)
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
