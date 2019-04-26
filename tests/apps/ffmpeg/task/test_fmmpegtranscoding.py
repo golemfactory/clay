@@ -89,11 +89,10 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
 
     def test_collect_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator._collect_files(self.tempdir,
-                                                ['/tmp/testtest_TC.m3u8',
-                                                 '/tmp/testtest_TC.ts'],
-                                                 os.path.join(self.tempdir,
-                                                 "merge/resources"))
+            self.stream_operator._collect_files(
+                self.tempdir,
+                ['/tmp/testtest_TC.m3u8', '/tmp/testtest_TC.ts'],
+                os.path.join(self.tempdir, "merge/resources"))
 
     def test_collect_files_second_result_nonexistent(self):
         result_path = self.RESOURCE_STREAM.replace(
@@ -158,9 +157,12 @@ class TestffmpegDockerJob(TestDockerJob):
         return "1.0"
 
     def test_ffmpeg_trancoding_job(self):
-        stream_file = os.path.join(os.path.join(os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__))), 'resources'),
+        stream_file = os.path.join(
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                'resources'),
             'test_video.mp4')
+        
         shutil.copy(str(stream_file), self.resources_dir)
         out_stream_path = os.path.join(DockerJob.OUTPUT_DIR,
                                        'test_video_TC.mp4')

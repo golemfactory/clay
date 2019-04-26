@@ -335,7 +335,7 @@ class TestTaskIntegration(TempDirFixture):
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
 
         requestor_results = [os.path.join(subtasks_results_dir,
-                             os.path.basename(result)) for result in results]
+                                          os.path.basename(result)) for result in results]
 
         for provider_result, requestor_result in zip(results,
                                                      requestor_results):
