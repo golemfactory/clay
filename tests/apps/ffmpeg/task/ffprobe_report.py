@@ -52,6 +52,19 @@ def fuzzy_int_if_possible(value: Any, tolerance_percent: int) -> Any:
     return converted_value
 
 
+def parse_ffprobe_frame_rate(raw_frame_rate: Union[int, float, str, None],
+                            )-> Union[float, str, None]:
+    value = number_if_possible(raw_frame_rate)
+    if not isinstance(value, str):
+        return value
+
+    split = value.split('/')
+    try:
+        return float(split[0]) / float(split[1])
+    except (ValueError, TypeError):
+        return value
+
+
 class FfprobeFormatReport:
     ATTRIBUTES_TO_COMPARE = {
         'format_name',
@@ -575,15 +588,7 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
 
     @property
     def frame_rate(self)-> Union[float, str, None]:
-        value = number_if_possible(self._raw_report.get('r_frame_rate'))
-        if not isinstance(value, str):
-            return value
-
-        split = value.split('/')
-        try:
-            return float(split[0]) / float(split[1])
-        except (ValueError, TypeError):
-            return value
+        return parse_ffprobe_frame_rate(self._raw_report.get('r_frame_rate'))
 
 
 class FfprobeAudioStreamReport(FfprobeAudioAndVideoStreamReport):
