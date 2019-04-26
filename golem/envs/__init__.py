@@ -227,7 +227,8 @@ class Environment(ABC):
     @abstractmethod
     def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
         """ Prepare Prerequisites for running a computation. Assumes current
-            status is 'ENABLED'. """
+            status is 'ENABLED'.
+            Returns boolean indicating whether installation was successful. """
         raise NotImplementedError
 
     @classmethod
