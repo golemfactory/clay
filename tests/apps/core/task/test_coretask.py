@@ -193,7 +193,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -204,7 +204,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.interpret_task_results(
             subtask_id, files_copy, False)
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
                 pass
@@ -245,7 +245,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 

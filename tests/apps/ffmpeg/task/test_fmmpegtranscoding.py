@@ -13,9 +13,9 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 from tests.golem.docker.test_docker_image import DockerTestCase
 from tests.golem.docker.test_docker_job import TestDockerJob
-from golem.tools.ci import ci_skip
 
 
 
@@ -75,7 +75,8 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
             assert os.path.isfile(transcoded)
             tc_playlists.append(transcoded)
 
-        playlist_dir_content = [os.path.join(playlist_dir, file) for file in os.listdir(playlist_dir)]
+        playlist_dir_content = [os.path.join(playlist_dir, file)
+                                for file in os.listdir(playlist_dir)]
         
         self.stream_operator.merge_video(output_name, playlist_dir,
                                          playlist_dir_content)
@@ -104,8 +105,8 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
             self.stream_operator._collect_files(self.tempdir,
                                                 [result_path,
                                                  '/tmp/test1234.mp4'],
-                                                 os.path.join(self.tempdir,
-                                                 "merge/resources"))
+                                                os.path.join(self.tempdir,
+                                                "merge/resources"))
 
     def test_collect_results(self):
         result_path = self.RESOURCE_STREAM.replace(
@@ -114,11 +115,13 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         assert os.path.isfile(result_path)
         results = self.stream_operator. \
             _collect_files(self.tempdir, [result_path],
-                            os.path.join(self.tempdir, "merge/resources"))
+                           os.path.join(self.tempdir, "merge/resources"))
         assert len(results) == 1
-        
+
         # _collect_files returns paths in docker filesystem
-        assert results[0] == os.path.join("/golem/resources", os.path.basename(self.RESOURCE_STREAM))
+        assert results[0] == os.path.join("/golem/resources",
+                                          os.path.basename(
+                                              self.RESOURCE_STREAM))
 
     def test_prepare_merge_job(self):
         resource_dir, output_dir, work_dir, chunks = \
@@ -126,7 +129,7 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
 
         assert len(chunks) == 0
         assert resource_dir == os.path.join(self.tempdir,
-                                          'merge', 'resources')
+                                            'merge', 'resources')
         assert os.path.isdir(output_dir)
         assert output_dir == os.path.join(self.tempdir,
                                           'merge', 'output')
