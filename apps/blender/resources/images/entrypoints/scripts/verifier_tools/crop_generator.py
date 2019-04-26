@@ -1,6 +1,6 @@
 import math
 import random
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 import numpy
 
 WORK_DIR = "/golem/work"
@@ -9,9 +9,7 @@ CROP_RELATIVE_SIZE = 0.1
 MIN_CROP_SIZE = 8
 
 
-# todo review: this class' name should indicate it uses floating point
-#  coordinates
-class Region:
+class FloatingPointBox:
     """
     This class stores values of image region expressed with floating point
     numbers as a percentage of image corresponding resolution.
@@ -28,6 +26,18 @@ class Region:
         self.right = right
         self.top = top
         self.bottom = bottom
+
+    def __contains__(self, item: 'FloatingPointBox') -> bool:
+        """
+       l, t _______
+           |    <--|-- self
+           |  ____ |
+           | |  <-||-- item
+           | |____||
+           |_______|r, b
+        """
+        return item.left >= self.left and item.right <= self.right and \
+               item.top >= self.top and item.bottom <= self.bottom
 
 
 class PixelRegion:
@@ -47,10 +57,164 @@ class PixelRegion:
 #  attributes (with indication that they describe subtask) and methods to Crop,
 #  where they logically belong
 class SubImage:
-    def __init__(self, region: Region, resolution: List[int]) -> None:
+    def __init__(self, region: FloatingPointBox, resolution: List[int]) -> None:
         # todo review: rename "region" after renaming "Region" class
         self.region = region
         self.resolution = resolution
+
+
+class NewCrop:
+    STEP_SIZE = 0.01
+
+    def __init__(
+            self,
+            id: int,
+            resolution: List[int],
+            subtask_box: FloatingPointBox,
+            crop_box: Optional[FloatingPointBox] = None
+    ):
+        self.id = id
+        self.resolution = resolution
+        self._subtask_box = subtask_box
+        self.box = crop_box or self._generate_random_crop_box()
+        self._validate_crop_is_within_subtask()
+
+    @property
+    def x_pixels(self):
+        return self._get_x_coordinates_as_pixels()
+
+    @property
+    def y_pixels(self):
+        return self._get_y_coordinates_as_pixels()
+
+    def _generate_random_crop_box(self) -> FloatingPointBox:
+        crop_width, crop_height = self._get_relative_crop_size()
+
+        print(f'-> subtask_box.left={self._subtask_box.left}')
+        print(f'-> subtask_box.right={self._subtask_box.right}')
+        print(f'-> subtask_box.top={self._subtask_box.top}')
+        print(f'-> subtask_box.bottom={self._subtask_box.bottom}')
+
+        x_beginning, x_end = self._get_coordinate_limits(
+            lower_border=self._subtask_box.left,
+            upper_border=self._subtask_box.right,
+            span=crop_width
+        )
+        print(f"x_beginning={x_beginning}, x_end={x_end}")
+
+        # left, top is (0,0) in image coordinates
+        y_beginning, y_end = self._get_coordinate_limits(
+            lower_border=self._subtask_box.top,
+            upper_border=self._subtask_box.bottom,
+            span=crop_height
+        )
+        print(f"y_beginning={y_beginning}, y_end={y_end}")
+
+        return FloatingPointBox(
+            left=x_beginning,
+            right=x_end,
+            top=y_beginning,
+            bottom=y_end
+        )
+
+    @staticmethod
+    def _get_coordinate_limits(lower_border, upper_border, span):
+        coordinate_beginning_limit = round((upper_border - span) * 100)
+        beginning = random.randint(round(lower_border * 100),
+                                   coordinate_beginning_limit) / 100
+        end = round(beginning + span, 2)
+        return beginning, end
+
+    def _get_relative_crop_size(self) -> Tuple[float, float]:
+        relative_crop_width = CROP_RELATIVE_SIZE
+        relative_crop_height = CROP_RELATIVE_SIZE
+        while relative_crop_width * self.resolution[0] < MIN_CROP_SIZE:
+            relative_crop_width += self.STEP_SIZE
+        while relative_crop_height * self.resolution[1] < MIN_CROP_SIZE:
+            relative_crop_height += self.STEP_SIZE
+        print(
+            f"relative_crop_width: {relative_crop_width}, "
+            f"relative_crop_height: {relative_crop_height}"
+        )
+        return relative_crop_width, relative_crop_height
+
+    def _validate_crop_is_within_subtask(self):
+        if self.box not in self._subtask_box:
+            raise ValueError("Crop box is not within subtask box!")
+
+    def _get_x_coordinates_as_pixels(self) -> Tuple[int, int]:
+        x_pixel_min = math.floor(
+            numpy.float32(self.resolution[0]) * numpy.float32(
+                self.box.left
+            )
+        ) - math.floor(
+            numpy.float32(self._subtask_box.left) * numpy.float32(
+                self.resolution[0])
+        )
+
+        x_pixel_max = math.floor(
+            numpy.float32(self.resolution[0]) * numpy.float32(
+                self.box.right)
+        )
+        print(f"x_pixel_min={x_pixel_min}, x_pixel_max={x_pixel_max}")
+        return x_pixel_min, x_pixel_max
+
+    def _get_y_coordinates_as_pixels(self) -> Tuple[int, int]:
+        y_pixel_min = math.floor(
+            numpy.float32(self._subtask_box.bottom) * numpy.float32(
+                self.resolution[1])
+        ) - math.floor(
+            numpy.float32(self.resolution[1]) * numpy.float32(
+                self.box.bottom)
+        )
+        y_pixel_max = math.floor(
+            numpy.float32(self._subtask_box.bottom) * numpy.float32(
+                self.resolution[1])
+        ) - math.floor(
+            numpy.float32(self.resolution[1]) * numpy.float32(
+                self.box.top)
+        )
+        print(f"y_pixel_min={y_pixel_min}, y_pixel_max={y_pixel_max}")
+        return y_pixel_min, y_pixel_max
+
+    def _calculate_crop_region_to_pixel_region(self):
+        # todo review: write helper function for these expressions
+        x_pixel_min = math.floor(
+            numpy.float32(self.resolution[0]) * numpy.float32(
+                self.box.left)
+        )
+        # todo review: don't reuse x_pixel_min variable, find name properly
+        #  describing its first (or second?) occurrence's sens
+        x_pixel_min = x_pixel_min - math.floor(
+            numpy.float32(self._subtask_box.left) * numpy.float32(
+                self.resolution[0])
+        )
+        x_pixel_max = math.floor(
+            numpy.float32(self.resolution[0]) * numpy.float32(
+                self.box.right)
+        )
+        print(f"x_pixel_min={x_pixel_min}, x_pixel_max={x_pixel_max}")
+        y_pixel_max = math.floor(
+            numpy.float32(self._subtask_box.bottom) * numpy.float32(
+                self.resolution[1])
+        ) - math.floor(
+            numpy.float32(self.resolution[1]) * numpy.float32(
+                self.box.bottom)
+        )
+        y_pixel_min = math.floor(
+            numpy.float32(self._subtask_box.bottom) * numpy.float32(
+                self.resolution[1])
+        ) - math.floor(
+            numpy.float32(self.resolution[1]) * numpy.float32(
+                self.box.top)
+        )
+        print(f"y_pixel_max={y_pixel_max}, y_pixel_min={y_pixel_min}")
+        return PixelRegion(
+            left=x_pixel_min,
+            right=x_pixel_max,
+            top=y_pixel_max,
+            bottom=y_pixel_min
+        )
 
 
 class Crop:
@@ -114,7 +278,7 @@ class Crop:
                                y_difference) / 100
         y_max = round(y_min + relative_crop_size_y, 2)
         print(f"y_difference={y_difference}, y_min={y_min}, y_max={y_max}")
-        return Region(
+        return FloatingPointBox(
             left=x_min,
             right=x_max,
             top=y_min,

@@ -4,11 +4,13 @@ from typing import List, Optional
 
 from ..render_tools import blender_render as blender
 
-from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, Crop
+from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, FloatingPointBox, \
+    Crop, NewCrop
 from .image_metrics_calculator import calculate_metrics
 
 
-def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
+def get_crop_with_id(id: int, crops: [List[NewCrop]]) -> Optional[NewCrop]:
+# def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
         if crop.id == id:
             return crop
@@ -16,49 +18,61 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
 
 
 def prepare_crops(
-        subimage,
+        subtask_image_box,
+        resolution,
         crops_count=3,
         crops_borders=None,
 ):
     crops_details: List[Crop] = []
     crops_render_data = []
-    # if crops_borders:
-    #     crop_id = 0
-    #     for border in crops_borders:
-    #         crop = Crop.create_from_region(
-    #             crop_id,
-    #             Region(border[0], border[1], border[2], border[3]),
-    #             subimage
-    #         )
-    #         crops_render_data.append(
-    #             {
-    #                 "id": crop.id,
-    #                 "outfilebasename": "crop" + str(crop_id) + '_',
-    #                 "borders_x": [crop.crop_region.left,
-    #                               crop.crop_region.right],
-    #                 "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
-    #             }
-    #         )
-    #         crops_details.append(crop)
-    #         crop_id += 1
-    # else:
-    for crop_id in range(0, crops_count):
-        # crop = generate_single_random_crop_data(
-        crop = Crop(
-            crop_id,
-            subimage,
-        )
-        crops_render_data.append(
-            {
-                "id": crop.id,
-                "outfilebasename": "crop" + str(crop_id) + '_',
-                "borders_x": [crop.crop_region.left,
-                              crop.crop_region.right],
-                "borders_y": [crop.crop_region.top, crop.crop_region.bottom]
-            }
-        )
-        crops_details.append(crop)
-    return (crops_details, crops_render_data)
+    if crops_borders:
+        crop_id = 0
+        for border in crops_borders:
+            # crop = Crop.create_from_region(
+            #     crop_id,
+            #     FloatingPointBox(border[0], border[1], border[2], border[3]),
+            #     subimage
+            # )
+            crop = NewCrop(
+                crop_id,
+                resolution,
+                subtask_image_box,
+                FloatingPointBox(border[0], border[1], border[2], border[3]),
+            )
+            crops_render_data.append(
+                {
+                    "id": crop.id,
+                    "outfilebasename": "crop" + str(crop_id) + '_',
+                    "borders_x": [crop.box.left,
+                                  crop.box.right],
+                    "borders_y": [crop.box.top, crop.box.bottom]
+                }
+            )
+            crops_details.append(crop)
+            crop_id += 1
+    else:
+        for crop_id in range(0, crops_count):
+            # crop = generate_single_random_crop_data(
+            # crop = Crop(
+            #     crop_id,
+            #     subimage,
+            # )
+            crop = NewCrop(
+                crop_id,
+                resolution,
+                subtask_image_box,
+            )
+            crops_render_data.append(
+                {
+                    "id": crop.id,
+                    "outfilebasename": "crop" + str(crop_id) + '_',
+                    "borders_x": [crop.box.left,
+                                  crop.box.right],
+                    "borders_y": [crop.box.top, crop.box.bottom]
+                }
+            )
+            crops_details.append(crop)
+    return crops_details, crops_render_data
 
 
 def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, too-many-arguments
@@ -72,17 +86,19 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         crops_borders=None,
 
 ):
+    subtask_image_box = FloatingPointBox(subtask_border[0], subtask_border[1],
+                           subtask_border[2], subtask_border[3])
     subimage = SubImage(
-        Region(
-            subtask_border[0],
-            subtask_border[1],
-            subtask_border[2],
-            subtask_border[3]
-        ),
+        subtask_image_box,
         resolution
     )
 
-    (crops_details, crops_render_data) = prepare_crops(subimage, crops_count, crops_borders)
+    (crops_details, crops_render_data) = prepare_crops(
+        subtask_image_box,
+        resolution,
+        crops_count,
+        crops_borders
+    )
 
     params = {
         "scene_file": scene_file_path,
@@ -108,7 +124,8 @@ def make_verdict(
     for crop_data in reference_results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops_details)
 
-        left, top = crop.pixel_region.left, crop.pixel_region.top
+        # left, top = crop.pixel_region.left, crop.pixel_region.top
+        left, top = crop.x_pixels[0], crop.y_pixels[0]
         print('borders_x: ', crop_data['crop']['borders_x'])
         print('borders_y: ', crop_data['crop']['borders_y'])
         print("left: " + str(left))
@@ -143,7 +160,7 @@ def verify(  # pylint: disable=too-many-arguments
         samples,
         frames,
         output_format,
-        crops_count=3,
+        crops_count=1,
         crops_borders=None,
 ):
     """
