@@ -487,7 +487,7 @@ class ClientProvider:
             missing_funds.append(eth_exceptions.MissingFunds(
                 required=total_price_gnt,
                 available=gnt_available,
-                extension='GNT'
+                currency='GNT'
             ))
 
         eth = transaction_system.eth_for_batch_payment(number_of_tasks)
@@ -496,7 +496,7 @@ class ClientProvider:
             missing_funds.append(eth_exceptions.MissingFunds(
                 required=eth,
                 available=eth_available,
-                extension='ETH'
+                currency='ETH'
             ))
 
         if missing_funds:

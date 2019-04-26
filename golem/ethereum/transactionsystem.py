@@ -408,7 +408,7 @@ class TransactionSystem(LoopingCallService):
             missing_funds.append(exceptions.MissingFunds(
                 required=gnt,
                 available=self.get_available_gnt(),
-                extension='GNT'
+                currency='GNT'
             ))
 
         eth = self.eth_for_batch_payment(num)
@@ -417,7 +417,7 @@ class TransactionSystem(LoopingCallService):
             missing_funds.append(exceptions.MissingFunds(
                 required=eth,
                 available=eth_available,
-                extension='ETH'
+                currency='ETH'
             ))
 
         if missing_funds:
@@ -551,7 +551,7 @@ class TransactionSystem(LoopingCallService):
                 raise exceptions.NotEnoughFunds(
                     required=amount,
                     available=self.get_available_eth(),
-                    extension=currency,
+                    currency=currency,
                 )
             return self._sci.transfer_eth(
                 destination,
@@ -564,7 +564,7 @@ class TransactionSystem(LoopingCallService):
                 raise exceptions.NotEnoughFunds(
                     required=amount,
                     available=self.get_available_gnt(),
-                    extension=currency,
+                    currency=currency,
                 )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
@@ -628,7 +628,7 @@ class TransactionSystem(LoopingCallService):
             missing_funds.append(exceptions.MissingFunds(
                 required=required,
                 available=gntb_balance,
-                extension='GNTB'
+                currency='GNTB'
             ))
 
         eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
@@ -639,7 +639,7 @@ class TransactionSystem(LoopingCallService):
             missing_funds.append(exceptions.MissingFunds(
                 required=eth_required,
                 available=eth_available,
-                extension='ETH'
+                currency='ETH'
             ))
 
         if missing_funds:

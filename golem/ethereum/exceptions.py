@@ -19,7 +19,7 @@ class MissingFunds(typing.NamedTuple):
     """
     required: int
     available: int
-    extension: str
+    currency: str
 
 
 class NotEnoughFunds(EthereumError):
@@ -28,14 +28,14 @@ class NotEnoughFunds(EthereumError):
             missing_funds: typing.Optional[typing.List[MissingFunds]] = None,
             required: int = -1,
             available: int = -1,
-            extension: str = '') -> None:
+            currency: str = '') -> None:
         super().__init__()
         if not missing_funds:
             self.missing_funds = [
                 MissingFunds(
                     required=required,
                     available=available,
-                    extension=extension
+                    currency=currency
                 )
             ]
         else:
@@ -53,8 +53,8 @@ class NotEnoughFunds(EthereumError):
 
     def _missing_funds_to_str(self) -> str:
         res = ""
-        for required, available, extension in self.missing_funds:
-            res += f"\nRequired {extension}: {required / denoms.ether:f}, " \
+        for required, available, currency in self.missing_funds:
+            res += f"\nRequired {currency}: {required / denoms.ether:f}, " \
                 f"available: {available / denoms.ether:f}"
 
         return res

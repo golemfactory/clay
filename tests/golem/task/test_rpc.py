@@ -152,7 +152,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
         side_effect=exceptions.NotEnoughFunds(
             required=0.166667 * denoms.ether,
             available=0,
-            extension='GNT'
+            currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()

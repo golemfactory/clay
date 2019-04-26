@@ -11,7 +11,7 @@ class TestNotEnoughFunds(TestCase):
             raise NotEnoughFunds(
                 required=5 * denoms.ether,
                 available=1 * denoms.ether,
-                extension='GNT'
+                currency='GNT'
             )
         except NotEnoughFunds as err:
             expected = f'Not enough funds available.' \
@@ -23,12 +23,12 @@ class TestNotEnoughFunds(TestCase):
             MissingFunds(
                 required=5 * denoms.ether,
                 available=1 * denoms.ether,
-                extension='ETH'
+                currency='ETH'
             ),
             MissingFunds(
                 required=1 * denoms.ether,
                 available=0,
-                extension='GNT'
+                currency='GNT'
             )
         ]
 
@@ -45,12 +45,12 @@ class TestNotEnoughFunds(TestCase):
             MissingFunds(
                 required=5 * denoms.ether,
                 available=1 * denoms.ether,
-                extension='ETH'
+                currency='ETH'
             ),
             MissingFunds(
                 required=1 * denoms.ether,
                 available=0,
-                extension='GNT'
+                currency='GNT'
             )
         ]
 
