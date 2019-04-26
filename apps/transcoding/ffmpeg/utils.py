@@ -19,6 +19,7 @@ from golem.resource.dirmanager import DirManager
 FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg-experimental'
 FFMPEG_DOCKER_TAG = '0.91'
 FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
+FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class StreamOperator:
         env = ffmpegEnvironment(binds=[
             DockerBind(Path(input_stream), stream_container_path, 'ro')])
         extra_data = {
-            'script_filepath': FFMPEG_BASE_SCRIPT,
+            'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.SPLIT.value[0],
             'path_to_stream': stream_container_path,
             'parts': parts
@@ -113,10 +114,10 @@ class StreamOperator:
             self._prepare_merge_job(task_dir, chunks)
 
         extra_data = {
-            'script_filepath': FFMPEG_BASE_SCRIPT,
+            'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.MERGE.value[0],
             'output_stream': os.path.join(DockerJob.OUTPUT_DIR, filename),
-            'chunks': chunks
+            'chunks': chunks,
         }
 
         logger.debug('Merge params: {}'.format(extra_data))

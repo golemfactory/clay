@@ -1,6 +1,3 @@
-# pylint: disable=bad-whitespace
-# flake8: noqa
-
 DOCKER_URI = "docker"
 
 # To get current mapping run:

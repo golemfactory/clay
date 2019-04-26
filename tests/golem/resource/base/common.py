@@ -18,6 +18,8 @@ from golem.task.tasksession import TaskSession
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
+
 
 class AddGetResources(TempDirFixture, LogTestCase):
 
@@ -42,7 +44,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
-        client_1.resource_server.resource_manager.add_task(
+        client_1.resource_server.resource_manager.add_resources(
             resources, self.task_id, async_=False)
 
     def tearDown(self):
@@ -79,7 +81,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         cls = self._resource_manager_class
         resource_manager = cls.__new__(cls)
-        resource_manager.__init__(dir_manager)
+        resource_manager.__init__(dir_manager, **hyperdrive_client_kwargs())
 
         database = Database(
             db,
@@ -133,13 +135,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
         send_buf = []
         self.task_session_1.send = lambda x: send_buf.append(x)
 
-        # session_2 [GetResource] -> session_1
-        msg_get = message.tasks.GetResource(task_id=self.task_id)
-        self.task_session_1._react_to_get_resource(msg_get)
-
-        # session_1 [ResourceList] -> session_2
-        msg_list = send_buf.pop()
-        self.task_session_2._react_to_resource_list(msg_list)
+        resources = self.client_1.resource_server.resource_manager.get_resources(self.task_id)
+        resources = self.client_1.resource_server.resource_manager.to_wire(resources)
+        self.client_2.pull_resources(self.task_id, resources)
 
         # client_2 downloads resources specified in the message
         self.client_2.resource_server._download_resources(async_=False)

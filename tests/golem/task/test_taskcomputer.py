@@ -80,7 +80,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_id = 'xyz'
         subtask_id = 'xxyyzz'
 
-        tc.task_resource_failure(task_id, 'reason')
+        tc.resource_failure(task_id, 'reason')
         assert not task_server.send_task_failed.called
 
         tc.assigned_subtask = ComputeTaskDef(
@@ -88,7 +88,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             subtask_id=subtask_id,
         )
 
-        tc.task_resource_failure(task_id, 'reason')
+        tc.resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
     def test_computation(self):  # pylint: disable=too-many-statements
@@ -103,6 +103,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(10)
+        ctd['resources'] = ["abcd", "efgh"]
 
         task_server = self.task_server
         task_server.task_keeper.task_headers = {
@@ -126,9 +127,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
         tc.task_server.request_resource.assert_called_with(
-            "xyz", "xxyyzz")
+            "xyz", "xxyyzz", ["abcd", "efgh"])
 
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_collected("xyz")
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
@@ -136,7 +137,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.task_resource_collected("xyz")
+        assert tc.resource_collected("xyz")
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
@@ -164,8 +165,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
         tc.task_server.request_resource.assert_called_with(
-            "xyz", "aabbcc")
-        self.assertTrue(tc.task_resource_collected("xyz"))
+            "xyz", "aabbcc", ["abcd", "efgh"])
+        self.assertTrue(tc.resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertIsNone(tc.counting_thread)
@@ -179,7 +180,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "print('Hello world')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with(
@@ -193,7 +194,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         self.assertIsNotNone(tc.counting_thread)
         self.assertGreater(tc.counting_thread.time_to_compute, 10)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
@@ -202,7 +203,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['subtask_id'] = "xxyyzz2"
         ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
+        self.assertTrue(tc.resource_collected("xyz"))
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         tt = tc.counting_thread
@@ -275,9 +276,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer = mock.Mock()
         compute_task = TaskComputer._TaskComputer__compute_task
 
-        resource_manager = task_computer.resource_manager
-        resource_manager.get_resource_dir.return_value = self.tempdir + '_res'
-        resource_manager.get_temporary_dir.return_value = self.tempdir + '_tmp'
+        dir_manager = task_computer.dir_manager
+        dir_manager.get_task_resource_dir.return_value = self.tempdir + '_res'
+        dir_manager.get_task_temporary_dir.return_value = self.tempdir + '_tmp'
 
         task_computer.lock = Lock()
         task_computer.dir_lock = Lock()
@@ -315,12 +316,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             tc.counting_thread.join()
         else:
             print('counting thread is None')
-
-    def test_request_rejected(self):
-        task_server = self.task_server
-        tc = TaskComputer(task_server, use_docker_manager=False)
-        with self.assertLogs(logger, level="INFO"):
-            tc.task_request_rejected("xyz", "my rejection reason")
 
     def test_get_environment_no_assigned_subtask(self):
         tc = TaskComputer(self.task_server, use_docker_manager=False)

@@ -58,6 +58,20 @@ class BasicSession(FileSession):
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
 
+    def __str__(self):
+        if self._disconnect_sent:
+            disconnect_s = ' #disconnect_sent'
+        else:
+            disconnect_s = ''
+        lmt = time.time() - self.last_message_time
+        return (
+            f"{ self.__class__.__name__ } with { self.address }:{ self.port }"
+            f" (LMT: { lmt }s){ disconnect_s }"
+        )
+
+    def __repr__(self):
+        return f"<{ str(self) }>"
+
     def interpret(self, msg: message.base.Message):
         """
         React to specific message. Disconnect, if message type is unknown
@@ -84,26 +98,12 @@ class BasicSession(FileSession):
         except KeyError:
             pass
 
-    def close_now(self):
-        """Close connection quickly without flushing buffors or waiting
-           for producents.
-        """
-        self.conn.close_now()
-        try:
-            self.conn.server.pending_sessions.remove(self)
-        except KeyError:
-            pass
-
     def disconnect(self, reason: message.base.Disconnect.REASON):
         """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting.
         """
-        logger.info(
-            "Disconnecting %r:%r reason: %r",
-            self.address,
-            self.port,
-            reason,
-        )
+        logger.info("Sending disconnect message. reason=%s, address=%s:%r",
+                    reason.name, self.address, self.port,)
         if self.conn.opened:
             self._send_disconnect(reason)
             self.dropped()
@@ -146,8 +146,8 @@ class BasicSession(FileSession):
         return True
 
     def _react_to_disconnect(self, msg):
-        logger.info("Disconnect reason: %r", msg.reason)
-        logger.info("Closing %s:%s", self.address, self.port)
+        logger.info("Received disconnect message. reason=%s, address=%s:%r",
+                    msg.reason.name, self.address, self.port)
         self.dropped()
 
 

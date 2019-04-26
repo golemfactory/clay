@@ -23,10 +23,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{2ED5F55B-4AEF-4909-A2CD-793CF6902C1B} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{36CB4E64-4AE6-4A04-A47B-012BF8BF528E} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.18.3" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.19.1" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -39,8 +39,8 @@
     <ROW Property="WindowsTypeNT50Display" MultiBuildValue="DefaultBuild:Windows 2000" ValueLocId="-"/>
     <ROW Property="WindowsTypeNT5X" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
     <ROW Property="WindowsTypeNT5XDisplay" MultiBuildValue="DefaultBuild:Windows XP/2003 RTM, Windows XP/2003 SP1, Windows XP SP2 x86" ValueLocId="-"/>
-    <ROW Property="WindowsTypeNT64" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64" ValueLocId="-"/>
-    <ROW Property="WindowsTypeNT64Display" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT64" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64, Windows 10 version 1507 x64, Windows 10 version 1511 x64, Windows 10 version 1607 x64, Windows 10 version 1703 x64" ValueLocId="-"/>
+    <ROW Property="WindowsTypeNT64Display" MultiBuildValue="DefaultBuild:Windows XP SP2 x64, Windows Server 2003 SP2 x64, Windows Vista x64, Windows Server 2008 x64, Windows 7 x64, Windows Server 2008 R2 x64, Windows 8 x64, Windows Server 2012 x64, Windows 8.1 x64, Windows Server 2012 R2 x64, Windows 10 version 1507 x64, Windows 10 version 1511 x64, Windows 10 version 1607 x64, Windows 10 version 1703 x64" ValueLocId="-"/>
     <ROW Property="WindowsTypeNTDisplay" MultiBuildValue="DefaultBuild:32-bit Windows versions" ValueLocId="-"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiDirsComponent">
@@ -73,6 +73,7 @@
     <ROW Directory="resources_Dir" Directory_Parent="rendering_Dir" DefaultDir="RESOUR~1|resources"/>
     <ROW Directory="taskcollector.tlog_Dir" Directory_Parent="Release_Dir" DefaultDir="TASKCO~1.TLO|taskcollector.tlog"/>
     <ROW Directory="taskcollector_Dir" Directory_Parent="resources_Dir" DefaultDir="TASKCO~1|taskcollector"/>
+    <ROW Directory="version_Dir" Directory_Parent="TempFolder" DefaultDir="019~1.1|[|ProductVersion]"/>
     <ROW Directory="x64_Dir" Directory_Parent="taskcollector_Dir" DefaultDir="x64"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
@@ -405,7 +406,7 @@
     <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
     <ROW Name="cleandockervm.ps1" SourcePath="scripts\docker\clean-docker-vm.ps1"/>
     <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
-    <ROW Name="preparedockerforwindows.ps1" SourcePath="scripts\docker\prepare-docker-for-windows.ps1"/>
+    <ROW Name="preparedockerasadmin.ps1" SourcePath="scripts\docker\prepare-docker-as-admin.ps1"/>
     <ROW Name="tempFiles.dll" SourcePath="&lt;AI_CUSTACTS&gt;tempFiles.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiConditionComponent">
@@ -467,7 +468,7 @@
     <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGwAZQBhAG4AZABvAGMAawBlAHIAdgBtAC4AcABzADE="/>
     <ROW Action="AI_DATA_SETTER_11" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
     <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
-    <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGYAbwByAHcAaQBuAGQAbwB3AHMALgBwAHMAMQ=="/>
+    <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGEAcwBhAGQAbQBpAG4ALgBwAHMAMQ=="/>
     <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="We have detected that you are trying to install Golem on Windows 10 Home. Unfortunately, your operating system does not support Hyper-V, but we have kept Docker Toolbox support.&#13;\n&#13;\nPlease download it manually from the official website https://docs.docker.com/toolbox/toolbox_install_windows/ in case you don&apos;t have it already installed on your computer. |Virtualization for Windows Home |MB_OK,MB_ICONINFORMATION,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_16" Type="51" Source="CustomActionData" Target="Since 0.19.0 Golem supports Hyper-V.&#13;\n&#13;\nPlease be aware that if you are using any other virtualization software (e.g. Docker Toolbox, VMware) do not to install Hyper-V as this may cause issues with other applications on your system. &#13;\n&#13;\nBy clicking &quot;Yes&quot; you are agreeing for Hyper-V to be installed. Otherwise please make sure you have Docker Toolbox installed before running Golem. |Hyper-V in Windows Professional |MB_YESNO,MB_ICONINFORMATION,MB_DEFBUTTON1|INSTALL_HYPERV|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
@@ -521,6 +522,7 @@
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
     <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
     <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
+    <ROW Action="SetRunningUser" Type="51" Source="RUNNING_USER" Target="[%USERNAME]"/>
     <ROW Action="StopProcess_DockerToolbox" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_4"/>
     <ROW Action="StopProcess_Golem" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_1"/>
     <ROW Action="StopProcess_Golemapp" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_2"/>
@@ -585,7 +587,7 @@
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( False )" Sequence="1622"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1622"/>
     <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
@@ -613,9 +615,10 @@
     <ROW Action="AI_DATA_SETTER_11" Condition="( NOT Installed )" Sequence="51"/>
     <ROW Action="MessageBox_DoYouWantHyperV" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="204"/>
     <ROW Action="AI_DATA_SETTER_16" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="203"/>
+    <ROW Action="SetRunningUser" Condition="( NOT Installed )" Sequence="1299"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
-    <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
+    <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10240)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10586)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 14393)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 15063)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="( Version9X OR VersionNT64 )" Description="[ProductName] can not be installed on [WindowsTypeNTDisplay]." DescriptionLocId="AI.LaunchCondition.NoNT" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="(VersionNT &lt;&gt; 400)" Description="[ProductName] can not be installed on [WindowsTypeNT40Display]." DescriptionLocId="AI.LaunchCondition.NoNT40" IsPredefined="true" Builds="DefaultBuild"/>
     <ROW Condition="(VersionNT &lt;&gt; 500)" Description="[ProductName] can not be installed on [WindowsTypeNT50Display]." DescriptionLocId="AI.LaunchCondition.NoNT50" IsPredefined="true" Builds="DefaultBuild"/>
@@ -688,7 +691,9 @@
     <ROW Directory_="APPDIR" SourcePath="Installer\Installer_Win\install_tmp" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.TempFileComponent">
-    <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="TempFolder" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
+    <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="version_Dir" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
+    <ROW FileId="preparedockerforwindows.ps1" Name="PREPAR~1.PS1|prepare-docker-for-windows.ps1" Directory_="version_Dir" Property="AI_PREPARE_DOCKER_FILE" Options="0" Data="scripts\docker\prepare-docker-for-windows.ps1"/>
+    <ROW FileId="runasadmin.ps1" Name="RUN-AS~1.PS1|run-as-admin.ps1" Directory_="version_Dir" Property="AI_RUN_AS_ADMIN_FILE" Options="0" Data="scripts\run-as-admin.ps1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
     <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="&amp;DockerForWin = 3" Flags="3"/>

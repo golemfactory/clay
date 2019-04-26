@@ -1,15 +1,9 @@
 # Block for declaring the script parameters.
 Param(
-    $createShareFolder = "",
+    $createShareScript = "",
     $appDataDir = "",
     $currentUserName = ""
 )
-if (Get-Command "AI_GetMsiProperty" -errorAction SilentlyContinue)
-{
-    $createShareFolder = (AI_GetMsiProperty TempFolder)
-    $appDataDir = (AI_GetMsiProperty LocalAppDataFolder)
-    $currentUserName = (AI_GetMsiProperty LogonUser)
-}
 
 $ErrorActionPreference = "Stop"
 
@@ -23,7 +17,7 @@ if( ! $currentGolemUser )
 {
     "Creating local user"
     $securePassword = ConvertTo-SecureString $golemUserName -AsPlainText -Force
-    New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem." -AccountNeverExpires
+    New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem." -AccountNeverExpires -PasswordNeverExpires
     "Local user created"
 }
 # TODO: set execution policy here?
@@ -31,10 +25,8 @@ if( ! $currentGolemUser )
 "createShareFolder: " + $createShareFolder
 "appDataDir: " + $appDataDir
 
-$createShareScript = $createShareFolder + "create-share.ps1"
-"createShareScript: " + $createShareScript
 
-$golemDataDir = $appDataDir + "golem\golem\default"
+$golemDataDir = $appDataDir + "\golem\golem\default"
 $mainnetDir = $golemDataDir + "\mainnet\ComputerRes"
 "mainnetDir: " + $mainnetDir
 $testnetDir = $golemDataDir + "\rinkeby\ComputerRes"
@@ -45,7 +37,7 @@ function EnsureShare {
     "Ensure Shared folder"
     md $folder -Force
     "Folder created, create share"
-    PowerShell.exe -WindowStyle hidden -File "$createShareScript" "$golemUserName" "$folder"
+    &"$createShareScript" "$golemUserName" "$folder"
     "Share created"
 }
 
@@ -100,3 +92,5 @@ if( ! $firewallRule )
         exit 1
     }
 }
+
+exit 0

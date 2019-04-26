@@ -9,6 +9,7 @@ from pathlib import Path
 from random import SystemRandom
 from time import sleep
 from typing import Dict
+from unittest.mock import Mock, patch
 
 import ethereum.keys
 import pycodestyle
@@ -33,6 +34,7 @@ from golem.task.taskbase import TaskEventListener, Task
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import TaskState, TaskStatus
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -40,9 +42,12 @@ logger = logging.getLogger(__name__)
 class TestTaskManager(TaskManager):
     def __init__(
             self, node, keys_auth, root_path,
-            tasks_dir="tasks", task_persistence=True,
-            apps_manager=AppsManager(), finished_cb=None):
-        super(TaskEventListener, self).__init__()
+            config_desc: ClientConfigDescriptor,
+            tasks_dir="tasks",
+            task_persistence=True,
+            apps_manager=AppsManager(),
+            finished_cb=None,
+        ):
 
         self.apps_manager = apps_manager
         apps = list(apps_manager.apps.values())
@@ -58,7 +63,7 @@ class TestTaskManager(TaskManager):
 
         self.task_persistence = task_persistence
 
-        tasks_dir = Path(os.path.join(root_path, tasks_dir))
+        tasks_dir = Path(tasks_dir)
         self.tasks_dir = tasks_dir / "tmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
@@ -68,6 +73,10 @@ class TestTaskManager(TaskManager):
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
             resource_dir_method=self.dir_manager.get_task_temporary_dir,
+            client_kwargs={
+                'host': config_desc.hyperdrive_rpc_address,
+                'port': config_desc.hyperdrive_rpc_port,
+            },
         )
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager
@@ -75,6 +84,8 @@ class TestTaskManager(TaskManager):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
+
+        # These lines were commented, because tests hang on initialization here.
 
         # self.comp_task_keeper = CompTaskKeeper(
         #     tasks_dir,
@@ -96,6 +107,7 @@ class TempDirFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         logging.basicConfig(level=logging.DEBUG)
         if cls.root_dir is None:
             if is_osx():
@@ -227,7 +239,7 @@ class PEP8MixIn(object):
     in this attribute.
     """
 
-    def test_conformance(self):
+    def test_conformance(self, *_):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(
             ignore=pycodestyle.DEFAULT_IGNORE.split(','),
@@ -243,6 +255,11 @@ class PEP8MixIn(object):
 
 
 class TestTaskIntegration(TempDirFixture):
+
+    class MockCompTaskKeeper:
+        def __init__(**kwargs):
+            self.provider_stats_manager = None
+
 
     def dont_remove_dirs_on_failed_test(fun):
         def wrapper(self):
@@ -287,8 +304,14 @@ class TestTaskIntegration(TempDirFixture):
                                   private_key_name="test_key",
                                   password="test")
 
-        self.task_manager = TestTaskManager(self.node, self.keys_auth,
+        ccd = ClientConfigDescriptor()
+        tasks_dir = os.path.join(self.tempdir, 'tasks')
+
+        self.task_manager = TestTaskManager(self.node,
+                                            self.keys_auth,
                                             self.tempdir,
+                                            tasks_dir=tasks_dir,
+                                            config_desc=ccd,
                                             apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
@@ -363,6 +386,8 @@ class TestTaskIntegration(TempDirFixture):
 
             # finish subtask
             TaskClient.assert_exists(self.node_id, task.counting_nodes).finish()
+        
+        return task
 
     def _execute_subtask(self, task, ctd):
 

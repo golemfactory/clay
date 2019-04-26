@@ -1,6 +1,7 @@
 import os
 import uuid
 from unittest import mock
+from freezegun import freeze_time
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
@@ -14,11 +15,12 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 
 
 # TODO: test invalid video file
 
-
+@ci_skip
 class TestffmpegTask(TempDirFixture):
     def setUp(self):
         super(TestffmpegTask, self).setUp()
@@ -115,7 +117,7 @@ class TestffmpegTask(TempDirFixture):
     def test_build_task_not_supported_container(self):
         d = self._task_dictionary
         d['options']['container'] = 'xxx'
-        with self.assertRaises(TranscodingTaskBuilderException) as cxt:
+        with self.assertRaises(TranscodingTaskBuilderException) as _:
             self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_different_codecs(self):
@@ -130,6 +132,7 @@ class TestffmpegTask(TempDirFixture):
                 d['options']['container'] = container
                 self.tt.task_builder_type.build_definition(self.tt, d)
 
+    @freeze_time('2019-01-01 00:00:00')
     def test_valid_task_definition(self):
         d = self._task_dictionary
         td = self.tt.task_builder_type.build_definition(self.tt, d)
@@ -152,7 +155,8 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(options.output_container,
                          Container(d['options']['container']))
 
-        self.assertEqual(td.output_file, '/tmp/test task.mp4')
+        self.assertEqual(td.output_file,
+                         '/tmp/test task_2019-01-01_00-00-00/test task.mp4')
 
     def test_invalid_extra_data(self):
         ffmpeg_task = self._build_ffmpeg_task()
@@ -165,8 +169,8 @@ class TestffmpegTask(TempDirFixture):
         d = self._task_dictionary
         extra_data = ffmpeg_task._get_extra_data(0)
         self.assertEqual(extra_data['command'], Commands.TRANSCODE.value[0])
-        self.assertEqual(extra_data['script_filepath'],
-                         '/golem/scripts/ffmpeg_task.py')
+        self.assertEqual(extra_data['entrypoint'],
+                         'python3 /golem/scripts/ffmpeg_task.py')
         self.assertEqual(extra_data['track'],
                          '/golem/resources/test_video[num=0].m3u8')
         vargs = extra_data['targs']['video']
@@ -215,6 +219,7 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(ctd['extra_data'], subtask['transcoding_params'])
         self.assertEqual(ctd['docker_images'], [di.to_dict() for di in
                                                 ffmpeg_task.docker_images])
-        self.assertEqual(ctd['deadline'], min(timeout_to_deadline(
-            ffmpeg_task.header.subtask_timeout),
-            ffmpeg_task.header.deadline))
+        self.assertEqual(ctd['deadline'],
+                         min(timeout_to_deadline(
+                             ffmpeg_task.header.subtask_timeout),
+                             ffmpeg_task.header.deadline))

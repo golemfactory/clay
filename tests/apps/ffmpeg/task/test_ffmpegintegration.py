@@ -5,11 +5,13 @@ from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
+from golem.tools.ci import ci_skip
 
 
 logger = logging.getLogger(__name__)
 
 
+@ci_skip
 class TestffmpegIntegration(TestTaskIntegration):
 
     def setUp(self):
@@ -41,8 +43,9 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        self.execute_task(task_def)
-        self.assertTrue(TestTaskIntegration.check_file_existence(result_file))
+        task = self.execute_task(task_def)
+        result = task.task_definition.output_file
+        self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
     @TestTaskIntegration.dont_remove_dirs_on_failed_test
     def test_nonexistent_output_dir(self):
@@ -68,9 +71,10 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        self.execute_task(task_def)
+        task = self.execute_task(task_def)
 
-        self.assertTrue(TestTaskIntegration.check_file_existence(result_file))
+        result = task.task_definition.output_file
+        self.assertTrue(TestTaskIntegration.check_file_existence(result))
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 

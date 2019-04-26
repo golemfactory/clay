@@ -1,6 +1,7 @@
 import logging
 from os import path
 import sys
+from typing import Any, Set
 
 from ethereum.utils import denoms
 
@@ -64,8 +65,11 @@ TASK_SESSION_TIMEOUT = 900
 RESOURCE_SESSION_TIMEOUT = 600
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
-CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
-CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
+COMPUTATION_CANCELLATION_TIMEOUT = 10.0
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60     # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60     # 3 days
+# FIXME Issue #3862
+CLEANING_ENABLED = 0
 
 # Default max price per hour
 MAX_PRICE = int(1.0 * denoms.ether)
@@ -79,6 +83,17 @@ INITIAL_MASK_SIZE_FACTOR = 1.0
 MIN_NUM_WORKERS_FOR_MASK = 20
 # Updating by 1 bit increases number of workers 2x
 MASK_UPDATE_NUM_BITS = 1
+
+# Experimental temporary banning options
+DISALLOW_NODE_TIMEOUT_SECONDS = None
+DISALLOW_IP_TIMEOUT_SECONDS = None
+DISALLOW_ID_MAX_TIMES = 1
+DISALLOW_IP_MAX_TIMES = 1
+
+DEFAULT_HYPERDRIVE_PORT = 3282
+DEFAULT_HYPERDRIVE_ADDRESS = None
+DEFAULT_HYPERDRIVE_RPC_PORT = 3292
+DEFAULT_HYPERDRIVE_RPC_ADDRESS = 'localhost'
 
 
 class NodeConfig:
@@ -102,6 +117,12 @@ class NodeConfig:
 
 
 class AppConfig:
+    UNSAVED_PROPERTIES = (
+        'num_cores',
+        'max_resource_size',
+        'max_memory_size',
+    )
+
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
@@ -160,18 +181,36 @@ class AppConfig:
             resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
+            computation_cancellation_timeout=COMPUTATION_CANCELLATION_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
             clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
+            cleaning_enabled=CLEANING_ENABLED,
             debug_third_party=DEBUG_THIRD_PARTY,
             # network masking
             net_masking_enabled=NET_MASKING_ENABLED,
             initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
             min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
-            mask_update_num_bits=MASK_UPDATE_NUM_BITS
+            mask_update_num_bits=MASK_UPDATE_NUM_BITS,
+            # acl
+            disallow_node_timeout_seconds=DISALLOW_NODE_TIMEOUT_SECONDS,
+            disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
+            disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
+            disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
+            #hyperg
+            hyperdrive_port=DEFAULT_HYPERDRIVE_PORT,
+            hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
+            hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
+            hyperdrive_rpc_address=DEFAULT_HYPERDRIVE_RPC_ADDRESS,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
-        return AppConfig(cfg, cfg_file)
+        return cls(cfg, cfg_file)
+
+    def __repr__(self):
+        return '<{}: {}>'.format(self.__class__, {
+            prop: self.get_node_property(prop)()
+            for prop in self._cfg.get_node_config().prop_names
+        })
 
     def __init__(self, cfg, config_file):
         self.config_file = config_file
@@ -197,11 +236,16 @@ class AppConfig:
         for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
-                logger.info(
-                    "Cannot set unknown config property: %r = %r",
-                    var,
-                    val,
-                )
+                if var in self.UNSAVED_PROPERTIES:
+                    logger.debug(
+                        "Config property preserved elsewhere: %r", var
+                    )
+                else:
+                    logger.info(
+                        "Cannot set unknown config property: %r = %r",
+                        var,
+                        val,
+                    )
                 continue
 
             set_func = getattr(self, setter)

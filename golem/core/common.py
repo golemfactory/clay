@@ -150,7 +150,7 @@ def timeout_to_string(timeout):
     return TIMEOUT_FORMAT.format(hours, minutes, timeout)
 
 
-def string_to_timeout(string) -> int:
+def string_to_timeout(string: str) -> int:
     values = string.split(':')
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 
@@ -218,6 +218,30 @@ class HandleAttributeError(HandleError):
             AttributeError,
             handle_error
         )
+
+
+def retry(exc_cls, count: int):
+    assert exc_cls, "Class not provided"
+    assert count >= 0, "Invalid retry count"
+
+    if not isinstance(exc_cls, (list, tuple)):
+        exc_cls = (exc_cls,)
+
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            last_exc = None
+            for _ in range(count + 1):
+                try:
+                    return func(*args, **kwargs)
+                except Exception as exc:  # pylint: disable=broad-except
+                    last_exc = exc
+                    if not isinstance(exc, exc_cls):
+                        break
+            # pylint: disable=raising-bad-type
+            raise last_exc
+        return wrapper
+    return decorator
 
 
 def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
