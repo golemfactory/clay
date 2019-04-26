@@ -4,54 +4,49 @@ import unittest
 
 from freezegun import freeze_time
 
-from golem.core.common import timeout_to_deadline, deadline_to_timeout, \
-    get_timestamp_utc
+from golem.core.common import timeout_to_deadline
 from golem.task.taskstate import SubtaskState, SubtaskStatus, TaskState, \
     TaskStatus
 
 
 class TestSubtaskState(unittest.TestCase):
-
-    def test_init(self):
-        ss = SubtaskState()
-        self.assertIsInstance(ss, SubtaskState)
-        ss.results.append(1)
-        ss2 = SubtaskState()
-        ss2.results.append(2)
-        self.assertEqual(ss.results, [1])
-        self.assertEqual(ss2.results, [2])
-
     @freeze_time(datetime.datetime(2019, 12, 12, 0, 0, 0))
     def test_to_dictionary(self):
-        ss = SubtaskState()
-        ss.subtask_id = "ABCDEF"
-        ss.subtask_progress = 0.92
-        ss.time_started = get_timestamp_utc()
-        ss.deadline = timeout_to_deadline(ss.time_started + 5)
-        ss.extra_data = {"param1": 1323, "param2": "myparam"}
-        ss.subtask_status = SubtaskStatus.starting
-        ss.value = 138
-        ss.stdout = "path/to/file"
-        ss.stderr = "path/to/file2"
-        ss.results = ["path/to/file3", "path/to/file4"]
-        ss.computation_time = 130
-        ss.node_id = "NODE1"
+        time_started = int(time.time())
+        deadline = timeout_to_deadline(time_started + 5)
+        extra_data = {"param1": 1323, "param2": "myparam"}
+        ss = SubtaskState(
+            subtask_id="ABCDEF",
+            progress=0.92,
+            time_started=time_started,
+            deadline=deadline,
+            extra_data=extra_data,
+            price=138,
+            stdout="path/to/file",
+            stderr="path/to/file2",
+            results=["path/to/file3", "path/to/file4"],
+            node_id="NODE1",
+        )
 
-        ss_dict = ss.to_dictionary()
-        assert ss_dict['subtask_id'] == "ABCDEF"
-        assert ss_dict['progress'] == 0.92
-        assert ss_dict['time_started'] == get_timestamp_utc()
+        ss_dict = ss.to_dict()
+        self.assertCountEqual(
+            ss_dict,
+            {
+                'subtask_id': "ABCDEF",
+                'progress': 0.92,
+                'time_started': time_started,
+                'deadline': deadline,
+                'extra_data': extra_data,
+                'status': SubtaskStatus.starting.value,
+                'stdout': "path/to/file",
+                'stderr': "path/to/file2",
+                'results': ["path/to/file3", "path/to/file4"],
+                'node_id': "NODE1",
+                'node_name': "",
+                'price': 138,
+            },
+        )
 
-        assert ss_dict.get('deadline') is None
-        assert ss_dict.get('extra_data') is None
-        assert ss_dict['status'] == SubtaskStatus.starting.value
-
-        assert ss_dict['stdout'] == "path/to/file"
-        assert ss_dict['stderr'] == "path/to/file2"
-        assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]
-
-        assert ss_dict.get('computation_time') is None
-        assert ss_dict['node_id'] == "NODE1"
 
 
 class TestTaskState(unittest.TestCase):
