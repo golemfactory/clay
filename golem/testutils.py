@@ -334,8 +334,9 @@ class TestTaskIntegration(TempDirFixture):
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
 
-        requestor_results = [os.path.join(subtasks_results_dir,
-                                          os.path.basename(result)) for result in results]
+        requestor_results = [os.path.join(
+            subtasks_results_dir,
+            os.path.basename(result)) for result in results]
 
         for provider_result, requestor_result in zip(results,
                                                      requestor_results):
@@ -388,7 +389,8 @@ class TestTaskIntegration(TempDirFixture):
                 result=result,
                 verification_finished=None)
 
-            # all results are moved to the parent dir inside computed_task_received
+            # all results are moved to the parent dir inside
+            # computed_task_received
             logger.info("Executing task.accept_results [subtask_id = {}] "
                         "[task_id = {}].".format(subtask_id, task_id))
 
@@ -491,5 +493,5 @@ class TestTaskIntegration(TempDirFixture):
     def tearDown(self):
         if self.REMOVE_TMP_DIRS:
             if os.path.isdir(self.tempdir):
-                shutil.rmtree(self.tempdir)  
+                shutil.rmtree(self.tempdir)
 
