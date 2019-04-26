@@ -335,7 +335,7 @@ class TestTaskIntegration(TempDirFixture):
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
 
         requestor_results = [os.path.join(subtasks_results_dir,
-            os.path.basename(result)) for result in results]
+                             os.path.basename(result)) for result in results]
 
         for provider_result, requestor_result in zip(results,
                                                      requestor_results):
@@ -372,13 +372,16 @@ class TestTaskIntegration(TempDirFixture):
 
             logger.info("Executing test subtask {}/{} [subtask_id = {}] "
                         "[task_id = {}] on mocked provider.".format(
-                i+1, task.task_definition.subtasks_count, subtask_id, task_id))
+                            i+1, task.task_definition.subtasks_count,
+                            subtask_id, task_id))
 
             result = self._execute_subtask(task, ctd)
-            result = self._collect_results_from_provider(result, task_id, subtask_id)
+            result = self._collect_results_from_provider(result,
+                                                         task_id, subtask_id)
 
             logger.info("Executing TaskManager.computed_task_received "
-                        "[subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
+                        "[subtask_id = {}] [task_id = {}].".format(subtask_id,
+                                                                   task_id))
 
             self.task_manager.computed_task_received(
                 subtask_id=subtask_id,
@@ -394,7 +397,7 @@ class TestTaskIntegration(TempDirFixture):
 
             # finish subtask
             TaskClient.assert_exists(self.node_id, task.counting_nodes).finish()
-        
+
         return task
 
     def _execute_subtask(self, task, ctd):
@@ -432,7 +435,7 @@ class TestTaskIntegration(TempDirFixture):
 
         if os.path.exists(stdout_file) and os.path.isfile(stdout_file):
             with open(stdout_file, "r") as myfile:
-                content=myfile.read()
+                content = myfile.read()
                 logger.info("Docker stdout:\n{}".format(content))
         else:
             logger.error("Docker stdout file {} "
@@ -440,7 +443,7 @@ class TestTaskIntegration(TempDirFixture):
 
         if os.path.exists(stderr_file) and os.path.isfile(stderr_file):
             with open(stderr_file, "r") as myfile:
-                content=myfile.read()
+                content = myfile.read()
                 logger.info("Docker stderr:\n{}".format(content))
         else:
             logger.error("Docker stderr file {} "
