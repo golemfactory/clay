@@ -50,9 +50,12 @@ def test_simple_verification_no_results(verifier, empty_results):
     assert ffmpeg_verifier.state == SubtaskVerificationState.WRONG_ANSWER
 
 
-def test_simple_verification_no_verification_result_file_does_not_exist(verifier, empty_results):
+def test_simple_verification_no_verification_result_file_does_not_exist(
+        verifier, empty_results):
+
     ffmpeg_verifier = verifier(empty_results)
-    assert ffmpeg_verifier.simple_verification({"results": [TEST_FILE]}) is False
+    assert ffmpeg_verifier.simple_verification({"results": [TEST_FILE]})\
+           is False
     assert ffmpeg_verifier.state == SubtaskVerificationState.WRONG_ANSWER
 
 
