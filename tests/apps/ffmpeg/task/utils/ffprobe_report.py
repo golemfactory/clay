@@ -384,14 +384,20 @@ class FuzzyDuration:
         return self._tolerance
 
     def __eq__(self, other):
-        if not isinstance(other, FuzzyDuration):
-            return self._duration == other
+        if isinstance(other, (int, float)):
+            return abs(self.duration - other) <= self.tolerance
 
-        # We treat both fuzzy values as closed intervals:
-        # [value - tolerance, value + tolerance]
-        # If the intervals overlap at at least one point, we have a match.
-        return abs(self.duration - other.duration) <= \
-               self.tolerance + other.tolerance
+        if isinstance(other, FuzzyDuration):
+            # We treat both fuzzy values as closed intervals:
+            # [value - tolerance, value + tolerance]
+            # If the intervals overlap at at least one point, we have a match.
+            return (
+                abs(self.duration - other.duration) <=
+                self.tolerance + other.tolerance
+            )
+
+        return self._duration == other
+
 
     def __str__(self):
         if self._tolerance == 0:
@@ -419,14 +425,20 @@ class FuzzyInt:
         return self._tolerance_percent
 
     def __eq__(self, other):
-        if not isinstance(other, FuzzyInt):
-            return self._value == other
+        if isinstance(other, (int, float)):
+            return (
+                abs(self.value - other) <=
+                self.tolerance_percent * self.value
+            )
 
-        tolerance = (
-            abs(self.tolerance_percent * self.value) +
-            abs(other.tolerance_percent * other.value)
-        ) / 100
-        return abs(self.value - other.value) <= tolerance
+        if isinstance(other, FuzzyInt):
+            tolerance = (
+                abs(self.tolerance_percent * self.value) +
+                abs(other.tolerance_percent * other.value)
+            ) / 100
+            return abs(self.value - other.value) <= tolerance
+
+        return self.value == other
 
     def __str__(self):
         if self.tolerance_percent == 0:
