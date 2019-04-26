@@ -182,6 +182,40 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         send_mock.assert_not_called()
         task_session_dropped.assert_called_once()
 
+    def test_no_promissory_note_sig(self, send_mock, *_):
+        self.msg.promissory_note_sig = None
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.PromissoryNoteMissing,
+        )
+
+    def test_no_concent_promissory_note_sig(self, send_mock, *_):
+        self.msg.concent_promissory_note_sig = None
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.PromissoryNoteMissing,
+        )
+
+    def test_bad_promissory_note_sig(self, send_mock, *_):
+        self.msg.sign_promissory_note(self.different_keys.raw_privkey)
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.PromissoryNoteMissing,
+        )
+
+    def test_bad_concent_promissory_note_sig(self, send_mock, *_):
+        self.msg.sign_concent_promissory_note(
+            deposit_contract_address=EthereumConfig.deposit_contract_address,
+            private_key=self.different_keys.raw_privkey
+        )
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.PromissoryNoteMissing,
+        )
 
 @mock.patch(
     'golem.task.tasksession.TaskSession.verify_owners',
