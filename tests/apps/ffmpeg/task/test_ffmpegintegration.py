@@ -17,6 +17,8 @@ from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration, \
+    parse_ffprobe_frame_rate
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
@@ -318,6 +320,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count', 'pixel_format'}})
+        fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
+        operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
         if not Container.is_supported(video['container'].value):
