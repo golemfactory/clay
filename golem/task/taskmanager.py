@@ -15,7 +15,7 @@ from typing import (
 )
 from zipfile import ZipFile
 
-from golem_messages.message import ComputeTaskDef
+from golem_messages import message
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -62,17 +62,6 @@ def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task %r", args[1])
     logger.debug('Task not found', exc_info=True)
     return None
-
-
-subtask_priority = {
-    None: -1,
-    SubtaskStatus.failure: 0,
-    SubtaskStatus.restarted: 1,
-    SubtaskStatus.resent: 2,
-    SubtaskStatus.starting: 3,
-    SubtaskStatus.downloading: 4,
-    SubtaskStatus.finished: 5
-}
 
 
 class TaskManager(TaskEventListener):
@@ -457,7 +446,8 @@ class TaskManager(TaskEventListener):
         ctd = extra_data.ctd
 
         def check_compute_task_def():
-            if not isinstance(ctd, ComputeTaskDef) or not ctd['subtask_id']:
+            if not isinstance(ctd, message.tasks.ComputeTaskDef)\
+                    or not ctd['subtask_id']:
                 logger.debug('check ctd: ctd not instance or not subtask_id')
                 return False
             if task_id != ctd['task_id'] \
@@ -826,13 +816,27 @@ class TaskManager(TaskEventListener):
         return True
 
     @handle_subtask_key_error
-    def task_computation_cancelled(self, subtask_id: str, err: object,
-                                   timeout: float) -> bool:
+    def task_computation_cancelled(
+            self,
+            subtask_id: str,
+            err: message.tasks.CannotComputeTask.REASON,
+            timeout: float,
+    ) -> bool:
+        if err is message.tasks.CannotComputeTask.REASON.OfferCancelled:
+            self.restart_subtask(
+                subtask_id,
+                new_status=SubtaskStatus.cancelled,
+            )
+            return True
         task_id = self.subtask2task_mapping[subtask_id]
         task_state = self.tasks_states[task_id]
         subtask_state = task_state.subtask_states[subtask_id]
         ban_node = subtask_state.time_started + timeout < time.time()
-        return self.task_computation_failure(subtask_id, err, ban_node)
+        return self.task_computation_failure(
+            subtask_id,
+            f'Task computation rejected: {err.value}',
+            ban_node,
+        )
 
     def task_result_incoming(self, subtask_id):
         try:
@@ -938,14 +942,18 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id, op=TaskOp.RESTARTED)
 
     @handle_subtask_key_error
-    def restart_subtask(self, subtask_id):
+    def restart_subtask(
+            self,
+            subtask_id: str,
+            new_status: SubtaskStatus = SubtaskStatus.restarted,
+    ):
         task_id = self.subtask2task_mapping[subtask_id]
         self.tasks[task_id].restart_subtask(subtask_id)
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.computing
         subtask_state = task_state.subtask_states[subtask_id]
-        subtask_state.status = SubtaskStatus.restarted
-        subtask_state.stderr = "[GOLEM] Restarted"
+        subtask_state.status = new_status
+        subtask_state.stderr = f"[GOLEM] {new_status.value}"
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,

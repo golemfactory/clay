@@ -588,23 +588,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.check_provider_for_subtask(msg.subtask_id):
-            logger.info(
-                "Provider can't compute subtask: %r Reason: %r",
-                msg.subtask_id,
-                msg.reason,
-            )
+        if not self.check_provider_for_subtask(msg.subtask_id):
+            self.dropped()
+            return
 
-            config = self.task_server.config_desc
-            timeout = config.computation_cancellation_timeout
+        logger.info(
+            "Provider can't compute subtask: %r Reason: %r",
+            msg.subtask_id,
+            msg.reason,
+        )
 
-            self.task_manager.task_computation_cancelled(
-                msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason),
-                timeout,
-            )
+        config = self.task_server.config_desc
+        timeout = config.computation_cancellation_timeout
 
-        self.dropped()
+        self.task_manager.task_computation_cancelled(
+            msg.subtask_id,
+            msg.reason,
+            timeout,
+        )
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):

@@ -12,9 +12,10 @@ from unittest.mock import Mock, patch, MagicMock
 
 from faker import Faker
 from freezegun import freeze_time
+from golem_messages import message
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
-from golem_messages.message import ComputeTaskDef
+from golem_messages.message.tasks import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
@@ -682,13 +683,14 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
         self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
         (handler, checker) = self._connect_signal_handler()
+        reason = message.tasks.CannotComputeTask.REASON.WrongCTD
         assert self.tm.task_computation_cancelled("aabbcc",
-                                                  "computing another task",
+                                                  reason,
                                                   timeout)
         ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
         assert ss.status == SubtaskStatus.failure
         assert not self.tm.task_computation_cancelled("aabbcc",
-                                                      "computing another task",
+                                                      reason,
                                                       timeout)
         checker([("xyz", "aabbcc", SubtaskOp.FAILED),
                  ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
@@ -708,17 +710,45 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
         self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
         (handler, checker) = self._connect_signal_handler()
+        reason = message.tasks.CannotComputeTask.REASON.WrongCTD
         assert self.tm.task_computation_cancelled("aabbcc",
-                                                  "computing another task",
+                                                  reason,
                                                   timeout=-1000)
         ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
         assert ss.status == SubtaskStatus.failure
         assert not self.tm.task_computation_cancelled("aabbcc",
-                                                      "computing another task",
+                                                      reason,
                                                       timeout=1000)
         checker([("xyz", "aabbcc", SubtaskOp.FAILED),
                  ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
         del handler
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_computation_cancelled_offer_cancelled(self, *_):
+        reason = message.tasks.CannotComputeTask.REASON.OfferCancelled
+        subtask_id = "aabbcc"
+        task_mock = self._get_task_mock()
+        task_mock.needs_computation = lambda: True
+        task_mock.restart_subtask = Mock()
+        task_mock.computation_failed = Mock()
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = subtask_id
+        self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
+        self.tm.task_computation_cancelled(
+            subtask_id,
+            reason,
+            timeout=1000,
+        )
+        task_mock.restart_subtask.assert_called_once_with(
+            subtask_id,
+        )
+        task_mock.computation_failed.assert_not_called()
+        self.assertIs(
+            self.tm.tasks_states[task_mock.header.task_id]\
+                .subtask_states[subtask_id].status,
+            SubtaskStatus.cancelled,
+        )
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
     def test_get_subtasks(self, *_):
