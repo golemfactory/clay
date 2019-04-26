@@ -270,14 +270,21 @@ class DockerCPURuntime(Runtime):
     def _get_output(self, encoding: Optional[str] = None, **kwargs) \
             -> RuntimeOutput:
         """ Get output (STDERR or STDOUT) of this Runtime. """
-        status = self.status()
-        if status not in [RuntimeStatus.RUNNING, RuntimeStatus.STOPPED,
-                          RuntimeStatus.FAILURE]:
-            raise ValueError(f"Invalid status: '{status}'")
+
+        stream_available = [
+            RuntimeStatus.PREPARED,
+            RuntimeStatus.STARTING,
+            RuntimeStatus.RUNNING
+        ]
+        self._assert_status(
+            self.status(), stream_available + [
+                RuntimeStatus.STOPPED,
+                RuntimeStatus.FAILURE
+            ])
 
         raw_output: Iterable[bytes] = []
 
-        if self.status() == RuntimeStatus.RUNNING:
+        if self.status() in stream_available:
             raw_output = self._get_raw_output(stream=True, **kwargs)
 
         # If container is no longer running the stream will not work (it just
@@ -285,7 +292,7 @@ class DockerCPURuntime(Runtime):
         # Status update is needed because the container may have stopped
         # between checking and attaching to the output.
         self._update_status()
-        if self.status() != RuntimeStatus.RUNNING:
+        if self.status() not in stream_available:
             logger.debug("Container no longer running. Getting offline output.")
             raw_output = self._get_raw_output(stream=False, **kwargs)
 

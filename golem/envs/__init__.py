@@ -85,6 +85,20 @@ class Runtime(ABC):
         self._status = RuntimeStatus.CREATED
         self._status_lock = Lock()
 
+    @staticmethod
+    def _assert_status(
+            actual: RuntimeStatus,
+            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]) -> None:
+        """ Assert that actual status is one of the expected. """
+
+        if isinstance(expected, RuntimeStatus):
+            expected = [expected]
+
+        if actual not in expected:
+            exp_str = " or ".join(map(str, expected))
+            raise ValueError(
+                f"Invalid status: {actual}. Expected: {exp_str}")
+
     def _change_status(
             self,
             from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
@@ -92,14 +106,8 @@ class Runtime(ABC):
         """ Assert that current Runtime status is the given one and change to
             another one. Using lock to ensure atomicity. """
 
-        if isinstance(from_status, RuntimeStatus):
-            from_status = [from_status]
-
         with self._status_lock:
-            if self._status not in from_status:
-                exp_status = " or ".join(map(str, from_status))
-                raise ValueError(
-                    f"Invalid status: {self._status}. Expected: {exp_status}")
+            self._assert_status(self._status, from_status)
             self._status = to_status
 
     def _wrap_status_change(
@@ -167,8 +175,9 @@ class Runtime(ABC):
     def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
         """ Get STDOUT stream of the Runtime. If encoding is None the returned
             stream will be raw (bytes), otherwise it will be decoded (str).
-            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
-            (however, in the last case output might not be available)."""
+            Assumes current status is one of the following: 'PREPARED',
+            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
+            last case output might not be available). """
         raise NotImplementedError
 
     @abstractmethod

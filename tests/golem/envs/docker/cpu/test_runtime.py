@@ -499,9 +499,12 @@ class TestGetOutput(TestDockerCPURuntime):
         self._generic_test_invalid_status(
             method=self.runtime._get_output,
             valid_statuses={
+                RuntimeStatus.PREPARED,
+                RuntimeStatus.STARTING,
                 RuntimeStatus.RUNNING,
                 RuntimeStatus.STOPPED,
-                RuntimeStatus.FAILURE}
+                RuntimeStatus.FAILURE
+            }
         )
 
     @patch_runtime('_update_status')
