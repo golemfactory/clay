@@ -162,7 +162,7 @@ class TestffmpegDockerJob(TestDockerJob):
                 os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
                 'resources'),
             'test_video.mp4')
-        
+
         shutil.copy(str(stream_file), self.resources_dir)
         out_stream_path = os.path.join(DockerJob.OUTPUT_DIR,
                                        'test_video_TC.mp4')
