@@ -392,8 +392,13 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, **_kwargs):
+def _create_task_error(e, _self, task_dict, **_kwargs) \
+        -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
     logger.error("Cannot create task %r: %s", task_dict, e)
+
+    if hasattr(e, 'to_dict'):
+        return None, e.to_dict()
+
     return None, str(e)
 
 
@@ -426,7 +431,8 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
     def create_task(self, task_dict, force=False) \
-            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
+            -> typing.Tuple[typing.Optional[str],
+                            typing.Optional[typing.Union[str, typing.Dict]]]:
         """
         :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
@@ -474,16 +480,27 @@ class ClientProvider:
             total_price_gnt: int,
             number_of_tasks: int) -> None:
         transaction_system = self.client.transaction_system
-        if total_price_gnt > transaction_system.get_available_gnt():
-            raise eth_exceptions.NotEnoughFunds(
-                total_price_gnt,
-                transaction_system.get_available_gnt(), 'GNT',
-            )
+        missing_funds: typing.List[eth_exceptions.MissingFunds] = []
+
+        gnt_available = transaction_system.get_available_gnt()
+        if total_price_gnt > gnt_available:
+            missing_funds.append(eth_exceptions.MissingFunds(
+                required=total_price_gnt,
+                available=gnt_available,
+                currency='GNT'
+            ))
 
         eth = transaction_system.eth_for_batch_payment(number_of_tasks)
         eth_available = transaction_system.get_available_eth()
         if eth > eth_available:
-            raise eth_exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+            missing_funds.append(eth_exceptions.MissingFunds(
+                required=eth,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise eth_exceptions.NotEnoughFunds(missing_funds)
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
