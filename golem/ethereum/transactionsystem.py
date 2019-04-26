@@ -628,7 +628,7 @@ class TransactionSystem(LoopingCallService):
             missing_funds.append(exceptions.MissingFunds(
                 required=required,
                 available=gntb_balance,
-                currency='GNTB'
+                currency='GNT'
             ))
 
         eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)

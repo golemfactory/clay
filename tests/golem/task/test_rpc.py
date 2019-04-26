@@ -168,9 +168,9 @@ class TestCreateTask(ProviderBase, TestClientBase):
         error = result[1]
         # noqa pylint:disable=unsubscriptable-object
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
-        self.assertEqual(error['error_msg'], 'Not enough funds available.'
-                                             '\nRequired GNT: '
-                                             '0.166667, available: 0.000000')
+        self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
+                                             'Required GNT: '
+                                             '0.166667, available: 0.000000\n')
 
 
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
@@ -192,11 +192,11 @@ class ConcentDepositLockPossibilityTest(unittest.TestCase):
                 total_price_gnt=required_gnt,
                 number_of_tasks=1
             )
-        expected = f'Not enough funds available.' \
-            f'\nRequired GNT: {required_gnt / denoms.ether:f}, ' \
-            f'available: {available_gnt / denoms.ether:f}' \
-            f'\nRequired ETH: {required_eth / denoms.ether:f}, ' \
-            f'available: {available_eth / denoms.ether:f}'
+        expected = f'Not enough funds available.\n' \
+            f'Required GNT: {required_gnt / denoms.ether:f}, ' \
+            f'available: {available_gnt / denoms.ether:f}\n' \
+            f'Required ETH: {required_eth / denoms.ether:f}, ' \
+            f'available: {available_eth / denoms.ether:f}\n'
         self.assertIn(str(e.exception), expected)
 
 
