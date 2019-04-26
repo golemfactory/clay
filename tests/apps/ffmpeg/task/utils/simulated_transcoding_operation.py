@@ -52,7 +52,7 @@ class SimulatedTranscodingOperation:
         }
         self._ffprobe_report_set: Optional[FfprobeReportSet] = None
 
-    def _set_override(self, location, attribute, value):
+    def set_override(self, location, attribute, value):
         if location not in self._diff_overrides:
             self._diff_overrides[location] = {}
 
@@ -65,15 +65,15 @@ class SimulatedTranscodingOperation:
         self._task_options['output_container'] = new_container
 
         format_name = CONTAINER_TO_FFMPEG_MUXER[new_container]
-        self._set_override('format', 'format_name', format_name)
+        self.set_override('format', 'format_name', format_name)
 
     def request_video_codec_change(self, new_codec: VideoCodec):
         self._video_options['codec'] = new_codec.value
-        self._set_override('video', 'codec_name', new_codec.value)
+        self.set_override('video', 'codec_name', new_codec.value)
 
     def request_video_bitrate_change(self, new_bitrate: str):
         self._video_options['bit_rate'] = new_bitrate
-        self._set_override(
+        self.set_override(
             'video',
             'bitrate',
             fuzzy_int_if_possible(new_bitrate, 5),
@@ -81,11 +81,11 @@ class SimulatedTranscodingOperation:
 
     def request_resolution_change(self, new_resolution: Tuple[int, int]):
         self._video_options['resolution'] = new_resolution
-        self._set_override('video', 'resolution', new_resolution)
+        self.set_override('video', 'resolution', new_resolution)
 
     def request_frame_rate_change(self, new_frame_rate: str):
         self._video_options['frame_rate'] = new_frame_rate
-        self._set_override(
+        self.set_override(
             'video',
             'frame_rate',
             parse_ffprobe_frame_rate(new_frame_rate),
