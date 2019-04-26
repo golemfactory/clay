@@ -8,7 +8,7 @@ from golem.ethereum.exceptions import NotEnoughFunds, MissingFunds
 class TestNotEnoughFunds(TestCase):
     def test_error_message_single_currency(self):
         try:
-            raise NotEnoughFunds(
+            raise NotEnoughFunds.single_currency(
                 required=5 * denoms.ether,
                 available=1 * denoms.ether,
                 currency='GNT'

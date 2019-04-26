@@ -23,23 +23,23 @@ class MissingFunds(typing.NamedTuple):
 
 
 class NotEnoughFunds(EthereumError):
-    def __init__(
-            self,
-            missing_funds: typing.Optional[typing.List[MissingFunds]] = None,
-            required: int = -1,
-            available: int = -1,
-            currency: str = '') -> None:
+    def __init__(self, missing_funds: typing.List[MissingFunds]) -> None:
         super().__init__()
-        if not missing_funds:
-            self.missing_funds = [
-                MissingFunds(
-                    required=required,
-                    available=available,
-                    currency=currency
-                )
-            ]
-        else:
-            self.missing_funds = missing_funds
+        self.missing_funds = missing_funds
+
+    @staticmethod
+    def single_currency(
+            required: int,
+            available: int,
+            currency: str
+    ) -> 'NotEnoughFunds':
+        return NotEnoughFunds([
+            MissingFunds(
+                required=required,
+                available=available,
+                currency=currency
+            )
+        ])
 
     def __str__(self) -> str:
         return "Not enough funds available.\n" + self._missing_funds_to_str()

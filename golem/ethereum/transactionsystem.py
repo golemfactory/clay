@@ -548,7 +548,7 @@ class TransactionSystem(LoopingCallService):
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
-                raise exceptions.NotEnoughFunds(
+                raise exceptions.NotEnoughFunds.single_currency(
                     required=amount,
                     available=self.get_available_eth(),
                     currency=currency,
@@ -561,7 +561,7 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
-                raise exceptions.NotEnoughFunds(
+                raise exceptions.NotEnoughFunds.single_currency(
                     required=amount,
                     available=self.get_available_gnt(),
                     currency=currency,

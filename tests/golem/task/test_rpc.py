@@ -149,7 +149,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
 
     @mock.patch(
         'golem.task.rpc.ClientProvider._validate_lock_funds_possibility',
-        side_effect=exceptions.NotEnoughFunds(
+        side_effect=exceptions.NotEnoughFunds.single_currency(
             required=0.166667 * denoms.ether,
             available=0,
             currency='GNT'
