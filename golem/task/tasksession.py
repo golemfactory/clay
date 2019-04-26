@@ -451,7 +451,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if ttc.concent_enabled:
             ttc.sign_promissory_note(private_key=self.my_private_key)
             ttc.sign_concent_promissory_note(
-                deposit_contract_address=EthereumConfig.deposit_contract_address,  # noqa pylint:disable=line-too-long
+                deposit_contract_address=getattr(
+                    EthereumConfig, 'deposit_contract_address'),
                 private_key=self.my_private_key
             )
 
@@ -466,7 +467,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             remote_role=Actor.Provider,
         )
 
-    # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-return-statements, too-many-branches
     @handle_attr_error
     @history.provider_history
     def _react_to_task_to_compute(self, msg: message.tasks.TaskToCompute):
@@ -562,7 +563,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             if not (msg.verify_promissory_note() and
                     msg.verify_concent_promissory_note(
-                        deposit_contract_address=EthereumConfig.deposit_contract_address  # noqa pylint:disable=line-too-long
+                        deposit_contract_address=getattr(
+                            EthereumConfig, 'deposit_contract_address')
                     )):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
@@ -588,6 +590,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.task_server.task_given(self.key_id, ctd, msg.price):
             _cannot_compute(None)
             return
+
+    # pylint: enable=too-many-return-statements, too-many-branches
 
     def _check_resource_size(self, resource_size):
         max_resource_size_kib = self.task_server.config_desc.max_resource_size
@@ -763,7 +767,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     subtask_results_rejected=msg
                 )
                 srv.sign_concent_promissory_note(
-                    deposit_contract_address=EthereumConfig.deposit_contract_address,  # noqa pylint:disable=line-too-long
+                    deposit_contract_address=getattr(
+                        EthereumConfig, 'deposit_contract_address'),
                     private_key=self.my_private_key,
                 )
 

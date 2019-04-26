@@ -136,7 +136,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             concent_enabled=self.use_concent,
             **self._get_task_parameters(),
         )
-        msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member
+        msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member, no-value-for-parameter
         return msg
 
     def _fake_add_task(self):
@@ -273,14 +273,14 @@ class TaskSessionTaskToComputeTest(TestCase):
              ttc.get_promissory_note().sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc.get_concent_promissory_note(
-                 EthereumConfig.deposit_contract_address
+                 getattr(EthereumConfig, 'deposit_contract_address')
              ).sign(
                  self.requestor_keys.raw_privkey)],
         ]
         self.assertCountEqual(ttc.slots(), expected)
 
     def test_task_to_compute_eth_signature(self):
-        ttc, wtct, ctd, task_state, ts = self._fake_send_ttc()
+        ttc, _, __, ___, ____ = self._fake_send_ttc()
         self.assertEqual(ttc.requestor_ethereum_public_key, self.requestor_key)
         self.assertTrue(ttc.verify_ethsig())
 
@@ -288,7 +288,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
         self.assertTrue(ttc.verify_promissory_note())
         self.assertTrue(ttc.verify_concent_promissory_note(
-            EthereumConfig.deposit_contract_address
+            getattr(EthereumConfig, 'deposit_contract_address')
         ))
 
 
@@ -356,7 +356,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
                 typing.Union[
                     message.tasks.ComputeTaskDef, bool
                 ]
-            ] = False,
+            ] = False,  # noqa pylint: disable=bad-whitespace
             resource_size=102400,
             **kwargs,
     ):
@@ -406,7 +406,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
 
     def test_no_ctd(self, *_):
         # ComputeTaskDef is None -> failure
-        ttc = self.ttc_prepare_and_react(None)
+        self.ttc_prepare_and_react(None)
         self.task_session.task_server.task_given.assert_not_called()
         self.task_session.task_manager.\
             comp_task_keeper.receive_subtask.assert_not_called()
@@ -553,7 +553,7 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            EthereumConfig.deposit_contract_address
+            getattr(EthereumConfig, 'deposit_contract_address')
         ))
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
