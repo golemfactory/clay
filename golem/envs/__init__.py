@@ -4,7 +4,7 @@ from functools import wraps
 from logging import Logger, getLogger
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable
+    Sequence, Iterable, ContextManager
 
 from twisted.internet.defer import Deferred
 
@@ -60,6 +60,42 @@ class RuntimeStatus(Enum):
 
     def __str__(self) -> str:
         return self.name
+
+
+class RuntimeInput(ContextManager['RuntimeInput'], ABC):
+    """ A handle for writing to standard input stream of a running Runtime.
+        Input could be either raw (bytes) or encoded (str). Could be used as a
+        context manager to call .close() automatically. """
+
+    def __init__(self, encoding: Optional[str] = None) -> None:
+        self._encoding = encoding
+
+    def _encode(self, line: Union[str, bytes]) -> bytes:
+        if self._encoding:
+            assert isinstance(line, str)
+            return line.encode(self._encoding)
+        assert isinstance(line, bytes)
+        return line
+
+    @abstractmethod
+    def write(self, data: Union[str, bytes]) -> None:
+        """ Write data to the stream. Raw input would accept only str while
+            encoded input only bytes. An attempt to write to a closed input
+            would rise an error. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def close(self):
+        """ Close the input and send EOF to the Runtime. Calling this method on
+            a closed input won't do anything.
+            NOTE: If there are many open input handles for a single Runtime
+            then closing one of them will effectively close all the other. """
+
+    def __enter__(self) -> 'RuntimeInput':
+        return self
+
+    def __exit__(self, *_, **__) -> None:
+        self.close()
 
 
 class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
@@ -170,6 +206,14 @@ class Runtime(ABC):
         """ Get the current status of the Runtime. """
         with self._status_lock:
             return self._status
+
+    @abstractmethod
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        """ Get STDIN stream of the Runtime. If encoding is None the returned
+            stream will be raw (accepting bytes), otherwise it will be encoded
+            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
+            or 'RUNNING'. """
+        raise NotImplementedError
 
     @abstractmethod
     def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:

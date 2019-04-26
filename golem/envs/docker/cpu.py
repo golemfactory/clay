@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from socket import socket
 from subprocess import SubprocessError
 from threading import Thread
 from time import sleep
@@ -24,7 +25,7 @@ from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
     RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, \
-    Prerequisites, RuntimeOutput
+    Prerequisites, RuntimeOutput, RuntimeInput
 from golem.envs.docker import DockerPayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -78,7 +79,22 @@ class DockerOutput(RuntimeOutput):
             yield self._decode(buffer)
 
 
+class DockerInput(RuntimeInput):
+
+    def __init__(self, sock: socket, encoding: Optional[str] = None) -> None:
+        super().__init__(encoding=encoding)
+        self._socket = sock
+
+    def write(self, data: Union[str, bytes]) -> None:
+        encoded = self._encode(data)
+        self._socket.sendall(encoded)
+
+    def close(self):
+        self._socket.close()
+
+
 class DockerCPURuntime(Runtime):
+
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
     CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]
 
@@ -94,6 +110,7 @@ class DockerCPURuntime(Runtime):
 
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
+        self._stdin_socket: Optional[socket] = None
         self._container_config = client.create_container_config(
             image=image,
             volumes=volumes,
@@ -101,7 +118,8 @@ class DockerCPURuntime(Runtime):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
-            host_config=host_config
+            host_config=host_config,
+            stdin_open=True
         )
 
     def _inspect_container(self) -> Tuple[str, int]:
@@ -175,6 +193,10 @@ class DockerCPURuntime(Runtime):
             for warning in result.get("Warnings", []):
                 logger.warning("Container creation warning: %s", warning)
 
+            self._stdin_socket = client.attach_socket(
+                container_id, params={'stdin': True, 'stream': True}
+            )
+
         return deferToThread(_prepare)
 
     def cleanup(self) -> Deferred:
@@ -191,7 +213,15 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.remove_container(self._container_id)
 
-        return deferToThread(_cleanup)
+        # Close STDIN in case it wasn't closed on stop()
+        def _close_stdin(res):
+            if self._stdin_socket is not None:
+                self._stdin_socket.close()
+            return res
+
+        deferred_cleanup = deferToThread(_cleanup)
+        deferred_cleanup.addBoth(_close_stdin)
+        return deferred_cleanup
 
     def start(self) -> Deferred:
         self._change_status(
@@ -231,17 +261,34 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.stop(self._container_id)
 
-        def _join_status_update_thread(_):
+        def _join_status_update_thread(res):
             logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
                 logger.warning("Failed to join status update thread.")
             else:
                 logger.debug("Status update thread joined.")
+            return res
+
+        def _close_stdin(res):
+            if self._stdin_socket is not None:
+                self._stdin_socket.close()
+            return res
 
         deferred_stop = deferToThread(_stop)
-        deferred_stop.addCallback(_join_status_update_thread)
+        deferred_stop.addBoth(_join_status_update_thread)
+        deferred_stop.addBoth(_close_stdin)
         return deferred_stop
+
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        self._assert_status(
+            self.status(), [
+                RuntimeStatus.PREPARED,
+                RuntimeStatus.STARTING,
+                RuntimeStatus.RUNNING
+            ])
+        assert self._stdin_socket is not None
+        return DockerInput(self._stdin_socket, encoding=encoding)
 
     def _get_raw_output(self, stdout=False, stderr=False, stream=True) \
             -> Iterable[bytes]:
