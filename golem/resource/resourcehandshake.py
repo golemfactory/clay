@@ -1,18 +1,23 @@
 import logging
 import os
+import typing
 import uuid
 
 from golem_messages import message
+
+from golem.core import variables
 from golem.core.common import short_node_id
-from golem.task.timer import ProviderTTCDelayTimers
 
 logger = logging.getLogger('golem.resources')
 
 
 class ResourceHandshake:
 
-    __slots__ = ('nonce', 'file', 'hash', 'started',
-                 'local_result', 'remote_result')
+    __slots__ = (
+        'nonce', 'file', 'hash', 'started',
+        'local_result', 'remote_result',
+        'task_id',
+    )
 
     def __init__(self):
         self.nonce = str(uuid.uuid4())
@@ -22,6 +27,9 @@ class ResourceHandshake:
         self.started = False
         self.local_result = None
         self.remote_result = None
+        # If task_id is None it means that handshake was initialized
+        # by other side (by potential Provider)
+        self.task_id: typing.Optional[str] = None
 
     @staticmethod
     def read_nonce(nonce_file):
@@ -53,67 +61,10 @@ class ResourceHandshake:
 
 
 class ResourceHandshakeSessionMixin:
-
-    HANDSHAKE_TIMEOUT = 20  # s
-    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
-    NONCE_TASK = 'nonce'
-
     def __init__(self):
         self._interpretation = getattr(self, '_interpretation', dict())
         self.__set_msg_interpretations()
 
-        self._task_request_message = None
-        self._handshake_timer = None
-
-    def request_task(self, node_name, task_id, perf_index, price,
-                     max_resource_size, max_memory_size):
-
-        """ Inform that node wants to compute given task
-        :param str node_name: name of that node
-        :param uuid task_id: if of a task that node wants to compute
-        :param float perf_index: benchmark result for this task type
-        :param float price: price for an hour
-        :param int max_resource_size: how much disk space can this node offer
-        :param int max_memory_size: how much ram can this node offer
-        :return:
-        """
-
-        key_id = self.key_id
-        task_header = self.task_server.task_keeper.task_headers[task_id]
-        if not self.task_server.client.concent_service.enabled:
-            concent_enabled = False
-        elif not task_header.concent_enabled:
-            self._handshake_error(key_id, 'Concent required')
-            return
-        else:
-            concent_enabled = True
-
-        self._task_request_message = dict(
-            node_name=node_name,
-            perf_index=perf_index,
-            price=price,
-            max_resource_size=max_resource_size,
-            max_memory_size=max_memory_size,
-            concent_enabled=concent_enabled,
-            provider_public_key=self.task_server.get_key_id(),
-            provider_ethereum_public_key=self.task_server.get_key_id(),
-            task_header=task_header,
-        )
-
-        if self._is_peer_blocked(key_id):
-            self._handshake_error(key_id, 'Peer blocked')
-            return
-
-        if self._handshake_required(key_id):
-            self._start_handshake(key_id)
-            return
-
-        self._send_want_to_compute_task()
-
-    def _send_want_to_compute_task(self) -> None:
-        wtct = message.tasks.WantToComputeTask(**self._task_request_message)
-        self.send(wtct)  # type: ignore
-        ProviderTTCDelayTimers.start(wtct.task_id)
 
     # ########################
     #     MESSAGE HANDLERS
@@ -128,7 +79,7 @@ class ResourceHandshakeSessionMixin:
             return
 
         if not handshake:
-            self._start_handshake(key_id)
+            self.task_server.start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
             options = self.task_server.get_share_options(handshake.nonce,
                                                          self.address)
@@ -188,34 +139,6 @@ class ResourceHandshakeSessionMixin:
         handshake = self._get_handshake(key_id)
         return handshake and not handshake.finished()
 
-    def _start_handshake(self, key_id):
-        logger.info('Starting resource handshake with %r',
-                    short_node_id(key_id))
-
-        handshake = ResourceHandshake()
-        directory = self.resource_manager.storage.get_dir(self.NONCE_TASK)
-
-        try:
-            handshake.start(directory)
-        except Exception as err:
-            self._handshake_error(key_id, 'writing nonce to dir "{}": {}'
-                                  .format(directory, err))
-            return
-
-        self._set_handshake(key_id, handshake)
-        self._start_handshake_timer()
-        self._share_handshake_nonce(key_id)
-
-    def _start_handshake_timer(self):
-        from twisted.internet import task
-        from twisted.internet import reactor
-
-        self._handshake_timer = task.deferLater(
-            reactor,
-            self.HANDSHAKE_TIMEOUT,
-            lambda *_: self._handshake_timeout(self.key_id)
-        )
-
     # ########################
     #    FINALIZE HANDSHAKE
     # ########################
@@ -228,49 +151,8 @@ class ResourceHandshakeSessionMixin:
         if handshake.finished():
             logger.info('Finished resource handshake with %r',
                         short_node_id(key_id))
-        if handshake.success() and self._task_request_message:
-            self._send_want_to_compute_task()
-
-    def _stop_handshake_timer(self):
-        if self._handshake_timer:
-            self._handshake_timer.cancel()
-
-    # ########################
-    #       SHARE NONCE
-    # ########################
-
-    def _share_handshake_nonce(self, key_id):
-        handshake = self._get_handshake(key_id)
-
-        options = self.task_server.get_share_options(handshake.nonce,
-                                                     self.address)
-        options.timeout = self.HANDSHAKE_TIMEOUT
-
-        deferred = self.resource_manager.add_file(handshake.file,
-                                                  self.NONCE_TASK,
-                                                  client_options=options,
-                                                  async_=True)
-        deferred.addCallbacks(
-            lambda res: self._nonce_shared(key_id, res, options),
-            lambda exc: self._handshake_error(key_id, exc)
-        )
-
-    def _nonce_shared(self, key_id, result, options):
-        handshake = self._get_handshake(key_id)
-        if not handshake:
-            logger.debug('Resource handshake: nonce shared after '
-                         'handshake failure with peer %r',
-                         short_node_id(key_id))
-            return
-
-        handshake.hash, _ = result
-
-        logger.debug("Resource handshake: sending resource hash: "
-                     "%r to peer %r", handshake.hash, short_node_id(key_id))
-
-        os.remove(handshake.file)
-        self.send(message.resources.ResourceHandshakeStart(
-            resource=handshake.hash, options=options.__dict__))
+        if handshake.success() and handshake.task_id:
+            self.task_server.request_task_by_id(task_id=handshake.task_id)
 
     # ########################
     #      DOWNLOAD NONCE
@@ -280,7 +162,7 @@ class ResourceHandshakeSessionMixin:
         entry = resource, ''
 
         self.resource_manager.pull_resource(
-            entry, self.NONCE_TASK,
+            entry, self.task_server.NONCE_TASK,
             success=lambda res, files, _: self._nonce_downloaded(key_id, files),
             error=lambda exc, *_: self._handshake_error(key_id, exc),
             client_options=self.task_server.get_download_options(
@@ -299,7 +181,7 @@ class ResourceHandshakeSessionMixin:
         try:
             path = files[0]
             nonce = handshake.read_nonce(path)
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             self._handshake_error(key_id, 'reading nonce from file "{}": {}'
                                   .format(files, err))
         else:
@@ -318,11 +200,6 @@ class ResourceHandshakeSessionMixin:
         self.task_server.task_computer.session_closed()
         self.dropped()
 
-    def _handshake_timeout(self, key_id):
-        handshake = self._get_handshake(key_id)
-        if handshake and not handshake.success():
-            self._handshake_error(key_id, 'timeout')
-
     # ########################
     #      ACCESS HELPERS
     # ########################
@@ -332,9 +209,6 @@ class ResourceHandshakeSessionMixin:
         task_result_manager = self.task_server.task_manager.task_result_manager
         return task_result_manager.resource_manager
 
-    def _set_handshake(self, key_id, handshake):
-        self.task_server.resource_handshakes[key_id] = handshake
-
     def _get_handshake(self, key_id):
         return self.task_server.resource_handshakes.get(key_id)
 
@@ -342,8 +216,10 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.acl.disallow(key_id,
-                                      timeout_seconds=self.PEER_BLOCK_TIMEOUT)
+        self.task_server.acl.disallow(
+            key_id,
+            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE,
+        )
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):

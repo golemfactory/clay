@@ -108,10 +108,10 @@ class TaskComputer(object):
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
 
-    def task_resource_collected(self, task_id):
+    def resource_collected(self, res_id):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
-            logger.error("Resource collected for a wrong task, %s", task_id)
+        if not subtask or subtask['task_id'] != res_id:
+            logger.error("Resource collected for a wrong task, %s", res_id)
             return False
         self.last_task_timeout_checking = time.time()
         self.__compute_task(
@@ -121,10 +121,10 @@ class TaskComputer(object):
             subtask['deadline'])
         return True
 
-    def task_resource_failure(self, task_id, reason):
+    def resource_failure(self, res_id, reason):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
-            logger.error("Resource failure for a wrong task, %s", task_id)
+        if not subtask or subtask['task_id'] != res_id:
+            logger.error("Resource failure for a wrong task, %s", res_id)
             return
         self.task_server.send_task_failed(
             subtask['subtask_id'],
@@ -132,7 +132,6 @@ class TaskComputer(object):
             'Error downloading resources: {}'.format(reason),
         )
         self.__task_finished(subtask)
-        self.session_closed()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
@@ -317,12 +316,6 @@ class TaskComputer(object):
         for l in self.listeners:
             l.lock_config(on)
 
-    def session_timeout(self):
-        self.session_closed()
-
-    def session_closed(self):
-        pass
-
     def __request_task(self):
         if self.has_assigned_task():
             return
@@ -344,7 +337,7 @@ class TaskComputer(object):
             logger.warning("Subtask '%s' of task '%s' cannot be computed: "
                            "task header has been unexpectedly removed",
                            subtask_id, task_id)
-            return self.session_closed()
+            return
 
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)

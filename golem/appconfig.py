@@ -1,6 +1,7 @@
 import logging
 from os import path
 import sys
+from typing import Any, Set
 
 from ethereum.utils import denoms
 
@@ -82,6 +83,17 @@ INITIAL_MASK_SIZE_FACTOR = 1.0
 MIN_NUM_WORKERS_FOR_MASK = 20
 # Updating by 1 bit increases number of workers 2x
 MASK_UPDATE_NUM_BITS = 1
+
+# Experimental temporary banning options
+DISALLOW_NODE_TIMEOUT_SECONDS = None
+DISALLOW_IP_TIMEOUT_SECONDS = None
+DISALLOW_ID_MAX_TIMES = 1
+DISALLOW_IP_MAX_TIMES = 1
+
+DEFAULT_HYPERDRIVE_PORT = 3282
+DEFAULT_HYPERDRIVE_ADDRESS = None
+DEFAULT_HYPERDRIVE_RPC_PORT = 3292
+DEFAULT_HYPERDRIVE_RPC_ADDRESS = 'localhost'
 
 
 class NodeConfig:
@@ -178,11 +190,27 @@ class AppConfig:
             net_masking_enabled=NET_MASKING_ENABLED,
             initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
             min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
-            mask_update_num_bits=MASK_UPDATE_NUM_BITS
+            mask_update_num_bits=MASK_UPDATE_NUM_BITS,
+            # acl
+            disallow_node_timeout_seconds=DISALLOW_NODE_TIMEOUT_SECONDS,
+            disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
+            disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
+            disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
+            #hyperg
+            hyperdrive_port=DEFAULT_HYPERDRIVE_PORT,
+            hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
+            hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
+            hyperdrive_rpc_address=DEFAULT_HYPERDRIVE_RPC_ADDRESS,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
-        return AppConfig(cfg, cfg_file)
+        return cls(cfg, cfg_file)
+
+    def __repr__(self):
+        return '<{}: {}>'.format(self.__class__, {
+            prop: self.get_node_property(prop)()
+            for prop in self._cfg.get_node_config().prop_names
+        })
 
     def __init__(self, cfg, config_file):
         self.config_file = config_file

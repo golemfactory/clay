@@ -506,3 +506,36 @@ class TestDockerForMacHypervisor(TempDirFixture):
         with mock.patch.object(hypervisor, 'CONFIG_FILE', config_file):
             hypervisor.constrain(**update_dict)
             assert hypervisor.constraints() == update_dict
+
+    def test_configure_daemon_initial(self):
+        hypervisor = DockerForMac.instance(mock.Mock())
+        config_file = os.path.join(self.tempdir, 'daemon.json')
+
+        with mock.patch.object(hypervisor, 'DAEMON_CONFIG_FILE', config_file):
+            hypervisor._configure_daemon()
+            self._assert_dns_configured(config_file)
+
+    def test_configure_daemon_update(self):
+        hypervisor = DockerForMac.instance(mock.Mock())
+        config_file = os.path.join(self.tempdir, 'daemon.json')
+
+        with mock.patch.object(hypervisor, 'DAEMON_CONFIG_FILE', config_file):
+            extra_settings = {'option': ['value1', 'value2']}
+            with open(config_file, 'w') as f:
+                json.dump(extra_settings, f)
+
+            hypervisor._configure_daemon()
+            config = self._assert_dns_configured(config_file)
+            assert 'option' in config
+            assert config['option'] == extra_settings['option']
+
+    @staticmethod
+    def _assert_dns_configured(config_file) -> Dict:
+        with open(config_file, 'r') as f:
+            daemon_config = json.load(f)
+
+        assert 'dns' in daemon_config
+        assert daemon_config['dns']
+        assert all(daemon_config['dns'])
+
+        return daemon_config

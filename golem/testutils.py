@@ -23,6 +23,7 @@ class TempDirFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
+        super().setUpClass()
         logging.basicConfig(level=logging.DEBUG)
         if cls.root_dir is None:
             if is_osx():
@@ -65,7 +66,7 @@ class TempDirFixture(unittest.TestCase):
         except OSError as e:
             logger.debug("%r", e, exc_info=True)
             tree = ''
-            for path, dirs, files in os.walk(self.path):
+            for path, _dirs, files in os.walk(self.path):
                 tree += path + '\n'
                 for f in files:
                     tree += f + '\n'
@@ -107,7 +108,7 @@ class TempDirFixture(unittest.TestCase):
             results = []
         for el in file_num_list:
             if isinstance(el, int):
-                for i in range(el):
+                for _ in range(el):
                     t = tempfile.NamedTemporaryFile(dir=dir_, delete=False)
                     results.append(t.name)
             else:
@@ -154,7 +155,7 @@ class PEP8MixIn(object):
     in this attribute.
     """
 
-    def test_conformance(self):
+    def test_conformance(self, *_):
         """Test that we conform to PEP-8."""
         style = pycodestyle.StyleGuide(
             ignore=pycodestyle.DEFAULT_IGNORE.split(','),

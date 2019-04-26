@@ -16,8 +16,10 @@ datas = [
      'apps/rendering/benchmark/minilight/'),
     ('apps/blender/resources/images/*.Dockerfile',
      'apps/blender/resources/images/'),
-    ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
-     'apps/blender/resources/images/scripts/templates'),
+    ('apps/blender/resources/images/entrypoints/scripts/render_tools/templates/'
+        'blendercrop.py.template',
+     'apps/blender/resources/images/entrypoints/scripts/render_tools/'
+        'templates'),
     ('apps/dummy/resources/images',
      'apps/dummy/resources/'),
     ('apps/dummy/resources/code_dir/computing.py',
@@ -33,5 +35,6 @@ datas = [
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),
     ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
     ('scripts/virtualization/get-virtualization-state.ps1',
-     'scripts/virtualization')
+     'scripts/virtualization'),
+    ('scripts/virtualization/get-hyperv-state.ps1', 'scripts/virtualization')
 ]

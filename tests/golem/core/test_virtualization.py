@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from golem.core.virtualization import is_virtualization_satisfied,\
-    WIN_SCRIPT_PATH
+    SCRIPTS_PATH
 
 
 def get_mock_cpuinfo_output(vt_supported=True) -> dict:
@@ -55,4 +55,4 @@ class VirtualizationTestWindows(TestCase):
         self.assertFalse(is_virtualization_satisfied())
 
     def test_script_path(self, *_):
-        self.assertTrue(Path(WIN_SCRIPT_PATH).exists())
+        self.assertTrue(Path(SCRIPTS_PATH).exists())
