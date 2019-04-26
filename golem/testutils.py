@@ -5,11 +5,12 @@ import shutil
 import string
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
 from time import sleep
 from typing import Dict
-from unittest.mock import Mock, patch
+
 
 import ethereum.keys
 import pycodestyle
@@ -280,8 +281,8 @@ class TestTaskIntegration(TempDirFixture):
     def setUp(self):
         super(TestTaskIntegration, self).setUp()
 
-        # Assume that test failed. @dont_remove_dirs_on_failed_test decorator will
-        # set this variable to True on the end of test.
+        # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
+        # will set this variable to True on the end of test.
         self.REMOVE_TMP_DIRS = False
 
         # build mock node
@@ -327,19 +328,22 @@ class TestTaskIntegration(TempDirFixture):
 
     def _collect_results_from_provider(self, results, task_id, subtask_id):
 
-        logger.info("Collecting results from mock provider {}".format(str(results)))
+        logger.info("Collecting results from mock provider {}".format(
+            str(results)))
 
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         subtasks_results_dir = os.path.join(task_dir, subtask_id)
 
-        requestor_results = [ os.path.join(subtasks_results_dir,
+        requestor_results = [os.path.join(subtasks_results_dir,
             os.path.basename(result)) for result in results]
 
-        for provider_result, requestor_result in zip(results, requestor_results):
+        for provider_result, requestor_result in zip(results,
+                                                     requestor_results):
             os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
             shutil.move(provider_result, requestor_result)
 
-        logger.info("Collected results from mock provider moved to {}".format(str(requestor_results)))
+        logger.info("Collected results from mock provider moved to {}".format(
+            str(requestor_results)))
 
         return requestor_results
 
@@ -347,7 +351,8 @@ class TestTaskIntegration(TempDirFixture):
         task: Task = self._add_task(task_def)
         task_id = task.task_definition.task_id
 
-        logger.info("Executing test task [task_id = {}] on mocked provider.".format(task_id))
+        logger.info("Executing test task [task_id = {}]"
+                    "on mocked provider.".format(task_id))
 
         self.task_manager.start_task(task_id)
         for i in range(task.task_definition.subtasks_count):
@@ -365,13 +370,15 @@ class TestTaskIntegration(TempDirFixture):
 
             subtask_id = ctd["subtask_id"]
 
-            logger.info("Executing test subtask {}/{} [subtask_id = {}] [task_id = {}] on mocked provider.".format(
+            logger.info("Executing test subtask {}/{} [subtask_id = {}] "
+                        "[task_id = {}] on mocked provider.".format(
                 i+1, task.task_definition.subtasks_count, subtask_id, task_id))
 
             result = self._execute_subtask(task, ctd)
             result = self._collect_results_from_provider(result, task_id, subtask_id)
 
-            logger.info("Executing TaskManager.computed_task_received [subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
+            logger.info("Executing TaskManager.computed_task_received "
+                        "[subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
 
             self.task_manager.computed_task_received(
                 subtask_id=subtask_id,
@@ -379,7 +386,8 @@ class TestTaskIntegration(TempDirFixture):
                 verification_finished=None)
 
             # all results are moved to the parent dir inside computed_task_received
-            logger.info("Executing task.accept_results [subtask_id = {}] [task_id = {}].".format(subtask_id, task_id))
+            logger.info("Executing task.accept_results [subtask_id = {}] "
+                        "[task_id = {}].".format(subtask_id, task_id))
 
             task.accept_results(subtask_id, list(
                 map(lambda res: outer_dir_path(res), result)))
@@ -399,7 +407,8 @@ class TestTaskIntegration(TempDirFixture):
     @staticmethod
     def _copy_resources(task, resources_dir):
 
-        logger.info("Copy files to docker resources directory {}".format(resources_dir))
+        logger.info("Copy files to docker resources "
+                    "directory {}".format(resources_dir))
 
         for res in task.task_resources:
             shutil.copy(res, resources_dir)
@@ -426,14 +435,16 @@ class TestTaskIntegration(TempDirFixture):
                 content=myfile.read()
                 logger.info("Docker stdout:\n{}".format(content))
         else:
-            logger.error("Docker stdout file {} doesn't exist.".format(stdout_file))
+            logger.error("Docker stdout file {} "
+                         "doesn't exist.".format(stdout_file))
 
         if os.path.exists(stderr_file) and os.path.isfile(stderr_file):
             with open(stderr_file, "r") as myfile:
                 content=myfile.read()
                 logger.info("Docker stderr:\n{}".format(content))
         else:
-            logger.error("Docker stderr file {} doesn't exist.".format(stderr_file))
+            logger.error("Docker stderr file {} "
+                         "doesn't exist.".format(stderr_file))
 
     def _run_test_job(self, task, root_dir, params):
 
@@ -459,9 +470,12 @@ class TestTaskIntegration(TempDirFixture):
 
         dtt.run()
 
-        logger.info("Content of docker resources directory: {}".format(os.listdir(resources_dir)))
-        logger.info("Content of docker work directory: {}".format(os.listdir(work_dir)))
-        logger.info("Content of docker output directory: {}".format(os.listdir(output_dir)))
+        logger.info("Content of docker resources "
+                    "directory: {}".format(os.listdir(resources_dir)))
+        logger.info("Content of docker work "
+                    "directory: {}".format(os.listdir(work_dir)))
+        logger.info("Content of docker output "
+                    "directory: {}".format(os.listdir(output_dir)))
 
         self._log_docker_logs(dtt)
 

@@ -79,7 +79,7 @@ class TranscodingTask(CoreTask):
         task_output_dir = dir_manager.get_task_output_dir(task_id)
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
-        if len(self.task_resources) == 0:
+        if self.task_resources:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
@@ -120,12 +120,12 @@ class TranscodingTask(CoreTask):
     def _merge_video(self):
         logger.info('Merging video [task_id = {}]'.format(
             self.task_definition.task_id))
-        
+
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(
             os.path.basename(self.task_definition.output_file),
             self.task_dir, self.collected_files)
-        
+
         # Move result to desired location.
         os.makedirs(os.path.dirname(self.task_definition.output_file),
                     exist_ok=True)
@@ -235,8 +235,10 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.output_container = output_container
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
-        logger.debug('Transcoding task definition has been built [definition={}]'
-                     .format(task_def.__dict__))
+        logger.debug(
+            'Transcoding task definition has been built [definition={}]'
+                .format(task_def.__dict__))
+
         return task_def
 
     @classmethod
