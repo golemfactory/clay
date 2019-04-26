@@ -72,7 +72,7 @@ class TestffmpegIntegration(TestTaskIntegration):
         }
 
         task = self.execute_task(task_def)
-        
+
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
         self.assertTrue(TestTaskIntegration.check_dir_existence(
