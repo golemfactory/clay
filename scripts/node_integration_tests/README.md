@@ -12,7 +12,7 @@ The tests consist of two major parts:
 * `golem` - the tests that strictly test interactions between
 two golem instances
 * `concent`- the tests that run instance pairs in such way as to trigger
-Concent Service calls and test whether the task runs still complete
+Concent Service calls and test whether the tasks still complete
 correctly when Concent is involved.
 
 ## How the tests work
