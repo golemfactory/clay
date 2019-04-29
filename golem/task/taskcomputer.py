@@ -129,6 +129,7 @@ class TaskComputer(object):
 
     def task_resource_failure(self, task_id, reason):
         subtask = self.assigned_subtask
+        self.assigned_subtask = None
         if not subtask or subtask['task_id'] != task_id:
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
