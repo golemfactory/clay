@@ -4,7 +4,8 @@ from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
 
-from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop
+from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
+    Resolution
 from .image_metrics_calculator import calculate_metrics
 
 
@@ -17,7 +18,7 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
 
 def prepare_crops(
         subtask_image_box: FloatingPointBox,
-        resolution: List[int],
+        resolution: Resolution,
         crops_count: int = 3,
         crops_borders: Optional[List[List[float]]] = None,
 ) -> Tuple[List[Crop], List[Dict[str, Any]]]:
@@ -83,12 +84,15 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
 
     (crops, crops_render_data) = prepare_crops(
         subtask_image_box,
-        resolution,
+        Resolution(
+            width=resolution[0],
+            height=resolution[1],
+        ),
         crops_count,
         crops_borders
     )
 
-    params = {
+    blender_render_parameters = {
         "scene_file": scene_file_path,
         "resolution": resolution,
         "use_compositing": False,
@@ -99,7 +103,7 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         "crops": crops_render_data
     }
 
-    return crops, params
+    return crops, blender_render_parameters
 
 
 def make_verdict(

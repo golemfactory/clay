@@ -1,12 +1,17 @@
 import math
 import random
-from typing import Tuple, List, Optional
+from typing import Tuple, Optional, NamedTuple
 import numpy
 
 WORK_DIR = "/golem/work"
 OUTPUT_DIR = "/golem/output"
 CROP_RELATIVE_SIZE = 0.1
 MIN_CROP_SIZE = 8
+
+
+class Resolution(NamedTuple):
+    width: int
+    height: int
 
 
 class FloatingPointBox:
@@ -46,7 +51,7 @@ class Crop:
     def __init__(
             self,
             id: int,
-            resolution: List[int],
+            resolution: Resolution,
             subtask_box: FloatingPointBox,
             crop_box: Optional[FloatingPointBox] = None
     ):
@@ -105,9 +110,9 @@ class Crop:
     def _get_relative_crop_size(self) -> Tuple[float, float]:
         relative_crop_width = CROP_RELATIVE_SIZE
         relative_crop_height = CROP_RELATIVE_SIZE
-        while relative_crop_width * self.resolution[0] < MIN_CROP_SIZE:
+        while relative_crop_width * self.resolution.width < MIN_CROP_SIZE:
             relative_crop_width += self.STEP_SIZE
-        while relative_crop_height * self.resolution[1] < MIN_CROP_SIZE:
+        while relative_crop_height * self.resolution.height < MIN_CROP_SIZE:
             relative_crop_height += self.STEP_SIZE
         print(
             f"relative_crop_width: {relative_crop_width}, "
@@ -121,18 +126,18 @@ class Crop:
 
     def _get_x_coordinates_as_pixels(self) -> Tuple[int, int]:
         x_pixel_min = math.floor(
-             numpy.float32(self.box.left) * numpy.float32(self.resolution[0])
+             numpy.float32(self.box.left) * numpy.float32(self.resolution.width)
         ) - math.floor(
             numpy.float32(self._subtask_box.left) * numpy.float32(
-                self.resolution[0])
+                self.resolution.width)
         )
 
         x_pixel_max = math.floor(
             numpy.float32(self.box.right) * numpy.float32(
-                self.resolution[0])
+                self.resolution.width)
         ) - math.floor(
             numpy.float32(self._subtask_box.left) * numpy.float32(
-                self.resolution[0])
+                self.resolution.width)
         )
         print(f"x_pixel_min={x_pixel_min}, x_pixel_max={x_pixel_max}")
         return x_pixel_min, x_pixel_max
@@ -140,17 +145,17 @@ class Crop:
     def _get_y_coordinates_as_pixels(self) -> Tuple[int, int]:
         y_pixel_min = math.floor(
             numpy.float32(self._subtask_box.bottom) * numpy.float32(
-                self.resolution[1])
+                self.resolution.height)
         ) - math.floor(
             numpy.float32(self.box.bottom) * numpy.float32(
-                self.resolution[1])
+                self.resolution.height)
         )
         y_pixel_max = math.floor(
             numpy.float32(self._subtask_box.bottom) * numpy.float32(
-                self.resolution[1])
+                self.resolution.height)
         ) - math.floor(
             numpy.float32(self.box.top) * numpy.float32(
-                self.resolution[1])
+                self.resolution.height)
         )
         print(f"y_pixel_min={y_pixel_min}, y_pixel_max={y_pixel_max}")
         return y_pixel_min, y_pixel_max
