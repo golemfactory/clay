@@ -270,9 +270,9 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
                                    'options': {}}],
             ['promissory_note_sig',
-             ttc.get_promissory_note().sign(self.requestor_keys.raw_privkey)],
+             ttc._get_promissory_note().sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
-             ttc.get_concent_promissory_note(
+             ttc._get_concent_promissory_note(
                  getattr(EthereumConfig, 'deposit_contract_address')
              ).sign(
                  self.requestor_keys.raw_privkey)],
