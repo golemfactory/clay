@@ -79,7 +79,7 @@ class TranscodingTask(CoreTask):
         task_output_dir = dir_manager.get_task_output_dir(task_id)
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
-        if self.task_resources:
+        if not self.task_resources:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
