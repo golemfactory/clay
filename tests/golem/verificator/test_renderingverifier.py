@@ -88,34 +88,44 @@ class TestFrameRenderingVerifier(TempDirFixture):
                         "res_y": 600,
                         "subtask_id": "2432423"}
 
-        verification_data = {'subtask_info': subtask_info, 'results': [], 'reference_data': [], 'resources': []}
+        verification_data = {
+            'subtask_info': subtask_info,
+            'results': [],
+            'reference_data': [],
+            'resources': []
+        }
 
         frame_rendering_verifier = FrameRenderingVerifier(verification_data)
 
         frame_rendering_verifier.subtask_info = subtask_info
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert frame_rendering_verifier.state ==\
+               SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["use_frames"] = True
         subtask_info["all_frames"] = [3, 4, 5, 6]
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert frame_rendering_verifier.state ==\
+               SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["total_tasks"] = 2
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert frame_rendering_verifier.state ==\
+               SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["frames"] = [3, 4]
         verification_data["results"] = ["file1"]
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert frame_rendering_verifier.state ==\
+               SubtaskVerificationState.WRONG_ANSWER
 
         subtask_info["start_task"] = 1
         verification_data["results"] = ["file1", "file2"]
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
-        assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
+        assert frame_rendering_verifier.state ==\
+               SubtaskVerificationState.WRONG_ANSWER

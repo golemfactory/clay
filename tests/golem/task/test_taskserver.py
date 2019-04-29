@@ -113,8 +113,8 @@ class TaskServerTestBase(LogTestCase,
             AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
         self.client.concent_service.enabled = False
         with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+                   'golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
@@ -1021,7 +1021,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_download_options_errors(self, *_):
         built_options = Mock()
         self.ts.resource_manager.build_client_options\
-            .return_value=built_options
+            .return_value = built_options
 
         self.assertIs(
             self.ts.get_download_options(received_options=None),

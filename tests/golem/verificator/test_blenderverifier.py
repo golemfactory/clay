@@ -1,7 +1,8 @@
 import os
 import time
-import pytest
 from unittest import mock
+import pytest
+
 
 from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait

@@ -18,10 +18,16 @@ from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
 from apps.appsmanager import AppsManager
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
+from apps.dummy.task.dummytask import DummyTaskBuilder
+from apps.dummy.task.dummytaskstate import (
+    DummyTaskDefinition,
+    DummyTaskDefaults,
+)
+
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem import testutils
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
@@ -37,11 +43,6 @@ from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
-from apps.dummy.task.dummytask import DummyTaskBuilder
-from apps.dummy.task.dummytaskstate import (
-    DummyTaskDefinition,
-    DummyTaskDefaults,
-)
 from golem.resource.dirmanager import DirManager
 
 
@@ -134,7 +135,13 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         handler_called = False
         params = []
 
-        def handler(sender, signal, event, task_id, subtask_id=None, op=None):  # noqa pylint: too-many-arguments
+        def handler(sender,
+                    signal,
+                    event,
+                    task_id,
+                    subtask_id=None,
+                    op=None):  # noqa pylint: too-many-arguments
+
             nonlocal handler_called
             nonlocal params
 
@@ -914,7 +921,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         one_task = tm.get_task_dict(task_id)
         assert one_task
         assert isinstance(one_task, dict)
-        assert len(one_task)
+        assert one_task
 
         all_tasks = tm.get_tasks_dict()
         assert all_tasks
@@ -924,7 +931,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         one_subtask = tm.get_subtask_dict(subtask_id)
         assert isinstance(one_subtask, dict)
-        assert len(one_subtask)
+        assert one_subtask
 
         all_subtasks = tm.get_subtasks_dict(task_id)
         assert all_subtasks
@@ -963,14 +970,14 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         task_id, _ = self.__build_tasks(tm, count)
 
         borders = tm.get_subtasks_borders(task_id, 0)
-        assert len(borders) == 0
+        assert not borders
 
         borders = tm.get_subtasks_borders(task_id, 1)
         assert len(borders) == 3
         assert all(len(b) == 4 for b in list(borders.values()))
 
         borders = tm.get_subtasks_borders(task_id, 2)
-        assert len(borders) == 0
+        assert not borders
 
     def test_update_signatures(self, *_):
         # pylint: disable=abstract-class-instantiated

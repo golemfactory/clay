@@ -13,13 +13,18 @@ import uuid
 import cv2
 import numpy
 
+import OpenEXR
+
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 from golem.verificator.verifier import SubtaskVerificationState
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import AcceptClientVerdict
+from golem.task.taskstate import SubtaskStatus, SubtaskState
+from golem.testutils import TempDirFixture
+from golem.tools.assertlogs import LogTestCase
 
-
-import OpenEXR
 
 from apps.blender.task.blenderrendertask import (BlenderRenderTask,
                                                  BlenderRenderTaskBuilder,
@@ -32,11 +37,7 @@ from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
-from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import AcceptClientVerdict
-from golem.task.taskstate import SubtaskStatus, SubtaskState
-from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
+
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):

@@ -164,10 +164,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def testPendingResources(self):
         self.resource_manager.add_resources(self.target_resources, self.task_id,
-                                       async_=False)
+                                            async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
-        assert len(self.resource_server.pending_resources) == 0
+        assert not self.resource_server.pending_resources
 
         self.resource_server.download_resources(resources, self.task_id)
         pending = self.resource_server.pending_resources[self.task_id]
@@ -175,7 +175,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def testGetResources(self):
         self.resource_manager.add_resources(self.target_resources, self.task_id,
-                                       async_=False)
+                                            async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
         relative = [[r.hash, r.files] for r in resources]

@@ -60,8 +60,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert get_frame_name("ABC", "png", 124) == "ABC0124.png"
         assert get_frame_name("QWERT_", "EXR", 13) == "QWERT_0013.EXR"
         assert get_frame_name("IMAGE_###", "jpg", 4) == "IMAGE_004.jpg"
-        assert get_frame_name("IMAGE_###_VER_131", "JPG", 23) == "IMAGE_023_VER_131.JPG"
-        assert get_frame_name("IMAGE_###_ABC", "exr", 1023) == "IMAGE_1023_ABC.exr"
+        assert get_frame_name("IMAGE_###_VER_131", "JPG", 23) ==\
+               "IMAGE_023_VER_131.JPG"
+        assert get_frame_name("IMAGE_###_ABC", "exr", 1023) ==\
+               "IMAGE_1023_ABC.exr"
         assert get_frame_name("##_#####", "png", 3) == "##_00003.png"
         assert get_frame_name("#####_###", "PNG", 27) == "#####_027.PNG"
 
@@ -118,7 +120,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert len(output_names) == len(frame_task.frames)
         frame_task = self._get_frame_task(False)
         output_names = frame_task.get_output_names()
-        assert len(output_names) == 0
+        assert not output_names
 
     def test_update_frame_preview(self):
         frame_task = self._get_frame_task()
@@ -145,12 +147,14 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.scale_factor = 1
         preview_path = self.temp_file_name("image1.png")
         with self.assertLogs(logger, level="ERROR") as l:
-            assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
+            assert task._paste_new_chunk("not an image",
+                                         preview_path, 1, 10) is None
         assert any("Can't generate preview" in log for log in l.output)
         with open(preview_path, 'w') as f:
             f.write("not an image, again not an image")
         with self.assertLogs(logger, level="ERROR") as l:
-            assert task._paste_new_chunk("not an image", preview_path, 1, 10) is None
+            assert task._paste_new_chunk("not an image",
+                                         preview_path, 1, 10) is None
         assert any("Can't add new chunk to preview" in log for log in l.output)
         assert any("Can't generate preview" in log for log in l.output)
 
@@ -209,7 +213,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
         frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
-        assert all(len(f) == 0 for f in list(frames.values()))
+        assert all(not f for f in list(frames.values()))
 
         task.subtasks_given = {
             str(uuid.uuid4()): None,
@@ -220,7 +224,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
         frames = task.get_frames_to_subtasks()
         assert len(frames) == 4
-        assert all(len(f) == 0 for f in list(frames.values()))
+        assert all(not f for f in list(frames.values()))
 
         task.subtasks_given = {
             str(uuid.uuid4()): {
@@ -266,8 +270,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.output_file = self.temp_file_name("output.exr")
         task.res_x = 10
         task.res_y = 20
-        exr_1 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
-        exr_2 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile2.EXR"
+        exr_1 = Path(__file__).parent.parent.parent / "rendering" \
+                / "resources" / "testfile.EXR"
+        exr_2 = Path(__file__).parent.parent.parent / "rendering" \
+                / "resources" / "testfile2.EXR"
         task.collected_file_names["abc"] = str(exr_1)
         task.collected_file_names["def"] = str(exr_2)
         task._put_image_together()
@@ -284,8 +290,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.total_tasks = 4
         task.res_x = 10
         task.res_y = 20
-        exr_1 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile.EXR"
-        exr_2 = Path(__file__).parent.parent.parent / "rendering" / "resources" / "testfile2.EXR"
+        exr_1 = Path(__file__).parent.parent.parent / "rendering" \
+                / "resources" / "testfile.EXR"
+        exr_2 = Path(__file__).parent.parent.parent / "rendering" \
+                / "resources" / "testfile2.EXR"
         task.frames_given["5"] = {"abc": str(exr_1), "def": str(exr_2)}
         task._put_frame_together(5, 1)
         out_path = os.path.join(self.path, "output0005.exr")
