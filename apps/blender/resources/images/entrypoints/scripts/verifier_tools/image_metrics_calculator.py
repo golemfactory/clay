@@ -8,7 +8,7 @@ from PIL import Image
 
 from . import decision_tree
 from .image_format_converter import convert_tga_to_png, convert_exr_to_png
-from .imgmetrics import ImgMetrics
+from .imgage_metrics import ImgageMetrics
 
 
 PROVIDERS_RESULT_CROP_NAME = "scene_crop.png"
@@ -61,7 +61,7 @@ def calculate_metrics(
         default_metrics['Label'] = VERIFICATION_FAIL
 
     providers_result_crop.save(PROVIDERS_RESULT_CROP_NAME)
-    return ImgMetrics(default_metrics).write_to_file(
+    return ImgageMetrics(default_metrics).write_to_file(
         metrics_output_filename
     )
 
@@ -86,8 +86,8 @@ def _load_and_prepare_images_for_comparison(
         top_left_corner_y
 ):
     """
-    This function prepares (i.e. crops) the providers_result_image so that it will
-    fit the sample(cropped_image) generated for comparison.
+    This function prepares (i.e. crops) the providers_result_image so that it
+    will fit the sample(cropped_image) generated for comparison.
 
     :param reference_crop_path:
     :param result_image_path:
@@ -139,7 +139,7 @@ def get_providers_result_crop(providers_result_image, x, y, width, height):
 
 def get_metrics():
     classifier, feature_labels = load_classifier()
-    available_metrics = ImgMetrics.get_metric_classes()
+    available_metrics = ImgageMetrics.get_metric_classes()
     # todo review: DONE IN DOCS
     #  effective_metrics isn't used after filling it with values
     #  in the loops below
@@ -163,13 +163,9 @@ def compare_images(image_a, image_b, metrics) -> Dict:
     """
     This the entry point for calculating metrics between image_a, image_b
     once they are cropped to the same size.
-    :param image_a:
-    :param image_b:
-    :param metrics:
-    :return: ImgMetrics
     """
 
-    """imageA/B are images read by: PIL.Image.open(image.png)"""
+    # imageA/B are images read by: PIL.Image.open(image.png)
     (crop_height, crop_width) = image_a.size
     crop_resolution = str(crop_height) + "x" + str(crop_width)
 

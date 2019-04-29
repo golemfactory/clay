@@ -1,6 +1,6 @@
 import json
 import os
-from typing import List, Optional
+from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
 
@@ -16,12 +16,12 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
 
 
 def prepare_crops(
-        subtask_image_box,
-        resolution,
-        crops_count=3,
-        crops_borders=None,
-):
-    crops_details: List[Crop] = []
+        subtask_image_box: FloatingPointBox,
+        resolution: List[int],
+        crops_count: int = 3,
+        crops_borders: Optional[List[List[float]]] = None,
+) -> Tuple[List[Crop], List[Dict[str, Any]]]:
+    crops: List[Crop] = []
     crops_render_data = []
     if crops_borders:
         crop_id = 0
@@ -41,7 +41,7 @@ def prepare_crops(
                     "borders_y": [crop.box.top, crop.box.bottom]
                 }
             )
-            crops_details.append(crop)
+            crops.append(crop)
             crop_id += 1
     else:
         for crop_id in range(0, crops_count):
@@ -59,21 +59,21 @@ def prepare_crops(
                     "borders_y": [crop.box.top, crop.box.bottom]
                 }
             )
-            crops_details.append(crop)
-    return crops_details, crops_render_data
+            crops.append(crop)
+    return crops, crops_render_data
 
 
 def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, too-many-arguments
-        subtask_border,
-        scene_file_path,
-        resolution,
-        samples,
-        frames,
-        output_format,
-        crops_count=3,
-        crops_borders=None,
+        subtask_border: List[float],
+        scene_file_path: str,
+        resolution: List[int],
+        samples: int,
+        frames: int,
+        output_format: str,
+        crops_count: int = 3,
+        crops_borders: Optional[List[List[float]]] = None,
 
-):
+) -> Tuple[List[Crop], Dict[str, Any]]:
     subtask_image_box = FloatingPointBox(
         subtask_border[0],
         subtask_border[1],
@@ -81,7 +81,7 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         subtask_border[3]
     )
 
-    (crops_details, crops_render_data) = prepare_crops(
+    (crops, crops_render_data) = prepare_crops(
         subtask_image_box,
         resolution,
         crops_count,
@@ -99,18 +99,18 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         "crops": crops_render_data
     }
 
-    return (crops_details, params)
+    return crops, params
 
 
 def make_verdict(
-        providers_result_images_paths,
-        crops_details,
-        reference_results,
-):
+        providers_result_images_paths: List[str],
+        crops: List[Crop],
+        reference_results: List[Dict[str, Any]],
+) -> None:
     verdict = True
 
     for crop_data in reference_results:
-        crop = get_crop_with_id(crop_data['crop']['id'], crops_details)
+        crop = get_crop_with_id(crop_data['crop']['id'], crops)
 
         left, top = crop.x_pixels[0], crop.y_pixels[0]
         print('borders_x: ', crop_data['crop']['borders_x'])
@@ -140,16 +140,16 @@ def make_verdict(
 
 
 def verify(  # pylint: disable=too-many-arguments
-        subtask_file_paths,
-        subtask_border,
-        scene_file_path,
-        resolution,
-        samples,
-        frames,
-        output_format,
-        crops_count=3,
-        crops_borders=None,
-):
+        subtask_file_paths: List[str],
+        subtask_border: List[float],
+        scene_file_path: str,
+        resolution: List[int],
+        samples: int,
+        frames: int,
+        output_format: str,
+        crops_count: int = 3,
+        crops_borders: Optional[List[List[float]]] = None,
+) -> None:
     """
     Function will verify image with crops rendered from given blender
     scene file.
@@ -173,7 +173,7 @@ def verify(  # pylint: disable=too-many-arguments
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
-    (crops_details,
+    (crops,
      blender_render_parameters) = prepare_data_for_blender_verification(
         subtask_border,
         scene_file_path,
@@ -189,4 +189,4 @@ def verify(  # pylint: disable=too-many-arguments
 
     print(results)
 
-    make_verdict(subtask_file_paths, crops_details, results)
+    make_verdict(subtask_file_paths, crops, results)

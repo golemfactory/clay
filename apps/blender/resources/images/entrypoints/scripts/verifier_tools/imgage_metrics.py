@@ -21,9 +21,9 @@ class MyEncoder(json.JSONEncoder):
             return obj.__dict__
 
 
-class ImgMetrics:
+class ImgageMetrics:
     """
-    ImgMetrics is a structure for storing img comparison metric.
+    ImgageMetrics is a structure for storing img comparison metric.
     methods write/load are to facilitate file movement to/from docker.
     """
 
@@ -56,7 +56,7 @@ class ImgMetrics:
         self.variance_difference = None
 
         # ensure that the keys are correct
-        keys = ImgMetrics.get_metric_names()
+        keys = ImgageMetrics.get_metric_names()
         keys.append('Label')
 
         for key in keys:
@@ -78,21 +78,22 @@ class ImgMetrics:
             histograms_correlation,
             mass_center_distance,
         )
-        available_metrics = [ssim.MetricSSIM,
-                psnr.MetricPSNR,
-                variance.ImageVariance,
-                edges.MetricEdgeFactor,
-                wavelet.MetricWavelet,
-                histograms_correlation.MetricHistogramsCorrelation,
-                mass_center_distance.MetricMassCenterDistance]
+        available_metrics = [
+            ssim.MetricSSIM,
+            psnr.MetricPSNR,
+            variance.ImageVariance,
+            edges.MetricEdgeFactor,
+            wavelet.MetricWavelet,
+            histograms_correlation.MetricHistogramsCorrelation,
+            mass_center_distance.MetricMassCenterDistance
+        ]
 
         return available_metrics
-
 
     @staticmethod
     def get_metric_names():
         metric_names = []
-        for metric_class in ImgMetrics.get_metric_classes():
+        for metric_class in ImgageMetrics.get_metric_classes():
             metric_names = metric_names + metric_class.get_labels()
         return metric_names
 
@@ -104,7 +105,6 @@ class ImgMetrics:
                           separators=(',', ': '),
                           ensure_ascii=False)
         return str_
-
 
     def write_to_file(self, file_name='img_metrics.txt'):
         dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -120,5 +120,5 @@ class ImgMetrics:
     def load_from_file(cls, file_path=None):
         with open(file_path, 'r') as f:
             dictionary = json.load(f)
-            img_metrics = cls(dictionary)
-            return img_metrics
+            image_metrics = cls(dictionary)
+            return image_metrics
