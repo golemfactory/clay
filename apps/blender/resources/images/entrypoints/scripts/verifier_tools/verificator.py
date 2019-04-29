@@ -4,13 +4,11 @@ from typing import List, Optional
 
 from ..render_tools import blender_render as blender
 
-from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, FloatingPointBox, \
-    Crop, NewCrop
+from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop
 from .image_metrics_calculator import calculate_metrics
 
 
-def get_crop_with_id(id: int, crops: [List[NewCrop]]) -> Optional[NewCrop]:
-# def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
+def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
         if crop.id == id:
             return crop
@@ -28,12 +26,7 @@ def prepare_crops(
     if crops_borders:
         crop_id = 0
         for border in crops_borders:
-            # crop = Crop.create_from_region(
-            #     crop_id,
-            #     FloatingPointBox(border[0], border[1], border[2], border[3]),
-            #     subimage
-            # )
-            crop = NewCrop(
+            crop = Crop(
                 crop_id,
                 resolution,
                 subtask_image_box,
@@ -52,12 +45,7 @@ def prepare_crops(
             crop_id += 1
     else:
         for crop_id in range(0, crops_count):
-            # crop = generate_single_random_crop_data(
-            # crop = Crop(
-            #     crop_id,
-            #     subimage,
-            # )
-            crop = NewCrop(
+            crop = Crop(
                 crop_id,
                 resolution,
                 subtask_image_box,
@@ -86,11 +74,11 @@ def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, t
         crops_borders=None,
 
 ):
-    subtask_image_box = FloatingPointBox(subtask_border[0], subtask_border[1],
-                           subtask_border[2], subtask_border[3])
-    subimage = SubImage(
-        subtask_image_box,
-        resolution
+    subtask_image_box = FloatingPointBox(
+        subtask_border[0],
+        subtask_border[1],
+        subtask_border[2],
+        subtask_border[3]
     )
 
     (crops_details, crops_render_data) = prepare_crops(
@@ -124,7 +112,6 @@ def make_verdict(
     for crop_data in reference_results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops_details)
 
-        # left, top = crop.pixel_region.left, crop.pixel_region.top
         left, top = crop.x_pixels[0], crop.y_pixels[0]
         print('borders_x: ', crop_data['crop']['borders_x'])
         print('borders_y: ', crop_data['crop']['borders_y'])
@@ -160,7 +147,7 @@ def verify(  # pylint: disable=too-many-arguments
         samples,
         frames,
         output_format,
-        crops_count=1,
+        crops_count=3,
         crops_borders=None,
 ):
     """
@@ -186,14 +173,17 @@ def verify(  # pylint: disable=too-many-arguments
     mounted_paths["WORK_DIR"] = WORK_DIR
     mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
 
-    (crops_details, blender_render_parameters) = prepare_data_for_blender_verification(subtask_border,
-                                                                                       scene_file_path,
-                                                                                       resolution,
-                                                                                       samples,
-                                                                                       frames,
-                                                                                       output_format,
-                                                                                       crops_count,
-                                                                                       crops_borders)
+    (crops_details,
+     blender_render_parameters) = prepare_data_for_blender_verification(
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count,
+        crops_borders
+    )
 
     results = blender.render(blender_render_parameters, mounted_paths)
 
