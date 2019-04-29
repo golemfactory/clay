@@ -418,7 +418,8 @@ class TestFramesConversion(unittest.TestCase):
         self.assertEqual(FrameRenderingTaskBuilder
                          .frames_to_string(list(range(10))), "0-9")
         self.assertEqual(FrameRenderingTaskBuilder
-                         .frames_to_string(list(range(13, 16)) + list(range(10))),
+                         .frames_to_string(list(range(13, 16)) +
+                                           list(range(10))),
                          "0-9;13-15")
         self.assertEqual(FrameRenderingTaskBuilder
                          .frames_to_string([1, 3, 4, 5, 10, 11]), '1;3-5;10-11')

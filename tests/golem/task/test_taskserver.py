@@ -113,8 +113,8 @@ class TaskServerTestBase(LogTestCase,
             AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
         self.client.concent_service.enabled = False
         with patch(
-                   'golem.network.concent.handlers_library.HandlersLibrary'
-                   '.register_handler',):
+            'golem.network.concent.handlers_library.HandlersLibrary'
+            '.register_handler',):
             self.ts = TaskServer(
                 node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,

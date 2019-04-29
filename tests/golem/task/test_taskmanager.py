@@ -555,7 +555,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 4
         assert self.tm.tasks_states["task4"].subtask_states[
-                   "ttt4"].subtask_status == SubtaskStatus.failure
+            "ttt4"].subtask_status == SubtaskStatus.failure
         self.tm.computed_task_received("ttt4", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 5
