@@ -291,7 +291,10 @@ class TestPrepare(TestDockerCPURuntime):
         return deferred
 
     def test_attach_socket_error(self):
-        self.client.create_container_from_config.return_value = {"Id": "Id"}
+        self.client.create_container_from_config.return_value = {
+            "Id": "Id",
+            "Warnings": None  # This is what docker actually returns
+        }
         self.client.attach_socket.side_effect = APIError("")
 
         deferred = self.runtime.prepare()

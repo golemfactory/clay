@@ -197,7 +197,7 @@ class DockerCPURuntime(Runtime):
             assert isinstance(container_id, str), "Invalid container ID"
             self._container_id = container_id
 
-            for warning in result.get("Warnings", []):
+            for warning in result.get("Warnings") or []:
                 logger.warning("Container creation warning: %s", warning)
 
             self._stdin_socket = client.attach_socket(
