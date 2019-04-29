@@ -4,7 +4,7 @@ import shutil
 import time
 from contextlib import suppress
 from os import path
-from typing import Iterable, Collection
+from typing import Iterable, Collection, Tuple, Any, Dict
 from unittest import mock
 
 import cv2
@@ -33,7 +33,7 @@ from tests.golem.verificator.test_utils.helpers import \
 class TestBlenderVerifier(TempDirFixture):
     TIMEOUT = 150
 
-    def setUp(self):
+    def setUp(self) -> None:
         # pylint: disable=R0915
         super().setUp()
         dm = DockerTaskThread.docker_manager = DockerManager.install()
@@ -86,8 +86,9 @@ class TestBlenderVerifier(TempDirFixture):
         y_crop_float_coordinate_step = 0.0
         for i in range(1, 6):
             # Split image to cropped parts
-            split_image = \
-                result_image[y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150]
+            split_image = result_image[
+                y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150
+            ]
 
             # Store images in temporary directory to load them to verification
             temp_path = path.join(self.tempdir, f'GolemTask_1000{i}.png')
@@ -112,7 +113,9 @@ class TestBlenderVerifier(TempDirFixture):
 
             # Change crop coordinates for next image verification
             y_crop_coordinate_step += 30
-            y_crop_float_coordinate_step = round(y_crop_float_coordinate_step + 0.2, 2)
+            y_crop_float_coordinate_step = round(
+                y_crop_float_coordinate_step + 0.2, 2
+            )
 
     def test_cropping_mechanism_problematic_value(self):
         """
@@ -125,7 +128,7 @@ class TestBlenderVerifier(TempDirFixture):
         self._run_cropping_test(scene_y_min, scene_y_max)
 
     def test_random_crop_window(self):
-        for i in range(1, 100):
+        for i in range(1, 10):
             with self.subTest(i=i):
                 scene_y_min, scene_y_max = \
                     self._generate_random_float_coordinates()
@@ -137,7 +140,7 @@ class TestBlenderVerifier(TempDirFixture):
             self,
             borders_y: Iterable[float] = (0.0, 1.0),
             outfilebasename: str = "GolemTask_1",
-    ) -> dict:
+    ) -> Dict[str, Any]:
         return dict(
             scene_file='/golem/resources/bmw.blend',
             resolution=[150, 150],
@@ -162,7 +165,7 @@ class TestBlenderVerifier(TempDirFixture):
             self,
             borders_y: Collection[float] = (0.0, 1.0),
             outfilebasename: str = "GolemTask_1"
-    ) -> dict:
+    ) -> Dict[str, Any]:
         borders_y = list(borders_y)
         subtask_info = self._create_basic_subtask_info(
             borders_y=borders_y,
@@ -214,7 +217,13 @@ class TestBlenderVerifier(TempDirFixture):
             with self.assertRaisesRegex(Exception, exception_regex):
                 sync_wait(d, self.TIMEOUT)
 
-    def _prepare_subtask_info_for_cropping_tests(self, y_min, y_max):
+    def _prepare_subtask_info_for_cropping_tests(
+            self,
+            y_min: float,
+            y_max: float,
+            x_min: float,
+            x_max: float,
+    ) -> None:
         self.subtask_info['samples'] = 30
         self.subtask_info['scene_file'] = \
             '/golem/resources/chessboard_400x400_5x5.blend'
@@ -230,14 +239,22 @@ class TestBlenderVerifier(TempDirFixture):
             {
                 'outfilebasename':
                     'chessboard_{}'.format(self.subtask_info['start_task']),
-                'borders_x': [0.0, 1.0],
+                'borders_x': [x_min, x_max],
                 'borders_y': [y_min, y_max]
             }
         ]
-        self.subtask_info['crop_window'] = [0.0, 1.0, y_min, y_max]
+        self.subtask_info['crop_window'] = [x_min, x_max, y_min, y_max]
 
-    def _prepare_verification_data(self, result_path, y_min, y_max):
-        self._prepare_subtask_info_for_cropping_tests(y_min, y_max)
+    def _prepare_verification_data(
+            self,
+            result_path: str,
+            y_min: float,
+            y_max: float,
+            x_min: float,
+            x_max: float,
+    ) -> Dict[str, Any]:
+        self._prepare_subtask_info_for_cropping_tests(y_min, y_max, x_min,
+                                                      x_max)
         verification_data = {
             'subtask_info': self.subtask_info,
             'results': [result_path],
@@ -247,17 +264,24 @@ class TestBlenderVerifier(TempDirFixture):
         }
         return verification_data
 
-    def _prepare_image_fragment(self, image_path, y_min, y_max):
+    def _prepare_image_fragment(
+            self,
+            image_path: str,
+            y_min: float,
+            y_max: float,
+            x_min: float = 0.0,
+            x_max: float = 1.0,
+    ) -> str:
         result = 'chessboard_fragment.png'
         result_path = path.join(self.tempdir, result)
 
         image = Image.open(image_path)
         image_fragment = image.crop(
             (
-                0,
+                math.floor(image.width * x_min),
                 image.height - math.floor(
                     (np.float32(y_max) * np.float32(image.height))),
-                image.width,
+                math.floor(image.width * x_max),
                 image.height - math.floor(
                     (np.float32(y_min) * np.float32(image.height))),
             )
@@ -265,7 +289,13 @@ class TestBlenderVerifier(TempDirFixture):
         image_fragment.save(result_path)
         return result_path
 
-    def _run_cropping_test(self, scene_y_min, scene_y_max):
+    def _run_cropping_test(
+            self,
+            scene_y_min: float,
+            scene_y_max: float,
+            scene_x_min: float = 0.0,
+            scene_x_max: float = 1.0,
+    ) -> None:
         full_image_path = path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
@@ -279,7 +309,9 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data = self._prepare_verification_data(
             result_path,
             scene_y_min,
-            scene_y_max
+            scene_y_max,
+            scene_x_min,
+            scene_x_max,
         )
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
@@ -289,7 +321,7 @@ class TestBlenderVerifier(TempDirFixture):
 
         self._assert_crops_match(result_path)
 
-    def _assert_crops_match(self, result_path):
+    def _assert_crops_match(self, result_path: str) -> None:
         crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
         crop_positions = find_crops_positions(
             path.join(self.tempdir, 'logs', 'stdout.log')
@@ -304,7 +336,7 @@ class TestBlenderVerifier(TempDirFixture):
             ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
 
     @staticmethod
-    def _generate_random_float_coordinates():
+    def _generate_random_float_coordinates() -> Tuple[float, float]:
         random.seed(0)
         span = random.randint(20, 50)
         beginning = round(random.randint(0, 100 - span) / 100, 2)
