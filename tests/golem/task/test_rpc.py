@@ -149,39 +149,54 @@ class TestCreateTask(ProviderBase, TestClientBase):
 
     @mock.patch(
         'golem.task.rpc.ClientProvider._validate_lock_funds_possibility',
-        side_effect=exceptions.NotEnoughFunds(
+        side_effect=exceptions.NotEnoughFunds.single_currency(
             required=0.166667 * denoms.ether,
             available=0,
+            currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
 
         result = self.provider.create_task(t.to_dict())
+
         rpc.enqueue_new_task.assert_not_called()
         self.assertIn('validate_lock_funds_possibility', str(mocked))
         mocked.assert_called()
-        self.assertEqual(result, (None, 'Not enough GNT available. Required: '
-                                        '0.166667, available: 0.000000'))
+
+        self.assertIsNone(result[0])
+        error = result[1]
+        # noqa pylint:disable=unsubscriptable-object
+        self.assertEqual(error['error_type'], 'NotEnoughFunds')
+        self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
+                                             'Required GNT: '
+                                             '0.166667, available: 0.000000\n')
 
 
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
 
-    def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
-        available = 0.0001 * denoms.ether
-        required = 0.0005 * denoms.ether
+    def test_validate_lock_funds_possibility_raises_if_not_enough_funds(self):
+        available_gnt = 0.0001 * denoms.ether
+        required_gnt = 0.0005 * denoms.ether
+        available_eth = 0.0002 * denoms.ether
+        required_eth = 0.0006 * denoms.ether
         client = Mock()
-        client.transaction_system.get_available_gnt.return_value = available
+        client.transaction_system.get_available_gnt.return_value = available_gnt
+        client.transaction_system.get_available_eth.return_value = available_eth
+        client.transaction_system.eth_for_batch_payment.return_value = \
+            required_eth
         client_provider = ClientProvider(client)
 
         with self.assertRaises(exceptions.NotEnoughFunds) as e:
             client_provider._validate_lock_funds_possibility(
-                total_price_gnt=required,
+                total_price_gnt=required_gnt,
                 number_of_tasks=1
             )
-        expected = f'Not enough GNT available. ' \
-            f'Required: {required / denoms.ether:.6f}, ' \
-            f'available: {available / denoms.ether:.6f}'
+        expected = f'Not enough funds available.\n' \
+            f'Required GNT: {required_gnt / denoms.ether:f}, ' \
+            f'available: {available_gnt / denoms.ether:f}\n' \
+            f'Required ETH: {required_eth / denoms.ether:f}, ' \
+            f'available: {available_eth / denoms.ether:f}\n'
         self.assertIn(str(e.exception), expected)
 
 
