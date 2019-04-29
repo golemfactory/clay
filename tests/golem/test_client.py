@@ -427,6 +427,7 @@ class TestClientRestartSubtasks(TestClientBase):
             self.subtask_price, 1)
 
 
+# pylint: disable=no-member
 class TestDoWorkService(testwithreactor.TestWithReactor):
 
     def setUp(self):

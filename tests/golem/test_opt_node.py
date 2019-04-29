@@ -517,6 +517,7 @@ class MockThread:
         return self._target
 
 
+# pylint: disable=no-member
 @patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.core.golem_async.async_run', mock_async_run)

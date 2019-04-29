@@ -131,6 +131,7 @@ class TaskServerTestBase(LogTestCase,
             self.ts.quit()
 
 
+# pylint: disable=no-member
 class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
     @patch('twisted.internet.task', create=True)
     @patch(
