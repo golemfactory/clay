@@ -533,6 +533,48 @@ class TestStop(TestDockerCPURuntime):
         return deferred
 
 
+class TestStdinSocket(TestDockerCPURuntime):
+
+    def _patch_socket(self):
+        self.runtime._stdin_lock = RLock()
+        self.runtime._stdin_socket = Mock(spec=socket)
+
+
+class TestWriteStdin(TestDockerCPURuntime):
+
+    def test_no_socket(self):
+        with self.assertRaises(AssertionError):
+            self.runtime._write_stdin(b"test")
+
+    def test_ok(self):
+        self.runtime._stdin_lock = RLock()
+        self.runtime._stdin_socket = Mock(spec=socket)
+        self.runtime._stdin_socket.sendall.side_effect = \
+            lambda _: self.assertTrue(self.runtime._stdin_lock._is_owned())
+
+        self.runtime._write_stdin(b"test")
+        self.runtime._stdin_socket.sendall.assert_called_once_with(b"test")
+
+
+class TestCloseStdin(TestDockerCPURuntime):
+
+    def test_no_socket(self):
+        with self.assertRaises(AssertionError):
+            self.runtime._close_stdin()
+
+    def test_ok(self):
+        self.runtime._stdin_lock = RLock()
+        self.runtime._stdin_socket = Mock(spec=socket)
+        self.runtime._stdin_socket.shutdown.side_effect = \
+            lambda: self.assertTrue(self.runtime._stdin_lock._is_owned())
+        self.runtime._stdin_socket.close.side_effect = \
+            lambda: self.assertTrue(self.runtime._stdin_lock._is_owned())
+
+        self.runtime._close_stdin()
+        self.runtime._stdin_socket.shutdown.assert_called_once()
+        self.runtime._stdin_socket.close.assert_called_once()
+
+
 class TestStdin(TestDockerCPURuntime):
 
     def test_invalid_status(self):
@@ -544,14 +586,17 @@ class TestStdin(TestDockerCPURuntime):
                 RuntimeStatus.RUNNING}
         )
 
-    def test_ok(self):
+    @patch_runtime('_close_stdin')
+    @patch_runtime('_write_stdin')
+    def test_ok(self, write, close):
         with self.runtime._status_lock:
             self.runtime._status = RuntimeStatus.RUNNING
-
         self.runtime._stdin_socket = Mock(spec=socket)
+
         result = self.runtime.stdin(encoding="utf-8")
         self.assertIsInstance(result, DockerInput)
-        self.assertEqual(result._socket, self.runtime._stdin_socket)
+        self.assertEqual(result._write, write)
+        self.assertEqual(result._close, close)
         self.assertEqual(result._encoding, "utf-8")
 
 

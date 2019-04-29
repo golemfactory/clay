@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 from socket import socket
 from subprocess import SubprocessError
-from threading import Thread
+from threading import Thread, Lock
 from time import sleep
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
     NamedTuple, Tuple, Iterator, Union, Iterable
@@ -81,16 +81,22 @@ class DockerOutput(RuntimeOutput):
 
 class DockerInput(RuntimeInput):
 
-    def __init__(self, sock: socket, encoding: Optional[str] = None) -> None:
+    def __init__(
+            self,
+            write: Callable[[bytes], None],
+            close: Callable[[], None],
+            encoding: Optional[str] = None
+    ) -> None:
         super().__init__(encoding=encoding)
-        self._socket = sock
+        self._write = write
+        self._close = close
 
     def write(self, data: Union[str, bytes]) -> None:
         encoded = self._encode(data)
-        self._socket.sendall(encoded)
+        self._write(encoded)
 
     def close(self):
-        self._socket.close()
+        self._close()
 
 
 class DockerCPURuntime(Runtime):
@@ -111,6 +117,7 @@ class DockerCPURuntime(Runtime):
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
         self._stdin_socket: Optional[socket] = None
+        self._stdin_lock = Lock()
         self._container_config = client.create_container_config(
             image=image,
             volumes=volumes,
@@ -280,6 +287,17 @@ class DockerCPURuntime(Runtime):
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop
 
+    def _write_stdin(self, data: bytes) -> None:
+        assert self._stdin_socket is not None
+        with self._stdin_lock:
+            self._stdin_socket.sendall(data)
+
+    def _close_stdin(self) -> None:
+        assert self._stdin_socket is not None
+        with self._stdin_lock:
+            self._stdin_socket.shutdown()
+            self._stdin_socket.close()
+
     def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
         self._assert_status(
             self.status(), [
@@ -288,7 +306,11 @@ class DockerCPURuntime(Runtime):
                 RuntimeStatus.RUNNING
             ])
         assert self._stdin_socket is not None
-        return DockerInput(self._stdin_socket, encoding=encoding)
+        return DockerInput(
+            write=self._write_stdin,
+            close=self._close_stdin,
+            encoding=encoding
+        )
 
     def _get_raw_output(self, stdout=False, stderr=False, stream=True) \
             -> Iterable[bytes]:
