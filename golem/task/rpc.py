@@ -651,30 +651,45 @@ class ClientProvider:
         return True
 
     @rpc_utils.expose('comp.tasks.estimated.cost')
-    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
-        # FIXME task_type is unused
-        options['price'] = int(options['price'])
-        options['subtask_timeout'] = common.string_to_timeout(
-            options['subtask_timeout'],
-        )
-        options['subtasks_count'] = int(options['subtasks_count'])
+    def get_estimated_cost(
+            self,
+            _task_type: str,
+            options: typing.Optional[dict] = None,
+            task_id: typing.Optional[str] = None,
+            partial: typing.Optional[bool] = False
+    ) -> typing.Tuple[typing.Optional[dict], typing.Optional[str]]:
+        subtask_count: int = 0
+        subtask_price: int = 0
 
-        subtask_price: int = taskkeeper.compute_subtask_value(
-            price=options['price'],
-            computation_time=options['subtask_timeout'],
-        )
-        estimated_gnt: int = options['subtasks_count'] \
-            * subtask_price
+        if task_id:
+            task: taskbase.Task = self.task_manager.tasks.get(task_id)
+            if not task:
+                return None, f'Task not found: {task_id}'
+
+            subtask_count = task.get_tasks_left() if partial else \
+                task.get_total_tasks()
+            subtask_price = task.subtask_price
+        else:
+            if not options:
+                return None, 'You must pass either a task ID or task options.'
+
+            subtask_count = int(options['subtasks_count'])
+            subtask_timeout: int = common.string_to_timeout(
+                options['subtask_timeout'],
+            )
+            subtask_price = taskkeeper.compute_subtask_value(
+                price=int(options['price']),
+                computation_time=subtask_timeout
+            )
+
+        estimated_gnt: int = subtask_count * subtask_price
         estimated_eth: int = self.client \
-            .transaction_system.eth_for_batch_payment(
-                options['subtasks_count'],
-            )
+            .transaction_system.eth_for_batch_payment(subtask_count)
         estimated_gnt_deposit: typing.Tuple[int, int] = \
-            msg_helpers.requestor_deposit_amount(
-                estimated_gnt,
-            )
+            msg_helpers.requestor_deposit_amount(estimated_gnt)
         estimated_deposit_eth: int = self.client.transaction_system \
             .eth_for_deposit()
+
         result = {
             'GNT': str(estimated_gnt),
             'ETH': str(estimated_eth),
@@ -684,8 +699,9 @@ class ClientProvider:
                 'ETH': str(estimated_deposit_eth),
             },
         }
+
         logger.info('Estimated task cost. result=%r', result)
-        return result
+        return result, None
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \
