@@ -274,7 +274,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
         task_computer = mock.Mock()
-        compute_task = TaskComputer._TaskComputer__compute_task
+        compute_task = TaskComputer._TaskComputer__compute_task     # pylint: disable=no-member
 
         dir_manager = task_computer.dir_manager
         dir_manager.get_task_resource_dir.return_value = self.tempdir + '_res'

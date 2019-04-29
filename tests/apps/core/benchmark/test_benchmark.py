@@ -10,7 +10,7 @@ from golem.testutils import TempDirFixture
 class TestBenchmark(TempDirFixture):
 
     def setUp(self):
-        super(self.__class__, self).setUp()
+        super().setUp()
         self.benchmark = renderingbenchmark.RenderingBenchmark()
 
     def test_verify_img(self):

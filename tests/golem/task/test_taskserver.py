@@ -240,7 +240,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.concent_enabled = False
-        task_header.sign(private_key=keys_auth._private_key)
+        task_header.sign(private_key=keys_auth._private_key)        # pylint: disable=no-value-for-parameter
         self.ts.add_task_header(task_header)
 
         self.assertIsNone(self.ts.request_task())
@@ -349,7 +349,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, *_):
         self.ts.sync_network()
-        self.ts._sync_pending.assert_called_once_with()
+        self.ts._sync_pending.assert_called_once_with()     # pylint: disable=no-member
 
     @patch("golem.task.taskserver.TaskServer._sync_pending",
            side_effect=RuntimeError("Intentional failure"))

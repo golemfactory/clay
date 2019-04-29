@@ -44,7 +44,7 @@ class RenderingTaskMock(RenderingTask):
         def get_id(self):
             return "TEST"
 
-    def query_extra_data(*args, **kwargs):
+    def query_extra_data(self, *args, **kwargs):
         pass
 
     def query_extra_data_for_test_task(self):
