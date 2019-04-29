@@ -7,8 +7,8 @@ from typing import Type
 import numpy
 from twisted.internet.defer import Deferred
 
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
-from golem.verificator.rendering_verifier import FrameRenderingVerifier
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.rendering_verifier import FrameRenderingVerifier
 
 
 logger = logging.getLogger(__name__)

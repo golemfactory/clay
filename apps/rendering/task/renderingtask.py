@@ -9,7 +9,7 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from golem.verificator.rendering_verifier import RenderingVerifier
+from golem.verifier.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob

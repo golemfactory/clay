@@ -4,7 +4,7 @@ from functools import partial
 from types import FunctionType
 from typing import Optional, Type, Dict, Tuple
 
-from golem.verificator.core_verifier import CoreVerifier
+from golem.verifier.core_verifier import CoreVerifier
 from twisted.internet.defer import Deferred, gatherResults
 
 from apps.core.verification_task import VerificationTask

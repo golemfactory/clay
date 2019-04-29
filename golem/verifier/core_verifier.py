@@ -4,9 +4,9 @@ from datetime import datetime
 
 from twisted.internet.defer import Deferred
 
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
-logger = logging.getLogger('golem.verificator.core_verifier')
+logger = logging.getLogger('golem.verifier.core_verifier')
 
 
 class CoreVerifier:  # pylint: disable=too-many-instance-attributes

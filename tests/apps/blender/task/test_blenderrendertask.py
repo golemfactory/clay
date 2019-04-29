@@ -16,7 +16,7 @@ import numpy
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
 
 import OpenEXR
@@ -155,7 +155,7 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem.verificator.blender_verifier.'
+        with mock.patch('golem.verifier.blender_verifier.'
                         'BlenderVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
@@ -185,7 +185,7 @@ class TestBlenderFrameTask(TempDirFixture):
         file2 = path.join(file_dir, 'result2')
         img.save_with_extension(file2, "PNG")
 
-        with mock.patch('golem.verificator.blender_verifier.'
+        with mock.patch('golem.verifier.blender_verifier.'
                         'BlenderVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(

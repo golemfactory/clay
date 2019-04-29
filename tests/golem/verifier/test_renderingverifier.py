@@ -4,8 +4,8 @@ import cv2
 import numpy as np
 
 from golem.testutils import TempDirFixture
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
-from golem.verificator.rendering_verifier import (
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.rendering_verifier import (
     RenderingVerifier,
     FrameRenderingVerifier,
 )

@@ -1,8 +1,8 @@
 import logging
 
 from apps.rendering.resources.imgrepr import load_img
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
-from golem.verificator.core_verifier import CoreVerifier
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.core_verifier import CoreVerifier
 
 logger = logging.getLogger('apps.rendering')
 

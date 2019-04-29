@@ -1,7 +1,7 @@
 import unittest
 from unittest import mock
 import functools
-from golem.verificator.blender_verifier import BlenderVerifier
+from golem.verifier.blender_verifier import BlenderVerifier
 from golem.core.common import timeout_to_deadline
 from golem.docker.task_thread import DockerTaskThread
 from apps.core.verification_queue import VerificationQueue
@@ -15,10 +15,10 @@ class TestVerificationQueue(unittest.TestCase):
     @mock.patch("apps.core.verification_queue.VerificationQueue."
                 "_verification_timed_out")
     @mock.patch(
-        "golem.verificator.blender_verifier.BlenderVerifier."
+        "golem.verifier.blender_verifier.BlenderVerifier."
         "simple_verification", return_value=True)
     @mock.patch(
-        'golem.verificator.blender_verifier.BlenderVerifier.start_rendering')
+        'golem.verifier.blender_verifier.BlenderVerifier.start_rendering')
     def test_task_timeout(self, _start_rendering, _simple_verification,
                           _verification_timed_out, ):
 

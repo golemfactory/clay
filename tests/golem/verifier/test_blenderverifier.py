@@ -20,8 +20,8 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
-from golem.verificator.blender_verifier import BlenderVerifier
-from tests.golem.verificator.test_utils.helpers import \
+from golem.verifier.blender_verifier import BlenderVerifier
+from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
     are_pixels_equal, find_crops_positions
 
@@ -411,7 +411,7 @@ class TestUnitBlenderVerifier:
 
         blender_verifier = BlenderVerifier(verification_data,
                                            DockerTaskThreadMock)
-        with mock.patch('golem.verificator.blender_verifier.logger') \
+        with mock.patch('golem.verifier.blender_verifier.logger') \
                 as mocked_logger:
             blender_verifier.start_verification()
 

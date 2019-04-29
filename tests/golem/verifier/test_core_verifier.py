@@ -5,8 +5,8 @@ from twisted.internet.defer import Deferred
 
 from golem.core.deferred import sync_wait
 from golem.testutils import TempDirFixture
-from golem.verificator.subtask_verification_state import SubtaskVerificationState
-from golem.verificator.core_verifier import CoreVerifier
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.core_verifier import CoreVerifier
 
 
 @freeze_time()
