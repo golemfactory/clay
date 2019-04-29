@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from socket import socket
+from socket import socket, SocketIO, SHUT_WR
 from subprocess import SubprocessError
 from threading import Thread, Lock
 from time import sleep
@@ -10,6 +10,7 @@ from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
 from docker.errors import APIError
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
+from urllib3.contrib.pyopenssl import WrappedSocket
 
 from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
@@ -116,7 +117,7 @@ class DockerCPURuntime(Runtime):
 
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
-        self._stdin_socket: Optional[socket] = None
+        self._stdin_socket: Optional[Union[socket, WrappedSocket]] = None
         self._stdin_lock = Lock()
         self._container_config = client.create_container_config(
             image=image,
@@ -200,9 +201,16 @@ class DockerCPURuntime(Runtime):
             for warning in result.get("Warnings") or []:
                 logger.warning("Container creation warning: %s", warning)
 
-            self._stdin_socket = client.attach_socket(
+            sock = client.attach_socket(
                 container_id, params={'stdin': True, 'stream': True}
             )
+            # Due to terrible design of attach_socket() we have to do this
+            if isinstance(sock, WrappedSocket):
+                self._stdin_socket = sock
+            elif isinstance(sock, SocketIO):
+                self._stdin_socket = sock._sock
+            else:
+                raise RuntimeError(f"Invalid socket class: {sock.__class__}")
 
         return deferToThread(_prepare)
 
@@ -295,7 +303,10 @@ class DockerCPURuntime(Runtime):
     def _close_stdin(self) -> None:
         assert self._stdin_socket is not None
         with self._stdin_lock:
-            self._stdin_socket.shutdown()
+            if isinstance(self._stdin_socket, socket):
+                self._stdin_socket.shutdown(SHUT_WR)
+            else:
+                self._stdin_socket.shutdown()
             self._stdin_socket.close()
 
     def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
