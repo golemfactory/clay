@@ -502,7 +502,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = '127.0.0.1'
         session.port = 40102
 
-        method = ts._TaskServer__connection_for_task_failure_established
+        method = ts._TaskServer__connection_for_task_failure_established        # pylint: disable=no-member
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
 
         self.assertEqual(session.key_id, 'key_id')
@@ -516,7 +516,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.network = Mock()
         ts.final_conn_failure = Mock()
 
-        method = ts._TaskServer__connection_for_start_session_failure
+        method = ts._TaskServer__connection_for_start_session_failure           # pylint: disable=no-member
         method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
 
         ts.final_conn_failure.assert_called_with('conn_id')
@@ -530,7 +530,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.remove_pending_conn = Mock()
         ts.remove_responses = Mock()
 
-        method = ts._TaskServer__connection_for_task_result_final_failure
+        method = ts._TaskServer__connection_for_task_result_final_failure       # pylint: disable=no-member
         wtr = Mock()
         method('conn_id', wtr)
 
@@ -542,7 +542,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.remove_pending_conn.called = False
         ts.remove_responses.called = False
 
-        method = ts._TaskServer__connection_for_task_failure_final_failure
+        method = ts._TaskServer__connection_for_task_failure_final_failure      # pylint: disable=no-member
         method('conn_id', 'key_id', 'subtask_id', 'err_msg')
 
         self.assertTrue(ts.remove_pending_conn.called)
@@ -552,7 +552,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.remove_responses.called = False
         ts.task_computer.session_timeout.called = False
 
-        method = ts._TaskServer__connection_for_start_session_final_failure
+        method = ts._TaskServer__connection_for_start_session_final_failure     # pylint: disable=no-member
         method('conn_id', 'key_id', Mock(), Mock(), 'ans_conn_id')
 
         self.assertTrue(ts.remove_pending_conn.called)
@@ -560,7 +560,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.task_computer.session_timeout.called)
 
         ts.remove_pending_conn.reset_mock()
-        method = ts._TaskServer__connection_for_task_request_final_failure
+        method = ts._TaskServer__connection_for_task_request_final_failure      # pylint: disable=no-member
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
         ts.remove_pending_conn.assert_called_once_with('conn_id')
