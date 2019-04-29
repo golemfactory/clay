@@ -49,6 +49,7 @@ from golem.resource.dirmanager import DirManager
 fake = Faker()
 
 
+# pylint: disable=abstract-method
 class TaskMock(Task):
 
     def __init__(self, *args, **kwargs):
