@@ -489,9 +489,7 @@ class TestTaskIntegration(TempDirFixture):
 
         return dtt.result.get('data')
 
-
     def tearDown(self):
         if self.REMOVE_TMP_DIRS:
             if os.path.isdir(self.tempdir):
                 shutil.rmtree(self.tempdir)
-
