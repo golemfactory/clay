@@ -11,4 +11,3 @@ class TestConfig(TestConfigBase):
             requestor_config,
             requestor_config_2,
         ]
-        self.task_settings = 'default'
