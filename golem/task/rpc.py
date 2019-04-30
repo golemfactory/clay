@@ -651,30 +651,65 @@ class ClientProvider:
         return True
 
     @rpc_utils.expose('comp.tasks.estimated.cost')
-    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
-        # FIXME task_type is unused
-        options['price'] = int(options['price'])
-        options['subtask_timeout'] = common.string_to_timeout(
-            options['subtask_timeout'],
-        )
-        options['subtasks_count'] = int(options['subtasks_count'])
+    def get_estimated_cost(
+            self,
+            _task_type: str,
+            options: typing.Optional[dict] = None,
+            task_id: typing.Optional[str] = None,
+            partial: typing.Optional[bool] = False
+    ) -> typing.Tuple[typing.Optional[dict], typing.Optional[str]]:
+        """
+        Estimates the cost of a task. Result includes amounts required for both
+        calculating the task, as well as creating a Concent deposit for it.
 
-        subtask_price: int = taskkeeper.compute_subtask_value(
-            price=options['price'],
-            computation_time=options['subtask_timeout'],
-        )
-        estimated_gnt: int = options['subtasks_count'] \
-            * subtask_price
+        :param _task_type: type of the task for which the cost should be
+        estimated.
+        :param options: task options, when provided and task_id parameter is
+        None the cost estimation will be based on fields from this dict
+        (i.e. price, subtask_count and subtask_timeout). Used for tasks
+        which have not been created yet.
+        :param task_id: if provided, the cost estimation will be based on an
+        existing task with the given ID.
+        :param partial: used in conjunction with the task_id parameter. If
+        True, the estimation will only include unfinished subtasks of the
+        specified task (i.e. estimating the cost of a partial task restart).
+        Otherwise, the full task cost will be returned.
+        :return: a tuple with the result dict as its first element and an error
+        string as the second. When the result is present the error should be
+        None (and vice-versa).
+        """
+        subtask_count: int = 0
+        subtask_price: int = 0
+
+        if task_id:
+            task: taskbase.Task = self.task_manager.tasks.get(task_id)
+            if not task:
+                return None, f'Task not found: {task_id}'
+
+            subtask_count = task.get_tasks_left() if partial else \
+                task.get_total_tasks()
+            subtask_price = task.subtask_price
+        else:
+            if not options:
+                return None, 'You must pass either a task ID or task options.'
+
+            subtask_count = int(options['subtasks_count'])
+            subtask_timeout: int = common.string_to_timeout(
+                options['subtask_timeout'],
+            )
+            subtask_price = taskkeeper.compute_subtask_value(
+                price=int(options['price']),
+                computation_time=subtask_timeout
+            )
+
+        estimated_gnt: int = subtask_count * subtask_price
         estimated_eth: int = self.client \
-            .transaction_system.eth_for_batch_payment(
-                options['subtasks_count'],
-            )
+            .transaction_system.eth_for_batch_payment(subtask_count)
         estimated_gnt_deposit: typing.Tuple[int, int] = \
-            msg_helpers.requestor_deposit_amount(
-                estimated_gnt,
-            )
+            msg_helpers.requestor_deposit_amount(estimated_gnt)
         estimated_deposit_eth: int = self.client.transaction_system \
             .eth_for_deposit()
+
         result = {
             'GNT': str(estimated_gnt),
             'ETH': str(estimated_eth),
@@ -684,8 +719,9 @@ class ClientProvider:
                 'ETH': str(estimated_deposit_eth),
             },
         }
+
         logger.info('Estimated task cost. result=%r', result)
-        return result
+        return result, None
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \

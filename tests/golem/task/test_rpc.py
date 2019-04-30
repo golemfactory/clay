@@ -724,18 +724,21 @@ class TestGetEstimatedCost(ProviderBase):
 
     def test_basic(self, *_):
         subtasks = 5
-        result = self.provider.get_estimated_cost(
+
+        result, error = self.provider.get_estimated_cost(
             "task type",
-            {
+            options={
                 "price": '150',
                 "subtask_timeout": '00:00:02',
                 "subtasks_count": str(subtasks),
             },
         )
+
+        self.assertIsNone(error)
         self.assertEqual(
             result,
             {
-                "GNT": '5',
+                'GNT': '5',
                 'ETH': '10000',
                 'deposit': {
                     'GNT_required': '10',
@@ -748,6 +751,80 @@ class TestGetEstimatedCost(ProviderBase):
             subtasks,
         )
         self.transaction_system.eth_for_deposit.assert_called_once_with()
+
+    def test_full_restart(self, *_):
+        task_id = 'task-uuid'
+        mock_task = Mock()
+        mock_task.get_total_tasks.return_value = 10
+        mock_task.subtask_price = 1
+        self.provider.task_manager.tasks[task_id] = mock_task
+
+        result, error = self.provider.get_estimated_cost(
+            "task_type",
+            task_id=task_id
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(
+            result,
+            {
+                'GNT': '10',
+                'ETH': '10000',
+                'deposit': {
+                    'GNT_required': '20',
+                    'GNT_suggested': '40',
+                    'ETH': '20000',
+                },
+            },
+        )
+
+    def test_partial_restart(self, *_):
+        task_id = 'task-uuid'
+        mock_task = Mock()
+        mock_task.get_tasks_left.return_value = 2
+        mock_task.subtask_price = 2
+        self.provider.task_manager.tasks[task_id] = mock_task
+
+        result, error = self.provider.get_estimated_cost(
+            'task_type',
+            task_id=task_id,
+            partial=True
+        )
+
+        self.assertIsNone(error)
+        self.assertEqual(
+            result,
+            {
+                'GNT': '4',
+                'ETH': '10000',
+                'deposit': {
+                    'GNT_required': '8',
+                    'GNT_suggested': '16',
+                    'ETH': '20000',
+                },
+            },
+        )
+
+    def test_task_non_found(self, *_):
+        task_id = 'non-existent-uuid'
+
+        result, error = self.provider.get_estimated_cost(
+            'task_type',
+            task_id=task_id,
+            partial=True
+        )
+
+        self.assertIsNone(result)
+        self.assertEqual(error, f'Task not found: {task_id}')
+
+    def test_no_parameters(self, *_):
+        result, error = self.provider.get_estimated_cost('task_type')
+
+        self.assertIsNone(result)
+        self.assertEqual(
+            error,
+            'You must pass either a task ID or task options.'
+        )
 
 
 @mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
@@ -777,7 +854,7 @@ class TestGetFragments(ProviderBase):
                 'start_task': 2,
             },
         }
-        self.client.task_server.task_manager.tasks[task_id] = mock_task
+        self.provider.task_manager.tasks[task_id] = mock_task
 
         task_fragments, error = self.provider.get_fragments(task_id)
 
@@ -797,7 +874,7 @@ class TestGetFragments(ProviderBase):
     def test_wrong_task_type(self, *_):
         task_id = str(uuid.uuid4())
         mock_task = Mock(spec=DummyTask)
-        self.client.task_server.task_manager.tasks[task_id] = mock_task
+        self.provider.task_manager.tasks[task_id] = mock_task
 
         task_fragments, error = self.provider.get_fragments(task_id)
 
