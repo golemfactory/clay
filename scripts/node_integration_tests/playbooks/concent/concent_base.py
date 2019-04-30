@@ -1,11 +1,13 @@
 from functools import partial
-import queue
 import typing
 
 from scripts.node_integration_tests import helpers
 
 from ..base import NodeTestPlaybook
 from ..test_config_base import NodeId
+
+if typing.TYPE_CHECKING:
+    import queue
 
 
 class ConcentTestPlaybook(NodeTestPlaybook):
@@ -18,7 +20,7 @@ class ConcentTestPlaybook(NodeTestPlaybook):
             if result is True:
                 print(f"Concent unexpectedly already enabled for"
                       " {node_id.value}...")
-            return self.next()
+            self.next()
 
         return self.call(node_id, 'golem.concent.switch', on_success=on_success)
 
@@ -47,13 +49,13 @@ class ConcentTestPlaybook(NodeTestPlaybook):
                         node_id.value, result
                     )
                 )
-            return self.next()
+            self.next()
 
         return self.call(node_id, 'golem.concent.switch', on_success=on_success)
 
     @staticmethod
     def check_concent_logs(
-            output_queue: queue.Queue,
+            output_queue: 'queue.Queue',
             outgoing: bool = False,
             additional_fail_triggers: typing.Optional[list] = None,
             awaited_messages: typing.Optional[list] = None

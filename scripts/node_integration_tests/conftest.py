@@ -5,6 +5,7 @@ REUSE_KEYS = True
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
 
+
 class NodeKeyReuseException(Exception):
     pass
 

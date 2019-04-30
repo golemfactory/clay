@@ -37,26 +37,7 @@ def print_error(error):
 
 class NodeTestPlaybook:
     INTERVAL = 1
-
-    start_time: float
-
-    _loop: task.LoopingCall
-
-    nodes_root: typing.Optional[Path] = None
-
-    exit_code = None
-    current_step = 0
-    known_tasks = None
-    task_id = None
-    started = False
-    nodes_started = False
-    task_in_creation = False
-    output_path = None
-    subtasks = None
-
-    reconnect_attempts_left = 7
-    reconnect_countdown_initial = 10
-    reconnect_countdown = None
+    RECONNECT_COUNTDOWN_INITIAL = 10
 
     @property
     def task_settings_dict(self) -> dict:
@@ -79,7 +60,7 @@ class NodeTestPlaybook:
         return step.__name__
 
     @property
-    def time_elapsed(self):
+    def time_elapsed(self) -> float:
         return time.time() - self.start_time
 
     def fail(self, msg: typing.Optional[str] = None):
@@ -175,7 +156,7 @@ class NodeTestPlaybook:
     def step_connect(self, node_id: NodeId, target_node: NodeId):
         def on_success(result):
             print("Peer connection initialized.")
-            self.reconnect_countdown = self.reconnect_countdown_initial
+            self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
             self.next()
         return self.call(node_id, 'net.peer.connect',
                          ("localhost", self.nodes_ports[target_node]),
@@ -433,7 +414,7 @@ class NodeTestPlaybook:
             node = helpers.run_golem_node(
                 node_config.script,
                 node_config.make_args(),
-                nodes_root=self.nodes_root,
+                nodes_root=self.config.nodes_root,
             )
             self.nodes[node_id] = node
             self.output_queues[node_id] = helpers.get_output_queue(node)
@@ -508,23 +489,30 @@ class NodeTestPlaybook:
         self.nodes_keys: typing.Dict[NodeId, str] = {}
         self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
 
+        self._loop = task.LoopingCall(self.run)
+        self.start_time: float = 0
+        self.exit_code = 0
+        self.current_step = 0
+        self.known_tasks: typing.Optional[typing.Set[str]] = None
+        self.task_id: typing.Optional[str] = None
+        self.nodes_started = False
+        self.task_in_creation = False
+        self.subtasks: typing.Optional[typing.Set[str]] = None
+
+        self.reconnect_attempts_left = 7
+        self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
+
         self.start_nodes()
         self.started = True
 
-    @classmethod
-    def start(cls: 'typing.Type[NodeTestPlaybook]', config: 'TestConfigBase') \
-            -> 'NodeTestPlaybook':
-        playbook = cls(config)
-        playbook.start_time = time.time()
-        playbook._loop = task.LoopingCall(playbook.run)
-        d = playbook._loop.start(cls.INTERVAL, False)
+    def start(self) -> None:
+        self.start_time = time.time()
+        d = self._loop.start(self.INTERVAL, False)
         d.addErrback(lambda x: print(x))
 
         reactor.addSystemEventTrigger(
-            'before', 'shutdown', lambda: playbook.stop(2))
+            'before', 'shutdown', lambda: self.stop(2))
         reactor.run()
-
-        return playbook
 
     def stop(self, exit_code):
         if not self.started:
