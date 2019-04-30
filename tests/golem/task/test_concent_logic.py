@@ -23,7 +23,7 @@ from golem.core import keysauth
 from golem.network import history
 from golem.task import tasksession
 from golem.task import taskstate
-
+from golem.tools.testwithreactor import TestWithReactor
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
@@ -387,7 +387,7 @@ def _offerpool_add(*_):
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
 )
-class ReactToWantToComputeTaskTestCase(unittest.TestCase):
+class ReactToWantToComputeTaskTestCase(TestWithReactor):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
@@ -456,6 +456,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
         ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
+        ctd["resources"] = []
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()

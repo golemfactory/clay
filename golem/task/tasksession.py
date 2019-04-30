@@ -13,6 +13,7 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
+from twisted.internet import defer
 
 import golem
 from golem.config.active import EthereumConfig
@@ -37,6 +38,7 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -385,12 +387,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # Adding errback won't be needed in asyncio
         d.addErrback(golem_async.default_errback)
 
+    @defer.inlineCallbacks
     def _offer_chosen(
             self,
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
             node_id: str,
-    ) -> None:
+    ):
         node_name_id = common.node_info_str(msg.node_name, node_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
@@ -419,7 +422,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        ctd["resources"] = self.task_server.get_resources(msg.task_id)
+        resources_result = None
+        if ctd["resources"]:
+            resources_result = yield add_resources(
+                self.task_server.client,
+                ctd["resources"],
+                ctd["subtask_id"],
+                common.deadline_to_timeout(ctd["deadline"])
+            )
+            # overwrite resources so they are serialized by resource_manager
+            resources = self.task_server.get_resources(ctd['subtask_id'])
+            ctd["resources"] = resources
+            logger.info("resources_result: %r", resources_result)
 
         logger.info(
             "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
@@ -433,6 +447,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             task.header.subtask_timeout,
         )
+        if resources_result:
+            _, _, package_hash, package_size = resources_result
+        else:
+            package_hash = task_state.package_hash
+            package_size = task_state.package_size
+
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
@@ -440,12 +460,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestor_public_key=task.header.task_owner.key,
             requestor_ethereum_public_key=task.header.task_owner.key,
             provider_id=self.key_id,
-            package_hash='sha1:' + task_state.package_hash,
+            package_hash='sha1:' + package_hash,
             concent_enabled=msg.concent_enabled,
             price=price,
-            size=task_state.package_size,
+            size=package_size,
             resources_options=self.task_server.get_share_options(
-                ctd['task_id'], self.address).__dict__
+                ctd['subtask_id'], self.address).__dict__
         )
         ttc.generate_ethsig(self.my_private_key)
         if ttc.concent_enabled:

@@ -28,16 +28,26 @@ import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
 from golem.core import variables
+from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
+from golem.resource.base.resourceserver import BaseResourceServer
+from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import taskstate
+from golem.task.result.resultpackage import ZipPackager
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
+
+from tests import factories
+from tests.factories import hyperdrive
+
 
 fake = faker.Faker()
 
@@ -83,8 +93,9 @@ def _offerpool_add(*_):
 @patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 @patch('golem.task.tasksession.get_provider_efficiency', Mock())
 @patch('golem.task.tasksession.get_provider_efficacy', Mock())
-class TaskSessionTaskToComputeTest(TestCase):
+class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
+        super().setUp()
         self.maxDiff = None
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
@@ -100,6 +111,18 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
+        dir_manager = DirManager(self.path)
+        # noqa pylint: disable=unexpected-keyword-arg
+        resource_manager = HyperdriveResourceManager(
+            dir_manager=dir_manager,
+            **hyperdrive.hyperdrive_client_kwargs()
+        )
+
+        server.client.resource_server = BaseResourceServer(
+            resource_manager=resource_manager,
+            dir_manager=dir_manager,
+            client=server.client
+        )
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -234,9 +257,13 @@ class TaskSessionTaskToComputeTest(TestCase):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
+        ts.task_server.get_resources.return_value = \
+            self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
 
         ctd = msg_factories.tasks.ComputeTaskDefFactory(task_id=wtct.task_id)
+        ctd["resources"] = self.additional_dir_content([5, [2], [4]])
+        ctd["deadline"] = timeout_to_deadline(120)
         task_state = self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
@@ -245,15 +272,25 @@ class TaskSessionTaskToComputeTest(TestCase):
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
         options = HyperdriveClientOptions("CLI1", 0.3)
         ts.task_server.get_share_options.return_value = options
+        new_path = os.path.join(self.path, "tempzip")
+        zp = ZipPackager()
+        _, hash_ = zp.create(new_path, ctd["resources"])
         ts.interpret(wtct)
+        started = time.time()
+        while ts.conn.send_message.call_args is None:
+            if time.time() - started > 10:
+                self.fail("Test timed out")
+            time.sleep(0.1)
+
         ts.conn.send_message.assert_called_once()
         ttc = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
-        return ttc, wtct, ctd, task_state, ts
+        return ttc, wtct, ctd, hash_, ts
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_request_task(self, *_):
-        ttc, wtct, ctd, task_state, ts = self._fake_send_ttc()
+        ttc, wtct, ctd, hash_, ts = self._fake_send_ttc()
+        new_path = os.path.join(self.path, "tempzip")
         expected = [
             ['requestor_id', self.requestor_key],
             ['provider_id', ts.key_id],
@@ -262,10 +299,10 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['compute_task_def', ctd],
             ['want_to_compute_task',
              (False, (wtct.header, wtct.sig, wtct.slots()))],
-            ['package_hash', 'sha1:' + task_state.package_hash],
+            ['package_hash', 'sha1:' + hash_],
             ['concent_enabled', self.use_concent],
             ['price', 1],
-            ['size', task_state.package_size],
+            ['size', os.path.getsize(new_path)],
             ['ethsig', ttc.ethsig],
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
                                    'options': {}}],
