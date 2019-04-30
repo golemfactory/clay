@@ -275,15 +275,18 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(ids[i], tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-    def test_check_max_tasks_per_owner(self):
+    def _assert_headers(self, tk, ids, count):
+        for id in ids:
+            self.assertIn(id, tk.task_headers)
+        self.assertEqual(count, len(tk.task_headers))
 
+    def _prep_max_tasks_test(self, new_limit):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
             min_price=10,
             max_tasks_per_requestor=10)
         limit = tk.max_tasks_per_requestor
-        new_limit = 3
 
         ids = []
         for _ in range(new_limit):
@@ -296,13 +299,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tb0_id = thd.task_id
         tk.add_task_header(thd)
 
-        def _assert_headers(ids_, len_):
-            ids_.append(tb0_id)
-            for id_ in ids_:
-                self.assertIn(id_, tk.task_headers)
-            self.assertEqual(len_, len(tk.task_headers))
-
-        _assert_headers(ids, len(ids) + 1)
+        self._assert_headers(tk, [tb0_id] + ids, len(ids) + 1)
 
         while time.time() == last_add_time:
             time.sleep(0.1)
@@ -313,13 +310,32 @@ class TestTaskHeaderKeeper(LogTestCase):
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
 
+        self._assert_headers(tk, [tb0_id] + ids + new_ids, limit + 1)
 
-        _assert_headers(ids + new_ids, limit + 1)
+        return tk, thd, tb0_id, ids, new_ids
+
+    def test_check_max_tasks_per_owner(self):
+        new_limit = 3
+        tk, thd, tb0_id, ids, new_ids = self._prep_max_tasks_test(new_limit)
+        limit = tk.max_tasks_per_requestor
 
         # shouldn't remove any tasks
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        _assert_headers(ids + new_ids, limit + 1)
+        self._assert_headers(tk, [tb0_id] + ids + new_ids, limit + 1)
+
+        tk.max_tasks_per_requestor = new_limit
+
+        # should remove ta{3..9}
+        tk.check_max_tasks_per_owner(thd.task_owner.key)
+
+        self._assert_headers(tk, [tb0_id] + ids, new_limit + 1)
+
+
+    def test_check_max_tasks_per_owner_running(self):
+        new_limit = 3
+        tk, thd, tb0_id, ids, new_ids = self._prep_max_tasks_test(new_limit)
+        limit = tk.max_tasks_per_requestor
 
         # Test if it skips a running task
         running_task_id = ids[0]
@@ -329,7 +345,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         # shouldn't remove any tasks
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        _assert_headers(ids + new_ids, limit + 1)
+        self._assert_headers(tk, [tb0_id] + ids + new_ids, limit + 1)
 
         # finish the task, restore state
         tk.task_ended(running_task_id)
@@ -337,21 +353,15 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         tk.max_tasks_per_requestor = new_limit
 
-        # should remove ta{3..9}
-        tk.check_max_tasks_per_owner(thd.task_owner.key)
-
-        _assert_headers(ids, new_limit + 1)
-
         # Test if it skips a running task
-        running_task_id = ids[2]
+        running_task_id = new_ids[0]
         tk.task_started(running_task_id)
         assert running_task_id in tk.running_tasks
-        tk.max_tasks_per_requestor = 1
         # shouldn't remove running_task_id
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
         # Should keep 0 and 2, since 2 is running
-        _assert_headers([ids[0], ids[2]], 3)
+        self._assert_headers(tk, [tb0_id] + ids + [new_ids[0]], 5)
 
         # finish the task, restore state
         tk.task_ended(running_task_id)
