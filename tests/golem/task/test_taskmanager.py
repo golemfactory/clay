@@ -136,12 +136,13 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         handler_called = False
         params = []
 
+        # pylint: disable=too-many-arguments
         def handler(sender,
                     signal,
                     event,
                     task_id,
                     subtask_id=None,
-                    op=None):  # pylint: disable=too-many-arguments
+                    op=None):
 
             nonlocal handler_called
             nonlocal params
