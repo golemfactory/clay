@@ -6,7 +6,7 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefaults
 from apps.transcoding.common import Container, VideoCodec, AudioCodec
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_BASE_SCRIPT
+from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
@@ -67,7 +67,7 @@ class ffmpegTask(TranscodingTask):
             'output_stream': output_stream_path,
             'use_playlist': transcoding_options.use_playlist,
             'command': Commands.TRANSCODE.value[0],
-            'script_filepath': FFMPEG_BASE_SCRIPT
+            'entrypoint': FFMPEG_ENTRYPOINT
         }
         return self._clear_none_values(extra_data)
 
@@ -82,9 +82,12 @@ class ffmpegDefaults(TaskDefaults):
 
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):
-    SUPPORTED_FILE_TYPES = [Container.MKV, Container.AVI,
-                            Container.MP4]
-    SUPPORTED_VIDEO_CODECS = [VideoCodec.MPEG_2, VideoCodec.H_264]
+    SUPPORTED_FILE_TYPES = [Container.c_MKV, Container.c_AVI,
+                            Container.c_MP4, Container.c_MOV, Container.c_MPEG,
+                            Container.c_3GP, Container.c_3G2, Container.c_F4V]
+    SUPPORTED_VIDEO_CODECS = [VideoCodec.MPEG_1, VideoCodec.MPEG_2,
+                              VideoCodec.H_264, VideoCodec.H_265,
+                              VideoCodec.HEVC, VideoCodec.H_264]
     SUPPORTED_AUDIO_CODECS = [AudioCodec.MP3, AudioCodec.AAC]
     TASK_CLASS = ffmpegTask
     DEFAULTS = ffmpegDefaults

@@ -18,6 +18,7 @@ class DockerTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Disable all tests if Docker or the test image is not available."""
+        super().setUpClass()
         try:
             client = local_client()
             images = client.images()
@@ -95,7 +96,7 @@ class TestDockerImage(DockerTestCase):
                           tag=self.TEST_TAG,
                           image_id=self.TEST_ENV_ID)
         img2 = DockerImage(self.TEST_REPOSITORY, tag=self.TEST_TAG)
-        
+
         assert img.cmp_name_and_tag(img2)
         assert img2.cmp_name_and_tag(img)
 

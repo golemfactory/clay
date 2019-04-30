@@ -14,6 +14,8 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
+from apps.rendering.task.renderingtask import RenderingTask
+from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
@@ -21,10 +23,8 @@ from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import taskbase
-from golem.task import taskstate
-from golem.task import tasktester
-
+from golem.task import taskbase, taskkeeper, taskstate, tasktester
+from golem.task.taskstate import SubtaskState
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -96,19 +96,21 @@ def _validate_task_dict(client, task_dict) -> None:
             )
 
 
+def validate_client(client: Client):
+    if client.config_desc.in_shutdown:
+        raise CreateTaskError(
+            'Can not enqueue task: shutdown is in progress, '
+            'toggle shutdown mode off to create new tasks.')
+    if client.task_server is None:
+        raise CreateTaskError("Golem is not ready")
+
+
 def prepare_and_validate_task_dict(client, task_dict):
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
         client.concent_service.enabled,
     )
-    # TODO #3474
-    if 'subtasks' in task_dict:
-        logger.warning(
-            "Using soon to be deprecated data format for input JSON."
-            " Change `subtasks` to `subtasks_count`",
-        )
-        task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
 
 
@@ -184,6 +186,7 @@ def _restart_subtasks(
     # Function passed to twisted.threads.deferToThread can't itself
     # return a deferred, that's why I defined inner deferred function
     # and use sync_wait below.
+    validate_client(client)
     golem_deferred.sync_wait(deferred())
 
 
@@ -211,23 +214,29 @@ def _ensure_task_deposit(client, task, force):
     # fails. This case is most common but, the better way it to always
     # unlock them when the task fails regardless of the reason.
     try:
+        client.transaction_system.validate_concent_deposit_possibility(
+            required=min_amount,
+            tasks_num=task.get_total_tasks(),
+            force=force,
+        )
         yield client.transaction_system.concent_deposit(
             required=min_amount,
             expected=opt_amount,
-            force=force,
         )
     except eth_exceptions.EthereumError:
         client.funds_locker.remove_task(task_id)
         raise
 
+    logger.info(
+        "Deposit confirmed. task_id=%r",
+        task_id,
+    )
+
 
 @defer.inlineCallbacks
 def _create_task_package(client, task):
     files = resource.get_resources_for_task(
-        resource_header=None,
-        resource_type=resource.ResourceType.HASHES,
-        tmp_dir=getattr(task, 'tmp_dir', None),
-        resources=task.get_resources(),
+        resources=task.get_resources()
     )
 
     packager_result = yield client.resource_server.create_resource_package(
@@ -272,7 +281,7 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
 def _inform_subsystems(client, task, packager_result):
     task_id = task.header.task_id
     package_path, package_sha1 = packager_result
-    task.header.resource_size = os.path.getsize(package_path)
+    resource_size = os.path.getsize(package_path)
 
     if client.config_desc.net_masking_enabled:
         task.header.mask = _get_mask_for_task(
@@ -291,11 +300,11 @@ def _inform_subsystems(client, task, packager_result):
         task.header.deadline,
     )
 
-    resource_server_result = yield client.resource_server.add_task(
+    resource_server_result = yield client.resource_server.add_resources(
         package_path,
         package_sha1,
         task_id,
-        task.header.resource_size,
+        resource_size,
         client_options=client_options,
     )
     return resource_server_result
@@ -325,13 +334,7 @@ def _start_task(client, task, resource_server_result):
 def enqueue_new_task(client, task, force=False) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
-    if client.config_desc.in_shutdown:
-        raise CreateTaskError(
-            'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
-    if client.task_server is None:
-        raise CreateTaskError("Golem is not ready")
-
+    validate_client(client)
     task_id = task.header.task_id
     client.funds_locker.lock_funds(
         task_id,
@@ -357,18 +360,13 @@ def enqueue_new_task(client, task, force=False) \
         packager_result=packager_result,
     )
 
-    logger.info("Task created. Ensuring deposit. task_id=%r", task_id)
+    logger.info("Task created. task_id=%r", task_id)
 
     try:
         yield _ensure_task_deposit(
             client=client,
             task=task,
             force=force,
-        )
-
-        logger.info(
-            "Deposit confirmed. Starting... task_id=%r",
-            task_id,
         )
 
         yield _start_task(
@@ -434,11 +432,11 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-
+        validate_client(self.client)
         prepare_and_validate_task_dict(self.client, task_dict)
 
         task: taskbase.Task = self.task_manager.create_task(task_dict)
-
+        self._validate_enough_funds_to_pay_for_task(task, force)
         task_id = task.header.task_id
 
         deferred = enqueue_new_task(self.client, task, force=force)
@@ -453,6 +451,39 @@ class ClientProvider:
             ),
         )
         return task_id, None
+
+    def _validate_enough_funds_to_pay_for_task(
+            self, task: taskbase.Task, force: bool
+    ):
+        self._validate_lock_funds_possibility(
+            total_price_gnt=task.price,
+            number_of_tasks=task.get_total_tasks(),
+        )
+        min_amount, _ = msg_helpers.requestor_deposit_amount(task.price)
+        concent_enabled = task.header.concent_enabled
+        concent_available = self.client.concent_service.available
+        if concent_enabled and concent_available:
+            self.client.transaction_system.validate_concent_deposit_possibility(
+                required=min_amount,
+                tasks_num=task.get_total_tasks(),
+                force=force,
+            )
+
+    def _validate_lock_funds_possibility(
+            self,
+            total_price_gnt: int,
+            number_of_tasks: int) -> None:
+        transaction_system = self.client.transaction_system
+        if total_price_gnt > transaction_system.get_available_gnt():
+            raise eth_exceptions.NotEnoughFunds(
+                total_price_gnt,
+                transaction_system.get_available_gnt(), 'GNT',
+            )
+
+        eth = transaction_system.eth_for_batch_payment(number_of_tasks)
+        eth_available = transaction_system.get_available_eth()
+        if eth > eth_available:
+            raise eth_exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
@@ -485,6 +516,7 @@ class ClientProvider:
         task_dict.pop('id', None)
         prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
+        validate_client(self.client)
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
             task=new_task,
@@ -499,13 +531,42 @@ class ClientProvider:
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
 
+    @rpc_utils.expose('comp.task.subtasks.frame.restart')
+    @safe_run(
+        lambda e, _self, task_id, frame: logger.error(
+            'Frame restart failed. e=%r, task_id=%r, frame=%r',
+            e, task_id, frame
+        )
+    )
+    def restart_frame_subtasks(
+            self,
+            task_id: str,
+            frame: int
+    ):
+        logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
+                     task_id, frame)
+
+        frame_subtasks: typing.Dict[str, SubtaskState] =\
+            self.task_manager.get_frame_subtasks(task_id, frame)
+
+        if not frame_subtasks:
+            logger.error('Frame restart failed, frame has no subtasks.'
+                         'task_id=%r, frame=%r', task_id, frame)
+            return
+
+        task_state = self.client.task_manager.tasks_states[task_id]
+
+        if task_state.status.is_active():
+            for subtask_id in frame_subtasks:
+                self.client.restart_subtask(subtask_id)
+        else:
+            self.restart_subtasks_from_task(task_id, frame_subtasks.keys())
+
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(
         lambda e, _self, task_id, subtask_ids: logger.error(
             'Task restart failed. e=%s, task_id=%s subtask_ids=%s',
-            e,
-            task_id,
-            subtask_ids,
+            e, task_id, subtask_ids
         ),
     )
     def restart_subtasks_from_task(
@@ -514,6 +575,8 @@ class ClientProvider:
             subtask_ids: typing.Iterable[str],
             force: bool = False,
     ):
+        logger.debug('restart_subtasks_from_task. task_id=%r, subtask_ids=%r,'
+                     'force=%r', task_id, subtask_ids, force)
 
         try:
             self.task_manager.put_task_in_restarted_state(
@@ -526,6 +589,8 @@ class ClientProvider:
                 if sub['status'] == taskstate.SubtaskStatus.finished
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+            logger.debug('restart_subtasks_from_task. subtask_ids_to_copy=%r',
+                         subtask_ids_to_copy)
         except self.task_manager.AlreadyRestartedError:
             logger.error('Task already restarted: %r', task_id)
             return
@@ -567,3 +632,76 @@ class ClientProvider:
         )
         # Don't wait for _deferred
         return True
+
+    @rpc_utils.expose('comp.tasks.estimated.cost')
+    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
+        # FIXME task_type is unused
+        options['price'] = int(options['price'])
+        options['subtask_timeout'] = common.string_to_timeout(
+            options['subtask_timeout'],
+        )
+        options['subtasks_count'] = int(options['subtasks_count'])
+
+        subtask_price: int = taskkeeper.compute_subtask_value(
+            price=options['price'],
+            computation_time=options['subtask_timeout'],
+        )
+        estimated_gnt: int = options['subtasks_count'] \
+            * subtask_price
+        estimated_eth: int = self.client \
+            .transaction_system.eth_for_batch_payment(
+                options['subtasks_count'],
+            )
+        estimated_gnt_deposit: typing.Tuple[int, int] = \
+            msg_helpers.requestor_deposit_amount(
+                estimated_gnt,
+            )
+        estimated_deposit_eth: int = self.client.transaction_system \
+            .eth_for_deposit()
+        result = {
+            'GNT': str(estimated_gnt),
+            'ETH': str(estimated_eth),
+            'deposit': {
+                'GNT_required': str(estimated_gnt_deposit[0]),
+                'GNT_suggested': str(estimated_gnt_deposit[1]),
+                'ETH': str(estimated_deposit_eth),
+            },
+        }
+        logger.info('Estimated task cost. result=%r', result)
+        return result
+
+    @rpc_utils.expose('comp.task.rendering.task_fragments')
+    def get_fragments(self, task_id: str) -> \
+            typing.Tuple[
+                    typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
+                    typing.Optional[str]
+            ]:
+        """
+        Returns the task fragments for a given rendering task. A single task
+        fragment is a collection of subtasks referring to the same, common part
+        of the whole task. Fragments are identified using incremental integer
+        indices.
+        :param task_id: Task ID of the rendering task for which fragments should
+        be obtained.
+        :return: A dictionary where keys are the fragment indices and values are
+        lists of subtasks asssociated with a given fragment. Returns None
+        (along with an error message) if the task is not known or it is not a
+        rendering task.
+        """
+        task = self.task_manager.tasks.get(task_id)
+        if task is None:
+            return None, f"Task not found: '{task_id}'"
+        if not isinstance(task, RenderingTask):
+            return None, f"Incorrect task type: '{task.__class__.__name__}'"
+
+        fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
+
+        for subtask_index in range(1, task.total_tasks + 1):
+            fragments[subtask_index] = []
+
+        for extra_data in task.subtasks_given.values():
+            subtask = self.task_manager.get_subtask_dict(
+                extra_data['subtask_id'])
+            fragments[extra_data['start_task']].append(subtask)
+
+        return fragments, None

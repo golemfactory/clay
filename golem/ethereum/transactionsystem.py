@@ -5,7 +5,7 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
     Any,
@@ -15,13 +15,15 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
 )
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
-from eth_utils import decode_hex, is_address
+from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
+    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -57,6 +59,19 @@ def sci_required():
     return wrapper
 
 
+def gnt_deposit_required():
+    def wrapper(f):
+        @functools.wraps(f)
+        def curry(self, *args, **kwargs):
+            if not self.deposit_contract_available:
+                raise exceptions.ContractUnavailable(
+                    'Deposit contract unavailable',
+                )
+            return f(self, *args, **kwargs)
+        return curry
+    return wrapper
+
+
 class ConversionStatus(Enum):
     NONE = 0
     OPENING_GATE = 1
@@ -64,7 +79,7 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
-# pylint:disable=too-many-instance-attributes
+# pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
@@ -94,7 +109,8 @@ class TransactionSystem(LoopingCallService):
         self._payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
-        self._gnt_conversion_status = ConversionStatus.NONE
+        self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
+            (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
@@ -120,6 +136,10 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
 
+    @property
+    def deposit_contract_available(self) -> bool:
+        return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
+
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
             raise Exception(
@@ -135,7 +155,8 @@ class TransactionSystem(LoopingCallService):
         )
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
-            raise Exception("Storage already exists, can't override")
+            raise Exception("Storage already exists, can't override. path=%s" %
+                            str(new_storage_path))
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
@@ -188,7 +209,8 @@ class TransactionSystem(LoopingCallService):
         gate_address = self._sci.get_gate_address()
         if gate_address is not None:
             if self._sci.get_gnt_balance(gate_address):
-                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+                self._gnt_conversion_status = \
+                    (ConversionStatus.UNFINISHED, None)
 
         self._payment_processor = PaymentProcessor(self._sci)
         self._eth_per_payment = self._current_eth_per_payment()
@@ -198,7 +220,10 @@ class TransactionSystem(LoopingCallService):
             if required_eth > self._eth_balance:
                 self._eth_per_payment = self._eth_balance // recipients_count
 
-        self._subscribe_to_events()
+        try:
+            self._subscribe_to_events()
+        except exceptions.ContractUnavailable:
+            pass
 
         self._refresh_balances()
         log.info(
@@ -250,9 +275,7 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
-        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
-        # Remove it after that.
-        try:
+        if self.deposit_contract_available:
             self._sci.subscribe_to_forced_subtask_payments(
                 None,
                 self._sci.get_eth_address(),
@@ -276,8 +299,6 @@ class TransactionSystem(LoopingCallService):
                 ),
             )
             self._schedule_concent_withdraw()
-        except AttributeError as e:
-            log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -310,11 +331,12 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         return self._sci.get_eth_address()
 
-    def get_payments_list(self):
+    def get_payments_list(self, num: Optional[int] = None,
+                          interval: Optional[timedelta] = None):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
         """
-        return self._payments_keeper.get_list_of_all_payments()
+        return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
     def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \
@@ -392,8 +414,9 @@ class TransactionSystem(LoopingCallService):
             raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
         log.info(
-            "Locking %f GNT and ETH for %d payments",
+            "Locking %.3f GNTB and %.8f ETH for %d payments",
             gnt / denoms.ether,
+            eth / denoms.ether,
             num,
         )
         locked_eth = self.get_locked_eth()
@@ -416,13 +439,14 @@ class TransactionSystem(LoopingCallService):
 
             ))
         log.info(
-            "Unlocking %f GNT and ETH for %d payments",
+            "Unlocking %.3f GNTB for %d payments",
             gnt / denoms.ether,
             num,
         )
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
+    # pylint: disable=too-many-arguments
     def expect_income(
             self,
             sender_node: str,
@@ -467,16 +491,18 @@ class TransactionSystem(LoopingCallService):
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     @sci_required()
+    def eth_for_deposit(self) -> int:
+        self._sci: SmartContractsInterface
+        return self.gas_price * self._sci.GAS_TRANSFER_AND_CALL
+
+    @sci_required()
     def get_withdraw_gas_cost(
             self,
             amount: int,
             destination: str,
             currency: str) -> int:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
-
-        gas_price = self.gas_price
 
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)
@@ -491,7 +517,6 @@ class TransactionSystem(LoopingCallService):
             destination: str,
             currency: str,
             gas_price: Optional[int] = None) -> str:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
 
@@ -501,19 +526,28 @@ class TransactionSystem(LoopingCallService):
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
+        log.info(
+            "Trying to withdraw %f %s to %s",
+            amount / denoms.ether,
+            currency,
+            destination,
+        )
         if currency == 'ETH':
+            if gas_price is None:
+                gas_price = self.gas_price
+            gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
+                * gas_price
             if amount > self.get_available_eth():
                 raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_eth(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f ETH to %s",
-                amount / denoms.ether,
+            return self._sci.transfer_eth(
                 destination,
+                amount - gas_eth,
+                gas_price,
             )
-            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -522,11 +556,6 @@ class TransactionSystem(LoopingCallService):
                     self.get_available_gnt(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f GNT to %s",
-                amount / denoms.ether,
-                destination,
-            )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
@@ -543,6 +572,7 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_balance(self, account_address: Optional[str] = None) -> int:
         self._sci: SmartContractsInterface
@@ -552,9 +582,9 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
-        # FIXME Use decorator to DRY #3190
         # possible lock values:
         # 0 - locked
         # > now - unlocking
@@ -566,13 +596,39 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @sci_required()
+    def validate_concent_deposit_possibility(
+            self,
+            required: int,
+            tasks_num: int,
+            force: bool = False,
+    ) -> None:
+        required_deposit_difference = required - self.concent_balance()
+
+        gntb_balance = self.get_available_gnt()
+        if gntb_balance < required_deposit_difference:
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
+        if self.gas_price >= self.gas_price_limit:
+            if not force:
+                raise exceptions.LongTransactionTime("Gas price too high")
+            log.warning(
+                'Gas price is high. It can take some time to mine deposit.',
+            )
+
+        eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
+        eth_required = eth_for_batch_payment_for_task + self.eth_for_deposit()
+
+        eth_available = self.get_available_eth()
+        if eth_required > eth_available:
+            raise exceptions.NotEnoughFunds(eth_required, eth_available, 'ETH')
+
     @defer.inlineCallbacks
+    @gnt_deposit_required()
     @sci_required()
     def concent_deposit(
             self,
             required: int,
-            expected: int,
-            force: bool = False) \
+            expected: int) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         self._sci: SmartContractsInterface
         current = self.concent_balance()
@@ -583,14 +639,6 @@ class TransactionSystem(LoopingCallService):
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
-        if gntb_balance < required:
-            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:
-            if not force:
-                raise exceptions.LongTransactionTime("Gas price too high")
-            log.warning(
-                'Gas price is high. It can take some time to mine deposit.',
-            )
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(
@@ -628,12 +676,16 @@ class TransactionSystem(LoopingCallService):
         return dpayment.tx
 
     @rpc_utils.expose('pay.deposit.relock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_relock(self):
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
     @rpc_utils.expose('pay.deposit.unlock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
@@ -655,6 +707,8 @@ class TransactionSystem(LoopingCallService):
         delay = max(0, timelock - int(time.time()))
         call_later(delay, self.concent_withdraw)
 
+    @gnt_deposit_required()
+    @sci_required()
     def concent_withdraw(self):
         if self._concent_withdraw_requested:
             return
@@ -708,9 +762,9 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         self._sci: SmartContractsInterface
-        if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
+        if self._gnt_conversion_status[0] == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
-                self._gnt_conversion_status = ConversionStatus.NONE
+                self._gnt_conversion_status = (ConversionStatus.NONE, None)
             else:
                 gas_cost = self.gas_price * \
                     self._sci.GAS_TRANSFER_FROM_GATE
@@ -720,7 +774,8 @@ class TransactionSystem(LoopingCallService):
                         "Finishing previously started GNT conversion %s",
                         tx_hash,
                     )
-                    self._gnt_conversion_status = ConversionStatus.TRANSFERRING
+                    self._gnt_conversion_status = \
+                        (ConversionStatus.TRANSFERRING, tx_hash)
                 else:
                     log.info(
                         "Not enough gas to finish GNT conversion, has %.6f,"
@@ -729,26 +784,35 @@ class TransactionSystem(LoopingCallService):
                         gas_cost / denoms.ether,
                     )
             return
+        if self._gnt_conversion_status[0] == ConversionStatus.TRANSFERRING:
+            receipt = self._sci.get_transaction_receipt(
+                self._gnt_conversion_status[1],
+            )
+            if receipt is None:
+                return
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
+
         if self._gnt_balance == 0:
-            self._gnt_conversion_status = ConversionStatus.NONE
             return
 
         gas_price = self.gas_price
         gate_address = self._sci.get_gate_address()
         if gate_address is None:
+            if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+                return
             gas_cost = gas_price * self._sci.GAS_OPEN_GATE
-            if self._gnt_conversion_status != ConversionStatus.OPENING_GATE:
-                if self._eth_balance >= gas_cost:
-                    tx_hash = self._sci.open_gate()
-                    log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
-                    self._gnt_conversion_status = ConversionStatus.OPENING_GATE
-                else:
-                    log.info(
-                        "Not enough gas for opening conversion gate, has: %.6f,"
-                        " needed: %.6f",
-                        self._eth_balance / denoms.ether,
-                        gas_cost / denoms.ether,
-                    )
+            if self._eth_balance >= gas_cost:
+                tx_hash = self._sci.open_gate()
+                log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
+                self._gnt_conversion_status = \
+                    (ConversionStatus.OPENING_GATE, None)
+            else:
+                log.info(
+                    "Not enough gas for opening conversion gate, has: %.6f,"
+                    " needed: %.6f",
+                    self._eth_balance / denoms.ether,
+                    gas_cost / denoms.ether,
+                )
             return
 
         # This is extra safety check, shouldn't ever happen
@@ -756,30 +820,30 @@ class TransactionSystem(LoopingCallService):
             log.critical('Gate address should not equal to %s', gate_address)
             return
 
-        if self._gnt_conversion_status == ConversionStatus.OPENING_GATE:
-            self._gnt_conversion_status = ConversionStatus.NONE
+        if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
 
         gas_cost = gas_price * \
             (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_TRANSFER_FROM_GATE)
-        if self._gnt_conversion_status != ConversionStatus.TRANSFERRING:
-            if self._eth_balance >= gas_cost:
-                tx_hash1 = \
-                    self._sci.transfer_gnt(gate_address, self._gnt_balance)
-                tx_hash2 = self._sci.transfer_from_gate()
-                log.info(
-                    "Converting %.6f GNT to GNTB %s %s",
-                    self._gnt_balance / denoms.ether,
-                    tx_hash1,
-                    tx_hash2,
-                )
-                self._gnt_conversion_status = ConversionStatus.TRANSFERRING
-            else:
-                log.info(
-                    "Not enough gas for GNT conversion, has: %.6f,"
-                    " needed: %.6f",
-                    self._eth_balance / denoms.ether,
-                    gas_cost / denoms.ether,
-                )
+        if self._eth_balance >= gas_cost:
+            tx_hash1 = \
+                self._sci.transfer_gnt(gate_address, self._gnt_balance)
+            tx_hash2 = self._sci.transfer_from_gate()
+            log.info(
+                "Converting %.6f GNT to GNTB %s %s",
+                self._gnt_balance / denoms.ether,
+                tx_hash1,
+                tx_hash2,
+            )
+            self._gnt_conversion_status = \
+                (ConversionStatus.TRANSFERRING, tx_hash2)
+        else:
+            log.info(
+                "Not enough gas for GNT conversion, has: %.6f,"
+                " needed: %.6f",
+                self._eth_balance / denoms.ether,
+                gas_cost / denoms.ether,
+            )
 
     def _run(self) -> None:
         if not self._payment_processor:

@@ -296,15 +296,6 @@ class TestProtocols(unittest.TestCase):
             p.close()
             self.assertTrue(p.transport.lose_connection_called)
 
-    def test_close_now(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
-        for p in prt:
-            p.transport = Transport()
-            self.assertFalse(p.transport.abort_connection_called)
-            p.close_now()
-            self.assertFalse(p.opened)
-            self.assertTrue(p.transport.abort_connection_called)
-
     def test_connection_made(self):
         prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
@@ -320,7 +311,9 @@ class TestProtocols(unittest.TestCase):
             self.assertNotIn('session', p.__dict__)
 
     def test_connection_lost(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
+        prt = [BasicProtocol(),
+               ServerProtocol(Server()),
+               SafeProtocol(Server())]
         for p in prt:
             p.transport = Transport()
             session_factory = SessionFactory(ASession)

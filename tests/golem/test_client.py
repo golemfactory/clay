@@ -6,6 +6,7 @@ import uuid
 from random import Random
 from unittest import TestCase
 from unittest.mock import (
+    ANY,
     MagicMock,
     Mock,
     patch,
@@ -19,6 +20,9 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem import model
 from golem import testutils
+from golem.appconfig import (
+    DEFAULT_HYPERDRIVE_RPC_PORT, DEFAULT_HYPERDRIVE_RPC_ADDRESS
+)
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, \
@@ -28,8 +32,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import EthereumConfig
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
+from golem.hardware.presets import HardwarePresets
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -109,6 +113,10 @@ def make_client(*_, **kwargs):
         'use_monitor': False,
         'concent_variant': CONCENT_CHOICES['disabled'],
     }
+    default_kwargs['config_desc'].hyperdrive_rpc_address = \
+        DEFAULT_HYPERDRIVE_RPC_ADDRESS
+    default_kwargs['config_desc'].hyperdrive_rpc_port = \
+        DEFAULT_HYPERDRIVE_RPC_PORT
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
     return client
@@ -208,6 +216,24 @@ class TestClient(TestClientBase):
     def test_quit(self, *_):
         self.client.db = None
         self.client.quit()
+
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_disabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 0
+        self.client.config_desc.clean_tasks_older_than_seconds = 0
+
+        self.client.start_network()
+
+        task_cleaner.assert_not_called()
+
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_enabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 1
+        self.client.config_desc.clean_tasks_older_than_seconds = 1
+
+        self.client.start_network()
+
+        task_cleaner.assert_called()
 
     def test_collect_gossip(self, *_):
         self.client.start_network()
@@ -386,26 +412,6 @@ class TestClientRestartSubtasks(TestClientBase):
 
         self.client.task_server = Mock()
 
-    def test_restart_by_frame(self):
-        # given
-        frame_subtasks = {
-            'subtask_id1': Mock(),
-            'subtask_id2': Mock(),
-        }
-        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
-            frame_subtasks
-
-        frame = 10
-
-        # when
-        self.client.restart_frame_subtasks(self.task_id, frame)
-
-        # then
-        self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with(self.task_id, frame)
-        self.ts.lock_funds_for_payments.assert_called_with(
-            self.subtask_price, len(frame_subtasks))
-
     def test_restart_subtask(self):
         # given
         self.client.task_server.task_manager.get_task_id.return_value = \
@@ -421,6 +427,7 @@ class TestClientRestartSubtasks(TestClientBase):
             self.subtask_price, 1)
 
 
+# pylint: disable=no-member
 class TestDoWorkService(testwithreactor.TestWithReactor):
 
     def setUp(self):
@@ -672,23 +679,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             self.assertIsInstance(value, str)
             self.assertTrue(key in res_dirs)
 
-    def test_get_estimated_cost(self, *_):
-        self.client.transaction_system = make_mock_ets()
-        self.assertEqual(
-            self.client.get_estimated_cost(
-                "task type",
-                {
-                    "price": 150,
-                    "subtask_time": 2.5,
-                    "num_subtasks": 5,
-                },
-            ),
-            {
-                "GNT": 1875.0,
-                "ETH": 0.0001,
-            },
-        )
-
     def test_get_balance(self, *_):
         c = self.client
 
@@ -778,6 +768,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_not_called()
+
+        c.update_setting('hardware_preset_name', 'custom')
         c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())
@@ -832,7 +825,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         task_id = str(uuid.uuid4())
         c.delete_task(task_id)
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -848,7 +841,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         c.purge_tasks()
         assert c.get_tasks.called
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -1172,7 +1165,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.acl = Mock(spec=Acl)
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
-            'node_id', persist=True)
+            'node_id', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):
@@ -1266,6 +1259,30 @@ class DepositPaymentsListTest(TestClientBase):
         self.assertEqual(
             expected,
             self.client.get_deposit_payments_list(),
+        )
+
+
+@patch(
+    'golem.network.concent.client.ConcentClientService.__init__',
+    return_value=None,
+)
+class TestConcentInitialization(TestClientBase):
+    def setUp(self):
+        super(TestClientBase, self).setUp()  # pylint: disable=bad-super-call
+
+    @patch('golem.network.concent.client.ConcentClientService.stop')
+    def tearDown(self, *_):  # pylint: disable=arguments-differ
+        super().tearDown()
+
+    def test_no_contract(self, CCS, *_):
+        self.client = make_client(
+            datadir=self.path,
+            transaction_system=Mock(deposit_contract_available=False),
+            concent_variant=CONCENT_CHOICES['test'],
+        )
+        CCS.assert_called_once_with(
+            keys_auth=ANY,
+            variant=CONCENT_CHOICES['disabled'],
         )
 
 

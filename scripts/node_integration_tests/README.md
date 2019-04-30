@@ -121,7 +121,7 @@ you to specify additional parameters.
 example:
 
 ```
-./scripts/node_integration_tests/run_test.py golem.regular_run.RegularRun
+./scripts/node_integration_tests/run_test.py golem.regular_run
 ```
 
 full usage:
@@ -131,13 +131,13 @@ run_test.py [-h] [--task-package TASK_PACKAGE]
             [--task-settings TASK_SETTINGS]
             [--provider-datadir PROVIDER_DATADIR]
             [--requestor-datadir REQUESTOR_DATADIR] [--mainnet]
-            playbook_class
+            test_path
 
 Runs a single test playbook.
 
 positional arguments:
-  playbook_class        a dot-separated path to the playbook class within
-                        `playbooks`, e.g. golem.regular_run.RegularRun
+  test_path             a dot-separated path to the playbook class within
+                        `playbooks`, e.g. golem.regular_run
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -151,6 +151,13 @@ optional arguments:
                         the requestor node's datadir
   --mainnet             use the mainnet environment to run the test (the
                         playbook must also use mainnet)
+  --dump-output-on-crash
+                        dump node output of the crashed node on abnormal
+                        termination of either the provider or requestor node
+                        during the test run
+  --dump-output-on-fail
+                        dump output of both nodes on any test failure
+                        (may result in very large test reports on failures)
 
 ```
 
@@ -171,6 +178,8 @@ environment variable, e.g.:
 GOLEM_INTEGRATION_TEST_DIR=/some/location pytest scripts/node_integration_tests
 ```
 
+#### Running tests selectively
+
 And finally, to run a single test using `pytest`, just use standard `pytest`
 syntax, e.g.:
 
@@ -181,3 +190,56 @@ pytest scripts/node_integration_tests/tests/test_golem.py::GolemNodeTest::test_r
 Suggestion: when you _don't_ provide the `GOLEM_INTEGRATION_TEST_DIR` variable
 to pytest, run `pytest -s -v [...]` so that you can see the paths generated
 automatically during the test run.
+
+#### Mac OS
+
+To run the tests, the suite creates temporary Golem datadirs. As the default
+temporary directories on Mac are not accessible to Docker out of the box,
+tests won't be able to launch Golem nodes correctly and thus will fail to run
+correctly .
+
+To alleviate this issue, a Docker-acessible location needs to be provided
+as the default temporary directory, e.g.:
+
+```
+TMPDIR=/tmp pytest scripts/node_integration_tests/
+```
+
+#### Node key reuse
+
+Normally, each test starts with empty provider and requestor datadirs. That
+also means that the nodes need to initialize their keystores, request GNT and
+ETH from the faucets and finally convert GNT into GNTB which adds several
+minutes to each run.
+
+To optimize that, we're now only initializing the keystores on the first test
+run by default and all subsequest tests reuse the same node key pairs.
+Thus, nodes don't need to wait for ETH, GNT and GNTB anymore.
+
+In some tests, we need to ensure there are no side effects on the blockchain.
+To achieve that, we can disable key reuse for this particular test by adding the
+`@disable_key_reuse` decorator to the test method
+(in test_golem.py and test_concent.py).
+
+To completely disable key reuse and run each test with a new key, specify a
+`--disable-key-reuse` option on the pytest's command line:
+
+```
+pytest --disable-key-reuse scripts/node_integration_tests
+```
+
+#### Additional output on test dumps
+
+Generaly, when running tests with `pytest`, you can specify the `-s` and `-v`
+flags to see the specific steps the test playbooks as they progress.
+
+To get even more insight into possible failures without having to look at the
+logs - plus in cases when the nodes fail on the very start and thus fail to
+leave any clues in the logs - you can add either `--dump-output-on-crash`
+or `--dump-output-on-fail` flag to `pytest` to enable output dumps when
+either node crashes or on any test failure respectively.
+
+Example:
+```
+pytest -sv --dump-output-on-crash scripts/node_integration_tests
+```

@@ -6,11 +6,15 @@ import os
 import time
 import weakref
 from collections import deque
+from enum import Enum
 from pathlib import Path
 from typing import (
+    Any,
+    Dict,
     List,
     Optional,
-    Set)
+    Set,
+)
 
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
@@ -40,17 +44,19 @@ from golem.ranking.manager.database_manager import (
     update_requestor_assigned_sum,
     update_requestor_efficiency,
 )
-from golem.task.acl import get_acl
+from golem.rpc import utils as rpc_utils
+from golem.task import timer
+from golem.task.acl import get_acl, _DenyAcl as DenyAcl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.task.timer import ProviderTimer
 from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
-from .server import resources
 from .server import concent
+from .server import queue as srv_queue
+from .server import resources
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
@@ -63,7 +69,7 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 def _calculate_price(min_price: int, requestor_id: str) -> int:
-    r = min_price * (1.0 + ProviderTimer.thirst)
+    r = min_price * (1.0 + timer.ProviderTimer.thirst)
     v_paid = get_requestor_paid_sum(requestor_id)
     v_assigned = get_requestor_assigned_sum(requestor_id)
     c = min_price
@@ -75,7 +81,9 @@ def _calculate_price(min_price: int, requestor_id: str) -> int:
 
 class TaskServer(
         PendingConnectionsServer,
-        resources.TaskResourcesMixin):
+        resources.TaskResourcesMixin,
+        srv_queue.TaskMessagesQueueMixin,
+):
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
@@ -100,6 +108,7 @@ class TaskServer(
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
+            config_desc=config_desc,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -117,8 +126,11 @@ class TaskServer(
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
+        # Remove .task_sessions when Message Queue is implemented
+        # https://github.com/golemfactory/golem/issues/2223
         self.task_sessions = {}
-        self.task_sessions_incoming = weakref.WeakSet()
+        self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.task_sessions_outgoing: weakref.WeakSet = weakref.WeakSet()
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
@@ -137,7 +149,9 @@ class TaskServer(
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
         self.response_list = {}
-        self.acl = get_acl(Path(client.datadir))
+        self.acl = get_acl(Path(client.datadir),
+                           max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
 
@@ -145,6 +159,7 @@ class TaskServer(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
             use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
+        srv_queue.TaskMessagesQueueMixin.__init__(self)
         # instantiate ReceivedMessageHandler connected to self
         # to register in golem.network.concent.handlers_library
         from golem.network.concent import \
@@ -163,6 +178,12 @@ class TaskServer(
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
+        )
+
+    @property
+    def all_sessions(self):
+        return frozenset(
+            self.task_sessions_outgoing | self.task_sessions_incoming,
         )
 
     def sync_network(self, timeout=None):
@@ -211,11 +232,27 @@ class TaskServer(
         return self.task_keeper.environments_manager.get_environment_by_id(
             env_id)
 
-    # This method chooses random task from the network to compute on our machine
+    def request_task_by_id(self, task_id: str) -> None:
+        """Requests task possibly after successful resource handshake.
+        """
+        try:
+            task_header: dt_tasks.TaskHeader = self.task_keeper.task_headers[
+                task_id
+            ]
+        except KeyError:
+            logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
+            return
+        self._request_task(task_header)
+
     def request_task(self) -> Optional[str]:
-        theader = self.task_keeper.get_task(self.requested_tasks)
-        if theader is None:
+        """Chooses random task from network to compute on our machine"""
+        task_header: dt_tasks.TaskHeader = \
+            self.task_keeper.get_task(self.requested_tasks)
+        if task_header is None:
             return None
+        return self._request_task(task_header)
+
+    def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
         try:
             env = self.get_environment_by_id(theader.environment)
             if env is not None:
@@ -236,51 +273,70 @@ class TaskServer(
                         }),
                     )
 
-            if supported.is_ok():
-                price = _calculate_price(
-                    self.config_desc.min_price,
+            if not supported.is_ok():
+                logger.debug(
+                    "Support status. task_id=%s supported=%s",
+                    theader.task_id,
+                    supported,
+                )
+                if self.task_archiver:
+                    self.task_archiver.add_support_status(
+                        theader.task_id,
+                        supported,
+                    )
+                return None
+
+            # Check handshake
+            handshake = self.resource_handshakes.get(theader.task_owner.key)
+            if not handshake:
+                logger.debug(
+                    "Starting handshake. key_id=%r, task_id=%r",
                     theader.task_owner.key,
+                    theader.task_id,
                 )
-                price = min(price, theader.max_price)
-                self.task_manager.add_comp_task_request(
-                    theader=theader, price=price)
-                args = {
-                    'node_name': self.config_desc.node_name,
-                    'key_id': theader.task_owner.key,
-                    'task_id': theader.task_id,
-                    'estimated_performance': performance,
-                    'price': price,
-                    'max_resource_size': self.config_desc.max_resource_size,
-                    'max_memory_size': self.config_desc.max_memory_size,
-                }
-
-                node = theader.task_owner
-                added = self._add_pending_request(
-                    TASK_CONN_TYPES['task_request'],
-                    node,
-                    prv_port=node.prv_port,
-                    pub_port=node.pub_port,
-                    args=args
+                self.start_handshake(
+                    key_id=theader.task_owner.key,
+                    task_id=theader.task_id,
                 )
-                if added:
-                    self.requested_tasks.add(theader.task_id)
-                    return theader.task_id
+                return None
+            if not handshake.success():
+                logger.debug(
+                    "Handshake still in progress. key_id=%r, task_id=%r",
+                    theader.task_owner.key,
+                    theader.task_id,
+                )
+                return None
 
-                supported = supported.join(SupportStatus.err({
-                    UnsupportReason.NODE_INFORMATION: node.__dict__
-                }))
-
-            logger.debug(
-                "Support status. task_id=%s supported=%s",
-                theader.task_id,
-                supported,
+            # Send WTCT
+            price = _calculate_price(
+                self.config_desc.min_price,
+                theader.task_owner.key,
             )
-            if self.task_archiver:
-                self.task_archiver.add_support_status(theader.task_id,
-                                                      supported)
-        except Exception as err:
-            logger.warning("Cannot send request for task: {}".format(err))
-            self.task_keeper.remove_task_header(theader.task_id)
+            price = min(price, theader.max_price)
+            self.task_manager.add_comp_task_request(
+                theader=theader, price=price)
+            wtct = message.tasks.WantToComputeTask(
+                node_name=self.config_desc.node_name,
+                perf_index=performance,
+                price=price,
+                max_resource_size=self.config_desc.max_resource_size,
+                max_memory_size=self.config_desc.max_memory_size,
+                concent_enabled=self.client.concent_service.enabled,
+                provider_public_key=self.get_key_id(),
+                provider_ethereum_public_key=self.get_key_id(),
+                task_header=theader,
+            )
+            self.send_message(
+                node_id=theader.task_owner.key,
+                msg=wtct,
+            )
+            timer.ProviderTTCDelayTimers.start(wtct.task_id)
+            self.requested_tasks.add(theader.task_id)
+            return theader.task_id
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning("Cannot send request for task: %s", err)
+            logger.debug("Detailed traceback", exc_info=True)
+            self.remove_task_header(theader.task_id)
 
         return None
 
@@ -288,7 +344,7 @@ class TaskServer(
                    price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
-        self.requested_tasks.remove(ctd['task_id'])
+        self.requested_tasks.clear()
         update_requestor_assigned_sum(node_id, price)
         dispatcher.send(
             signal='golem.subtask',
@@ -303,28 +359,26 @@ class TaskServer(
         if 'data' not in result:
             raise AttributeError("Wrong result format")
 
-        header = self.task_keeper.task_headers[task_id]
-
-        if subtask_id not in self.results_to_send:
-            delay_time = 0.0
-            last_sending_trial = 0
-
-            wtr = WaitingTaskResult(
-                task_id=task_id,
-                subtask_id=subtask_id,
-                result=result['data'],
-                last_sending_trial=last_sending_trial,
-                delay_time=delay_time,
-                owner=header.task_owner)
-
-            self.create_and_set_result_package(wtr)
-            self.results_to_send[subtask_id] = wtr
-
-            Trust.REQUESTED.increase(header.task_owner.key)
-        else:
+        if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
-        return True
+        header = self.task_keeper.task_headers[task_id]
+
+        delay_time = 0.0
+        last_sending_trial = 0
+
+        wtr = WaitingTaskResult(
+            task_id=task_id,
+            subtask_id=subtask_id,
+            result=result['data'],
+            last_sending_trial=last_sending_trial,
+            delay_time=delay_time,
+            owner=header.task_owner)
+
+        self.create_and_set_result_package(wtr)
+        self.results_to_send[subtask_id] = wtr
+
+        Trust.REQUESTED.increase(header.task_owner.key)
 
     def create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
@@ -361,13 +415,7 @@ class TaskServer(
             session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
-        task_sessions = dict(self.task_sessions)
-        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
-
-        for task_session in list(task_sessions.values()):
-            task_session.dropped()
-
-        for task_session in sessions_incoming:
+        for task_session in self.all_sessions:
             try:
                 task_session.dropped()
             except Exception as exc:
@@ -385,6 +433,12 @@ class TaskServer(
                 'Invalid signature task_header:%r, signature: %r',
                 task_header,
                 task_header.signature,
+            )
+            return False
+        if task_header.deadline < time.time():
+            logger.info(
+                "Task's deadline already in the past. task_header: %r",
+                task_header
             )
             return False
         try:
@@ -410,7 +464,9 @@ class TaskServer(
             return False
         return True
 
+    @rpc_utils.expose('comp.tasks.known.delete')
     def remove_task_header(self, task_id) -> bool:
+        self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
     def add_task_session(self, subtask_id, session: TaskSession):
@@ -506,6 +562,18 @@ class TaskServer(
         self.client.transaction_system.settle_income(
             sender_node_id, subtask_id, settled_ts)
 
+    def subtask_waiting(self, task_id, subtask_id=None):
+        logger.debug(
+            "Requestor waits for subtask results."
+            " task_id=%(task_id)s subtask_id=%(subtask_id)s",
+            {
+                'task_id': task_id,
+                'subtask_id': subtask_id,
+            },
+        )
+        # We can still try to request a subtask for this task next time.
+        self.requested_tasks.discard(task_id)
+
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task %r failed: %r.", subtask_id, err)
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
@@ -550,7 +618,7 @@ class TaskServer(
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id)
             environment = self.get_environment_by_id(header.environment)
-            computation_time = ProviderTimer.time
+            computation_time = timer.ProviderTimer.time
 
             update_requestor_efficiency(
                 node_id=keeper.get_node_for_task_id(task_id),
@@ -668,9 +736,20 @@ class TaskServer(
         env = self.get_environment_by_id(task.header.environment)
         return env.get_min_accepted_performance()
 
+    class RejectedReason(Enum):
+        not_my_task = 'not my task'
+        performance = 'performance'
+        disk_size = 'disk size'
+        memory_size = 'memory size'
+        acl = 'acl'
+        trust = 'trust'
+        netmask = 'netmask'
+        not_accepted = 'not accepted'
+
     def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
+            address,
             node_name,
             task_id,
             provider_perf,
@@ -682,6 +761,9 @@ class TaskServer(
 
         if task_id not in self.task_manager.tasks:
             logger.info('Cannot find task in my tasks: %s', ids)
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.not_my_task)
             return False
 
         task = self.task_manager.tasks[task_id]
@@ -690,46 +772,94 @@ class TaskServer(
         if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'
                         f' < {min_accepted_perf}; {ids}')
-            return False
-
-        if task.header.resource_size > (int(max_resource_size) * 1024):
-            logger.info('insufficient provider disk size: '
-                        f'{max_resource_size} KiB; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.performance,
+                details={
+                    'provider_perf': provider_perf,
+                    'min_accepted_perf': min_accepted_perf,
+                })
             return False
 
         if task.header.estimated_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
-                        f'{max_memory_size} KiB; {ids}')
+                        f'{task.header.estimated_memory} B < {max_memory_size} '
+                        f'KiB; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.memory_size,
+                details={
+                    'memory_size': task.header.estimated_memory,
+                    'max_memory_size': max_memory_size * 1024,
+                })
             return False
 
         allowed, reason = self.acl.is_allowed(node_id)
+        if allowed:
+            allowed, reason = self.acl_ip.is_allowed(address)
         if not allowed:
-            logger.info(f'provider {reason}; {ids}')
+            logger.info(f'provider is {reason.value}; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.acl,
+                details={'acl_reason': reason.value})
             return False
 
         trust = self.get_computing_trust(node_id)
         if trust < self.config_desc.computing_trust:
-            logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            logger.info(f'insufficient provider trust level: {trust} < '
+                        f'{self.config_desc.computing_trust}; {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.trust,
+                details={
+                    'trust': trust,
+                    'required_trust': self.config_desc.computing_trust,
+                })
             return False
 
         if not task.header.mask.matches(decode_hex(node_id)):
             logger.info(f'network mask mismatch: {ids}')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.netmask)
             return False
 
-        if task.should_accept_client(node_id) != AcceptClientVerdict.ACCEPTED:
+        accept_client_verdict: AcceptClientVerdict \
+            = task.should_accept_client(node_id)
+        if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '
                         f'(either waiting for results or previously failed)')
+            self.notify_provider_rejected(
+                node_id=node_id, task_id=task_id,
+                reason=self.RejectedReason.not_accepted,
+                details={
+                    'verdict': accept_client_verdict.value,
+                })
             return False
 
         logger.debug('provider can be accepted %s', ids)
         return True
 
+    @classmethod
+    def notify_provider_rejected(cls, node_id: str, task_id: str,
+                                 reason: RejectedReason,
+                                 details: Optional[Dict[str, Any]] = None):
+        dispatcher.send(
+            signal='golem.taskserver',
+            event='provider_rejected',
+            node_id=node_id,
+            task_id=task_id,
+            reason=reason.value,
+            details=details,
+        )
+
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
             short_id = short_node_id(node_id)
-            logger.info('requestor %s. node=%s', reason, short_id)
+            logger.info('requestor is %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: %r", trust)
@@ -737,6 +867,14 @@ class TaskServer(
             return SupportStatus.ok()
         else:
             return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
+
+    def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
+            -> None:
+        self.acl.disallow(node_id, timeout_seconds, persist)
+
+    @rpc_utils.expose('net.peer.block_ip')
+    def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
+        self.acl_ip.disallow(ip, timeout_seconds)
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
@@ -773,7 +911,6 @@ class TaskServer(
             estimated_performance, price, max_resource_size, max_memory_size):
         self.new_session_prepare(
             session=session,
-            subtask_id=task_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -806,7 +943,6 @@ class TaskServer(
                                                  waiting_task_result):
         self.new_session_prepare(
             session=session,
-            subtask_id=waiting_task_result.subtask_id,
             key_id=waiting_task_result.owner.key,
             conn_id=conn_id,
         )
@@ -839,7 +975,6 @@ class TaskServer(
                                                   key_id, subtask_id, err_msg):
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -869,7 +1004,6 @@ class TaskServer(
             ans_conn_id):
         self.new_session_prepare(
             session=session,
-            subtask_id=None,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -886,13 +1020,23 @@ class TaskServer(
         #     key_id, node_info, super_node_info, ans_conn_id)
 
     def __connection_for_task_request_final_failure(
-            self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, *args):
-        logger.info("Cannot connect to task {} owner".format(task_id))
-        logger.info("Removing task {} from task list".format(task_id))
-
-        self.task_computer.task_request_rejected(task_id, "Connection failed")
-        self.task_keeper.request_failure(task_id)
+            self,
+            conn_id,
+            node_name,
+            key_id,
+            task_id,
+            *_args,
+            **_kwargs,
+    ):
+        logger.info(
+            "Cannot connect to task owner. task_id: %s, node: %s",
+            task_id,
+            node_info_str(
+                node_name,
+                key_id,
+            )
+        )
+        self.task_keeper.remove_task_header(task_id)
         self.task_manager.comp_task_keeper.request_failure(task_id)
         self.remove_pending_conn(conn_id)
         self.remove_responses(conn_id)
@@ -927,17 +1071,16 @@ class TaskServer(
 
     def new_session_prepare(self,
                             session: TaskSession,
-                            subtask_id: str,
                             key_id: str,
                             conn_id: str):
         self.remove_forwarded_session_request(key_id)
-        session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.task_sessions_outgoing.add(session)
 
-    def noop(self, *args, **kwargs):
+    @classmethod
+    def noop(cls, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
@@ -952,7 +1095,6 @@ class TaskServer(
         full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -978,33 +1120,14 @@ class TaskServer(
 
     def __remove_old_sessions(self):
         cur_time = time.time()
-        sessions_to_remove = []
-        sessions = dict(self.task_sessions)
 
-        for subtask_id, session in sessions.items():
+        for session in self.all_sessions:
             dt = cur_time - session.last_message_time
-            if dt > self.last_message_time_threshold:
-                sessions_to_remove.append(subtask_id)
-        for subtask_id in sessions_to_remove:
-            if sessions[subtask_id].task_computer is not None:
-                sessions[subtask_id].task_computer.session_timeout()
-            sessions[subtask_id].dropped()
-
-    def _find_sessions(self, subtask):
-        if subtask in self.task_sessions:
-            return [self.task_sessions[subtask]]
-        for s in set(self.task_sessions_incoming):
-            logger.debug('Checking session: %r', s)
-            if s.subtask_id == subtask:
-                return [s]
-            try:
-                task_id = self.task_manager.subtask2task_mapping[subtask]
-            except KeyError:
-                pass
-            else:
-                if s.task_id == task_id:
-                    return [s]
-        return []
+            if dt < self.last_message_time_threshold:
+                continue
+            if session.task_computer is not None:
+                session.task_computer.session_timeout()
+            session.dropped()
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):
@@ -1169,7 +1292,3 @@ TASK_CONN_TYPES = {
     'start_session': 7,
     'task_verification_result': 8,
 }
-
-
-class TaskListenTypes(object):
-    StartSession = 1

@@ -1,4 +1,5 @@
 import datetime
+import itertools
 import os
 import pathlib
 import queue
@@ -8,6 +9,8 @@ import sys
 import threading
 import tempfile
 import typing
+
+from ethereum.utils import denoms
 
 from . import tasks
 
@@ -45,16 +48,30 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
             "%s graceful shutdown timed-out, issuing sigkill." % node_type)
         process.kill()
 
+    print("%s shut down correctly." % node_type)
 
-def run_golem_node(node_type: str, *args):
+
+def _params_from_dict(d: typing.Dict[str, typing.Any]) -> typing.List[str]:
+    return list(
+        itertools.chain.from_iterable(
+            [k, str(v)] if v is not None else [k] for k, v in d.items()
+        )
+    )
+
+
+def run_golem_node(
+        node_type: str,
+        args: typing.Dict[str, typing.Any],
+        nodes_root: typing.Optional[pathlib.Path] = None
+        ) -> subprocess.Popen:
     node_file = node_type + '.py'
-    cwd = pathlib.Path(os.path.realpath(__file__)).parent
-    node_process = subprocess.Popen(
-        args=['python', str(cwd / 'nodes' / node_file), *args],
+    cwd = pathlib.Path(__file__).resolve().parent
+    node_script = str(cwd / 'nodes' / node_file)
+    return subprocess.Popen(
+        args=['python', node_script, *_params_from_dict(args)],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
-    return node_process
 
 
 def get_output_queue(process: subprocess.Popen) -> queue.Queue:
@@ -100,13 +117,16 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
     return None
 
 
-def construct_test_task(task_package_name, output_path, task_settings):
+def construct_test_task(task_package_name, task_settings):
     settings = tasks.get_settings(task_settings)
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
-    tasks_path = (cwd / 'tasks' / task_package_name).glob('*')
-    settings['resources'] = [str(f) for f in tasks_path]
-    settings['options']['output_path'] = output_path
+    tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
+    settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     return settings
+
+
+def set_task_output_path(task_dict: dict, output_path: str) -> None:
+    task_dict['options']['output_path'] = output_path
 
 
 def timeout_to_seconds(timeout_str: str):
@@ -116,3 +136,11 @@ def timeout_to_seconds(timeout_str: str):
         minutes=int(components[1]),
         seconds=int(components[2])
     ).total_seconds()
+
+
+def to_ether(value):
+    return int(value) / denoms.ether
+
+
+def from_ether(value):
+    return int(value * denoms.ether)

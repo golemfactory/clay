@@ -73,7 +73,7 @@ def split_video_command(input, output_list_file, segment_time):
            "-c", "copy",
            "-mpegts_copyts", "1",
            output_list_file
-           ]
+          ]
 
     return cmd, output_list_file
 
@@ -91,7 +91,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
            "-i",
            # input file
            "{}".format(track)
-           ]
+          ]
 
     if use_playlist:
         playlist_cmd = [
@@ -177,7 +177,7 @@ def merge_videos_command(input_file, output):
            "-c", "copy",
            "-mpegts_copyts", "1",
            output
-           ]
+          ]
 
     return cmd, input_file
 
@@ -190,7 +190,7 @@ def compute_psnr_command(video, reference_video, psnr_frames_file):
            "-lavfi",
            "psnr=" + psnr_frames_file,
            "-f", "null", "-"
-           ]
+          ]
 
     return cmd
 
@@ -203,7 +203,7 @@ def compute_ssim_command(video, reference_video, ssim_frames_file):
            "-lavfi",
            "ssim=" + ssim_frames_file,
            "-f", "null", "-"
-           ]
+          ]
 
     return cmd
 
@@ -215,7 +215,7 @@ def get_metadata_command(video):
            "-show_format",
            "-show_streams",
            video
-           ]
+          ]
 
     return cmd
 

@@ -14,7 +14,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.8"
+        return "1.9"
 
     def test_blender_job(self):
         # copy the scene file to the resources dir
@@ -44,7 +44,9 @@ class TestBlenderDockerJob(TestDockerJob):
         }
 
         with self._create_test_job(
-            script="/golem/scripts/job.py", params=params) as job:
+            script="/golem/entrypoints/render_entrypoint.py",
+            params=params) as job:
+
             job.start()
             exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)

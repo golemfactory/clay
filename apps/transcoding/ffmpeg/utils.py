@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
+import shutil
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
@@ -15,9 +16,10 @@ from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
 
-FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg'
-FFMPEG_DOCKER_TAG = '1.0'
+FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg-experimental'
+FFMPEG_DOCKER_TAG = '0.91'
 FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
+FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
 logger = logging.getLogger(__name__)
@@ -40,7 +42,7 @@ class StreamOperator:
         env = ffmpegEnvironment(binds=[
             DockerBind(Path(input_stream), stream_container_path, 'ro')])
         extra_data = {
-            'script_filepath': FFMPEG_BASE_SCRIPT,
+            'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.SPLIT.value[0],
             'path_to_stream': stream_container_path,
             'parts': parts
@@ -71,22 +73,20 @@ class StreamOperator:
 
     def _prepare_merge_job(self, task_dir, chunks):
         try:
-            resources_dir = task_dir
-            output_dir = os.path.join(resources_dir, 'merge', 'output')
+            resources_dir = os.path.join(task_dir, 'merge', 'resources')
+            os.makedirs(resources_dir)
+            output_dir = os.path.join(task_dir, 'merge', 'output')
             os.makedirs(output_dir)
-            work_dir = os.path.join(resources_dir, 'merge', 'work')
+            work_dir = os.path.join(task_dir, 'merge', 'work')
             os.makedirs(work_dir)
         except OSError:
             raise ffmpegException("Failed to prepare video \
                 merge directory structure")
-        files = self._collect_files(resources_dir, chunks)
-        return resources_dir, output_dir, work_dir, list(
-            map(lambda chunk: chunk.replace(resources_dir,
-                                            DockerJob.RESOURCES_DIR),
-                files))
+        files = self._collect_files(task_dir, chunks, resources_dir)
+        return resources_dir, output_dir, work_dir, files
 
     @staticmethod
-    def _collect_files(dir, files):
+    def _collect_files(dir, files, resources_dir):
         # each chunk must be in the same directory
         results = list()
         for file in files:
@@ -98,31 +98,38 @@ class StreamOperator:
 
             results.append(file)
 
-        return results
+        # Copy files to docker resources directory
+        os.makedirs(resources_dir, exist_ok=True)
+
+        for result in results:
+            result_filename = os.path.basename(result)
+            target_filepath = os.path.join(resources_dir, result_filename)
+            shutil.move(result, target_filepath)
+
+        # Translate paths to docker filesystem
+        return [path.replace(dir, DockerJob.RESOURCES_DIR) for path in results]
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
             self._prepare_merge_job(task_dir, chunks)
 
         extra_data = {
-            'script_filepath': FFMPEG_BASE_SCRIPT,
+            'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.MERGE.value[0],
             'output_stream': os.path.join(DockerJob.OUTPUT_DIR, filename),
-            'chunks': chunks
+            'chunks': chunks,
         }
 
-        logger.info('Merging video')
         logger.debug('Merge params: {}'.format(extra_data))
 
-        dir_mapping = DockerTaskThread.specify_dir_mapping(output=output_dir,
-                                                           temporary=work_dir,
-                                                           resources=task_dir,
-                                                           logs=output_dir,
-                                                           work=work_dir)
+        dir_mapping = DockerTaskThread.specify_dir_mapping(
+            output=output_dir,
+            temporary=work_dir,
+            resources=resources_dir,
+            logs=output_dir,
+            work=work_dir)
 
         self._do_job_in_container(dir_mapping, extra_data)
-
-        logger.info("Video merged successfully!")
         return os.path.join(output_dir, filename)
 
     @staticmethod
@@ -133,8 +140,9 @@ class StreamOperator:
         if env:
             EnvironmentsManager().add_environment(env)
 
-        dtt = DockerTaskThread(docker_images=[DockerImage(
-            repository=FFMPEG_DOCKER_IMAGE, tag=FFMPEG_DOCKER_TAG)],
+        dtt = DockerTaskThread(
+            docker_images=[DockerImage(
+                repository=FFMPEG_DOCKER_IMAGE, tag=FFMPEG_DOCKER_TAG)],
             extra_data=extra_data,
             dir_mapping=dir_mapping,
             timeout=timeout)

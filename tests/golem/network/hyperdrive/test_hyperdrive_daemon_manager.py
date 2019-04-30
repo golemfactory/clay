@@ -6,14 +6,18 @@ import semantic_version
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
 
+from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
+
+# pylint: disable=no-member
 class TestHyperdriveDaemonManager(TempDirFixture):
 
     @patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')
     def setUp(self, *_):
         super().setUp()
 
-        self.dm = HyperdriveDaemonManager(self.path)
+        self.dm = HyperdriveDaemonManager(
+            self.path, client_config=hyperdrive_client_kwargs(wrapped=False))
         self.monitor = self.dm._monitor
 
     @patch('golem.network.hyperdrive.daemon_manager.'

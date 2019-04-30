@@ -55,7 +55,11 @@ class Packager(object):
 
     @classmethod
     def _prepare_file_dict(cls, disk_files) -> Dict[str, str]:
-        prefix = common_dir(disk_files)
+
+        if len(disk_files) == 1:
+            prefix = os.path.dirname(disk_files[0])
+        else:
+            prefix = common_dir(disk_files)
 
         return {
             absolute_path: relative_path(absolute_path, prefix)
@@ -75,7 +79,7 @@ class Packager(object):
         pass
 
     @abc.abstractmethod
-    def write_disk_file(self, obj, file_path, file_name):
+    def write_disk_file(self, package_file, src_path, target_path):
         pass
 
 
@@ -98,8 +102,10 @@ class ZipPackager(Packager):
     def generator(self, output_path):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
-    def write_disk_file(self, obj, file_path, file_name):
-        ZipPackager.zip_append(obj, file_path.rstrip('/'))
+    def write_disk_file(self, package_file, src_path, zip_path):
+        relative_subdirectory = os.path.dirname(zip_path)
+        ZipPackager.zip_append(package_file, src_path.rstrip('/'),
+                               relative_subdirectory)
 
     @classmethod
     def package_name(cls, file_path):
@@ -124,9 +130,11 @@ class ZipPackager(Packager):
                 break
         elif os.path.isfile(path):
             archive.write(path, os.path.join(subdirectory, basename))
+        elif not os.path.exists(path):
+            raise RuntimeError(f"{path} does not exist")
         else:
-            raise RuntimeError("Packaging supports only \
-                    directories and files, unsupported object: {}".format(path))
+            raise RuntimeError(f"Packaging supports only \
+                    directories and files, unsupported object: {path}")
 
 
 class EncryptingPackager(Packager):
@@ -167,8 +175,8 @@ class EncryptingPackager(Packager):
     def package_name(self, file_path):
         return self.creator_class.package_name(file_path)
 
-    def write_disk_file(self, obj, file_path, file_name):
-        self._packager.write_disk_file(obj, file_path, file_name)
+    def write_disk_file(self, package_file, src_path, target_path):
+        self._packager.write_disk_file(package_file, src_path, target_path)
 
 
 class TaskResultPackager:

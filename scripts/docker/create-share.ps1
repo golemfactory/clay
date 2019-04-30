@@ -31,7 +31,7 @@ if (!(Test-Path -Path $SharedDirPath -PathType Container)) {
 }
 
 # Normalize path
-$SharedDirPath = (Convert-Path -Path $SharedDirPath).TrimEnd("\").ToLower()
+$SharedDirPath = (Get-Item -Path $SharedDirPath).FullName.TrimEnd("\").ToLower()
 
 "Setting directory ACL..."
 
@@ -56,11 +56,11 @@ if (Get-SmbShare | Where-Object -Property Name -EQ $SmbShareName) {
 
 "Sharing directory..."
 
-$Command = "New-SmbShare -Name $SmbShareName -Path $SharedDirPath -FullAccess '$env:COMPUTERNAME\$UserName'"
+$Command = "New-SmbShare -Name $SmbShareName -Path '$SharedDirPath' -FullAccess '$env:COMPUTERNAME\$UserName'"
 $Output = (New-TemporaryFile).FullName
 
 $Process = Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-Command $Command 2>&1 | Out-File -FilePath $Output -Encoding UTF8" `
+    -ArgumentList "-Command $Command 2>&1 | Out-File -FilePath '$Output' -Encoding UTF8" `
     -Wait -PassThru -Verb RunAs -WindowStyle hidden
 
 Get-Content -Encoding "UTF8" $Output | Write-Output

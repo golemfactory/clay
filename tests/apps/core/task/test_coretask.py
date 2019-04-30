@@ -1,9 +1,12 @@
 import os
 import shutil
 from copy import copy
+from tempfile import TemporaryDirectory
+from typing import Optional
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
+from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.core.task.coretask import (
@@ -123,7 +126,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.after_test(None, None), {})
 
-        assert len(task.listeners) == 0
+        assert not task.listeners
 
         class TestListener(TaskEventListener):
 
@@ -190,7 +193,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -201,7 +204,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.interpret_task_results(
             subtask_id, files_copy, False)
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
                 pass
@@ -242,7 +245,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-                         files[0], files[1], files[4]])
+            files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -251,7 +254,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                 os.path.join(task.tmp_dir, os.path.basename(f))))
 
         for f in [files[2], files[3]]:
-            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, subtask_id,
+            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir,
+                                                        subtask_id,
                                                         os.path.basename(f))))
 
     def test_interpret_task_results_with_sorting(self):
@@ -288,8 +292,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.counting_nodes = MagicMock()
 
         task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
-                                      'start_task': 1,
-                                      'node_id': 'ABC'}
+                                           'start_task': 1,
+                                           'node_id': 'ABC'}
         task.subtasks_given["abc"] = {'status': SubtaskStatus.failure,
                                       'start_task': 4,
                                       'node_id': 'abc'}
@@ -499,8 +503,21 @@ class TestTaskTypeInfo(TestCase):
 
 class TestCoreTaskBuilder(TestCase):
 
-    def _get_core_task_builder(self):
+    @staticmethod
+    def _get_core_task_builder():
         return CoreTaskBuilder(MagicMock(), MagicMock(), MagicMock())
+
+    @staticmethod
+    def _get_task_def_dict(
+            output_path: str,
+            output_format: Optional[str] = ''
+    ) -> dict:
+        return {
+            'options': {
+                'output_path': output_path,
+                'format': output_format
+            }
+        }
 
     def test_init(self):
         builder = self._get_core_task_builder()
@@ -530,17 +547,20 @@ class TestCoreTaskBuilder(TestCase):
         with self.assertRaises(TypeError):
             builder.build()
 
-    def test_get_output_path(self):
+    @freeze_time('2019-01-01 00:00:00')
+    def test_get_output_path_returns_correct_path(self):
         builder = self._get_core_task_builder()
-        mockDict = {}
-        mockDict['options'] = dict(
-            [("output_path", os.getcwd()), ("format", "py")])
+        task_name = 'test_task'
+        task_dir_name = f'{task_name}_2019-01-01_00-00-00'
 
-        class Definition:
-            name = "test_file"  # something doesn't exist
+        with TemporaryDirectory() as output_path:
+            task_def = self._get_task_def_dict(output_path, 'png')
+            mock_definition = MagicMock()
+            mock_definition.name = task_name
 
-        definition = Definition()
-        absolute_path = builder.get_output_path(mockDict, definition)
-        assert absolute_path == os.path.join(os.getcwd(), definition.name)
-        definition.name = "test_coretask"  # something already exist
-        assert absolute_path != os.path.join(os.getcwd(), definition.name)
+            result_path = builder.get_output_path(task_def, mock_definition)
+
+            self.assertEquals(
+                result_path,
+                os.path.join(output_path, task_dir_name, task_name)
+            )

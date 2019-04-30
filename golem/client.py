@@ -7,9 +7,9 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
+from datetime import timedelta
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
-from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -21,6 +21,7 @@ from apps.appsmanager import AppsManager
 import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
+from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -39,13 +40,14 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
@@ -53,6 +55,7 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.transport import msg_queue
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.ranking import Ranking
@@ -101,7 +104,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None,
             update_hw_preset=None) -> None:
@@ -139,6 +141,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         self.p2pservice = None
         self.diag_service = None
+
+        if not transaction_system.deposit_contract_available:
+            logger.warning(
+                'Disabling concent because deposit contract is unavailable',
+            )
+            concent_variant = variables.CONCENT_CHOICES['disabled']
         self.concent_service = ConcentClientService(
             variant=concent_variant,
             keys_auth=self.keys_auth,
@@ -160,11 +168,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
+            DailyJobsService(),
         ]
 
         clean_resources_older_than = \
             self.config_desc.clean_resources_older_than_seconds
-        if clean_resources_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_resources_older_than > 0:
+            logger.debug('Starting resource cleaner service ...')
             self._services.append(
                 ResourceCleanerService(
                     self,
@@ -206,6 +217,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.taskmanager_listener,
             signal='golem.taskmanager'
         )
+        dispatcher.connect(
+            self.taskserver_listener,
+            signal='golem.taskserver'
+        )
 
         logger.debug('Client init completed')
 
@@ -228,7 +243,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             concent_soft_switch,
             framerenderingtask,
             MinPerformanceMultiplier,
-            self.task_server.task_manager,
+            self.task_server,
+            self.task_manager,
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
@@ -284,6 +300,20 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             op_value: int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
+
+    def taskserver_listener(
+            self,
+            event,
+            **kwargs,
+    ):
+        if event == 'provider_rejected':
+            self._publish(
+                Task.evt_provider_rejected,
+                node_id=kwargs['node_id'],
+                task_id=kwargs['task_id'],
+                reason=kwargs['reason'],
+                details=kwargs['details'],
+            )
 
     @report_calls(Component.client, 'sync')
     def sync(self):
@@ -381,7 +411,22 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         logger.info("Starting resource server ...")
 
-        self.daemon_manager = HyperdriveDaemonManager(self.datadir)
+        self.daemon_manager = HyperdriveDaemonManager(
+            self.datadir,
+            daemon_config={
+                k: v for k, v in {
+                    'host': self.config_desc.hyperdrive_address,
+                    'port': self.config_desc.hyperdrive_port,
+                    'rpc_host': self.config_desc.hyperdrive_rpc_address,
+                    'rpc_port': self.config_desc.hyperdrive_rpc_port,
+                }.items()
+                if v is not None
+            },
+            client_config={
+                'port': self.config_desc.hyperdrive_rpc_port,
+                'host': self.config_desc.hyperdrive_rpc_address,
+            }
+        )
         self.daemon_manager.start()
 
         hyperdrive_addrs = self.daemon_manager.public_addresses(
@@ -392,12 +437,17 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         clean_tasks_older_than = \
             self.config_desc.clean_tasks_older_than_seconds
-        if clean_tasks_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_tasks_older_than > 0:
             self.clean_old_tasks()
 
         resource_manager = HyperdriveResourceManager(
             dir_manager=dir_manager,
-            daemon_address=hyperdrive_addrs
+            daemon_address=hyperdrive_addrs,
+            client_kwargs={
+                'host': self.config_desc.hyperdrive_rpc_address,
+                'port': self.config_desc.hyperdrive_rpc_port,
+            },
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
@@ -409,7 +459,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
-        if clean_tasks_older_than:
+        if cleaning_enabled and clean_tasks_older_than > 0:
+            logger.debug('Starting task cleaner service ...')
             task_cleaner_service = TaskCleanerService(
                 client=self,
                 interval_seconds=max(1, clean_tasks_older_than // 10)
@@ -444,7 +495,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
-            self.p2pservice.connect_to_network()
 
             if self.monitor:
                 self.diag_service.register(self.p2pservice,
@@ -467,8 +517,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
 
-        self.resume()
-
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
@@ -478,6 +526,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+
+        self.resume()
 
     def _restore_locks(self) -> None:
         assert self.task_server is not None
@@ -497,7 +547,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                         unfinished_subtasks,
                         task.header.deadline,
                     )
-                except NotEnoughFunds as e:
+                except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do
                     logger.info("Not enough funds to restore old locks: %r", e)
 
@@ -531,9 +581,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 service.stop()
 
         if self.p2pservice:
+            logger.debug("Pausing p2pservice")
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
+            logger.debug("Pausing task_server")
             yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
@@ -601,14 +653,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.db:
             self.db.close()
 
-    def task_resource_send(self, task_id):
-        self.task_server.task_manager.resources_send(task_id)
+    def resource_collected(self, res_id):
+        self.task_server.task_computer.resource_collected(res_id)
 
-    def task_resource_collected(self, task_id):
-        self.task_server.task_computer.task_resource_collected(task_id)
-
-    def task_resource_failure(self, task_id, reason):
-        self.task_server.task_computer.task_resource_failure(task_id, reason)
+    def resource_failure(self, res_id, reason):
+        self.task_server.task_computer.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
@@ -634,21 +683,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    @rpc_utils.expose('comp.task.subtasks.frame.restart')
-    def restart_frame_subtasks(self, task_id, frame):
-        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
-                     task_id, frame)
-        task_manager = self.task_server.task_manager
-
-        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
-        if subtasks is None:
-            logger.error("frame has no subtasks (task_id = %s, frame = %r",
-                         task_id, frame)
-            return
-
-        self.funds_locker.add_subtask(task_id, len(subtasks))
-        task_manager.restart_frame_subtasks(task_id, frame)
-
     @rpc_utils.expose('comp.task.subtask.restart')
     def restart_subtask(self, subtask_id):
         logger.debug("restarting subtask %s", subtask_id)
@@ -662,7 +696,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.task.delete')
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
-        self.remove_task_header(task_id)
+        self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
@@ -688,9 +722,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
-
-    def get_suggested_conn_reverse(self, key_id):
-        return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
         if self.p2pservice:
@@ -755,6 +786,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
+        logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
@@ -762,6 +794,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
+        logger.debug("updating settings: %r", settings_dict)
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
                 raise KeyError("Unknown setting: {}".format(key))
@@ -959,8 +992,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         }
 
     @rpc_utils.expose('pay.payments')
-    def get_payments_list(self) -> List[Dict[str, Any]]:
-        return self.transaction_system.get_payments_list()
+    def get_payments_list(
+            self,
+            num: Optional[int] = None,
+            last_seconds: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        interval = None
+        if last_seconds is not None:
+            interval = timedelta(seconds=last_seconds)
+        return self.transaction_system.get_payments_list(num, interval)
 
     @rpc_utils.expose('pay.incomes')
     def get_incomes_list(self) -> List[Dict[str, Any]]:
@@ -1060,7 +1100,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        if self._update_hw_preset:
+
+        hw_preset_present = bool(getattr(
+            new_config_desc,
+            'hardware_preset_name',
+            None,
+        ))
+        if self._update_hw_preset and hw_preset_present:
             self._update_hw_preset(
                 HardwarePresets.from_config(self.config_desc))
 
@@ -1093,15 +1139,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             resources,
             task_id,
             client_options=client_options
-        )
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
         )
 
     @rpc_utils.expose('res.dirs')
@@ -1149,11 +1186,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
 
-    @rpc_utils.expose('comp.tasks.known.delete')
-    def remove_task_header(self, task_id):
-        self.task_server.remove_task_header(task_id)
-
     def clean_old_tasks(self):
+        logger.debug('Cleaning old tasks ...')
         now = get_timestamp_utc()
         for task in self.get_tasks():
             deadline = task['time_started'] \
@@ -1165,6 +1199,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.tasks.known')
     def get_known_tasks(self):
+        if self.task_server is None:
+            return {}
         headers = {}
         for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
@@ -1240,20 +1276,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @staticmethod
     def delete_task_preset(task_type, preset_name):
         taskpreset.delete_task_preset(task_type, preset_name)
-
-    @rpc_utils.expose('comp.tasks.estimated.cost')
-    def get_estimated_cost(self, task_type, options):
-        if self.task_server is None:
-            raise Exception('Cannot estimate costs')
-        options['price'] = float(options['price'])
-        options['subtask_time'] = float(options['subtask_time'])
-        options['num_subtasks'] = int(options['num_subtasks'])
-        return {
-            'GNT': self.task_server.task_manager.get_estimated_cost(task_type,
-                                                                    options),
-            'ETH': float(self.transaction_system.eth_for_batch_payment(
-                options['num_subtasks']) / denoms.ether),
-        }
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
@@ -1374,16 +1396,21 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         enable_sentry_logger(value)
 
     @rpc_utils.expose('net.peer.block')
-    def block_node(self, node_id: str) -> Tuple[bool, Optional[str]]:
-        if self.task_server is not None:
-            try:
-                self.task_server.acl.disallow(node_id, persist=True)
-                return True, None
+    def block_node(
+            self,
+            node_id: str,
+            timeout_seconds: int = -1,
+    ) -> Tuple[bool, Optional[str]]:
+        if not self.task_server:
+            return False, 'Client is not ready'
 
-            except Exception as e:  # pylint: disable=broad-except
-                return False, str(e)
-
-        return False, 'Client is not ready'
+        try:
+            self.task_server.disallow_node(node_id,
+                                           timeout_seconds=timeout_seconds,
+                                           persist=True)
+            return True, None
+        except Exception as e:  # pylint: disable=broad-except
+            return False, str(e)
 
 
 class DoWorkService(LoopingCallService):
@@ -1563,3 +1590,24 @@ class MaskUpdateService(LoopingCallService):
                 num_bits=self._update_num_bits)
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
+
+
+class DailyJobsService(LoopingCallService):
+    def __init__(self):
+        super().__init__(
+            interval_seconds=timedelta(days=1).total_seconds(),
+        )
+
+    def _run(self) -> None:
+        jobs = (
+            nodeskeeper.sweep,
+            msg_queue.sweep,
+        )
+        logger.info('Running daily jobs')
+        for job in jobs:
+            try:
+                job()
+            except Exception as e:  # pylint: disable=broad-except
+                logger.warning("Daily job failed. job=%r, e=%s", job, e)
+                logger.debug("Details", exc_info=True)
+        logger.info('Finished daily jobs')
