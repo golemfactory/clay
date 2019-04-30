@@ -156,7 +156,7 @@ class TestffmpegTask(TempDirFixture):
                          Container(d['options']['container']))
 
         self.assertEqual(td.output_file,
-                         '/tmp/test task_2019-01-01_00-00-00/test task.mp4')
+                         '/tmp/test task.mp4')
 
     def test_invalid_extra_data(self):
         ffmpeg_task = self._build_ffmpeg_task()
