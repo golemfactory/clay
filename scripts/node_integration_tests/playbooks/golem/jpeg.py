@@ -3,4 +3,4 @@ from ..test_config_base import TestConfigBase
 
 class TestConfig(TestConfigBase):
     def __init__(self):
-        super().__init__('jpeg')
+        super().__init__(task_settings='jpeg')

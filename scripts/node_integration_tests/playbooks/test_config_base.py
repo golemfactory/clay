@@ -55,7 +55,7 @@ def make_node_config_from_env(role: str, counter: int) -> NodeConfig:
 
 
 class TestConfigBase:
-    def __init__(self, task_settings: str = 'default') -> None:
+    def __init__(self, *, task_settings: str = 'default') -> None:
         self.dump_output_on_crash = False
         self.dump_output_on_fail = False
 
