@@ -658,6 +658,26 @@ class ClientProvider:
             task_id: typing.Optional[str] = None,
             partial: typing.Optional[bool] = False
     ) -> typing.Tuple[typing.Optional[dict], typing.Optional[str]]:
+        """
+        Estimates the cost of a task. Result includes amounts required for both
+        calculating the task, as well as creating a Concent deposit for it.
+
+        :param _task_type: type of the task for which the cost should be
+        estimated.
+        :param options: task options, when provided and task_id parameter is
+        None the cost estimation will be based on fields from this dict
+        (i.e. price, subtask_count and subtask_timeout). Used for tasks
+        which have not been created yet.
+        :param task_id: if provided, the cost estimation will be based on an
+        existing task with the given ID.
+        :param partial: used in conjunction with the task_id parameter. If
+        True, the estimation will only include unfinished subtasks of the
+        specified task (i.e. estimating the cost of a partial task restart).
+        Otherwise, the full task cost will be returned.
+        :return: a tuple with the result dict as its first element and an error
+        string as the second. When the result is present the error should be
+        None (and vice-versa).
+        """
         subtask_count: int = 0
         subtask_price: int = 0
 
