@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 import subprocess
+import unittest
 from functools import wraps
 from typing import (
     Callable,
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 KEYSTORE_DIR = 'rinkeby/keys'
 
 
-def disable_key_reuse(test_function: Callable)-> Callable:
+def disable_key_reuse(test_function: Callable) -> Callable:
     @wraps(test_function)
     def wrap(*args, **kwargs) -> None:
         args[0].reuse_keys = False
@@ -30,7 +31,7 @@ def disable_key_reuse(test_function: Callable)-> Callable:
     return wrap
 
 
-class NodeTestBase:
+class NodeTestBase(unittest.TestCase):
     def setUp(self):
         self.test_dir = pathlib.Path(get_testdir()) / self._relative_id()
         self.reuse_keys = True
@@ -48,11 +49,10 @@ class NodeTestBase:
             key_reuse.mark_keys_ready()
 
     def _relative_id(self):
-        from . import __name__ as parent_name
-        return self.id().replace(parent_name + '.', '')
+        return self.id().replace(__name__ + '.', '')
 
     def _can_recycle_keys(self) -> bool:
-        return all([conftest.NodeKeyReuse.get().keys_ready, self.reuse_keys])
+        return conftest.NodeKeyReuse.get().keys_ready and self.reuse_keys
 
     @staticmethod
     def _get_nodes_ids(test_path: str) -> 'List[NodeId]':
@@ -68,7 +68,7 @@ class NodeTestBase:
             self.datadirs[node_id] = datadir
             os.makedirs(datadir)
 
-        cwd = pathlib.Path(os.path.realpath(__file__)).parent.parent
+        cwd = pathlib.Path(__file__).resolve().parent.parent
         test_args = [
             str(cwd / 'run_test.py'),
             test_path,
@@ -92,7 +92,8 @@ class NodeTestBase:
         if self._can_recycle_keys():
             self._recycle_keys()
 
-        return subprocess.call(args=test_args)
+        exit_code = subprocess.call(args=test_args)
+        self.assertEqual(exit_code, 0)
 
     @staticmethod
     def _replace_keystore(src: pathlib.Path, dst: pathlib.Path) -> None:
