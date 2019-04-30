@@ -361,7 +361,6 @@ class NodeTestPlaybook:
                 target_node=NodeId.provider),
         partial(step_verify_connection, node_id=NodeId.requestor,
                 target_node=NodeId.provider),
-        partial(step_wait_for_gnt, node_id=NodeId.provider),
         partial(step_wait_for_gnt, node_id=NodeId.requestor),
         step_get_known_tasks,
     )
