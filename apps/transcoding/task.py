@@ -289,7 +289,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary: dict, definition):
-        
+
         # Override default output_file path constructed in parent class.
         # We don't want to append timestamp to directory.
         options = cls._get_required_field(dictionary, 'options',
