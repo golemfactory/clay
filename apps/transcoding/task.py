@@ -235,6 +235,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.output_container = output_container
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
+
         logger.debug(
             'Transcoding task definition has been built [definition={}]'
             .format(task_def.__dict__))
@@ -288,10 +289,12 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary: dict, definition):
-        parent = super(TranscodingTaskBuilder, cls)
-        path = parent.get_output_path(dictionary, definition)
+
+        # Override default output_file path constructed in parent class.
+        # We don't want to append timestamp to directory.
         options = cls._get_required_field(dictionary, 'options',
                                           is_type_of(dict))
+        path = os.path.join(options['output_path'], definition.name)
         container = options.get('container', cls._get_presets(
             definition.options.input_stream_path))
         return '{}.{}'.format(path, container)
