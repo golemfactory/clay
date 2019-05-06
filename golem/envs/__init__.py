@@ -179,7 +179,7 @@ class EnvStatus(Enum):
     PREPARING = 1
     ENABLED = 2
     CLEANING_UP = 3
-    # TODO: Add 'ERROR' status?
+    ERROR = 4
 
     def __str__(self) -> str:
         return self.name
@@ -207,7 +207,8 @@ class Environment(ABC):
 
     @abstractmethod
     def cleanup(self) -> Deferred:
-        """ Deactivate the Environment. Assumes current status is 'ENABLED'. """
+        """ Deactivate the Environment. Assumes current status is 'ENABLED' or
+            'ERROR'. """
         raise NotImplementedError
 
     @classmethod
@@ -256,8 +257,7 @@ class Environment(ABC):
 
     @classmethod
     @abstractmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) \
-            -> Payload:
+    def parse_payload(cls, payload_dict: Dict[str, Any]) -> Payload:
         """ Build Payload struct from supplied dictionary. Returned value
             is of appropriate type for calling runtime(). """
         raise NotImplementedError

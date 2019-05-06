@@ -231,7 +231,7 @@ class TestPrepare(TestDockerCPUEnv):
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.DISABLED)
+            self.assertEqual(self.env.status(), EnvStatus.ERROR)
             self.logger.exception.assert_called_once()
         deferred.addCallback(_check)
 
@@ -272,7 +272,7 @@ class TestCleanup(TestDockerCPUEnv):
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.ENABLED)
+            self.assertEqual(self.env.status(), EnvStatus.ERROR)
             self.logger.exception.assert_called_once()
         deferred.addCallback(_check)
 
@@ -426,6 +426,24 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
         self.env._constrain_hypervisor(config)
         self.hypervisor.reconfig_ctx.assert_not_called()
         self.hypervisor.constrain.assert_not_called()
+
+    def test_constrain_error(self):
+        config = DockerCPUConfig(
+            work_dir=Mock(),
+            memory_mb=1000,
+            cpu_count=1
+        )
+        self.hypervisor.constraints.return_value = {
+            mem: 2000,
+            cpu: 2
+        }
+        self.hypervisor.reconfig_ctx = MagicMock()
+        self.hypervisor.constrain.side_effect = OSError
+
+        with self.assertRaises(OSError):
+            self.env._constrain_hypervisor(config)
+        self.assertEqual(self.env.status(), EnvStatus.ERROR)
+        self.logger.exception.assert_called_once()
 
     def test_config_changed(self):
         config = DockerCPUConfig(
