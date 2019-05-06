@@ -299,7 +299,7 @@ class TestMetadata(TestCase):
             metadata.description, DockerCPUEnvironment.ENV_DESCRIPTION)
 
 
-class TestPreparePrerequisites(TestDockerCPUEnv):
+class TestInstallPrerequisites(TestDockerCPUEnv):
 
     def test_wrong_type(self):
         with self.assertRaises(AssertionError):
@@ -337,6 +337,25 @@ class TestPreparePrerequisites(TestDockerCPUEnv):
 
         def _check(return_value):
             self.assertFalse(return_value)
+        deferred.addCallback(_check)
+        return deferred
+
+    def test_ok(self):
+        self.env._status = EnvStatus.ENABLED
+        self._patch_whitelist(True)
+        client_patch = patch("local_client")
+        client_mock = client_patch.start()
+        self.addCleanup(client_patch.stop)
+
+        prereqs = Mock(spec=DockerPrerequisites)
+        deferred = self.env.install_prerequisites(prereqs)
+
+        def _check(return_value):
+            self.assertTrue(return_value)
+            client_mock().pull.assert_called_once_with(
+                prereqs.image,
+                tag=prereqs.tag
+            )
         deferred.addCallback(_check)
         return deferred
 
