@@ -372,11 +372,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             quality=get_provider_efficacy(self.key_id).vector,
         )
 
+        d = OfferPool.add(msg.task_id, offer)
         logger.debug(
             "Offer accepted & added to pool. offer=%s",
             offer,
         )
-        d = OfferPool.add(msg.task_id, offer)
         d.addCallback(
             functools.partial(
                 self._offer_chosen,

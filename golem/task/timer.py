@@ -51,6 +51,10 @@ class ActionTimer:
 
 
 class ThirstTimer(ActionTimer):
+    """
+    Enables calculation of profit factor that adjusts expected profit as
+    proposed in https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
 
     _ALPHA: ClassVar[float] = 0.00001
     _BETA: ClassVar[float] = 4 * _ALPHA
@@ -60,7 +64,7 @@ class ThirstTimer(ActionTimer):
         self._thirst = 0.2
 
     @property
-    def thirst(self):
+    def profit_factor(self):
         return self._thirst *\
             math.exp(-self._ALPHA * (time.time() - self._finished))
 

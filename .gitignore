@@ -81,3 +81,6 @@ apps/dummy/test_tmp
 .python-version
 luxrender-output.png
 .testmondata
+
+# rust
+rust/golem/Cargo.lock
