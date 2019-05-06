@@ -37,6 +37,7 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         exit_code = self._run_test('golem.exr')
         self.assertEqual(exit_code, 0)
 
+    @unittest.skipIf(True, "Disabled until verification is fixed #4143")
     def test_jpeg(self):
         exit_code = self._run_test('golem.jpeg')
         self.assertEqual(exit_code, 0)
