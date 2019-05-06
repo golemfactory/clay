@@ -264,12 +264,6 @@ class TestRestartTask(ProviderBase):
         assert task.header.task_id != new_task_id
         assert task_manager.tasks_states[
             task.header.task_id].status == taskstate.TaskStatus.restarted
-        old_subtask_states = task_manager.tasks_states[task.header.task_id] \
-            .subtask_states.values()
-        assert all(
-            ss.subtask_status == taskstate.SubtaskStatus.restarted
-            for ss
-            in old_subtask_states)
 
 
 class TestGetMaskForTask(test_client.TestClientBase):
@@ -382,11 +376,10 @@ class TestEnqueueNewTask(ProviderBase):
     @mock.patch('golem.task.rpc.logger.error')
     @mock.patch('golem.task.rpc._ensure_task_deposit')
     def test_ethereum_error(self, deposit_mock, log_mock, *_):
-        from golem.ethereum import exceptions as eth_exceptions
-        deposit_mock.side_effect = eth_exceptions.EthereumError('TEST ERROR')
+        deposit_mock.side_effect = exceptions.EthereumError('TEST ERROR')
         task = self.client.task_manager.create_task(self.t_dict)
         deferred = rpc.enqueue_new_task(self.client, task)
-        with self.assertRaises(eth_exceptions.EthereumError):
+        with self.assertRaises(exceptions.EthereumError):
             golem_deferred.sync_wait(deferred)
         log_mock.assert_called_once()
 
@@ -856,7 +849,7 @@ class TestGetFragments(ProviderBase):
         }
         self.provider.task_manager.tasks[task_id] = mock_task
 
-        task_fragments, error = self.provider.get_fragments(task_id)
+        task_fragments, _error = self.provider.get_fragments(task_id)
 
         self.assertTrue(len(task_fragments) == subtasks_count)
         self.assertTrue(len(task_fragments[1]) == 1)

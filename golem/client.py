@@ -537,8 +537,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 task = tm.tasks[task_id]
                 unfinished_subtasks = task.get_total_tasks()
                 for subtask_state in task_state.subtask_states.values():
-                    if subtask_state.subtask_status is not None and\
-                            subtask_state.subtask_status.is_finished():
+                    if subtask_state.status is not None and\
+                            subtask_state.status.is_finished():
                         unfinished_subtasks -= 1
                 try:
                     self.funds_locker.lock_funds(
@@ -637,7 +637,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
-    @report_calls(Component.client, 'quit', once=True)
     def quit(self):
         logger.info('Shutting down ...')
         self.stop()
