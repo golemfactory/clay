@@ -341,7 +341,7 @@ class DockerCPUEnvironment(Environment):
                 self._hypervisor.setup()
             except Exception:
                 logger.exception("Preparing environment failed.")
-                self._status = EnvStatus.DISABLED
+                self._status = EnvStatus.ERROR
                 raise
             else:
                 logger.info("Environment successfully enabled.")
@@ -350,7 +350,7 @@ class DockerCPUEnvironment(Environment):
         return deferToThread(_prepare)
 
     def cleanup(self) -> Deferred:
-        if self._status != EnvStatus.ENABLED:
+        if self._status not in [EnvStatus.ENABLED, EnvStatus.ERROR]:
             raise ValueError(f"Cannot clean up because environment is in "
                              f"invalid state: '{self._status}'")
         self._status = EnvStatus.CLEANING_UP
@@ -361,7 +361,7 @@ class DockerCPUEnvironment(Environment):
                 self._hypervisor.quit()
             except Exception:
                 logger.exception("Cleaning up environment failed.")
-                self._status = EnvStatus.ENABLED
+                self._status = EnvStatus.ERROR
                 raise
             else:
                 logger.info("Environment successfully disabled.")
@@ -458,6 +458,7 @@ class DockerCPUEnvironment(Environment):
                     self._hypervisor.constrain(**target)
             except Exception:
                 logger.exception("Reconfiguring hypervisor failed.")
+                self._status = EnvStatus.ERROR
                 raise
             else:
                 logger.info("Hypervisor successfully reconfigured.")
