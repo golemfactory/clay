@@ -35,7 +35,7 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage
+from golem.report import StatusPublisher, Component, Stage, report_calls
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
@@ -183,6 +183,7 @@ class Node(HardwarePresetsMixin):
             logger.exception("Application error")
 
     @rpc_utils.expose('ui.quit')
+    @report_calls(Component.client, 'shutdown')
     def quit(self) -> None:
 
         def _quit():

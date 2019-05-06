@@ -637,7 +637,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
-    @report_calls(Component.client, 'quit', once=True)
     def quit(self):
         logger.info('Shutting down ...')
         self.stop()
