@@ -3,15 +3,26 @@ import os
 import subprocess
 from abc import ABCMeta
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Optional, ClassVar, Any, List
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
-    CONSTRAINT_KEYS
+    CONSTRAINT_KEYS, DNS_SERVERS
+from golem.core.json_config import JsonFileConfig
 from golem.docker.hypervisor import Hypervisor
 from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
+
+
+class DockerMachineDaemonConfig(JsonFileConfig):
+
+    def __init__(self, vm_name: str) -> None:
+        super().__init__(
+            Path.home() / ".docker" / "machine" / "machines" / vm_name
+            / "config.json"
+        )
 
 
 class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
@@ -25,6 +36,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
                  vm_name: str = DOCKER_VM_NAME) -> None:
         super().__init__(get_config_fn, vm_name)
         self._config_dir = None
+        self._daemon_config = DockerMachineDaemonConfig(vm_name)
 
     def setup(self) -> None:
         if self._vm_name not in self.vms:
@@ -32,6 +44,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
                 self._failed_to_create()
                 raise Exception('Docker: No vm available and failed to create')
 
+        self._configure_daemon()
         if not self.vm_running():
             self.restore_vm()
         self._set_env()
@@ -44,6 +57,16 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     # pylint: disable=unused-argument
     def _parse_create_params(self, **params: Any) -> List[str]:
         return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
+
+    def _configure_daemon(self) -> None:
+        update = {
+            'HostOptions': {
+                'EngineOptions': {
+                    'Dns': DNS_SERVERS
+                }
+            }
+        }
+        self._daemon_config.update(update)
 
     @report_calls(Component.hypervisor, 'vm.create')
     def create(self, vm_name: Optional[str] = None, **params) -> bool:

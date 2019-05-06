@@ -1,15 +1,34 @@
-import json
 import logging
 import os
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict, Optional
 
 from golem.docker.commands.docker_for_mac import DockerForMacCommandHandler
-from golem.docker.config import CONSTRAINT_KEYS
+from golem.docker.config import CONSTRAINT_KEYS, GetConfigFunction, \
+    DOCKER_VM_NAME, DNS_SERVERS
+from golem.core.json_config import JsonFileConfig
 from golem.docker.hypervisor import Hypervisor
 from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
+
+
+class DockerForMacConfig(JsonFileConfig):
+
+    def __init__(self) -> None:
+        super().__init__(
+            Path.home() / "Library" / "Group Containers" /
+            "group.com.docker" / "settings.json"
+        )
+
+
+class DockerForMacDaemonConfig(JsonFileConfig):
+
+    def __init__(self) -> None:
+        super().__init__(
+            Path.home() / ".docker" / "daemon.json"
+        )
 
 
 class DockerForMac(Hypervisor):
@@ -17,22 +36,18 @@ class DockerForMac(Hypervisor):
 
     COMMAND_HANDLER = DockerForMacCommandHandler
 
-    CONFIG_FILE = os.path.expanduser(
-        "~/Library/Group Containers/group.com.docker/settings.json"
-    )
     CONFIG_KEYS = dict(
         cpu='cpus',
         mem='memoryMiB',
     )
-    DAEMON_CONFIG_FILE = os.path.expanduser(
-        "~/.docker/daemon.json"
-    )
 
-    DNS_SERVERS = [
-        '1.1.1.1',  # Cloudflare
-        '208.67.222.222',  # OpenDNS
-        '8.8.8.8',  # Google
-    ]
+    def __init__(self, get_config: GetConfigFunction,
+                 vm_name: str = DOCKER_VM_NAME) -> None:
+
+        super().__init__(get_config, vm_name)
+
+        self._config = DockerForMacConfig()
+        self._daemon_config = DockerForMacDaemonConfig()
 
     def setup(self) -> None:
         if self.vm_running():
@@ -61,12 +76,12 @@ class DockerForMac(Hypervisor):
         }
 
         try:
-            self._update_config(update)
+            self._config.update(update)
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Docker for Mac: unable to update config: %r", e)
 
     def constraints(self, name: Optional[str] = None) -> Dict:
-        config = self._read_config()
+        config = self._config.read()
         constraints = dict()
 
         try:
@@ -82,41 +97,8 @@ class DockerForMac(Hypervisor):
         return constraints
 
     def _configure_daemon(self) -> None:
-        update = {'dns': self.DNS_SERVERS}
-        self._update_daemon_config(update)
-
-    def _read_config(self) -> Dict:
-        if not os.path.exists(self.CONFIG_FILE):
-            self.start_vm()
-        if not os.path.exists(self.CONFIG_FILE):
-            raise RuntimeError('Docker for Mac: unable to read VM config')
-
-        with open(self.CONFIG_FILE) as config_file:
-            return json.load(config_file)
-
-    def _update_config(self, update: Dict) -> None:
-        config = self._read_config()
-        config.update(update)
-
-        with open(self.CONFIG_FILE, 'w') as config_file:
-            json.dump(config, config_file)
-
-    def _read_daemon_config(self) -> Dict:
-        if not os.path.exists(self.DAEMON_CONFIG_FILE):
-            return dict()
-
-        with open(self.DAEMON_CONFIG_FILE) as config_file:
-            return json.load(config_file)
-
-    def _update_daemon_config(self, update: Dict) -> None:
-        config = self._read_daemon_config()
-        config.update(update)
-
-        docker_dir = os.path.dirname(self.DAEMON_CONFIG_FILE)
-        os.makedirs(docker_dir, mode=0o750, exist_ok=True)
-
-        with open(self.DAEMON_CONFIG_FILE, 'w') as config_file:
-            json.dump(config, config_file)
+        update = {'dns': DNS_SERVERS}
+        self._daemon_config.update(update)
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')

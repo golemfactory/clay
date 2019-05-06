@@ -1,5 +1,6 @@
 import logging
 import os
+
 from typing import Any, Callable, Dict, Optional
 
 from golem import hardware
@@ -45,6 +46,11 @@ DEFAULTS = dict(
     cpu_count=1
 )
 
+DNS_SERVERS = [
+    '1.1.1.1',  # Cloudflare
+    '208.67.222.222',  # OpenDNS
+    '8.8.8.8',  # Google
+]
 
 GetConfigFunction = Callable[[], Dict[str, Any]]
 
