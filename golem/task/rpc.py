@@ -23,7 +23,6 @@ from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
-from golem.task.taskstate import SubtaskState
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -568,7 +567,7 @@ class ClientProvider:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: typing.Dict[str, SubtaskState] =\
+        frame_subtasks: typing.Dict[str, dict] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
@@ -582,7 +581,7 @@ class ClientProvider:
             for subtask_id in frame_subtasks:
                 self.client.restart_subtask(subtask_id)
         else:
-            self.restart_subtasks_from_task(task_id, frame_subtasks.keys())
+            self.restart_subtasks_from_task(task_id, frame_subtasks)
 
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(

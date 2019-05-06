@@ -621,10 +621,10 @@ class TestRestartFrameSubtasks(ProviderBase):
             self, mock_restart_single, mock_restart_multiple, *_):
         mock_subtask_id_1 = 'mock-subtask-id-1'
         mock_subtask_id_2 = 'mock-subtask-id-2'
-        mock_frame_subtasks = {
-            mock_subtask_id_1: Mock(),
-            mock_subtask_id_2: Mock()
-        }
+        mock_frame_subtasks = frozenset((
+            mock_subtask_id_1,
+            mock_subtask_id_2,
+        ))
 
         with mock.patch(
             'golem.task.taskmanager.TaskManager.get_frame_subtasks',
@@ -638,7 +638,7 @@ class TestRestartFrameSubtasks(ProviderBase):
         mock_restart_single.assert_not_called()
         mock_restart_multiple.assert_called_once_with(
             self.task.header.task_id,
-            mock_frame_subtasks.keys()
+            mock_frame_subtasks,
         )
 
     @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')

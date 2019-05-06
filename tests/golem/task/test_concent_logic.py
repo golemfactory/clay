@@ -5,7 +5,6 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
-import unittest
 import unittest.mock as mock
 
 from freezegun import freeze_time
@@ -24,6 +23,8 @@ from golem.network import history
 from golem.task import tasksession
 from golem.task import taskstate
 from golem.tools.testwithreactor import TestWithReactor
+
+from tests.factories.task import taskstate as taskstate_factory
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
@@ -258,11 +259,12 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         ctk.get_node_for_task_id.return_value = self.task_session.key_id
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
             self.task_session.key_id
-        task_state.subtask_states[self.msg.subtask_id] = subtask_state = \
-            taskstate.SubtaskState()
-        subtask_state.deadline = self.msg.task_to_compute.compute_task_def[
-            'deadline'
-        ]
+        task_state.subtask_states[self.msg.subtask_id] =\
+            taskstate_factory.SubtaskState(
+                deadline=self.msg.task_to_compute.compute_task_def[
+                    'deadline'
+                ],
+            )
 
     def assert_reject_reason(self, send_mock, reason, **kwargs):
         send_mock.assert_called_once_with(mock.ANY)

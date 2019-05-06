@@ -45,7 +45,6 @@ from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
 
-from tests import factories
 from tests.factories import hyperdrive
 
 
@@ -254,6 +253,19 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ))
         assert not ts2.task_manager.task_computation_failure.called
 
+    def test_cannot_compute_task_cancelled(self):
+        ts = self._get_requestor_tasksession()
+        msg = msg_factories.tasks.CannotComputeTaskFactory(
+            reason=message.tasks.CannotComputeTask.REASON.OfferCancelled,
+        )
+        ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
+        ts._react_to_cannot_compute_task(msg)
+        ts.task_manager.task_computation_cancelled.assert_called_once_with(
+            msg.subtask_id,
+            msg.reason,
+            ANY,
+        )
+
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
@@ -264,7 +276,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ctd = msg_factories.tasks.ComputeTaskDefFactory(task_id=wtct.task_id)
         ctd["resources"] = self.additional_dir_content([5, [2], [4]])
         ctd["deadline"] = timeout_to_deadline(120)
-        task_state = self._set_task_state()
+        _task_state = self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
         ts.task_manager.should_wait_for_node.return_value = False
