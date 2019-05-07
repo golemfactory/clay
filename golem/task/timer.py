@@ -67,8 +67,7 @@ class ThirstTimer(ActionTimer):
     @property
     def profit_factor(self):
         thrist = time.time() - self._finished
-        return self._profit_factor * \
-               math.exp(-self._ALPHA * thrist)
+        return self._profit_factor * math.exp(-self._ALPHA * thrist)
 
     def _finish(self) -> None:
         super()._finish()
