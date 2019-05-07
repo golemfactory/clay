@@ -58,7 +58,7 @@ class ThirstTimer(ActionTimer):
 
     _ALPHA: ClassVar[float] = 0.00001
     _BETA: ClassVar[float] = 4 * _ALPHA
-    _INITIAL_PROFIT_FACTOR = 0.2
+    _INITIAL_PROFIT_FACTOR: ClassVar[float] = 0.2
 
     def __init__(self) -> None:
         super().__init__()
