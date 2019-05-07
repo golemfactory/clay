@@ -753,6 +753,8 @@ class TaskManager(TaskEventListener):
                                      subtask_id=subtask_id,
                                      op=SubtaskOp.FINISHED)
 
+            verification_finished()
+
             if self.tasks_states[task_id].status in self.activeStatus:
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
@@ -768,7 +770,6 @@ class TaskManager(TaskEventListener):
                                        "task_id=%r", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
-            verification_finished()
 
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
