@@ -1,29 +1,54 @@
 #!/usr/bin/env python
 import argparse
-from importlib import import_module
-from typing import (
-    List,
-    TYPE_CHECKING,
-    Tuple,
-    Type,
-    Union,
-)
+from typing import TYPE_CHECKING
 
 from golem.config.environments import set_environment
 
+from scripts.node_integration_tests.playbook_loader import \
+    get_config_and_playbook_class
 from scripts.node_integration_tests.playbooks import run_playbook
-from scripts.node_integration_tests.playbooks.base import NodeTestPlaybook
+from scripts.node_integration_tests.playbooks.test_config_base import NodeId
 
 if TYPE_CHECKING:
     from scripts.node_integration_tests.playbooks.test_config_base \
-        import NodeConfig, TestConfigBase
+        import TestConfigBase
+
+
+class DictAction(argparse.Action):
+    """
+    This action must be used by arguments with nargs=2.
+    It collects arguments where first argument is a key in a dictionary and
+    second is value.
+    If a key is repeated, the value of last occurence is used.
+
+    Example:
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--foo', nargs=2, action=DictAction)
+    args = parser.parse_args([
+        '--foo', 'a', '1',
+        '--foo', 'b', '2',
+        '--foo', 'a', '3',
+    ])
+    assert args.foo == {
+        'a': '3',
+        'b': '2',
+    }
+    """
+
+    def __call__(self, parser, namespace, values, option_string=None) -> None:
+        assert(self.nargs == 2)
+        dest = getattr(namespace, self.dest)
+        if dest is None:
+            setattr(namespace, self.dest, {values[0]: values[1]})
+        else:
+            dest[values[0]] = values[1]
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Runs a single test playbook.")
     parser.add_argument(
         'test_path',
-        help="a dot-separated path to the test moduse within `playbooks`,"
+        help="a dot-separated path to the test module within `playbooks`,"
              " e.g. golem.regular_run",
     )
     parser.add_argument(
@@ -35,12 +60,12 @@ def parse_args() -> argparse.Namespace:
         help='the task settings set to use, see `tasks.__init__.py`'
     )
     parser.add_argument(
-        '--provider-datadir',
-        help="the provider node's datadir",
-    )
-    parser.add_argument(
-        '--requestor-datadir',
-        help="the requestor node's datadir",
+        '--datadir',
+        nargs=2,
+        action=DictAction,
+        metavar=('NODE', 'PATH'),
+        help=("override datadir path for given node. standard node names are"
+              f" '{NodeId.requestor.value}' and '{NodeId.provider.value}'")
     )
     parser.add_argument(
         '--dump-output-on-fail',
@@ -61,48 +86,6 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def get_config_and_playbook_class(test_path: str) \
-        -> 'Tuple[TestConfigBase, Type[NodeTestPlaybook]]':
-    PLAYBOOKS_PATH = 'scripts.node_integration_tests.playbooks'
-    TEST_CONFIG_MODULE_NAME = "test_config"
-    PLAYBOOK_MODULE_NAME = "playbook"
-    CONFIG_CLASS_NAME = "TestConfig"
-    PLAYBOOK_CLASS_NAME = "Playbook"
-
-    try:
-        # simple test, only with config
-        config_module = import_module(f"{PLAYBOOKS_PATH}.{test_path}")
-        if hasattr(config_module, CONFIG_CLASS_NAME):
-            return getattr(config_module, CONFIG_CLASS_NAME)(), NodeTestPlaybook
-
-        # complicated test, with config and custom playbook
-        config_module = import_module(
-            f"{PLAYBOOKS_PATH}.{test_path}.{TEST_CONFIG_MODULE_NAME}")
-        playbook_module = import_module(
-            f"{PLAYBOOKS_PATH}.{test_path}.{PLAYBOOK_MODULE_NAME}")
-        return (getattr(config_module, CONFIG_CLASS_NAME)(),
-                getattr(playbook_module, PLAYBOOK_CLASS_NAME))
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            f"The provided playbook `{test_path}` "
-            "couldn't be located in `playbooks`"
-        ) from e
-
-
-def override_datadir(
-        role_name: str,
-        node_configs: 'Union[None, NodeConfig, List[NodeConfig]]',
-        datadir: str) -> None:
-    if node_configs is None:
-        raise Exception(f"can't override datadir for {role_name},"
-                        " because it's disabled")
-    if isinstance(node_configs, list):
-        for node_config in node_configs:
-            node_config.datadir = datadir
-    else:
-        node_configs.datadir = datadir
-
-
 def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
     for k, v in vars(args).items():
         if v is None:
@@ -115,10 +98,18 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
                 'dump_output_on_crash',
         ]:
             setattr(config, k, v)
-        elif k == 'provider_datadir':
-            override_datadir('provider', config.provider, v)
-        elif k == 'requestor_datadir':
-            override_datadir('requestor', config.requestor, v)
+        elif k == 'datadir':
+            for node_name, datadir in v.items():
+                node_id = NodeId(node_name)
+                if node_id not in config.nodes:
+                    raise Exception("can't override datadir for undefined node"
+                                    f" '{node_name}'")
+                node_configs = config.nodes[node_id]
+                if isinstance(node_configs, list):
+                    for node_config in node_configs:
+                        node_config.datadir = datadir
+                else:
+                    node_configs.datadir = datadir
 
 
 def main():
