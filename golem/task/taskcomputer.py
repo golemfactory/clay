@@ -165,7 +165,7 @@ class TaskComputer(object):
             # thus task withholding won't make profit
             work_time_to_be_paid = task_header.subtask_timeout
 
-        except KeyError:
+        except (KeyError, AssertionError):
             logger.error("Task header not found in task keeper. "
                          "task_id=%r, subtask_id=%r",
                          task_id, subtask_id)
