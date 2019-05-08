@@ -80,24 +80,46 @@ class DockerOutput(RuntimeOutput):
             yield self._decode(buffer)
 
 
+class InputSocket:
+    """ Wrapper class providing uniform interface for different types of
+        sockets. It is necessary due to poor design of attach_socket().
+        Stdin socket is thread-safe (all operations use lock). """
+
+    def __init__(self, sock: Union[WrappedSocket, SocketIO]) -> None:
+        if isinstance(sock, WrappedSocket):
+            self._sock: Union[WrappedSocket, socket] = sock
+        elif isinstance(sock, SocketIO):
+            self._sock = sock._sock
+        else:
+            raise TypeError(f"Invalid socket class: {sock.__class__}")
+        self._lock = Lock()
+
+    def write(self, data: bytes) -> None:
+        with self._lock:
+            self._sock.sendall(data)
+
+    def close(self) -> None:
+        with self._lock:
+            if isinstance(self._sock, socket):
+                self._sock.shutdown(SHUT_WR)
+            else:
+                self._sock.shutdown()
+            self._sock.close()
+
+
 class DockerInput(RuntimeInput):
 
-    def __init__(
-            self,
-            write: Callable[[bytes], None],
-            close: Callable[[], None],
-            encoding: Optional[str] = None
-    ) -> None:
+    def __init__(self, sock: InputSocket, encoding: Optional[str] = None) \
+            -> None:
         super().__init__(encoding=encoding)
-        self._write = write
-        self._close = close
+        self._sock = sock
 
     def write(self, data: Union[str, bytes]) -> None:
         encoded = self._encode(data)
-        self._write(encoded)
+        self._sock.write(encoded)
 
     def close(self):
-        self._close()
+        self._sock.close()
 
 
 class DockerCPURuntime(Runtime):
@@ -117,8 +139,7 @@ class DockerCPURuntime(Runtime):
 
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
-        self._stdin_socket: Optional[Union[socket, WrappedSocket]] = None
-        self._stdin_lock = Lock()
+        self._stdin_socket: Optional[InputSocket] = None
         self._container_config = client.create_container_config(
             image=image,
             volumes=volumes,
@@ -205,12 +226,7 @@ class DockerCPURuntime(Runtime):
                 container_id, params={'stdin': True, 'stream': True}
             )
             # Due to terrible design of attach_socket() we have to do this
-            if isinstance(sock, WrappedSocket):
-                self._stdin_socket = sock
-            elif isinstance(sock, SocketIO):
-                self._stdin_socket = sock._sock
-            else:
-                raise RuntimeError(f"Invalid socket class: {sock.__class__}")
+            self._stdin_socket = InputSocket(sock)
 
         return deferToThread(_prepare)
 
@@ -231,7 +247,7 @@ class DockerCPURuntime(Runtime):
         # Close STDIN in case it wasn't closed on stop()
         def _close_stdin(res):
             if self._stdin_socket is not None:
-                self._close_stdin()
+                self._stdin_socket.close()
             return res
 
         deferred_cleanup = deferToThread(_cleanup)
@@ -287,27 +303,13 @@ class DockerCPURuntime(Runtime):
 
         def _close_stdin(res):
             if self._stdin_socket is not None:
-                self._close_stdin()
+                self._stdin_socket.close()
             return res
 
         deferred_stop = deferToThread(_stop)
         deferred_stop.addBoth(_join_status_update_thread)
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop
-
-    def _write_stdin(self, data: bytes) -> None:
-        assert self._stdin_socket is not None
-        with self._stdin_lock:
-            self._stdin_socket.sendall(data)
-
-    def _close_stdin(self) -> None:
-        assert self._stdin_socket is not None
-        with self._stdin_lock:
-            if isinstance(self._stdin_socket, socket):
-                self._stdin_socket.shutdown(SHUT_WR)
-            else:
-                self._stdin_socket.shutdown()
-            self._stdin_socket.close()
 
     def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
         self._assert_status(
@@ -317,11 +319,7 @@ class DockerCPURuntime(Runtime):
                 RuntimeStatus.RUNNING
             ])
         assert self._stdin_socket is not None
-        return DockerInput(
-            write=self._write_stdin,
-            close=self._close_stdin,
-            encoding=encoding
-        )
+        return DockerInput(sock=self._stdin_socket, encoding=encoding)
 
     def _get_raw_output(self, stdout=False, stderr=False, stream=True) \
             -> Iterable[bytes]:
