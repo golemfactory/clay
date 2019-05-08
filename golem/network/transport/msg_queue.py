@@ -5,22 +5,26 @@ import typing
 
 import golem_messages
 from golem_messages import exceptions as msg_exceptions
+from golem_messages import message
 
 from golem import decorators
 from golem import model
 from golem.core import variables
 
 
-if typing.TYPE_CHECKING:
-    # pylint: disable=ungrouped-imports,unused-import
-    from golem_messages import message
-
-
 logger = logging.getLogger(__name__)
 READ_LOCK = threading.Lock()
+# CLasses that aren't allowed in queue
+FORBIDDEN_CLASSES = (
+    message.base.Disconnect,
+    message.base.Hello,
+    message.base.RandVal,
+)
 
 
-def put(node_id: str, msg: 'message.base.Base') -> None:
+def put(node_id: str, msg: message.base.Message) -> None:
+    assert not isinstance(msg, FORBIDDEN_CLASSES),\
+        "Disconnect message shouldn't be in a queue"
     db_model = model.QueuedMessage.from_message(node_id, msg)
     db_model.save()
 

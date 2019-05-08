@@ -1,6 +1,8 @@
-from ..base import NodeTestPlaybook
+from ..test_config_base import TestConfigBase
 
 
-class NoConcent(NodeTestPlaybook):
-    provider_node_script = 'provider/no_concent'
-    requestor_node_script = 'requestor/no_concent'
+class TestConfig(TestConfigBase):
+    def __init__(self):
+        super().__init__()
+        self.requestor.concent = 'disabled'
+        self.provider.concent = 'disabled'

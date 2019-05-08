@@ -4,7 +4,7 @@ RUN apt -y update && apt -y install autoconf2.13 clang-6.0 --no-install-recommen
 
 RUN git clone https://github.com/golemfactory/sp-wasm.git
 WORKDIR /sp-wasm
-RUN git checkout tags/0.2.0
+RUN git checkout tags/0.2.1
 ENV SHELL=/bin/bash
 ENV CC=clang-6.0
 ENV CPP="clang-6.0 -E"

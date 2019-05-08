@@ -12,7 +12,7 @@ The tests consist of two major parts:
 * `golem` - the tests that strictly test interactions between
 two golem instances
 * `concent`- the tests that run instance pairs in such way as to trigger
-Concent Service calls and test whether the task runs still complete
+Concent Service calls and test whether the tasks still complete
 correctly when Concent is involved.
 
 ## How the tests work
@@ -121,7 +121,7 @@ you to specify additional parameters.
 example:
 
 ```
-./scripts/node_integration_tests/run_test.py golem.regular_run.RegularRun
+./scripts/node_integration_tests/run_test.py golem.regular_run
 ```
 
 full usage:
@@ -131,13 +131,13 @@ run_test.py [-h] [--task-package TASK_PACKAGE]
             [--task-settings TASK_SETTINGS]
             [--provider-datadir PROVIDER_DATADIR]
             [--requestor-datadir REQUESTOR_DATADIR] [--mainnet]
-            playbook_class
+            test_path
 
 Runs a single test playbook.
 
 positional arguments:
-  playbook_class        a dot-separated path to the playbook class within
-                        `playbooks`, e.g. golem.regular_run.RegularRun
+  test_path             a dot-separated path to the playbook class within
+                        `playbooks`, e.g. golem.regular_run
 
 optional arguments:
   -h, --help            show this help message and exit

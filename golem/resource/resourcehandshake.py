@@ -4,6 +4,8 @@ import typing
 import uuid
 
 from golem_messages import message
+
+from golem.core import variables
 from golem.core.common import short_node_id
 
 logger = logging.getLogger('golem.resources')
@@ -59,9 +61,6 @@ class ResourceHandshake:
 
 
 class ResourceHandshakeSessionMixin:
-
-    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
-
     def __init__(self):
         self._interpretation = getattr(self, '_interpretation', dict())
         self.__set_msg_interpretations()
@@ -201,11 +200,6 @@ class ResourceHandshakeSessionMixin:
         self.task_server.task_computer.session_closed()
         self.dropped()
 
-    def _handshake_timeout(self, key_id):
-        handshake = self._get_handshake(key_id)
-        if handshake and not handshake.success():
-            self._handshake_error(key_id, 'timeout')
-
     # ########################
     #      ACCESS HELPERS
     # ########################
@@ -222,8 +216,10 @@ class ResourceHandshakeSessionMixin:
         self.task_server.resource_handshakes.pop(key_id, None)
 
     def _block_peer(self, key_id):
-        self.task_server.acl.disallow(key_id,
-                                      timeout_seconds=self.PEER_BLOCK_TIMEOUT)
+        self.task_server.acl.disallow(
+            key_id,
+            timeout_seconds=variables.ACL_BLOCK_TIMEOUT_RESOURCE,
+        )
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):

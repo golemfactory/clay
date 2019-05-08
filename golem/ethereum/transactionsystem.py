@@ -401,17 +401,27 @@ class TransactionSystem(LoopingCallService):
     def lock_funds_for_payments(self, price: int, num: int) -> None:
         if not self._payment_processor:
             raise Exception('Start was not called')
+        missing_funds: List[exceptions.MissingFunds] = []
+
         gnt = price * num
         if gnt > self.get_available_gnt():
-            raise exceptions.NotEnoughFunds(
-                gnt,
-                self.get_available_gnt(), 'GNT',
-            )
+            missing_funds.append(exceptions.MissingFunds(
+                required=gnt,
+                available=self.get_available_gnt(),
+                currency='GNT'
+            ))
 
         eth = self.eth_for_batch_payment(num)
         eth_available = self.get_available_eth()
         if eth > eth_available:
-            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+            missing_funds.append(exceptions.MissingFunds(
+                required=eth,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise exceptions.NotEnoughFunds(missing_funds)
 
         log.info(
             "Locking %.3f GNTB and %.8f ETH for %d payments",
@@ -538,10 +548,10 @@ class TransactionSystem(LoopingCallService):
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
-                raise exceptions.NotEnoughFunds(
-                    amount,
-                    self.get_available_eth(),
-                    currency,
+                raise exceptions.NotEnoughFunds.single_currency(
+                    required=amount,
+                    available=self.get_available_eth(),
+                    currency=currency,
                 )
             return self._sci.transfer_eth(
                 destination,
@@ -551,10 +561,10 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
-                raise exceptions.NotEnoughFunds(
-                    amount,
-                    self.get_available_gnt(),
-                    currency,
+                raise exceptions.NotEnoughFunds.single_currency(
+                    required=amount,
+                    available=self.get_available_gnt(),
+                    currency=currency,
                 )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
@@ -603,11 +613,8 @@ class TransactionSystem(LoopingCallService):
             tasks_num: int,
             force: bool = False,
     ) -> None:
-        required_deposit_difference = required - self.concent_balance()
+        missing_funds: List[exceptions.MissingFunds] = []
 
-        gntb_balance = self.get_available_gnt()
-        if gntb_balance < required_deposit_difference:
-            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         if self.gas_price >= self.gas_price_limit:
             if not force:
                 raise exceptions.LongTransactionTime("Gas price too high")
@@ -615,12 +622,28 @@ class TransactionSystem(LoopingCallService):
                 'Gas price is high. It can take some time to mine deposit.',
             )
 
+        required_deposit_difference = required - self.concent_balance()
+        gntb_balance = self.get_available_gnt()
+        if gntb_balance < required_deposit_difference:
+            missing_funds.append(exceptions.MissingFunds(
+                required=required,
+                available=gntb_balance,
+                currency='GNT'
+            ))
+
         eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
         eth_required = eth_for_batch_payment_for_task + self.eth_for_deposit()
 
         eth_available = self.get_available_eth()
         if eth_required > eth_available:
-            raise exceptions.NotEnoughFunds(eth_required, eth_available, 'ETH')
+            missing_funds.append(exceptions.MissingFunds(
+                required=eth_required,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise exceptions.NotEnoughDepositFunds(missing_funds)
 
     @defer.inlineCallbacks
     @gnt_deposit_required()
@@ -728,7 +751,7 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         if not self._config.FAUCET_ENABLED:
             return
-        if self._eth_balance < 0.01 * denoms.ether:
+        if self._eth_balance < 0.005 * denoms.ether:
             log.info("Requesting tETH from faucet")
             tETH_faucet_donate(self._sci.get_eth_address())
             return
