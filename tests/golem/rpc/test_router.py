@@ -11,7 +11,7 @@ import pprint
 import time
 from threading import Thread
 import typing
-from unittest import mock
+from unittest import mock, skip
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
@@ -208,6 +208,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         raise NotImplementedError()
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCNoAuth(_TestRouter):
 
     def test_rpc_no_auth(self):
@@ -319,6 +320,7 @@ class TestRPCNoAuth(_TestRouter):
             self.state.add_errors(e)
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class _TestRPCAuth(_TestRouter):
     DOCKER_METHOD = "docker_echo"
     NON_DOCKER_METHOD = "non_docker_echo"
@@ -373,6 +375,7 @@ class _TestRPCAuth(_TestRouter):
         self._run_test(error, port=CROSSBAR_PORT, path=self.path)
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.docker
     CSRB_BACKEND = xbar_users.golemapp
@@ -383,6 +386,7 @@ class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
         )
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -393,6 +397,7 @@ class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
         )
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -403,6 +408,7 @@ class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
         )
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.docker
     CSRB_BACKEND = xbar_users.golemapp
@@ -413,6 +419,7 @@ class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
         )
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.docker
@@ -423,6 +430,7 @@ class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
         )
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class _TestRPCAuthWrongSecret(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -441,6 +449,7 @@ class _TestRPCAuthWrongSecret(_TestRPCAuth):
 
 
 # pylint: disable=too-many-ancestors
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self.state.crsb_frontend_secret = self.cmanager.get_secret(
@@ -451,6 +460,7 @@ class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
 
 
 # pylint: disable=too-many-ancestors
+@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthWrongFrontendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self.state.crsb_frontend_secret = self.cmanager.get_secret(
