@@ -85,7 +85,7 @@ class TaskManager(TaskEventListener):
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(),
             finished_cb=None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -571,7 +571,8 @@ class TaskManager(TaskEventListener):
         # Map new subtasks to old by 'start_task'
         subtasks_to_copy = {
             subtask['start_task']: subtask for subtask in
-            map(lambda id_: old_task.subtasks_given[id_], subtask_ids_to_copy)
+            map(lambda id_: old_task.subtasks_given[id_],  # type: ignore
+                subtask_ids_to_copy)
         }
 
         # Generate all subtasks for the new task
@@ -772,9 +773,8 @@ class TaskManager(TaskEventListener):
                                                  op=TaskOp.NOT_ACCEPTED)
 
         self.notice_task_updated(task_id,
-                                    subtask_id=subtask_id,
-                                    op=SubtaskOp.VERIFYING
-                                 )
+                                 subtask_id=subtask_id,
+                                 op=SubtaskOp.VERIFYING)
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
@@ -1148,8 +1148,10 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def notice_task_updated(self, task_id: str, subtask_id: str = None,
-                            op: Operation = None, persist: bool = True):
+    def notice_task_updated(self, task_id: str,
+                            subtask_id: Optional[str] = None,
+                            op: Optional[Operation] = None,
+                            persist: bool = True):
         """Called when a task is modified, saves the task and
         propagates information
 

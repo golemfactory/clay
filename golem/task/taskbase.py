@@ -353,4 +353,3 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
-
