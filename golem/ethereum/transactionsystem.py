@@ -386,13 +386,11 @@ class TransactionSystem(LoopingCallService):
         incomes = self._incomes_keeper.get_list_of_all_incomes()
 
         def item(o):
-            status = "confirmed" if o.transaction else "awaiting"
-
             return {
                 "subtask": common.to_unicode(o.subtask),
                 "payer": common.to_unicode(o.sender_node),
                 "value": common.to_unicode(o.value),
-                "status": common.to_unicode(status),
+                "status": common.to_unicode(o.status.name),
                 "transaction": common.to_unicode(o.transaction),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date)

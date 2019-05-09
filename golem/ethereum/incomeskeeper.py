@@ -142,11 +142,6 @@ class IncomesKeeper:
     def get_list_of_all_incomes():
         # TODO: pagination. issue #2402
         return Income.select(
-            Income.created_date,
-            Income.sender_node,
-            Income.subtask,
-            Income.transaction,
-            Income.value
         ).order_by(Income.created_date.desc())
 
     @staticmethod

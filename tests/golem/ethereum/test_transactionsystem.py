@@ -18,6 +18,8 @@ from golem.ethereum import exceptions
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 
+from tests.factories import model as model_factory
+
 fake = faker.Faker()
 PASSWORD = 'derp'
 
@@ -756,4 +758,30 @@ class DepositPaymentsListTest(TransactionSystemBase):
         self.assertEqual(
             expected,
             self.ets.get_deposit_payments_list(),
+        )
+
+
+class IncomesListTest(TransactionSystemBase):
+    def test_empty(self):
+        self.assertEqual(self.ets.get_incomes_list(), [])
+
+    def test_one(self):
+        income = model_factory.Income()
+        self.assertEqual(
+            income.save(force_insert=True),
+            1,
+        )
+        self.assertEqual(
+            [
+                {
+                    'created': ANY,
+                    'modified': ANY,
+                    'payer': income.sender_node,
+                    'status': 'awaiting',
+                    'subtask': income.subtask,
+                    'transaction': None,
+                    'value': str(income.value),
+                },
+            ],
+            self.ets.get_incomes_list(),
         )
