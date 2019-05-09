@@ -10,5 +10,5 @@ class TestConfig(TestConfigBase):
     def __init__(self):
         super().__init__()
         self.nodes[NodeId.provider2] = make_node_config_from_env(
-            NodeId.provider2.value.upper(), 2)
+            NodeId.provider2.value, 2)
         self.task_dict['subtasks_count'] = 2
