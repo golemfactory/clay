@@ -451,7 +451,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
-            dir_manager=dir_manager,
             client=self
         )
 

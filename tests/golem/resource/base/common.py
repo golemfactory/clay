@@ -101,8 +101,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                             use_monitor=False,
                             concent_variant=CONCENT_CHOICES['disabled'])
 
-        client.resource_server = BaseResourceServer(resource_manager,
-                                                    dir_manager, client)
+        client.resource_server = BaseResourceServer(resource_manager, client)
         with mock.patch(
                 "golem.network.concent.handlers_library"
                 ".HandlersLibrary"
