@@ -1,10 +1,11 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from enum import Enum
 from functools import wraps
 from logging import Logger, getLogger
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager
+    Sequence, Iterable, ContextManager, Set
 
 from twisted.internet.defer import Deferred
 
@@ -15,11 +16,28 @@ CounterUsage = Any
 
 EnvId = str
 
-EnvEventId = str
-EnvEvent = Any  # TODO: Define environment events
-
 RuntimeEventId = str
 RuntimeEvent = Any  # TODO: Define runtime events
+
+
+class EnvEventType(Enum):
+    ENV_ENABLED = 1
+    ENV_DISABLED = 2
+    PREREQUISITES_INSTALLED = 3
+    CONFIG_UPDATED = 4
+    ERROR_OCCURRED = 5
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class EnvEvent(NamedTuple):
+    type: EnvEventType
+    env_id: EnvId
+    details: Optional[Dict[str, Any]] = None
+
+
+EnvEventListener = Callable[[EnvEvent], Any]
 
 
 class EnvConfig(DictSerializable, ABC):
@@ -274,6 +292,53 @@ class Environment(ABC):
     """ An Environment capable of running computations. It is responsible for
         creating Runtimes. """
 
+    def __init__(self, logger: Optional[Logger] = None) -> None:
+        self._logger = logger or getLogger(__name__)
+        self._event_listeners: Dict[EnvEventType, Set[EnvEventListener]] = {}
+
+    def _emit_event(
+            self,
+            event_type: EnvEventType,
+            details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """ Create an event with the given type and details and send a copy to
+            every listener registered for this type of events. """
+
+        event = EnvEvent(
+            env_id=self.metadata().id,
+            type=event_type,
+            details=details
+        )
+        self._logger.debug("Emit event: %r", event)
+        for listener in self._event_listeners.get(event_type, ()):
+            listener(deepcopy(event))
+
+    def _env_enabled(self) -> None:
+        self._logger.info("Environment enabled.")
+        self._emit_event(EnvEventType.ENV_ENABLED)
+
+    def _env_disabled(self) -> None:
+        self._logger.info("Environment disabled.")
+        self._emit_event(EnvEventType.ENV_DISABLED)
+
+    def _config_updated(self, config: EnvConfig) -> None:
+        self._logger.info("Configuration updated.")
+        self._emit_event(EnvEventType.CONFIG_UPDATED, {'config': config})
+
+    def _prerequisites_installed(self, prerequisites: Prerequisites) -> None:
+        self._logger.info("Prerequisites installed.")
+        self._emit_event(
+            EnvEventType.PREREQUISITES_INSTALLED,
+            {'prerequisites': prerequisites})
+
+    def _error_occurred(self, error: Exception, message: str) -> None:
+        self._logger.error(message, exc_info=error)
+        self._emit_event(
+            EnvEventType.ERROR_OCCURRED, {
+                'error': error,
+                'message': message
+            })
+
     @classmethod
     @abstractmethod
     def supported(cls) -> EnvSupportStatus:
@@ -334,11 +399,10 @@ class Environment(ABC):
         """ Update configuration. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
-    @abstractmethod
-    def listen(self, event_id: EnvEventId,
-               callback: Callable[[EnvEvent], Any]) -> None:
+    def listen(self, event_type: EnvEventType, listener: EnvEventListener) \
+            -> None:
         """ Register a listener for a given type of Environment events. """
-        raise NotImplementedError
+        self._event_listeners.setdefault(event_type, set()).add(listener)
 
     @classmethod
     @abstractmethod
