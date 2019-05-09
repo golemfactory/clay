@@ -3,6 +3,7 @@ import functools
 import itertools
 import logging
 import os
+import shutil
 import time
 import weakref
 from enum import Enum
@@ -358,6 +359,13 @@ class TaskServer(
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
+        # this is purely for tests
+        if self.config_desc.overwrite_results:
+            for file_path in result['data']:
+                shutil.copyfile(
+                    src=self.config_desc.overwrite_results,
+                    dst=file_path)
+
         header = self.task_keeper.task_headers[task_id]
 
         delay_time = 0.0
@@ -568,7 +576,8 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
+                      *, unlock_funds=True):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -581,7 +590,8 @@ class TaskServer(
             value,
             eth_address,
         )
-        self.client.funds_locker.remove_subtask(task_id)
+        if unlock_funds:
+            self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
