@@ -71,6 +71,8 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
         self._encoding = encoding
 
     def _encode(self, line: Union[str, bytes]) -> bytes:
+        """ Encode given data (if needed). If the Input is encoded it expects
+            the argument to be str, otherwise bytes is expected. """
         if self._encoding:
             assert isinstance(line, str)
             return line.encode(self._encoding)

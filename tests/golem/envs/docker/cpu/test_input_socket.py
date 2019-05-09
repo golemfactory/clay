@@ -26,42 +26,62 @@ class TestInit(TestCase):
             InputSocket(Mock())
 
 
-class TestWrite(TestCase):
+class TestInputSocket(TestCase):
 
-    def test_ok(self):
+    def _get_socket(self, socket_io=False):
         lock = RLock()
-        sock = Mock(spec=WrappedSocket)
-        sock.sendall.side_effect = lambda _: self.assertTrue(lock._is_owned())
-        input_sock = InputSocket(sock)
+
+        def _assert_lock(*_, **__):
+            if not lock._is_owned():
+                self.fail("Socket operation performed without lock")
+
+        sock = Mock(spec=(socket if socket_io else WrappedSocket))
+        sock.sendall.side_effect = _assert_lock
+        sock.shutdown.side_effect = _assert_lock
+        sock.close.side_effect = _assert_lock
+
+        wrapped_sock = Mock(spec=SocketIO, _sock=sock) if socket_io else sock
+        input_sock = InputSocket(wrapped_sock)
         input_sock._lock = lock
 
+        return sock, input_sock
+
+
+class TestWrite(TestInputSocket):
+
+    def test_ok(self):
+        sock, input_sock = self._get_socket()
         input_sock.write(b"test")
         sock.sendall.assert_called_once_with(b"test")
 
-
-class TestClose(TestCase):
-
-    def test_raw_socket(self):
-        lock = RLock()
-        sock = Mock(spec=socket)
-        sock.shutdown.side_effect = lambda _: self.assertTrue(lock._is_owned())
-        sock.close.side_effect = lambda: self.assertTrue(lock._is_owned())
-        socket_io = Mock(spec=SocketIO, _sock=sock)
-        input_sock = InputSocket(socket_io)
-        input_sock._lock = lock
-
+    def test_closed(self):
+        sock, input_sock = self._get_socket()
         input_sock.close()
+        with self.assertRaises(RuntimeError):
+            input_sock.write(b"test")
+        sock.sendall.assert_not_called()
+
+
+class TestClose(TestInputSocket):
+
+    def test_socket_io(self):
+        sock, input_sock = self._get_socket(socket_io=True)
+        input_sock.close()
+        self.assertTrue(input_sock.closed())
         sock.shutdown.assert_called_once_with(SHUT_WR)
         sock.close.assert_called_once_with()
 
     def test_wrapped_socket(self):
-        lock = RLock()
-        sock = Mock(spec=WrappedSocket)
-        sock.shutdown.side_effect = lambda: self.assertTrue(lock._is_owned())
-        sock.close.side_effect = lambda: self.assertTrue(lock._is_owned())
-        input_sock = InputSocket(sock)
-        input_sock._lock = lock
-
+        sock, input_sock = self._get_socket(socket_io=False)
         input_sock.close()
+        self.assertTrue(input_sock.closed())
         sock.shutdown.assert_called_once_with()
         sock.close.assert_called_once_with()
+
+    def test_multiple_close(self):
+        sock, input_sock = self._get_socket()
+        input_sock.close()
+        input_sock.close()
+        self.assertTrue(input_sock.closed())
+        sock.shutdown.assert_called_once()
+        sock.close.assert_called_once()

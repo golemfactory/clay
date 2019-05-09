@@ -93,18 +93,27 @@ class InputSocket:
         else:
             raise TypeError(f"Invalid socket class: {sock.__class__}")
         self._lock = Lock()
+        self._closed = False
 
     def write(self, data: bytes) -> None:
         with self._lock:
+            if self._closed:
+                raise RuntimeError("Socket closed")
             self._sock.sendall(data)
 
     def close(self) -> None:
         with self._lock:
+            if self._closed:
+                return
             if isinstance(self._sock, socket):
                 self._sock.shutdown(SHUT_WR)
             else:
                 self._sock.shutdown()
             self._sock.close()
+            self._closed = True
+
+    def closed(self) -> bool:
+        return self._closed
 
 
 class DockerInput(RuntimeInput):
