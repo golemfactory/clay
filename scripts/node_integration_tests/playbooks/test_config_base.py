@@ -11,6 +11,8 @@ from typing import (
 from scripts.node_integration_tests import helpers
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     # This prevents mypy from freaking out about enum it doesn't understand.
     requestor = None
     provider = None
@@ -62,6 +64,8 @@ class NodeId(aenum.AutoEnum):
 
 
 def make_node_config_from_env(role: str, counter: int) -> NodeConfig:
+    role = role.upper()
+
     node_config = NodeConfig()
     node_config.concent = os.environ.get('GOLEM_CONCENT_VARIANT',
                                          node_config.concent)
@@ -81,9 +85,9 @@ class TestConfigBase:
 
         self.nodes: Dict[NodeId, Union[NodeConfig, List[NodeConfig]]] = {}
         for i, node_id in enumerate([NodeId.requestor, NodeId.provider]):
-            self.nodes[node_id] = make_node_config_from_env(
-                node_id.value.upper(), i)
+            self.nodes[node_id] = make_node_config_from_env(node_id.value, i)
         self._nodes_index = 0
+        self.nodes_root: 'Optional[Path]' = None
         self.task_package = 'test_task_1'
         self.task_settings = task_settings
         self.task_dict = helpers.construct_test_task(

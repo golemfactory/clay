@@ -8,7 +8,7 @@ from golem_messages.factories.tasks import ReportComputedTaskFactory
 
 from scripts.node_integration_tests import helpers
 
-from ..concent_base  import ConcentTestPlaybook
+from ..concent_base import ConcentTestPlaybook
 from ...test_config_base import NodeId
 
 
@@ -88,8 +88,7 @@ class Playbook(ConcentTestPlaybook):
 
         if ((not self.sra_received) and
                 self.sra_deadline and
-                datetime.datetime.now() > self.sra_deadline
-        ):
+                datetime.datetime.now() > self.sra_deadline):
             self.fail("Forced SRA timeout...")
             return
 
