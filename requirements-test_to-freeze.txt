@@ -1,3 +1,4 @@
+aenum
 codecov
 factory-boy==2.9.2
 Faker==0.8.9

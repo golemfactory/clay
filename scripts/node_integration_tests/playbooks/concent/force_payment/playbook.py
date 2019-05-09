@@ -1,9 +1,11 @@
 import datetime
+from functools import partial
 import time
 
 from scripts.node_integration_tests import helpers
 
 from ..concent_base import ConcentTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(ConcentTestPlaybook):
@@ -36,7 +38,7 @@ class Playbook(ConcentTestPlaybook):
             self.fail("No ForcePayment timeout? ... ")
 
         force_payment_test, match = self.check_concent_logs(
-            self.provider_output_queue,
+            self.output_queues[NodeId.provider],
             outgoing=True,
             awaited_messages=['ForcePayment', ]
         )
@@ -66,7 +68,7 @@ class Playbook(ConcentTestPlaybook):
             self.fail("No ForcePaymentCommitted timeout? ... ")
 
         force_payment_test, match = self.check_concent_logs(
-            self.provider_output_queue,
+            self.output_queues[NodeId.provider],
             awaited_messages=['ForcePaymentCommitted', ]
         )
 
@@ -92,14 +94,14 @@ class Playbook(ConcentTestPlaybook):
             print("Provider initial balance: %s" % self.pre_payment_balance)
             self.next()
 
-        return self.call_provider('pay.balance', on_success=on_success)
+        return self.call(NodeId.provider, 'pay.balance', on_success=on_success)
 
     def step_get_provider_expected_payment(self):
         def on_success(result):
             self.expected_payment = helpers.to_ether(sum([
                 int(p.get('value'))
                 for p in result
-                if p.get('payer') == self.requestor_key and
+                if p.get('payer') == self.nodes_keys[NodeId.requestor] and
                    p.get('subtask') in self.subtasks
             ]))
             if not self.expected_payment:
@@ -108,8 +110,8 @@ class Playbook(ConcentTestPlaybook):
             print("Expected payment: %s" % self.expected_payment)
             self.next()
 
-        return self.call_provider(
-            'pay.incomes', on_success=on_success, on_error=self.print_error)
+        return self.call(NodeId.provider,
+                         'pay.incomes', on_success=on_success)
 
     def step_init_payment_timeout(self):
         print("Waiting for blockchain payment.")
@@ -136,14 +138,14 @@ class Playbook(ConcentTestPlaybook):
                 self.fail()
             if balance == required_balance:
                 print("Payment received! \\o/ ... total: %s GNT" % balance)
-                self.success()
+                self.next()
             else:
                 if datetime.datetime.now() > self.payment_timeout:
                     self.fail("Blockchain payment timed out... ")
 
                 time.sleep(15)
 
-        return self.call_provider('pay.balance', on_success=on_success)
+        return self.call(NodeId.provider, 'pay.balance', on_success=on_success)
 
     steps = ConcentTestPlaybook.initial_steps + (
         step_get_provider_balance,
@@ -157,8 +159,9 @@ class Playbook(ConcentTestPlaybook):
         ConcentTestPlaybook.step_stop_nodes,
         step_today_start,
         ConcentTestPlaybook.step_restart_nodes,
-        ConcentTestPlaybook.step_get_provider_key,
-        ConcentTestPlaybook.step_get_requestor_key,
+        partial(ConcentTestPlaybook.step_get_key, node_id=NodeId.provider),
+        partial(ConcentTestPlaybook.step_get_key,
+                node_id=NodeId.requestor),
         step_init_force_payment_timeout,
         step_wait_force_payment,
         step_init_force_payment_committed_timeout,

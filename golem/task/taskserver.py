@@ -70,7 +70,11 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 def _calculate_price(min_price: int, requestor_id: str) -> int:
-    r = min_price * (1.0 + timer.ProviderTimer.thirst)
+    """
+    Provider's subtask price function as proposed in
+    https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
+    r = min_price * (1.0 + timer.ProviderTimer.profit_factor)
     v_paid = get_requestor_paid_sum(requestor_id)
     v_assigned = get_requestor_assigned_sum(requestor_id)
     c = min_price

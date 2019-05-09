@@ -417,7 +417,7 @@ class RequestorTaskStats:
                 the_time = time.time()
                 for s_id in task_state.subtask_states.keys():
                     subtask_status = (task_state.subtask_states[s_id]
-                                      .subtask_status)
+                                      .status)
                     self.tasks[task_id].got_subtask_message(
                         s_id,
                         TaskMsg(ts=the_time, op=SubtaskOp.RESTARTED),
@@ -442,7 +442,7 @@ class RequestorTaskStats:
             self.tasks[task_id].got_subtask_message(
                 subtask_id,
                 TaskMsg(ts=time.time(), op=op),
-                task_state.subtask_states[subtask_id].subtask_status)
+                task_state.subtask_states[subtask_id].status)
 
         else:
             # Unknown operation, log problem

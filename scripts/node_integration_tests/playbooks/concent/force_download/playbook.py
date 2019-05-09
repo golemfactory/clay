@@ -1,6 +1,9 @@
+from functools import partial
+
 from scripts.node_integration_tests import helpers
 
 from ..concent_base import ConcentTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(ConcentTestPlaybook):
@@ -14,7 +17,7 @@ class Playbook(ConcentTestPlaybook):
             '.*' + '.*|.*'.join(fail_triggers + download_trigger) + '.*'
 
         log_match = helpers.search_output(
-            self.requestor_output_queue,
+            self.output_queues[NodeId.requestor],
             log_match_pattern,
         )
 
@@ -28,7 +31,7 @@ class Playbook(ConcentTestPlaybook):
                 self.forced_download_successful = True
 
         concent_fail = helpers.search_output(
-            self.provider_output_queue,
+            self.output_queues[NodeId.provider],
             ".*Concent request failed.*|.*Can't receive message from Concent.*",
         )
 
@@ -56,5 +59,5 @@ class Playbook(ConcentTestPlaybook):
         step_verify_forced_download_happened,
         ConcentTestPlaybook.step_verify_output,
         ConcentTestPlaybook.step_get_subtasks,
-        ConcentTestPlaybook.step_verify_provider_income,
+        ConcentTestPlaybook.step_verify_income,
     )

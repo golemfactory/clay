@@ -15,7 +15,6 @@ from twisted.internet import defer
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
-from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
@@ -24,7 +23,6 @@ from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
-from golem.task.taskstate import SubtaskState
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -96,7 +94,7 @@ def _validate_task_dict(client, task_dict) -> None:
             )
 
 
-def validate_client(client: Client):
+def validate_client(client):
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
@@ -278,10 +276,32 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
 
 
 @defer.inlineCallbacks
-def _inform_subsystems(client, task, packager_result):
-    task_id = task.header.task_id
+def add_resources(client, resources, res_id, timeout):
+    files = copy.copy(list(resources))
+
+    packager_result = yield client.resource_server.create_resource_package(
+        files,
+        res_id
+    )
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
+    client_options = client.task_server.get_share_options(res_id, None)
+    client_options.timeout = timeout
+    resource_server_result = yield client.resource_server.add_resources(
+        package_path,
+        package_sha1,
+        res_id,
+        resource_size,
+        client_options=client_options,
+    )
+
+    logger.info("Resource package created. res_id=%r", res_id)
+    return resource_server_result
+
+
+@defer.inlineCallbacks
+def _inform_subsystems(client, task):
+    task_id = task.header.task_id
 
     if client.config_desc.net_masking_enabled:
         task.header.mask = _get_mask_for_task(
@@ -295,18 +315,13 @@ def _inform_subsystems(client, task, packager_result):
         task.get_total_tasks())
     client.task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
-    client_options = client.task_server.get_share_options(task_id, None)
-    client_options.timeout = common.deadline_to_timeout(
-        task.header.deadline,
+    resource_server_result = yield add_resources(
+        client,
+        task.get_resources(),
+        task_id,
+        common.deadline_to_timeout(task.header.deadline)
     )
 
-    resource_server_result = yield client.resource_server.add_resources(
-        package_path,
-        package_sha1,
-        task_id,
-        resource_size,
-        client_options=client_options,
-    )
     return resource_server_result
 
 
@@ -344,20 +359,9 @@ def enqueue_new_task(client, task, force=False) \
     )
     logger.info('Enqueue new task %r', task)
 
-    packager_result = yield _create_task_package(
-        client=client,
-        task=task,
-    )
-
-    logger.info(
-        "Resource package created. Informing subsystems. task_id=%r",
-        task_id,
-    )
-
     resource_server_result = yield _inform_subsystems(
         client=client,
         task=task,
-        packager_result=packager_result,
     )
 
     logger.info("Task created. task_id=%r", task_id)
@@ -392,8 +396,13 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, **_kwargs):
+def _create_task_error(e, _self, task_dict, **_kwargs) \
+        -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
     logger.error("Cannot create task %r: %s", task_dict, e)
+
+    if hasattr(e, 'to_dict'):
+        return None, e.to_dict()
+
     return None, str(e)
 
 
@@ -426,7 +435,8 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
     def create_task(self, task_dict, force=False) \
-            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
+            -> typing.Tuple[typing.Optional[str],
+                            typing.Optional[typing.Union[str, typing.Dict]]]:
         """
         :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
@@ -474,16 +484,27 @@ class ClientProvider:
             total_price_gnt: int,
             number_of_tasks: int) -> None:
         transaction_system = self.client.transaction_system
-        if total_price_gnt > transaction_system.get_available_gnt():
-            raise eth_exceptions.NotEnoughFunds(
-                total_price_gnt,
-                transaction_system.get_available_gnt(), 'GNT',
-            )
+        missing_funds: typing.List[eth_exceptions.MissingFunds] = []
+
+        gnt_available = transaction_system.get_available_gnt()
+        if total_price_gnt > gnt_available:
+            missing_funds.append(eth_exceptions.MissingFunds(
+                required=total_price_gnt,
+                available=gnt_available,
+                currency='GNT'
+            ))
 
         eth = transaction_system.eth_for_batch_payment(number_of_tasks)
         eth_available = transaction_system.get_available_eth()
         if eth > eth_available:
-            raise eth_exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+            missing_funds.append(eth_exceptions.MissingFunds(
+                required=eth,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise eth_exceptions.NotEnoughFunds(missing_funds)
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
@@ -546,7 +567,7 @@ class ClientProvider:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: typing.Dict[str, SubtaskState] =\
+        frame_subtasks: typing.Dict[str, dict] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
@@ -560,7 +581,7 @@ class ClientProvider:
             for subtask_id in frame_subtasks:
                 self.client.restart_subtask(subtask_id)
         else:
-            self.restart_subtasks_from_task(task_id, frame_subtasks.keys())
+            self.restart_subtasks_from_task(task_id, frame_subtasks)
 
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(
@@ -634,30 +655,65 @@ class ClientProvider:
         return True
 
     @rpc_utils.expose('comp.tasks.estimated.cost')
-    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
-        # FIXME task_type is unused
-        options['price'] = int(options['price'])
-        options['subtask_timeout'] = common.string_to_timeout(
-            options['subtask_timeout'],
-        )
-        options['subtasks_count'] = int(options['subtasks_count'])
+    def get_estimated_cost(
+            self,
+            _task_type: str,
+            options: typing.Optional[dict] = None,
+            task_id: typing.Optional[str] = None,
+            partial: typing.Optional[bool] = False
+    ) -> typing.Tuple[typing.Optional[dict], typing.Optional[str]]:
+        """
+        Estimates the cost of a task. Result includes amounts required for both
+        calculating the task, as well as creating a Concent deposit for it.
 
-        subtask_price: int = taskkeeper.compute_subtask_value(
-            price=options['price'],
-            computation_time=options['subtask_timeout'],
-        )
-        estimated_gnt: int = options['subtasks_count'] \
-            * subtask_price
+        :param _task_type: type of the task for which the cost should be
+        estimated.
+        :param options: task options, when provided and task_id parameter is
+        None the cost estimation will be based on fields from this dict
+        (i.e. price, subtask_count and subtask_timeout). Used for tasks
+        which have not been created yet.
+        :param task_id: if provided, the cost estimation will be based on an
+        existing task with the given ID.
+        :param partial: used in conjunction with the task_id parameter. If
+        True, the estimation will only include unfinished subtasks of the
+        specified task (i.e. estimating the cost of a partial task restart).
+        Otherwise, the full task cost will be returned.
+        :return: a tuple with the result dict as its first element and an error
+        string as the second. When the result is present the error should be
+        None (and vice-versa).
+        """
+        subtask_count: int = 0
+        subtask_price: int = 0
+
+        if task_id:
+            task: taskbase.Task = self.task_manager.tasks.get(task_id)
+            if not task:
+                return None, f'Task not found: {task_id}'
+
+            subtask_count = task.get_tasks_left() if partial else \
+                task.get_total_tasks()
+            subtask_price = task.subtask_price
+        else:
+            if not options:
+                return None, 'You must pass either a task ID or task options.'
+
+            subtask_count = int(options['subtasks_count'])
+            subtask_timeout: int = common.string_to_timeout(
+                options['subtask_timeout'],
+            )
+            subtask_price = taskkeeper.compute_subtask_value(
+                price=int(options['price']),
+                computation_time=subtask_timeout
+            )
+
+        estimated_gnt: int = subtask_count * subtask_price
         estimated_eth: int = self.client \
-            .transaction_system.eth_for_batch_payment(
-                options['subtasks_count'],
-            )
+            .transaction_system.eth_for_batch_payment(subtask_count)
         estimated_gnt_deposit: typing.Tuple[int, int] = \
-            msg_helpers.requestor_deposit_amount(
-                estimated_gnt,
-            )
+            msg_helpers.requestor_deposit_amount(estimated_gnt)
         estimated_deposit_eth: int = self.client.transaction_system \
             .eth_for_deposit()
+
         result = {
             'GNT': str(estimated_gnt),
             'ETH': str(estimated_eth),
@@ -667,8 +723,9 @@ class ClientProvider:
                 'ETH': str(estimated_deposit_eth),
             },
         }
+
         logger.info('Estimated task cost. result=%r', result)
-        return result
+        return result, None
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \

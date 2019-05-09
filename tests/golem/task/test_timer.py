@@ -49,18 +49,18 @@ class TestThirstTimer(unittest.TestCase):
     @freeze_time("2018-01-01 00:00:00", as_arg=True)
     def test_thirst_decrease(frozen_time, _):
         timer = ThirstTimer()
-        thirst = timer.thirst
+        thirst = timer.profit_factor
         frozen_time.tick(timedelta(seconds=5))
-        assert thirst > timer.thirst
+        assert thirst > timer.profit_factor
 
     @freeze_time("2018-01-01 00:00:00", as_arg=True)
     def test_thirst_increase(frozen_time, _):
         timer = ThirstTimer()
-        thirst = timer.thirst
+        thirst = timer.profit_factor
         timer.start()
         frozen_time.tick(timedelta(seconds=5))
         timer.finish()
-        assert thirst < timer.thirst
+        assert thirst < timer.profit_factor
 
 
 class TestActionTimers(unittest.TestCase):

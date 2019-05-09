@@ -1,7 +1,9 @@
+from functools import partial
 import time
 import typing
 
 from ...base import NodeTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(NodeTestPlaybook):
@@ -36,8 +38,8 @@ class Playbook(NodeTestPlaybook):
 
             time.sleep(10)
 
-        return self.call_requestor('comp.task.subtasks', self.task_id,
-                              on_success=on_success, on_error=self.print_error)
+        return self.call(NodeId.requestor, 'comp.task.subtasks', self.task_id,
+                         on_success=on_success)
 
     def step_wait_task_timeout(self):
         def on_success(result):
@@ -53,8 +55,8 @@ class Playbook(NodeTestPlaybook):
                 print("Task status: {} ... ".format(result['status']))
                 time.sleep(10)
 
-        return self.call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return self.call(NodeId.requestor, 'comp.task', self.task_id,
+                         on_success=on_success)
 
     def step_restart_task(self):
         def on_success(result):
@@ -64,13 +66,9 @@ class Playbook(NodeTestPlaybook):
         if not self.task_in_creation:
             print("Restarting subtasks for {}".format(self.previous_task_id))
             self.task_in_creation = True
-            return self.call_requestor('comp.task.restart_subtasks',
-                                  self.previous_task_id, [],
-                                  on_success=on_success,
-                                  on_error=self.print_error)
-
-    def step_success(self):
-        self.success()
+            return self.call(NodeId.requestor, 'comp.task.restart_subtasks',
+                             self.previous_task_id, [],
+                             on_success=on_success)
 
     steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
@@ -86,5 +84,4 @@ class Playbook(NodeTestPlaybook):
         NodeTestPlaybook.step_get_task_status,
         NodeTestPlaybook.step_wait_task_finished,
         NodeTestPlaybook.step_verify_output,
-        step_success,
     )

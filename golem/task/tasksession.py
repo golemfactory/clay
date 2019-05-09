@@ -13,8 +13,10 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
+from twisted.internet import defer
 
 import golem
+from golem.config.active import EthereumConfig
 from golem.core import common
 from golem.core import golem_async
 from golem.core.keysauth import KeysAuth
@@ -36,6 +38,7 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -369,11 +372,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             quality=get_provider_efficacy(self.key_id).vector,
         )
 
+        d = OfferPool.add(msg.task_id, offer)
         logger.debug(
             "Offer accepted & added to pool. offer=%s",
             offer,
         )
-        d = OfferPool.add(msg.task_id, offer)
         d.addCallback(
             functools.partial(
                 self._offer_chosen,
@@ -384,12 +387,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # Adding errback won't be needed in asyncio
         d.addErrback(golem_async.default_errback)
 
+    @defer.inlineCallbacks
     def _offer_chosen(
             self,
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
             node_id: str,
-    ) -> None:
+    ):
         node_name_id = common.node_info_str(msg.node_name, node_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
@@ -418,7 +422,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        ctd["resources"] = self.task_server.get_resources(msg.task_id)
+        resources_result = None
+        if ctd["resources"]:
+            resources_result = yield add_resources(
+                self.task_server.client,
+                ctd["resources"],
+                ctd["subtask_id"],
+                common.deadline_to_timeout(ctd["deadline"])
+            )
+            # overwrite resources so they are serialized by resource_manager
+            resources = self.task_server.get_resources(ctd['subtask_id'])
+            ctd["resources"] = resources
+            logger.info("resources_result: %r", resources_result)
 
         logger.info(
             "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
@@ -432,6 +447,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             task.header.subtask_timeout,
         )
+        if resources_result:
+            _, _, package_hash, package_size = resources_result
+        else:
+            package_hash = task_state.package_hash
+            package_size = task_state.package_size
+
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
@@ -439,14 +460,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestor_public_key=task.header.task_owner.key,
             requestor_ethereum_public_key=task.header.task_owner.key,
             provider_id=self.key_id,
-            package_hash='sha1:' + task_state.package_hash,
+            package_hash='sha1:' + package_hash,
             concent_enabled=msg.concent_enabled,
             price=price,
-            size=task_state.package_size,
+            size=package_size,
             resources_options=self.task_server.get_share_options(
-                ctd['task_id'], self.address).__dict__
+                ctd['subtask_id'], self.address).__dict__
         )
         ttc.generate_ethsig(self.my_private_key)
+        if ttc.concent_enabled:
+            ttc.sign_promissory_note(private_key=self.my_private_key)
+            ttc.sign_concent_promissory_note(
+                deposit_contract_address=getattr(
+                    EthereumConfig, 'deposit_contract_address'),
+                private_key=self.my_private_key
+            )
+
         self.send(ttc)
         history.add(
             msg=msg_utils.copy_and_sign(
@@ -458,10 +487,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             remote_role=Actor.Provider,
         )
 
-    # pylint: disable=too-many-return-statements
+    # pylint: disable=too-many-return-statements, too-many-branches
     @handle_attr_error
     @history.provider_history
-    def _react_to_task_to_compute(self, msg):
+    def _react_to_task_to_compute(self, msg: message.tasks.TaskToCompute):
         ctd: Optional[message.tasks.ComputeTaskDef] = msg.compute_task_def
         want_to_compute_task = msg.want_to_compute_task
         if ctd is None or want_to_compute_task is None:
@@ -552,6 +581,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
+            if not (msg.verify_promissory_note() and
+                    msg.verify_concent_promissory_note(
+                        deposit_contract_address=getattr(
+                            EthereumConfig, 'deposit_contract_address')
+                    )):
+                _cannot_compute(reasons.PromissoryNoteMissing)
+                logger.debug(
+                    f"Requestor failed to provide correct promissory"
+                    f"note signatures to compute with the Concent:"
+                    f"promissory_note_sig: {msg.promissory_note_sig}, "
+                    f"concent_promissory_note_sig: "
+                    f"{msg.concent_promissory_note_sig}."
+                )
+                return
+
         try:
             self._check_ctd_params(ctd)
             self._set_env_params(
@@ -566,6 +610,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.task_server.task_given(self.key_id, ctd, msg.price):
             _cannot_compute(None)
             return
+
+    # pylint: enable=too-many-return-statements, too-many-branches
 
     def _check_resource_size(self, resource_size):
         max_resource_size_kib = self.task_server.config_desc.max_resource_size
@@ -588,23 +634,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_cannot_compute_task(self, msg):
-        if self.check_provider_for_subtask(msg.subtask_id):
-            logger.info(
-                "Provider can't compute subtask: %r Reason: %r",
-                msg.subtask_id,
-                msg.reason,
-            )
+        if not self.check_provider_for_subtask(msg.subtask_id):
+            self.dropped()
+            return
 
-            config = self.task_server.config_desc
-            timeout = config.computation_cancellation_timeout
+        logger.info(
+            "Provider can't compute subtask: %r Reason: %r",
+            msg.subtask_id,
+            msg.reason,
+        )
 
-            self.task_manager.task_computation_cancelled(
-                msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason),
-                timeout,
-            )
+        config = self.task_server.config_desc
+        timeout = config.computation_cancellation_timeout
 
-        self.dropped()
+        self.task_manager.task_computation_cancelled(
+            msg.subtask_id,
+            msg.reason,
+            timeout,
+        )
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
@@ -739,6 +786,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             def ask_for_verification(_):
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
+                )
+                srv.sign_concent_promissory_note(
+                    deposit_contract_address=getattr(
+                        EthereumConfig, 'deposit_contract_address'),
+                    private_key=self.my_private_key,
                 )
 
                 self.concent_service.submit_task_message(

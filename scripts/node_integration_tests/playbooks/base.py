@@ -1,3 +1,4 @@
+from functools import partial
 from pathlib import Path
 import re
 import sys
@@ -15,32 +16,36 @@ from scripts.node_integration_tests import helpers, tasks
 
 from golem.rpc.cert import CertificateError
 
+from .test_config_base import NodeId
+
 if typing.TYPE_CHECKING:
+    from queue import Queue
+    from subprocess import Popen
     from .test_config_base import TestConfigBase, NodeConfig
 
 
 _sslverify.platformTrust = lambda: None
 
 
+def print_result(result):
+    print(f"Result: {result}")
+
+
+def print_error(error):
+    print(f"Error: {error}")
+
+
 class NodeTestPlaybook:
     INTERVAL = 1
 
-    start_time = None
+    start_time: float
 
-    _loop = None
+    _loop: task.LoopingCall
 
     nodes_root: typing.Optional[Path] = None
-    provider_node = None
-    requestor_node = None
-    provider_output_queue = None
-    requestor_output_queue = None
-
-    provider_port = None
 
     exit_code = None
     current_step = 0
-    provider_key = None
-    requestor_key = None
     known_tasks = None
     task_id = None
     started = False
@@ -53,10 +58,6 @@ class NodeTestPlaybook:
     reconnect_countdown_initial = 10
     reconnect_countdown = None
 
-    playbook_description = 'Runs a golem node integration test'
-
-    node_restart_count = 0
-
     @property
     def task_settings_dict(self) -> dict:
         return tasks.get_settings(self.config.task_settings)
@@ -67,228 +68,164 @@ class NodeTestPlaybook:
 
     @property
     def current_step_method(self):
-        try:
-            return self.steps[self.current_step]
-        except IndexError:
-            return None
+        return self.steps[self.current_step]
 
     @property
     def current_step_name(self) -> str:
-        method = self.current_step_method
-        return method.__name__ if method else ''
+        step = self.current_step_method
+        if isinstance(step, partial):
+            kwargs = ", ".join(f"{k}={v}" for k, v in step.keywords.items())
+            return step.func.__name__ + '(' + kwargs + ')'
+        return step.__name__
 
     @property
     def time_elapsed(self):
         return time.time() - self.start_time
 
-    def fail(
-            self,
-            msg=None,
-            dump_provider_output=False,
-            dump_requestor_output=False):
+    def fail(self, msg: typing.Optional[str] = None):
         print(msg or "Test run failed after {} seconds on step {}: {}".format(
                 self.time_elapsed, self.current_step, self.current_step_name))
 
-        if self.config.dump_output_on_fail or dump_provider_output:
-            helpers.print_output(self.provider_output_queue, 'PROVIDER ')
-        if self.config.dump_output_on_fail or dump_requestor_output:
-            helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
+        for node_id, output_queue in self.output_queues.items():
+            if self.config.dump_output_on_fail or (
+                    self.config.dump_output_on_crash
+                    and self.nodes_exit_codes[node_id] is not None):
+                helpers.print_output(output_queue, node_id.value + ' ')
 
         self.stop(1)
 
-    def success(self):
+    def _success(self):
         print("Test run completed in {} seconds after {} steps.".format(
             self.time_elapsed, self.current_step + 1, ))
         self.stop(0)
 
     def next(self):
+        if self.current_step == len(self.steps) - 1:
+            self._success()
+            return
         self.current_step += 1
 
     def previous(self):
         assert (self.current_step > 0), "Cannot move back past step 0"
         self.current_step -= 1
 
-    def print_result(self, result):
-        print("Result: {}".format(result))
-
-    def print_error(self, error):
-        print("Error: {}".format(error))
-
-    def _wait_gnt_eth(self, role, result):
+    def _wait_gnt_eth(self, node_id: NodeId, result):
         gnt_balance = helpers.to_ether(result.get('gnt'))
         gntb_balance = helpers.to_ether(result.get('av_gnt'))
         eth_balance = helpers.to_ether(result.get('eth'))
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
             print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
-                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
+                node_id.value, gnt_balance, gntb_balance, eth_balance))
             self.next()
 
         else:
             print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
-                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
+                node_id.value, gnt_balance, gntb_balance, eth_balance))
             time.sleep(15)
 
-    def step_wait_provider_gnt(self):
+    def step_wait_for_gnt(self, node_id: NodeId):
         def on_success(result):
-            return self._wait_gnt_eth('provider', result)
+            return self._wait_gnt_eth(node_id, result)
+        return self.call(node_id, 'pay.balance', on_success=on_success)
 
-        return self.call_provider('pay.balance', on_success=on_success)
-
-    def step_wait_requestor_gnt(self):
+    def step_get_key(self, node_id: NodeId):
         def on_success(result):
-            return self._wait_gnt_eth('requestor', result)
-
-        return self.call_requestor('pay.balance', on_success=on_success)
-
-    def step_get_provider_key(self):
-        def on_success(result):
-            print("Provider key", result)
-            self.provider_key = result
+            print(f"{node_id.value} key: {result}")
+            self.nodes_keys[node_id] = result
             self.next()
 
         def on_error(_):
-            print("Waiting for the Provider node...")
+            print(f"Waiting for the {node_id.value} node...")
             time.sleep(3)
 
-        return self.call_provider('net.ident.key',
-                             on_success=on_success, on_error=on_error)
+        return self.call(node_id, 'net.ident.key',
+                         on_success=on_success, on_error=on_error)
 
-    def step_get_requestor_key(self):
-        def on_success(result):
-            print("Requestor key", result)
-            self.requestor_key = result
-            self.next()
-
-        def on_error(result):
-            print("Waiting for the Requestor node...")
-            time.sleep(3)
-
-        return self.call_requestor('net.ident.key',
-                              on_success=on_success, on_error=on_error)
-
-    def step_configure_provider(self):
-        provider_config = self.config.current_provider
-        if provider_config is None:
-            self.fail("provider node config is not defined")
-            return
-
-        if not provider_config.opts:
+    def step_configure(self, node_id: NodeId):
+        opts = self.config.current_nodes[node_id].opts
+        if not opts:
             self.next()
             return
 
         def on_success(_):
-            print("Configured provider")
+            print(f"Configured {node_id.value}")
             self.next()
 
         def on_error(_):
-            print("failed configuring provider")
+            print(f"failed configuring {node_id.value}")
             self.fail()
 
-        return self.call_provider('env.opts.update', provider_config.opts,
-                                  on_success=on_success, on_error=on_error)
+        return self.call(node_id, 'env.opts.update', opts,
+                         on_success=on_success, on_error=on_error)
 
-    def step_configure_requestor(self):
-        requestor_config = self.config.current_requestor
-        if requestor_config is None:
-            self.fail("requestor node config is not defined")
-            return
-
-        if not requestor_config.opts:
-            self.next()
-            return
-
-        def on_success(_):
-            print("Configured requestor")
-            self.next()
-
-        def on_error(_):
-            print("failed configuring requestor")
-            self.fail()
-
-        return self.call_provider('env.opts.update', requestor_config.opts,
-                                  on_success=on_success, on_error=on_error)
-
-    def step_get_provider_network_info(self):
+    def step_get_network_info(self, node_id: NodeId):
         def on_success(result):
             if result.get('listening') and result.get('port_statuses'):
-                provider_ports = list(result.get('port_statuses').keys())
-                self.provider_port = provider_ports[0]
-                print("Provider's port: {} (all: {})".format(
-                    self.provider_port, provider_ports))
+                ports = list(result.get('port_statuses').keys())
+                port = ports[0]
+                self.nodes_ports[node_id] = port
+                print(f"{node_id.value}'s port: {port} (all: {ports})")
                 self.next()
             else:
-                print("Waiting for Provider's network info...")
+                print(f"Waiting for {node_id.value}'s network info...")
                 time.sleep(3)
 
-        return self.call_provider('net.status',
-                             on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'net.status', on_success=on_success)
 
-    def step_ensure_requestor_network(self):
-        def on_success(result):
-            if result.get('listening') and result.get('port_statuses'):
-                requestor_ports = list(result.get('port_statuses').keys())
-                print("Requestor's listening on: {}".format(requestor_ports))
-                self.next()
-            else:
-                print("Waiting for Requestor's network info...")
-                time.sleep(3)
-
-        return self.call_requestor('net.status',
-                              on_success=on_success, on_error=self.print_error)
-
-    def step_connect_nodes(self):
+    def step_connect(self, node_id: NodeId, target_node: NodeId):
         def on_success(result):
             print("Peer connection initialized.")
             self.reconnect_countdown = self.reconnect_countdown_initial
             self.next()
-        return self.call_requestor('net.peer.connect',
-                              ("localhost", self.provider_port, ),
-                              on_success=on_success)
+        return self.call(node_id, 'net.peer.connect',
+                         ("localhost", self.nodes_ports[target_node]),
+                         on_success=on_success)
 
-    def step_verify_peer_connection(self):
+    def step_verify_connection(self, node_id: NodeId, target_node: NodeId):
         def on_success(result):
-            if len(result) > 1:
-                print("Too many peers")
+            result_peer_keys: typing.Set[str] = \
+                {peer['key_id'] for peer in result}
+
+            expected_peer_keys: typing.Set[str] = set(self.nodes_keys.values())
+            unexpected_peer_keys: typing.Set[str] = \
+                result_peer_keys - expected_peer_keys
+
+            if unexpected_peer_keys:
+                print(f"{node_id.value} connected with unexpected peers:"
+                      f" {unexpected_peer_keys}")
                 self.fail()
                 return
-            elif len(result) == 1:
-                peer = result[0]
-                if peer['key_id'] != self.provider_key:
-                    print("Connected peer: {} != provider peer: {}",
-                          peer.key, self.provider_key)
-                    self.fail()
-                    return
 
-                print("Requestor connected with provider.")
-                self.next()
-            else:
-                if self.reconnect_countdown <= 0:
-                    if self.reconnect_attempts_left > 0:
-                        self.reconnect_attempts_left -= 1
-                        print("Retrying peer connection.")
-                        self.previous()
-                        return
-                    else:
-                        self.fail("Could not sync nodes despite trying hard.")
-                        return
-                else:
+            if self.nodes_keys[target_node] not in result_peer_keys:
+                if self.reconnect_countdown > 0:
                     self.reconnect_countdown -= 1
                     print("Waiting for nodes to sync...")
                     time.sleep(10)
+                    return
 
-        return self.call_requestor('net.peers.connected',
-                              on_success=on_success, on_error=self.print_error)
+                if self.reconnect_attempts_left > 0:
+                    self.reconnect_attempts_left -= 1
+                    print("Retrying peer connection.")
+                    self.previous()
+                    return
 
-    def step_get_known_tasks(self):
-        def on_success(result):
-            self.known_tasks = set(map(lambda r: r['id'], result))
-            print("Got current tasks list from the requestor.")
+                self.fail("Could not sync nodes despite trying hard.")
+                return
+
+            print(f"{node_id.value} connected with {target_node.value}.")
             self.next()
 
-        return self.call_requestor('comp.tasks',
-                              on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'net.peers.connected', on_success=on_success)
 
-    def step_create_task(self):
+    def step_get_known_tasks(self, node_id: NodeId = NodeId.requestor):
+        def on_success(result):
+            self.known_tasks = set(map(lambda r: r['id'], result))
+            print(f"Got current tasks list from the {node_id.value}.")
+            self.next()
+
+        return self.call(node_id, 'comp.tasks', on_success=on_success)
+
+    def step_create_task(self, node_id: NodeId = NodeId.requestor):
         print("Output path: {}".format(self.output_path))
         print("Task dict: {}".format(self.config.task_dict))
 
@@ -300,7 +237,7 @@ class NodeTestPlaybook:
             else:
                 msg = result[1]
                 if re.match('Not enough GNT', msg):
-                    print("Waiting for Requestor's GNTB...")
+                    print(f"Waiting for {node_id.value}'s GNTB...")
                     time.sleep(30)
                     self.task_in_creation = False
                 else:
@@ -309,12 +246,10 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            return self.call_requestor('comp.task.create',
-                                       self.config.task_dict,
-                                  on_success=on_success,
-                                  on_error=self.print_error)
+            return self.call(node_id, 'comp.task.create', self.config.task_dict,
+                             on_success=on_success)
 
-    def step_get_task_id(self):
+    def step_get_task_id(self, node_id: NodeId = NodeId.requestor):
 
         def on_success(result):
             tasks = set(map(lambda r: r['id'], result))
@@ -327,18 +262,17 @@ class NodeTestPlaybook:
                 print("Task id: {}".format(self.task_id))
                 self.next()
 
-        return self.call_requestor('comp.tasks',
-                              on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'comp.tasks', on_success=on_success)
 
-    def step_get_task_status(self):
+    def step_get_task_status(self, node_id: NodeId = NodeId.requestor):
         def on_success(result):
             print("Task status: {}".format(result['status']))
             self.next()
 
-        return self.call_requestor('comp.task', self.task_id,
-                              on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'comp.task', self.task_id,
+                         on_success=on_success)
 
-    def step_wait_task_finished(self):
+    def step_wait_task_finished(self, node_id: NodeId = NodeId.requestor):
         def on_success(result):
             if result['status'] == 'Finished':
                 print("Task finished.")
@@ -349,8 +283,8 @@ class NodeTestPlaybook:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        return self.call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'comp.task', self.task_id,
+                         on_success=on_success)
 
     def step_verify_output(self):
         settings = self.task_settings_dict
@@ -368,38 +302,39 @@ class NodeTestPlaybook:
             print("Failed to find the output.")
             self.fail()
 
-    def step_get_subtasks(self):
+    def step_get_subtasks(self, node_id: NodeId = NodeId.requestor):
         def on_success(result):
-            self.subtasks = [
+            self.subtasks = {
                 s.get('subtask_id')
                 for s in result
                 if s.get('status') == 'Finished'
-            ]
+            }
             if not self.subtasks:
                 self.fail("No subtasks found???")
             self.next()
 
-        return self.call_requestor('comp.task.subtasks', self.task_id,
-                              on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'comp.task.subtasks', self.task_id,
+                         on_success=on_success)
 
-    def step_verify_provider_income(self):
+    def step_verify_income(self,
+                           node_id: NodeId = NodeId.provider,
+                           from_node: NodeId = NodeId.requestor):
         def on_success(result):
-            payments = [
+            payments = {
                 p.get('subtask')
                 for p in result
-                if p.get('payer') == self.requestor_key
-            ]
-            unpaid = set(self.subtasks) - set(payments)
+                if p.get('payer') == self.nodes_keys[from_node]
+            }
+            unpaid = self.subtasks - payments
             if unpaid:
                 print("Found subtasks with no matching payments: %s" % unpaid)
                 self.fail()
                 return
 
             print("All subtasks accounted for.")
-            self.success()
+            self.next()
 
-        return self.call_provider(
-            'pay.incomes', on_success=on_success, on_error=self.print_error)
+        return self.call(node_id, 'pay.incomes', on_success=on_success)
 
     def step_stop_nodes(self):
         if self.nodes_started:
@@ -407,21 +342,21 @@ class NodeTestPlaybook:
             self.stop_nodes()
 
         time.sleep(10)
-        provider_exit = self.provider_node.poll()
-        requestor_exit = self.requestor_node.poll()
-        if provider_exit is not None and requestor_exit is not None:
-            if provider_exit or requestor_exit:
-                print(
-                    "Abnormal termination provider: %s, requestor: %s",
-                    provider_exit,
-                    requestor_exit,
-                )
-                self.fail()
-            else:
-                print("Stopped nodes")
-                self.next()
-        else:
+        self._poll_exit_codes()
+        if any(exit_code is None
+               for exit_code in self.nodes_exit_codes.values()):
             print("...")
+            return
+
+        if any(exit_code != 0 for exit_code in self.nodes_exit_codes.values()):
+            for node_id, exit_code in self.nodes_exit_codes.items():
+                if exit_code != 0:
+                    print(f"Abnormal termination {node_id.value}: {exit_code}")
+            self.fail()
+            return
+
+        print("Stopped nodes")
+        self.next()
 
     def step_restart_nodes(self):
         print("Starting nodes again")
@@ -435,16 +370,18 @@ class NodeTestPlaybook:
         self.next()
 
     initial_steps: typing.Tuple = (
-        step_get_provider_key,
-        step_get_requestor_key,
-        step_configure_provider,
-        step_configure_requestor,
-        step_get_provider_network_info,
-        step_ensure_requestor_network,
-        step_connect_nodes,
-        step_verify_peer_connection,
-        step_wait_provider_gnt,
-        step_wait_requestor_gnt,
+        partial(step_get_key, node_id=NodeId.provider),
+        partial(step_get_key, node_id=NodeId.requestor),
+        partial(step_configure, node_id=NodeId.provider),
+        partial(step_configure, node_id=NodeId.requestor),
+        partial(step_get_network_info, node_id=NodeId.provider),
+        partial(step_get_network_info, node_id=NodeId.requestor),
+        partial(step_connect, node_id=NodeId.requestor,
+                target_node=NodeId.provider),
+        partial(step_verify_connection, node_id=NodeId.requestor,
+                target_node=NodeId.provider),
+        partial(step_wait_for_gnt, node_id=NodeId.provider),
+        partial(step_wait_for_gnt, node_id=NodeId.requestor),
         step_get_known_tasks,
     )
 
@@ -455,7 +392,7 @@ class NodeTestPlaybook:
         step_wait_task_finished,
         step_verify_output,
         step_get_subtasks,
-        step_verify_provider_income,
+        step_verify_income,
     )
 
     @staticmethod
@@ -475,38 +412,15 @@ class NodeTestPlaybook:
                            on_error=on_error,
                            **kwargs)
 
-    def call_requestor(self, method, *args,
-                       on_success=lambda x: print(x),
-                       on_error=lambda: None,
-                       **kwargs):
-        requestor_config = self.config.current_requestor
-        if requestor_config is None:
-            self.fail("requestor node config is not defined")
-            return
-
+    def call(self, node_id: NodeId, method: str, *args,
+             on_success=print_result,
+             on_error=print_error,
+             **kwargs):
+        node_config = self.config.current_nodes[node_id]
         return self._call_rpc(
             method,
-            port=requestor_config.rpc_port,
-            datadir=requestor_config.datadir,
-            *args,
-            on_success=on_success,
-            on_error=on_error,
-            **kwargs,
-        )
-
-    def call_provider(self, method, *args,
-                      on_success=lambda x: print(x),
-                      on_error=None,
-                      **kwargs):
-        provider_config = self.config.current_provider
-        if provider_config is None:
-            self.fail("provider node config is not defined")
-            return
-
-        return self._call_rpc(
-            method,
-            port=provider_config.rpc_port,
-            datadir=provider_config.datadir,
+            port=node_config.rpc_port,
+            datadir=node_config.datadir,
             *args,
             on_success=on_success,
             on_error=on_error,
@@ -514,67 +428,46 @@ class NodeTestPlaybook:
         )
 
     def start_nodes(self):
-        provider_config = self.config.current_provider
-        if provider_config is not None:
-            print("Provider config: {}".format(repr(provider_config)))
-            self.provider_node = helpers.run_golem_node(
-                provider_config.script,
-                provider_config.make_args(),
+        for node_id, node_config in self.config.current_nodes.items():
+            print(f"{node_id.value} config: {repr(node_config)}")
+            node = helpers.run_golem_node(
+                node_config.script,
+                node_config.make_args(),
                 nodes_root=self.nodes_root,
             )
-            self.provider_output_queue = helpers.get_output_queue(
-                self.provider_node)
-
-        requestor_config = self.config.current_requestor
-        if requestor_config is not None:
-            print("Requestor config: {}".format(repr(requestor_config)))
-            self.requestor_node = helpers.run_golem_node(
-                requestor_config.script,
-                requestor_config.make_args(),
-                nodes_root=self.nodes_root,
-            )
-
-            self.requestor_output_queue = helpers.get_output_queue(
-                self.requestor_node)
+            self.nodes[node_id] = node
+            self.output_queues[node_id] = helpers.get_output_queue(node)
 
         self.nodes_started = True
 
     def stop_nodes(self):
-        if self.nodes_started:
-            if self.provider_node:
-                helpers.gracefully_shutdown(self.provider_node, 'Provider')
-            if self.requestor_node:
-                helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
-            self.nodes_started = False
+        if not self.nodes_started:
+            return
+
+        for node_id, node in self.nodes.items():
+            helpers.gracefully_shutdown(node, node_id.value)
+
+        self.nodes_started = False
+
+    def _poll_exit_codes(self):
+        self.nodes_exit_codes = {
+            node_id: node.poll()
+            for node_id, node
+            in self.nodes.items()
+        }
 
     def run(self):
         if self.nodes_started:
-            if self.provider_node:
-                provider_exit = self.provider_node.poll()
-                helpers.report_termination(provider_exit, "Provider")
-                if provider_exit is not None:
-                    self.fail(
-                        "Provider exited abnormally.",
-                        dump_provider_output=self.config.dump_output_on_crash,
-                    )
-
-            if self.requestor_node:
-                requestor_exit = self.requestor_node.poll()
-                helpers.report_termination(requestor_exit, "Requestor")
-                if requestor_exit is not None:
-                    self.fail(
-                        "Requestor exited abnormally.",
-                        dump_requestor_output=self.config.dump_output_on_crash,
-                    )
+            self._poll_exit_codes()
+            if any(exit_code is not None
+                   for exit_code in self.nodes_exit_codes.values()):
+                for node_id, exit_code in self.nodes_exit_codes.items():
+                    helpers.report_termination(exit_code, node_id.value)
+                self.fail("A node exited abnormally.")
 
         try:
             method = self.current_step_method
-            if callable(method):
-                return method(self)
-            else:
-                self.fail("Ran out of steps after step {}".format(
-                    self.current_step))
-                return
+            return method(self)
         except Exception as e:  # noqa pylint:disable=too-broad-exception
             e, msg, tb = sys.exc_info()
             print("Exception {}: {} on step {}: {}".format(
@@ -587,29 +480,33 @@ class NodeTestPlaybook:
         self.config = config
 
         def setup_datadir(
-                role: str,
+                node_id: NodeId,
                 node_configs:
-                'typing.Union[None, NodeConfig, typing.List[NodeConfig]]') \
+                'typing.Union[NodeConfig, typing.List[NodeConfig]]') \
                 -> None:
-            if node_configs is None:
-                return
             if isinstance(node_configs, list):
                 datadir: typing.Optional[str] = None
                 for node_config in node_configs:
                     if node_config.datadir is None:
                         if datadir is None:
-                            datadir = helpers.mkdatadir(role)
+                            datadir = helpers.mkdatadir(node_id.value)
                         node_config.datadir = datadir
             else:
                 if node_configs.datadir is None:
-                    node_configs.datadir = helpers.mkdatadir(role)
+                    node_configs.datadir = helpers.mkdatadir(node_id.value)
 
-        setup_datadir('requestor', config.requestor)
-        setup_datadir('provider', config.provider)
+        for node_id, node_configs in self.config.nodes.items():
+            setup_datadir(node_id, node_configs)
 
         self.output_path = tempfile.mkdtemp(
             prefix="golem-integration-test-output-")
         helpers.set_task_output_path(self.config.task_dict, self.output_path)
+
+        self.nodes: 'typing.Dict[NodeId, Popen]' = {}
+        self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
+        self.nodes_ports: typing.Dict[NodeId, int] = {}
+        self.nodes_keys: typing.Dict[NodeId, str] = {}
+        self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
 
         self.start_nodes()
         self.started = True
