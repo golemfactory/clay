@@ -1,4 +1,5 @@
 # pylint: disable=protected-access
+import datetime
 from pathlib import Path
 import sys
 import time
@@ -131,12 +132,22 @@ class TestTransactionSystem(TransactionSystemBase):
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == self.sci.GAS_WITHDRAW
 
-    def test_get_gas_price(self):
+    def test_gas_price(self):
         test_gas_price = 1234
         self.sci.get_current_gas_price.return_value = test_gas_price
-        ets = self._make_ets()
 
-        self.assertEqual(ets.gas_price, test_gas_price)
+        self.assertEqual(self.ets.gas_price, test_gas_price)
+
+    def test_get_gas_price(self, *_):
+        test_gas_price = 1234
+        test_price_limit = 12345
+        self.sci.get_current_gas_price.return_value = test_gas_price
+        self.sci.GAS_PRICE = test_price_limit
+
+        result = self.ets.get_gas_price()
+
+        self.assertEqual(result["current_gas_price"], str(test_gas_price))
+        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
 
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
@@ -713,3 +724,36 @@ class ConcentUnlockTest(TransactionSystemBase):
             int(time.time()) + delay
         self.sci.on_transaction_confirmed.call_args[0][1](Mock())
         call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
+
+
+class DepositPaymentsListTest(TransactionSystemBase):
+
+    def test_empty(self):
+        self.assertEqual(self.ets.get_deposit_payments_list(), [])
+
+    def test_one(self):
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        value = 31337
+        ts = 1514761200.0
+        dt = datetime.datetime.fromtimestamp(ts)
+        model.DepositPayment.create(
+            value=value,
+            tx=tx_hash,
+            created_date=dt,
+            modified_date=dt,
+        )
+        expected = [
+            {
+                'created': ts,
+                'modified': ts,
+                'fee': None,
+                'status': 'awaiting',
+                'transaction': tx_hash,
+                'value': str(value),
+            },
+        ]
+        self.assertEqual(
+            expected,
+            self.ets.get_deposit_payments_list(),
+        )

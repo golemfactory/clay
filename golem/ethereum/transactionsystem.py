@@ -32,6 +32,7 @@ from golem_sci import (
 from twisted.internet import defer
 
 from golem import model
+from golem.core import common
 from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
@@ -135,6 +136,13 @@ class TransactionSystem(LoopingCallService):
     def gas_price_limit(self) -> int:
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
+
+    @rpc_utils.expose('pay.gas_price')
+    def get_gas_price(self) -> Dict[str, str]:
+        return {
+            "current_gas_price": str(self.gas_price),
+            "gas_price_limit": str(self.gas_price_limit)
+        }
 
     @property
     def deposit_contract_available(self) -> bool:
@@ -325,38 +333,72 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         return self._payment_processor.add(subtask_id, eth_address, value)
 
+    @rpc_utils.expose('pay.ident')
     @sci_required()
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
         self._sci: SmartContractsInterface
-        return self._sci.get_eth_address()
+        address = self._sci.get_eth_address()
+        return str(address) if address else None
 
-    def get_payments_list(self, num: Optional[int] = None,
-                          interval: Optional[timedelta] = None):
-        """ Return list of all planned and made payments
-        :return list: list of dictionaries describing payments
-        """
+    @rpc_utils.expose('pay.payments')
+    def get_payments_list(
+            self,
+            num: Optional[int] = None,
+            last_seconds: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        interval = None
+        if last_seconds is not None:
+            interval = timedelta(seconds=last_seconds)
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
+    @rpc_utils.expose('pay.deposit_payments')
     @classmethod
-    def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \
-            -> List[model.DepositPayment]:
+    def get_deposit_payments_list(cls, limit=1000, offset=0)\
+            -> List[Dict[str, Any]]:
         query = model.DepositPayment.select() \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
-        return list(query)
+        result = []
+        for dpayment in query:
+            entry = {}
+            entry['value'] = common.to_unicode(dpayment.value)
+            entry['status'] = common.to_unicode(dpayment.status.name)
+            entry['fee'] = common.to_unicode(dpayment.fee)
+            entry['transaction'] = common.to_unicode(dpayment.tx)
+            entry['created'] = common.datetime_to_timestamp_utc(
+                dpayment.created_date,
+            )
+            entry['modified'] = common.datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
 
     def get_subtasks_payments(
             self,
             subtask_ids: Iterable[str]) -> List[model.Payment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
-    def get_incomes_list(self):
-        """ Return list of all expected and received incomes
-        :return list: list of dictionaries describing incomes
-        """
-        return self._incomes_keeper.get_list_of_all_incomes()
+    @rpc_utils.expose('pay.incomes')
+    def get_incomes_list(self) -> List[Dict[str, Any]]:
+        incomes = self._incomes_keeper.get_list_of_all_incomes()
+
+        def item(o):
+            status = "confirmed" if o.transaction else "awaiting"
+
+            return {
+                "subtask": common.to_unicode(o.subtask),
+                "payer": common.to_unicode(o.sender_node),
+                "value": common.to_unicode(o.value),
+                "status": common.to_unicode(status),
+                "transaction": common.to_unicode(o.transaction),
+                "created": common.datetime_to_timestamp_utc(o.created_date),
+                "modified": common.datetime_to_timestamp_utc(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()

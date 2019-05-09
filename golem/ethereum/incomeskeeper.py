@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from datetime import datetime, timedelta
 import logging
 import time
 
@@ -16,8 +15,8 @@ class IncomesKeeper:
     """Keeps information about payments received from other nodes
     """
 
+    @staticmethod
     def received_batch_transfer(
-            self,
             tx_hash: str,
             sender: str,
             amount: int,
@@ -139,7 +138,8 @@ class IncomesKeeper:
             transaction=tx_hash[2:],
         )
 
-    def get_list_of_all_incomes(self):
+    @staticmethod
+    def get_list_of_all_incomes():
         # TODO: pagination. issue #2402
         return Income.select(
             Income.created_date,
