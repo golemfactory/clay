@@ -9,11 +9,13 @@ from twisted.trial.unittest import TestCase
 from golem.envs import EnvStatus, RuntimeStatus
 from golem.envs.docker import DockerPrerequisites, DockerPayload
 from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
+from golem.envs.docker.whitelist import Whitelist
+from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 
 
 @ci_skip
-class TestIntegration(TestCase):
+class TestIntegration(TestCase, DatabaseFixture):
 
     @pytest.mark.timeout(60)  # 60 sec should be well enough for this test
     @inlineCallbacks
@@ -25,10 +27,12 @@ class TestIntegration(TestCase):
         self.assertEqual(env.status(), EnvStatus.ENABLED)
 
         # Download image
-        yield env.install_prerequisites(DockerPrerequisites(
+        Whitelist.add("busybox")
+        installed = yield env.install_prerequisites(DockerPrerequisites(
             image="busybox",
             tag="latest"
         ))
+        self.assertTrue(installed)
 
         # Create runtime
         runtime = env.runtime(DockerPayload(
