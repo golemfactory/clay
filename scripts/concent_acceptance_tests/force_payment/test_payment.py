@@ -7,7 +7,7 @@ import typing
 from golem_messages import cryptography
 from golem_messages import factories as msg_factories
 from golem_messages import message
-from golem_messages.utils import encode_hex as encode_key_id
+from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
 import golem_sci.structs
 
 from golem.network.concent import exceptions as concent_exceptions
@@ -152,7 +152,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         ttc_kwargs.update({
             'task_to_compute__'
             'want_to_compute_task__'
-            'provider_ethereum_public_key': encode_key_id(
+            'provider_ethereum_address': pubkey_to_address(
                 provider1_keys.raw_pubkey
             ),
         })
@@ -170,7 +170,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         ttc2_kwargs.update({
             'task_to_compute__'
             'want_to_compute_task__'
-            'provider_ethereum_public_key': encode_key_id(
+            'provider_ethereum_address': pubkey_to_address(
                 provider2_keys.raw_pubkey
             ),
         })

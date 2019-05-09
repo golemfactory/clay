@@ -118,7 +118,7 @@ class Tasks:
                 values.append([
                     subtask['node_name'],
                     subtask['subtask_id'],
-                    Tasks.__format_seconds(subtask['time_remaining']),
+                    # Tasks.__format_seconds(subtask['time_remaining']),
                     subtask['status'],
                     Tasks.__progress_str(subtask['progress'])
                 ])
