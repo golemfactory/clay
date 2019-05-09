@@ -4,7 +4,7 @@ from functools import wraps
 from logging import Logger, getLogger
 from threading import Lock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence
+    Sequence, Iterable, ContextManager
 
 from twisted.internet.defer import Deferred
 
@@ -62,6 +62,58 @@ class RuntimeStatus(Enum):
         return self.name
 
 
+class RuntimeInput(ContextManager['RuntimeInput'], ABC):
+    """ A handle for writing to standard input stream of a running Runtime.
+        Input could be either raw (bytes) or encoded (str). Could be used as a
+        context manager to call .close() automatically. """
+
+    def __init__(self, encoding: Optional[str] = None) -> None:
+        self._encoding = encoding
+
+    def _encode(self, line: Union[str, bytes]) -> bytes:
+        """ Encode given data (if needed). If the Input is encoded it expects
+            the argument to be str, otherwise bytes is expected. """
+        if self._encoding:
+            assert isinstance(line, str)
+            return line.encode(self._encoding)
+        assert isinstance(line, bytes)
+        return line
+
+    @abstractmethod
+    def write(self, data: Union[str, bytes]) -> None:
+        """ Write data to the stream. Raw input would accept only str while
+            encoded input only bytes. An attempt to write to a closed input
+            would rise an error. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def close(self):
+        """ Close the input and send EOF to the Runtime. Calling this method on
+            a closed input won't do anything.
+            NOTE: If there are many open input handles for a single Runtime
+            then closing one of them will effectively close all the other. """
+
+    def __enter__(self) -> 'RuntimeInput':
+        return self
+
+    def __exit__(self, *_, **__) -> None:
+        self.close()
+
+
+class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
+    """ A handle for reading output (either stdout or stderr) from a running
+        Runtime. Yielded items are output lines. Output could be either raw
+        (bytes) or decoded (str). """
+
+    def __init__(self, encoding: Optional[str] = None) -> None:
+        self._encoding = encoding
+
+    def _decode(self, line: bytes) -> Union[str, bytes]:
+        if self._encoding:
+            return line.decode(self._encoding)
+        return line
+
+
 class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
@@ -71,6 +123,20 @@ class Runtime(ABC):
         self._status = RuntimeStatus.CREATED
         self._status_lock = Lock()
 
+    @staticmethod
+    def _assert_status(
+            actual: RuntimeStatus,
+            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]) -> None:
+        """ Assert that actual status is one of the expected. """
+
+        if isinstance(expected, RuntimeStatus):
+            expected = [expected]
+
+        if actual not in expected:
+            exp_str = " or ".join(map(str, expected))
+            raise ValueError(
+                f"Invalid status: {actual}. Expected: {exp_str}")
+
     def _change_status(
             self,
             from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
@@ -78,14 +144,8 @@ class Runtime(ABC):
         """ Assert that current Runtime status is the given one and change to
             another one. Using lock to ensure atomicity. """
 
-        if isinstance(from_status, RuntimeStatus):
-            from_status = [from_status]
-
         with self._status_lock:
-            if self._status not in from_status:
-                exp_status = " or ".join(map(str, from_status))
-                raise ValueError(
-                    f"Invalid status: {self._status}. Expected: {exp_status}")
+            self._assert_status(self._status, from_status)
             self._status = to_status
 
     def _wrap_status_change(
@@ -148,6 +208,31 @@ class Runtime(ABC):
         """ Get the current status of the Runtime. """
         with self._status_lock:
             return self._status
+
+    @abstractmethod
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        """ Get STDIN stream of the Runtime. If encoding is None the returned
+            stream will be raw (accepting bytes), otherwise it will be encoded
+            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
+            or 'RUNNING'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDOUT stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is one of the following: 'PREPARED',
+            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
+            last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDERR stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
+            (however, in the last case output might not be available). """
+        raise NotImplementedError
 
     @abstractmethod
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:

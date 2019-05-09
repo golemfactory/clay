@@ -11,6 +11,10 @@ class DummyHypervisor(Hypervisor):
     which check is hypervisor is needed.
     """
 
+    @classmethod
+    def is_available(cls) -> bool:
+        return True
+
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 

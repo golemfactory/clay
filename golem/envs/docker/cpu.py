@@ -1,15 +1,16 @@
 import logging
-from functools import wraps
 from pathlib import Path
+from socket import socket, SocketIO, SHUT_WR
 from subprocess import SubprocessError
-from threading import Lock, Thread
+from threading import Thread, Lock
 from time import sleep
 from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
-    NamedTuple, Union, Sequence, Tuple
+    NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
+from urllib3.contrib.pyopenssl import WrappedSocket
 
 from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
@@ -24,7 +25,8 @@ from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
-    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, Prerequisites
+    RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, \
+    Prerequisites, RuntimeOutput, RuntimeInput
 from golem.envs.docker import DockerPayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -55,6 +57,80 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
         return DockerCPUConfig(work_dir=work_dir, **dict_)
 
 
+class DockerOutput(RuntimeOutput):
+
+    def __init__(
+            self, raw_output: Iterable[bytes], encoding: Optional[str] = None
+    ) -> None:
+        super().__init__(encoding=encoding)
+        self._raw_output = raw_output
+
+    def __iter__(self) -> Iterator[Union[str, bytes]]:
+        buffer = b""
+
+        for chunk in self._raw_output:
+            buffer += chunk
+            lines = buffer.split(b"\n")
+            buffer = lines.pop()
+
+            for line in lines:
+                yield self._decode(line + b"\n")  # Keep the newline character
+
+        if buffer:
+            yield self._decode(buffer)
+
+
+class InputSocket:
+    """ Wrapper class providing uniform interface for different types of
+        sockets. It is necessary due to poor design of attach_socket().
+        Stdin socket is thread-safe (all operations use lock). """
+
+    def __init__(self, sock: Union[WrappedSocket, SocketIO]) -> None:
+        if isinstance(sock, WrappedSocket):
+            self._sock: Union[WrappedSocket, socket] = sock
+        elif isinstance(sock, SocketIO):
+            self._sock = sock._sock
+        else:
+            raise TypeError(f"Invalid socket class: {sock.__class__}")
+        self._lock = Lock()
+        self._closed = False
+
+    def write(self, data: bytes) -> None:
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("Socket closed")
+            self._sock.sendall(data)
+
+    def close(self) -> None:
+        with self._lock:
+            if self._closed:
+                return
+            if isinstance(self._sock, socket):
+                self._sock.shutdown(SHUT_WR)
+            else:
+                self._sock.shutdown()
+            self._sock.close()
+            self._closed = True
+
+    def closed(self) -> bool:
+        return self._closed
+
+
+class DockerInput(RuntimeInput):
+
+    def __init__(self, sock: InputSocket, encoding: Optional[str] = None) \
+            -> None:
+        super().__init__(encoding=encoding)
+        self._sock = sock
+
+    def write(self, data: Union[str, bytes]) -> None:
+        encoded = self._encode(data)
+        self._sock.write(encoded)
+
+    def close(self):
+        self._sock.close()
+
+
 class DockerCPURuntime(Runtime):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
@@ -72,6 +148,7 @@ class DockerCPURuntime(Runtime):
 
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
+        self._stdin_socket: Optional[InputSocket] = None
         self._container_config = client.create_container_config(
             image=image,
             volumes=volumes,
@@ -79,7 +156,8 @@ class DockerCPURuntime(Runtime):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
-            host_config=host_config
+            host_config=host_config,
+            stdin_open=True
         )
 
     def _inspect_container(self) -> Tuple[str, int]:
@@ -150,8 +228,14 @@ class DockerCPURuntime(Runtime):
             assert isinstance(container_id, str), "Invalid container ID"
             self._container_id = container_id
 
-            for warning in result.get("Warnings", []):
+            for warning in result.get("Warnings") or []:
                 logger.warning("Container creation warning: %s", warning)
+
+            sock = client.attach_socket(
+                container_id, params={'stdin': True, 'stream': True}
+            )
+            # Due to terrible design of attach_socket() we have to do this
+            self._stdin_socket = InputSocket(sock)
 
         return deferToThread(_prepare)
 
@@ -169,7 +253,15 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.remove_container(self._container_id)
 
-        return deferToThread(_cleanup)
+        # Close STDIN in case it wasn't closed on stop()
+        def _close_stdin(res):
+            if self._stdin_socket is not None:
+                self._stdin_socket.close()
+            return res
+
+        deferred_cleanup = deferToThread(_cleanup)
+        deferred_cleanup.addBoth(_close_stdin)
+        return deferred_cleanup
 
     def start(self) -> Deferred:
         self._change_status(
@@ -209,17 +301,95 @@ class DockerCPURuntime(Runtime):
             client = local_client()
             client.stop(self._container_id)
 
-        def _join_status_update_thread(_):
+        def _join_status_update_thread(res):
             logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
                 logger.warning("Failed to join status update thread.")
             else:
                 logger.debug("Status update thread joined.")
+            return res
+
+        def _close_stdin(res):
+            if self._stdin_socket is not None:
+                self._stdin_socket.close()
+            return res
 
         deferred_stop = deferToThread(_stop)
-        deferred_stop.addCallback(_join_status_update_thread)
+        deferred_stop.addBoth(_join_status_update_thread)
+        deferred_stop.addBoth(_close_stdin)
         return deferred_stop
+
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        self._assert_status(
+            self.status(), [
+                RuntimeStatus.PREPARED,
+                RuntimeStatus.STARTING,
+                RuntimeStatus.RUNNING
+            ])
+        assert self._stdin_socket is not None
+        return DockerInput(sock=self._stdin_socket, encoding=encoding)
+
+    def _get_raw_output(self, stdout=False, stderr=False, stream=True) \
+            -> Iterable[bytes]:
+        """ Attach to the output (STDOUT or STDERR) of a container. If stream
+            is True the returned value is an iterator that advances when
+            something is printed by the container. Otherwise, it is a list
+            containing single `bytes` object with all output data. An empty
+            list is returned if error occurs. """
+
+        assert stdout or stderr
+        assert self._container_id is not None
+        logger.debug("Attaching to output of container '%s'...")
+        client = local_client()
+
+        try:
+            raw_output = client.attach(
+                container=self._container_id,
+                stdout=stdout, stderr=stderr, logs=True, stream=stream)
+            logger.debug("Successfully attached to output.")
+            # If not using stream the output is a single `bytes` object
+            return raw_output if stream else [raw_output]
+        except APIError:
+            logger.exception("Error attaching to container's output.")
+            return []
+
+    def _get_output(self, encoding: Optional[str] = None, **kwargs) \
+            -> RuntimeOutput:
+        """ Get output (STDERR or STDOUT) of this Runtime. """
+
+        stream_available = [
+            RuntimeStatus.PREPARED,
+            RuntimeStatus.STARTING,
+            RuntimeStatus.RUNNING
+        ]
+        self._assert_status(
+            self.status(), stream_available + [
+                RuntimeStatus.STOPPED,
+                RuntimeStatus.FAILURE
+            ])
+
+        raw_output: Iterable[bytes] = []
+
+        if self.status() in stream_available:
+            raw_output = self._get_raw_output(stream=True, **kwargs)
+
+        # If container is no longer running the stream will not work (it just
+        # hangs forever). So we have to get all the output 'offline'.
+        # Status update is needed because the container may have stopped
+        # between checking and attaching to the output.
+        self._update_status()
+        if self.status() not in stream_available:
+            logger.debug("Container no longer running. Getting offline output.")
+            raw_output = self._get_raw_output(stream=False, **kwargs)
+
+        return DockerOutput(raw_output, encoding=encoding)
+
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        return self._get_output(stdout=True, encoding=encoding)
+
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        return self._get_output(stderr=True, encoding=encoding)
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
