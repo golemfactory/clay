@@ -1,33 +1,23 @@
-import time
+from functools import partial
 import typing
 
 from scripts.node_integration_tests import helpers
 
 from ...base import NodeTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(NodeTestPlaybook):
     def step_wait_task_finished(self):
         verification_rejected = helpers.search_output(
-            self.provider_output_queue, '.*SubtaskResultsRejected.*'
+            self.output_queues[NodeId.provider], '.*SubtaskResultsRejected.*'
         )
 
         if verification_rejected:
             self.fail(verification_rejected.group(0))
             return
 
-        def on_success(result):
-            if result['status'] == 'Finished':
-                print("Task finished.")
-                self.next()
-            elif result['status'] == 'Timeout':
-                self.fail("Task timed out :( ... ")
-            else:
-                print("{} ... ".format(result['status']))
-                time.sleep(10)
-
-        return self.call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return super().step_wait_task_finished()
 
     steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
@@ -36,5 +26,5 @@ class Playbook(NodeTestPlaybook):
         step_wait_task_finished,
         NodeTestPlaybook.step_verify_output,
         NodeTestPlaybook.step_get_subtasks,
-        NodeTestPlaybook.step_verify_provider_income,
+        NodeTestPlaybook.step_verify_income,
     )

@@ -13,6 +13,7 @@ from twisted.internet import defer
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import short_node_id
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
@@ -415,12 +416,12 @@ class TestPayments(unittest.TestCase):
             self._assert_type_and_length(result, self.n_incomes)
             self.assertEqual(
                 result.data[1][0],
-                ['node_1', 'sent', '1.00000000 GNT']
+                [short_node_id('node_1'), 'sent', '1.00000000 GNT']
             )
 
     def test_incomes_awaiting(self):
         with client_ctx(incomes, self.client):
-            result = incomes(None, "awaiting")
+            result = incomes(None, "awaiting", True)
 
             self._assert_type_and_length(result, 1)
             self.assertEqual(
@@ -430,7 +431,7 @@ class TestPayments(unittest.TestCase):
 
     def test_incomes_confirmed(self):
         with client_ctx(incomes, self.client):
-            result = incomes(None, "confirmed")
+            result = incomes(None, "confirmed", True)
 
             self._assert_type_and_length(result, 2)
             self.assertEqual(
@@ -451,7 +452,7 @@ class TestPayments(unittest.TestCase):
                 result.data[1][1],
                 [
                     'subtask_2',
-                    'node_2',
+                    short_node_id('node_2'),
                     'confirmed',
                     '0.20000000 GNT',
                     '2.00000000 ETH',
@@ -460,7 +461,7 @@ class TestPayments(unittest.TestCase):
 
     def test_payments_awaiting(self):
         with client_ctx(payments, self.client):
-            result = payments(None, 'awaiting')
+            result = payments(None, 'awaiting', True)
 
             self._assert_type_and_length(result, 1)
             self.assertEqual(
@@ -476,7 +477,7 @@ class TestPayments(unittest.TestCase):
 
     def test_payments_confirmed(self):
         with client_ctx(payments, self.client):
-            result = payments(None, 'confirmed')
+            result = payments(None, 'confirmed', True)
 
             self._assert_type_and_length(result, 2)
             self.assertEqual(

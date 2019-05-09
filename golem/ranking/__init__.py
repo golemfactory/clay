@@ -4,7 +4,10 @@ from golem.task.taskstate import SubtaskOp
 
 
 class ProviderEfficacy:
-
+    """
+    Provider efficacy from Requestor perspective as proposed in
+    https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
     _OPS = [
         SubtaskOp.FINISHED,
         SubtaskOp.TIMEOUT,
