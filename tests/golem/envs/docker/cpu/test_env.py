@@ -1,7 +1,7 @@
-import sys
+from logging import Logger
 from pathlib import Path
 from subprocess import SubprocessError
-from unittest.mock import patch as _patch, Mock, MagicMock
+from unittest.mock import patch as _patch, Mock, MagicMock, ANY
 
 from twisted.trial.unittest import TestCase
 
@@ -200,11 +200,19 @@ class TestDockerCPUEnv(TestCase):
         self.hypervisor = Mock(spec=Hypervisor)
         self.config = DockerCPUConfig(work_dir=Mock())
         get_hypervisor.return_value.instance.return_value = self.hypervisor
-        self.env = DockerCPUEnvironment(self.config)
+        self.logger = Mock(spec=Logger)
+        with patch('logger', self.logger):
+            self.env = DockerCPUEnvironment(self.config)
 
-        logger_patch = patch('logger')
-        self.logger = logger_patch.start()
-        self.addCleanup(logger_patch.stop)
+    def _patch_async(self, name, *args, **kwargs):
+        patcher = patch(name, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_env_async(self, name, *args, **kwargs):
+        patcher = patch_env(name, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
 
 
 class TestPrepare(TestDockerCPUEnv):
@@ -225,24 +233,30 @@ class TestPrepare(TestDockerCPUEnv):
             self.env.prepare()
 
     def test_hypervisor_setup_error(self):
-        self.hypervisor.setup.side_effect = OSError
+        error = OSError("test")
+        self.hypervisor.setup.side_effect = error
+        error_occurred = self._patch_env_async('_error_occurred')
+
         deferred = self.env.prepare()
         self.assertEqual(self.env.status(), EnvStatus.PREPARING)
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.ERROR)
-            self.logger.exception.assert_called_once()
+            error_occurred.assert_called_once_with(error, ANY)
         deferred.addCallback(_check)
 
         return deferred
 
     def test_ok(self):
+        env_enabled = self._patch_env_async('_env_enabled')
+
         deferred = self.env.prepare()
         self.assertEqual(self.env.status(), EnvStatus.PREPARING)
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.ENABLED)
+            env_enabled.assert_called_once_with()
         deferred.addCallback(_check)
 
         return deferred
@@ -266,25 +280,31 @@ class TestCleanup(TestDockerCPUEnv):
 
     def test_hypervisor_quit_error(self):
         self.env._status = EnvStatus.ENABLED
-        self.hypervisor.quit.side_effect = OSError
+        error = OSError("test")
+        self.hypervisor.quit.side_effect = error
+        error_occurred = self._patch_env_async('_error_occurred')
+
         deferred = self.env.cleanup()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.ERROR)
-            self.logger.exception.assert_called_once()
+            error_occurred.assert_called_once_with(error, ANY)
         deferred.addCallback(_check)
 
         return deferred
 
     def test_ok(self):
         self.env._status = EnvStatus.ENABLED
+        env_disabled = self._patch_env_async('_env_disabled')
+
         deferred = self.env.cleanup()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
 
         def _check(_):
             self.assertEqual(self.env.status(), EnvStatus.DISABLED)
+            env_disabled.assert_called_once_with()
         deferred.addCallback(_check)
 
         return deferred
@@ -310,49 +330,51 @@ class TestInstallPrerequisites(TestDockerCPUEnv):
         with self.assertRaises(ValueError):
             self.env.install_prerequisites(prereqs)
 
-    def _patch_whitelist(self, return_value):
-        # Has to use twisted's patch because standard one doesn't work with
-        # Deferreds very well
-        whitelist = Mock(is_whitelisted=Mock(return_value=return_value))
-        self.patch(sys.modules['golem.envs.docker.cpu'], 'Whitelist', whitelist)
-
     def test_pull_image_error(self):
-        client_mock = MagicMock()
-        client_mock.return_value.pull.side_effect = ValueError
-        client_patch = patch("local_client", client_mock)
-        client_patch.start()
-        self.addCleanup(client_patch.stop)
-
+        error = OSError("test")
+        local_client = MagicMock()
+        local_client.return_value.pull.side_effect = error
+        self._patch_async("local_client", local_client)
+        self._patch_async('Whitelist.is_whitelisted', return_value=True)
+        error_occurred = self._patch_env_async('_error_occurred')
         self.env._status = EnvStatus.ENABLED
-        self._patch_whitelist(True)
+
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.install_prerequisites(prereqs)
-        return self.assertFailure(deferred, ValueError)
+        deferred = self.assertFailure(deferred, OSError)
+
+        def _check(_):
+            error_occurred.assert_called_once_with(error, ANY)
+        deferred.addCallback(_check)
+        return deferred
 
     def test_not_whitelisted(self):
         self.env._status = EnvStatus.ENABLED
-        self._patch_whitelist(False)
+        self._patch_async('Whitelist.is_whitelisted', return_value=False)
+        prereqs_installed = self._patch_env_async('_prerequisites_installed')
+
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.install_prerequisites(prereqs)
 
         def _check(return_value):
             self.assertFalse(return_value)
+            prereqs_installed.assert_not_called()
         deferred.addCallback(_check)
         return deferred
 
     def test_ok(self):
         self.env._status = EnvStatus.ENABLED
-        self._patch_whitelist(True)
-        client_patch = patch("local_client")
-        client_mock = client_patch.start()
-        self.addCleanup(client_patch.stop)
+        self._patch_async('Whitelist.is_whitelisted', return_value=True)
+        prereqs_installed = self._patch_env_async('_prerequisites_installed')
+        local_client = self._patch_async('local_client')
 
         prereqs = Mock(spec=DockerPrerequisites)
         deferred = self.env.install_prerequisites(prereqs)
 
         def _check(return_value):
             self.assertTrue(return_value)
-            client_mock().pull.assert_called_once_with(
+            prereqs_installed.assert_called_once_with(prereqs)
+            local_client().pull.assert_called_once_with(
                 prereqs.image,
                 tag=prereqs.tag
             )
@@ -379,19 +401,26 @@ class TestUpdateConfig(TestDockerCPUEnv):
 
         validate.assert_called_once_with(config)
 
+    @patch_env('_update_work_dir')
+    @patch_env('_config_updated')
     @patch_env('_validate_config')
     @patch_env('_constrain_hypervisor')
-    def test_work_dir_unchanged(self, constrain, validate):
+    def test_work_dir_unchanged(
+            self, constrain, validate, config_updated, update_work_dir):
         config = DockerCPUConfig(work_dir=self.config.work_dir)
         self.env.update_config(config)
 
         validate.assert_called_once_with(config)
         constrain.assert_called_once_with(config)
-        self.hypervisor.update_work_dir.assert_not_called()
+        update_work_dir.assert_not_called()
+        config_updated.assert_called_once_with(config)
 
+    @patch_env('_update_work_dir')
+    @patch_env('_config_updated')
     @patch_env('_validate_config')
     @patch_env('_constrain_hypervisor')
-    def test_config_changed(self, constrain, validate):
+    def test_config_changed(
+            self, constrain, validate, config_updated, update_work_dir):
         config = DockerCPUConfig(
             work_dir=Mock(),
             memory_mb=2137,
@@ -401,7 +430,8 @@ class TestUpdateConfig(TestDockerCPUEnv):
 
         validate.assert_called_once_with(config)
         constrain.assert_called_once_with(config)
-        self.hypervisor.update_work_dir.assert_called_once_with(config.work_dir)
+        update_work_dir.assert_called_once_with(config.work_dir)
+        config_updated.assert_called_once_with(config)
         self.assertEqual(self.env.config(), config)
 
 
@@ -433,6 +463,24 @@ class TestValidateConfig(TestCase):
         DockerCPUEnvironment._validate_config(config)
 
 
+class TestUpdateWorkDir(TestDockerCPUEnv):
+
+    @patch_env('_error_occurred')
+    def test_hypervisor_error(self, error_occurred):
+        work_dir = Mock(spec=Path)
+        error = OSError("test")
+        self.hypervisor.update_work_dir.side_effect = error
+
+        with self.assertRaises(OSError):
+            self.env._update_work_dir(work_dir)
+        error_occurred.assert_called_once_with(error, ANY)
+
+    def test_ok(self):
+        work_dir = Mock(spec=Path)
+        self.env._update_work_dir(work_dir)
+        self.hypervisor.update_work_dir.assert_called_once_with(work_dir)
+
+
 class TestConstrainHypervisor(TestDockerCPUEnv):
 
     def test_config_unchanged(self):
@@ -446,7 +494,8 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
         self.hypervisor.reconfig_ctx.assert_not_called()
         self.hypervisor.constrain.assert_not_called()
 
-    def test_constrain_error(self):
+    @patch_env('_error_occurred')
+    def test_constrain_error(self, error_occurred):
         config = DockerCPUConfig(
             work_dir=Mock(),
             memory_mb=1000,
@@ -457,12 +506,13 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
             cpu: 2
         }
         self.hypervisor.reconfig_ctx = MagicMock()
-        self.hypervisor.constrain.side_effect = OSError
+        error = OSError("test")
+        self.hypervisor.constrain.side_effect = error
 
         with self.assertRaises(OSError):
             self.env._constrain_hypervisor(config)
         self.assertEqual(self.env.status(), EnvStatus.ERROR)
-        self.logger.exception.assert_called_once()
+        error_occurred.assert_called_once_with(error, ANY)
 
     def test_config_changed(self):
         config = DockerCPUConfig(
