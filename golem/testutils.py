@@ -23,7 +23,6 @@ class TempDirFixture(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         logging.basicConfig(level=logging.DEBUG)
         if cls.root_dir is None:
             if is_osx():

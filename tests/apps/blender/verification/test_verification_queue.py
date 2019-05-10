@@ -1,17 +1,14 @@
+import unittest
 from unittest import mock
 import functools
-from twisted.internet.defer import Deferred
-
 from golem_verificator.blender_verifier import BlenderVerifier
 from golem.core.common import timeout_to_deadline
-from golem.core.deferred import sync_wait
 from golem.docker.task_thread import DockerTaskThread
-from golem.tools.testwithreactor import TestWithReactor
 from apps.core.verification_queue import VerificationQueue
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 
 
-class TestVerificationQueue(TestWithReactor):
+class TestVerificationQueue(unittest.TestCase):
 
     def setUp(self):
         self.queue = VerificationQueue()
@@ -27,14 +24,12 @@ class TestVerificationQueue(TestWithReactor):
                           _verification_timed_out, ):
 
         VerificationQueue.VERIFICATION_TIMEOUT = 2
-        d = Deferred()
+        from twisted.internet import reactor
 
         def test_timeout():
-            subtask_info = {'subtask_id': 'deadbeef'}
 
-            def verification_finished(subtask_id, verdict, result):  # noqa pylint:disable=unused-argument
-                d.callback(True)
-                return subtask_id
+            subtask_info = {}
+            subtask_info['subtask_id'] = 'deadbeef'
 
             self.queue.submit(
                 functools.partial(BlenderVerifier,
@@ -42,15 +37,16 @@ class TestVerificationQueue(TestWithReactor):
                                   docker_task_cls=DockerTaskThread),
                 "deadbeef",
                 timeout_to_deadline(10),
-                cb=verification_finished,
+                lambda subtask_id, verdict, result: subtask_id,
                 subtask_info=subtask_info,
                 results=[],
                 resources=[],
-                reference_data=[],
+                reference_data=[]
             )
 
-        reactor = self._get_reactor()
         reactor.callLater(0, test_timeout)
+        reactor.callLater(5, reactor.stop)
 
-        sync_wait(d, 60)
+        reactor.run()
+
         _verification_timed_out.assert_called_once()

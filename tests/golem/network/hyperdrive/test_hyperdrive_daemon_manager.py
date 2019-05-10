@@ -6,8 +6,6 @@ import semantic_version
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.testutils import TempDirFixture
 
-from tests.factories.hyperdrive import hyperdrive_client_kwargs
-
 
 class TestHyperdriveDaemonManager(TempDirFixture):
 
@@ -15,8 +13,7 @@ class TestHyperdriveDaemonManager(TempDirFixture):
     def setUp(self, *_):
         super().setUp()
 
-        self.dm = HyperdriveDaemonManager(
-            self.path, client_config=hyperdrive_client_kwargs(wrapped=False))
+        self.dm = HyperdriveDaemonManager(self.path)
         self.monitor = self.dm._monitor
 
     @patch('golem.network.hyperdrive.daemon_manager.'

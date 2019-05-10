@@ -102,8 +102,6 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               ]),
               help="Change level for Golem loggers and handlers")
 @click.option('--enable-talkback', is_flag=True, default=None)
-@click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
-@click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -121,9 +119,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
-        accept_all_terms, version, log_level, enable_talkback, m,
-        hyperdrive_port, hyperdrive_rpc_port,
-):
+        accept_all_terms, version, log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -165,10 +161,6 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             config_desc.rpc_port = rpc_address.port
         if node_address:
             config_desc.node_address = node_address
-        if hyperdrive_port:
-            config_desc.hyperdrive_port = hyperdrive_port
-        if hyperdrive_rpc_port:
-            config_desc.hyperdrive_rpc_port = hyperdrive_rpc_port
 
         # Golem headless
         install_reactor()

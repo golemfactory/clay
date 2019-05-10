@@ -195,7 +195,7 @@ class DockerTaskThread(TaskThread):
             devices = None
             runtime = None
 
-        assert self.docker_manager is not None, "Docker Manager undefined"
+        assert self.docker_manager is not None
         # PyLint still thinks docker_manager is of type DockerConfigManager
         # pylint: disable=no-member
         host_config = self.docker_manager.get_host_config_for_task(binds)

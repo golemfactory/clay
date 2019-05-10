@@ -9,9 +9,6 @@ from twisted.python import failure
 from golem.network.hyperdrive.client import HyperdriveAsyncClient, \
     HyperdriveClient, HyperdriveClientOptions
 
-from tests.factories.hyperdrive import hyperdrive_client_kwargs
-
-
 response = {
     'id': str(uuid.uuid4()),
     'version': '0.2.4',
@@ -29,10 +26,6 @@ response_str = json.dumps(response)
                                    content=response_str.encode()))
 class TestHyperdriveClient(TestCase):
 
-    @staticmethod
-    def get_client():
-        return HyperdriveClient(**hyperdrive_client_kwargs(wrapped=False))
-
     def test_build_options(self, _):
         options = HyperdriveClient.build_options()
         assert options.client_id == HyperdriveClient.CLIENT_ID
@@ -40,25 +33,25 @@ class TestHyperdriveClient(TestCase):
         assert options.options['peers'] is None
 
     def test_id(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         result = client.id()
         assert result['id'] == response['id']
         assert result['version'] == response['version']
 
     def test_addresses(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         assert client.addresses() == dict(TCP=('0.0.0.0', 3282))
 
     def test_add(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         assert client.add(response['files']) == response['hash']
 
     def test_restore(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         assert client.restore(response['files']) == response['hash']
 
     def test_get(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         content_hash = str(uuid.uuid4())
         filepath = str(uuid.uuid4())
 
@@ -69,7 +62,7 @@ class TestHyperdriveClient(TestCase):
             == [(filepath, content_hash, response['files'])]
 
     def test_cancel(self, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         content_hash = str(uuid.uuid4())
         response_hash = response['hash']
         assert client.cancel(content_hash) == response_hash
@@ -77,7 +70,7 @@ class TestHyperdriveClient(TestCase):
     @mock.patch('json.loads')
     @mock.patch('requests.post')
     def test_request(self, post, json_loads, _):
-        client = self.get_client()
+        client = HyperdriveClient()
         resp = mock.Mock()
         post.return_value = resp
 
@@ -86,7 +79,7 @@ class TestHyperdriveClient(TestCase):
 
     @mock.patch('json.loads')
     def test_request_exception(self, json_loads, post):
-        client = self.get_client()
+        client = HyperdriveClient()
         resp = mock.Mock()
         post.return_value = resp
 
@@ -101,7 +94,7 @@ class TestHyperdriveClient(TestCase):
 
     @mock.patch('json.loads')
     def test_request_http_error(self, json_loads, post):
-        client = self.get_client()
+        client = HyperdriveClient()
         resp = mock.Mock()
         post.return_value = resp
 
@@ -130,13 +123,9 @@ class TestHyperdriveClientAsync(TestCase):
         return d
 
     @staticmethod
-    def get_client():
-        return HyperdriveAsyncClient(**hyperdrive_client_kwargs(wrapped=False))
-
-    @staticmethod
     @mock.patch('golem.core.golem_async.AsyncHTTPRequest.run')
     def test_get_async_run(request_run):
-        client = TestHyperdriveClientAsync.get_client()
+        client = HyperdriveAsyncClient()
         result = client.get_async('resource_hash',
                                   client_options=None,
                                   filepath='.')
@@ -154,7 +143,7 @@ class TestHyperdriveClientAsync(TestCase):
         )
 
     def test_get_async_error(self):
-        client = self.get_client()
+        client = HyperdriveAsyncClient()
 
         with mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                         side_effect=self.failure):
@@ -166,7 +155,7 @@ class TestHyperdriveClientAsync(TestCase):
             assert isinstance(wrapper.result, failure.Failure)
 
     def test_get_async_body_error(self):
-        client = self.get_client()
+        client = HyperdriveAsyncClient()
 
         with mock.patch('twisted.web.client.readBody',
                         side_effect=self.failure), \
@@ -191,7 +180,7 @@ class TestHyperdriveClientAsync(TestCase):
             mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
-            client = self.get_client()
+            client = HyperdriveAsyncClient()
             wrapper = client.get_async('resource_hash',
                                        client_options=None,
                                        filepath='.')
@@ -212,7 +201,7 @@ class TestHyperdriveClientAsync(TestCase):
             mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
-            client = self.get_client()
+            client = HyperdriveAsyncClient()
             wrapper = client.add_async(files)
             assert wrapper.called
             assert isinstance(wrapper.result, str)

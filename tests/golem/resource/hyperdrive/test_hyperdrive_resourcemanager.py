@@ -17,12 +17,11 @@ from golem.resource.hyperdrive.resourcesmanager import \
     default_argument_value
 from golem.testutils import TempDirFixture
 from tests.golem.resource.base.common import AddGetResources
-from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
 
 def running():
     try:
-        return HyperdriveClient(**hyperdrive_client_kwargs(wrapped=False)).id()
+        return HyperdriveClient().id()
     except ConnectionError:
         return False
 
@@ -201,10 +200,7 @@ class TestHyperdriveResourceManager(TempDirFixture):
         self.task_id = str(uuid.uuid4())
         self.handle_retries = Mock()
         self.dir_manager = DirManager(self.tempdir)
-        self.resource_manager = HyperdriveResourceManager(  # noqa pylint: disable=unexpected-keyword-arg
-            self.dir_manager,
-            **hyperdrive_client_kwargs()
-        )
+        self.resource_manager = HyperdriveResourceManager(self.dir_manager)
         self.resource_manager._handle_retries = self.handle_retries
 
         file_name = 'test_file'

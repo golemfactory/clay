@@ -9,8 +9,6 @@ from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
 from golem.tools.testdirfixture import TestDirFixture
 
-from tests.factories.hyperdrive import hyperdrive_client_kwargs
-
 
 class MockTaskResult:
     def __init__(self, task_id, result,
@@ -68,8 +66,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         self.dir_manager = DirManager(self.path)
         self.resource_manager = DummyResourceManager(
             self.dir_manager,
-            resource_dir_method=self.dir_manager.get_task_output_dir,
-            **hyperdrive_client_kwargs(),
+            resource_dir_method=self.dir_manager.get_task_output_dir
         )
 
     def testGenSecret(self):
@@ -139,8 +136,7 @@ class TestEncryptedResultPackageManager(TestDirFixture):
         dir_manager = DirManager(self.path)
         resource_manager = DummyResourceManager(
             dir_manager,
-            resource_dir_method=dir_manager.get_task_temporary_dir,
-            **hyperdrive_client_kwargs(),
+            resource_dir_method=dir_manager.get_task_temporary_dir
         )
 
         new_manager = EncryptedResultPackageManager(resource_manager)
