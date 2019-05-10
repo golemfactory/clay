@@ -77,7 +77,12 @@ class PaymentProcessor:
 
         for awaiting_payment in Payment \
                 .select() \
-                .where(Payment.status == PaymentStatus.awaiting):
+                .where(
+                        Payment.status.in_([
+                            PaymentStatus.awaiting,
+                            PaymentStatus.overdue,
+                        ]),
+                ):
             log.info(
                 "Restoring awaiting payment for subtask %s to %s of %.3f GNTB",
                 awaiting_payment.subtask,
@@ -248,3 +253,22 @@ class PaymentProcessor:
         )
 
         return True
+
+    def update_overdue(self) -> None:
+        """Sets overdue status for awaiting payments"""
+
+        processed_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
+        counter = 0
+        for payment in self._awaiting:
+            if payment.processed_ts >= processed_ts_deadline:
+                # All subsequent payments won't be overdue
+                # because list is sorted.
+                break
+            if payment.status is PaymentStatus.overdue:
+                continue
+            payment.status = PaymentStatus.overdue
+            payment.save()
+            log.debug("Marked as overdue. payment=%r", payment)
+            counter += 1
+        if counter:
+            log.info("Marked %d payments as overdue.", counter)

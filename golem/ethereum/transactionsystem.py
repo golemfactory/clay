@@ -915,4 +915,5 @@ class TransactionSystem(LoopingCallService):
         self._get_funds_from_faucet()
         self._try_convert_gnt()
         self._payment_processor.sendout()
+        self._payment_processor.update_overdue()
         self._incomes_keeper.update_overdue_incomes()
