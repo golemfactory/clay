@@ -1,21 +1,21 @@
-#!/bin/sh
+#!/bin/bash
 
  apt-get update \
  &&  apt-get install -y python3-pip \
  &&  pip3 install --upgrade pip \
  &&  cd /usr/local/lib/python3.6/dist-packages \
- && for LIB in $@
+ && if [ "$1" = "-r" ]
+    then
+        for REQ in ${@:2}
         do
-            if [ "$1" -eq "$LIB" ] 2>/dev/null
-            then
-                continue
-            elif [ "$1" -eq 0 ]
-            then
-                pip install $LIB
-            else
-                pip install -r $LIB
-            fi
-        done \
+            pip install -r $REQ
+        done
+    else
+        for LIB in $@
+        do
+            pip install $LIB
+        done
+    fi \
 && apt-get remove -y python3-pip \
 && apt-get clean \
 && apt-get -y autoremove \
