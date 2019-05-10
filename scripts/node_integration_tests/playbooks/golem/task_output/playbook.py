@@ -1,8 +1,10 @@
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 import typing
 
 from ...base import NodeTestPlaybook
+from ...test_config_base import NodeId
 
 
 class Playbook(NodeTestPlaybook):
@@ -35,7 +37,7 @@ class Playbook(NodeTestPlaybook):
                     self.fail(f'Output directory: {path.resolve()} does not'
                               f'match the expected format.')
 
-        self.success()
+        self.next()
 
     steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,

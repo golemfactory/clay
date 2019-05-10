@@ -28,30 +28,17 @@ class PendingResource(object):
         self.status = status
 
 
-class BaseResourceServer(object):
+class BaseResourceServer:
 
-    def __init__(self, resource_manager, dir_manager, client):
+    def __init__(self, resource_manager, client):
         self._lock = Lock()
 
         self.client = client
 
-        self.dir_manager = dir_manager
         self.resource_manager = resource_manager
 
         self.packager = ZipPackager()
-        self.resource_dir = self.dir_manager.res
         self.pending_resources = {}
-
-    def change_resource_dir(self, config_desc):
-        if self.dir_manager.root_path == config_desc.root_path:
-            return
-
-        old_resource_dir = self.get_distributed_resource_root()
-
-        self.dir_manager.root_path = config_desc.root_path
-        self.dir_manager.node_name = config_desc.node_name
-
-        self.resource_manager.storage.copy_dir(old_resource_dir)
 
     def get_distributed_resource_root(self):
         return self.resource_manager.storage.get_root()

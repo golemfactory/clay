@@ -132,7 +132,6 @@ class TaskComputer(object):
             'Error downloading resources: {}'.format(reason),
         )
         self.__task_finished(subtask)
-        self.session_closed()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
@@ -317,12 +316,6 @@ class TaskComputer(object):
         for l in self.listeners:
             l.lock_config(on)
 
-    def session_timeout(self):
-        self.session_closed()
-
-    def session_closed(self):
-        pass
-
     def __request_task(self):
         if self.has_assigned_task():
             return
@@ -344,7 +337,7 @@ class TaskComputer(object):
             logger.warning("Subtask '%s' of task '%s' cannot be computed: "
                            "task header has been unexpectedly removed",
                            subtask_id, task_id)
-            return self.session_closed()
+            return
 
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)

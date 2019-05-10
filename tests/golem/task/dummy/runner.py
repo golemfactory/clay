@@ -116,6 +116,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
+    ets.add_payment_info.return_value = int(time.time())
     return ets
 
 
@@ -148,7 +149,11 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    config_logging(
+        datadir=datadir,
+        loglevel="DEBUG",
+        formatter_prefix="RQ   ",
+    )
 
     client = create_client(datadir, '[Requestor] DUMMY')
     client.are_terms_accepted = lambda: True
@@ -204,7 +209,11 @@ def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel="DEBUG")
+    config_logging(
+        datadir=datadir,
+        loglevel="DEBUG",
+        formatter_prefix=f"P{provider_id} ",
+    )
 
     client = create_client(datadir, f'[Provider{ provider_id }] DUMMY')
     client.are_terms_accepted = lambda: True

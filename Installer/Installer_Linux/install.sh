@@ -21,6 +21,7 @@ declare -r ELECTRON_PACKAGE="electron.tar.gz"
 declare -i INSTALL_DOCKER=0
 declare -i INSTALL_NVIDIA_DOCKER=0
 declare -i INSTALL_NVIDIA_MODPROBE=0
+declare -i INSTALL_GVISOR_RUNTIME=0
 
 # PACKAGE VERSION
 CURRENT_VERSION="0.1.0"
@@ -123,6 +124,12 @@ function check_dependencies()
         fi
     else
         info_msg "Already installed: nvidia-docker2"
+    fi
+
+    if [[ -z "$(which runsc)" ]]; then
+        INSTALL_GVISOR_RUNTIME=1
+    else
+        info_msg "Already installed: gvisor runsc"
     fi
 
     # Check for nvidia-modprobe
@@ -340,6 +347,39 @@ function install_dependencies()
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
         sudo pkill -SIGHUP dockerd
     fi
+
+    if [[ ${INSTALL_GVISOR_RUNTIME} -eq 1 ]]; then
+        # TODO: replace `latest` with fixed version
+        wget https://storage.googleapis.com/gvisor/releases/nightly/latest/runsc
+        wget https://storage.googleapis.com/gvisor/releases/nightly/latest/runsc.sha512
+        sha512sum -c runsc.sha512
+        rm runsc.sha512
+
+        # Add runtime configuration
+        sudo python << EOF
+import json
+
+runtime_config = {
+    'path': '/usr/local/bin/runsc'
+}
+
+with open('/etc/docker/daemon.json', 'w+') as f:
+    try:
+        daemon_json = json.load(f)
+    except ValueError as e:
+        daemon_json = {}
+
+    if not 'runtimes' in daemon_json:
+        daemon_json['runtimes'] = {}
+
+    daemon_json['runtimes']['runsc'] = runtime_config
+    json.dump(daemon_json, f, indent=4)
+EOF
+        sudo service docker restart
+        chmod a+x runsc
+        sudo mv runsc /usr/local/bin
+    fi
+
 }
 
 # @brief Download latest Golem package (if package wasn't passed)

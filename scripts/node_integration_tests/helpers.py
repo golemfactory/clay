@@ -6,8 +6,8 @@ import queue
 import re
 import subprocess
 import sys
-import threading
 import tempfile
+import threading
 import typing
 
 from ethereum.utils import denoms
@@ -15,7 +15,7 @@ from ethereum.utils import denoms
 from . import tasks
 
 
-def get_testdir():
+def get_testdir() -> str:
     env_key = 'GOLEM_INTEGRATION_TEST_DIR'
     datadir = os.environ.get(env_key, None)
     if not datadir:
@@ -24,20 +24,20 @@ def get_testdir():
     return datadir
 
 
-def mkdatadir(role: str):
+def mkdatadir(role: str) -> str:
     return tempfile.mkdtemp(prefix='golem-{}-'.format(role.lower()))
 
 
-def yesterday():
+def yesterday() -> datetime.datetime:
     return datetime.datetime.utcnow() - datetime.timedelta(days=1)
 
 
-def report_termination(exit_code, node_type):
+def report_termination(exit_code, node_type) -> None:
     if exit_code:
         print("%s subprocess exited with: %s" % (node_type, exit_code))
 
 
-def gracefully_shutdown(process: subprocess.Popen, node_type: str):
+def gracefully_shutdown(process: subprocess.Popen, node_type: str) -> None:
     process.terminate()
     try:
         print("Waiting for the %s subprocess to shut-down" % node_type)
@@ -86,7 +86,7 @@ def get_output_queue(process: subprocess.Popen) -> queue.Queue:
     return q
 
 
-def print_output(q: queue.Queue, prefix):
+def print_output(q: queue.Queue, prefix: str) -> None:
     try:
         for line in iter(q.get_nowait, None):
             if line is None:
@@ -96,7 +96,7 @@ def print_output(q: queue.Queue, prefix):
         pass
 
 
-def clear_output(q: queue.Queue):
+def clear_output(q: queue.Queue) -> None:
     try:
         while True:
             q.get_nowait()
@@ -117,9 +117,10 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
     return None
 
 
-def construct_test_task(task_package_name, task_settings):
+def construct_test_task(task_package_name: str, task_settings: str) \
+        -> typing.Dict[str, typing.Any]:
     settings = tasks.get_settings(task_settings)
-    cwd = pathlib.Path(os.path.realpath(__file__)).parent
+    cwd = pathlib.Path(__file__).resolve().parent
     tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
     settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     return settings
@@ -129,7 +130,7 @@ def set_task_output_path(task_dict: dict, output_path: str) -> None:
     task_dict['options']['output_path'] = output_path
 
 
-def timeout_to_seconds(timeout_str: str):
+def timeout_to_seconds(timeout_str: str) -> float:
     components = timeout_str.split(':')
     return datetime.timedelta(
         hours=int(components[0]),
@@ -138,9 +139,9 @@ def timeout_to_seconds(timeout_str: str):
     ).total_seconds()
 
 
-def to_ether(value):
+def to_ether(value) -> float:
     return int(value) / denoms.ether
 
 
-def from_ether(value):
+def from_ether(value) -> int:
     return int(value * denoms.ether)
