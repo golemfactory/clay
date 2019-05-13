@@ -405,87 +405,88 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        logger.info("Offer confirmed, assigning subtask")
-        ctd = self.task_manager.get_next_subtask(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            self.address)
+        logger.info("Offer confirmed, assigning subtask(s)")
+        for i in range(msg.num_subtasks):
+            ctd = self.task_manager.get_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                self.address)
 
-        logger.debug(
-            "CTD generated. task_id=%s, node=%s ctd=%s",
-            msg.task_id,
-            node_name_id,
-            ctd,
-        )
+            logger.debug(
+                "CTD generated. task_id=%s, node=%s ctd=%s",
+                msg.task_id,
+                node_name_id,
+                ctd,
+            )
 
-        if ctd is None:
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
-            return
+            if ctd is None:
+                self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+                return
 
-        resources_result = None
-        if ctd["resources"]:
-            resources_result = yield add_resources(
-                self.task_server.client,
-                ctd["resources"],
+            resources_result = None
+            if ctd["resources"]:
+                resources_result = yield add_resources(
+                    self.task_server.client,
+                    ctd["resources"],
+                    ctd["subtask_id"],
+                    common.deadline_to_timeout(ctd["deadline"])
+                )
+                # overwrite resources so they are serialized by resource_manager
+                resources = self.task_server.get_resources(ctd['subtask_id'])
+                ctd["resources"] = resources
+                logger.info("resources_result: %r", resources_result)
+
+            logger.info(
+                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+                msg.task_id,
+                node_name_id,
                 ctd["subtask_id"],
-                common.deadline_to_timeout(ctd["deadline"])
             )
-            # overwrite resources so they are serialized by resource_manager
-            resources = self.task_server.get_resources(ctd['subtask_id'])
-            ctd["resources"] = resources
-            logger.info("resources_result: %r", resources_result)
-
-        logger.info(
-            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-            msg.task_id,
-            node_name_id,
-            ctd["subtask_id"],
-        )
-        task = self.task_manager.tasks[ctd['task_id']]
-        task_state = self.task_manager.tasks_states[ctd['task_id']]
-        price = taskkeeper.compute_subtask_value(
-            msg.price,
-            task.header.subtask_timeout,
-        )
-        if resources_result:
-            _, _, package_hash, package_size = resources_result
-        else:
-            package_hash = task_state.package_hash
-            package_size = task_state.package_size
-
-        ttc = message.tasks.TaskToCompute(
-            compute_task_def=ctd,
-            want_to_compute_task=msg,
-            requestor_id=task.header.task_owner.key,
-            requestor_public_key=task.header.task_owner.key,
-            requestor_ethereum_public_key=task.header.task_owner.key,
-            provider_id=self.key_id,
-            package_hash='sha1:' + package_hash,
-            concent_enabled=msg.concent_enabled,
-            price=price,
-            size=package_size,
-            resources_options=self.task_server.get_share_options(
-                ctd['subtask_id'], self.address).__dict__
-        )
-        ttc.generate_ethsig(self.my_private_key)
-        if ttc.concent_enabled:
-            ttc.sign_promissory_note(private_key=self.my_private_key)
-            ttc.sign_concent_promissory_note(
-                deposit_contract_address=getattr(
-                    EthereumConfig, 'deposit_contract_address'),
-                private_key=self.my_private_key
+            task = self.task_manager.tasks[ctd['task_id']]
+            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                msg.price,
+                task.header.subtask_timeout,
             )
+            if resources_result:
+                _, _, package_hash, package_size = resources_result
+            else:
+                package_hash = task_state.package_hash
+                package_size = task_state.package_size
 
-        self.send(ttc)
-        history.add(
-            msg=msg_utils.copy_and_sign(
-                msg=ttc,
-                private_key=self.my_private_key,
-            ),
-            node_id=self.key_id,
-            local_role=Actor.Requestor,
-            remote_role=Actor.Provider,
-        )
+            ttc = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                want_to_compute_task=msg,
+                requestor_id=task.header.task_owner.key,
+                requestor_public_key=task.header.task_owner.key,
+                requestor_ethereum_public_key=task.header.task_owner.key,
+                provider_id=self.key_id,
+                package_hash='sha1:' + package_hash,
+                concent_enabled=msg.concent_enabled,
+                price=price,
+                size=package_size,
+                resources_options=self.task_server.get_share_options(
+                    ctd['subtask_id'], self.address).__dict__
+            )
+            ttc.generate_ethsig(self.my_private_key)
+            if ttc.concent_enabled:
+                ttc.sign_promissory_note(private_key=self.my_private_key)
+                ttc.sign_concent_promissory_note(
+                    deposit_contract_address=getattr(
+                        EthereumConfig, 'deposit_contract_address'),
+                    private_key=self.my_private_key
+                )
+
+            self.send(ttc)
+            history.add(
+                msg=msg_utils.copy_and_sign(
+                    msg=ttc,
+                    private_key=self.my_private_key,
+                ),
+                node_id=self.key_id,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
 
     # pylint: disable=too-many-return-statements, too-many-branches
     @handle_attr_error
