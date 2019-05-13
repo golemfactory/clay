@@ -2,7 +2,7 @@ import json
 import os
 
 # pylint: disable=import-error
-import ffmpeg_commands as ffmpeg
+from ffmpeg_tools import commands
 import m3u8
 from m3u8_utils import create_and_dump_m3u8, join_playlists
 
@@ -12,9 +12,9 @@ PARAMS_FILE = "params.json"
 
 
 def do_split(path_to_stream, parts):
-    video_length = ffmpeg.get_video_len(path_to_stream)
-
-    split_file = ffmpeg.split_video(path_to_stream,
+    
+    video_length = commands.get_video_len(path_to_stream)
+    split_file = commands.split_video(path_to_stream,
                                     OUTPUT_DIR, video_length / parts)
     m3u8_main_list = m3u8.load(split_file)
 
@@ -40,7 +40,7 @@ def do_split(path_to_stream, parts):
 
 
 def do_transcode(track, targs, output, use_playlist):
-    ffmpeg.transcode_video(track, targs, output, use_playlist)
+    commands.transcode_video(track, targs, output, use_playlist)
 
 
 def do_merge(chunks, outputfilename):
@@ -53,7 +53,7 @@ def do_merge(chunks, outputfilename):
     file.write(merged.dumps())
     file.close()
 
-    ffmpeg.merge_videos(merged_filename, outputfilename)
+    commands.merge_videos(merged_filename, outputfilename)
 
 
 def compute_metric(cmd, function):
@@ -69,15 +69,15 @@ def get_metadata(cmd):
     video_path = os.path.join(RESOURCES_DIR, cmd["video"])
     output = os.path.join(OUTPUT_DIR, cmd["output"])
 
-    ffmpeg.get_metadata(video_path, output)
+    commands.get_metadata(video_path, output)
 
 
 def compute_metrics(metrics_params):
     if "ssim" in metrics_params:
-        compute_metric(metrics_params["ssim"], ffmpeg.compute_ssim)
+        compute_metric(metrics_params["ssim"], commands.compute_ssim)
 
     if "psnr" in metrics_params:
-        compute_metric(metrics_params["psnr"], ffmpeg.compute_psnr)
+        compute_metric(metrics_params["psnr"], commands.compute_psnr)
 
     if "metadata" in metrics_params:
         for metadata_request in metrics_params["metadata"]:
