@@ -69,8 +69,6 @@ def prepare_params(mounted_paths, subtask_border, scene_file_path, resolution, s
 
 def make_verdict( subtask_file_paths, crops, results ):
     verdict = True
-    print(f'make_verdict, crops: {crops}')
-    print(f'make_verdict, results: {results}')
 
     for crop_data in results:
         crop = get_crop_with_id(crop_data['crop']['id'], crops)

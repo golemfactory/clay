@@ -1,8 +1,6 @@
-import typing
-
 from . import types
 
-TYPES = [
+FILE_TYPES = [
     types.Bmp(),
     types.Jpeg(),
     types.Tga()
@@ -22,9 +20,8 @@ def get_expected_extension(extension: str) -> str:
     """
     lower_extension = extension.lower()
 
-    for file_type in TYPES:
+    for file_type in FILE_TYPES:
         if lower_extension in file_type.extensions:
             return file_type.output_format
 
     return lower_extension
-

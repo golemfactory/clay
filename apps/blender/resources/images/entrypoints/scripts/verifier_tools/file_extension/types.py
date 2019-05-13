@@ -66,4 +66,3 @@ class Tga(FileType):
     @property
     def output_format(self) -> str:
         return '.tga'
-
