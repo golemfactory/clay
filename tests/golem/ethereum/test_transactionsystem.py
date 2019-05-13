@@ -9,6 +9,7 @@ from unittest.mock import patch, Mock, ANY, PropertyMock
 from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
+from golem_messages.factories import p2p as p2p_factory
 import golem_sci.contracts
 import golem_sci.structs
 
@@ -767,6 +768,11 @@ class IncomesListTest(TransactionSystemBase):
 
     def test_one(self):
         income = model_factory.Income()
+        node = p2p_factory.Node(key=income.sender_node)
+        model.CachedNode(
+            node=node.key,
+            node_field=node,
+        ).save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
@@ -776,6 +782,7 @@ class IncomesListTest(TransactionSystemBase):
                 {
                     'created': ANY,
                     'modified': ANY,
+                    'node': node.to_dict(),
                     'payer': income.sender_node,
                     'status': 'awaiting',
                     'subtask': income.subtask,

@@ -39,6 +39,7 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
+from golem.network import nodeskeeper
 from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
@@ -385,6 +386,10 @@ class TransactionSystem(LoopingCallService):
     def get_incomes_list(self) -> List[Dict[str, Any]]:
         incomes = self._incomes_keeper.get_list_of_all_incomes()
 
+        # Our version of peewee (2.10.2) doesn't support
+        # .join(attr='XXX'). So we'll have to join manually
+        lru_node = functools.lru_cache()(functools.partial(nodeskeeper.get))
+
         def item(o):
             return {
                 "subtask": common.to_unicode(o.subtask),
@@ -393,7 +398,10 @@ class TransactionSystem(LoopingCallService):
                 "status": common.to_unicode(o.status.name),
                 "transaction": common.to_unicode(o.transaction),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
-                "modified": common.datetime_to_timestamp_utc(o.modified_date)
+                "modified": common.datetime_to_timestamp_utc(o.modified_date),
+                "node":
+                    lru_node(o.sender_node).to_dict()
+                    if o.sender_node else None,
             }
 
         return [item(income) for income in incomes]
