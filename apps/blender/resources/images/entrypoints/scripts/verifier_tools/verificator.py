@@ -1,3 +1,4 @@
+# todo review: rename file to "verifier.py"
 import json
 import os
 from typing import List, Optional, Tuple, Any, Dict
@@ -51,6 +52,8 @@ def prepare_crops(
                 resolution,
                 subtask_image_box,
             )
+
+            # todo review: redundant code fragment - write helper
             crops_render_data.append(
                 {
                     "id": crop.id,

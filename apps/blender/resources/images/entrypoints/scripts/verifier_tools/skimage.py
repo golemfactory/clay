@@ -1,3 +1,5 @@
+# todo review: this file consists of code copied from scikit-image,
+#  shouldn't be modified in any way
 import numpy as np
 from numpy.lib.arraypad import _validate_lengths
 

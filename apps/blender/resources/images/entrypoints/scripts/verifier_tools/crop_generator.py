@@ -125,6 +125,7 @@ class Crop:
             raise ValueError("Crop box is not within subtask box!")
 
     def _get_x_coordinates_as_pixels(self) -> Tuple[int, int]:
+        # todo review: write helper function for expression below
         x_pixel_min = math.floor(
              numpy.float32(self.box.left) * numpy.float32(self.resolution.width)
         ) - math.floor(

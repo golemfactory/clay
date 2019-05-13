@@ -20,6 +20,7 @@ TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
 
 def calculate_metrics(
         reference_crop_path,
+        # todo review: this is path, not image
         providers_result_image,
         top_left_corner_x,
         top_left_corner_y,
@@ -47,7 +48,10 @@ def calculate_metrics(
 
     (classifier, labels, available_metrics, _effective_metrics) = get_metrics()
 
+    # todo review: this is the only crop, should no longer be referred to as
+    #  "default"; the reference should include info it's from provider's result
     print(f"default_crop: {providers_result_crop.getbbox()}")
+    # todo review: as above
     default_metrics = compare_images(
         cropped_image,
         providers_result_crop,
@@ -111,6 +115,7 @@ def _load_and_prepare_images_for_comparison(
         crop_width,
         crop_height
     )
+    # todo review: redundant parentheses
     return (reference_crop, provider_crop)
 
 
