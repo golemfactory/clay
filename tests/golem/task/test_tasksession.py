@@ -119,7 +119,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
         server.client.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
-            dir_manager=dir_manager,
             client=server.client
         )
 
