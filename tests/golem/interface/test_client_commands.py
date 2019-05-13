@@ -864,7 +864,7 @@ class TestTasks(TempDirFixture):
             subtasks = tasks.subtasks('745c1d01', None)
             assert isinstance(subtasks, CommandResult)
             assert subtasks.data[1][0] == [
-                'node_1', 'subtask_1', '0:00:09', 'waiting', '1.00 %'
+                'node_1', 'subtask_1', 'waiting', '1.00 %'
             ]
 
     def test_subtasks_error(self):
