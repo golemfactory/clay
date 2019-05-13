@@ -85,7 +85,7 @@ class TaskManager(TaskEventListener):
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(),
             finished_cb=None,
-    ):
+    ) -> None:
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -571,7 +571,8 @@ class TaskManager(TaskEventListener):
         # Map new subtasks to old by 'start_task'
         subtasks_to_copy = {
             subtask['start_task']: subtask for subtask in
-            map(lambda id_: old_task.subtasks_given[id_], subtask_ids_to_copy)
+            map(lambda id_: old_task.subtasks_given[id_],  # type: ignore
+                subtask_ids_to_copy)
         }
 
         # Generate all subtasks for the new task
@@ -771,6 +772,9 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
 
+        self.notice_task_updated(task_id,
+                                 subtask_id=subtask_id,
+                                 op=SubtaskOp.VERIFYING)
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
@@ -1033,6 +1037,17 @@ class TaskManager(TaskEventListener):
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
 
+    @rpc_utils.expose('comp.task.verify_subtask')
+    def external_verify_subtask(self, subtask_id, verdict):
+        logger.info("external_verify_subtask. subtask_id=%r",
+                    subtask_id)
+        if subtask_id in self.subtask2task_mapping:
+            task_id = self.subtask2task_mapping[subtask_id]
+            return self.tasks[task_id].external_verify_subtask(subtask_id,
+                                                               verdict)
+        else:
+            raise ValueError('Not my subtask')
+
     def get_frame_subtasks(self, task_id: str, frame) \
             -> Optional[FrozenSet[str]]:
         task: Optional[Task] = self.tasks.get(task_id)
@@ -1133,8 +1148,10 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id)
 
     @handle_task_key_error
-    def notice_task_updated(self, task_id: str, subtask_id: str = None,
-                            op: Operation = None, persist: bool = True):
+    def notice_task_updated(self, task_id: str,
+                            subtask_id: Optional[str] = None,
+                            op: Optional[Operation] = None,
+                            persist: bool = True):
         """Called when a task is modified, saves the task and
         propagates information
 

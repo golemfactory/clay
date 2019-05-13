@@ -16,6 +16,7 @@ certifi==2018.1.18
 cffi==1.10.0
 chardet==3.0.4
 click==6.7
+cloudpickle==0.6.1
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==17.12.1
@@ -33,6 +34,7 @@ eth-keys==0.2.0b3
 eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
+fs==2.4.4
 #Golem-Messages==3.4.0
 Golem-Smart-Contracts-Interface==1.7.0
 greenlet==0.4.15
