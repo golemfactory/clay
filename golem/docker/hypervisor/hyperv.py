@@ -400,13 +400,15 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @staticmethod
     def _log_and_publish_event(name, **kwargs) -> None:
-        message = MESSAGES[name].format(**kwargs)
         event = EVENTS[name].copy()
-        event['data'] = message
+        data = next(iter(kwargs.values()))
+        message = MESSAGES[name].format(**kwargs)
 
         if event['stage'] == Stage.warning:
+            event['data'] = {"status": name, "value": data}
             logger.warning(message)
         else:
+            event['data'] = message
             logger.error(message)
 
         publish_event(event)
