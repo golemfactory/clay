@@ -5,4 +5,6 @@ rm $H_FILE || echo "Error, not able to delete '$H_FILE'"
 
 kill $H_PID || echo "Error, not able to stop hyperg"
 
+pkill -f hyperg
+
 exit 0
