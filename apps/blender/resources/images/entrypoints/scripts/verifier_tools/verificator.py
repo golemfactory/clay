@@ -117,7 +117,8 @@ def get_crop_path(parent: str, filename: str) -> str:
     if expected_path.exists():
         return str(expected_path)
 
-    raise FileNotFoundError(f'Could not find crop file: {expected_path}')
+    raise FileNotFoundError(f'Could not find crop file. Paths checked:'
+                            f'{crop_path}, {expected_path}')
 
 
 def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,

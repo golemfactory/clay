@@ -22,6 +22,6 @@ def get_expected_extension(extension: str) -> str:
 
     for file_type in FILE_TYPES:
         if lower_extension in file_type.extensions:
-            return file_type.output_format
+            return file_type.output_extension
 
     return lower_extension

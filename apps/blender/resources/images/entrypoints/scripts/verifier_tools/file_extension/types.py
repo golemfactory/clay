@@ -14,7 +14,7 @@ class FileType(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def output_format(self) -> str:
+    def output_extension(self) -> str:
         """
         Returns the file extension expected to be used by Blender for its
         output files of the represented file type.
@@ -32,7 +32,7 @@ class Bmp(FileType):
         ])
 
     @property
-    def output_format(self) -> str:
+    def output_extension(self) -> str:
         return '.bmp'
 
 
@@ -49,7 +49,7 @@ class Jpeg(FileType):
         ])
 
     @property
-    def output_format(self) -> str:
+    def output_extension(self) -> str:
         return '.jpg'
 
 
@@ -64,5 +64,5 @@ class Tga(FileType):
         ])
 
     @property
-    def output_format(self) -> str:
+    def output_extension(self) -> str:
         return '.tga'
