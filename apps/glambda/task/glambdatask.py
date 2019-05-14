@@ -1,4 +1,5 @@
 import base64
+from pydispatch import dispatcher
 import logging
 import os
 import shutil
@@ -79,22 +80,78 @@ class GLambdaTask(CoreTask):
                          resource_size,
                          root_path,
                          total_tasks)
-        self.method = task_definition.options.method
-        self.args = task_definition.options.args
-        self.verification_metadata = task_definition.options.verification
-        self.verification_type = self.verification_metadata['type']
-        self.dir_manager = dir_manager
-        self.outputs = [
-            os.path.join(
-                dir_manager.get_task_output_dir(task_definition.task_id),
-                output)
-            for output in task_definition.options.outputs
-        ]
 
-    def _get_subtask_data(self) -> Dict[str, Any]:
+        self.dir_manager = dir_manager
+
+        '''A serialized representation of method/algorithms to be computed
+        provider side. For serialisation details see
+        GLambdaTask::PythonObjectSerializer class.
+        '''
+        self.method = task_definition.options.method
+
+        '''A serialized representation of arguments to be provided
+        for the algorithm. For serialisation details see
+        GLambdaTask::PythonObjectSerializer class.
+        '''
+        self.args = self._decompose_args(task_definition.options.args)
+        self.multitask = isinstance(self.args, list)
+
+        self.verification_metadata = task_definition.options.verification
+
+        '''
+        See class GLambdaTask::VerificationMethod
+        '''
+        self.verification_type = self.verification_metadata['type']
+
+        '''Defining how self.outputs are structured.
+        For multitask scenario results of subtasks are placed within
+        task output directory in a folder named after their index
+        in `task_definition.options.args` list e.g. subtask_0 results will
+        be placed in: task_id/0/results.
+        For a single task scenario subtask's results are placed directly
+        into the task output directory.
+        '''
+        task_output_dir = dir_manager.get_task_output_dir(
+            task_definition.task_id
+        )
+        if self.multitask:
+            self.outputs = [
+                os.path.join(task_output_dir, str(index), output)
+                for output in task_definition.options.outputs
+                for index, _ in enumerate(self.args)
+            ]
+        else:
+            self.outputs = [
+                os.path.join(task_output_dir, output)
+                for output in task_definition.options.outputs
+            ]
+
+    def _decompose_args(self, args):
+        '''
+        Create a list of serialized objects from a serialized list of objects.
+        '''
+        deser_obj = self.PythonObjectSerializer.deserialize(args)
+        if isinstance(deser_obj, list):
+            return [
+                self.PythonObjectSerializer.serialize(arg)
+                for arg in deser_obj
+            ]
+        return args
+
+    def send_app_data(self, app_data):
+        dispatcher.send(signal='golem.app_data',
+                        sender=dispatcher.Anonymous,
+                        task_id=self.header.task_id,
+                        app_data=app_data)
+
+    def _get_subtask_data(self, subtask_seq_id=None) -> Dict[str, Any]:
+        if subtask_seq_id is not None:
+            args = self.args[subtask_seq_id]
+        else:
+            args = self.args
         return {
             'method': self.method,
-            'args': self.args,
+            'args': args,
             'content_type': None,
             'entrypoint': 'python3 /golem/scripts/job.py'
         }
@@ -103,18 +160,11 @@ class GLambdaTask(CoreTask):
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
 
-        # last_task has to be incremented each time a new subtask is created
-        self.last_task += 1
-
-        # For each failed/restarted task we decrement num_failed_subtasks
-        # count because we want to recompute them
-        for sub in self.subtasks_given.values():
-            if sub['status'] \
-                    in [SubtaskStatus.failure, SubtaskStatus.restarted]:
-                sub['status'] = SubtaskStatus.resent
-                self.num_failed_subtasks -= 1
-
-        extra_data = self._get_subtask_data()
+        next_task = self._eval_next_task()
+        if self.multitask:
+            extra_data = self._get_subtask_data(next_task)
+        else:
+            extra_data = self._get_subtask_data()
 
         ctd = self._new_compute_task_def(
             subtask_id=self.create_subtask_id(),
@@ -123,6 +173,12 @@ class GLambdaTask(CoreTask):
         )
 
         subtask_id = ctd['subtask_id']
+
+        self.send_app_data({
+            'type': 'SubtaskCreatedEvent',
+            'subtask_id': subtask_id,
+            'subtask_seq_index': next_task
+        })
 
         logger.debug(
             'Created new subtask for task. '
@@ -139,10 +195,29 @@ class GLambdaTask(CoreTask):
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
         self.subtasks_given[subtask_id]['node_id'] = node_id
+        self.subtasks_given[subtask_id]['subtask_seq_id'] = next_task
         self.subtasks_given[subtask_id]['subtask_timeout'] = \
             self.header.subtask_timeout
 
         return Task.ExtraData(ctd=ctd)
+
+    def _eval_next_task(self):
+        '''Returns next task index. Golem task driver requires last_task to be
+        equal to total_tasks AND num_failed_subtasks to be not bigger than zero
+        to terminate the task. Once last_task reaches total_tasks we only
+        manipulate num_failed_subtasks.
+        '''
+        if self.last_task != self.total_tasks:
+            self.last_task += 1
+            # Return last_task - 1 because we want first task to be 0.
+            return self.last_task - 1
+        for sub in self.subtasks_given.values():
+            if sub['status'] \
+                    in [SubtaskStatus.failure, SubtaskStatus.restarted]:
+                sub['status'] = SubtaskStatus.resent
+                self.num_failed_subtasks -= 1
+                return sub['subtask_seq_id']
+        return None
 
     def query_extra_data_for_test_task(self) -> TaskDefinition:
         return self._new_compute_task_def(
@@ -151,28 +226,35 @@ class GLambdaTask(CoreTask):
         )
 
     def _move_subtask_results_to_task_output_dir(self, subtask_id) -> None:
-        '''Required for external subtask results verification. Results
-        moved to task output directory are accessible to the user over RPC
-        even before the task has been completed.
+        '''Defines how subtask results are placed in task output directory.
+        For multitask scenario we create a subtask directory tree for results
+        and for single task scenario we put results directly into task
+        output directory.
         '''
-        outdir_content = os.listdir(
-            os.path.join(
-                self.dir_manager.get_task_temporary_dir(
-                    self.task_definition.task_id),
-                subtask_id
-            )
+
+        task_temp_dir = self.dir_manager.get_task_temporary_dir(
+            self.task_definition.task_id
+        )
+        task_output_dir = self.dir_manager.get_task_output_dir(
+            self.task_definition.task_id
         )
 
-        for obj in outdir_content:
+        if self.multitask:
+            output_directory = os.path.join(
+                task_output_dir,
+                str(self.subtasks_given[subtask_id]['subtask_seq_id'])
+            )
+            os.mkdir(output_directory)
+        else:
+            output_directory = task_output_dir
+
+        subtask_outdir = os.path.join(task_temp_dir, subtask_id)
+        subtask_outdir_content = os.listdir(subtask_outdir)
+
+        for obj in subtask_outdir_content:
             shutil.move(
-                os.path.join(
-                    self.dir_manager.get_task_temporary_dir(
-                        self.task_definition.task_id),
-                    subtask_id,
-                    obj),
-                self.dir_manager.get_task_output_dir(
-                    self.task_definition.task_id,
-                    os.path.basename(obj))
+                os.path.join(subtask_outdir, obj),
+                os.path.join(output_directory, obj)
             )
 
     def _task_verified(self, subtask_id, verif_cb) -> None:
@@ -194,6 +276,11 @@ class GLambdaTask(CoreTask):
             self.SUBTASK_CALLBACKS[subtask_id] = verification_finished
             self.results[subtask_id] = task_result
             verdict = SubtaskVerificationState.IN_PROGRESS
+            self.send_app_data({
+                'type': 'VerificationRequest',
+                'subtask_id': subtask_id,
+                'results': task_result
+            })
         try:
             self._handle_verification_verdict(subtask_id, verdict,
                                               verification_finished)

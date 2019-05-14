@@ -122,6 +122,7 @@ class GLambdaTaskTestCase(TempDirFixture):
             'status': SubtaskStatus.starting,
             'subtask_timeout': 600,
             'subtask_id': data.ctd['subtask_id'],
+            'subtask_seq_id': 0,
             'node_id': 'test_id'
         })
 
