@@ -302,7 +302,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._handshake_error(self.session.key_id, 'Test error')
         assert self.session._block_peer.called
         assert self.session._finalize_handshake.called
-        assert self.session.task_server.task_computer.session_closed.called
         assert not self.session.disconnect.called
 
     def test_get_set_remove_handshake(self, *_):
