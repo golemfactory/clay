@@ -221,6 +221,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             signal='golem.taskserver'
         )
 
+        dispatcher.connect(
+            self.app_data_listener,
+            signal='golem.app_data'
+        )
+
         logger.debug('Client init completed')
 
     @property
@@ -279,6 +284,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def on_new_version(self, version, **_):
         logger.warning('New version of golem available: %s', version)
         self._publish(Network.new_version, str(version))
+
+    def app_data_listener(self, _sender, _signal, **kwargs):
+        self._publish(u'evt.comp.task.app_data',
+                      kwargs['task_id'],
+                      kwargs['app_data'])
 
     def taskmanager_listener(self, sender, signal, event='default', **kwargs):
         if event != 'task_status_updated':
