@@ -124,7 +124,7 @@ Twisted==17.9.0
 txaio==2.8.2
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
-urllib3==1.23
+urllib3==1.24.3
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0
