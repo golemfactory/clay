@@ -3,7 +3,7 @@ from pathlib import Path
 
 import os
 from os import path
-from unittest import mock
+from unittest import mock, skip
 from unittest.mock import Mock
 from twisted.internet.defer import Deferred
 
@@ -29,7 +29,7 @@ logging.getLogger("peewee").setLevel("INFO")
 WAIT_TIMEOUT = 60
 
 
-@ci_skip
+@skip("Disabled because it leaves zombie processes #4165")
 class TestDockerDummyTask(
         DockerTaskTestCase[DummyTask, DummyTaskBuilder], TestWithReactor
 ):
