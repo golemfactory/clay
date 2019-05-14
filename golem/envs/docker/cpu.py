@@ -4,7 +4,7 @@ from socket import socket, SocketIO, SHUT_WR
 from subprocess import SubprocessError
 from threading import Thread, Lock
 from time import sleep
-from typing import Optional, Callable, Any, Dict, List, Type, ClassVar, \
+from typing import Optional, Any, Dict, List, Type, ClassVar, \
     NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
@@ -24,9 +24,8 @@ from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
-    Runtime, EnvMetadata, EnvStatus, RuntimeEventId, RuntimeEvent, CounterId, \
-    CounterUsage, RuntimeStatus, EnvId, Prerequisites, RuntimeOutput, \
-    RuntimeInput
+    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus, \
+    EnvId, Prerequisites, RuntimeOutput, RuntimeInput
 from golem.envs.docker import DockerPayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -182,23 +181,23 @@ class DockerCPURuntime(Runtime):
 
             try:
                 container_status, exit_code = self._inspect_container()
-            except (APIError, KeyError):
-                logger.exception("Error inspecting container.")
-                self._status = RuntimeStatus.FAILURE
+            except (APIError, KeyError) as e:
+                self._error_occurred(e, "Error inspecting container.")
                 return
 
             if container_status in self.CONTAINER_RUNNING:
                 logger.debug("Container still running, no status update.")
 
             elif container_status in self.CONTAINER_STOPPED:
-                logger.info("Container stopped.")
-                self._status = RuntimeStatus.STOPPED if exit_code == 0 \
-                    else RuntimeStatus.FAILURE
+                if exit_code == 0:
+                    self._stopped()
+                else:
+                    self._error_occurred(
+                        None, f"Container stopped with exit code {exit_code}.")
 
             else:
-                logger.error(
-                    f"Unexpected container status: '{container_status}'")
-                self._status = RuntimeStatus.FAILURE
+                self._error_occurred(
+                    None, f"Unexpected container status: '{container_status}'.")
 
     def _update_status_loop(self) -> None:
         """ Periodically call _update_status(). Stop when the container is no
@@ -216,10 +215,6 @@ class DockerCPURuntime(Runtime):
             to_status=RuntimeStatus.PREPARING)
         logger.info("Preparing runtime...")
 
-        @self._wrap_status_change(
-            success_status=RuntimeStatus.PREPARED,
-            success_msg="Container successfully created.",
-            error_msg="Creating container failed.")
         def _prepare():
             client = local_client()
             result = client.create_container_from_config(self._container_config)
@@ -234,10 +229,13 @@ class DockerCPURuntime(Runtime):
             sock = client.attach_socket(
                 container_id, params={'stdin': True, 'stream': True}
             )
-            # Due to terrible design of attach_socket() we have to do this
             self._stdin_socket = InputSocket(sock)
 
-        return deferToThread(_prepare)
+        deferred_prepare = deferToThread(_prepare)
+        deferred_prepare.addCallback(self._prepared)
+        deferred_prepare.addErrback(self._error_callback(
+            "Creating container failed."))
+        return deferred_prepare
 
     def cleanup(self) -> Deferred:
         self._change_status(
@@ -245,10 +243,6 @@ class DockerCPURuntime(Runtime):
             to_status=RuntimeStatus.CLEANING_UP)
         logger.info("Cleaning up runtime...")
 
-        @self._wrap_status_change(
-            success_status=RuntimeStatus.TORN_DOWN,
-            success_msg=f"Container '{self._container_id}' removed.",
-            error_msg=f"Failed to remove container '{self._container_id}'")
         def _cleanup():
             client = local_client()
             client.remove_container(self._container_id)
@@ -260,6 +254,9 @@ class DockerCPURuntime(Runtime):
             return res
 
         deferred_cleanup = deferToThread(_cleanup)
+        deferred_cleanup.addCallback(self._torn_down)
+        deferred_cleanup.addErrback(self._error_callback(
+            f"Failed to remove container '{self._container_id}'."))
         deferred_cleanup.addBoth(_close_stdin)
         return deferred_cleanup
 
@@ -269,10 +266,6 @@ class DockerCPURuntime(Runtime):
             to_status=RuntimeStatus.STARTING)
         logger.info("Starting container '%s'...", self._container_id)
 
-        @self._wrap_status_change(
-            success_status=RuntimeStatus.RUNNING,
-            success_msg=f"Container '{self._container_id}' started.",
-            error_msg=f"Starting container '{self._container_id}' failed.")
         def _start():
             client = local_client()
             client.start(self._container_id)
@@ -285,18 +278,16 @@ class DockerCPURuntime(Runtime):
 
         deferred_start = deferToThread(_start)
         deferred_start.addCallback(_spawn_status_update_thread)
+        deferred_start.addCallback(self._started)
+        deferred_start.addErrback(self._error_callback(
+            f"Starting container '{self._container_id}' failed."))
         return deferred_start
 
     def stop(self) -> Deferred:
         with self._status_lock:
-            if self._status != RuntimeStatus.RUNNING:
-                raise ValueError(f"Invalid status: {self._status}")
+            self._assert_status(self._status, RuntimeStatus.RUNNING)
         logger.info("Stopping container '%s'...", self._container_id)
 
-        @self._wrap_status_change(
-            success_status=RuntimeStatus.STOPPED,
-            success_msg=f"Container '{self._container_id}' stopped.",
-            error_msg=f"Stopping container '{self._container_id}' failed.")
         def _stop():
             client = local_client()
             client.stop(self._container_id)
@@ -316,6 +307,9 @@ class DockerCPURuntime(Runtime):
             return res
 
         deferred_stop = deferToThread(_stop)
+        deferred_stop.addCallback(self._stopped)
+        deferred_stop.addErrback(self._error_callback(
+            f"Stopping container '{self._container_id}' failed."))
         deferred_stop.addBoth(_join_status_update_thread)
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop
@@ -340,7 +334,8 @@ class DockerCPURuntime(Runtime):
 
         assert stdout or stderr
         assert self._container_id is not None
-        logger.debug("Attaching to output of container '%s'...")
+        logger.debug(
+            "Attaching to output of container '%s'...", self._container_id)
         client = local_client()
 
         try:
@@ -350,8 +345,9 @@ class DockerCPURuntime(Runtime):
             logger.debug("Successfully attached to output.")
             # If not using stream the output is a single `bytes` object
             return raw_output if stream else [raw_output]
-        except APIError:
-            logger.exception("Error attaching to container's output.")
+        except APIError as e:
+            self._error_occurred(
+                e, "Error attaching to container's output.", set_status=False)
             return []
 
     def _get_output(self, encoding: Optional[str] = None, **kwargs) \
@@ -392,10 +388,6 @@ class DockerCPURuntime(Runtime):
         return self._get_output(stderr=True, encoding=encoding)
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        raise NotImplementedError
-
-    def listen(self, event_id: RuntimeEventId,
-               callback: Callable[[RuntimeEvent], Any]) -> None:
         raise NotImplementedError
 
     def call(self, alias: str, *args, **kwargs) -> Deferred:

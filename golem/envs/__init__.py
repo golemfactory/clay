@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
-from functools import wraps
 from logging import Logger, getLogger
-from threading import Lock
+from threading import RLock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set
 
 from twisted.internet.defer import Deferred
+from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
 
@@ -16,8 +16,21 @@ CounterUsage = Any
 
 EnvId = str
 
-RuntimeEventId = str
-RuntimeEvent = Any  # TODO: Define runtime events
+
+class RuntimeEventType(Enum):
+    PREPARED = 1
+    STARTED = 2
+    STOPPED = 3
+    TORN_DOWN = 4
+    ERROR_OCCURRED = 5
+
+
+class RuntimeEvent(NamedTuple):
+    type: RuntimeEventType
+    details: Optional[Dict[str, Any]] = None
+
+
+RuntimeEventListener = Callable[[RuntimeEvent], Any]
 
 
 class EnvEventType(Enum):
@@ -139,7 +152,9 @@ class Runtime(ABC):
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._logger = logger or getLogger(__name__)
         self._status = RuntimeStatus.CREATED
-        self._status_lock = Lock()
+        self._status_lock = RLock()
+        self._event_listeners: \
+            Dict[RuntimeEventType, Set[RuntimeEventListener]] = {}
 
     @staticmethod
     def _assert_status(
@@ -166,38 +181,78 @@ class Runtime(ABC):
             self._assert_status(self._status, from_status)
             self._status = to_status
 
-    def _wrap_status_change(
+    def _set_status(self, status) -> None:
+        with self._status_lock:
+            self._status = status
+
+    def _emit_event(
             self,
-            success_status: RuntimeStatus,
-            error_status: RuntimeStatus = RuntimeStatus.FAILURE,
-            success_msg: Optional[str] = None,
-            error_msg: Optional[str] = None
-    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
-        """ Wrap function. If it fails log error_msg, set status to
-            error_status, and re-raise the exception. Otherwise log success_msg
-            and set status to success_status. Setting status uses lock. """
+            event_type: RuntimeEventType,
+            details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """ Create an event with the given type and details and send a copy to
+            every listener registered for this type of events. """
 
-        def wrapper(func: Callable[[], None]):
+        event = RuntimeEvent(
+            type=event_type,
+            details=details
+        )
+        self._logger.debug("Emit event: %r", event)
+        for listener in self._event_listeners.get(event_type, ()):
+            listener(deepcopy(event))
 
-            @wraps(func)
-            def wrapped():
-                try:
-                    func()
-                except Exception:
-                    if error_msg:
-                        self._logger.exception(error_msg)
-                    with self._status_lock:
-                        self._status = error_status
-                    raise
-                else:
-                    if success_msg:
-                        self._logger.info(success_msg)
-                    with self._status_lock:
-                        self._status = success_status
+    def _prepared(self, *_) -> None:
+        """ Acknowledge that Runtime has been prepared. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime prepared.")
+        self._set_status(RuntimeStatus.PREPARED)
+        self._emit_event(RuntimeEventType.PREPARED)
 
-            return wrapped
+    def _started(self, *_) -> None:
+        """ Acknowledge that Runtime has been started. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime started.")
+        self._set_status(RuntimeStatus.RUNNING)
+        self._emit_event(RuntimeEventType.STARTED)
 
-        return wrapper
+    def _stopped(self, *_) -> None:
+        """ Acknowledge that Runtime has been stopped. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime stopped.")
+        self._set_status(RuntimeStatus.STOPPED)
+        self._emit_event(RuntimeEventType.STOPPED)
+
+    def _torn_down(self, *_) -> None:
+        """ Acknowledge that Runtime has been torn down. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime torn down.")
+        self._set_status(RuntimeStatus.TORN_DOWN)
+        self._emit_event(RuntimeEventType.TORN_DOWN)
+
+    def _error_occurred(
+            self,
+            error: Optional[Exception],
+            message: str,
+            set_status: bool = True
+    ) -> None:
+        """ Acknowledge that an error occurred in runtime. Log message and emit
+            event. If set_status is True also set status to 'FAILURE'. """
+        self._logger.error(message, exc_info=error)
+        if set_status:
+            self._set_status(RuntimeStatus.FAILURE)
+        self._emit_event(
+            RuntimeEventType.ERROR_OCCURRED, {
+                'error': error,
+                'message': message
+            })
+
+    def _error_callback(self, message: str) -> Callable[[Failure], Failure]:
+        """ Get an error callback accepting Twisted's Failure object that will
+            call _error_occurred(). """
+        def _callback(failure):
+            self._error_occurred(failure.value, message)
+            return failure
+        return _callback
 
     @abstractmethod
     def prepare(self) -> Deferred:
@@ -258,11 +313,10 @@ class Runtime(ABC):
             time) get current usage by this Runtime. """
         raise NotImplementedError
 
-    @abstractmethod
-    def listen(self, event_id: RuntimeEventId,
-               callback: Callable[[RuntimeEvent], Any]) -> None:
+    def listen(self, event_type: RuntimeEventType,
+               listener: RuntimeEventListener) -> None:
         """ Register a listener for a given type of Runtime events. """
-        raise NotImplementedError
+        self._event_listeners.setdefault(event_type, set()).add(listener)
 
     @abstractmethod
     def call(self, alias: str, *args, **kwargs) -> Deferred:
