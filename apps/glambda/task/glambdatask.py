@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import os
 import shutil
@@ -18,6 +19,20 @@ from golem.task.taskstate import SubtaskStatus
 from golem.verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger(__name__)
+
+
+class Usage:
+    def __init__(self):
+        self.usage = dict()
+
+    def add(self, node_id: str, subtask_id: str, usage: Any):
+        if node_id not in self.usage:
+            self.usage[node_id] = dict()
+        assert subtask_id not in self.usage[node_id]
+        self.usage[node_id][subtask_id] = usage
+
+    def __str__(self):
+        return str(self.usage)
 
 
 class GLambdaTaskOptions(Options):
@@ -90,6 +105,7 @@ class GLambdaTask(CoreTask):
                 output)
             for output in task_definition.options.outputs
         ]
+        self.usage = Usage()
 
     def _get_subtask_data(self) -> Dict[str, Any]:
         return {
@@ -175,9 +191,33 @@ class GLambdaTask(CoreTask):
                     os.path.basename(obj))
             )
 
+    def _save_usage(self, subtask_id):
+        # Find result.json in results
+        result_json = None
+        for r in self.results[subtask_id]:
+            if os.path.basename(r) == 'result.json':
+                result_json = r
+                break
+        assert result_json
+
+        with open(result_json, 'r') as fobj:
+            try:
+                usage_obj = json.load(fobj)['usage']
+            except KeyError:
+                usage_obj = None
+
+        logger.info("Subtask %s usage: \n%s", subtask_id, usage_obj)
+
+        self.usage.add(
+            self.subtasks_given[subtask_id]['node_id'],
+            subtask_id,
+            usage_obj
+        )
+
     def _task_verified(self, subtask_id, verif_cb) -> None:
         self.accept_results(subtask_id, None)
         verif_cb()
+        self._save_usage(subtask_id)
         self._move_subtask_results_to_task_output_dir(subtask_id)
 
     def computation_finished(self, subtask_id, task_result,
@@ -187,12 +227,13 @@ class GLambdaTask(CoreTask):
             return
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
 
+        self.results[subtask_id] = task_result
+
         if self.verification_type == self.VerificationMethod.NO_VERIFICATION:
             verdict = SubtaskVerificationState.VERIFIED
         elif self.verification_type == \
                 self.VerificationMethod.EXTERNALLY_VERIFIED:
             self.SUBTASK_CALLBACKS[subtask_id] = verification_finished
-            self.results[subtask_id] = task_result
             verdict = SubtaskVerificationState.IN_PROGRESS
         try:
             self._handle_verification_verdict(subtask_id, verdict,

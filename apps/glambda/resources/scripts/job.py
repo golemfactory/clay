@@ -2,6 +2,7 @@ import base64
 import functools
 import json
 import os
+import resource
 
 import cloudpickle
 
@@ -26,6 +27,7 @@ def run_job():
         args = cloudpickle.loads(base64.b64decode(params['args']))
         result = method_code(args)
         result_obj['data'] = result
+        result_obj['usage'] = resource.getrusage(resource.RUSAGE_CHILDREN)
         write_result(json.dumps(result_obj))
     except Exception as e:  # pylint: disable=broad-except
         result_obj['error'] = '{}:{}'.format(e.__class__, str(e))

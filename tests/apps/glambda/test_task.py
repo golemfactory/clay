@@ -2,6 +2,7 @@ from unittest import TestCase
 from uuid import uuid4
 
 from golem_messages.factories.datastructures import p2p
+import mock
 from mock import MagicMock, patch
 
 from apps.glambda.task.glambdatask import GLambdaTask
@@ -155,11 +156,16 @@ class GLambdaTaskTestCase(TempDirFixture):
                          SubtaskStatus.finished)
         verif_cb.assert_called_once()
 
-    def test_external_verification_finish(self):
+    @patch("builtins.open", create=True)
+    def test_external_verification_finish(self, mock_open):
         self.task.verification_type = \
             GLambdaTask.VerificationMethod.EXTERNALLY_VERIFIED
 
-        results = ['result']
+        mock_open.side_effect = [
+            mock.mock_open(read_data='{"usage": {}}').return_value
+        ]
+
+        results = ['result.json']
         verif_cb = MagicMock()
 
         self.task.counting_nodes = MagicMock()

@@ -1,7 +1,14 @@
 from contextlib import ExitStack
+import json
 from json import dumps
+import sys
 from unittest import TestCase
+
+import pytest
 from mock import mock_open, patch
+
+if not sys.platform.startswith('linux'):
+    pytest.skip('skipping linux-only tests', allow_module_level=True)
 
 from apps.glambda.resources.scripts import job
 from apps.glambda.task.glambdatask import GLambdaTask
@@ -40,8 +47,10 @@ class GLambdaJobTestCase(TestCase):
         }
 
         file_handle = mocked_file.return_value.__enter__.return_value
-        file_handle.write.assert_called_with(dumps(expected_result))
-
+        json_str = file_handle.write.call_args[0][0]
+        json_obj = json.loads(json_str)
+        assert json_obj['data'] == 3
+        assert 'usage' in json_obj
 
     def test_job_invalid_input_task(self):
 
@@ -160,7 +169,8 @@ class GLambdaJobTestCase(TestCase):
             stack.enter_context(patch.dict('os.environ', env))
             job.run_job()
 
-        expected_result = {"data": None}
-
         file_handle = mocked_file.return_value.__enter__.return_value
-        file_handle.write.assert_called_with(dumps(expected_result))
+        json_str = file_handle.write.call_args[0][0]
+        json_obj = json.loads(json_str)
+        assert json_obj['data'] is None
+        assert 'usage' in json_obj
