@@ -10,8 +10,12 @@ from golem_messages import message
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from twisted.internet.defer import Deferred
 
+from golem.appconfig import (
+    DEFAULT_HYPERDRIVE_RPC_PORT, DEFAULT_HYPERDRIVE_RPC_ADDRESS
+)
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
+from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceStorage
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
@@ -489,7 +493,19 @@ class TestResourceHandshakeShare(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
+        self.daemon_manager = HyperdriveDaemonManager(
+            self.tempdir,
+            client_config={
+                'port': DEFAULT_HYPERDRIVE_RPC_PORT,
+                'host': DEFAULT_HYPERDRIVE_RPC_ADDRESS,
+            }
+        )
+        self.daemon_manager.start()
         self.key_id = str(uuid.uuid4())
+
+    def tearDown(self):
+        super().tearDown()
+        self.daemon_manager.stop()
 
     def test_flow(self, *_):
         local_dir = os.path.join(self.tempdir, 'local')

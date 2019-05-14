@@ -243,6 +243,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust, *_):
+        self.ts.task_manager.task_result_manager.resource_manager.client = \
+            Mock()
         self.ts.config_desc.min_price = 11
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
