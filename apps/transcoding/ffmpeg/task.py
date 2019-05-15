@@ -29,17 +29,16 @@ class ffmpegTask(TranscodingTask):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
-        if subtask_num >= len(self.task_resources) // 2:
+        if subtask_num >= len(self.chunks):
             raise AssertionError('Requested number subtask {} is greater than '
                                  'number of resources [size={}]'
-                                 .format(subtask_num, len(self.task_resources)))
-
-        chunk = os.path.relpath(self.chunks[subtask_num],
+                                 .format(subtask_num, len(self.chunks)))
+        chunk = os.path.relpath(self.chunks[subtask_num][1],
                                 self._get_resources_root_dir())
         chunk = DockerJob.get_absolute_resource_path(chunk)
 
-        filename = os.path.splitext(os.path.basename(
-            self.chunks[subtask_num]))[0]
+        filename = os.path.splitext(os.path.basename(  # TODO: we trust foreign filename
+            self.chunks[subtask_num][1]))[0]
 
         output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
                                                        filename + '_TC'))

@@ -4,6 +4,7 @@ import datetime
 import enum
 import functools
 import logging
+import threading
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -434,6 +435,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             resources = self.task_server.get_resources(ctd['subtask_id'])
             ctd["resources"] = resources
             logger.info("resources_result: %r", resources_result)
+            logger.info('Resources are sid = {}, res = {}'.format(ctd['subtask_id'], resources))
 
         logger.info(
             "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
