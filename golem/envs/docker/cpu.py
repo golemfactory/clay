@@ -656,6 +656,9 @@ class DockerCPUEnvironment(Environment):
             config: Optional[EnvConfig] = None
     ) -> DockerCPURuntime:
         assert isinstance(payload, DockerPayload)
+        if not Whitelist.is_whitelisted(payload.image):
+            raise RuntimeError(f"Image '{payload.image}' is not whitelisted.")
+
         if config is not None:
             assert isinstance(config, DockerCPUConfig)
         else:
