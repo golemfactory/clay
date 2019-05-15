@@ -277,8 +277,8 @@ class DockerCPURuntime(Runtime):
             logger.debug("Status update thread spawned.")
 
         deferred_start = deferToThread(_start)
-        deferred_start.addCallback(_spawn_status_update_thread)
         deferred_start.addCallback(self._started)
+        deferred_start.addCallback(_spawn_status_update_thread)
         deferred_start.addErrback(self._error_callback(
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
