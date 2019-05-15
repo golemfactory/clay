@@ -37,7 +37,6 @@ class BlenderBenchmark(RenderingBenchmark):
         main_scene_file = pathlib.Path(self.blender_task_path)
         main_scene_file /= self.SCENE_FILE_NAME
         task_def.main_scene_file = str(main_scene_file)
-        task_def.main_program_file = self.ENVIRONMENT_CLASS().main_program_file
         task_def.resources.add(str(main_scene_file.resolve()))
 
 

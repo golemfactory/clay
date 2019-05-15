@@ -3,7 +3,6 @@ import shutil
 from os import path
 
 from golem.core.common import get_golem_path
-from golem.resource.dirmanager import find_task_script
 from golem.tools.ci import ci_skip
 from .test_docker_job import TestDockerJob
 
@@ -13,18 +12,12 @@ class TestDummyTaskDockerJob(TestDockerJob):
     """Tests for Docker image golem/base"""
 
     def _get_test_repository(self):
-        return "golemfactory/base"
+        return "golemfactory/dummy"
 
     def _get_test_tag(self):
-        return "1.2"
+        return "1.1"
 
     def test_dummytask_job(self):
-        app_dir = path.join(get_golem_path(), "apps", "dummy")
-        task_script = find_task_script(app_dir, "docker_dummytask.py")
-
-        with open(task_script) as f:
-            task_script_src = f.read()
-
         os.mkdir(os.path.join(self.resources_dir, "data"))
         os.mkdir(os.path.join(self.resources_dir, "code"))
 
@@ -59,7 +52,8 @@ class TestDummyTaskDockerJob(TestDockerJob):
             "result_file": "out.result",
         }
 
-        with self._create_test_job(script=task_script_src, params=params) as job:
+        with self._create_test_job(
+            script='/golem/scripts/job.py', params=params) as job:
             job.start()
             exit_code = job.wait()
             self.assertEqual(exit_code, 0)

@@ -2,6 +2,8 @@ import argparse
 import shlex
 import sys
 import time
+from copy import deepcopy
+from typing import Text, Dict, Callable
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
 from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
@@ -38,6 +40,20 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def exit(self, status=0, message=None):
         raise ParsingException(message, self)
+
+
+def disable_withdraw(
+        children: Dict[Text, Callable]) -> Dict[Text, Callable]:
+    """
+    This function adapts children of an interface: if golemcli is not run on
+    mainnet, there should be no option to `withdraw` for `golemcli account`
+    """
+    new_children = deepcopy(children)
+    from golem.config.active import EthereumConfig
+    if not EthereumConfig.WITHDRAWALS_ENABLED:
+        if 'withdraw' in new_children:
+            new_children.pop('withdraw')
+    return new_children
 
 
 class CLI(object):
@@ -218,7 +234,7 @@ class CLI(object):
 
         name = interface['name']
         source = interface['source']
-        children = interface['children']
+        children = disable_withdraw(interface['children'])
         arguments = interface['arguments']
         is_callable = interface['callable']
 

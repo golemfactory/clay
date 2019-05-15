@@ -68,8 +68,6 @@ class HyperdriveDaemonManager(object):
             return self._get_addresses()
         except requests.ConnectionError:
             if not suppress_warning:
-                import traceback
-                traceback.print_stack()
                 logger.warning('Cannot connect to Hyperdrive daemon')
             return dict()
 

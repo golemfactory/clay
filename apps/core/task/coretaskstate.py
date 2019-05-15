@@ -1,4 +1,5 @@
 from os import path, remove
+from typing import Any, Dict
 
 from ethereum.utils import denoms
 
@@ -17,7 +18,6 @@ class TaskDefaults(object):
 
     def __init__(self):
         self.output_format = ""
-        self.main_program_file = ""
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
@@ -45,14 +45,12 @@ class TaskDefinition(object):
 
         self.subtasks_count = 0
         self.optimize_total = False
-        self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
         self.name = ""
 
         self.max_price = 0
 
-        self.verification_options = None
         self.options = Options()
         self.docker_images = None
         self.compute_on = "cpu"
@@ -94,9 +92,6 @@ class TaskDefinition(object):
             setattr(self, key, attributes[key])
 
     def is_valid(self):
-        if not path.exists(self.main_program_file):
-            return False, "Main program file does not exist: {}".format(
-                self.main_program_file)
         return self._check_output_file(self.output_file)
 
     @staticmethod
@@ -120,26 +115,6 @@ class TaskDefinition(object):
 
     def remove_from_resources(self):
         pass
-
-    def make_preset(self):
-        """ Create preset that can be shared with different tasks
-        :return dict:
-        """
-        return {
-            "options": self.options,
-            "subtasks_count": self.subtasks_count,
-            "optimize_total": self.optimize_total,
-            "verification_options": self.verification_options
-        }
-
-    def load_preset(self, preset):
-        """ Apply options from preset to this task definition
-        :param dict preset: Dictionary with shared options
-        """
-        self.options = preset["options"]
-        self.subtasks_count = preset["subtasks_count"]
-        self.optimize_total = preset["optimize_total"]
-        self.verification_options = preset["verification_options"]
 
     def to_dict(self) -> dict:
         task_timeout = timeout_to_string(int(self.timeout))

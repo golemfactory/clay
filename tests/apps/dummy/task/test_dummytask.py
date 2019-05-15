@@ -7,10 +7,13 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import (
-    DummyTaskDefaults,
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
-from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
+from apps.dummy.task.dummytaskstate import (
+    DummyTaskDefinition,
+    DummyTaskOptions,
+    DummyTaskDefaults,
+)
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -145,6 +148,5 @@ class TestDummyTaskTypeInfo(TestCase):
         tti = DummyTaskTypeInfo()
         assert tti.name == "Dummy"
         assert tti.options == DummyTaskOptions
-        assert isinstance(tti.defaults, DummyTaskDefaults)
         assert tti.task_builder_type == DummyTaskBuilder
         assert tti.definition == DummyTaskDefinition

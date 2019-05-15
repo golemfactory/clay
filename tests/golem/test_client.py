@@ -39,11 +39,13 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
+from golem.task import taskstate
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
+
+from tests.factories.task import taskstate as taskstate_factory
 
 random = Random(__name__)
 
@@ -359,19 +361,15 @@ class TestClient(TestClientBase):
         self.client.task_server = Mock(task_manager=tm)
         self.client.funds_locker = Mock()
         tm.tasks_states = {
-            "t1": Mock(status=Mock(is_completed=Mock(return_value=True))),
+            "t1": Mock(status=taskstate.TaskStatus.finished),
             "t2": Mock(
-                status=Mock(is_completed=Mock(return_value=False)),
+                status=taskstate.TaskStatus.computing,
                 subtask_states={
-                    "sub1": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=True),
-                        ),
+                    "sub1": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.finished,
                     ),
-                    "sub2": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=False),
-                        ),
+                    "sub2": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.failure,
                     ),
                 },
             ),
@@ -812,9 +810,12 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         result = c.check_test_status()
         self.assertFalse(result)
 
-        c.task_test_result = {"status": TaskTestStatus.started}
+        c.task_test_result = {"status": taskstate.TaskTestStatus.started}
         result = c.check_test_status()
-        self.assertEqual({"status": TaskTestStatus.started.value}, result)
+        self.assertEqual(
+            {"status": taskstate.TaskTestStatus.started.value},
+            result,
+        )
 
     def test_delete_task(self, *_):
         c = self.client
@@ -1043,17 +1044,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_provider_status_computing(self, *_):
         # given
+        start_task = 1
         task_computer = Mock()
         state_snapshot_dict = {
             'subtask_id': str(uuid.uuid4()),
             'progress': 0.0,
             'seconds_to_timeout': 0.0,
             'running_time_seconds': 0.0,
-            'outfilebasename': "Test Task",
+            'outfilebasename': "Test Task_{}".format(start_task),
             'output_format': "PNG",
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
-            'start_task': 1,
+            'start_task': start_task,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \
@@ -1282,7 +1284,6 @@ class TestConcentInitialization(TestClientBase):
             keys_auth=ANY,
             variant=CONCENT_CHOICES['disabled'],
         )
-
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

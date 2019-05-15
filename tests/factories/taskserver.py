@@ -51,3 +51,15 @@ class WaitingTaskResultFactory(factory.Factory):
     ):
         value = extracted or idgenerator.generate_id_from_hex(wtr.owner.key)  # noqa pylint: disable=no-member
         wtr.subtask_id = value
+
+
+class WaitingTaskFailureFactory(factory.Factory):
+    class Meta:
+        model = taskserver.WaitingTaskFailure
+
+    task_id = factory.Faker('uuid4')
+    subtask_id = factory.Faker('uuid4')
+    err_msg = factory.Faker('text')
+    owner = factory.SubFactory(
+        'golem_messages.factories.datastructures.p2p.Node',
+    )

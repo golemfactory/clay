@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import posixpath
@@ -6,7 +7,7 @@ from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import nt_path_to_posix_path
+from golem.core.common import nt_path_to_posix_path, is_osx, is_windows
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -21,7 +22,7 @@ container_logger = logging.getLogger(__name__ + ".container")
 
 
 # pylint:disable=too-many-instance-attributes
-class DockerJob(object):
+class DockerJob:
     STATE_NEW = "new"
     STATE_CREATED = "created"  # container created by docker
     STATE_RUNNING = "running"  # docker container running
@@ -51,16 +52,13 @@ class DockerJob(object):
         "OUTPUT_DIR": OUTPUT_DIR
     }
 
-    # Name of the script file, relative to WORK_DIR
-    TASK_SCRIPT = "job.py"
-
     # Name of the parameters file, relative to WORK_DIR
-    PARAMS_FILE = "params.py"
+    PARAMS_FILE = "params.json"
 
     # pylint:disable=too-many-arguments
     def __init__(self,
                  image: DockerImage,
-                 script_src: str,
+                 entrypoint: str,
                  parameters: Dict,
                  resources_dir: str,
                  work_dir: str,
@@ -71,7 +69,7 @@ class DockerJob(object):
                  container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
-        :param str script_src: source of the task script file
+        :param str entrypoint: command that will be executed in Docker
         :param dict parameters: parameters for the task script
         :param str resources_dir: directory with task resources
         :param str work_dir: directory for temporary work files
@@ -81,7 +79,7 @@ class DockerJob(object):
             raise TypeError('Incorrect image type: {}. '
                             'Should be: DockerImage'.format(type(image)))
         self.image = image
-        self.script_src = script_src
+        self.entrypoint = entrypoint
         self.parameters = parameters if parameters else {}
 
         self.parameters.update(self.PATH_PARAMS)
@@ -120,28 +118,26 @@ class DockerJob(object):
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
-        with open(params_file_path, "wb") as params_file:
-            for key, value in self.parameters.items():
-                line = "{} = {}\n".format(key, repr(value))
-                params_file.write(bytearray(line, encoding='utf-8'))
-
-        # Save the script in work_dir/TASK_SCRIPT
-        task_script_path = self._get_host_script_path()
-        with open(task_script_path, "wb") as script_file:
-            script_file.write(bytearray(self.script_src, "utf-8"))
+        with open(params_file_path, "w") as params_file:
+            json.dump(self.parameters, params_file)
 
         # Setup volumes for the container
         client = local_client()
 
         host_cfg = client.create_host_config(**self.host_config)
 
-        # The location of the task script when mounted in the container
-        container_script_path = self._get_container_script_path()
+        # FIXME: Make the entrypoint.sh behaviour consistent between Windows
+        #  and other OSes. See issue #4102
+        if is_windows():
+            command = self.entrypoint
+        else:
+            command = [self.entrypoint]
+
         self.container = client.create_container(
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=[container_script_path],
+            command=command,
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )
@@ -183,9 +179,6 @@ class DockerJob(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self._cleanup()
 
-    def _get_host_script_path(self):
-        return os.path.join(self.work_dir, self.TASK_SCRIPT)
-
     def _get_host_params_path(self):
         return os.path.join(self.work_dir, self.PARAMS_FILE)
 
@@ -210,10 +203,6 @@ class DockerJob(object):
                 logger.debug("Cannot chmod %s (%s): %s", dst_dir, mod, e)
 
         return prev_mod
-
-    @staticmethod
-    def _get_container_script_path():
-        return posixpath.join(DockerJob.WORK_DIR, DockerJob.TASK_SCRIPT)
 
     @staticmethod
     def get_absolute_resource_path(relative_path):
@@ -305,3 +294,12 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    @staticmethod
+    def get_environment() -> dict:
+        if is_windows():
+            return {}
+        if is_osx():
+            return dict(OSX_USER=1)
+
+        return dict(LOCAL_USER_ID=os.getuid())

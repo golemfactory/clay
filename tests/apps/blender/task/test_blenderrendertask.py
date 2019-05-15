@@ -1,45 +1,42 @@
 # pylint: disable=protected-access
 import array
+
 import os
 from os import path
 from random import randrange, shuffle
+
 import tempfile
 import unittest
 import unittest.mock as mock
 import uuid
 
+import cv2
+import numpy
+
+
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem_verificator.verifier import SubtaskVerificationState
-from PIL import Image
 
 
 import OpenEXR
 
-from apps.blender.task.blenderrendertask import (BlenderDefaults,
-                                                 BlenderRenderTask,
+from apps.blender.task.blenderrendertask import (BlenderRenderTask,
                                                  BlenderRenderTaskBuilder,
                                                  BlenderRendererOptions,
                                                  generate_expected_offsets,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import AcceptClientVerdict
-from golem.task.taskstate import SubtaskStatus, SubtaskState
+from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-
-class TestBlenderDefaults(unittest.TestCase):
-
-    def test_init(self):
-        bd = BlenderDefaults()
-        self.assertTrue(path.isfile(bd.main_program_file))
+from golem.verificator.verifier import SubtaskVerificationState
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
@@ -81,7 +78,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
         bt = _get_blender_task(task_definition, 1)
         assert not bt.compositing
 
-        # Compositing True, use frames is False, as many subtask as frames
+        # Compositing True, use frames is False, as many extra_data as frames
         task_definition.options.use_frames = False
         bt = _get_blender_task(task_definition, 3)
         assert not bt.compositing
@@ -124,9 +121,9 @@ class TestBlenderFrameTask(TempDirFixture):
         assert self.bt.total_tasks == 6
 
         # Failed compuation stays failed
-        extra_data1 = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        extra_data1 = self.bt.query_extra_data(1000, "ABC", "abc")
         assert extra_data1.ctd is not None
-        extra_data2 = self.bt.query_extra_data(1000, 2, "DEF", "def")
+        extra_data2 = self.bt.query_extra_data(1000, "DEF", "def")
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
@@ -136,15 +133,15 @@ class TestBlenderFrameTask(TempDirFixture):
             SubtaskStatus.failure
 
         # Successful computation
-        extra_data3 = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
+        extra_data3 = self.bt.query_extra_data(1000, "FGH", "fgh")
         assert extra_data3.ctd is not None
         file_dir = path.join(self.bt.tmp_dir, extra_data3.ctd['subtask_id'])
         if not path.exists(file_dir):
             os.makedirs(file_dir)
 
         file1 = path.join(file_dir, 'result1')
-        img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
-        img.save(file1, "PNG")
+        img = OpenCVImgRepr.empty(self.bt.res_x, self.bt.res_y // 2)
+        img.save_with_extension(file1, 'png')
 
         def verification_finished1(verification_data):
             result = {'reference_data': None,
@@ -158,8 +155,8 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem_verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('golem.verificator.blender_verifier.'
+                        'BlenderVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
@@ -182,15 +179,14 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        extra_data4 = self.bt.query_extra_data(1000, 2, "FFF", "fff")
+        extra_data4 = self.bt.query_extra_data(1000, "FFF", "fff")
         assert extra_data4.ctd is not None
 
         file2 = path.join(file_dir, 'result2')
-        img.save(file2, "PNG")
-        img.close()
+        img.save_with_extension(file2, "PNG")
 
-        with mock.patch('golem_verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('golem.verificator.blender_verifier.'
+                        'BlenderVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
@@ -211,11 +207,10 @@ class TestBlenderFrameTask(TempDirFixture):
         # blender script describe whole frame
         self.bt.total_tasks = 3
         extra_data = self.bt.query_extra_data(100, node_id="node1",
-                                              node_name="node11",
-                                              num_cores=0)
+                                              node_name="node11")
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
-        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
+        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] \
+            == [0.0, 1.0]
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"
@@ -350,7 +345,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
-        extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
         self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
@@ -400,9 +395,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.bt.res_y = res_y
             self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
-            img = Image.open(self.bt.output_file)
-            img_x, img_y = img.size
-            img.close()
+            img = cv2.imread(self.bt.output_file)
+            img_y, img_x = img.shape[:2]
             self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
         self.bt.restart()
@@ -448,15 +442,14 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                     file1 = self.temp_file_name(
                         'chunk{}.{}'.format(i, output_format.lower())
                     )
-                    img = Image.new("RGB", (self.bt.res_x, y))
-                    img.save(file1, output_format.upper())
+                    img = _get_empty_rgb_image(self.bt.res_x, y)
+                    cv2.imwrite(file1, img)
                     self.bt.collected_file_names[i] = file1
                 self.bt.res_y = res_y
                 self.bt._put_image_together()
                 self.assertTrue(path.isfile(self.bt.output_file))
-                img = Image.open(self.bt.output_file)
-                img_x, img_y = img.size
-                img.close()
+                img = cv2.imread(self.bt.output_file)
+                img_y, img_x = img.shape[:2]
                 self.assertTrue(self.bt.res_x == img_x and res_y == img_y)
 
     def test_update_frame_preview(self):
@@ -502,12 +495,10 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         img1.close()
 
         bt._update_frame_preview(file1, 1, part=1, final=True)
-        img = Image.open(file3)
-        self.assertTrue(img.size == (300, 200))
-        img.close()
-        img = Image.open(file4)
-        self.assertTrue(img.size == (300, 200))
-        img.close()
+        img = cv2.imread(file3)
+        self.assertTrue(img.shape[:2] == (200, 300))
+        img = cv2.imread(file4)
+        self.assertTrue(img.shape[:2] == (200, 300))
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
@@ -531,8 +522,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt = self.build_bt(300, 200, 2, frames=[1, 2])
 
         file1 = self.temp_file_name('preview1.bmp')
-        img_task = Image.new("RGB", (bt.res_x, bt.res_y))
-        img_task.save(file1, "BMP")
+
+        img_task = OpenCVImgRepr.empty(bt.res_x, bt.res_y)
+        img_task.save(file1)
         color = (0, 0, 255)
 
         # test the case in which a single subtask is a whole frame
@@ -541,7 +533,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt._mark_task_area(None, img_task, color, 0)
         for i in range(0, bt.res_x):
             for j in range(0, bt.res_y):
-                pixel = img_task.getpixel((i, j))
+                pixel = img_task.get_pixel((i, j))
                 self.assertTrue(pixel == color)
 
         # test the case with frames divided into multiple subtasks
@@ -549,17 +541,16 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt = self.build_bt(600, 200, 4, frames=[2, 3])
         subtask = {"start_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
-        img_task2 = Image.new("RGB", (bt.res_x, bt.res_y))
-        img_task2.save(file2, "BMP")
+        img_task2 = OpenCVImgRepr.empty(bt.res_x, bt.res_y)
+        img_task2.save_with_extension(file2, "BMP")
         bt._mark_task_area(subtask, img_task2, color)
-        pixel = img_task2.getpixel((0, 99))
+        pixel = img_task2.get_pixel((0, 99))
         self.assertTrue(pixel == (0, 0, 0))
-        pixel = img_task2.getpixel((0, 100))
+        pixel = img_task2.get_pixel((0, 100))
         self.assertTrue(pixel == color)
-        img_task2.close()
 
     def test_query_extra_data(self):
-        extra_data = self.bt.query_extra_data(100000, num_cores=0,
+        extra_data = self.bt.query_extra_data(100000,
                                               node_id='node',
                                               node_name='node')
         assert extra_data.ctd
@@ -570,9 +561,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt.initialize(dm)
         files = self.additional_dir_content([1])
         preview = files[0]
-        img = Image.new("RGBA", (20, 200))
-        img.save(preview, "PNG")
-        img.close()
+        img = OpenCVImgRepr.empty(20, 200, 4)
+        img.save_with_extension(preview, "PNG")
         bt._update_preview(preview, 3)
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
@@ -616,10 +606,9 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
             chunks_list = list(range(1, chunks + 1))
             shuffle(chunks_list)
             for i in chunks_list:
-                img = Image.new("RGB", (res_x, chunks_sizes[i]))
+                img = numpy.zeros((chunks_sizes[i], res_x, 3), numpy.uint8)
                 file1 = self.temp_file_name('chunk{}.png'.format(i))
-                img.save(file1)
-                img.close()
+                cv2.imwrite(file1, img)
                 pu.update_preview(file1, i)
             if int(round(res_y * scale_factor)) != PREVIEW_Y:
                 self.assertAlmostEqual(pu.perfect_match_area_y,
@@ -699,7 +688,6 @@ class TestHelpers(unittest.TestCase):
     @staticmethod
     def _get_task_border(as_path=False):
         offsets = generate_expected_offsets(30, 800, 600)
-        subtask = SubtaskState()
 
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
@@ -707,9 +695,13 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k}
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                         30, as_path=as_path)
+            extra_data = {'start_task': k}
+            border = BlenderTaskTypeInfo.get_task_border(
+                extra_data,
+                definition,
+                30,
+                as_path=as_path,
+            )
             assert min(border) == (0, offsets[k])
             assert max(border) == (797, offsets[k + 1] - 1)
 
@@ -718,27 +710,27 @@ class TestHelpers(unittest.TestCase):
         offsets = generate_expected_offsets(15, 800, 600)
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k}
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
+            extra_data = {'start_task': k}
+            border = BlenderTaskTypeInfo.get_task_border(extra_data, definition,
                                                          30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (798, offsets[i + 1] - 1)
 
-        subtask.extra_data = {'start_task': 2}
+        extra_data = {'start_task': 2}
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:
             assert BlenderTaskTypeInfo.get_task_border(
-                subtask, definition, 30, as_path=as_path) == \
+                extra_data, definition, 30, as_path=as_path) == \
                 [(0, 600), (800, 600), (800, 0), (0, 0)]
         else:
             assert BlenderTaskTypeInfo.get_task_border(
-                subtask, definition, 30, as_path=as_path) == []
+                extra_data, definition, 30, as_path=as_path) == []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)
-        assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+        assert BlenderTaskTypeInfo.get_task_border(extra_data, definition,
                                                    30, as_path=as_path) == []
 
     def test_get_task_border(self):
@@ -747,35 +739,7 @@ class TestHelpers(unittest.TestCase):
     def test_get_task_border_path(self):
         self._get_task_border(as_path=True)
 
-    def test_get_task_num_from_pixels(self):
-        offsets = generate_expected_offsets(30, 1920, 1080)
-        frame_offsets = generate_expected_offsets(15, 1920, 1080)
-        task_definition = RenderingTaskDefinition()
-        task_definition.options = BlenderRendererOptions()
-        task_definition.resolution = [1920, 1080]
 
-        for k in range(1, 31):
-            task_definition.options.use_frames = False
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                6, offsets[k] + 1, task_definition, 30
-            )
-            assert num == k
-
-            task_definition.options.use_frames = True
-            task_definition.options.frames = list(range(30))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, 0, task_definition, 30, k
-            )
-            assert num == k
-
-            i = (k - 1) % 15 + 1
-            task_definition.options.frames = list(range(2))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, frame_offsets[i] + 3, task_definition, 30, (k - 1) // 15 + 1
-            )
-            assert num == k
-
-        task_definition.options.use_frames = False
-        assert BlenderTaskTypeInfo.get_task_num_from_pixels(
-            5, 1200, task_definition, 30
-        ) == 30
+def _get_empty_rgb_image(width, height):
+    img = numpy.zeros((height, width, 3), numpy.uint8)
+    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

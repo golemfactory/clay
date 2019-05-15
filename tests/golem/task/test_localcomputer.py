@@ -136,6 +136,8 @@ class TestLocalComputer(TestDirFixture):
         ctd['docker_images'] = [
             di.to_dict() for di in BlenderEnvironment().docker_images
         ]
+        # Hack, we don't really need to execute any script here
+        ctd['extra_data']['entrypoint'] = 'python3 --version'
         return ctd
 
     def _success_callback(self, result, time_spent):
