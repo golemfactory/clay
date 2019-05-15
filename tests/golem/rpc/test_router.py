@@ -211,10 +211,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         self.reactor_thread.reactor.stop()
 
         if self.process.is_alive():
-            raise Exception('alive!')
-
-
-            #self.process.terminate()
+            self.process.terminate()
 
     def _run_test(self, expect_error, *args, **kwargs):
         self.process = Process(
