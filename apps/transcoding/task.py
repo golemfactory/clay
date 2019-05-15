@@ -74,7 +74,7 @@ class TranscodingTask(CoreTask):
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
-        logger.debug('Initialization of FFmpegTask')
+        logger.debug('Initialization of ffmpegTask')
         task_id = self.task_definition.task_id
         task_output_dir = dir_manager.get_task_output_dir(task_id)
         # results from providers are collected in tmp
