@@ -231,7 +231,8 @@ class TaskServer(
     def request_task_by_id(self,
                            task_id: str,
                            performance: Optional[float] = None,
-                           eth_pub_key: Optional[str] = None) -> None:
+                           eth_pub_key: Optional[str] = None,
+                           num_subtasks: int = 1) -> None:
         """Requests task possibly after successful resource handshake.
         """
         try:
@@ -241,7 +242,7 @@ class TaskServer(
         except KeyError:
             logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
             return
-        self._request_task(task_header, performance, eth_pub_key)
+        self._request_task(task_header, performance, eth_pub_key, num_subtasks)
 
     def request_task(self) -> Optional[str]:
         """Chooses random task from network to compute on our machine"""
@@ -254,7 +255,8 @@ class TaskServer(
     def _request_task(self,
                       theader: dt_tasks.TaskHeader,
                       performance: Optional[float] = None,
-                      eth_pub_key: Optional[str] = None) -> Optional[str]:
+                      eth_pub_key: Optional[str] = None,
+                      num_subtasks: int = 1) -> Optional[str]:
         try:
             if not performance:
                 env = self.get_environment_by_id(theader.environment)
@@ -322,6 +324,7 @@ class TaskServer(
                 node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
+                num_subtasks=num_subtasks,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,

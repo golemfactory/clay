@@ -258,7 +258,11 @@ class Subscription(object):
         self.tasks[task.task_id] = task
         self._add_event(task.task_id, task=task)
 
-    def want_subtask(self, task_server: TaskServer, task_id: str) -> bool:
+    # TODO: add num subtasks in swagger
+    def want_subtask(self,
+                     task_server: TaskServer,
+                     task_id: str,
+                     num_subtasks: int = 1) -> bool:
         if task_id not in self.tasks:
             return False
 
@@ -274,7 +278,8 @@ class Subscription(object):
         task_server.request_task_by_id(
             task_id=task_id,
             performance=self.performance,
-            eth_pub_key=self.eth_pub_key)
+            eth_pub_key=self.eth_pub_key,
+            num_subtasks=num_subtasks)
         dispatcher.connect(self.add_subtask_event,
                            signal='golem.subtask')
         self.increment(SubtaskStatus.requested)
