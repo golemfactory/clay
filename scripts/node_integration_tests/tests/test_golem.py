@@ -30,7 +30,6 @@ class GolemNodeTest(NodeTestBase):
     def test_exr(self):
         self._run_test('golem.exr')
 
-    @unittest.skipIf(True, "Disabled until verification is fixed #4143")
     def test_jpeg(self):
         self._run_test('golem.jpeg')
 
