@@ -29,6 +29,7 @@ logging.getLogger("peewee").setLevel("INFO")
 WAIT_TIMEOUT = 60
 
 
+@skip("Disabled because it leaves zombie processes #4165")
 class TestDockerDummyTask(
         DockerTaskTestCase[DummyTask, DummyTaskBuilder], TestWithReactor
 ):
