@@ -23,7 +23,7 @@ class Tasks:
 
     task_table_headers = ['id', 'ETA',
                           'subtasks_count', 'status', 'completion']
-    subtask_table_headers = ['node', 'id', 'ETA', 'status', 'completion']
+    subtask_table_headers = ['node', 'id', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
 
@@ -118,7 +118,6 @@ class Tasks:
                 values.append([
                     subtask['node_name'],
                     subtask['subtask_id'],
-                    Tasks.__format_seconds(subtask['time_remaining']),
                     subtask['status'],
                     Tasks.__progress_str(subtask['progress'])
                 ])
@@ -169,6 +168,8 @@ class Tasks:
         with open(file_name) as f:
             task_id, error = self.__create_from_json(f.read(), force=force)
         if error:
+            if isinstance(error, dict):
+                error = error['error_msg']
             if task_id:
                 return CommandResult(error="task {} failed: {}"
                                      .format(task_id, error))

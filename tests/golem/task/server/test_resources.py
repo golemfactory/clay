@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from unittest import mock
 
 from golem_messages import cryptography
@@ -58,7 +59,7 @@ class TestResourceHandhsake(TestWithClient):
             self.key_id,
             self.server.resource_handshakes,
         )
-        mock_timer.assert_called_once_with()
+        mock_timer.assert_called_once_with(self.key_id)
         mock_share.assert_called_once_with(self.key_id)
 
     @mock.patch(
@@ -79,3 +80,41 @@ class TestResourceHandhsake(TestWithClient):
         mock_start.assert_called_once_with(mock.ANY)
         mock_timer.assert_not_called()
         mock_share.assert_not_called()
+
+    @mock.patch(
+        "golem.task.server.resources.TaskResourcesMixin.disallow_node",
+        create=True,
+    )
+    def test_timeout_handshake_missing(self, disallow_mock, *_):
+        self.server._handshake_timeout(self.key_id)
+        disallow_mock.assert_not_called()
+
+    @mock.patch(
+        "golem.task.server.resources.TaskResourcesMixin.disallow_node",
+        create=True,
+    )
+    def test_timeout_handshake_success(self, disallow_mock, *_):
+        self.server.start_handshake(
+            key_id=self.key_id,
+            task_id=self.task_id,
+        )
+        self.server.resource_handshakes[self.key_id].local_result = True
+        self.server.resource_handshakes[self.key_id].remote_result = True
+        self.server._handshake_timeout(self.key_id)
+        disallow_mock.assert_not_called()
+
+    @mock.patch(
+        "golem.task.server.resources.TaskResourcesMixin.disallow_node",
+        create=True,
+    )
+    def test_timeout(self, disallow_mock, *_):
+        self.server.start_handshake(
+            key_id=self.key_id,
+            task_id=self.task_id,
+        )
+        self.server._handshake_timeout(self.key_id)
+        disallow_mock.assert_called_once_with(
+            node_id=self.key_id,
+            timeout_seconds=mock.ANY,
+            persist=False,
+        )

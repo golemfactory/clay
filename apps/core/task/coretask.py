@@ -65,8 +65,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_border(cls, subtask, definition, subtasks_count,
-                        output_num=1, as_path=False):
+    def get_task_border(cls, extra_data, definition, subtasks_count,
+                        as_path=False):
         return []
 
     @classmethod
@@ -271,8 +271,9 @@ class CoreTask(Task):
     def get_tasks_left(self):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
-    # pylint:disable=unused-argument,no-self-use
-    def get_subtasks(self, part):
+    # pylint:disable=unused-argument
+    @classmethod
+    def get_subtasks(cls, part):
         return dict()
 
     def restart(self):

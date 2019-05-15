@@ -20,6 +20,8 @@ pub struct Offer {
     pub quality: Quality,
 }
 
+/// Providers selection function from Requestor perspective as
+/// proposed in [Brass Golem Marketplace](https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf)
 pub fn order_providers(offers: Vec<Offer>) -> Vec<usize> {
     order_providers_impl(offers, ALPHA, PSI, D)
 }

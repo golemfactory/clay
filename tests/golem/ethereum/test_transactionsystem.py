@@ -504,6 +504,7 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.lock_deposit.assert_called()
 
     def test_not_enough(self):
+        self.sci.GAS_TRANSFER_AND_CALL = 9999
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
         with self.assertRaises(exceptions.NotEnoughFunds):

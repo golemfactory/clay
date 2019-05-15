@@ -1,7 +1,8 @@
 import binascii
+import logging
 import uuid
 import zipfile
-from typing import Iterable, Optional, List, Dict
+from typing import Dict
 
 import abc
 import os
@@ -10,6 +11,8 @@ from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.fileshelper import common_dir, relative_path
 from golem.core.printable_object import PrintableObject
 from golem.core.simplehash import SimpleHash
+
+logger = logging.getLogger(__name__)
 
 
 def backup_rename(file_path, max_iterations=100):
@@ -35,15 +38,16 @@ class Packager(object):
 
     def create(self,
                output_path: str,
-               disk_files: Iterable[str]):
+               disk_files: Dict[str, str]):
 
         if not disk_files:
-            raise ValueError('No files to pack')
-
-        disk_files = self._prepare_file_dict(disk_files)
+            logger.warning('No files to pack')
+        else:
+            disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
-            for file_path, file_name in disk_files.items():
-                self.write_disk_file(of, file_path, file_name)
+            if disk_files:
+                for file_path, file_name in disk_files.items():
+                    self.write_disk_file(of, file_path, file_name)
 
         pkg_sha1 = self.compute_sha1(output_path)
         return output_path, pkg_sha1
@@ -102,8 +106,8 @@ class ZipPackager(Packager):
     def generator(self, output_path):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
-    def write_disk_file(self, package_file, src_path, zip_path):
-        relative_subdirectory = os.path.dirname(zip_path)
+    def write_disk_file(self, package_file, src_path, target_path):
+        relative_subdirectory = os.path.dirname(target_path)
         ZipPackager.zip_append(package_file, src_path.rstrip('/'),
                                relative_subdirectory)
 
@@ -148,7 +152,7 @@ class EncryptingPackager(Packager):
 
     def create(self,
                output_path: str,
-               disk_files: Iterable[str]):
+               disk_files: Dict[str, str]):
 
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
@@ -180,15 +184,6 @@ class EncryptingPackager(Packager):
 
 
 class TaskResultPackager:
-
-    def create(self,
-               output_path: str,
-               disk_files: List[str]):
-        return super().create(  # type: ignore # pylint:disable=no-member
-            output_path,
-            disk_files,
-        )
-
     def extract(self, input_path, output_dir=None):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
 

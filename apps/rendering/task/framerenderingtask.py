@@ -1,6 +1,7 @@
 import logging
 import math
 import os
+import typing
 from bisect import insort
 from collections import OrderedDict, defaultdict
 
@@ -19,7 +20,7 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
-from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
+from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 logger = logging.getLogger("apps.rendering")
 
@@ -165,20 +166,18 @@ class FrameRenderingTask(RenderingTask):
             return result
         return []
 
-    def get_subtasks(self, frame):
+    def get_subtasks(self, part) -> typing.Dict[str, dict]:
         if self.task_definition.options.use_frames:
-            subtask_ids = self.frames_subtasks.get(to_unicode(frame), [])
+            subtask_ids = self.frames_subtasks.get(to_unicode(part), [])
             subtask_ids = filter(None, subtask_ids)
         else:
             subtask_ids = self.subtasks_given.keys()
 
-        subtasks = dict()
+        subtasks = {}
 
-        # Convert to SubtaskState in order to match parent's return type
         for subtask_id in subtask_ids:
-            state = SubtaskState()
-            state.extra_data = self.subtasks_given[subtask_id]
-            subtasks[subtask_id] = state
+            subtasks[subtask_id] =\
+                self.subtasks_given[subtask_id]
 
         return subtasks
 
