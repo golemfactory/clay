@@ -4,6 +4,7 @@ import unittest
 from threading import Thread
 
 import twisted
+from twisted._threads import AlreadyQuit
 from twisted.internet.selectreactor import SelectReactor
 from twisted.internet.task import Clock
 
@@ -82,7 +83,10 @@ class MockReactorThread(Thread):
     def stop(self):
         self.working = False
         if self.reactor.threadpool:
-            self.reactor.threadpool.stop()
+            try:
+                self.reactor.threadpool.stop()
+            except AlreadyQuit:
+                pass
         self.reactor.stop()
 
         while not self.done:
