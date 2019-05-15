@@ -286,6 +286,10 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
+        if msg.node_info is None:
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
+            return
+
         self.node_info = msg.node_info
 
         if not KeysAuth.is_pubkey_difficult(
@@ -302,7 +306,7 @@ class PeerSession(BasicSafeSession):
         self.node_name = msg.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
-        self.key_id = msg.client_key_id
+        self.key_id = msg.node_info.key
         self.metadata = msg.metadata
 
         solve_challenge = msg.solve_challenge
@@ -482,7 +486,6 @@ class PeerSession(BasicSafeSession):
             proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.key_id,
             node_info=self.p2p_service.node,
             client_ver=golem.__version__,
             rand_val=self.rand_val,
