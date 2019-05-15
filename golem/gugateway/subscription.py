@@ -67,15 +67,13 @@ class Task(object):
     """ Golem task representation for GU gateway. Just header values"""
 
     __slots__ = ['task_id', 'deadline', 'subtask_timeout', 'subtasks_count',
-                 'resource_size', 'estimated_memory', 'max_price_gnt',
-                 'min_version']
+                 'estimated_memory', 'max_price_gnt', 'min_version']
 
     def __init__(self, header: TaskHeader):
         self.task_id = header.task_id
         self.deadline = header.deadline
         self.subtask_timeout = header.subtask_timeout
         self.subtasks_count = header.subtasks_count
-        self.resource_size = header.resource_size
         self.estimated_memory = header.estimated_memory
         self.max_price_gnt = header.max_price / denoms.ether
         self.min_version = header.min_version
@@ -86,7 +84,6 @@ class Task(object):
             'deadline': self.deadline,
             'subtaskTimeout': self.subtask_timeout,
             'subtasksCount': self.subtasks_count,
-            'resourceSize': self.resource_size,
             'estimatedMemory': self.estimated_memory,
             'maxPriceGnt': self.max_price_gnt,
             'minVersion': self.min_version

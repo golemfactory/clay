@@ -111,9 +111,6 @@ definitions:
       subtasksCount:
         type: integer
         format: int64
-      resourceSize:
-        type: integer
-        format: int64
       estimatedMemory:
         type: integer
         format: int64
