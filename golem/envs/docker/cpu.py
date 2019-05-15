@@ -23,6 +23,7 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.task_thread import DockerBind
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvEventId, EnvEvent, EnvMetadata, EnvStatus, RuntimeEventId, \
     RuntimeEvent, CounterId, CounterUsage, RuntimeStatus, EnvId, \
@@ -138,12 +139,15 @@ class DockerCPURuntime(Runtime):
 
     STATUS_UPDATE_INTERVAL = 1.0  # seconds
 
-    def __init__(self, payload: DockerPayload, host_config: Dict[str, Any]) \
-            -> None:
+    def __init__(
+            self,
+            payload: DockerPayload,
+            host_config: Dict[str, Any],
+            volumes: Optional[List[str]]
+    ) -> None:
         super().__init__(logger=logger)
 
         image = f"{payload.image}:{payload.tag}"
-        volumes = [bind.target for bind in payload.binds]
         client = local_client()
 
         self._status_update_thread: Optional[Thread] = None
@@ -412,6 +416,8 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
+    SHARED_DIR_PATH: ClassVar[str] = '/golem'
+
     NETWORK_MODE: ClassVar[str] = 'none'
     DNS_SERVERS: ClassVar[List[str]] = []
     DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
@@ -643,25 +649,38 @@ class DockerCPUEnvironment(Environment):
     def parse_payload(cls, payload_dict: Dict[str, Any]) -> DockerPayload:
         return DockerPayload.from_dict(payload_dict)
 
-    def runtime(self, payload: Payload, config: Optional[EnvConfig] = None) \
-            -> DockerCPURuntime:
+    def runtime(
+            self,
+            payload: Payload,
+            shared_dir: Optional[Path] = None,
+            config: Optional[EnvConfig] = None
+    ) -> DockerCPURuntime:
         assert isinstance(payload, DockerPayload)
         if config is not None:
             assert isinstance(config, DockerCPUConfig)
         else:
             config = self.config()
 
-        host_config = self._create_host_config(config, payload)
-        return DockerCPURuntime(payload, host_config)
+        host_config = self._create_host_config(config, shared_dir)
+        volumes = [self.SHARED_DIR_PATH] if shared_dir else None
+        return DockerCPURuntime(payload, host_config, volumes)
 
     def _create_host_config(
-            self, config: DockerCPUConfig, payload: DockerPayload) \
+            self, config: DockerCPUConfig, shared_dir: Optional[Path]) \
             -> Dict[str, Any]:
 
         cpus = hardware.cpus()[:config.cpu_count]
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
-        binds = self._hypervisor.create_volumes(payload.binds)
+
+        if shared_dir is not None:
+            binds = self._hypervisor.create_volumes([DockerBind(
+                source=shared_dir,
+                target=self.SHARED_DIR_PATH,
+                mode='rw'
+            )])
+        else:
+            binds = None
 
         client = local_client()
         return client.create_host_config(

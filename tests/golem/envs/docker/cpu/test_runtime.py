@@ -6,7 +6,7 @@ from docker.errors import APIError
 from twisted.trial.unittest import TestCase
 
 from golem.envs import RuntimeStatus
-from golem.envs.docker import DockerPayload, DockerBind
+from golem.envs.docker import DockerPayload
 from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput, DockerInput, \
     InputSocket
 
@@ -27,18 +27,18 @@ class TestInit(TestCase):
             image='repo/img',
             tag='1.0',
             command='cmd',
-            binds=[Mock(spec=DockerBind)],
             env={'key': 'value'},
             user='user',
             work_dir='/test'
         )
         host_config = {'memory': '1234m'}
-        runtime = DockerCPURuntime(payload, host_config)
+        volumes = ['/test']
+        runtime = DockerCPURuntime(payload, host_config, volumes)
 
         local_client().create_container_config.assert_called_once_with(
             image='repo/img:1.0',
             command='cmd',
-            volumes=[payload.binds[0].target],
+            volumes=volumes,
             environment={'key': 'value'},
             user='user',
             working_dir='/test',
@@ -65,10 +65,9 @@ class TestDockerCPURuntime(TestCase):
         payload = DockerPayload(
             image='repo/img',
             tag='1.0',
-            binds=[],
             env={}
         )
-        self.runtime = DockerCPURuntime(payload, {})
+        self.runtime = DockerCPURuntime(payload, {}, None)
         self.container_config = self.client.create_container_config()
 
         # We want to make sure that status is being set and read using lock.
