@@ -4,13 +4,15 @@ import pathlib
 
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefaults
-from apps.transcoding.common import Container, VideoCodec, AudioCodec
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
 from golem.verificator.ffmpeg_verifier import FFmpegVerifier
+
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
+from ffmpeg_tools.formats import Container
 
 logger = logging.getLogger(__name__)
 

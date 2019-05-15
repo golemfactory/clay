@@ -7,6 +7,7 @@ from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
 
+from ffmpeg_tools.validation import UnsupportedVideoCodec
 
 logger = logging.getLogger(__name__)
 
@@ -156,5 +157,5 @@ class TestffmpegIntegration(TestTaskIntegration):
             }
         }
 
-        with self.assertRaises(TranscodingTaskBuilderException):
+        with self.assertRaises(UnsupportedVideoCodec):
             self.execute_task(task_def)

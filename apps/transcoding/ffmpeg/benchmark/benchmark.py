@@ -3,9 +3,10 @@ import pathlib
 import uuid
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
-from apps.transcoding.common import VideoCodec
 from apps.transcoding.ffmpeg.task import ffmpegTaskDefinition
 from apps.transcoding.task import TranscodingTaskOptions
+
+from ffmpeg_tools.codecs import VideoCodec
 
 logger = logging.getLogger(__name__)
 
