@@ -139,13 +139,13 @@ class TaskComputer(object):
             task_thread.end_time = time.time()
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
-        subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtask
             assert subtask is not None
             self.assigned_subtask = None
             task_id = subtask['task_id']
             task_header = self.task_server.task_keeper.task_headers[task_id]
+            subtask_id = subtask['subtask_id']
             # get paid for max working time,
             # thus task withholding won't make profit
             work_time_to_be_paid = task_header.subtask_timeout
