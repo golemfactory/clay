@@ -8,7 +8,6 @@
 
 import os
 import pprint
-import psutil
 import time
 from multiprocessing import Process
 import typing
@@ -16,6 +15,7 @@ from unittest import mock, skip
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
+import psutil
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
@@ -109,6 +109,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.subscribe = False
 
             self.method = None
+            self.process = None
 
         def add_errors(self, *errors):
             print('Errors: {}'.format(pprint.pformat(errors)))
