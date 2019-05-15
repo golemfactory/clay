@@ -26,6 +26,12 @@ class TestIntegration(TestCase, DatabaseFixture):
         yield env.prepare()
         self.assertEqual(env.status(), EnvStatus.ENABLED)
 
+        # Add environment cleanup to clean it if test goes wrong
+        def _clean_up_env():
+            if env.status() != EnvStatus.DISABLED:
+                env.cleanup()
+        self.addCleanup(_clean_up_env)
+
         # Download image
         Whitelist.add("busybox")
         installed = yield env.install_prerequisites(DockerPrerequisites(
@@ -43,9 +49,17 @@ class TestIntegration(TestCase, DatabaseFixture):
             command="sh -c 'cat -'"
         ))
 
-        # Start container
+        # Prepare container
         yield runtime.prepare()
         self.assertEqual(runtime.status(), RuntimeStatus.PREPARED)
+
+        # Add runtime cleanup to clean it if test goes wrong
+        def _clean_up_runtime():
+            if runtime.status() != RuntimeStatus.TORN_DOWN:
+                runtime.cleanup()
+        self.addCleanup(_clean_up_runtime)
+
+        # Start container
         yield runtime.start()
         self.assertEqual(runtime.status(), RuntimeStatus.RUNNING)
 
@@ -64,3 +78,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         self.assertEqual(runtime.status(), RuntimeStatus.STOPPED)
         yield runtime.cleanup()
         self.assertEqual(runtime.status(), RuntimeStatus.TORN_DOWN)
+
+        # Clean up the environment
+        yield env.cleanup()
+        self.assertEqual(env.status(), EnvStatus.DISABLED)
