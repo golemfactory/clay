@@ -46,6 +46,7 @@ class UnsupportReason(enum.Enum):
     ENVIRONMENT_MISSING = 'environment_missing'
     ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
     ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
+    ENVIRONMENT_NOT_SECURE = 'environment_not_secure'
     MAX_PRICE = 'max_price'
     APP_VERSION = 'app_version'
     DENY_LIST = 'deny_list'
@@ -69,9 +70,6 @@ class Environment():
                                  " without any additional requirements."
 
         self.accept_tasks = False
-        # Check if tasks can define the source code
-        self.allow_custom_main_program_file = False
-        self.main_program_file = None
 
     def check_support(self) -> SupportStatus:
         """ Check if this environment is supported on this machine
@@ -110,11 +108,6 @@ class Environment():
             pass
 
         return step * MinPerformanceMultiplier.get()
-
-    def get_source_code(self):
-        if self.main_program_file and path.isfile(self.main_program_file):
-            with open(self.main_program_file) as f:
-                return f.read()
 
     @classmethod
     def run_default_benchmark(cls, save=False):

@@ -1,26 +1,20 @@
-import unittest
-
-from .base import NodeTestBase
+from .base import NodeTestBase, disable_key_reuse
 
 
-class ConcentNodeTest(NodeTestBase, unittest.TestCase):
+class ConcentNodeTest(NodeTestBase):
 
     def test_force_report(self):
-        exit_code = self._run_test('concent.force_report.ForceReport')
-        self.assertEqual(exit_code, 0)
+        self._run_test('concent.force_report')
 
     def test_force_download(self):
-        exit_code = self._run_test('concent.force_download.ForceDownload')
-        self.assertEqual(exit_code, 0)
+        self._run_test('concent.force_download')
 
     def test_force_accept(self):
-        exit_code = self._run_test('concent.force_accept.ForceAccept')
-        self.assertEqual(exit_code, 0)
+        self._run_test('concent.force_accept')
 
     def test_additional_verification(self):
-        exit_code = self._run_test('concent.additional_verification.AdditionalVerification')
-        self.assertEqual(exit_code, 0)
+        self._run_test('concent.additional_verification')
 
+    @disable_key_reuse
     def test_force_payment(self):
-        exit_code = self._run_test('concent.force_payment.ForcePayment')
-        self.assertEqual(exit_code, 0)
+        self._run_test('concent.force_payment')

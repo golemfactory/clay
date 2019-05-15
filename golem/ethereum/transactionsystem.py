@@ -5,7 +5,7 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
     Any,
@@ -15,6 +15,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
 )
 
 from ethereum.utils import denoms
@@ -108,7 +109,8 @@ class TransactionSystem(LoopingCallService):
         self._payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
-        self._gnt_conversion_status = ConversionStatus.NONE
+        self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
+            (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
@@ -153,7 +155,8 @@ class TransactionSystem(LoopingCallService):
         )
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
-            raise Exception("Storage already exists, can't override")
+            raise Exception("Storage already exists, can't override. path=%s" %
+                            str(new_storage_path))
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
@@ -206,7 +209,8 @@ class TransactionSystem(LoopingCallService):
         gate_address = self._sci.get_gate_address()
         if gate_address is not None:
             if self._sci.get_gnt_balance(gate_address):
-                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+                self._gnt_conversion_status = \
+                    (ConversionStatus.UNFINISHED, None)
 
         self._payment_processor = PaymentProcessor(self._sci)
         self._eth_per_payment = self._current_eth_per_payment()
@@ -327,11 +331,12 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         return self._sci.get_eth_address()
 
-    def get_payments_list(self):
+    def get_payments_list(self, num: Optional[int] = None,
+                          interval: Optional[timedelta] = None):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
         """
-        return self._payments_keeper.get_list_of_all_payments()
+        return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
     def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \
@@ -396,21 +401,32 @@ class TransactionSystem(LoopingCallService):
     def lock_funds_for_payments(self, price: int, num: int) -> None:
         if not self._payment_processor:
             raise Exception('Start was not called')
+        missing_funds: List[exceptions.MissingFunds] = []
+
         gnt = price * num
         if gnt > self.get_available_gnt():
-            raise exceptions.NotEnoughFunds(
-                gnt,
-                self.get_available_gnt(), 'GNT',
-            )
+            missing_funds.append(exceptions.MissingFunds(
+                required=gnt,
+                available=self.get_available_gnt(),
+                currency='GNT'
+            ))
 
         eth = self.eth_for_batch_payment(num)
         eth_available = self.get_available_eth()
         if eth > eth_available:
-            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+            missing_funds.append(exceptions.MissingFunds(
+                required=eth,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise exceptions.NotEnoughFunds(missing_funds)
 
         log.info(
-            "Locking %f GNT and ETH for %d payments",
+            "Locking %.3f GNTB and %.8f ETH for %d payments",
             gnt / denoms.ether,
+            eth / denoms.ether,
             num,
         )
         locked_eth = self.get_locked_eth()
@@ -433,7 +449,7 @@ class TransactionSystem(LoopingCallService):
 
             ))
         log.info(
-            "Unlocking %f GNT and ETH for %d payments",
+            "Unlocking %.3f GNTB for %d payments",
             gnt / denoms.ether,
             num,
         )
@@ -532,10 +548,10 @@ class TransactionSystem(LoopingCallService):
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
-                raise exceptions.NotEnoughFunds(
-                    amount,
-                    self.get_available_eth(),
-                    currency,
+                raise exceptions.NotEnoughFunds.single_currency(
+                    required=amount,
+                    available=self.get_available_eth(),
+                    currency=currency,
                 )
             return self._sci.transfer_eth(
                 destination,
@@ -545,10 +561,10 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
-                raise exceptions.NotEnoughFunds(
-                    amount,
-                    self.get_available_gnt(),
-                    currency,
+                raise exceptions.NotEnoughFunds.single_currency(
+                    required=amount,
+                    available=self.get_available_gnt(),
+                    currency=currency,
                 )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
@@ -597,11 +613,8 @@ class TransactionSystem(LoopingCallService):
             tasks_num: int,
             force: bool = False,
     ) -> None:
-        required_deposit_difference = required - self.concent_balance()
+        missing_funds: List[exceptions.MissingFunds] = []
 
-        gntb_balance = self.get_available_gnt()
-        if gntb_balance < required_deposit_difference:
-            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         if self.gas_price >= self.gas_price_limit:
             if not force:
                 raise exceptions.LongTransactionTime("Gas price too high")
@@ -609,12 +622,28 @@ class TransactionSystem(LoopingCallService):
                 'Gas price is high. It can take some time to mine deposit.',
             )
 
+        required_deposit_difference = required - self.concent_balance()
+        gntb_balance = self.get_available_gnt()
+        if gntb_balance < required_deposit_difference:
+            missing_funds.append(exceptions.MissingFunds(
+                required=required,
+                available=gntb_balance,
+                currency='GNT'
+            ))
+
         eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
         eth_required = eth_for_batch_payment_for_task + self.eth_for_deposit()
 
         eth_available = self.get_available_eth()
         if eth_required > eth_available:
-            raise exceptions.NotEnoughFunds(eth_required, eth_available, 'ETH')
+            missing_funds.append(exceptions.MissingFunds(
+                required=eth_required,
+                available=eth_available,
+                currency='ETH'
+            ))
+
+        if missing_funds:
+            raise exceptions.NotEnoughDepositFunds(missing_funds)
 
     @defer.inlineCallbacks
     @gnt_deposit_required()
@@ -722,7 +751,7 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         if not self._config.FAUCET_ENABLED:
             return
-        if self._eth_balance < 0.01 * denoms.ether:
+        if self._eth_balance < 0.005 * denoms.ether:
             log.info("Requesting tETH from faucet")
             tETH_faucet_donate(self._sci.get_eth_address())
             return
@@ -756,9 +785,9 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         self._sci: SmartContractsInterface
-        if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
+        if self._gnt_conversion_status[0] == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
-                self._gnt_conversion_status = ConversionStatus.NONE
+                self._gnt_conversion_status = (ConversionStatus.NONE, None)
             else:
                 gas_cost = self.gas_price * \
                     self._sci.GAS_TRANSFER_FROM_GATE
@@ -768,7 +797,8 @@ class TransactionSystem(LoopingCallService):
                         "Finishing previously started GNT conversion %s",
                         tx_hash,
                     )
-                    self._gnt_conversion_status = ConversionStatus.TRANSFERRING
+                    self._gnt_conversion_status = \
+                        (ConversionStatus.TRANSFERRING, tx_hash)
                 else:
                     log.info(
                         "Not enough gas to finish GNT conversion, has %.6f,"
@@ -777,26 +807,35 @@ class TransactionSystem(LoopingCallService):
                         gas_cost / denoms.ether,
                     )
             return
+        if self._gnt_conversion_status[0] == ConversionStatus.TRANSFERRING:
+            receipt = self._sci.get_transaction_receipt(
+                self._gnt_conversion_status[1],
+            )
+            if receipt is None:
+                return
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
+
         if self._gnt_balance == 0:
-            self._gnt_conversion_status = ConversionStatus.NONE
             return
 
         gas_price = self.gas_price
         gate_address = self._sci.get_gate_address()
         if gate_address is None:
+            if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+                return
             gas_cost = gas_price * self._sci.GAS_OPEN_GATE
-            if self._gnt_conversion_status != ConversionStatus.OPENING_GATE:
-                if self._eth_balance >= gas_cost:
-                    tx_hash = self._sci.open_gate()
-                    log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
-                    self._gnt_conversion_status = ConversionStatus.OPENING_GATE
-                else:
-                    log.info(
-                        "Not enough gas for opening conversion gate, has: %.6f,"
-                        " needed: %.6f",
-                        self._eth_balance / denoms.ether,
-                        gas_cost / denoms.ether,
-                    )
+            if self._eth_balance >= gas_cost:
+                tx_hash = self._sci.open_gate()
+                log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
+                self._gnt_conversion_status = \
+                    (ConversionStatus.OPENING_GATE, None)
+            else:
+                log.info(
+                    "Not enough gas for opening conversion gate, has: %.6f,"
+                    " needed: %.6f",
+                    self._eth_balance / denoms.ether,
+                    gas_cost / denoms.ether,
+                )
             return
 
         # This is extra safety check, shouldn't ever happen
@@ -804,30 +843,30 @@ class TransactionSystem(LoopingCallService):
             log.critical('Gate address should not equal to %s', gate_address)
             return
 
-        if self._gnt_conversion_status == ConversionStatus.OPENING_GATE:
-            self._gnt_conversion_status = ConversionStatus.NONE
+        if self._gnt_conversion_status[0] == ConversionStatus.OPENING_GATE:
+            self._gnt_conversion_status = (ConversionStatus.NONE, None)
 
         gas_cost = gas_price * \
             (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_TRANSFER_FROM_GATE)
-        if self._gnt_conversion_status != ConversionStatus.TRANSFERRING:
-            if self._eth_balance >= gas_cost:
-                tx_hash1 = \
-                    self._sci.transfer_gnt(gate_address, self._gnt_balance)
-                tx_hash2 = self._sci.transfer_from_gate()
-                log.info(
-                    "Converting %.6f GNT to GNTB %s %s",
-                    self._gnt_balance / denoms.ether,
-                    tx_hash1,
-                    tx_hash2,
-                )
-                self._gnt_conversion_status = ConversionStatus.TRANSFERRING
-            else:
-                log.info(
-                    "Not enough gas for GNT conversion, has: %.6f,"
-                    " needed: %.6f",
-                    self._eth_balance / denoms.ether,
-                    gas_cost / denoms.ether,
-                )
+        if self._eth_balance >= gas_cost:
+            tx_hash1 = \
+                self._sci.transfer_gnt(gate_address, self._gnt_balance)
+            tx_hash2 = self._sci.transfer_from_gate()
+            log.info(
+                "Converting %.6f GNT to GNTB %s %s",
+                self._gnt_balance / denoms.ether,
+                tx_hash1,
+                tx_hash2,
+            )
+            self._gnt_conversion_status = \
+                (ConversionStatus.TRANSFERRING, tx_hash2)
+        else:
+            log.info(
+                "Not enough gas for GNT conversion, has: %.6f,"
+                " needed: %.6f",
+                self._eth_balance / denoms.ether,
+                gas_cost / denoms.ether,
+            )
 
     def _run(self) -> None:
         if not self._payment_processor:

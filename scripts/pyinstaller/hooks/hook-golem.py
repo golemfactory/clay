@@ -8,23 +8,20 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = [
     ('loggingconfig.py', '.'),
-    ('apps/core/resources/images/scripts/entrypoint.sh',
-     'apps/core/resources/images/scripts/'),
     ('apps/*.ini', 'apps/'),
-    ('apps/core/resources/images/nvgpu.Dockerfile',
+    ('apps/entrypoint.sh', 'apps/'),
+    ('apps/core/resources/images/*',
      'apps/core/resources/images/'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
      'apps/rendering/benchmark/minilight/'),
-    ('apps/rendering/resources/scripts/runner.py',
-     'apps/rendering/resources/scripts/'),
-    ('apps/blender/resources/images/blender_nvgpu.Dockerfile',
+    ('apps/blender/resources/images/*.Dockerfile',
      'apps/blender/resources/images/'),
-    ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
-     'apps/blender/resources/scripts/'),
-    ('apps/blender/resources/scripts/docker_blendertask.py',
-     'apps/blender/resources/scripts/'),
-    ('apps/dummy/resources/scripts/docker_dummytask.py',
-     'apps/dummy/resources/scripts/'),
+    ('apps/blender/resources/images/entrypoints/scripts/render_tools/templates/'
+        'blendercrop.py.template',
+     'apps/blender/resources/images/entrypoints/scripts/render_tools/'
+        'templates'),
+    ('apps/dummy/resources/images',
+     'apps/dummy/resources/'),
     ('apps/dummy/resources/code_dir/computing.py',
      'apps/dummy/resources/code_dir/'),
     ('apps/dummy/test_data/in.data',
@@ -38,5 +35,6 @@ datas = [
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),
     ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
     ('scripts/virtualization/get-virtualization-state.ps1',
-     'scripts/virtualization')
+     'scripts/virtualization'),
+    ('scripts/virtualization/get-hyperv-state.ps1', 'scripts/virtualization')
 ]

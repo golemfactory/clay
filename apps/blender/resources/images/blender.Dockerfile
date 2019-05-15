@@ -2,7 +2,7 @@
 # Blender setup is based on
 # https://github.com/ikester/blender-docker/blob/master/Dockerfile
 
-FROM golemfactory/base:1.3
+FROM golemfactory/base:1.4
 
 MAINTAINER Golem Tech <tech@golem.network>
 
@@ -31,9 +31,10 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
 RUN /golem/install_py_libs.sh 0 typing
 
 ENV PATH=/blender:/usr/bin/:$PATH
-ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH
 
 # Create symbolic link to python. I don't know where, something removes it.
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
-COPY scripts/ /golem/scripts/
+RUN mkdir -p /golem/entrypoints/scripts
+COPY entrypoints/scripts/render_tools /golem/entrypoints/scripts/render_tools/
+COPY entrypoints/render_entrypoint.py /golem/entrypoints/

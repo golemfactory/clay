@@ -1,7 +1,6 @@
-from ..base import NodeTestPlaybook
+from ..test_config_base import TestConfigBase
 
 
-class RegularRun(NodeTestPlaybook):
-    provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/debug'
-    task_settings = 'jpeg'
+class TestConfig(TestConfigBase):
+    def __init__(self):
+        super().__init__(task_settings='jpeg')

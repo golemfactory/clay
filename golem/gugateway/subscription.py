@@ -107,7 +107,6 @@ class Subtask(object):
         self.deadline: int = int(ctd['deadline'])
         self.docker_images = ctd['docker_images']
         self.extra_data: dict = ctd['extra_data']
-        self.extra_data['src_code'] = ctd['src_code']
 
     def to_json_dict(self) -> dict:
         return {
@@ -126,16 +125,16 @@ class Resource(object):
     task manager folder.
     """
 
-    __slots__ = ['task_id', 'subtask_id', 'path']
+    __slots__ = ['res_id', 'subtask_id', 'path']
 
     def __init__(self, **kwargs):
-        self.task_id = kwargs['task_id']
+        self.res_id = kwargs['res_id']
         self.subtask_id = kwargs['subtask_id']
         self.path = kwargs['path']
 
     def to_json_dict(self) -> dict:
         return {
-            'taskId': self.task_id,
+            'resId': self.res_id,
             'subtaskId': self.subtask_id,
             'path': self.path,
         }
@@ -199,24 +198,22 @@ class Event(object):
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
-    def update(self, request_json: dict):
-        self.name = request_json.get('name', '')
-        self.min_price_gnt = int(request_json['minPriceGnt'])
-        self.performance = float(request_json.get('performance', 0.0))
-        self.max_cpu_cores = int(request_json['maxCpuCores'])
-        self.max_memory_size = int(request_json['maxMemorySize'])
-        self.max_disk_size = int(request_json['maxDiskSize'])
-        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
-
     def __init__(self,
                  node_id: str,
                  task_type: TaskType,
                  request_json: dict,
                  known_tasks: Dict[str, TaskHeader]
                  ):
-        self.update(request_json)
 
-        self.node_id = node_id
+        self.name: str = request_json.get('name', '')
+        self.min_price_gnt: int = int(request_json['minPriceGnt'])
+        self.performance: float = float(request_json.get('performance', 0.0))
+        self.max_cpu_cores: int = int(request_json['maxCpuCores'])
+        self.max_memory_size: int = int(request_json['maxMemorySize'])
+        self.max_disk_size: int = int(request_json['maxDiskSize'])
+        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
+
+        self.node_id: str = node_id
         # TODO: By default node_id should be used as address for payments. It
         #      can by overwritten by `ethPubKey` field. But GM needs pub key :/
         # self.eth_pub_key = self.eth_pub_key or self.node_id[2:]
@@ -236,6 +233,15 @@ class Subscription(object):
 
         dispatcher.connect(self.add_task_event, signal='golem.task')
         dispatcher.connect(self._remove_task_event, signal='golem.task.removed')
+
+    def update(self, request_json: dict):
+        self.name = request_json.get('name', '')
+        self.min_price_gnt = int(request_json['minPriceGnt'])
+        self.performance = float(request_json.get('performance', 0.0))
+        self.max_cpu_cores = int(request_json['maxCpuCores'])
+        self.max_memory_size = int(request_json['maxMemorySize'])
+        self.max_disk_size = int(request_json['maxDiskSize'])
+        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
 
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
@@ -268,7 +274,10 @@ class Subscription(object):
         #     difficulty=task_server.client.config_desc.key_difficulty,
         # )
 
-        task_server.request_task(task_id, self.performance, self.eth_pub_key)
+        task_server.request_task_by_id(
+            task_id=task_id,
+            performance=self.performance,
+            eth_pub_key=self.eth_pub_key)
         dispatcher.connect(self.add_subtask_event,
                            signal='golem.subtask')
         self.increment(SubtaskStatus.requested)

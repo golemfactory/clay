@@ -20,6 +20,9 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem import model
 from golem import testutils
+from golem.appconfig import (
+    DEFAULT_HYPERDRIVE_RPC_PORT, DEFAULT_HYPERDRIVE_RPC_ADDRESS
+)
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
     NetworkConnectionPublisherService, \
@@ -36,11 +39,13 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
+from golem.task import taskstate
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
+
+from tests.factories.task import taskstate as taskstate_factory
 
 random = Random(__name__)
 
@@ -110,6 +115,10 @@ def make_client(*_, **kwargs):
         'use_monitor': False,
         'concent_variant': CONCENT_CHOICES['disabled'],
     }
+    default_kwargs['config_desc'].hyperdrive_rpc_address = \
+        DEFAULT_HYPERDRIVE_RPC_ADDRESS
+    default_kwargs['config_desc'].hyperdrive_rpc_port = \
+        DEFAULT_HYPERDRIVE_RPC_PORT
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
     return client
@@ -352,19 +361,15 @@ class TestClient(TestClientBase):
         self.client.task_server = Mock(task_manager=tm)
         self.client.funds_locker = Mock()
         tm.tasks_states = {
-            "t1": Mock(status=Mock(is_completed=Mock(return_value=True))),
+            "t1": Mock(status=taskstate.TaskStatus.finished),
             "t2": Mock(
-                status=Mock(is_completed=Mock(return_value=False)),
+                status=taskstate.TaskStatus.computing,
                 subtask_states={
-                    "sub1": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=True),
-                        ),
+                    "sub1": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.finished,
                     ),
-                    "sub2": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=False),
-                        ),
+                    "sub2": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.failure,
                     ),
                 },
             ),
@@ -805,9 +810,12 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         result = c.check_test_status()
         self.assertFalse(result)
 
-        c.task_test_result = {"status": TaskTestStatus.started}
+        c.task_test_result = {"status": taskstate.TaskTestStatus.started}
         result = c.check_test_status()
-        self.assertEqual({"status": TaskTestStatus.started.value}, result)
+        self.assertEqual(
+            {"status": taskstate.TaskTestStatus.started.value},
+            result,
+        )
 
     def test_delete_task(self, *_):
         c = self.client
@@ -817,7 +825,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         task_id = str(uuid.uuid4())
         c.delete_task(task_id)
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -833,7 +841,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         c.purge_tasks()
         assert c.get_tasks.called
-        assert c.remove_task_header.called
+        assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
@@ -1157,7 +1165,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.acl = Mock(spec=Acl)
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
-            'node_id', persist=True)
+            'node_id', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):
@@ -1276,7 +1284,6 @@ class TestConcentInitialization(TestClientBase):
             keys_auth=ANY,
             variant=CONCENT_CHOICES['disabled'],
         )
-
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

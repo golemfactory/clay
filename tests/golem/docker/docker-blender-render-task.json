@@ -11,10 +11,10 @@
       "docker_images":[
         {
           "py/object":"golem.docker.image.DockerImage",
-          "tag":"1.5",
+          "tag":"1.9",
           "id":null,
           "repository":"golemfactory/blender",
-          "name":"golemfactory/blender:1.5"
+          "name":"golemfactory/blender:1.9"
         }
       ],
       "caps":[],
@@ -44,10 +44,10 @@
   "docker_images":[
     {
       "py/object":"golem.docker.image.DockerImage",
-      "tag":"1.5",
+      "tag":"1.9",
       "id":null,
       "repository":"golemfactory/blender",
-      "name":"golemfactory/blender:1.5"
+      "name":"golemfactory/blender:1.9"
     }
   ],
   "resolution":[
@@ -55,15 +55,13 @@
     600
   ],
   "output_format":"PNG",
-  "output_file":"hel.png",
+  "output_file": "output.png",
   "optimize_total":false,
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend",
-  "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
   "max_price": 13,
   "task_type":"Blender",
-  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "subtasks_count":6,
   "concent_enabled": false

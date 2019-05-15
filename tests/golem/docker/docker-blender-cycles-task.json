@@ -11,8 +11,8 @@
         {
           "py/object": "golem.docker.image.DockerImage",
           "repository": "golemfactory/blender",
-          "tag": "1.5",
-          "name": "golemfactory/blender:1.5",
+          "tag": "1.9",
+          "name": "golemfactory/blender:1.9",
           "id": null
         }
       ],
@@ -43,13 +43,11 @@
     900
   ],
   "output_format":"PNG",
-  "output_file":"hel.png",
+  "output_file": "output.png",
   "optimize_total":false,
-  "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Blender",
-  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "subtasks_count":6,
   "max_price": 12,
@@ -57,8 +55,8 @@
     {
       "py/object": "golem.docker.image.DockerImage",
       "repository": "golemfactory/blender",
-      "tag": "1.5",
-      "name": "golemfactory/blender:1.5",
+      "tag": "1.9",
+      "name": "golemfactory/blender:1.9",
       "id": null
     }
   ],

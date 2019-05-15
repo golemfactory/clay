@@ -168,11 +168,11 @@ definitions:
   Resource:
     description: Binary content (files) required to execute subtask
     required:
-      - taskId
+      - resId
       - subtaskId
       - path
     properties:
-      taskId:
+      resId:
         $ref: '#/definitions/Uuid'
       subtaskId:
         $ref: '#/definitions/Uuid'

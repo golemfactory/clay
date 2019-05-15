@@ -5,15 +5,11 @@ Provider node failing the subtask
 
 """
 import mock
-import sys
 
 from golem_messages.message.tasks import WantToComputeTask, TaskToCompute
 from golem.task.tasksession import TaskSession
-from scripts.node_integration_tests import params
 
 from golemapp import start  # noqa: E402 module level import not at top of file
-
-sys.argv.extend(params.PROVIDER_ARGS_DEBUG)
 
 original_send = TaskSession.send
 original_interpret = TaskSession.interpret

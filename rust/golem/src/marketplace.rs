@@ -1,3 +1,5 @@
+use std::f64;
+
 // Price sensitivity factor. 0 <= ALPHA <= 1
 const ALPHA: f64 = 0.67;
 // Distrust factor. 1 <= D
@@ -18,6 +20,8 @@ pub struct Offer {
     pub quality: Quality,
 }
 
+/// Providers selection function from Requestor perspective as
+/// proposed in [Brass Golem Marketplace](https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf)
 pub fn order_providers(offers: Vec<Offer>) -> Vec<usize> {
     order_providers_impl(offers, ALPHA, PSI, D)
 }
@@ -82,16 +86,26 @@ mod tests {
                     r: 0.0,
                 },
             },
+            Offer {
+                scaled_price: f64::MAX,
+                reputation: 15.0,
+                quality: Quality {
+                    s: 0.0,
+                    t: 0.0,
+                    f: 0.0,
+                    r: 0.0,
+                },
+            },
         ];
     }
     #[test]
     fn order_providers_price_preference() {
         let offers = gen_offers();
-        assert_eq!(order_providers_impl(offers, 1.0, PSI, D), vec![3, 1, 0, 2]);
+        assert_eq!(order_providers_impl(offers, 1.0, PSI, D), vec![4, 3, 1, 0, 2]);
     }
     #[test]
     fn order_providers_reputation_preference() {
         let offers = gen_offers();
-        assert_eq!(order_providers_impl(offers, 0.0, PSI, D), vec![1, 2, 3, 0]);
+        assert_eq!(order_providers_impl(offers, 0.0, PSI, D), vec![1, 2, 4, 3, 0]);
     }
 }

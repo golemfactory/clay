@@ -1,6 +1,7 @@
 from enum import IntEnum
 import functools
 import logging
+from pathlib import Path
 import time
 from typing import (
     Any,
@@ -12,9 +13,10 @@ from typing import (
     TypeVar,
 )
 
-from pathlib import Path
+from fs.tempfs import TempFS
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred, maybeDeferred
+from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
+    FirstError
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
@@ -34,7 +36,7 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage
+from golem.report import StatusPublisher, Component, Stage, report_calls
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
@@ -43,6 +45,8 @@ from golem.rpc.session import (
     Session,
 )
 from golem import terms
+from golem.tools.uploadcontroller import UploadController
+from golem.tools.remotefs import RemoteFS
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -79,8 +83,8 @@ class Node(HardwarePresetsMixin):
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
                  peers: Optional[List[SocketAddress]] = None,
-                 use_monitor: bool = None,
-                 use_talkback: bool = None,
+                 use_monitor: bool = False,
+                 use_talkback: bool = False,
                  use_docker_manager: bool = False,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None
@@ -142,6 +146,9 @@ class Node(HardwarePresetsMixin):
             update_hw_preset=self.upsert_hw_preset
         )
 
+        self.tempfs = TempFS()
+        self.remotefs = RemoteFS(self.tempfs, UploadController(self.tempfs))
+
         if password is not None:
             if not self.set_password(password):
                 raise Exception("Password incorrect")
@@ -158,18 +165,31 @@ class Node(HardwarePresetsMixin):
             def on_rpc_ready() -> Deferred:
                 terms_ = self._check_terms()
                 keys = self._start_keys_auth()
-                docker = maybeDeferred(self._start_docker)
+                docker = self._start_docker()
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
+
+            def on_start_error(failure: FirstError):
+                sub_failure: Failure = failure.value.subFailure
+                sub_failure.trap(EnvironmentError)
+
+                logger.error(
+                    """
+                    There was a problem setting up the environment: {}
+                    Golem will run with limited functionality to support
+                    communication with local clients.
+                    """.format(sub_failure.getErrorMessage())
+                )
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
-                self._error('keys or docker'),
+                on_start_error,
             ).addErrback(self._error('setup client'))
             self._reactor.run()
         except Exception:  # pylint: disable=broad-except
             logger.exception("Application error")
 
     @rpc_utils.expose('ui.quit')
+    @report_calls(Component.client, 'shutdown')
     def quit(self) -> None:
 
         def _quit():
@@ -217,6 +237,33 @@ class Node(HardwarePresetsMixin):
     def is_account_unlocked(self) -> bool:
         return self._keys_auth is not None
 
+    @rpc_utils.expose('comp.task.results_purge')
+    def purge_task_results(self, task_id):
+        path = self.get_temp_results_path_for_task(task_id)
+        self.tempfs.removetree(path)
+
+    @staticmethod
+    def get_temp_results_path_for_task(task_id):
+        return 'results-{task_id}'.format(task_id=task_id)
+
+    @rpc_utils.expose('comp.task.subtask_results')
+    def get_subtask_results(self, task_id, subtask_id):
+        task = self.client.task_server.task_manager.tasks[task_id]
+        results = task.get_results(subtask_id)
+        res_path = self.get_temp_results_path_for_task(subtask_id)
+        # Create a directory there results will be held temporarily
+        outs = self.remotefs.copy_files_to_tmp_location(results, res_path)
+        return outs
+
+    @rpc_utils.expose('comp.task.result')
+    def get_task_results(self, task_id):
+        # FIXME Obtain task state in less hacky way
+        state = self.client.task_server.task_manager.query_task_state(task_id)
+        res_path = self.get_temp_results_path_for_task(task_id)
+        outs = self.remotefs.copy_files_to_tmp_location(state.outputs,
+                                                        res_path)
+        return outs
+
     @rpc_utils.expose('golem.mainnet')
     @classmethod
     def is_mainnet(cls) -> bool:
@@ -233,10 +280,11 @@ class Node(HardwarePresetsMixin):
         deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
-    def _start_session(self) -> Optional[Deferred]:
+    def _start_session(self) -> Deferred:
         if not self.rpc_router:
-            self._stop_on_error("rpc", "RPC router is not available")
-            return None
+            msg = "RPC router is not available"
+            self._stop_on_error("rpc", msg)
+            return fail(Exception(msg))
 
         crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
         self.rpc_session = Session(
@@ -333,7 +381,8 @@ class Node(HardwarePresetsMixin):
         rpc_providers = (
             self,
             virtualization,
-            self.rpc_session
+            self.rpc_session,
+            self.remotefs
         )
 
         for provider in rpc_providers:
@@ -421,9 +470,9 @@ class Node(HardwarePresetsMixin):
 
         return threads.deferToThread(create_keysauth)
 
-    def _start_docker(self) -> Optional[Deferred]:
+    def _start_docker(self) -> Deferred:
         if not self._use_docker_manager:
-            return None
+            return succeed(None)
 
         def start_docker():
             # pylint: disable=no-member

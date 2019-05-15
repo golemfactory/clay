@@ -23,8 +23,6 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         TestWithDatabase.tearDown(self)
 
     def test_termination(self):
-        script = "import time\ntime.sleep(20)"
-
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
         task_server.client.datadir = self.test_dir
@@ -35,21 +33,18 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             task_server.client.datadir
         task_computer = TaskComputer(task_server,
                                      use_docker_manager=False)
-        image = DockerImage("golemfactory/base", tag="1.3")
+        image = DockerImage("golemfactory/base", tag="1.4")
 
         with self.assertRaises(AttributeError):
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
-            DockerTaskThread("subtask_id", None,
-                             script, None,
+            DockerTaskThread(None, None,
                              dir_mapping, timeout=30)
 
         def test():
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
-            tt = DockerTaskThread("subtask_id", [image],
-                                  script, None,
-                                  "test task thread", dir_mapping, timeout=30)
+            tt = DockerTaskThread([image], None, dir_mapping, timeout=30)
             task_computer.counting_thread = tt
             task_computer.counting_task = True
             tt.setDaemon(True)

@@ -216,9 +216,37 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.transfer_from_gate.assert_called_once_with()
         self.sci.transfer_gnt.reset_mock()
         self.sci.transfer_from_gate.reset_mock()
+        self.sci.get_gnt_balance.return_value = 0
+        self.ets._refresh_balances()
         self.ets._try_convert_gnt()
         self.sci.transfer_gnt.assert_not_called()
         self.sci.transfer_from_gate.assert_not_called()
+
+    def test_topup_while_convert(self):
+        amount1 = 1000 * denoms.ether
+        amount2 = 2000 * denoms.ether
+        gate_addr = '0x' + 40 * '2'
+        self.sci.get_gate_address.return_value = gate_addr
+        self.sci.get_gnt_balance.return_value = amount1
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_current_gas_price.return_value = 0
+        self.sci.GAS_GNT_TRANSFER = 2
+        self.sci.GAS_TRANSFER_FROM_GATE = 5
+        self.ets._refresh_balances()
+
+        self.ets._try_convert_gnt()
+        self.sci.open_gate.assert_not_called()
+        self.sci.transfer_gnt.assert_called_once_with(gate_addr, amount1)
+        self.sci.transfer_from_gate.assert_called_once_with()
+        self.sci.transfer_gnt.reset_mock()
+        self.sci.transfer_from_gate.reset_mock()
+
+        # Top up with more GNT
+        self.sci.get_gnt_balance.return_value = amount2
+        self.ets._refresh_balances()
+        self.ets._try_convert_gnt()
+        self.sci.transfer_gnt.assert_called_once_with(gate_addr, amount2)
+        self.sci.transfer_from_gate.assert_called_once_with()
 
     def test_unfinished_gnt_conversion(self):
         amount = 1000 * denoms.ether
@@ -476,6 +504,7 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.lock_deposit.assert_called()
 
     def test_not_enough(self):
+        self.sci.GAS_TRANSFER_AND_CALL = 9999
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
         with self.assertRaises(exceptions.NotEnoughFunds):

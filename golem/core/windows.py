@@ -1,7 +1,7 @@
 import subprocess
 from typing import List, Optional
 
-DEFAULT_SCRIPT_TIMEOUT = 5  # seconds
+DEFAULT_SCRIPT_TIMEOUT = 60  # seconds
 
 
 def run_powershell(
@@ -58,4 +58,4 @@ def run_powershell(
         stdout = f"{exc.stdout.decode('utf8')}\n" if exc.stdout else ''
         stderr = exc.stderr.decode('utf8') if exc.stderr else ''
 
-        raise RuntimeError(stdout + stderr)
+        raise RuntimeError(f'{exc}\nstdout: {stdout}\nstderr: {stderr}')

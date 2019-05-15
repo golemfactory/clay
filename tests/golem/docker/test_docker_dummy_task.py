@@ -8,23 +8,31 @@ from unittest.mock import Mock
 from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.deferred import sync_wait
 from golem.core.fileshelper import find_file_with_ext
+from golem.docker.manager import DockerManager
 from golem.resource.dirmanager import symlink_or_copy, \
     rmlink_or_rmtree
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
+from golem.tools.testwithreactor import TestWithReactor
+
 from .test_docker_task import DockerTaskTestCase
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
 
+WAIT_TIMEOUT = 60
+
 
 @ci_skip
-class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
+class TestDockerDummyTask(
+        DockerTaskTestCase[DummyTask, DummyTaskBuilder], TestWithReactor
+):
 
     TASK_FILE = "docker-dummy-test-task.json"
     TASK_CLASS = DummyTask
@@ -53,12 +61,15 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         symlink_or_copy(code_dir, cls.code_link)
         symlink_or_copy(data_dir, cls.data_link)
+        DockerManager.install(ClientConfigDescriptor())
+        cls.TASK_CLASS.VERIFICATION_QUEUE.resume()
 
     @classmethod
     def tearDownClass(cls):
         rmlink_or_rmtree(cls.code_link)
         rmlink_or_rmtree(cls.data_link)
         os.rmdir(cls.test_tmp)
+        super().tearDownClass()
 
     def _extract_results(self, computer: LocalComputer, subtask_id: str) \
             -> Path:
@@ -71,6 +82,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         requestor are separate machines
         """
         assert isinstance(computer.tt, DockerTaskThread)
+
         dirname = path.dirname(computer.tt.result['data'][0])
         result = Path(find_file_with_ext(dirname, [".result"]))
         self.assertTrue(result.is_file())
@@ -90,8 +102,6 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         print(ctd)
         print(type(ctd))
 
-        from twisted.internet import reactor
-
         d = Deferred()
 
         computer = LocalComputer(
@@ -107,8 +117,6 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         output = self._extract_results(computer, ctd['subtask_id'])
 
-        task.create_reference_data_for_task_validation()
-
         def success(*args, **kwargs):
             # pylint: disable=unused-argument
             is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
@@ -121,8 +129,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         task.computation_finished(ctd['subtask_id'], [str(output)],
                                   verification_finished=success)
 
-        reactor.iterate()
-        sync_wait(d, 40)
+        sync_wait(d, WAIT_TIMEOUT)
 
         b = Deferred()
 
@@ -137,15 +144,14 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         ctd = task.query_extra_data(10000.).ctd
         task.computation_finished(ctd['subtask_id'], [str(bad_output)],
                                   verification_finished=failure)
-        reactor.iterate()
-        sync_wait(b, 40)
+        sync_wait(b, WAIT_TIMEOUT)
 
     def test_dummytask_TaskTester_should_pass(self):
         task = self._get_test_task()
 
         computer = TaskTester(task, self.tempdir, Mock(), Mock())
         computer.run()
-        computer.tt.join(60.0)
+        computer.tt.join(float(WAIT_TIMEOUT))
 
         dirname = os.path.dirname(computer.tt.result[0]['data'][0])
         result = find_file_with_ext(dirname, [".result"])

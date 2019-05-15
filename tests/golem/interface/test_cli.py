@@ -3,15 +3,17 @@ import unittest
 from unittest.mock import patch, Mock
 
 from io import StringIO
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.internet.error import ReactorNotRunning
 
 from twisted.internet import defer
 from twisted.internet.error import ReactorNotRunning
 
-from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
-from golem.interface.command import group, doc, argument,\
-    identifier, name, command, CommandHelper, storage_context
+from golem.interface.cli import (
+    CLI, _exit, _help, _debug, ArgumentParser, disable_withdraw,
+)
+from golem.interface.command import (
+    group, doc, argument, identifier, name, command, CommandHelper,
+    storage_context,
+)
 from golem.interface.exceptions import ParsingException, CommandException
 
 
