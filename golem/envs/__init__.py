@@ -347,6 +347,7 @@ class Environment(ABC):
         creating Runtimes. """
 
     def __init__(self, logger: Optional[Logger] = None) -> None:
+        self._status = EnvStatus.DISABLED
         self._logger = logger or getLogger(__name__)
         self._event_listeners: Dict[EnvEventType, Set[EnvEventListener]] = {}
 
@@ -368,25 +369,45 @@ class Environment(ABC):
             listener(deepcopy(event))
 
     def _env_enabled(self) -> None:
+        """ Acknowledge that Runtime has been enabled. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
         self._logger.info("Environment enabled.")
+        self._status = EnvStatus.ENABLED
         self._emit_event(EnvEventType.ENV_ENABLED)
 
     def _env_disabled(self) -> None:
+        """ Acknowledge that Runtime has been disabled. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
         self._logger.info("Environment disabled.")
+        self._status = EnvStatus.DISABLED
         self._emit_event(EnvEventType.ENV_DISABLED)
 
     def _config_updated(self, config: EnvConfig) -> None:
+        """ Acknowledge that Runtime's config has been updated. Log message and
+            emit event. The updated config is included in event's details. """
         self._logger.info("Configuration updated.")
         self._emit_event(EnvEventType.CONFIG_UPDATED, {'config': config})
 
     def _prerequisites_installed(self, prerequisites: Prerequisites) -> None:
+        """ Acknowledge that Prerequisites have been installed. Log message and
+            emit event. The installed prerequisites are included in event's
+            details. """
         self._logger.info("Prerequisites installed.")
         self._emit_event(
             EnvEventType.PREREQUISITES_INSTALLED,
             {'prerequisites': prerequisites})
 
-    def _error_occurred(self, error: Exception, message: str) -> None:
+    def _error_occurred(
+            self,
+            error: Optional[Exception],
+            message: str,
+            set_status: bool = True
+    ) -> None:
+        """ Acknowledge that an error occurred in runtime. Log message and emit
+            event. If set_status is True also set status to 'FAILURE'. """
         self._logger.error(message, exc_info=error)
+        if set_status:
+            self._status = EnvStatus.ERROR
         self._emit_event(
             EnvEventType.ERROR_OCCURRED, {
                 'error': error,
@@ -399,10 +420,9 @@ class Environment(ABC):
         """ Is the Environment supported on this machine? """
         raise NotImplementedError
 
-    @abstractmethod
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
-        raise NotImplementedError
+        return self._status
 
     @abstractmethod
     def prepare(self) -> Deferred:

@@ -3,7 +3,7 @@ from unittest import TestCase
 from unittest.mock import Mock, patch
 
 from golem.envs import Environment, EnvEvent, EnvEventType, EnvConfig, \
-    Prerequisites
+    Prerequisites, EnvStatus
 
 
 class TestEnvironment(TestCase):
@@ -43,12 +43,15 @@ class TestEmitEvents(TestEnvironment):
     @patch('golem.envs.Environment._emit_event')
     def test_env_enabled(self, emit):
         self.env._env_enabled()
+        self.assertEqual(self.env.status(), EnvStatus.ENABLED)
         self.logger.info.assert_called_once_with('Environment enabled.')
         emit.assert_called_once_with(EnvEventType.ENV_ENABLED)
 
     @patch('golem.envs.Environment._emit_event')
     def test_env_disabled(self, emit):
+        self.env._status = EnvStatus.ENABLED
         self.env._env_disabled()
+        self.assertEqual(self.env.status(), EnvStatus.DISABLED)
         self.logger.info.assert_called_once_with('Environment disabled.')
         emit.assert_called_once_with(EnvEventType.ENV_DISABLED)
 
@@ -74,6 +77,7 @@ class TestEmitEvents(TestEnvironment):
         error = RuntimeError("test")
         message = "error message"
         self.env._error_occurred(error, message)
+        self.assertEqual(self.env.status(), EnvStatus.ERROR)
         self.logger.error.assert_called_once_with(message, exc_info=error)
         emit.assert_called_once_with(
             EnvEventType.ERROR_OCCURRED, {

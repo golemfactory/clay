@@ -242,10 +242,8 @@ class TestPrepare(TestDockerCPUEnv):
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.ERROR)
             error_occurred.assert_called_once_with(error, ANY)
         deferred.addCallback(_check)
-
         return deferred
 
     def test_ok(self):
@@ -255,10 +253,8 @@ class TestPrepare(TestDockerCPUEnv):
         self.assertEqual(self.env.status(), EnvStatus.PREPARING)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.ENABLED)
             env_enabled.assert_called_once_with()
         deferred.addCallback(_check)
-
         return deferred
 
 
@@ -289,10 +285,8 @@ class TestCleanup(TestDockerCPUEnv):
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.ERROR)
             error_occurred.assert_called_once_with(error, ANY)
         deferred.addCallback(_check)
-
         return deferred
 
     def test_ok(self):
@@ -303,10 +297,8 @@ class TestCleanup(TestDockerCPUEnv):
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
 
         def _check(_):
-            self.assertEqual(self.env.status(), EnvStatus.DISABLED)
             env_disabled.assert_called_once_with()
         deferred.addCallback(_check)
-
         return deferred
 
 
@@ -344,7 +336,7 @@ class TestInstallPrerequisites(TestDockerCPUEnv):
         deferred = self.assertFailure(deferred, OSError)
 
         def _check(_):
-            error_occurred.assert_called_once_with(error, ANY)
+            error_occurred.assert_called_once_with(error, ANY, set_status=False)
         deferred.addCallback(_check)
         return deferred
 
@@ -511,7 +503,6 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
 
         with self.assertRaises(OSError):
             self.env._constrain_hypervisor(config)
-        self.assertEqual(self.env.status(), EnvStatus.ERROR)
         error_occurred.assert_called_once_with(error, ANY)
 
     def test_config_changed(self):

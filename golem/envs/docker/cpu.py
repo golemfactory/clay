@@ -474,7 +474,6 @@ class DockerCPUEnvironment(Environment):
 
     def __init__(self, config: DockerCPUConfig) -> None:
         super().__init__(logger=logger)
-        self._status = EnvStatus.DISABLED
         self._validate_config(config)
         self._config = config
 
@@ -489,9 +488,6 @@ class DockerCPUEnvironment(Environment):
             cpu: self._config.cpu_count
         }
 
-    def status(self) -> EnvStatus:
-        return self._status
-
     def prepare(self) -> Deferred:
         if self._status != EnvStatus.DISABLED:
             raise ValueError(f"Cannot prepare because environment is in "
@@ -504,10 +500,8 @@ class DockerCPUEnvironment(Environment):
                 self._hypervisor.setup()
             except Exception as e:
                 self._error_occurred(e, "Preparing environment failed.")
-                self._status = EnvStatus.ERROR
                 raise
             self._env_enabled()
-            self._status = EnvStatus.ENABLED
 
         return deferToThread(_prepare)
 
@@ -523,10 +517,8 @@ class DockerCPUEnvironment(Environment):
                 self._hypervisor.quit()
             except Exception as e:
                 self._error_occurred(e, "Cleaning up environment failed.")
-                self._status = EnvStatus.ERROR
                 raise
             self._env_disabled()
-            self._status = EnvStatus.DISABLED
 
         return deferToThread(_clean_up)
 
@@ -565,7 +557,8 @@ class DockerCPUEnvironment(Environment):
                     tag=prerequisites.tag
                 )
             except Exception as e:
-                self._error_occurred(e, "Preparing prerequisites failed.")
+                self._error_occurred(
+                    e, "Preparing prerequisites failed.", set_status=False)
                 raise
             self._prerequisites_installed(prerequisites)
             return True
@@ -610,7 +603,6 @@ class DockerCPUEnvironment(Environment):
             self._hypervisor.update_work_dir(work_dir)
         except Exception as e:
             self._error_occurred(e, "Updating working directory failed.")
-            self._status = EnvStatus.ERROR
             raise
         logger.info("Working directory successfully updated.")
 
@@ -632,7 +624,6 @@ class DockerCPUEnvironment(Environment):
                 self._hypervisor.constrain(**target)
         except Exception as e:
             self._error_occurred(e, "Reconfiguring hypervisor failed.")
-            self._status = EnvStatus.ERROR
             raise
         logger.info("Hypervisor successfully reconfigured.")
 
