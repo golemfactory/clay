@@ -491,13 +491,22 @@ class TestRuntime(TestDockerCPUEnv):
         with self.assertRaises(AssertionError):
             self.env.runtime(object())
 
-    def test_invalid_config_class(self):
+    @patch('Whitelist.is_whitelisted', return_value=True)
+    def test_invalid_config_class(self, _):
         with self.assertRaises(AssertionError):
             self.env.runtime(Mock(spec=DockerPayload), config=object())
 
+    @patch('Whitelist.is_whitelisted', return_value=False)
+    def test_image_not_whitelisted(self, is_whitelisted):
+        payload = Mock(spec=DockerPayload)
+        with self.assertRaises(RuntimeError):
+            self.env.runtime(payload)
+        is_whitelisted.assert_called_once_with(payload.image)
+
+    @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
-    def test_default_config(self, create_host_config, runtime_mock):
+    def test_default_config(self, create_host_config, runtime_mock, _):
         payload = Mock(spec=DockerPayload)
         runtime = self.env.runtime(payload)
 
@@ -506,9 +515,10 @@ class TestRuntime(TestDockerCPUEnv):
             payload, create_host_config(), None)
         self.assertEqual(runtime, runtime_mock())
 
+    @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
-    def test_custom_config(self, create_host_config, runtime_mock):
+    def test_custom_config(self, create_host_config, runtime_mock, _):
         payload = Mock(spec=DockerPayload)
         config = Mock(spec=DockerCPUConfig)
         runtime = self.env.runtime(payload, config=config)
@@ -518,9 +528,10 @@ class TestRuntime(TestDockerCPUEnv):
             payload, create_host_config(), None)
         self.assertEqual(runtime, runtime_mock())
 
+    @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
-    def test_shared_dir(self, create_host_config, runtime_mock):
+    def test_shared_dir(self, create_host_config, runtime_mock, _):
         payload = Mock(spec=DockerPayload)
         shared_dir = Mock(spec=Path)
         runtime = self.env.runtime(payload, shared_dir=shared_dir)
