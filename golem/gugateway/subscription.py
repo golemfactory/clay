@@ -311,7 +311,7 @@ class Subscription(object):
     def add_resource_event(self, **kwargs) -> None:
         resource = Resource(**kwargs)
         logger.debug('event resource path: %s', resource.path)
-        if resource.task_id in self.tasks:
+        if resource.subtask_id in self.subtasks:
             self._add_event(f'rs-{resource.subtask_id}', resource=resource)
             dispatcher.disconnect(self.add_resource_event,
                                   signal='golem.resource')
