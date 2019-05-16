@@ -434,8 +434,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # overwrite resources so they are serialized by resource_manager
             resources = self.task_server.get_resources(ctd['subtask_id'])
             ctd["resources"] = resources
-            logger.info("resources_result: %r", resources_result)
-            logger.info('Resources are sid = {}, res = {}'.format(ctd['subtask_id'], resources))
 
         logger.info(
             "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
