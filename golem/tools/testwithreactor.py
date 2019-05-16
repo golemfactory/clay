@@ -1,3 +1,4 @@
+# TODO: move all test-related code somewhere to `tests` #4193
 import sys
 import time
 import unittest

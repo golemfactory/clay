@@ -1,4 +1,4 @@
-    # pylint: disable=protected-access
+# pylint: disable=protected-access
 # The code below is organised in classes, each class running one test only.
 # This is because closing reactor and router and running them again ends with
 # a timeout error during session.connect(). This proved to be challenging
@@ -30,6 +30,7 @@ from golem.rpc.session import (
     Session,
 )
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testchildprocesses import KillLeftoverChildrenTestMixin
 
 setDebugging(True)
 
@@ -83,11 +84,10 @@ class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
     )
 
 
-class _TestRouter(TestDirFixtureWithReactor):
+class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
     TIMEOUT = 20
     CSRB_FRONTEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
     CSRB_BACKEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
-    _children_on_start = None
 
     # pylint: disable=too-many-instance-attributes
     class State(object):
@@ -123,27 +123,9 @@ class _TestRouter(TestDirFixtureWithReactor):
                 "%d: %s" % (cnt, e) for cnt, e in enumerate(self.errors)
             )
 
-    @ staticmethod
-    def _get_process_children():
-        p = psutil.Process()
-        return set([c.pid for c in p.children(recursive=True)])
-
     def setUp(self):
         super().setUp()
         self.state = _TestRouter.State()
-        self._children_on_start = self._get_process_children()
-
-    def tearDown(self):
-        super().tearDown()
-
-        # in case any new child processes are still alive here, terminate them
-        nkotb = self._get_process_children() - self._children_on_start
-        for k in nkotb:
-            try:
-                p = psutil.Process(k)
-                p.kill()
-            except psutil.Error:
-                pass
 
     @inlineCallbacks
     def _start_backend_session(self, *_):
