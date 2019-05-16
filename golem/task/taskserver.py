@@ -312,7 +312,6 @@ class TaskServer(
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price)
             wtct = message.tasks.WantToComputeTask(
-                node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
@@ -701,13 +700,12 @@ class TaskServer(
             self,
             node_id,
             address,
-            node_name,
             task_id,
             provider_perf,
             max_resource_size,
             max_memory_size):
 
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id not in self.task_manager.tasks:

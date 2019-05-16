@@ -76,7 +76,6 @@ class TestSendReportComputedTask(testutils.TempDirFixture):
         self.assertEqual(node_id, self.wtr.owner.key)
         self.assertIsInstance(rct, message.tasks.ReportComputedTask)
         self.assertEqual(rct.subtask_id, self.wtr.subtask_id)
-        self.assertEqual(rct.node_name, self.task_server.node.node_name)
         self.assertEqual(rct.address, self.task_server.node.prv_addr)
         self.assertEqual(rct.port, self.task_server.cur_port)
         self.assertEqual(rct.extra_data, [])

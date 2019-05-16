@@ -144,7 +144,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
     def _get_task_parameters(self):
         return {
-            'node_name': self.node_name,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
@@ -524,7 +523,6 @@ class TestTaskSession(TaskSessionTestBase):
         expected = [
             ['rand_val', self.task_session.rand_val],
             ['proto_id', variables.PROTOCOL_CONST.ID],
-            ['node_name', None],
             ['node_info', node.to_dict()],
             ['port', None],
             ['client_ver', golem.__version__],
@@ -532,7 +530,6 @@ class TestTaskSession(TaskSessionTestBase):
             ['challenge', None],
             ['difficulty', None],
             ['metadata', None],
-            ['client_key_id', None],
         ]
         msg = send_mock.call_args[0][0]
         self.assertCountEqual(msg.slots(), expected)
