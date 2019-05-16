@@ -141,6 +141,19 @@ class WasmTask(CoreTask):
             subtask_id=self.create_subtask_id(), extra_data=next_extra_data
         )
 
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
+                            err_log_ext="err.log"):
+        filtered_task_results = []
+        for tr in task_results:
+            if tr.endswith(err_log_ext):
+                self.stderr[subtask_id] = tr
+            elif tr.endswith(log_ext):
+                self.stdout[subtask_id] = tr
+            else:
+                filtered_task_results.append(tr)
+
+        return filtered_task_results
+
 
 class WasmTaskBuilder(CoreTaskBuilder):
     TASK_CLASS: Type[WasmTask] = WasmTask
