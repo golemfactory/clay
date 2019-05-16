@@ -3,6 +3,8 @@ from copy import deepcopy
 from enum import Enum
 from logging import Logger, getLogger
 from threading import RLock
+from pathlib import Path
+
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set
 
@@ -486,9 +488,14 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def runtime(self, payload: Payload, config: Optional[EnvConfig] = None) \
-            -> Runtime:
-        """ Create a Runtime from the given Payload. Optionally, override
+    def runtime(
+            self,
+            payload: Payload,
+            shared_dir: Optional[Path] = None,
+            config: Optional[EnvConfig] = None
+    ) -> Runtime:
+        """ Create a Runtime from the given Payload. Optionally, share the
+            specified directory with the created Runtime. Optionally, override
             current config with the supplied one (it is however not guaranteed
             that all config parameters could be overridden). Assumes current
             status is 'ENABLED'. """

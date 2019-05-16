@@ -12,6 +12,7 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.task_thread import DockerBind
 from golem.envs import EnvStatus
 from golem.envs.docker import DockerPrerequisites, DockerPayload
 from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
@@ -531,29 +532,56 @@ class TestRuntime(TestDockerCPUEnv):
         with self.assertRaises(AssertionError):
             self.env.runtime(object())
 
-    def test_invalid_config_class(self):
+    @patch('Whitelist.is_whitelisted', return_value=True)
+    def test_invalid_config_class(self, _):
         with self.assertRaises(AssertionError):
-            self.env.runtime(Mock(spec=DockerPayload), object())
+            self.env.runtime(Mock(spec=DockerPayload), config=object())
 
+    @patch('Whitelist.is_whitelisted', return_value=False)
+    def test_image_not_whitelisted(self, is_whitelisted):
+        payload = Mock(spec=DockerPayload)
+        with self.assertRaises(RuntimeError):
+            self.env.runtime(payload)
+        is_whitelisted.assert_called_once_with(payload.image)
+
+    @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
-    def test_default_config(self, create_host_config, runtime_mock):
+    def test_default_config(self, create_host_config, runtime_mock, _):
         payload = Mock(spec=DockerPayload)
         runtime = self.env.runtime(payload)
 
-        create_host_config.assert_called_once_with(self.config, payload)
-        runtime_mock.assert_called_once_with(payload, create_host_config())
+        create_host_config.assert_called_once_with(self.config, None)
+        runtime_mock.assert_called_once_with(
+            payload, create_host_config(), None)
         self.assertEqual(runtime, runtime_mock())
 
+    @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
-    def test_custom_config(self, create_host_config, runtime_mock):
+    def test_custom_config(self, create_host_config, runtime_mock, _):
         payload = Mock(spec=DockerPayload)
         config = Mock(spec=DockerCPUConfig)
-        runtime = self.env.runtime(payload, config)
+        runtime = self.env.runtime(payload, config=config)
 
-        create_host_config.assert_called_once_with(config, payload)
-        runtime_mock.assert_called_once_with(payload, create_host_config())
+        create_host_config.assert_called_once_with(config, None)
+        runtime_mock.assert_called_once_with(
+            payload, create_host_config(), None)
+        self.assertEqual(runtime, runtime_mock())
+
+    @patch('Whitelist.is_whitelisted', return_value=True)
+    @patch('DockerCPURuntime')
+    @patch_env('_create_host_config')
+    def test_shared_dir(self, create_host_config, runtime_mock, _):
+        payload = Mock(spec=DockerPayload)
+        shared_dir = Mock(spec=Path)
+        runtime = self.env.runtime(payload, shared_dir=shared_dir)
+
+        create_host_config.assert_called_once_with(self.config, shared_dir)
+        runtime_mock.assert_called_once_with(
+            payload,
+            create_host_config(),
+            [DockerCPUEnvironment.SHARED_DIR_PATH])
         self.assertEqual(runtime, runtime_mock())
 
 
@@ -561,16 +589,43 @@ class TestCreateHostConfig(TestDockerCPUEnv):
 
     @patch('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
     @patch('local_client')
-    def test_create_host_config(self, local_client, _):
+    def test_no_shared_dir(self, local_client, _):
         config = DockerCPUConfig(
             work_dir=Mock(spec=Path),
             cpu_count=4,
             memory_mb=2137
         )
-        payload = Mock(spec=DockerPayload)
-        host_config = self.env._create_host_config(config, payload)
+        host_config = self.env._create_host_config(config, None)
 
-        self.hypervisor.create_volumes.assert_called_once_with(payload.binds)
+        self.hypervisor.create_volumes.assert_not_called()
+        local_client().create_host_config.assert_called_once_with(
+            cpuset_cpus='1,2,3,4',
+            mem_limit='2137m',
+            binds=None,
+            privileged=False,
+            network_mode=DockerCPUEnvironment.NETWORK_MODE,
+            dns=DockerCPUEnvironment.DNS_SERVERS,
+            dns_search=DockerCPUEnvironment.DNS_SEARCH_DOMAINS,
+            cap_drop=DockerCPUEnvironment.DROPPED_KERNEL_CAPABILITIES
+        )
+        self.assertEqual(host_config, local_client().create_host_config())
+
+    @patch('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
+    @patch('local_client')
+    def test_shared_dir(self, local_client, _):
+        config = DockerCPUConfig(
+            work_dir=Mock(spec=Path),
+            cpu_count=4,
+            memory_mb=2137
+        )
+        shared_dir = Mock(spec=Path)
+        host_config = self.env._create_host_config(config, shared_dir)
+
+        self.hypervisor.create_volumes.assert_called_once_with([DockerBind(
+            source=shared_dir,
+            target=DockerCPUEnvironment.SHARED_DIR_PATH,
+            mode='rw'
+        )])
         local_client().create_host_config.assert_called_once_with(
             cpuset_cpus='1,2,3,4',
             mem_limit='2137m',

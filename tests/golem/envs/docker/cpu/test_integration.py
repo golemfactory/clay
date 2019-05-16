@@ -44,7 +44,6 @@ class TestIntegration(TestCase, DatabaseFixture):
         runtime = env.runtime(DockerPayload(
             image="busybox",
             tag="latest",
-            binds=[],
             env={},
             command="sh -c 'cat -'"
         ))

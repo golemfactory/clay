@@ -1,7 +1,7 @@
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 
-from golem.envs.docker import DockerPayload, DockerBind
+from golem.envs.docker import DockerPayload
 
 
 class TestFromDict(TestCase):
@@ -23,13 +23,9 @@ class TestFromDict(TestCase):
             'image': 'repo/img',
             'tag': '1.0',
         })
-
-        self.assertEqual(payload.binds, [])
         self.assertEqual(payload.env, {})
 
-    @patch('golem.envs.docker.DockerBind')
-    def test_custom_values(self, docker_bind):
-        bind_dict = Mock()
+    def test_custom_values(self):
         payload = DockerPayload.from_dict({
             'image': 'repo/img',
             'tag': '1.0',
@@ -37,10 +33,8 @@ class TestFromDict(TestCase):
             'command': 'cmd',
             'user': 'user',
             'work_dir': '/tmp/',
-            'binds': [bind_dict]
         })
 
-        docker_bind.from_dict.assert_called_once_with(bind_dict)
         self.assertEqual(payload, DockerPayload(
             image='repo/img',
             tag='1.0',
@@ -48,14 +42,12 @@ class TestFromDict(TestCase):
             command='cmd',
             user='user',
             work_dir='/tmp/',
-            binds=[docker_bind.from_dict()]
         ))
 
 
 class TestToDict(TestCase):
 
     def test_to_dict(self):
-        bind = Mock(spec=DockerBind)
         payload_dict = DockerPayload(
             image='repo/img',
             tag='1.0',
@@ -63,7 +55,6 @@ class TestToDict(TestCase):
             command='cmd',
             user='user',
             work_dir='/tmp/',
-            binds=[bind]
         ).to_dict()
 
         self.assertEqual(payload_dict, {
@@ -73,5 +64,4 @@ class TestToDict(TestCase):
             'command': 'cmd',
             'user': 'user',
             'work_dir': '/tmp/',
-            'binds': [bind.to_dict()]
         })
