@@ -9,12 +9,13 @@
 import os
 import pprint
 import time
-from threading import Thread
+from multiprocessing import Process
 import typing
 from unittest import mock, skip
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
+import psutil
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
@@ -29,6 +30,7 @@ from golem.rpc.session import (
     Session,
 )
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testchildprocesses import KillLeftoverChildrenTestMixin
 
 setDebugging(True)
 
@@ -82,7 +84,7 @@ class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
     )
 
 
-class _TestRouter(TestDirFixtureWithReactor):
+class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
     TIMEOUT = 20
     CSRB_FRONTEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
     CSRB_BACKEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
@@ -107,6 +109,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.subscribe = False
 
             self.method = None
+            self.process = None
 
         def add_errors(self, *errors):
             print('Errors: {}'.format(pprint.pformat(errors)))
@@ -164,7 +167,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         yield txdefer
         yield self._frontend_session_started()
 
-    def _wait_for_thread(self, expect_error=False):
+    def _wait_for_process(self, expect_error=False):
         deadline = time.time() + self.TIMEOUT
 
         while True:
@@ -189,14 +192,19 @@ class _TestRouter(TestDirFixtureWithReactor):
             raise Exception("Expected error")
         self.reactor_thread.reactor.stop()
 
+        if self.process.is_alive():
+            self.process.terminate()
+
     def _run_test(self, expect_error, *args, **kwargs):
-        thread = Thread(target=self.in_thread, args=args, kwargs=kwargs)
-        thread.daemon = True
-        thread.run()
+        self.process = Process(
+            target=self.in_subprocess, args=args, kwargs=kwargs
+        )
+        self.process.daemon = True
+        self.process.run()
 
-        self._wait_for_thread(expect_error=expect_error)
+        self._wait_for_process(expect_error=expect_error)
 
-    def in_thread(self, *args, **kwargs):
+    def in_subprocess(self, *args, **kwargs):
         deferred = self._start_router(*args, **kwargs)
         deferred.addCallback(lambda *args: print('Router finished', args))
         deferred.addErrback(self.state.add_errors)
@@ -208,7 +216,6 @@ class _TestRouter(TestDirFixtureWithReactor):
         raise NotImplementedError()
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCNoAuth(_TestRouter):
 
     def test_rpc_no_auth(self):
@@ -320,7 +327,6 @@ class TestRPCNoAuth(_TestRouter):
             self.state.add_errors(e)
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class _TestRPCAuth(_TestRouter):
     DOCKER_METHOD = "docker_echo"
     NON_DOCKER_METHOD = "non_docker_echo"
@@ -375,7 +381,6 @@ class _TestRPCAuth(_TestRouter):
         self._run_test(error, port=CROSSBAR_PORT, path=self.path)
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.docker
     CSRB_BACKEND = xbar_users.golemapp
@@ -386,7 +391,6 @@ class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
         )
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -397,7 +401,6 @@ class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
         )
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -408,7 +411,6 @@ class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
         )
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.docker
     CSRB_BACKEND = xbar_users.golemapp
@@ -419,7 +421,6 @@ class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
         )
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.docker
@@ -430,7 +431,6 @@ class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
         )
 
 
-@skip("Disabled because it leaves zombie processes #4165")
 class _TestRPCAuthWrongSecret(_TestRPCAuth):
     CSRB_FRONTEND = xbar_users.golemcli
     CSRB_BACKEND = xbar_users.golemapp
@@ -449,7 +449,6 @@ class _TestRPCAuthWrongSecret(_TestRPCAuth):
 
 
 # pylint: disable=too-many-ancestors
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self.state.crsb_frontend_secret = self.cmanager.get_secret(
@@ -460,7 +459,6 @@ class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
 
 
 # pylint: disable=too-many-ancestors
-@skip("Disabled because it leaves zombie processes #4165")
 class TestRPCAuthWrongFrontendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self.state.crsb_frontend_secret = self.cmanager.get_secret(
