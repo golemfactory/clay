@@ -8,7 +8,7 @@ from PIL import Image
 
 from . import decision_tree
 from .image_format_converter import convert_tga_to_png, convert_exr_to_png
-from .imgage_metrics import ImgageMetrics
+from .image_metrics import ImgageMetrics
 
 
 PROVIDER_RESULT_CROP_NAME_PREFIX = "fragment_corresponding_to_"

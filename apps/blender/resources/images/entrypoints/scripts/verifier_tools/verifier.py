@@ -1,4 +1,3 @@
-# todo review: rename file to "verifier.py"
 import json
 import os
 from typing import List, Optional, Tuple, Any, Dict
