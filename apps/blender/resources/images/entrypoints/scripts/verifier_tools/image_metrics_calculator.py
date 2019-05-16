@@ -11,7 +11,7 @@ from .image_format_converter import convert_tga_to_png, convert_exr_to_png
 from .imgage_metrics import ImgageMetrics
 
 
-PROVIDERS_RESULT_CROP_NAME = "scene_crop.png"
+PROVIDER_RESULT_CROP_NAME_PREFIX = "fragment_corresponding_to_"
 VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
 PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
@@ -64,8 +64,9 @@ def calculate_metrics(
     except Exception as e:
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
-
-    providers_result_crop.save(PROVIDERS_RESULT_CROP_NAME)
+    providers_result_crop.save(
+        PROVIDER_RESULT_CROP_NAME_PREFIX + os.path.basename(reference_crop_path)
+    )
     return ImgageMetrics(default_metrics).write_to_file(
         metrics_output_filename
     )
