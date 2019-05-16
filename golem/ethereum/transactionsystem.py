@@ -388,7 +388,7 @@ class TransactionSystem(LoopingCallService):
 
         # Our version of peewee (2.10.2) doesn't support
         # .join(attr='XXX'). So we'll have to join manually
-        lru_node = functools.lru_cache()(functools.partial(nodeskeeper.get))
+        lru_node = functools.lru_cache()(nodeskeeper.get)
 
         def item(o):
             return {
