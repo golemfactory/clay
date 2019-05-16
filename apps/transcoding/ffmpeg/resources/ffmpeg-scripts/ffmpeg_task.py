@@ -2,7 +2,7 @@ import json
 import os
 
 # pylint: disable=import-error
-from ffmpeg_tools import commands
+from ffmpeg_tools import commands, meta
 import m3u8
 from m3u8_utils import create_and_dump_m3u8, join_playlists
 
@@ -13,7 +13,8 @@ PARAMS_FILE = "params.json"
 
 def do_split(path_to_stream, parts):
     
-    video_length = commands.get_video_len(path_to_stream)
+    video_metadata = commands.get_metadata_json(path_to_stream)
+    video_length = meta.get_duration(video_metadata)
     split_file = commands.split_video(path_to_stream,
                                     OUTPUT_DIR, video_length / parts)
     m3u8_main_list = m3u8.load(split_file)
@@ -33,6 +34,7 @@ def do_split(path_to_stream, parts):
 
     results["main_list"] = split_file
     results["segments"] = segments_list
+    results["metadata"] = video_metadata
 
     results_file = os.path.join(OUTPUT_DIR, "split-results.json")
     with open(results_file, 'w') as f:
