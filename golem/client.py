@@ -23,7 +23,6 @@ from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
-    datetime_to_timestamp_utc,
     get_timestamp_utc,
     node_info_str,
     string_to_timeout,
@@ -920,11 +919,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return self.task_archiver.get_unsupport_reasons(last_days)
         return self.task_server.task_keeper.get_unsupport_reasons()
 
-    @rpc_utils.expose('pay.ident')
-    def get_payment_address(self):
-        address = self.transaction_system.get_payment_address()
-        return str(address) if address else None
-
     def get_comp_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
@@ -981,65 +975,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'status': status.value,
             'timelock': str(timelock),
         }
-
-    @rpc_utils.expose('pay.gas_price')
-    def get_gas_price(self) -> Dict[str, str]:
-        return {
-            "current_gas_price": str(self.transaction_system.gas_price),
-            "gas_price_limit": str(self.transaction_system.gas_price_limit)
-        }
-
-    @rpc_utils.expose('pay.payments')
-    def get_payments_list(
-            self,
-            num: Optional[int] = None,
-            last_seconds: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
-        interval = None
-        if last_seconds is not None:
-            interval = timedelta(seconds=last_seconds)
-        return self.transaction_system.get_payments_list(num, interval)
-
-    @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self) -> List[Dict[str, Any]]:
-        incomes = self.transaction_system.get_incomes_list()
-
-        def item(o):
-            status = "confirmed" if o.transaction else "awaiting"
-
-            return {
-                "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
-                "value": to_unicode(o.value),
-                "status": to_unicode(status),
-                "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp_utc(o.created_date),
-                "modified": datetime_to_timestamp_utc(o.modified_date)
-            }
-
-        return [item(income) for income in incomes]
-
-    @rpc_utils.expose('pay.deposit_payments')
-    @classmethod
-    def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[Dict[str, Any]]:
-        deposit_payments = TransactionSystem.get_deposit_payments_list(
-            limit,
-            offset,
-        )
-        result = []
-        for dpayment in deposit_payments:
-            entry = {}
-            entry['value'] = to_unicode(dpayment.value)
-            entry['status'] = to_unicode(dpayment.status.name)
-            entry['fee'] = to_unicode(dpayment.fee)
-            entry['transaction'] = to_unicode(dpayment.tx)
-            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
-            entry['modified'] = datetime_to_timestamp_utc(
-                dpayment.modified_date,
-            )
-            result.append(entry)
-        return result
 
     @rpc_utils.expose('pay.withdraw.gas_cost')
     def get_withdraw_gas_cost(
