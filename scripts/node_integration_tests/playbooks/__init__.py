@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 
 def run_playbook(playbook_cls: 'Type[NodeTestPlaybook]',
                  config: 'TestConfigBase') -> None:
-    playbook = playbook_cls.start(config)
+    playbook = playbook_cls(config)
+    playbook.start()
 
     if playbook.exit_code:
         print("exit code", playbook.exit_code)

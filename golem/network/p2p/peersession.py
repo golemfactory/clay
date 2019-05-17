@@ -453,12 +453,10 @@ class PeerSession(BasicSafeSession):
                 message.base.Disconnect.REASON.Unverified
             )
 
-    def _react_to_want_to_start_task_session(self, msg):
-        self.p2p_service.peer_want_task_session(
-            msg.node_info,
-            msg.super_node_info,
-            msg.conn_id
-        )
+    @classmethod
+    def _react_to_want_to_start_task_session(cls, msg):
+        # TODO: https://github.com/golemfactory/golem/issues/4005
+        logger.debug("Ignored WTSTS. msg=%s", msg)
 
     def _react_to_set_task_session(self, msg):
         self.p2p_service.want_to_start_task_session(

@@ -1,10 +1,15 @@
 import abc
+import logging
 import operator
 import time
 from enum import Enum
 from pathlib import Path
 from typing import Dict, Set, Union, Iterable, Optional, Tuple
 from sortedcontainers import SortedList
+
+from golem.core import common
+
+logger = logging.getLogger(__name__)
 
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
@@ -73,6 +78,12 @@ class _DenyAcl(Acl):
     def disallow(self, node_id: str,
                  timeout_seconds: int = -1,
                  persist: bool = False) -> None:
+        logger.info(
+            'Banned node. node_id=%s, timeout=%ds, persist=%s',
+            common.short_node_id(node_id),
+            timeout_seconds,
+            persist,
+        )
         if timeout_seconds < 0:
             self._deny_deadlines[node_id] = self._always
         else:
@@ -114,6 +125,12 @@ class _AllowAcl(Acl):
     def disallow(self, node_id: str,
                  timeout_seconds: int = 0,
                  persist: bool = False) -> None:
+        logger.info(
+            'Banned node. node_id=%s, timeout=%ds, persist=%s',
+            common.short_node_id(node_id),
+            timeout_seconds,
+            persist,
+        )
         self._allow_set.discard(node_id)
 
         if persist and self._list_path:

@@ -41,15 +41,12 @@ logger = logging.getLogger(__name__)
 
 
 class TestTaskManager(TaskManager):
-    def __init__(
-            self, node, keys_auth, root_path,
-            config_desc: ClientConfigDescriptor,
-            tasks_dir="tasks",
-            task_persistence=True,
-            apps_manager=AppsManager(),
-            finished_cb=None,
-        ):
+    def __init__(self, node, keys_auth, root_path, config_desc: ClientConfigDescriptor, tasks_dir="tasks",
+                 task_persistence=False, apps_manager=AppsManager(), finished_cb=None):
 
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            super().__init__(node, keys_auth, root_path, config_desc, tasks_dir, task_persistence, apps_manager,
+                             finished_cb)
         self.apps_manager = apps_manager
         apps = list(apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]
@@ -151,7 +148,7 @@ class TempDirFixture(unittest.TestCase):
         except OSError as e:
             logger.debug("%r", e, exc_info=True)
             tree = ''
-            for path, dirs, files in os.walk(self.path):
+            for path, _dirs, files in os.walk(self.path):
                 tree += path + '\n'
                 for f in files:
                     tree += f + '\n'
@@ -193,7 +190,7 @@ class TempDirFixture(unittest.TestCase):
             results = []
         for el in file_num_list:
             if isinstance(el, int):
-                for i in range(el):
+                for _ in range(el):
                     t = tempfile.NamedTemporaryFile(dir=dir_, delete=False)
                     results.append(t.name)
             else:

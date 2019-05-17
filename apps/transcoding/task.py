@@ -106,7 +106,7 @@ class TranscodingTask(CoreTask):
                              .join(task_output_dir, x[1]), chunks))
 
         self.task_resources = streams + playlists
-        self.chunks = playlists
+        self.chunks = list(zip(streams, playlists))
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
@@ -201,14 +201,14 @@ class TranscodingTask(CoreTask):
             self.subtasks_given[sid] = subtask
 
             return Task.ExtraData(ctd=self._get_task_computing_definition(
-                sid, transcoding_params, perf_index))
+                sid, transcoding_params, perf_index, resources=list(self.chunks[subtask_num])))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
         # TODO
         pass
 
-    def _get_task_computing_definition(self, sid, transcoding_params, perf_idx):
+    def _get_task_computing_definition(self, sid, transcoding_params, perf_idx, resources):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = sid
@@ -217,6 +217,7 @@ class TranscodingTask(CoreTask):
         ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
                               self.header.deadline)
+        ctd['resources'] = resources
         return ctd
 
     @abc.abstractmethod
