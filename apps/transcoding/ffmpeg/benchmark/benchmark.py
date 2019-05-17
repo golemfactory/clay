@@ -7,6 +7,7 @@ from apps.transcoding.ffmpeg.task import ffmpegTaskDefinition
 from apps.transcoding.task import TranscodingTaskOptions
 
 from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.formats import Container
 
 logger = logging.getLogger(__name__)
 
@@ -24,8 +25,8 @@ class ffmpegBenchmark(CoreBenchmark):
         task_def.task_id = str(uuid.uuid4())
         task_def.resources = [video]
         task_def.options.video_params = TranscodingTaskOptions.VideoParams(
-            VideoCodec.H_264, '18k', 25, (160, 120))
-        task_def.options.output_container = VideoCodec.H_265
+            VideoCodec.H_264, '18k', 25, (320, 240))
+        task_def.options.output_container = Container.c_MP4
         task_def.options.input_stream_path = video
         task_def.subtasks_count = 1
         self._task_definition = task_def
