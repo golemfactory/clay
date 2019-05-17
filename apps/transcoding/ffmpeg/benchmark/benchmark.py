@@ -25,7 +25,7 @@ class ffmpegBenchmark(CoreBenchmark):
         task_def.resources = [video]
         task_def.options.video_params = TranscodingTaskOptions.VideoParams(
             VideoCodec.H_264, '18k', 25, (160, 120))
-        task_def.options.output_container = VideoCodec.MPEG_4
+        task_def.options.output_container = VideoCodec.H_265
         task_def.options.input_stream_path = video
         task_def.subtasks_count = 1
         self._task_definition = task_def
