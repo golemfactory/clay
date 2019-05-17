@@ -125,38 +125,33 @@ class Crop:
             raise ValueError("Crop box is not within subtask box!")
 
     def _get_x_coordinates_as_pixels(self) -> Tuple[int, int]:
-        # todo review: write helper function for expression below
-        x_pixel_min = math.floor(
-             numpy.float32(self.box.left) * numpy.float32(self.resolution.width)
-        ) - math.floor(
-            numpy.float32(self._subtask_box.left) * numpy.float32(
-                self.resolution.width)
+        x_pixel_min = self._calculate_pixel_position(
+            self.box.left, self._subtask_box.left, self.resolution.width
         )
-
-        x_pixel_max = math.floor(
-            numpy.float32(self.box.right) * numpy.float32(
-                self.resolution.width)
-        ) - math.floor(
-            numpy.float32(self._subtask_box.left) * numpy.float32(
-                self.resolution.width)
+        x_pixel_max = self._calculate_pixel_position(
+            self.box.right, self._subtask_box.left, self.resolution.width
         )
         print(f"x_pixel_min={x_pixel_min}, x_pixel_max={x_pixel_max}")
         return x_pixel_min, x_pixel_max
 
     def _get_y_coordinates_as_pixels(self) -> Tuple[int, int]:
-        y_pixel_min = math.floor(
-            numpy.float32(self._subtask_box.bottom) * numpy.float32(
-                self.resolution.height)
-        ) - math.floor(
-            numpy.float32(self.box.bottom) * numpy.float32(
-                self.resolution.height)
+        y_pixel_min = self._calculate_pixel_position(
+            self._subtask_box.bottom, self.box.bottom, self.resolution.height
         )
-        y_pixel_max = math.floor(
-            numpy.float32(self._subtask_box.bottom) * numpy.float32(
-                self.resolution.height)
-        ) - math.floor(
-            numpy.float32(self.box.top) * numpy.float32(
-                self.resolution.height)
+        y_pixel_max = self._calculate_pixel_position(
+            self._subtask_box.bottom, self.box.top, self.resolution.height
         )
         print(f"y_pixel_min={y_pixel_min}, y_pixel_max={y_pixel_max}")
         return y_pixel_min, y_pixel_max
+
+    @staticmethod
+    def _calculate_pixel_position(
+        minuend: float,
+        subtrahend: float,
+        resolution: int,
+    ) -> int:
+        return math.floor(
+            numpy.float32(minuend) * numpy.float32(resolution)
+        ) - math.floor(
+            numpy.float32(subtrahend) * numpy.float32(resolution)
+        )

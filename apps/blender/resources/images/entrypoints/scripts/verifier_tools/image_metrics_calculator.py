@@ -8,10 +8,10 @@ from PIL import Image
 
 from . import decision_tree
 from .image_format_converter import convert_tga_to_png, convert_exr_to_png
-from .imgage_metrics import ImgageMetrics
+from .image_metrics import ImgageMetrics
 
 
-PROVIDERS_RESULT_CROP_NAME = "scene_crop.png"
+PROVIDER_RESULT_CROP_NAME_PREFIX = "fragment_corresponding_to_"
 VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
 PKT_FILENAME = "tree35_[crr=87.71][frr=0.92].pkl"
@@ -20,8 +20,7 @@ TREE_PATH = Path(os.path.dirname(os.path.realpath(__file__))) / PKT_FILENAME
 
 def calculate_metrics(
         reference_crop_path,
-        # todo review: this is path, not image
-        providers_result_image,
+        providers_result_image_path,
         top_left_corner_x,
         top_left_corner_y,
         metrics_output_filename='metrics.txt'
@@ -30,7 +29,7 @@ def calculate_metrics(
     This is the entry point for calculation of metrics between the
     rendered_scene and the sample(cropped_image) generated for comparison.
     :param reference_crop_path:
-    :param providers_result_image:
+    :param providers_result_image_path:
     :param top_left_corner_x: x position of crop (left, top)
     :param top_left_corner_y: y position of crop (left, top)
     :param metrics_output_filename:
@@ -39,7 +38,7 @@ def calculate_metrics(
     (cropped_image, providers_result_crop) = \
         _load_and_prepare_images_for_comparison(
             reference_crop_path,
-            providers_result_image,
+            providers_result_image_path,
             top_left_corner_x,
             top_left_corner_y
         )
@@ -48,25 +47,23 @@ def calculate_metrics(
 
     (classifier, labels, available_metrics, _effective_metrics) = get_metrics()
 
-    # todo review: this is the only crop, should no longer be referred to as
-    #  "default"; the reference should include info it's from provider's result
-    print(f"default_crop: {providers_result_crop.getbbox()}")
-    # todo review: as above
-    default_metrics = compare_images(
+    print(f"providers_result_crop: {providers_result_crop.getbbox()}")
+    compare_metrics = compare_images(
         cropped_image,
         providers_result_crop,
         available_metrics,
         # effective_metrics causes KeyError: 'missing metric:reference_variance'
     )
     try:
-        label = classify_with_tree(default_metrics, classifier, labels)
-        default_metrics['Label'] = label
+        label = classify_with_tree(compare_metrics, classifier, labels)
+        compare_metrics['Label'] = label
     except Exception as e:
         print("There were errors %r" % e, file=sys.stderr)
-        default_metrics['Label'] = VERIFICATION_FAIL
-
-    providers_result_crop.save(PROVIDERS_RESULT_CROP_NAME)
-    return ImgageMetrics(default_metrics).write_to_file(
+        compare_metrics['Label'] = VERIFICATION_FAIL
+    providers_result_crop.save(
+        PROVIDER_RESULT_CROP_NAME_PREFIX + os.path.basename(reference_crop_path)
+    )
+    return ImgageMetrics(compare_metrics).write_to_file(
         metrics_output_filename
     )
 
@@ -115,8 +112,7 @@ def _load_and_prepare_images_for_comparison(
         crop_width,
         crop_height
     )
-    # todo review: redundant parentheses
-    return (reference_crop, provider_crop)
+    return reference_crop, provider_crop
 
 
 def get_file_extension_lowercase(file_path):

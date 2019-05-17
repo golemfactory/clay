@@ -23,7 +23,7 @@ from golem.testutils import TempDirFixture
 from golem.verifier.blender_verifier import BlenderVerifier
 from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
-    are_pixels_equal, find_crops_positions
+    are_pixels_equal, find_fragments_in_path
 
 
 @pytest.mark.slow
@@ -319,21 +319,24 @@ class TestBlenderVerifier(TempDirFixture):
         with suppress(Exception):
             sync_wait(d, self.TIMEOUT)
 
-        self._assert_crops_match(result_path)
+        self._assert_crops_match()
 
-    def _assert_crops_match(self, result_path: str) -> None:
+    def _assert_crops_match(self) -> None:
         crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
-        crop_positions = find_crops_positions(
-            path.join(self.tempdir, 'logs', 'stdout.log')
-        )
-        assert len(crops_paths) > 0, "There were no crops produced"
-        for crop_path, position in zip(crops_paths, crop_positions):
+        fragments_paths = find_fragments_in_path(self.tempdir)
+
+        assert len(crops_paths) > 0, "There were no crops produced!"
+        assert len(crops_paths) == len(
+            fragments_paths
+        ), "Amount of rendered crops != amount of image fragments!"
+        for crop_path, fragment_path in zip(
+                crops_paths,
+                fragments_paths,
+        ):
             assert are_pixels_equal(
                 crop_path,
-                result_path,
-                position[0],
-                position[1],
-            ), f"crop: {crop_path} ({position[0], position[1]}) doesn't match"
+                fragment_path,
+            ), f"crop: {crop_path} doesn't match: {fragment_path}"
 
     @staticmethod
     def _generate_random_float_coordinates() -> Tuple[float, float]:

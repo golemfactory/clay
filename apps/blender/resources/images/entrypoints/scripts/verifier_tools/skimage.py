@@ -1,5 +1,3 @@
-# todo review: this file consists of code copied from scikit-image,
-#  shouldn't be modified in any way
 import numpy as np
 from numpy.lib.arraypad import _validate_lengths
 
@@ -23,48 +21,43 @@ dtype_range = {np.bool_: (False, True),
                np.float64: (-1, 1)}
 dtype_range.update(_integer_ranges)
 
-
-def crop(array, crop_width, copy=False, order='K'):
-    array = np.array(array, copy=False)
-    crops = _validate_lengths(array, crop_width)
-    slices = tuple(slice(a, array.shape[i] - b)
+def crop(ar, crop_width, copy=False, order='K'):
+    ar = np.array(ar, copy=False)
+    crops = _validate_lengths(ar, crop_width)
+    slices = tuple(slice(a, ar.shape[i] - b)
                    for i, (a, b) in enumerate(crops))
     if copy:
-        cropped = np.array(array[slices], order=order, copy=True)
+        cropped = np.array(ar[slices], order=order, copy=True)
     else:
-        cropped = array[slices]
+        cropped = ar[slices]
     return cropped
 
-
-def _assert_compatible(image1, image2):
-    if not image1.shape == image2.shape:
+def _assert_compatible(im1, im2):
+    if not im1.shape == im2.shape:
         raise ValueError('Input images must have the same dimensions.')
     return
 
+def _as_floats(im1, im2):
+    float_type = np.result_type(im1.dtype, im2.dtype, np.float32)
+    im1 = np.asarray(im1, dtype=float_type)
+    im2 = np.asarray(im2, dtype=float_type)
+    return im1, im2
 
-def _as_floats(image1, image2):
-    float_type = np.result_type(image1.dtype, image2.dtype, np.float32)
-    image1 = np.asarray(image1, dtype=float_type)
-    image2 = np.asarray(image2, dtype=float_type)
-    return image1, image2
+def compare_mse(im1, im2):
+    _assert_compatible(im1, im2)
+    im1, im2 = _as_floats(im1, im2)
+    return np.mean(np.square(im1 - im2), dtype=np.float64)
 
-
-def compare_mse(image1, image2):
-    _assert_compatible(image1, image2)
-    image1, image2 = _as_floats(image1, image2)
-    return np.mean(np.square(image1 - image2), dtype=np.float64)
-
-
-def compare_psnr(image_true, image_test, data_range=None):
+def compare_psnr(im_true, im_test, data_range=None):
    
-    _assert_compatible(image_true, image_test)
+    _assert_compatible(im_true, im_test)
 
     if data_range is None:
-        if image_true.dtype != image_test.dtype:
+        if im_true.dtype != im_test.dtype:
             warn("Inputs have mismatched dtype.  Setting data_range based on "
                  "im_true.")
-        dmin, dmax = dtype_range[image_true.dtype.type]
-        true_min, true_max = np.min(image_true), np.max(image_true)
+        dmin, dmax = dtype_range[im_true.dtype.type]
+        true_min, true_max = np.min(im_true), np.max(im_true)
         if true_max > dmax or true_min < dmin:
             raise ValueError(
                 "im_true has intensity values outside the range expected for "
@@ -75,48 +68,43 @@ def compare_psnr(image_true, image_test, data_range=None):
         else:
             data_range = dmax - dmin
 
-    image_true, image_test = _as_floats(image_true, image_test)
+    im_true, im_test = _as_floats(im_true, im_test)
 
-    err = compare_mse(image_true, image_test)
+    err = compare_mse(im_true, im_test)
     return 10 * np.log10((data_range ** 2) / err)
 
 
-def compare_ssim(image1, image2, window_size=None, gradient=False,
+def compare_ssim(X, Y, win_size=None, gradient=False,
                  data_range=None, multichannel=False, gaussian_weights=False,
                  full=False, **kwargs):
     
-    _assert_compatible(image1, image2)
+    _assert_compatible(X, Y)
 
     if multichannel:
         # loop over channels
-        args = dict(win_size=window_size,
+        args = dict(win_size=win_size,
                     gradient=gradient,
                     data_range=data_range,
                     multichannel=False,
                     gaussian_weights=gaussian_weights,
                     full=full)
         args.update(kwargs)
-        number_of_channels = image1.shape[-1]
-        mssim = np.empty(number_of_channels)
+        nch = X.shape[-1]
+        mssim = np.empty(nch)
         if gradient:
-            G = np.empty(image1.shape)
+            G = np.empty(X.shape)
         if full:
-            S = np.empty(image1.shape)
-        for channel in range(number_of_channels):
-            channel_result = compare_ssim(
-                image1[..., channel],
-                image2[..., channel],
-                **args
-            )
+            S = np.empty(X.shape)
+        for ch in range(nch):
+            ch_result = compare_ssim(X[..., ch], Y[..., ch], **args)
             if gradient and full:
-                mssim[..., channel], G[..., channel], S[
-                    ..., channel] = channel_result
+                mssim[..., ch], G[..., ch], S[..., ch] = ch_result
             elif gradient:
-                mssim[..., channel], G[..., channel] = channel_result
+                mssim[..., ch], G[..., ch] = ch_result
             elif full:
-                mssim[..., channel], S[..., channel] = channel_result
+                mssim[..., ch], S[..., ch] = ch_result
             else:
-                mssim[..., channel] = channel_result
+                mssim[..., ch] = ch_result
         mssim = mssim.mean()
         if gradient and full:
             return mssim, G, S
@@ -138,28 +126,28 @@ def compare_ssim(image1, image2, window_size=None, gradient=False,
         raise ValueError("sigma must be positive")
     use_sample_covariance = kwargs.pop('use_sample_covariance', True)
 
-    if window_size is None:
+    if win_size is None:
         if gaussian_weights:
-            window_size = 11  # 11 to match Wang et. al. 2004
+            win_size = 11  # 11 to match Wang et. al. 2004
         else:
-            window_size = 7   # backwards compatibility
+            win_size = 7   # backwards compatibility
 
-    if np.any((np.asarray(image1.shape) - window_size) < 0):
+    if np.any((np.asarray(X.shape) - win_size) < 0):
         raise ValueError(
             "win_size exceeds image extent.  If the input is a multichannel "
             "(color) image, set multichannel=True.")
 
-    if not (window_size % 2 == 1):
+    if not (win_size % 2 == 1):
         raise ValueError('Window size must be odd.')
 
     if data_range is None:
-        if image1.dtype != image2.dtype:
+        if X.dtype != Y.dtype:
             print("Inputs have mismatched dtype.  Setting data_range based on "
                  "X.dtype.")
-        dmin, dmax = dtype_range[image1.dtype.type]
+        dmin, dmax = dtype_range[X.dtype.type]
         data_range = dmax - dmin
 
-    ndim = image1.ndim
+    ndim = X.ndim
 
     if gaussian_weights:
         # sigma = 1.5 to approximately match filter in Wang et. al. 2004
@@ -169,13 +157,13 @@ def compare_ssim(image1, image2, window_size=None, gradient=False,
 
     else:
         filter_func = uniform_filter
-        filter_args = {'size': window_size}
+        filter_args = {'size': win_size}
 
     # ndimage filters need floating point data
-    image1 = image1.astype(np.float64)
-    image2 = image2.astype(np.float64)
+    X = X.astype(np.float64)
+    Y = Y.astype(np.float64)
 
-    NP = window_size ** ndim
+    NP = win_size ** ndim
 
     # filter has already normalized by NP
     if use_sample_covariance:
@@ -184,13 +172,13 @@ def compare_ssim(image1, image2, window_size=None, gradient=False,
         cov_norm = 1.0  # population covariance to match Wang et. al. 2004
 
     # compute (weighted) means
-    ux = filter_func(image1, **filter_args)
-    uy = filter_func(image2, **filter_args)
+    ux = filter_func(X, **filter_args)
+    uy = filter_func(Y, **filter_args)
 
     # compute (weighted) variances and covariances
-    uxx = filter_func(image1 * image1, **filter_args)
-    uyy = filter_func(image2 * image2, **filter_args)
-    uxy = filter_func(image1 * image2, **filter_args)
+    uxx = filter_func(X * X, **filter_args)
+    uyy = filter_func(Y * Y, **filter_args)
+    uxy = filter_func(X * Y, **filter_args)
     vx = cov_norm * (uxx - ux * ux)
     vy = cov_norm * (uyy - uy * uy)
     vxy = cov_norm * (uxy - ux * uy)
@@ -207,18 +195,18 @@ def compare_ssim(image1, image2, window_size=None, gradient=False,
     S = (A1 * A2) / D
 
     # to avoid edge effects will ignore filter radius strip around edges
-    pad = (window_size - 1) // 2
+    pad = (win_size - 1) // 2
 
     # compute (weighted) mean of ssim
     mssim = crop(S, pad).mean()
 
     if gradient:
         # The following is Eqs. 7-8 of Avanaki 2009.
-        grad = filter_func(A1 / D, **filter_args) * image1
-        grad += filter_func(-S / B2, **filter_args) * image2
+        grad = filter_func(A1 / D, **filter_args) * X
+        grad += filter_func(-S / B2, **filter_args) * Y
         grad += filter_func((ux * (A2 - A1) - uy * (B2 - B1) * S) / D,
                             **filter_args)
-        grad *= (2 / image1.size)
+        grad *= (2 / X.size)
 
         if full:
             return mssim, grad, S

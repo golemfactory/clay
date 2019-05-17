@@ -1,8 +1,5 @@
 import os
-import re
-# todo review: unused import
-from pprint import pprint
-from typing import List
+from typing import List, Callable
 
 import numpy as np
 from cv2 import cv2
@@ -30,67 +27,35 @@ def round_to_black_and_white(image: np.ndarray) -> np.ndarray:
     return black_and_white_array
 
 
-def cut_out_crop_from_whole_image(
-        top_left_corner_x: int,
-        top_left_corner_y: int,
-        height: int,
-        width: int,
-        whole_image: np.ndarray
-) -> np.ndarray:
-    crop_from_image = whole_image[
-        top_left_corner_y:top_left_corner_y + height,
-        top_left_corner_x:top_left_corner_x + width
-    ]
-    return crop_from_image
-
-
 def find_crop_files_in_path(path: str) -> List[str]:
+    return find_specific_files_in_path(
+        path,
+        lambda f: f.startswith('crop') and f.endswith('.png')
+    )
+
+
+def find_fragments_in_path(path: str):
+    return find_specific_files_in_path(
+        path,
+        lambda f: f.startswith('fragment_corresponding_to_crop')
+                  and f.endswith('.png')
+    )
+
+
+def find_specific_files_in_path(path: str, condition: Callable):
     _, _, files = next(os.walk(path))
-    return sorted([os.path.join(path, f) for f in files if
-            f.startswith('crop') and f.endswith('.png')])
-
-
-def find_crops_positions(path_to_log):
-    with open(path_to_log) as f:
-        lines = f.readlines()
-
-    left_pattern = re.compile(r"^left: (\d+)")
-    top_pattern = re.compile(r"^top: (\d+)")
-
-    x0_list = find_match(lines, left_pattern)
-    y0_list = find_match(lines, top_pattern)
-
-    return list(zip(x0_list, y0_list))
-
-
-def find_match(lines, regex_pattern):
-    positions = []
-    for line in lines:
-        match = regex_pattern.match(line)
-        if match:
-            positions.append(int(match.group(1)))
-    return positions
+    return sorted([os.path.join(path, f) for f in files if condition(f)])
 
 
 def are_pixels_equal(
         crop_path: str,
-        subtask_image_path: str,
-        crop_x0: int,
-        crop_y0: int,
+        image_fragment_path: str,
 ) -> bool:
     cropped_image = cv2.imread(crop_path)
-    subtask_image = cv2.imread(subtask_image_path)
-    height, width, _colour = cropped_image.shape
+    subtask_fragment_image = cv2.imread(image_fragment_path)
 
-    crop_to_compare = cut_out_crop_from_whole_image(
-        crop_x0,
-        crop_y0,
-        height,
-        width,
-        subtask_image
-    )
     is_result_positive = np.array_equal(
         round_to_black_and_white(cropped_image),
-        round_to_black_and_white(crop_to_compare)
+        round_to_black_and_white(subtask_fragment_image)
     )
     return is_result_positive

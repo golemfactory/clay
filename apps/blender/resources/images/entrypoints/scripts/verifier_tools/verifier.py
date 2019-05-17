@@ -1,4 +1,3 @@
-# todo review: rename file to "verifier.py"
 import json
 import os
 from typing import List, Optional, Tuple, Any, Dict
@@ -15,6 +14,15 @@ def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
         if crop.id == id:
             return crop
     return None
+
+
+def get_crop_rendered_data(crop_id: int, crop: Crop) -> dict:
+    return {
+        "id": crop.id,
+        "outfilebasename": "crop" + str(crop_id) + '_',
+        "borders_x": [crop.box.left, crop.box.right],
+        "borders_y": [crop.box.top, crop.box.bottom]
+    }
 
 
 def prepare_crops(
@@ -35,13 +43,7 @@ def prepare_crops(
                 FloatingPointBox(border[0], border[1], border[2], border[3]),
             )
             crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename": "crop" + str(crop_id) + '_',
-                    "borders_x": [crop.box.left,
-                                  crop.box.right],
-                    "borders_y": [crop.box.top, crop.box.bottom]
-                }
+                get_crop_rendered_data(crop_id, crop)
             )
             crops.append(crop)
             crop_id += 1
@@ -52,16 +54,8 @@ def prepare_crops(
                 resolution,
                 subtask_image_box,
             )
-
-            # todo review: redundant code fragment - write helper
             crops_render_data.append(
-                {
-                    "id": crop.id,
-                    "outfilebasename": "crop" + str(crop_id) + '_',
-                    "borders_x": [crop.box.left,
-                                  crop.box.right],
-                    "borders_y": [crop.box.top, crop.box.bottom]
-                }
+                get_crop_rendered_data(crop_id, crop)
             )
             crops.append(crop)
     return crops, crops_render_data
