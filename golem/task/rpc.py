@@ -5,7 +5,6 @@ import functools
 import logging
 import os.path
 import re
-import threading
 import typing
 
 from ethereum.utils import denoms
