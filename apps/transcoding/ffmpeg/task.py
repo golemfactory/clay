@@ -64,7 +64,8 @@ class ffmpegTask(TranscodingTask):
                     'bitrate': audio_params.bitrate
                 },
                 'resolution': resolution,
-                'frame_rate': video_params.frame_rate
+                'frame_rate': video_params.frame_rate,
+                'format': transcoding_options.output_container.value
             },
             'output_stream': output_stream_path,
             'use_playlist': transcoding_options.use_playlist,
