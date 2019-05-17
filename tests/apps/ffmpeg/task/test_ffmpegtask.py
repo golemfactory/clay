@@ -22,11 +22,14 @@ from golem.tools.ci import ci_skip
 
 @ci_skip
 class TestffmpegTask(TempDirFixture):
+    RESOURCES = os.path.join(os.path.dirname(
+        os.path.dirname(os.path.realpath(__file__))), 'resources')
+    RESOURCE_STREAM = os.path.join(RESOURCES, 'test_video.mp4')
+    RESOURCE_STREAM2 = os.path.join(RESOURCES, 'test_video2.mp4')
+
     def setUp(self):
         super(TestffmpegTask, self).setUp()
-        self.RESOURCES = os.path.join(os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__))), 'resources')
-        self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video.mp4')
+
         self.tt = ffmpegTaskTypeInfo()
         dm = DockerTaskThread.docker_manager = DockerManager.install()
         dm.update_config(
@@ -35,23 +38,22 @@ class TestffmpegTask(TempDirFixture):
             work_dir=self.new_path,
             in_background=True)
 
-    def _build_ffmpeg_task(self):
-        td = self.tt.task_builder_type.build_definition(self.tt,
-                                                        self._task_dictionary)
+    def _build_ffmpeg_task(self, subtasks_count=1, stream=RESOURCE_STREAM):
+        td = self.tt.task_builder_type.build_definition(
+            self.tt, self._task_dictionary(subtasks_count, stream))
         return self.tt.task_builder_type(dt_p2p_factory.Node(), td,
                                          DirManager(
                                              self.tempdir)).build()
 
-    @property
-    def _task_dictionary(self):
+    def _task_dictionary(self, subtasks_count=1, stream=RESOURCE_STREAM):
         return {
             'type': 'FFMPEG',
             'name': 'test task',
             'timeout': '0:10:00',
             'subtask_timeout': '0:09:50',
-            'subtasks_count': 1,
+            'subtasks_count': subtasks_count,
             'bid': 1.0,
-            'resources': [self.RESOURCE_STREAM],
+            'resources': [stream],
             'options': {
                 'output_path': '/tmp/',
                 'video': {
@@ -69,13 +71,13 @@ class TestffmpegTask(TempDirFixture):
         }
 
     def test_build_task_def_from_task_type(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         for m in [True, False]:
             with self.subTest(msg='Test different level of task', p1=m):
                 self.tt.task_builder_type.build_definition(self.tt, d, m)
 
     def test_build_task_def_no_resources(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         d['resources'] = []
         with self.assertRaises(TranscodingTaskBuilderException) as cxt:
             self.tt.task_builder_type.build_definition(self.tt, d)
@@ -83,7 +85,7 @@ class TestffmpegTask(TempDirFixture):
                in str(cxt.exception)
 
     def test_build_task_resource_does_not_exist(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         d['resources'] = [os.path.join(self.tempdir, 'not_exists')]
         with self.assertRaises(TranscodingTaskBuilderException) as cxt:
             self.tt.task_builder_type.build_definition(self.tt, d)
@@ -92,7 +94,7 @@ class TestffmpegTask(TempDirFixture):
     def test_build_task_video_codec_not_match_to_container(self):
         invalid_params = [('avi', 'not_supported'), ('mkv', 'not_supported'),
                           ('mp4', 'vp6')]
-        d = self._task_dictionary
+        d = self._task_dictionary()
 
         for container, codec in invalid_params:
             with self.subTest('Testing container and codec',
@@ -105,7 +107,7 @@ class TestffmpegTask(TempDirFixture):
     def test_build_task_audio_codec_not_match_to_container(self):
         invalid_params = [('avi', 'not_supported'), ('mkv', 'not_supported'),
                           ('mp4', 'pcm')]
-        d = self._task_dictionary
+        d = self._task_dictionary()
         for container, codec in invalid_params:
             with self.subTest('Testing container and codec',
                               container=container, codec=codec):
@@ -115,14 +117,14 @@ class TestffmpegTask(TempDirFixture):
                     self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_not_supported_container(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         d['options']['container'] = 'xxx'
         with self.assertRaises(TranscodingTaskBuilderException) as _:
             self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_different_codecs(self):
         params = [('mov', 'h265', 'aac'), ('mp4', 'h264', 'aac')]
-        d = self._task_dictionary
+        d = self._task_dictionary()
 
         for container, vcodec, acodec in params:
             with self.subTest('Test container and codecs', container=container,
@@ -134,7 +136,7 @@ class TestffmpegTask(TempDirFixture):
 
     @freeze_time('2019-01-01 00:00:00')
     def test_valid_task_definition(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         td = self.tt.task_builder_type.build_definition(self.tt, d)
         options = td.options
         voptions = d['options']['video']
@@ -166,7 +168,7 @@ class TestffmpegTask(TempDirFixture):
     def test_extra_data(self):
         ffmpeg_task = self._build_ffmpeg_task()
 
-        d = self._task_dictionary
+        d = self._task_dictionary()
         extra_data = ffmpeg_task._get_extra_data(0)
         self.assertEqual(extra_data['command'], Commands.TRANSCODE.value[0])
         self.assertEqual(extra_data['entrypoint'],
@@ -186,7 +188,7 @@ class TestffmpegTask(TempDirFixture):
         self.assertIn('m3u8', extra_data['output_stream'])
 
     def test_less_subtasks_than_requested(self):
-        d = self._task_dictionary
+        d = self._task_dictionary()
         d['subtasks_count'] = 2
         td = self.tt.task_builder_type.build_definition(self.tt, d)
         builder = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
@@ -223,3 +225,14 @@ class TestffmpegTask(TempDirFixture):
                          min(timeout_to_deadline(
                              ffmpeg_task.header.subtask_timeout),
                              ffmpeg_task.header.deadline))
+
+    def test_resources_distributed_per_subtasks(self):
+        ffmpeg_task = self._build_ffmpeg_task(subtasks_count=2,
+                                              stream=TestffmpegTask.RESOURCE_STREAM2)
+        node_id = uuid.uuid4()
+        ffmpeg_task.header.task_id = str(uuid.uuid4())
+        resources1 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
+        resources2 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
+        self.assertEqual(len(resources1), 2)
+        self.assertEqual(len(resources2), 2)
+        self.assertEqual(len(set(resources1 + resources2)), 4)

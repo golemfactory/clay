@@ -788,20 +788,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
 
-    def peer_want_task_session(self, node_info, super_node_info, conn_id):
-        """Process request to start task session from this node to a node
-           from node_info.
-        :param Node node_info: node that requests task session with this node
-        :param Node|None super_node_info: information about supernode
-                                          that has passed this information
-        :param conn_id: connection id
-        """
-        self.task_server.start_task_session(
-            node_info,
-            super_node_info,
-            conn_id
-        )
-
     #############################
     # RANKING FUNCTIONS         #
     #############################

@@ -1,11 +1,11 @@
 import logging
 from datetime import datetime
-from enum import Enum
+from enum import IntEnum
 
 logger = logging.getLogger("verifier")
 
 
-class SubtaskVerificationState(Enum):
+class SubtaskVerificationState(IntEnum):
     UNKNOWN_SUBTASK = 0
     WAITING = 1
     IN_PROGRESS = 2

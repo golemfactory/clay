@@ -169,6 +169,8 @@ class Tasks:
         with open(file_name) as f:
             task_id, error = self.__create_from_json(f.read(), force=force)
         if error:
+            if isinstance(error, dict):
+                error = error['error_msg']
             if task_id:
                 return CommandResult(error="task {} failed: {}"
                                      .format(task_id, error))

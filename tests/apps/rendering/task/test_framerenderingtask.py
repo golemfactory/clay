@@ -310,8 +310,8 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.subtasks_given["abc"] = {"ABC": 3}
         task.subtasks_given["def"] = {"DEF": 4}
         states = task.get_subtasks(4)
-        assert states["abc"].extra_data["ABC"] == 3
-        assert states["def"].extra_data["DEF"] == 4
+        assert states["abc"]["ABC"] == 3
+        assert states["def"]["DEF"] == 4
         assert len(states) == 2
 
 
