@@ -113,7 +113,11 @@ def run():
     with open(PARAMS_FILE, 'r') as f:
         params = json.load(f)
 
-    run_ffmpeg(params)
+    try:
+        run_ffmpeg(params)
+    except commands.CommandFailed as e:
+        print(e.command)
+        exit(e.error_code)
 
 
 if __name__ == "__main__":
