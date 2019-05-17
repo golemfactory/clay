@@ -18,9 +18,9 @@ from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
 from .common import is_type_of, TranscodingTaskBuilderException
 
+import ffmpeg_tools.validation as validation
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.validation import InvalidVideo
 
 
 logger = logging.getLogger(__name__)
@@ -77,29 +77,39 @@ class TranscodingTask(CoreTask):
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
+
         logger.debug('Initialization of FFmpegTask')
+
         task_id = self.task_definition.task_id
         task_output_dir = dir_manager.get_task_output_dir(task_id)
+        input_file = self.task_resources[0]
+        
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
         if not self.task_resources:
             raise TranscodingException('There is no specified resources')
+
         stream_operator = StreamOperator()
-        chunks = stream_operator.split_video(
-            self.task_resources[0], self.task_definition.subtasks_count,
+        chunks, video_metadata = stream_operator.split_video(
+            input_file, self.task_definition.subtasks_count,
             dir_manager, task_id)
+
         if len(chunks) < self.total_tasks:
             logger.warning('{} subtasks was requested but video splitting '
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
+
         streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
                            .join(task_output_dir, x[0]), chunks))
         playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
                              .join(task_output_dir, x[1]), chunks))
+
         self.task_resources = streams + playlists
         self.chunks = playlists
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
+
+        validation.validate_video(video_metadata, input_file)
 
     def accept_results(self, subtask_id, result_files):
         with self.lock:
@@ -246,7 +256,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
             return task_def
 
-        except InvalidVideo as e:
+        except validation.InvalidVideo as e:
             logger.warning(e.response_message)
             raise e
 

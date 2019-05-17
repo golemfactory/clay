@@ -36,40 +36,50 @@ class StreamOperator:
     def split_video(self, input_stream: str, parts: int,
                     dir_manager: DirManager, task_id: str):
         name = os.path.basename(input_stream)
+
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         stream_container_path = os.path.join(tmp_task_dir, name)
         task_output_dir = dir_manager.get_task_output_dir(task_id)
+
         env = ffmpegEnvironment(binds=[
             DockerBind(Path(input_stream), stream_container_path, 'ro')])
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.SPLIT.value[0],
             'path_to_stream': stream_container_path,
             'parts': parts
         }
-        logger.debug('Running video splitting [params = {}]'.format(extra_data))
+        logger.debug('Running video splitting [params = {}]'.\
+            format(extra_data))
 
         result = self._do_job_in_container(
             self._get_dir_mapping(dir_manager, task_id),
             extra_data, env)
+            
         split_result_file = os.path.join(task_output_dir,
                                          Commands.SPLIT.value[1])
         output_files = result.get('data', [])
         if split_result_file not in output_files:
             raise ffmpegException('Result file {} does not exist'.
                                   format(split_result_file))
+
         logger.debug('Split result file is = {} [parts = {}]'.
                      format(split_result_file, parts))
+
         with open(split_result_file) as f:
             params = json.load(f)  # FIXME: check status of splitting
             if params.get('status', 'Success') is not 'Success':
                 raise ffmpegException('Splitting video failed')
+
             streams_list = list(map(lambda x: (x.get('video_segment'),
                                                x.get('playlist')),
                                     params.get('segments', [])))
+
             logger.info('Stream {} was successfully split to {}'
                         .format(input_stream, streams_list))
-            return streams_list
+                        
+            return streams_list, params.get('metadata', {})
 
     def _prepare_merge_job(self, task_dir, chunks):
         try:
