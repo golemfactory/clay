@@ -122,13 +122,15 @@ class TestBlenderVerifier(TempDirFixture):
         Test that uses border_y value (0.53) that was known to be problematic
         for the old cropping mechanism
         """
+        random.seed(0)
         scene_y_min = 0.0
         scene_y_max = 0.53
 
         self._run_cropping_test(scene_y_min, scene_y_max)
 
     def test_random_crop_window(self):
-        for i in range(1, 10):
+        random.seed(0)
+        for i in range(1, 100):
             with self.subTest(i=i):
                 scene_y_min, scene_y_max = \
                     self._generate_random_float_coordinates()
@@ -340,7 +342,6 @@ class TestBlenderVerifier(TempDirFixture):
 
     @staticmethod
     def _generate_random_float_coordinates() -> Tuple[float, float]:
-        random.seed(0)
         span = random.randint(20, 50)
         beginning = round(random.randint(0, 100 - span) / 100, 2)
         end = round(beginning + span / 100, 2)
