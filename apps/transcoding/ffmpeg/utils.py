@@ -56,7 +56,7 @@ class StreamOperator:
         result = self._do_job_in_container(
             self._get_dir_mapping(dir_manager, task_id),
             extra_data, env)
-            
+
         split_result_file = os.path.join(task_output_dir,
                                          Commands.SPLIT.value[1])
         output_files = result.get('data', [])
@@ -78,7 +78,7 @@ class StreamOperator:
 
             logger.info('Stream {} was successfully split to {}'
                         .format(input_stream, streams_list))
-                        
+
             return streams_list, params.get('metadata', {})
 
     def _prepare_merge_job(self, task_dir, chunks):

@@ -12,7 +12,7 @@ PARAMS_FILE = "params.json"
 
 
 def do_split(path_to_stream, parts):
-    
+
     video_metadata = commands.get_metadata_json(path_to_stream)
     video_length = meta.get_duration(video_metadata)
     split_file = commands.split_video(path_to_stream,

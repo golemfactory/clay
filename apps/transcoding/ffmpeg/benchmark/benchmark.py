@@ -2,12 +2,12 @@ import logging
 import pathlib
 import uuid
 
+from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.formats import Container
+
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.transcoding.ffmpeg.task import ffmpegTaskDefinition
 from apps.transcoding.task import TranscodingTaskOptions
-
-from ffmpeg_tools.codecs import VideoCodec
-from ffmpeg_tools.formats import Container
 
 logger = logging.getLogger(__name__)
 
