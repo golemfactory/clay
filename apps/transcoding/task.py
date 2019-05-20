@@ -7,7 +7,11 @@ from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
 
-import apps.transcoding.common
+import ffmpeg_tools.validation as validation
+import ffmpeg_tools.meta as meta
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
+from ffmpeg_tools.formats import Container
+
 import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
@@ -17,8 +21,8 @@ from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
-from .common import AudioCodec, VideoCodec, Container, is_type_of, \
-    TranscodingTaskBuilderException
+from .common import is_type_of, TranscodingTaskBuilderException
+
 
 logger = logging.getLogger(__name__)
 
@@ -74,29 +78,54 @@ class TranscodingTask(CoreTask):
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
-        logger.debug('Initialization of ffmpegTask')
+
+        logger.debug('Initialization of FFmpegTask')
+
         task_id = self.task_definition.task_id
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
+        task_output_dir = dir_manager.get_task_output_dir(task_id)        
+
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
         if not self.task_resources:
             raise TranscodingException('There is no specified resources')
+
+        input_file = self.task_resources[0]
+
         stream_operator = StreamOperator()
-        chunks = stream_operator.split_video(
-            self.task_resources[0], self.task_definition.subtasks_count,
+        chunks, video_metadata = stream_operator.split_video(
+            input_file, self.task_definition.subtasks_count,
             dir_manager, task_id)
+
         if len(chunks) < self.total_tasks:
             logger.warning('{} subtasks was requested but video splitting '
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
+
         streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
                            .join(task_output_dir, x[0]), chunks))
         playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
                              .join(task_output_dir, x[1]), chunks))
+
         self.task_resources = streams + playlists
         self.chunks = list(zip(streams, playlists))
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
+
+        validation.validate_video(video_metadata, input_file)
+
+        src_params = meta.create_params(
+            meta.get_format(video_metadata),
+            meta.get_resolution(video_metadata),
+            meta.get_video_codec(video_metadata),
+            meta.get_audio_codec(video_metadata))
+
+        # Get parameters for example subtasks. All subtasks should have
+        # the same conversion parameters which we check here, so it doesn't
+        # matter which we choose.
+        dst_params = self._get_extra_data(0)["targs"]
+
+        validation.validate_transcoding_params(src_params, dst_params)
+
 
     def accept_results(self, subtask_id, result_files):
         with self.lock:
@@ -208,52 +237,57 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
                               dict: Dict[str, Any]):
         task_def = super().build_full_definition(task_type, dict)
 
-        presets = cls._get_presets(task_def.options.input_stream_path)
-        options = dict.get('options', {})
-        video_options = options.get('video', {})
-        audio_options = options.get('audio', {})
+        try:
+            presets = cls._get_presets(task_def.options.input_stream_path)
+            options = dict.get('options', {})
+            video_options = options.get('video', {})
+            audio_options = options.get('audio', {})
 
-        ac = audio_options.get('codec')
-        vc = video_options.get('codec')
+            ac = audio_options.get('codec')
+            vc = video_options.get('codec')
 
-        audio_params = TranscodingTaskOptions.AudioParams(
-            AudioCodec.from_name(ac) if ac else None,
-            audio_options.get('bit_rate'))
+            audio_params = TranscodingTaskOptions.AudioParams(
+                AudioCodec.from_name(ac) if ac else None,
+                audio_options.get('bit_rate'))
 
-        video_params = TranscodingTaskOptions.VideoParams(
-            VideoCodec.from_name(vc) if vc else None,
-            video_options.get('bit_rate', presets.get('video_bit_rate')),
-            video_options.get('frame_rate'),
-            video_options.get('resolution'))
+            video_params = TranscodingTaskOptions.VideoParams(
+                VideoCodec.from_name(vc) if vc else None,
+                video_options.get('bit_rate', presets.get('video_bit_rate')),
+                video_options.get('frame_rate'),
+                video_options.get('resolution'))
 
-        output_container = Container.from_name(options.get(
-            'container', presets.get('container')))
+            output_container = Container.from_name(options.get(
+                'container', presets.get('container')))
 
-        cls._assert_codec_container_support(audio_params.codec,
-                                            video_params.codec,
-                                            output_container)
-        task_def.options.video_params = video_params
-        task_def.options.output_container = output_container
-        task_def.options.audio_params = audio_params
-        task_def.options.name = dict.get('name', '')
+            cls._assert_codec_container_support(audio_params.codec,
+                                                video_params.codec,
+                                                output_container)
+            task_def.options.video_params = video_params
+            task_def.options.output_container = output_container
+            task_def.options.audio_params = audio_params
+            task_def.options.name = dict.get('name', '')
 
-        logger.debug(
-            'Transcoding task definition has been built [definition={}]'
-            .format(task_def.__dict__))
+            logger.debug(
+                'Transcoding task definition has been built [definition={}]'
+                .format(task_def.__dict__))
 
-        return task_def
+            return task_def
+
+        except validation.InvalidVideo as e:
+            logger.warning(e.response_message)
+            raise e
 
     @classmethod
     def _assert_codec_container_support(cls, audio_codec, video_codec,
                                         output_container):
-        if audio_codec and audio_codec \
-                not in output_container.get_supported_audio_codecs():
+        if audio_codec and \
+                not output_container.is_supported_audio_codec(audio_codec):
             raise TranscodingTaskBuilderException(
                 'Container {} does not support {}'.format(
                     output_container.value, audio_codec.value))
 
-        if video_codec and video_codec \
-                not in output_container.get_supported_video_codecs():
+        if video_codec and \
+                not output_container.is_supported_video_codec(video_codec):
             raise TranscodingTaskBuilderException(
                 'Container {} does not support {}'.format(
                     output_container.value, video_codec.value))
@@ -277,7 +311,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
-        return {'container': 'ts'}
+        return {'container': 'mp4'}
 
     @classmethod
     def _get_required_field(cls, dict, key: str, validator=lambda _: True) \

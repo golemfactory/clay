@@ -2,9 +2,11 @@ import logging
 import os
 import pathlib
 
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
+from ffmpeg_tools.formats import Container
+
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefaults
-from apps.transcoding.common import Container, VideoCodec, AudioCodec
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
@@ -61,7 +63,8 @@ class ffmpegTask(TranscodingTask):
                     'bitrate': audio_params.bitrate
                 },
                 'resolution': resolution,
-                'frame_rate': video_params.frame_rate
+                'frame_rate': video_params.frame_rate,
+                'format': transcoding_options.output_container.value
             },
             'output_stream': output_stream_path,
             'use_playlist': transcoding_options.use_playlist,

@@ -1,6 +1,6 @@
 # Dockerfile for tasks requiring ffmpeg.
 
-FROM golemfactory/base:1.4
+FROM golemfactory/base:1.5
 
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
@@ -13,7 +13,8 @@ RUN set -x \
     && apt-get -y autoremove \
     && rm -rf /var/lib/apt/lists/* 
 
-RUN /golem/install_py_libs.sh 0 m3u8
+COPY ffmpeg-scripts/requirements.txt /golem/scripts/requirements.txt
+RUN /golem/install_py_libs.sh -r /golem/scripts/requirements.txt
 
 COPY ffmpeg-scripts/ /golem/scripts/
 

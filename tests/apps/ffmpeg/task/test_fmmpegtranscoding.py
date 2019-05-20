@@ -38,7 +38,7 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
     def test_split_video(self):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
-                chunks = self.stream_operator.split_video(
+                chunks, _ = self.stream_operator.split_video(
                     self.RESOURCE_STREAM, parts, self.dir_manager,
                     str(uuid.uuid4()))
                 self.assertEqual(len(chunks), parts)
@@ -57,7 +57,7 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
         output_name = 'test.mp4'
         playlist_dir = self.dir_manager.get_task_output_dir(task_id)
 
-        chunks = self.stream_operator.split_video(
+        chunks, _ = self.stream_operator.split_video(
             self.RESOURCE_STREAM, parts,
             self.dir_manager, task_id)
         self.assertEqual(len(chunks), parts)
