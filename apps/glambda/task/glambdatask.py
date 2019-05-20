@@ -15,7 +15,7 @@ from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
 logger = logging.getLogger(__name__)
 
@@ -223,16 +223,6 @@ class GLambdaTask(CoreTask):
 
 
 class GLambdaTaskVerifier(CoreVerifier):
-    def __init__(self,
-                 verification_data: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
-        if verification_data:
-            self.subtask_info = verification_data['subtask_info']
-            self.results = verification_data['results']
-        else:
-            self.subtask_info = None
-            self.results = None
-
     def _verify_result(self, results: Dict[str, Any]):
         return True
 
