@@ -45,14 +45,13 @@ def calculate_metrics(
     image_metrics = dict()
     image_metrics['Label'] = VERIFICATION_FAIL
 
-    (classifier, labels, available_metrics, _effective_metrics) = get_metrics()
+    (classifier, labels, available_metrics) = get_metrics()
 
     print(f"providers_result_crop: {providers_result_crop.getbbox()}")
     compare_metrics = compare_images(
         cropped_image,
         providers_result_crop,
-        available_metrics,
-        # effective_metrics causes KeyError: 'missing metric:reference_variance'
+        available_metrics
     )
     try:
         label = classify_with_tree(compare_metrics, classifier, labels)
@@ -142,13 +141,16 @@ def get_providers_result_crop(providers_result_image, x, y, width, height):
 def get_metrics():
     classifier, feature_labels = load_classifier()
     available_metrics = ImgageMetrics.get_metric_classes()
+    # todo review: DONE IN DOCS
+    #  effective_metrics isn't used after filling it with values
+    #  in the loops below
     effective_metrics = []
     for metric in available_metrics:
         for label in feature_labels:
             for label_part in metric.get_labels():
                 if label_part == label and metric not in effective_metrics:
                     effective_metrics.append(metric)
-    return classifier, feature_labels, available_metrics, effective_metrics
+    return (classifier, feature_labels, available_metrics)
 
 
 def get_labels_from_metrics(metrics):
