@@ -1,13 +1,13 @@
 import os
 import logging
 
+from ffmpeg_tools.validation import UnsupportedVideoCodec
+
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
-
-from ffmpeg_tools.validation import UnsupportedVideoCodec
 
 logger = logging.getLogger(__name__)
 

@@ -5,6 +5,11 @@ from freezegun import freeze_time
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
+from ffmpeg_tools.formats import Container
+from ffmpeg_tools.validation import UnsupportedVideoCodec, \
+    UnsupportedAudioCodec, UnsupportedVideoFormat
+
 from apps.transcoding.common import TranscodingTaskBuilderException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from apps.transcoding.ffmpeg.utils import Commands
@@ -15,11 +20,6 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
-
-from ffmpeg_tools.codecs import VideoCodec, AudioCodec
-from ffmpeg_tools.formats import Container
-from ffmpeg_tools.validation import UnsupportedVideoCodec, \
-    UnsupportedAudioCodec, UnsupportedVideoFormat
 
 
 # TODO: test invalid video file
@@ -231,8 +231,10 @@ class TestffmpegTask(TempDirFixture):
                              ffmpeg_task.header.deadline))
 
     def test_resources_distributed_per_subtasks(self):
-        ffmpeg_task = self._build_ffmpeg_task(subtasks_count=2,
-                                              stream=TestffmpegTask.RESOURCE_STREAM2)
+        ffmpeg_task = self._build_ffmpeg_task(
+            subtasks_count=2,
+            stream=TestffmpegTask.RESOURCE_STREAM2)
+            
         node_id = uuid.uuid4()
         ffmpeg_task.header.task_id = str(uuid.uuid4())
         resources1 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
