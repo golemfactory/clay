@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 
 # pylint: disable=import-error
 from ffmpeg_tools import commands, meta
@@ -116,7 +117,7 @@ def run():
     try:
         run_ffmpeg(params)
     except commands.CommandFailed as e:
-        print(e.command)
+        print(e.command, file=sys.stderr)
         exit(e.error_code)
 
 
