@@ -82,13 +82,14 @@ class TranscodingTask(CoreTask):
         logger.debug('Initialization of FFmpegTask')
 
         task_id = self.task_definition.task_id
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
-        input_file = self.task_resources[0]
+        task_output_dir = dir_manager.get_task_output_dir(task_id)        
 
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
         if not self.task_resources:
             raise TranscodingException('There is no specified resources')
+
+        input_file = self.task_resources[0]
 
         stream_operator = StreamOperator()
         chunks, video_metadata = stream_operator.split_video(
