@@ -162,18 +162,16 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return scale_factor
 
     @classmethod
-    def get_task_border(cls, subtask, definition, subtasks_count,
-                        output_num=1, as_path=False):
+    def get_task_border(cls, extra_data: dict, definition, subtasks_count,
+                        as_path=False):
         """ Return list of pixels that should be marked as a border of
-         a given subtask
-        :param SubtaskState subtask: subtask state description
+         a given extra_data
         :param RenderingTaskDefinition definition: task definition
         :param int subtasks_count: total number of subtasks used in this task
-        :param int output_num: number of final output files
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
         """
-        start_task = subtask.extra_data['start_task']
+        start_task = extra_data['start_task']
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
@@ -187,12 +185,11 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         elif subtasks_count <= frames:
             if not as_path:
                 return []
-            else:
-                scale_factor = cls.scale_factor(res_x, res_y)
-                x = int(math.floor(res_x * scale_factor))
-                y = int(math.floor(res_y * scale_factor))
-                return [(0, y), (x, y),
-                        (x, 0), (0, 0)]
+            scale_factor = cls.scale_factor(res_x, res_y)
+            x = int(math.floor(res_x * scale_factor))
+            y = int(math.floor(res_y * scale_factor))
+            return [(0, y), (x, y),
+                    (x, 0), (0, 0)]
 
         parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,

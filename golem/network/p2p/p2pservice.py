@@ -142,9 +142,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def connect_to_network(self):
         # pylint: disable=singleton-comparison
+        logger.debug("Connecting to seeds")
         self.connect_to_seeds()
         if not self.connect_to_known_hosts:
             return
+
+        logger.debug("Connecting to known hosts")
 
         for host in KnownHosts.select() \
                 .where(KnownHosts.is_seed == False)\
@@ -153,10 +156,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             ip_address = host.ip_address
             port = host.port
 
-            logger.debug("Connecting to {}:{}".format(ip_address, port))
+            logger.debug("Connecting to %s:%s ...", ip_address, port)
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
+                logger.debug("Connected!")
             except Exception as exc:
                 logger.error("Cannot connect to host {}:{}: {}"
                              .format(ip_address, port, exc))
@@ -168,6 +172,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         for _ in range(len(self.seeds)):
             ip_address, port = self._get_next_random_seed()
+            logger.debug("Connecting to %s:%s ...", ip_address, port)
             try:
                 socket_address = tcpnetwork.SocketAddress(ip_address, port)
                 self.connect(socket_address)
@@ -175,6 +180,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 logger.error("Cannot connect to seed %s:%s: %s",
                              ip_address, port, exc)
                 continue
+            logger.debug("Connected!")
             break  # connected
 
     def connect(self, socket_address):
@@ -220,7 +226,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         except Exception as err:
             logger.error(
-                "Couldn't add known peer %r:%r : %s",
+                "Couldn't add known peer %s:%s - %s",
                 ip_address,
                 port,
                 err
@@ -329,8 +335,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer.key_id
         logger.info(
-            "Adding peer %s, key id difficulty: %r",
+            "Adding peer. node=%s, address=%s:%s, key_difficulty=%r",
             node_info_str(peer.node_name, key_id),
+            peer.address, peer.port,
             self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:
@@ -371,10 +378,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             return
 
         logger.info(
-            "add peer to incoming. address=%r:%r, node=%s",
+            "Adding peer to incoming. node=%s, address=%s:%s",
+            node_info_str(node_name, key_id),
             peer_info["address"],
             peer_info["port"],
-            node_info_str(node_name, key_id)
         )
 
         self.incoming_peers[key_id] = {
@@ -780,20 +787,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         if not msg_snd and node_info.key == self.get_key_id():
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
-
-    def peer_want_task_session(self, node_info, super_node_info, conn_id):
-        """Process request to start task session from this node to a node
-           from node_info.
-        :param Node node_info: node that requests task session with this node
-        :param Node|None super_node_info: information about supernode
-                                          that has passed this information
-        :param conn_id: connection id
-        """
-        self.task_server.start_task_session(
-            node_info,
-            super_node_info,
-            conn_id
-        )
 
     #############################
     # RANKING FUNCTIONS         #

@@ -128,11 +128,17 @@ class BlenderVerifier(FrameRenderingVerifier):
             with open(os.path.join(dir_mapping.output, 'verdict.json'), 'r') \
                     as f:
                 verdict = json.load(f)
+
+            logger.info(
+                "Subtask %s verification verdict: %s",
+                subtask_id,
+                verdict,
+            )
             if verdict['verdict']:
                 self.finished.callback(True)
             else:
                 self.finished.errback(
-                    Exception('Verification result negative'))
+                    Exception('Verification result negative', verdict))
 
         logger.info(
             f' Starting docker thread for:  '

@@ -126,7 +126,10 @@ def _calculate_efficiency(efficiency: float,
                           timeout: float,
                           computation_time: float,
                           psi: float) -> float:
-
+    """
+    Efficiency function from both Requestor and Provider perspective as
+    proposed in https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
     if computation_time == 0.:
         raise ValueError("computation_time cannot be equal to 0.")
 
@@ -146,6 +149,10 @@ def update_requestor_efficiency(node_id: str,
                                 computation_time: float,
                                 performance: float,
                                 min_performance: float) -> None:
+    """
+    Update efficiency function from both Requestor and Provider perspective as
+    proposed in https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
         efficiency = rank.requestor_efficiency
@@ -168,6 +175,10 @@ def get_requestor_assigned_sum(node_id: str) -> int:
 
 
 def update_requestor_assigned_sum(node_id: str, amount: int) -> None:
+    """
+    V_assigned from Provider perspective as
+    proposed in https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
 
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
@@ -176,6 +187,11 @@ def update_requestor_assigned_sum(node_id: str, amount: int) -> None:
 
 
 def update_requestor_paid_sum(node_id: str, amount: int) -> None:
+    """
+    V_paid from Provider perspective as
+    proposed in https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+    """
+
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
         rank.requestor_paid_sum += amount

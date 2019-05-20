@@ -1,11 +1,12 @@
 import json
 import os
+from pathlib import Path
 from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
-
 from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
     Resolution
+from .file_extension.matcher import get_expected_extension
 from .image_metrics_calculator import calculate_metrics
 
 
@@ -138,6 +139,33 @@ def make_verdict(
 
     with open(os.path.join(OUTPUT_DIR, 'verdict.json'), 'w') as f:
         json.dump({'verdict': verdict}, f)
+
+
+def get_crop_path(parent: str, filename: str) -> str:
+    """
+    Attempts to get the path to a crop file. If no file exists under the
+    provided path, the original file extension is replaced with an expected
+    one.
+    :param parent: directory where crops are located.
+    :param filename: the expected crop file name, based on the file extension
+    provided in verifier parameters.
+    :return: path to the requested crop file, possibly with a different file
+    extension.
+    :raises FileNotFoundError if no matching crop file could be found.
+    """
+    crop_path = Path(parent, filename)
+
+    if crop_path.exists():
+        return str(crop_path)
+
+    expected_extension = get_expected_extension(crop_path.suffix)
+    expected_path = crop_path.with_suffix(expected_extension)
+
+    if expected_path.exists():
+        return str(expected_path)
+
+    raise FileNotFoundError(f'Could not find crop file. Paths checked:'
+                            f'{crop_path}, {expected_path}')
 
 
 def verify(  # pylint: disable=too-many-arguments

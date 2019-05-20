@@ -406,7 +406,7 @@
     <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
     <ROW Name="cleandockervm.ps1" SourcePath="scripts\docker\clean-docker-vm.ps1"/>
     <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
-    <ROW Name="preparedockerforwindows.ps1" SourcePath="scripts\docker\prepare-docker-for-windows.ps1"/>
+    <ROW Name="preparedockerasadmin.ps1" SourcePath="scripts\docker\prepare-docker-as-admin.ps1"/>
     <ROW Name="tempFiles.dll" SourcePath="&lt;AI_CUSTACTS&gt;tempFiles.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiConditionComponent">
@@ -468,7 +468,7 @@
     <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGwAZQBhAG4AZABvAGMAawBlAHIAdgBtAC4AcABzADE="/>
     <ROW Action="AI_DATA_SETTER_11" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
     <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
-    <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGYAbwByAHcAaQBuAGQAbwB3AHMALgBwAHMAMQ=="/>
+    <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGEAcwBhAGQAbQBpAG4ALgBwAHMAMQ=="/>
     <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="We have detected that you are trying to install Golem on Windows 10 Home. Unfortunately, your operating system does not support Hyper-V, but we have kept Docker Toolbox support.&#13;\n&#13;\nPlease download it manually from the official website https://docs.docker.com/toolbox/toolbox_install_windows/ in case you don&apos;t have it already installed on your computer. |Virtualization for Windows Home |MB_OK,MB_ICONINFORMATION,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_16" Type="51" Source="CustomActionData" Target="Since 0.19.0 Golem supports Hyper-V.&#13;\n&#13;\nPlease be aware that if you are using any other virtualization software (e.g. Docker Toolbox, VMware) do not to install Hyper-V as this may cause issues with other applications on your system. &#13;\n&#13;\nBy clicking &quot;Yes&quot; you are agreeing for Hyper-V to be installed. Otherwise please make sure you have Docker Toolbox installed before running Golem. |Hyper-V in Windows Professional |MB_YESNO,MB_ICONINFORMATION,MB_DEFBUTTON1|INSTALL_HYPERV|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
@@ -522,6 +522,7 @@
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
     <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
     <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
+    <ROW Action="SetRunningUser" Type="51" Source="RUNNING_USER" Target="[%USERNAME]"/>
     <ROW Action="StopProcess_DockerToolbox" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_4"/>
     <ROW Action="StopProcess_Golem" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_1"/>
     <ROW Action="StopProcess_Golemapp" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_2"/>
@@ -560,41 +561,41 @@
     <ROW Action="AI_DATA_SETTER" Sequence="3997"/>
     <ROW Action="AI_EstimateExtractFiles" Sequence="3999" Builds="DefaultBuild"/>
     <ROW Action="AI_AiRemoveFilesRollback" Sequence="3099"/>
-    <ROW Action="StopProcess_DockerToolbox" Sequence="1612"/>
-    <ROW Action="AI_DATA_SETTER_4" Sequence="1611"/>
-    <ROW Action="StopProcess_VBoxHeadless" Sequence="1614"/>
-    <ROW Action="AI_DATA_SETTER_5" Sequence="1613"/>
-    <ROW Action="StopProcess_Golem" Sequence="1604"/>
-    <ROW Action="AI_DATA_SETTER_1" Sequence="1603"/>
-    <ROW Action="StopProcess_Golemapp" Sequence="1606"/>
-    <ROW Action="AI_DATA_SETTER_2" Sequence="1605"/>
-    <ROW Action="StopProcess_hyperg" Sequence="1608"/>
-    <ROW Action="AI_DATA_SETTER_3" Sequence="1607"/>
-    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1618"/>
-    <ROW Action="AI_DATA_SETTER_6" Sequence="1617"/>
-    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1616"/>
-    <ROW Action="AI_DATA_SETTER_7" Sequence="1615"/>
+    <ROW Action="StopProcess_DockerToolbox" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_4" Sequence="1609"/>
+    <ROW Action="StopProcess_VBoxHeadless" Sequence="1612"/>
+    <ROW Action="AI_DATA_SETTER_5" Sequence="1611"/>
+    <ROW Action="StopProcess_Golem" Sequence="1602"/>
+    <ROW Action="AI_DATA_SETTER_1" Sequence="1601"/>
+    <ROW Action="StopProcess_Golemapp" Sequence="1604"/>
+    <ROW Action="AI_DATA_SETTER_2" Sequence="1603"/>
+    <ROW Action="StopProcess_hyperg" Sequence="1606"/>
+    <ROW Action="AI_DATA_SETTER_3" Sequence="1605"/>
+    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1616"/>
+    <ROW Action="AI_DATA_SETTER_6" Sequence="1615"/>
+    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1614"/>
+    <ROW Action="AI_DATA_SETTER_7" Sequence="1613"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
     <ROW Action="AI_DELETE_SHORTCUTS" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="1402"/>
     <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6402"/>
     <ROW Action="AI_DATA_SETTER_8" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6401"/>
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
-    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1621"/>
-    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1619"/>
-    <ROW Action="Execute_CleanDockerVM" Condition="( NOT Installed )" Sequence="1602"/>
-    <ROW Action="AI_DATA_SETTER_10" Condition="( NOT Installed )" Sequence="1601"/>
+    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1619"/>
+    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1617"/>
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1622"/>
-    <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1620"/>
+    <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1618"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
     <ROW Action="AI_RemoveAllTempFiles" Sequence="1502"/>
     <ROW Action="AI_DATA_SETTER_12" Sequence="1501"/>
-    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1610"/>
-    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1609"/>
+    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1608"/>
+    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1607"/>
     <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
+    <ROW Action="Execute_CleanDockerVM" Condition="( NOT Installed )" Sequence="6603"/>
+    <ROW Action="AI_DATA_SETTER_10" Condition="( NOT Installed )" Sequence="6602"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
@@ -614,6 +615,7 @@
     <ROW Action="AI_DATA_SETTER_11" Condition="( NOT Installed )" Sequence="51"/>
     <ROW Action="MessageBox_DoYouWantHyperV" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="204"/>
     <ROW Action="AI_DATA_SETTER_16" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="203"/>
+    <ROW Action="SetRunningUser" Condition="( NOT Installed )" Sequence="1299"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
     <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10240)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10586)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 14393)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 15063)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
@@ -690,6 +692,8 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.TempFileComponent">
     <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="version_Dir" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
+    <ROW FileId="preparedockerforwindows.ps1" Name="PREPAR~1.PS1|prepare-docker-for-windows.ps1" Directory_="version_Dir" Property="AI_PREPARE_DOCKER_FILE" Options="0" Data="scripts\docker\prepare-docker-for-windows.ps1"/>
+    <ROW FileId="runasadmin.ps1" Name="RUN-AS~1.PS1|run-as-admin.ps1" Directory_="version_Dir" Property="AI_RUN_AS_ADMIN_FILE" Options="0" Data="scripts\run-as-admin.ps1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
     <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="&amp;DockerForWin = 3" Flags="3"/>

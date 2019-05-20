@@ -147,7 +147,7 @@ class PeerSession(BasicSafeSession):
         if self.conn_type is None:
             raise Exception('Connection type (client/server) unknown')
         logger.info(
-            "Starting peer session %r:%r",
+            "Starting peer session. address=%s:%r",
             self.address,
             self.port
         )
@@ -277,12 +277,16 @@ class PeerSession(BasicSafeSession):
         if proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "P2P protocol version mismatch %r vs %r (local)"
-                " for node %r:%r",
+                " for node %s:%r",
                 proto_id,
                 variables.PROTOCOL_CONST.ID,
                 self.address,
                 self.port
             )
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
+            return
+
+        if msg.node_info is None:
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
@@ -302,7 +306,7 @@ class PeerSession(BasicSafeSession):
         self.node_name = msg.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
-        self.key_id = msg.client_key_id
+        self.key_id = msg.node_info.key
         self.metadata = msg.metadata
 
         solve_challenge = msg.solve_challenge
@@ -453,12 +457,10 @@ class PeerSession(BasicSafeSession):
                 message.base.Disconnect.REASON.Unverified
             )
 
-    def _react_to_want_to_start_task_session(self, msg):
-        self.p2p_service.peer_want_task_session(
-            msg.node_info,
-            msg.super_node_info,
-            msg.conn_id
-        )
+    @classmethod
+    def _react_to_want_to_start_task_session(cls, msg):
+        # TODO: https://github.com/golemfactory/golem/issues/4005
+        logger.debug("Ignored WTSTS. msg=%s", msg)
 
     def _react_to_set_task_session(self, msg):
         self.p2p_service.want_to_start_task_session(
@@ -484,7 +486,6 @@ class PeerSession(BasicSafeSession):
             proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.key_id,
             node_info=self.p2p_service.node,
             client_ver=golem.__version__,
             rand_val=self.rand_val,
@@ -506,9 +507,6 @@ class PeerSession(BasicSafeSession):
         self.verified = True
 
         if self.p2p_service.enough_peers():
-            logger_msg = "TOO MANY PEERS, DROPPING CONNECTION: {} {}: {}" \
-                .format(self.node_name, self.address, self.port)
-            logger.info(logger_msg)
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
             self.disconnect(message.base.Disconnect.REASON.TooManyPeers)
 
@@ -526,11 +524,12 @@ class PeerSession(BasicSafeSession):
         if p:
             if p != self and p.conn.opened:
                 logger.warning(
-                    "PEER DUPLICATED: %r %r : %r AND %r : %r",
+                    "Peer duplicated. new=%r (%s:%r), old=%r (%s:%r)",
                     p.node_name,
                     p.address,
                     p.port,
                     self.node_name,
+                    self.address,
                     self.port
                 )
                 self.disconnect(message.base.Disconnect.REASON.DuplicatePeers)

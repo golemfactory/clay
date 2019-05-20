@@ -78,7 +78,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
         bt = _get_blender_task(task_definition, 1)
         assert not bt.compositing
 
-        # Compositing True, use frames is False, as many subtask as frames
+        # Compositing True, use frames is False, as many extra_data as frames
         task_definition.options.use_frames = False
         bt = _get_blender_task(task_definition, 3)
         assert not bt.compositing
@@ -678,7 +678,6 @@ class TestHelpers(unittest.TestCase):
     @staticmethod
     def _get_task_border(as_path=False):
         offsets = generate_expected_offsets(30, 800, 600)
-        subtask = SubtaskState()
 
         definition = RenderingTaskDefinition()
         definition.options = BlenderRendererOptions()
@@ -686,9 +685,13 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k}
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                         30, as_path=as_path)
+            extra_data = {'start_task': k}
+            border = BlenderTaskTypeInfo.get_task_border(
+                extra_data,
+                definition,
+                30,
+                as_path=as_path,
+            )
             assert min(border) == (0, offsets[k])
             assert max(border) == (797, offsets[k + 1] - 1)
 
@@ -697,27 +700,27 @@ class TestHelpers(unittest.TestCase):
         offsets = generate_expected_offsets(15, 800, 600)
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k}
-            border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
+            extra_data = {'start_task': k}
+            border = BlenderTaskTypeInfo.get_task_border(extra_data, definition,
                                                          30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (798, offsets[i + 1] - 1)
 
-        subtask.extra_data = {'start_task': 2}
+        extra_data = {'start_task': 2}
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:
             assert BlenderTaskTypeInfo.get_task_border(
-                subtask, definition, 30, as_path=as_path) == \
+                extra_data, definition, 30, as_path=as_path) == \
                 [(0, 600), (800, 600), (800, 0), (0, 0)]
         else:
             assert BlenderTaskTypeInfo.get_task_border(
-                subtask, definition, 30, as_path=as_path) == []
+                extra_data, definition, 30, as_path=as_path) == []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)
-        assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
+        assert BlenderTaskTypeInfo.get_task_border(extra_data, definition,
                                                    30, as_path=as_path) == []
 
     def test_get_task_border(self):

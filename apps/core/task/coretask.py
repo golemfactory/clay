@@ -65,8 +65,8 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_border(cls, subtask, definition, subtasks_count,
-                        output_num=1, as_path=False):
+    def get_task_border(cls, extra_data, definition, subtasks_count,
+                        as_path=False):
         return []
 
     @classmethod
@@ -271,8 +271,9 @@ class CoreTask(Task):
     def get_tasks_left(self):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
-    # pylint:disable=unused-argument,no-self-use
-    def get_subtasks(self, part):
+    # pylint:disable=unused-argument
+    @classmethod
+    def get_subtasks(cls, part):
         return dict()
 
     def restart(self):
@@ -596,15 +597,11 @@ class CoreTaskBuilder(TaskBuilder):
             definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
-        base_path = options['output_path']
         output_dir_name = definition.name + \
             datetime.now().strftime(cls.OUTPUT_DIR_TIME_FORMAT)
-        full_output_path = os.path.join(base_path, output_dir_name)
-
-        os.makedirs(full_output_path, exist_ok=True)
 
         return cls.get_nonexistent_path(
-            full_output_path,
+            os.path.join(options['output_path'], output_dir_name),
             definition.name,
             options.get('format', '')
         )
