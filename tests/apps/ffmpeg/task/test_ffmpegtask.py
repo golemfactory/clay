@@ -234,7 +234,7 @@ class TestffmpegTask(TempDirFixture):
         ffmpeg_task = self._build_ffmpeg_task(
             subtasks_count=2,
             stream=TestffmpegTask.RESOURCE_STREAM2)
-            
+
         node_id = uuid.uuid4()
         ffmpeg_task.header.task_id = str(uuid.uuid4())
         resources1 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
