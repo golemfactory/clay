@@ -356,7 +356,10 @@ function install_dependencies()
 import json
 
 runtime_config = {
-    'path': '/usr/local/bin/runsc'
+    'path': '/usr/local/bin/runsc',
+    'runtimeArgs': [
+        '-file-access shared'
+    ]
 }
 
 with open('/etc/docker/daemon.json', 'w+') as f:
