@@ -37,7 +37,10 @@ class TestChangeStatus(TestRuntime):
 
 class TestEmitEvents(TestRuntime):
 
-    def test_emit_event(self):
+    @patch('golem.envs.deferToThread')
+    def test_emit_event(self, defer):
+        defer.side_effect = lambda f, *args, **kwargs: f(*args, **kwargs)
+
         started_listener1 = Mock()
         started_listener2 = Mock()
         stopped_listener = Mock()

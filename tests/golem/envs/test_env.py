@@ -17,7 +17,9 @@ class TestEnvironment(TestCase):
 
 class TestEmitEvents(TestEnvironment):
 
-    def test_emit_event(self):
+    @patch('golem.envs.deferToThread')
+    def test_emit_event(self, defer):
+        defer.side_effect = lambda f, *args, **kwargs: f(*args, **kwargs)
         metadata = Mock(id="env_id")
         with patch.object(self.env, 'metadata', return_value=metadata):
             enabled_listener1 = Mock()

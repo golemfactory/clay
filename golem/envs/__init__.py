@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set
 
 from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
@@ -200,8 +201,14 @@ class Runtime(ABC):
             details=details
         )
         self._logger.debug("Emit event: %r", event)
+
+        def _handler_error_callback(failure):
+            self._logger.error(
+                "Error occurred in event handler.", exc_info=failure.value)
+
         for listener in self._event_listeners.get(event_type, ()):
-            listener(deepcopy(event))
+            deferred = deferToThread(listener, deepcopy(event))
+            deferred.addErrback(_handler_error_callback)
 
     def _prepared(self, *_) -> None:
         """ Acknowledge that Runtime has been prepared. Log message, set status
@@ -367,8 +374,14 @@ class Environment(ABC):
             details=details
         )
         self._logger.debug("Emit event: %r", event)
+
+        def _handler_error_callback(failure):
+            self._logger.error(
+                "Error occurred in event handler.", exc_info=failure.value)
+
         for listener in self._event_listeners.get(event_type, ()):
-            listener(deepcopy(event))
+            deferred = deferToThread(listener, deepcopy(event))
+            deferred.addErrback(_handler_error_callback)
 
     def _env_enabled(self) -> None:
         """ Acknowledge that Runtime has been enabled. Log message, set status
