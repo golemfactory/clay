@@ -36,8 +36,8 @@ RuntimeEventListener = Callable[[RuntimeEvent], Any]
 
 
 class EnvEventType(Enum):
-    ENV_ENABLED = 1
-    ENV_DISABLED = 2
+    ENABLED = 1
+    DISABLED = 2
     PREREQUISITES_INSTALLED = 3
     CONFIG_UPDATED = 4
     ERROR_OCCURRED = 5
@@ -375,14 +375,14 @@ class Environment(ABC):
             and emit event. Arguments are ignored (for callback use). """
         self._logger.info("Environment enabled.")
         self._status = EnvStatus.ENABLED
-        self._emit_event(EnvEventType.ENV_ENABLED)
+        self._emit_event(EnvEventType.ENABLED)
 
     def _env_disabled(self) -> None:
         """ Acknowledge that Runtime has been disabled. Log message, set status
             and emit event. Arguments are ignored (for callback use). """
         self._logger.info("Environment disabled.")
         self._status = EnvStatus.DISABLED
-        self._emit_event(EnvEventType.ENV_DISABLED)
+        self._emit_event(EnvEventType.DISABLED)
 
     def _config_updated(self, config: EnvConfig) -> None:
         """ Acknowledge that Runtime's config has been updated. Log message and

@@ -24,13 +24,13 @@ class TestEmitEvents(TestEnvironment):
             enabled_listener2 = Mock()
             disabled_listener = Mock()
 
-            self.env.listen(EnvEventType.ENV_ENABLED, enabled_listener1)
-            self.env.listen(EnvEventType.ENV_ENABLED, enabled_listener2)
-            self.env.listen(EnvEventType.ENV_DISABLED, disabled_listener)
+            self.env.listen(EnvEventType.ENABLED, enabled_listener1)
+            self.env.listen(EnvEventType.ENABLED, enabled_listener2)
+            self.env.listen(EnvEventType.DISABLED, disabled_listener)
 
             event = EnvEvent(
                 env_id="env_id",
-                type=EnvEventType.ENV_ENABLED,
+                type=EnvEventType.ENABLED,
                 details={"key": "value"}
             )
 
@@ -45,7 +45,7 @@ class TestEmitEvents(TestEnvironment):
         self.env._env_enabled()
         self.assertEqual(self.env.status(), EnvStatus.ENABLED)
         self.logger.info.assert_called_once_with('Environment enabled.')
-        emit.assert_called_once_with(EnvEventType.ENV_ENABLED)
+        emit.assert_called_once_with(EnvEventType.ENABLED)
 
     @patch('golem.envs.Environment._emit_event')
     def test_env_disabled(self, emit):
@@ -53,7 +53,7 @@ class TestEmitEvents(TestEnvironment):
         self.env._env_disabled()
         self.assertEqual(self.env.status(), EnvStatus.DISABLED)
         self.logger.info.assert_called_once_with('Environment disabled.')
-        emit.assert_called_once_with(EnvEventType.ENV_DISABLED)
+        emit.assert_called_once_with(EnvEventType.DISABLED)
 
     @patch('golem.envs.Environment._emit_event')
     def test_config_updated(self, emit):
@@ -90,9 +90,9 @@ class TestListen(TestEnvironment):
 
     def test_single_listener(self):
         listener = Mock()
-        self.env.listen(EnvEventType.ENV_ENABLED, listener)
+        self.env.listen(EnvEventType.ENABLED, listener)
         self.assertEqual(self.env._event_listeners, {
-            EnvEventType.ENV_ENABLED: {listener}
+            EnvEventType.ENABLED: {listener}
         })
 
     def test_multiple_listeners(self):
@@ -100,13 +100,13 @@ class TestListen(TestEnvironment):
         enabled_listener2 = Mock()
         disabled_listener = Mock()
 
-        self.env.listen(EnvEventType.ENV_ENABLED, enabled_listener1)
-        self.env.listen(EnvEventType.ENV_ENABLED, enabled_listener2)
-        self.env.listen(EnvEventType.ENV_DISABLED, disabled_listener)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener1)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener2)
+        self.env.listen(EnvEventType.DISABLED, disabled_listener)
 
         self.assertEqual(self.env._event_listeners, {
-            EnvEventType.ENV_ENABLED: {enabled_listener1, enabled_listener2},
-            EnvEventType.ENV_DISABLED: {disabled_listener}
+            EnvEventType.ENABLED: {enabled_listener1, enabled_listener2},
+            EnvEventType.DISABLED: {disabled_listener}
         })
 
     def test_re_register(self):
