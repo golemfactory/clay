@@ -29,12 +29,15 @@ class Playbook(NodeTestPlaybook):
     def step_wait_subtask_completed(self):
         def on_success(result):
             if result:
-                statuses = map(lambda s: s.get('status'), result)
-                if any(map(lambda s: s == 'Finished', statuses)):
+                statuses = [s.get('status') for s in result]
+                if 'Finished' in statuses:
                     print("First subtask finished")
                     self.next()
-                    return
-                print("Subtasks status: {}".format(list(statuses)))
+                elif 'Failure' in statuses:
+                    print('Subtask failed :(')
+                    self.fail("Got status 'Failure', expected 'Finished'.")
+                else:
+                    print("Subtasks status: {}".format(statuses))
 
             time.sleep(10)
 
