@@ -282,7 +282,6 @@ class ProxyNetwork(Network):
             if connect_info.protocol_id in connections:
                 connection = connections[connect_info.protocol_id]
                 connection.session.key_id = key_id
-                connection.session.verified = True
                 connect_info.established_callback(connection.session)
             else:
                 logger.warning('_handle_connected: Unknown protocol id: %r',

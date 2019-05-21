@@ -305,7 +305,6 @@ class PeerSession(BasicSafeSession):
         self.node_name = msg.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
-        self.key_id = msg.node_info.key
         self.metadata = msg.metadata
 
         solve_challenge = msg.solve_challenge

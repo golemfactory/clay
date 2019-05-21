@@ -1,6 +1,6 @@
-use std::net::{IpAddr, SocketAddr};
-use cpython::*;
 use crate::python::error::Error;
+use cpython::*;
+use std::net::{IpAddr, SocketAddr};
 
 /// Converts a native value to a Python type
 #[macro_export]

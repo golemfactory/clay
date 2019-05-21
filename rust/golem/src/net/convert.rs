@@ -2,8 +2,11 @@ use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::str::FromStr;
 
-use network::{PeerId, PublicKey};
+use secp256k1;
+
+use network::identity;
 use network::multiaddr::{Multiaddr, Protocol};
+use network::{PeerId, PublicKey};
 
 use crate::python::error::{Error, ErrorKind, ErrorSeverity};
 
@@ -68,12 +71,27 @@ pub fn peer_id_from_str(peer_id_string: &String) -> Result<PeerId, Error> {
     }
 }
 
-#[inline]
-pub fn pubkey_encode(pubkey: PublicKey) -> Vec<u8> {
-    match pubkey {
-        PublicKey::Ed25519(key) => key.encode().to_vec(),
-        #[cfg(not(any(target_os = "emscripten", target_os = "unknown")))]
-        PublicKey::Rsa(key) => key.encode_pkcs1(),
-        PublicKey::Secp256k1(key) => key.encode().to_vec(),
+pub trait PublicKeyToBytes {
+    fn to_bytes(&self) -> Vec<u8>;
+}
+
+impl PublicKeyToBytes for PublicKey {
+    fn to_bytes(&self) -> Vec<u8> {
+        match self {
+            PublicKey::Ed25519(key) => key.encode().to_vec(),
+            #[cfg(not(any(target_os = "emscripten", target_os = "unknown")))]
+            PublicKey::Rsa(key) => key.encode_pkcs1(),
+            PublicKey::Secp256k1(key) => key.to_bytes(),
+        }
+    }
+}
+
+impl PublicKeyToBytes for identity::secp256k1::PublicKey {
+    fn to_bytes(&self) -> Vec<u8> {
+        // secp256k1_lib::PublicKey is private
+        let encoded = self.encode();
+        let deserialized = secp256k1::PublicKey::from_slice(&encoded).unwrap();
+        // serialize_uncompressed returns a byte-prefixed 64 byte key
+        deserialized.serialize_uncompressed()[1..].to_vec()
     }
 }

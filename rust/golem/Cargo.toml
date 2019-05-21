@@ -19,6 +19,7 @@ crossbeam-channel = "0.3"
 env_logger = "0.6"
 futures = "0.1.17"
 log = "0.4"
+secp256k1 = "0.12"
 spin = "0.5"
 
 [dependencies.cpython]

@@ -166,8 +166,8 @@ impl From<ConnectedPoint> for NetworkStatePeerEndpoint {
 				NetworkStatePeerEndpoint::Dialing(address),
 			ConnectedPoint::Listener { listen_addr, send_back_addr } =>
 				NetworkStatePeerEndpoint::Listening {
-					listen_addr: listen_addr,
-					send_back_addr: send_back_addr
+					listen_addr,
+					send_back_addr
 				}
 		}
 	}

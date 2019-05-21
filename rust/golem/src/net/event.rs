@@ -4,7 +4,7 @@ use network::event::NetworkEvent;
 use network::message::NetworkMessage;
 use network::ConnectedPoint;
 
-use crate::net::convert::{multiaddr_to_host_port, peer_id_to_str, pubkey_encode};
+use crate::net::convert::{multiaddr_to_host_port, peer_id_to_str, PublicKeyToBytes};
 
 pub fn event_into(py: Python, event: NetworkEvent) -> PyTuple {
     EventWrapper::NetworkEvent(event).into_py_object(py)
@@ -67,7 +67,9 @@ impl ToPyObject for EventWrapper {
                 }
                 NetworkEvent::Terminated => py_wrap!(py, (EventId::Terminated,)),
                 NetworkEvent::Connected(peer_id, peer_pubkey, connected_point) => {
-                    let py_pubkey = PyBytes::new(py, &pubkey_encode(peer_pubkey)[..]);
+                    let encoded = peer_pubkey.to_bytes();
+                    let py_pubkey = PyBytes::new(py, &encoded[..]);
+
                     py_wrap!(
                         py,
                         (
@@ -77,7 +79,7 @@ impl ToPyObject for EventWrapper {
                             connected_point_to_tuple(connected_point),
                         )
                     )
-                },
+                }
                 NetworkEvent::Disconnected(peer_id, connected_point) => py_wrap!(
                     py,
                     (
