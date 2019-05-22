@@ -54,60 +54,13 @@ def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
 
 class TestSupported(TestCase):
 
-    @patch_handler('docker_available', return_value=False)
-    def test_docker_unavailable(self, *_):
-        self.assertFalse(DockerCPUEnvironment.supported().supported)
-
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=False)
-    def test_wrong_docker_version(self, *_):
-        self.assertFalse(DockerCPUEnvironment.supported().supported)
-
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=True)
     @patch_env('_get_hypervisor_class', return_value=None)
     def test_no_hypervisor(self, *_):
         self.assertFalse(DockerCPUEnvironment.supported().supported)
 
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=True)
     @patch_env('_get_hypervisor_class')
     def test_ok(self, *_):
         self.assertTrue(DockerCPUEnvironment.supported().supported)
-
-
-class TestCheckDockerVersion(TestCase):
-
-    @patch('logger')
-    @patch_handler('run', side_effect=SubprocessError)
-    def test_command_error(self, run, logger):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-        logger.exception.assert_called_once()
-
-    @patch('logger')
-    @patch_handler('run', return_value=None)
-    def test_no_version(self, run, logger):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-        logger.error.assert_called_once()
-
-    @patch_handler('run', return_value='(╯°□°)╯︵ ┻━┻')
-    def test_invalid_version_string(self, run):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-
-    @patch_env('SUPPORTED_DOCKER_VERSIONS', ['1.2.1'])
-    @patch_handler('run', return_value='Docker version 1.2.3, build abcdef\n')
-    def test_unsupported_version(self, run, *_):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-
-    @patch_env('SUPPORTED_DOCKER_VERSIONS', ['1.2.1', '1.2.3'])
-    @patch_handler('run', return_value='Docker version 1.2.3, build abcdef\n')
-    def test_supported_version(self, run, *_):
-        self.assertTrue(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
 
 
 class TestGetHypervisorClass(TestCase):
