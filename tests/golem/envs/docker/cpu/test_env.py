@@ -216,17 +216,17 @@ class TestCleanup(TestDockerCPUEnv):
 
     def test_disabled_status(self):
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_preparing_status(self):
         self.env._status = EnvStatus.PREPARING
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_cleaning_up_status(self):
         self.env._status = EnvStatus.CLEANING_UP
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_hypervisor_quit_error(self):
         self.env._status = EnvStatus.ENABLED
@@ -234,7 +234,7 @@ class TestCleanup(TestDockerCPUEnv):
         self.hypervisor.quit.side_effect = error
         error_occurred = self._patch_env_async('_error_occurred')
 
-        deferred = self.env.cleanup()
+        deferred = self.env.clean_up()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
         deferred = self.assertFailure(deferred, OSError)
 
@@ -247,7 +247,7 @@ class TestCleanup(TestDockerCPUEnv):
         self.env._status = EnvStatus.ENABLED
         env_disabled = self._patch_env_async('_env_disabled')
 
-        deferred = self.env.cleanup()
+        deferred = self.env.clean_up()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
 
         def _check(_):

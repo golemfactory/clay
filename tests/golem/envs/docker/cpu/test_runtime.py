@@ -362,7 +362,7 @@ class TestCleanup(TestDockerCPURuntime):
 
     def test_invalid_status(self):
         self._generic_test_invalid_status(
-            method=self.runtime.cleanup,
+            method=self.runtime.clean_up,
             valid_statuses={RuntimeStatus.STOPPED, RuntimeStatus.FAILURE})
 
     def test_client_error(self):
@@ -374,7 +374,7 @@ class TestCleanup(TestDockerCPURuntime):
         torn_down = self._patch_runtime_async('_torn_down')
         error_occurred = self._patch_runtime_async('_error_occurred')
 
-        deferred = self.runtime.cleanup()
+        deferred = self.runtime.clean_up()
         self.assertEqual(self.runtime.status(), RuntimeStatus.CLEANING_UP)
         deferred = self.assertFailure(deferred, APIError)
 
@@ -395,7 +395,7 @@ class TestCleanup(TestDockerCPURuntime):
         torn_down = self._patch_runtime_async('_torn_down')
         error_occurred = self._patch_runtime_async('_error_occurred')
 
-        deferred = self.runtime.cleanup()
+        deferred = self.runtime.clean_up()
         self.assertEqual(self.runtime.status(), RuntimeStatus.CLEANING_UP)
 
         def _check(_):

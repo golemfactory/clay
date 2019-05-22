@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
-from subprocess import SubprocessError
 from threading import Thread, Lock
 from time import sleep
 from typing import Optional, Any, Dict, List, Type, ClassVar, \
@@ -240,13 +239,13 @@ class DockerCPURuntime(Runtime):
             "Creating container failed."))
         return deferred_prepare
 
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         self._change_status(
             from_status=[RuntimeStatus.FAILURE, RuntimeStatus.STOPPED],
             to_status=RuntimeStatus.CLEANING_UP)
         logger.info("Cleaning up runtime...")
 
-        def _cleanup():
+        def _clean_up():
             client = local_client()
             client.remove_container(self._container_id)
 
@@ -256,7 +255,7 @@ class DockerCPURuntime(Runtime):
                 self._stdin_socket.close()
             return res
 
-        deferred_cleanup = deferToThread(_cleanup)
+        deferred_cleanup = deferToThread(_clean_up)
         deferred_cleanup.addCallback(self._torn_down)
         deferred_cleanup.addErrback(self._error_callback(
             f"Failed to remove container '{self._container_id}'."))
@@ -489,7 +488,7 @@ class DockerCPUEnvironment(Environment):
 
         return deferToThread(_prepare)
 
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         if self._status not in [EnvStatus.ENABLED, EnvStatus.ERROR]:
             raise ValueError(f"Cannot clean up because environment is in "
                              f"invalid state: '{self._status}'")
