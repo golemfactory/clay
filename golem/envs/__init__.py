@@ -1,13 +1,16 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from enum import Enum
-from functools import wraps
 from logging import Logger, getLogger
-from threading import Lock
+from threading import RLock
 from pathlib import Path
+
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager
+    Sequence, Iterable, ContextManager, Set
 
 from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
+from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
 
@@ -16,11 +19,41 @@ CounterUsage = Any
 
 EnvId = str
 
-EnvEventId = str
-EnvEvent = Any  # TODO: Define environment events
 
-RuntimeEventId = str
-RuntimeEvent = Any  # TODO: Define runtime events
+class RuntimeEventType(Enum):
+    PREPARED = 1
+    STARTED = 2
+    STOPPED = 3
+    TORN_DOWN = 4
+    ERROR_OCCURRED = 5
+
+
+class RuntimeEvent(NamedTuple):
+    type: RuntimeEventType
+    details: Optional[Dict[str, Any]] = None
+
+
+RuntimeEventListener = Callable[[RuntimeEvent], Any]
+
+
+class EnvEventType(Enum):
+    ENABLED = 1
+    DISABLED = 2
+    PREREQUISITES_INSTALLED = 3
+    CONFIG_UPDATED = 4
+    ERROR_OCCURRED = 5
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class EnvEvent(NamedTuple):
+    type: EnvEventType
+    env_id: EnvId
+    details: Optional[Dict[str, Any]] = None
+
+
+EnvEventListener = Callable[[EnvEvent], Any]
 
 
 class EnvConfig(DictSerializable, ABC):
@@ -122,7 +155,9 @@ class Runtime(ABC):
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._logger = logger or getLogger(__name__)
         self._status = RuntimeStatus.CREATED
-        self._status_lock = Lock()
+        self._status_lock = RLock()
+        self._event_listeners: \
+            Dict[RuntimeEventType, Set[RuntimeEventListener]] = {}
 
     @staticmethod
     def _assert_status(
@@ -149,38 +184,84 @@ class Runtime(ABC):
             self._assert_status(self._status, from_status)
             self._status = to_status
 
-    def _wrap_status_change(
+    def _set_status(self, status) -> None:
+        with self._status_lock:
+            self._status = status
+
+    def _emit_event(
             self,
-            success_status: RuntimeStatus,
-            error_status: RuntimeStatus = RuntimeStatus.FAILURE,
-            success_msg: Optional[str] = None,
-            error_msg: Optional[str] = None
-    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
-        """ Wrap function. If it fails log error_msg, set status to
-            error_status, and re-raise the exception. Otherwise log success_msg
-            and set status to success_status. Setting status uses lock. """
+            event_type: RuntimeEventType,
+            details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """ Create an event with the given type and details and send a copy to
+            every listener registered for this type of events. """
 
-        def wrapper(func: Callable[[], None]):
+        event = RuntimeEvent(
+            type=event_type,
+            details=details
+        )
+        self._logger.debug("Emit event: %r", event)
 
-            @wraps(func)
-            def wrapped():
-                try:
-                    func()
-                except Exception:
-                    if error_msg:
-                        self._logger.exception(error_msg)
-                    with self._status_lock:
-                        self._status = error_status
-                    raise
-                else:
-                    if success_msg:
-                        self._logger.info(success_msg)
-                    with self._status_lock:
-                        self._status = success_status
+        def _handler_error_callback(failure):
+            self._logger.error(
+                "Error occurred in event handler.", exc_info=failure.value)
 
-            return wrapped
+        for listener in self._event_listeners.get(event_type, ()):
+            deferred = deferToThread(listener, deepcopy(event))
+            deferred.addErrback(_handler_error_callback)
 
-        return wrapper
+    def _prepared(self, *_) -> None:
+        """ Acknowledge that Runtime has been prepared. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime prepared.")
+        self._set_status(RuntimeStatus.PREPARED)
+        self._emit_event(RuntimeEventType.PREPARED)
+
+    def _started(self, *_) -> None:
+        """ Acknowledge that Runtime has been started. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime started.")
+        self._set_status(RuntimeStatus.RUNNING)
+        self._emit_event(RuntimeEventType.STARTED)
+
+    def _stopped(self, *_) -> None:
+        """ Acknowledge that Runtime has been stopped. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime stopped.")
+        self._set_status(RuntimeStatus.STOPPED)
+        self._emit_event(RuntimeEventType.STOPPED)
+
+    def _torn_down(self, *_) -> None:
+        """ Acknowledge that Runtime has been torn down. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Runtime torn down.")
+        self._set_status(RuntimeStatus.TORN_DOWN)
+        self._emit_event(RuntimeEventType.TORN_DOWN)
+
+    def _error_occurred(
+            self,
+            error: Optional[Exception],
+            message: str,
+            set_status: bool = True
+    ) -> None:
+        """ Acknowledge that an error occurred in runtime. Log message and emit
+            event. If set_status is True also set status to 'FAILURE'. """
+        self._logger.error(message, exc_info=error)
+        if set_status:
+            self._set_status(RuntimeStatus.FAILURE)
+        self._emit_event(
+            RuntimeEventType.ERROR_OCCURRED, {
+                'error': error,
+                'message': message
+            })
+
+    def _error_callback(self, message: str) -> Callable[[Failure], Failure]:
+        """ Get an error callback accepting Twisted's Failure object that will
+            call _error_occurred(). """
+        def _callback(failure):
+            self._error_occurred(failure.value, message)
+            return failure
+        return _callback
 
     @abstractmethod
     def prepare(self) -> Deferred:
@@ -241,11 +322,10 @@ class Runtime(ABC):
             time) get current usage by this Runtime. """
         raise NotImplementedError
 
-    @abstractmethod
-    def listen(self, event_id: RuntimeEventId,
-               callback: Callable[[RuntimeEvent], Any]) -> None:
+    def listen(self, event_type: RuntimeEventType,
+               listener: RuntimeEventListener) -> None:
         """ Register a listener for a given type of Runtime events. """
-        raise NotImplementedError
+        self._event_listeners.setdefault(event_type, set()).add(listener)
 
     @abstractmethod
     def call(self, alias: str, *args, **kwargs) -> Deferred:
@@ -275,16 +355,89 @@ class Environment(ABC):
     """ An Environment capable of running computations. It is responsible for
         creating Runtimes. """
 
+    def __init__(self, logger: Optional[Logger] = None) -> None:
+        self._status = EnvStatus.DISABLED
+        self._logger = logger or getLogger(__name__)
+        self._event_listeners: Dict[EnvEventType, Set[EnvEventListener]] = {}
+
+    def _emit_event(
+            self,
+            event_type: EnvEventType,
+            details: Optional[Dict[str, Any]] = None
+    ) -> None:
+        """ Create an event with the given type and details and send a copy to
+            every listener registered for this type of events. """
+
+        event = EnvEvent(
+            env_id=self.metadata().id,
+            type=event_type,
+            details=details
+        )
+        self._logger.debug("Emit event: %r", event)
+
+        def _handler_error_callback(failure):
+            self._logger.error(
+                "Error occurred in event handler.", exc_info=failure.value)
+
+        for listener in self._event_listeners.get(event_type, ()):
+            deferred = deferToThread(listener, deepcopy(event))
+            deferred.addErrback(_handler_error_callback)
+
+    def _env_enabled(self) -> None:
+        """ Acknowledge that Runtime has been enabled. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Environment enabled.")
+        self._status = EnvStatus.ENABLED
+        self._emit_event(EnvEventType.ENABLED)
+
+    def _env_disabled(self) -> None:
+        """ Acknowledge that Runtime has been disabled. Log message, set status
+            and emit event. Arguments are ignored (for callback use). """
+        self._logger.info("Environment disabled.")
+        self._status = EnvStatus.DISABLED
+        self._emit_event(EnvEventType.DISABLED)
+
+    def _config_updated(self, config: EnvConfig) -> None:
+        """ Acknowledge that Runtime's config has been updated. Log message and
+            emit event. The updated config is included in event's details. """
+        self._logger.info("Configuration updated.")
+        self._emit_event(EnvEventType.CONFIG_UPDATED, {'config': config})
+
+    def _prerequisites_installed(self, prerequisites: Prerequisites) -> None:
+        """ Acknowledge that Prerequisites have been installed. Log message and
+            emit event. The installed prerequisites are included in event's
+            details. """
+        self._logger.info("Prerequisites installed.")
+        self._emit_event(
+            EnvEventType.PREREQUISITES_INSTALLED,
+            {'prerequisites': prerequisites})
+
+    def _error_occurred(
+            self,
+            error: Optional[Exception],
+            message: str,
+            set_status: bool = True
+    ) -> None:
+        """ Acknowledge that an error occurred in runtime. Log message and emit
+            event. If set_status is True also set status to 'FAILURE'. """
+        self._logger.error(message, exc_info=error)
+        if set_status:
+            self._status = EnvStatus.ERROR
+        self._emit_event(
+            EnvEventType.ERROR_OCCURRED, {
+                'error': error,
+                'message': message
+            })
+
     @classmethod
     @abstractmethod
     def supported(cls) -> EnvSupportStatus:
         """ Is the Environment supported on this machine? """
         raise NotImplementedError
 
-    @abstractmethod
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
-        raise NotImplementedError
+        return self._status
 
     @abstractmethod
     def prepare(self) -> Deferred:
@@ -335,11 +488,10 @@ class Environment(ABC):
         """ Update configuration. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
-    @abstractmethod
-    def listen(self, event_id: EnvEventId,
-               callback: Callable[[EnvEvent], Any]) -> None:
+    def listen(self, event_type: EnvEventType, listener: EnvEventListener) \
+            -> None:
         """ Register a listener for a given type of Environment events. """
-        raise NotImplementedError
+        self._event_listeners.setdefault(event_type, set()).add(listener)
 
     @classmethod
     @abstractmethod

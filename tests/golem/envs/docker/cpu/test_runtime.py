@@ -1,5 +1,5 @@
-from threading import RLock, Thread
-from unittest.mock import Mock, patch as _patch, call
+from threading import Thread
+from unittest.mock import Mock, patch as _patch, call, ANY
 
 import pytest
 from docker.errors import APIError
@@ -58,21 +58,20 @@ class TestDockerCPURuntime(TestCase):
     def setUp(self) -> None:
         super().setUp()
 
-        client_patch = patch('local_client')
-        self.client = client_patch.start()()
-        self.addCleanup(client_patch.stop)
+        self.logger = self._patch_async('logger')
+        self.client = self._patch_async('local_client').return_value
+        self.container_config = self.client.create_container_config()
 
         payload = DockerPayload(
             image='repo/img',
             tag='1.0',
             env={}
         )
+
         self.runtime = DockerCPURuntime(payload, {}, None)
         self.container_config = self.client.create_container_config()
 
         # We want to make sure that status is being set and read using lock.
-        # RLock enables us to check whether it's owned by the current thread.
-        self.runtime._status_lock = RLock()  # type: ignore
 
         def _getattribute(obj, item):
             if item == "_status" and not self.runtime._status_lock._is_owned():
@@ -84,34 +83,27 @@ class TestDockerCPURuntime(TestCase):
                 self.fail("Status write without lock")
             return object.__setattr__(obj, name, value)
 
-        get_patch = patch_runtime('__getattribute__', _getattribute)
-        get_patch.start()
-        self.addCleanup(get_patch.stop)
-
-        set_patch = patch_runtime('__setattr__', _setattr)
-        set_patch.start()
-        self.addCleanup(set_patch.stop)
-
-        log_warning_patch = patch('logger.warning')
-        log_error_patch = patch('logger.error')
-        log_exception_patch = patch('logger.exception')
-        self.log_warning = log_warning_patch.start()
-        self.log_error = log_error_patch.start()
-        self.log_exception = log_exception_patch.start()
-        self.addCleanup(log_warning_patch.stop)
-        self.addCleanup(log_error_patch.stop)
-        self.addCleanup(log_exception_patch.stop)
+        self._patch_runtime_async('__getattribute__', _getattribute)
+        self._patch_runtime_async('__setattr__', _setattr)
 
     def _generic_test_invalid_status(self, method, valid_statuses):
         def _test(status):
-            with self.runtime._status_lock:
-                self.runtime._status = status
-
+            self.runtime._set_status(status)
             with self.assertRaises(ValueError):
                 method()
 
         for status in set(RuntimeStatus) - valid_statuses:
             _test(status)
+
+    def _patch_async(self, name, *args, **kwargs):
+        patcher = patch(name, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_runtime_async(self, name, *args, **kwargs):
+        patcher = patch_runtime(name, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
 
 
 class TestInspectContainer(TestDockerCPURuntime):
@@ -142,49 +134,59 @@ class TestUpdateStatus(TestDockerCPURuntime):
         self.assertFalse(self.runtime._update_status())
         self.assertEqual(self.runtime.status(), RuntimeStatus.CREATED)
 
-    def _generic_test(self, exp_status, inspect_error=None,
-                      inspect_result=None):
-
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
-
+    def _update_status(self, inspect_error=None, inspect_result=None):
+        self.runtime._set_status(RuntimeStatus.RUNNING)
         with patch_runtime('_inspect_container',
                            side_effect=inspect_error,
                            return_value=inspect_result):
             self.runtime._update_status()
-            self.assertEqual(self.runtime.status(), exp_status)
 
-    def test_docker_api_error(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.FAILURE,
-            inspect_error=APIError("error"))
-        self.log_exception.assert_called_once()
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_docker_api_error(self, stopped, error_occurred):
+        error = APIError("error")
+        self._update_status(inspect_error=error)
+        stopped.assert_not_called()
+        error_occurred.assert_called_once_with(
+            error, "Error inspecting container.")
 
-    def test_container_running(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.RUNNING,
-            inspect_result=("running", 0))
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_container_running(self, stopped, error_occurred):
+        self._update_status(inspect_result=("running", 0))
+        stopped.assert_not_called()
+        error_occurred.assert_not_called()
 
-    def test_container_exited_ok(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.STOPPED,
-            inspect_result=("exited", 0))
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_container_exited_ok(self, stopped, error_occurred):
+        self._update_status(inspect_result=("exited", 0))
+        stopped.assert_called_once()
+        error_occurred.assert_not_called()
 
-    def test_container_exited_error(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.FAILURE,
-            inspect_result=("exited", -1234))
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_container_exited_error(self, stopped, error_occurred):
+        self._update_status(inspect_result=("exited", -1234))
+        stopped.assert_not_called()
+        error_occurred.assert_called_once_with(
+            None, "Container stopped with exit code -1234.")
 
-    def test_container_dead(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.FAILURE,
-            inspect_result=("dead", -1234))
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_container_dead(self, stopped, error_occurred):
+        self._update_status(inspect_result=("dead", -1234))
+        stopped.assert_not_called()
+        error_occurred.assert_called_once_with(
+            None, "Container stopped with exit code -1234.")
 
-    def test_container_unexpected_status(self):
-        self._generic_test(
-            exp_status=RuntimeStatus.FAILURE,
-            inspect_result=("(╯°□°)╯︵ ┻━┻", 0))
-        self.log_error.assert_called_once()
+    @patch_runtime('_error_occurred')
+    @patch_runtime('_stopped')
+    def test_container_unexpected_status(self, stopped, error_occurred):
+        self._update_status(inspect_result=("(╯°□°)╯︵ ┻━┻", 0))
+        stopped.assert_not_called()
+        error_occurred.assert_called_once_with(
+            None, "Unexpected container status: '(╯°□°)╯︵ ┻━┻'.")
 
 
 class TestUpdateStatusLoop(TestDockerCPURuntime):
@@ -203,13 +205,9 @@ class TestUpdateStatusLoop(TestDockerCPURuntime):
     @patch('sleep')
     @patch_runtime('_update_status')
     def test_updated(self, update_status, sleep):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
-
-        def _update_status():
-            with self.runtime._status_lock:
-                self.runtime._status = RuntimeStatus.STOPPED
-        update_status.side_effect = _update_status
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        update_status.side_effect = \
+            lambda: self.runtime._set_status(RuntimeStatus.STOPPED)
 
         self.runtime._update_status_loop()
         update_status.assert_called_once()
@@ -224,39 +222,46 @@ class TestPrepare(TestDockerCPURuntime):
             valid_statuses={RuntimeStatus.CREATED})
 
     def test_create_error(self):
-        self.client.create_container_from_config.side_effect = APIError("error")
+        error = APIError("test")
+        self.client.create_container_from_config.side_effect = error
+        prepared = self._patch_runtime_async('_prepared')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.prepare()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARING)
         deferred = self.assertFailure(deferred, APIError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.assertIsNone(self.runtime._stdin_socket)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
             self.client.attach_socket.assert_not_called()
-            self.log_exception.assert_called_once()
-        deferred.addCallback(_check)
+            prepared.assert_not_called()
+            error_occurred.assert_called_once_with(
+                error, "Creating container failed.")
 
+        deferred.addCallback(_check)
         return deferred
 
     def test_invalid_container_id(self):
         self.client.create_container_from_config.return_value = {"Id": None}
+        prepared = self._patch_runtime_async('_prepared')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.prepare()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARING)
         deferred = self.assertFailure(deferred, AssertionError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.assertIsNone(self.runtime._stdin_socket)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
             self.client.attach_socket.assert_not_called()
-            self.log_exception.assert_called_once()
-        deferred.addCallback(_check)
+            prepared.assert_not_called()
+            error_occurred.assert_called_once_with(
+                ANY, "Creating container failed.")
 
+        deferred.addCallback(_check)
         return deferred
 
     def test_attach_socket_error(self):
@@ -264,25 +269,27 @@ class TestPrepare(TestDockerCPURuntime):
             "Id": "Id",
             "Warnings": None
         }
-        self.client.attach_socket.side_effect = APIError("")
+        error = APIError("test")
+        self.client.attach_socket.side_effect = error
+        prepared = self._patch_runtime_async('_prepared')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.prepare()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARING)
         deferred = self.assertFailure(deferred, APIError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.assertIsNone(self.runtime._stdin_socket)
             self.assertEqual(self.runtime._container_id, "Id")
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
             self.client.attach_socket.assert_called_once_with(
                 "Id", params={"stdin": True, "stream": True})
-            self.log_exception.assert_called_once()
-            self.log_warning.assert_not_called()
+            prepared.assert_not_called()
+            error_occurred.assert_called_once_with(
+                error, "Creating container failed.")
 
         deferred.addCallback(_check)
-
         return deferred
 
     def test_warnings(self):
@@ -290,34 +297,34 @@ class TestPrepare(TestDockerCPURuntime):
             "Id": "Id",
             "Warnings": ["foo", "bar"]
         }
-        input_socket_patch = patch('InputSocket')
-        input_socket_mock = input_socket_patch.start()
-        self.addCleanup(input_socket_patch.stop)
+        input_socket = self._patch_async('InputSocket')
+        prepared = self._patch_runtime_async('_prepared')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.prepare()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARING)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARED)
             self.assertEqual(
                 self.runtime._stdin_socket,
-                input_socket_mock.return_value)
+                input_socket.return_value)
             self.assertEqual(self.runtime._container_id, "Id")
-            input_socket_mock.assert_called_once_with(
+            input_socket.assert_called_once_with(
                 self.client.attach_socket.return_value)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
             self.client.attach_socket.assert_called_once_with(
                 "Id", params={"stdin": True, "stream": True})
-            self.log_exception.assert_not_called()
 
-            warning_calls = self.log_warning.call_args_list
+            warning_calls = self.logger.warning.call_args_list
             self.assertEqual(len(warning_calls), 2)
             self.assertIn("foo", warning_calls[0][0])
             self.assertIn("bar", warning_calls[1][0])
 
-        deferred.addCallback(_check)
+            prepared.assert_called_once()
+            error_occurred.assert_not_called()
 
+        deferred.addCallback(_check)
         return deferred
 
     def test_ok(self):
@@ -325,30 +332,29 @@ class TestPrepare(TestDockerCPURuntime):
             "Id": "Id",
             "Warnings": None
         }
-        input_socket_patch = patch('InputSocket')
-        input_socket_mock = input_socket_patch.start()
-        self.addCleanup(input_socket_patch.stop)
+        input_socket = self._patch_async('InputSocket')
+        prepared = self._patch_runtime_async('_prepared')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.prepare()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARING)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARED)
             self.assertEqual(
                 self.runtime._stdin_socket,
-                input_socket_mock.return_value)
+                input_socket.return_value)
             self.assertEqual(self.runtime._container_id, "Id")
-            input_socket_mock.assert_called_once_with(
+            input_socket.assert_called_once_with(
                 self.client.attach_socket.return_value)
             self.client.create_container_from_config.assert_called_once_with(
                 self.container_config)
             self.client.attach_socket.assert_called_once_with(
                 "Id", params={"stdin": True, "stream": True})
-            self.log_exception.assert_not_called()
-            self.log_warning.assert_not_called()
+            self.logger.warning.assert_not_called()
+            prepared.assert_called_once()
+            error_occurred.assert_not_called()
 
         deferred.addCallback(_check)
-
         return deferred
 
 
@@ -360,62 +366,45 @@ class TestCleanup(TestDockerCPURuntime):
             valid_statuses={RuntimeStatus.STOPPED, RuntimeStatus.FAILURE})
 
     def test_client_error(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.STOPPED
+        self.runtime._set_status(RuntimeStatus.STOPPED)
         self.runtime._container_id = "Id"
         self.runtime._stdin_socket = Mock(spec=InputSocket)
-        self.client.remove_container.side_effect = APIError("error")
+        error = APIError("test")
+        self.client.remove_container.side_effect = error
+        torn_down = self._patch_runtime_async('_torn_down')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.cleanup()
         self.assertEqual(self.runtime.status(), RuntimeStatus.CLEANING_UP)
         deferred = self.assertFailure(deferred, APIError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.remove_container.assert_called_once_with("Id")
             self.runtime._stdin_socket.close.assert_called_once()
-            self.log_exception.assert_called_once()
+            torn_down.assert_not_called()
+            error_occurred.assert_called_once_with(
+                error, "Failed to remove container 'Id'.")
 
         deferred.addCallback(_check)
-
-        return deferred
-
-    def test_no_socket(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.STOPPED
-        self.runtime._container_id = "Id"
-        self.runtime._close_stdin = Mock()
-
-        deferred = self.runtime.cleanup()
-        self.assertEqual(self.runtime.status(), RuntimeStatus.CLEANING_UP)
-
-        def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.TORN_DOWN)
-            self.client.remove_container.assert_called_once_with("Id")
-            self.runtime._close_stdin.assert_not_called()
-            self.log_exception.assert_not_called()
-
-        deferred.addCallback(_check)
-
         return deferred
 
     def test_ok(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.STOPPED
+        self.runtime._set_status(RuntimeStatus.STOPPED)
         self.runtime._container_id = "Id"
         self.runtime._stdin_socket = Mock(spec=InputSocket)
+        torn_down = self._patch_runtime_async('_torn_down')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.cleanup()
         self.assertEqual(self.runtime.status(), RuntimeStatus.CLEANING_UP)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.TORN_DOWN)
             self.client.remove_container.assert_called_once_with("Id")
             self.runtime._stdin_socket.close.assert_called_once()
-            self.log_exception.assert_not_called()
+            torn_down.assert_called_once()
+            error_occurred.assert_not_called()
 
         deferred.addCallback(_check)
-
         return deferred
 
 
@@ -423,9 +412,8 @@ class TestStart(TestDockerCPURuntime):
 
     def setUp(self):
         super().setUp()
-        loop_patch = patch_runtime('_update_status_loop')
-        self.update_status_loop = loop_patch.start()
-        self.addCleanup(loop_patch.stop)
+        self.update_status_loop = \
+            self._patch_runtime_async('_update_status_loop')
 
     def test_invalid_status(self):
         self._generic_test_invalid_status(
@@ -433,38 +421,41 @@ class TestStart(TestDockerCPURuntime):
             valid_statuses={RuntimeStatus.PREPARED})
 
     def test_client_error(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.PREPARED
+        self.runtime._set_status(RuntimeStatus.PREPARED)
         self.runtime._container_id = "Id"
-        self.client.start.side_effect = APIError("error")
+        error = APIError("test")
+        self.client.start.side_effect = error
+        started = self._patch_runtime_async('_started')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.start()
         self.assertEqual(self.runtime.status(), RuntimeStatus.STARTING)
         deferred = self.assertFailure(deferred, APIError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.assertIsNone(self.runtime._status_update_thread)
             self.client.start.assert_called_once_with("Id")
-            self.log_exception.assert_called_once()
             self.update_status_loop.assert_not_called()
+            started.assert_not_called()
+            error_occurred.assert_called_once_with(
+                error, "Starting container 'Id' failed.")
 
         deferred.addCallback(_check)
-
         return deferred
 
     def test_ok(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.PREPARED
+        self.runtime._set_status(RuntimeStatus.PREPARED)
         self.runtime._container_id = "Id"
+        started = self._patch_runtime_async('_started')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.start()
         self.assertEqual(self.runtime.status(), RuntimeStatus.STARTING)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
             self.client.start.assert_called_once_with("Id")
-            self.log_exception.assert_not_called()
+            started.assert_called_once()
+            error_occurred.assert_not_called()
 
             self.assertIsInstance(self.runtime._status_update_thread, Thread)
             self.runtime._status_update_thread.join(0.1)
@@ -483,70 +474,71 @@ class TestStop(TestDockerCPURuntime):
             valid_statuses={RuntimeStatus.RUNNING})
 
     def test_client_error(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
+        self.runtime._set_status(RuntimeStatus.RUNNING)
         self.runtime._container_id = "Id"
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = False
-        self.client.stop.side_effect = APIError("error")
+        error = APIError("test")
+        self.client.stop.side_effect = error
+        stopped = self._patch_runtime_async('_stopped')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.assertFailure(self.runtime.stop(), APIError)
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.FAILURE)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
-            self.log_exception.assert_called_once()
-            self.log_warning.assert_not_called()
+            stopped.assert_not_called()
+            error_occurred.assert_called_once_with(
+                error, "Stopping container 'Id' failed.")
 
         deferred.addCallback(_check)
-
         return deferred
 
     def test_failed_to_join_status_update_thread(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
+        self.runtime._set_status(RuntimeStatus.RUNNING)
         self.runtime._container_id = "Id"
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = True
+        stopped = self._patch_runtime_async('_stopped')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.stop()
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.STOPPED)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
-            self.log_exception.assert_not_called()
-            self.log_warning.assert_called_once()
+            self.logger.warning.assert_called_once()
+            stopped.assert_called_once()
+            error_occurred.assert_not_called()
 
         deferred.addCallback(_check)
-
         return deferred
 
     def test_ok(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
+        self.runtime._set_status(RuntimeStatus.RUNNING)
         self.runtime._container_id = "Id"
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = False
+        stopped = self._patch_runtime_async('_stopped')
+        error_occurred = self._patch_runtime_async('_error_occurred')
 
         deferred = self.runtime.stop()
 
         def _check(_):
-            self.assertEqual(self.runtime.status(), RuntimeStatus.STOPPED)
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
-            self.log_exception.assert_not_called()
-            self.log_warning.assert_not_called()
+            self.logger.warning.assert_not_called()
+            stopped.assert_called_once()
+            error_occurred.assert_not_called()
 
         deferred.addCallback(_check)
-
         return deferred
 
 
@@ -562,12 +554,12 @@ class TestStdin(TestDockerCPURuntime):
         )
 
     def test_ok(self):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
+        self.runtime._set_status(RuntimeStatus.RUNNING)
         sock = Mock(spec=InputSocket)
         self.runtime._stdin_socket = sock
 
         result = self.runtime.stdin(encoding="utf-8")
+
         self.assertIsInstance(result, DockerInput)
         self.assertEqual(result._sock, sock)
         self.assertEqual(result._encoding, "utf-8")
@@ -618,10 +610,10 @@ class TestGetOutput(TestDockerCPURuntime):
     @patch_runtime('_update_status')
     @patch_runtime('_get_raw_output')
     def test_running(self, get_raw_output, update_status):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
+        self.runtime._set_status(RuntimeStatus.RUNNING)
 
         result = self.runtime._get_output(stdout=True, encoding="utf-8")
+
         get_raw_output.assert_called_once_with(stdout=True, stream=True)
         update_status.assert_called_once()
         self.assertIsInstance(result, DockerOutput)
@@ -631,10 +623,10 @@ class TestGetOutput(TestDockerCPURuntime):
     @patch_runtime('_update_status')
     @patch_runtime('_get_raw_output')
     def test_stopped(self, get_raw_output, update_status):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.STOPPED
+        self.runtime._set_status(RuntimeStatus.STOPPED)
 
         result = self.runtime._get_output(stdout=True, encoding="utf-8")
+
         get_raw_output.assert_called_once_with(stdout=True, stream=False)
         update_status.assert_called_once()
         self.assertIsInstance(result, DockerOutput)
@@ -644,17 +636,14 @@ class TestGetOutput(TestDockerCPURuntime):
     @patch_runtime('_update_status')
     @patch_runtime('_get_raw_output')
     def test_stopped_in_the_meantime(self, get_raw_output, update_status):
-        with self.runtime._status_lock:
-            self.runtime._status = RuntimeStatus.RUNNING
-
-        def _update_status():
-            with self.runtime._status_lock:
-                self.runtime._status = RuntimeStatus.STOPPED
-        update_status.side_effect = _update_status
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        update_status.side_effect = \
+            lambda: self.runtime._set_status(RuntimeStatus.STOPPED)
         raw_output = Mock()
         get_raw_output.side_effect = [None, raw_output]
 
         result = self.runtime._get_output(stdout=True, encoding="utf-8")
+
         get_raw_output.assert_has_calls([
             call(stdout=True, stream=True),
             call(stdout=True, stream=False)])
@@ -679,11 +668,14 @@ class TestGetRawOutput(TestDockerCPURuntime):
         with self.assertRaises(AssertionError):
             self.runtime._get_raw_output(stdout=True)
 
-    def test_client_error(self):
-        self.client.attach.side_effect = APIError("")
+    @patch_runtime('_error_occurred')
+    def test_client_error(self, error_occurred):
+        error = APIError("test")
+        self.client.attach.side_effect = error
         result = self.runtime._get_raw_output(stdout=True)
         self.assertEqual(result, [])
-        self.log_exception.assert_called_once()
+        error_occurred.assert_called_once_with(
+            error, "Error attaching to container's output.", set_status=False)
 
     def test_stdout_stream(self):
         result = self.runtime._get_raw_output(stdout=True, stream=True)
