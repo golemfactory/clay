@@ -850,24 +850,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         send_hello = False
 
-        if self.key_id is None:
-            self.key_id = msg.node_info.key
-            try:
-                existing_session = self.task_server.task_sessions[self.key_id]
-            except KeyError:
-                self.task_server.task_sessions[self.key_id] = self
-                self.task_server.peer_sessions[self.key_id] = self
-            else:
-                if (existing_session is not None)\
-                        and existing_session is not self:
-                    node_name = getattr(msg.node_info, 'node_name', '')
-                    logger.debug(
-                        'Duplicated session. Dropping. node=%s',
-                        common.node_info_str(node_name, self.key_id),
-                    )
-                    self.dropped()
-                    return
+        try:
+            existing_session = self.task_server.task_sessions[self.key_id]
+        except KeyError:
             send_hello = True
+            self.task_server.task_sessions[self.key_id] = self
+            self.task_server.peer_sessions[self.key_id] = self
+        else:
+            if (existing_session is not None)\
+                    and existing_session is not self:
+                node_name = getattr(msg.node_info, 'node_name', '')
+                logger.debug(
+                    'Duplicated session. Dropping. node=%s',
+                    common.node_info_str(node_name, self.key_id),
+                )
+                self.dropped()
+                return
 
         if not KeysAuth.is_pubkey_difficult(
                 self.key_id,

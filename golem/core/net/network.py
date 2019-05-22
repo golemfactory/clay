@@ -198,6 +198,7 @@ class ProxyNetwork(Network):
             else:
                 listen_info.failure_callback(f'Network error: {exc}')
         else:
+            self._priv_key = None
             self._listen_lock = listen_info
             self._reactor.callLater(LISTEN_TIMEOUT, self._listen_error,
                                     'Timeout')
@@ -272,6 +273,7 @@ class ProxyNetwork(Network):
                                peer_id=event.peer_id)
             c = factory.buildProtocol(address)
             c.makeConnection(t)
+            c.session.key_id = key_id
             return c
 
         if connect_info:
@@ -281,7 +283,6 @@ class ProxyNetwork(Network):
 
             if connect_info.protocol_id in connections:
                 connection = connections[connect_info.protocol_id]
-                connection.session.key_id = key_id
                 connect_info.established_callback(connection.session)
             else:
                 logger.warning('_handle_connected: Unknown protocol id: %r',
