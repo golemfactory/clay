@@ -111,20 +111,25 @@ class TranscodingTask(CoreTask):
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
-        validation.validate_video(video_metadata, input_file)
+        try:
+            validation.validate_video(video_metadata)
 
-        src_params = meta.create_params(
-            meta.get_format(video_metadata),
-            meta.get_resolution(video_metadata),
-            meta.get_video_codec(video_metadata),
-            meta.get_audio_codec(video_metadata))
+            src_params = meta.create_params(
+                meta.get_format(video_metadata),
+                meta.get_resolution(video_metadata),
+                meta.get_video_codec(video_metadata),
+                meta.get_audio_codec(video_metadata))
 
-        # Get parameters for example subtasks. All subtasks should have
-        # the same conversion parameters which we check here, so it doesn't
-        # matter which we choose.
-        dst_params = self._get_extra_data(0)["targs"]
+            # Get parameters for example subtasks. All subtasks should have
+            # the same conversion parameters which we check here, so it doesn't
+            # matter which we choose.
+            dst_params = self._get_extra_data(0)["targs"]
 
-        validation.validate_transcoding_params(src_params, dst_params)
+            validation.validate_transcoding_params(src_params, dst_params)
+
+        except validation.InvalidVideo as e:
+            logger.error(e.response_message)
+            raise e
 
 
     def accept_results(self, subtask_id, result_files):
