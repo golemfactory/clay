@@ -99,11 +99,15 @@ class NodeTestPlaybook:
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
             print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            # FIXME: Remove this sleep when golem handles it ( #4221 )
+            if self.has_requested_eth:
+                time.sleep(30)
             self.next()
 
         else:
             print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            self.has_requested_eth = True
             time.sleep(15)
 
     def step_wait_for_gnt(self, node_id: NodeId):
@@ -505,6 +509,7 @@ class NodeTestPlaybook:
 
         self.reconnect_attempts_left = 7
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
+        self.has_requested_eth: bool = False
         self.retry_counter = 0
 
         self.start_nodes()
