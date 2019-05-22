@@ -1,4 +1,6 @@
 import copy
+import typing
+
 
 _TASK_SETTINGS = {
     'default': {
@@ -107,5 +109,5 @@ _TASK_SETTINGS = {
 }
 
 
-def get_settings(key: str):
+def get_settings(key: str) -> typing.Dict[str, typing.Any]:
     return copy.deepcopy(_TASK_SETTINGS[key])

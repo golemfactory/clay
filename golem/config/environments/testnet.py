@@ -44,7 +44,7 @@ class EthereumConfig:
         contracts.Faucet: '0x77b6145E853dfA80E8755a4e824c4F510ac6692e',
     }
 
-    deposit_contract_address = CONCENT_CHOICES[  # type: ignore  #wth mypy?
+    deposit_contract_address = CONCENT_CHOICES[
         os.environ[CONCENT_ENVIRONMENT_VARIABLE]
     ].get('deposit_contract_address')
 

@@ -255,7 +255,7 @@ class Task(abc.ABC):
         pass  # Implement in derived class
 
     def get_resources(self) -> list:
-        """ Return list of files that are need to compute this task."""
+        """ Return list of files that are needed to compute this task."""
         return []
 
     @abc.abstractmethod
@@ -347,3 +347,9 @@ class Task(abc.ABC):
     # pylint: disable=unused-argument, no-self-use
     def get_finishing_subtasks(self, node_id: str) -> List[dict]:
         return []
+
+    def external_verify_subtask(self, subtask_id, verdict):
+        """
+        Verify subtask results
+        """
+        return None

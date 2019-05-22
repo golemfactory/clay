@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from random import Random
 import time
 import unittest.mock as mock

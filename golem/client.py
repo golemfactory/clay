@@ -23,7 +23,6 @@ from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
-    datetime_to_timestamp_utc,
     get_timestamp_utc,
     node_info_str,
     string_to_timeout,
@@ -33,7 +32,7 @@ from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService
+from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -451,7 +450,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
-            dir_manager=dir_manager,
             client=self
         )
 
@@ -877,6 +875,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return subtasks
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
+            return None
 
     @rpc_utils.expose('comp.task.subtask')
     def get_subtask(self, subtask_id: str) \
@@ -918,13 +917,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             raise ValueError("Incorrect number of days: {}".format(last_days))
         if last_days > 0:
             return self.task_archiver.get_unsupport_reasons(last_days)
-        else:
-            return self.task_server.task_keeper.get_unsupport_reasons()
-
-    @rpc_utils.expose('pay.ident')
-    def get_payment_address(self):
-        address = self.transaction_system.get_payment_address()
-        return str(address) if address else None
+        return self.task_server.task_keeper.get_unsupport_reasons()
 
     def get_comp_stat(self, name):
         if self.task_server and self.task_server.task_computer:
@@ -982,65 +975,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'status': status.value,
             'timelock': str(timelock),
         }
-
-    @rpc_utils.expose('pay.gas_price')
-    def get_gas_price(self) -> Dict[str, str]:
-        return {
-            "current_gas_price": str(self.transaction_system.gas_price),
-            "gas_price_limit": str(self.transaction_system.gas_price_limit)
-        }
-
-    @rpc_utils.expose('pay.payments')
-    def get_payments_list(
-            self,
-            num: Optional[int] = None,
-            last_seconds: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
-        interval = None
-        if last_seconds is not None:
-            interval = timedelta(seconds=last_seconds)
-        return self.transaction_system.get_payments_list(num, interval)
-
-    @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self) -> List[Dict[str, Any]]:
-        incomes = self.transaction_system.get_incomes_list()
-
-        def item(o):
-            status = "confirmed" if o.transaction else "awaiting"
-
-            return {
-                "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
-                "value": to_unicode(o.value),
-                "status": to_unicode(status),
-                "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp_utc(o.created_date),
-                "modified": datetime_to_timestamp_utc(o.modified_date)
-            }
-
-        return [item(income) for income in incomes]
-
-    @rpc_utils.expose('pay.deposit_payments')
-    @classmethod
-    def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[Dict[str, Any]]:
-        deposit_payments = TransactionSystem.get_deposit_payments_list(
-            limit,
-            offset,
-        )
-        result = []
-        for dpayment in deposit_payments:
-            entry = {}
-            entry['value'] = to_unicode(dpayment.value)
-            entry['status'] = to_unicode(dpayment.status.name)
-            entry['fee'] = to_unicode(dpayment.fee)
-            entry['transaction'] = to_unicode(dpayment.tx)
-            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
-            entry['modified'] = datetime_to_timestamp_utc(
-                dpayment.modified_date,
-            )
-            result.append(entry)
-        return result
 
     @rpc_utils.expose('pay.withdraw.gas_cost')
     def get_withdraw_gas_cost(
@@ -1130,8 +1064,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
-        if state:
-            return DictSerializer.dump(state)
+        return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.resource_server.download_resources(
@@ -1201,7 +1134,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server is None:
             return {}
         headers = {}
-        for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
+        for key, header in\
+                list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
         return headers
 
@@ -1231,14 +1165,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.environment.enable')
     def enable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, True)
+            return self.environments_manager.change_accept_tasks(env_id, True)
         except KeyError:
             return "No such environment"
 
     @rpc_utils.expose('comp.environment.disable')
     def disable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, False)
+            return self.environments_manager.change_accept_tasks(env_id, False)
         except KeyError:
             return "No such environment"
 
@@ -1389,6 +1323,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
+        return None
 
     @staticmethod
     def enable_talkback(value):
@@ -1415,10 +1350,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
-    def __init__(self, client: Client):
+    def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts = {}
+        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)
