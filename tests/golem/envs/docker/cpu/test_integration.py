@@ -29,7 +29,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         # Add environment cleanup to clean it if test goes wrong
         def _clean_up_env():
             if env.status() != EnvStatus.DISABLED:
-                env.cleanup()
+                env.clean_up()
         self.addCleanup(_clean_up_env)
 
         # Download image
@@ -55,7 +55,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         # Add runtime cleanup to clean it if test goes wrong
         def _clean_up_runtime():
             if runtime.status() != RuntimeStatus.TORN_DOWN:
-                runtime.cleanup()
+                runtime.clean_up()
         self.addCleanup(_clean_up_runtime)
 
         # Start container
@@ -75,9 +75,9 @@ class TestIntegration(TestCase, DatabaseFixture):
         while runtime.status() == RuntimeStatus.RUNNING:
             time.sleep(1)
         self.assertEqual(runtime.status(), RuntimeStatus.STOPPED)
-        yield runtime.cleanup()
+        yield runtime.clean_up()
         self.assertEqual(runtime.status(), RuntimeStatus.TORN_DOWN)
 
         # Clean up the environment
-        yield env.cleanup()
+        yield env.clean_up()
         self.assertEqual(env.status(), EnvStatus.DISABLED)

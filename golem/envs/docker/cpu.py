@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
-from subprocess import SubprocessError
 from threading import Thread, Lock
 from time import sleep
 from typing import Optional, Any, Dict, List, Type, ClassVar, \
@@ -15,7 +14,6 @@ from urllib3.contrib.pyopenssl import WrappedSocket
 from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.docker.client import local_client
-from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor import Hypervisor
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
@@ -241,13 +239,13 @@ class DockerCPURuntime(Runtime):
             "Creating container failed."))
         return deferred_prepare
 
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         self._change_status(
             from_status=[RuntimeStatus.FAILURE, RuntimeStatus.STOPPED],
             to_status=RuntimeStatus.CLEANING_UP)
         logger.info("Cleaning up runtime...")
 
-        def _cleanup():
+        def _clean_up():
             client = local_client()
             client.remove_container(self._container_id)
 
@@ -257,7 +255,7 @@ class DockerCPURuntime(Runtime):
                 self._stdin_socket.close()
             return res
 
-        deferred_cleanup = deferToThread(_cleanup)
+        deferred_cleanup = deferToThread(_clean_up)
         deferred_cleanup.addCallback(self._torn_down)
         deferred_cleanup.addErrback(self._error_callback(
             f"Failed to remove container '{self._container_id}'."))
@@ -403,8 +401,6 @@ class DockerCPUEnvironment(Environment):
     ENV_ID: ClassVar[EnvId] = 'docker_cpu'
     ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
 
-    SUPPORTED_DOCKER_VERSIONS: ClassVar[List[str]] = ['18.06.1-ce']
-
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
@@ -438,29 +434,10 @@ class DockerCPUEnvironment(Environment):
     @classmethod
     def supported(cls) -> EnvSupportStatus:
         logger.info('Checking environment support status...')
-        if not DockerCommandHandler.docker_available():
-            return EnvSupportStatus(False, "Docker executable not found")
-        if not cls._check_docker_version():
-            return EnvSupportStatus(False, "Wrong docker version")
         if cls._get_hypervisor_class() is None:
             return EnvSupportStatus(False, "No supported hypervisor found")
         logger.info('Environment supported.')
         return EnvSupportStatus(True)
-
-    @classmethod
-    def _check_docker_version(cls) -> bool:
-        logger.info('Checking docker version...')
-        try:
-            version_string = DockerCommandHandler.run("version")
-        except SubprocessError:
-            logger.exception('Checking docker version failed.')
-            return False
-        if version_string is None:
-            logger.error('Docker version returned no output.')
-            return False
-        version = version_string.lstrip("Docker version ").split(",")[0]
-        logger.info('Found docker version: %s', version)
-        return version in cls.SUPPORTED_DOCKER_VERSIONS
 
     @classmethod
     def _get_hypervisor_class(cls) -> Optional[Type[Hypervisor]]:
@@ -511,7 +488,7 @@ class DockerCPUEnvironment(Environment):
 
         return deferToThread(_prepare)
 
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         if self._status not in [EnvStatus.ENABLED, EnvStatus.ERROR]:
             raise ValueError(f"Cannot clean up because environment is in "
                              f"invalid state: '{self._status}'")

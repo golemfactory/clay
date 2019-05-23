@@ -270,7 +270,7 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         """ Clean up after the Runtime has finished running. Assumes current
             status is 'STOPPED' or 'FAILURE'. In the latter case it is not
             guaranteed that the cleanup will be successful. """
@@ -445,7 +445,7 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def cleanup(self) -> Deferred:
+    def clean_up(self) -> Deferred:
         """ Deactivate the Environment. Assumes current status is 'ENABLED' or
             'ERROR'. """
         raise NotImplementedError

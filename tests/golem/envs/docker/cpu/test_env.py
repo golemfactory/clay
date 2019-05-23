@@ -54,60 +54,13 @@ def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
 
 class TestSupported(TestCase):
 
-    @patch_handler('docker_available', return_value=False)
-    def test_docker_unavailable(self, *_):
-        self.assertFalse(DockerCPUEnvironment.supported().supported)
-
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=False)
-    def test_wrong_docker_version(self, *_):
-        self.assertFalse(DockerCPUEnvironment.supported().supported)
-
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=True)
     @patch_env('_get_hypervisor_class', return_value=None)
     def test_no_hypervisor(self, *_):
         self.assertFalse(DockerCPUEnvironment.supported().supported)
 
-    @patch_handler('docker_available', return_value=True)
-    @patch_env('_check_docker_version', return_value=True)
     @patch_env('_get_hypervisor_class')
     def test_ok(self, *_):
         self.assertTrue(DockerCPUEnvironment.supported().supported)
-
-
-class TestCheckDockerVersion(TestCase):
-
-    @patch('logger')
-    @patch_handler('run', side_effect=SubprocessError)
-    def test_command_error(self, run, logger):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-        logger.exception.assert_called_once()
-
-    @patch('logger')
-    @patch_handler('run', return_value=None)
-    def test_no_version(self, run, logger):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-        logger.error.assert_called_once()
-
-    @patch_handler('run', return_value='(╯°□°)╯︵ ┻━┻')
-    def test_invalid_version_string(self, run):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-
-    @patch_env('SUPPORTED_DOCKER_VERSIONS', ['1.2.1'])
-    @patch_handler('run', return_value='Docker version 1.2.3, build abcdef\n')
-    def test_unsupported_version(self, run, *_):
-        self.assertFalse(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
-
-    @patch_env('SUPPORTED_DOCKER_VERSIONS', ['1.2.1', '1.2.3'])
-    @patch_handler('run', return_value='Docker version 1.2.3, build abcdef\n')
-    def test_supported_version(self, run, *_):
-        self.assertTrue(DockerCPUEnvironment._check_docker_version())
-        run.assert_called_with('version')
 
 
 class TestGetHypervisorClass(TestCase):
@@ -263,17 +216,17 @@ class TestCleanup(TestDockerCPUEnv):
 
     def test_disabled_status(self):
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_preparing_status(self):
         self.env._status = EnvStatus.PREPARING
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_cleaning_up_status(self):
         self.env._status = EnvStatus.CLEANING_UP
         with self.assertRaises(ValueError):
-            self.env.cleanup()
+            self.env.clean_up()
 
     def test_hypervisor_quit_error(self):
         self.env._status = EnvStatus.ENABLED
@@ -281,7 +234,7 @@ class TestCleanup(TestDockerCPUEnv):
         self.hypervisor.quit.side_effect = error
         error_occurred = self._patch_env_async('_error_occurred')
 
-        deferred = self.env.cleanup()
+        deferred = self.env.clean_up()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
         deferred = self.assertFailure(deferred, OSError)
 
@@ -294,7 +247,7 @@ class TestCleanup(TestDockerCPUEnv):
         self.env._status = EnvStatus.ENABLED
         env_disabled = self._patch_env_async('_env_disabled')
 
-        deferred = self.env.cleanup()
+        deferred = self.env.clean_up()
         self.assertEqual(self.env.status(), EnvStatus.CLEANING_UP)
 
         def _check(_):
