@@ -35,7 +35,7 @@ class PaymentProcessorBase(DatabaseFixture):
     def setUp(self):
         DatabaseFixture.setUp(self)
         self.addr = encode_hex(privtoaddr(urandom(32)))
-        self.sci = mock.Mock()
+        self.sci = mock.Mock(spec=golem_sci.SmartContractsInterface)
         self.sci.GAS_PRICE = 20
         self.sci.GAS_PER_PAYMENT = 300
         self.sci.GAS_BATCH_PAYMENT_BASE = 30
@@ -44,9 +44,9 @@ class PaymentProcessorBase(DatabaseFixture):
         self.sci.get_eth_address.return_value = self.addr
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
         self.sci.get_gate_address.return_value = None
-        latest_block = mock.Mock()
+        latest_block = mock.Mock(golem_sci.Block)
         latest_block.gas_limit = 10 ** 10
-        self.sci.get_latest_block.return_value = latest_block
+        self.sci.get_latest_confirmed_block.return_value = latest_block
         self.tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = self.tx_hash
 
@@ -158,7 +158,8 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
 
         tx_block_number = 1337
         tx_timestamp = 1541766000.5
-        self.sci.get_block_number.return_value = tx_block_number
+        self.sci.get_latest_confirmed_block_number.return_value = \
+            tx_block_number
         self.sci.get_block_by_number.return_value = mock.Mock(
             timestamp=tx_timestamp)
         receipt = TransactionReceipt({
@@ -432,7 +433,7 @@ class InteractionWithSmartContractInterfaceTest(PaymentProcessorBase):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
-        self.sci.get_latest_block.return_value.gas_limit = \
+        self.sci.get_latest_confirmed_block.return_value.gas_limit = \
             (self.sci.GAS_BATCH_PAYMENT_BASE + self.sci.GAS_PER_PAYMENT) /\
             self.pp.BLOCK_GAS_LIMIT_RATIO
         self.pp.CLOSURE_TIME_DELAY = 0
