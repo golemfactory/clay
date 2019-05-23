@@ -17,6 +17,9 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.task.timer import ProviderTimer
@@ -67,9 +70,14 @@ class TaskComputer(object):
 
         self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
-            self.docker_manager.check_environment()
-
+            self.docker_manager.check_environment()  # pylint: disable=no-member
         self.use_docker_manager = use_docker_manager
+
+        os.makedirs(self.dir_manager.root_path, exist_ok=True)
+        self.docker_cpu_env = NonHypervisedDockerCPUEnvironment(
+            DockerCPUConfig(work_dir=Path(self.dir_manager.root_path)))
+        sync_wait(self.docker_cpu_env.prepare())
+
         run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
         deferred = self.change_config(
             task_server.config_desc, in_background=False,
@@ -243,8 +251,12 @@ class TaskComputer(object):
 
         return task_header.environment
 
-    def change_config(self, config_desc, in_background=True,
-                      run_benchmarks=False):
+    def change_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            in_background: bool = True,
+            run_benchmarks: bool = False
+    ) -> Optional[Deferred]:
         self.dir_manager = DirManager(
             self.task_server.get_task_computer_root())
         self.task_request_frequency = config_desc.task_request_interval
@@ -271,6 +283,18 @@ class TaskComputer(object):
         dm = self.docker_manager
         assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
+
+        sync_wait(self.docker_cpu_env.clean_up())
+        self.docker_cpu_env.update_config(DockerCPUConfig(
+            work_dir=work_dir,
+            cpu_count=config_desc.num_cores,
+            memory_mb=scale_memory(
+                config_desc.max_memory_size,
+                unit=MemSize.kibi,
+                to_unit=MemSize.mebi
+            )
+        ))
+        sync_wait(self.docker_cpu_env.prepare())
 
         deferred = Deferred()
         if not dm.hypervisor and run_benchmarks:
