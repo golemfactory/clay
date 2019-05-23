@@ -85,10 +85,12 @@ class NodeTestPlaybook:
             self._success()
             return
         self.current_step += 1
+        self.retry_counter = 0
 
     def previous(self):
         assert (self.current_step > 0), "Cannot move back past step 0"
         self.current_step -= 1
+        self.retry_counter = 0
 
     def _wait_gnt_eth(self, node_id: NodeId, result):
         gnt_balance = helpers.to_ether(result.get('gnt'))
@@ -446,6 +448,9 @@ class NodeTestPlaybook:
                 self.fail("A node exited abnormally.")
 
         try:
+            self.retry_counter += 1
+            if self.retry_counter >= 100:
+                raise Exception("Step tried 100 times, failing")
             method = self.current_step_method
             return method(self)
         except Exception as e:  # noqa pylint:disable=too-broad-exception
@@ -500,6 +505,7 @@ class NodeTestPlaybook:
 
         self.reconnect_attempts_left = 7
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
+        self.retry_counter = 0
 
         self.start_nodes()
         self.started = True
