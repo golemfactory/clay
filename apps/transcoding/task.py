@@ -213,14 +213,21 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             self.subtasks_given[sid] = subtask
 
             return Task.ExtraData(ctd=self._get_task_computing_definition(
-                sid, transcoding_params, perf_index, resources=list(self.chunks[subtask_num])))
+                sid,
+                transcoding_params,
+                perf_index,
+                resources=list(self.chunks[subtask_num])))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
         # TODO
         pass
 
-    def _get_task_computing_definition(self, sid, transcoding_params, perf_idx, resources):
+    def _get_task_computing_definition(self,
+                                       sid,
+                                       transcoding_params,
+                                       perf_idx,
+                                       resources):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = sid
