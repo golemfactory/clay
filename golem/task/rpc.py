@@ -300,7 +300,7 @@ def add_resources(client, resources, res_id, timeout):
 
 
 @defer.inlineCallbacks
-def _inform_subsystems(client, task):
+def _setup_task_resources(client, task):
     task_id = task.header.task_id
 
     if client.config_desc.net_masking_enabled:
@@ -359,7 +359,7 @@ def enqueue_new_task(client, task, force=False) \
     )
     logger.info('Enqueue new task %r', task)
 
-    resource_server_result = yield _inform_subsystems(
+    resource_server_result = yield _setup_task_resources(
         client=client,
         task=task,
     )
