@@ -311,7 +311,7 @@ class NodeTestPlaybook:
             unpaid = self.subtasks - payments
             if unpaid:
                 print("Found subtasks with no matching payments: %s" % unpaid)
-                self.fail()
+                time.sleep(3)
                 return
 
             print("All subtasks accounted for.")
