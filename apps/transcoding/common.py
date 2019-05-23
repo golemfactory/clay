@@ -1,8 +1,5 @@
 import logging
-from enum import Enum
 from typing import Type
-
-from golem.core.common import HandleValueError
 
 logger = logging.getLogger(__name__)
 
