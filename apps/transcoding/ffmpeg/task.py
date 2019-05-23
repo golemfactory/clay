@@ -1,6 +1,5 @@
 import logging
 import os
-import pathlib
 
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
@@ -42,10 +41,9 @@ class ffmpegTask(TranscodingTask):
         filename = os.path.splitext(os.path.basename(  # TODO: we trust foreign filename
             self.chunks[subtask_num][1]))[0]
 
-        output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
-                                                       filename + '_TC'))
-        output_stream_path = str(output_stream_path.with_suffix(
-            '.{}'.format('m3u8')))
+        output_stream = os.path.join(
+            DockerJob.OUTPUT_DIR,
+            filename + '_TC.m3u8')
 
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
@@ -66,7 +64,7 @@ class ffmpegTask(TranscodingTask):
                 'frame_rate': video_params.frame_rate,
                 'format': transcoding_options.output_container.value
             },
-            'output_stream': output_stream_path,
+            'output_stream': output_stream,
             'use_playlist': transcoding_options.use_playlist,
             'command': Commands.TRANSCODE.value[0],
             'entrypoint': FFMPEG_ENTRYPOINT
