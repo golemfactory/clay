@@ -56,10 +56,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         self.tt = ffmpegTaskTypeInfo()
 
     @classmethod
-    def _create_task_def_for_transcoding(
+    def _create_task_def_for_transcoding( # pylint: disable=too-many-arguments
             cls,
             resource_stream,
             result_file,
+            container,
             video_options=None,
             subtasks_count=2,
     ):
@@ -74,7 +75,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
-                'container': os.path.splitext(result_file)[1][1:]
+                'container': container,
             }
         }
 
@@ -186,6 +187,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -204,6 +206,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -226,6 +229,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -244,6 +248,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -260,6 +265,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'abcd',
                 'resolution': [320, 240],
