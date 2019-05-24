@@ -3,7 +3,7 @@ import logging
 import os
 from shutil import move
 from threading import Lock
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional
 
 import golem_messages.message
 
@@ -29,14 +29,18 @@ logger = logging.getLogger(__name__)
 
 class TranscodingTaskOptions(Options):
     class AudioParams:
-        def __init__(self, codec: AudioCodec = None, bitrate: str = None):
+        def __init__(self,
+                     codec: Optional[AudioCodec] = None,
+                     bitrate: Optional[str] = None) -> None:
             self.codec = codec
             self.bitrate = bitrate
 
     class VideoParams:
-        def __init__(self, codec: VideoCodec = None, bitrate: str = None,
-                     frame_rate: int = None,
-                     resolution: Tuple[int, int] = None):
+        def __init__(self,
+                     codec: Optional[VideoCodec] = None,
+                     bitrate: Optional[str] = None,
+                     frame_rate: Optional[int] = None,
+                     resolution: Optional[Tuple[int, int]] = None) -> None:
             self.codec = codec
             self.bitrate = bitrate
             self.frame_rate = frame_rate
@@ -57,14 +61,15 @@ class TranscodingTaskDefinition(TaskDefinition):
         self.options = TranscodingTaskOptions()
 
 
-class TranscodingTask(CoreTask):
-    def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs):
+class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
+    def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs) \
+            -> None:
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
         self.lock = Lock()
-        self.chunks = list()
-        self.collected_files = list()
+        self.chunks: List[str] = list()
+        self.collected_files: List[str] = list()
         self.task_dir = ""
 
     def __getstate__(self):
@@ -82,7 +87,7 @@ class TranscodingTask(CoreTask):
         logger.debug('Initialization of FFmpegTask')
 
         task_id = self.task_definition.task_id
-        task_output_dir = dir_manager.get_task_output_dir(task_id)        
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
 
         # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
@@ -97,9 +102,10 @@ class TranscodingTask(CoreTask):
             dir_manager, task_id)
 
         if len(chunks) < self.total_tasks:
-            logger.warning('{} subtasks was requested but video splitting '
-                           'process resulted in {} chunks.'
-                           .format(self.total_tasks, len(chunks)))
+            logger.warning('%d subtasks was requested but video splitting '
+                           'process resulted in %d chunks.',
+                           self.total_tasks,
+                           len(chunks))
 
         streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
                            .join(task_output_dir, x[0]), chunks))
@@ -140,10 +146,10 @@ class TranscodingTask(CoreTask):
 
             self.num_tasks_received += 1
 
-            logger.info("Task {} - transcoded {} of {} chunks".
-                        format(self.task_definition.task_id,
-                               self.num_tasks_received,
-                               self.total_tasks))
+            logger.info("Task %s - transcoded %d of %d chunks",
+                        self.task_definition.task_id,
+                        self.num_tasks_received,
+                        self.total_tasks)
 
             if self.num_tasks_received == self.total_tasks:
                 self._merge_video()
@@ -152,8 +158,8 @@ class TranscodingTask(CoreTask):
         self.collected_files.extend(results)
 
     def _merge_video(self):
-        logger.info('Merging video [task_id = {}]'.format(
-            self.task_definition.task_id))
+        logger.info('Merging video [task_id = %s]',
+                    self.task_definition.task_id)
 
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(
@@ -165,29 +171,30 @@ class TranscodingTask(CoreTask):
                     exist_ok=True)
         move(path, self.task_definition.output_file)
 
-        logger.info("Video merged successfully [task_id = {}]".format(
-            self.task_definition.task_id))
+        logger.info("Video merged successfully [task_id = %s]",
+                    self.task_definition.task_id)
 
         return True
 
     def _get_next_subtask(self):
-        logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
-            self.task_definition.task_id))
+        logger.debug('Getting next task [type=trancoding, task_id=%s]',
+                     self.task_definition.task_id)
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
+
         failed_subtask = next(iter(subtasks), None)
         if failed_subtask:
-            logger.debug('Subtask {} was failed, so let resent it'
-                         .format(failed_subtask['subtask_id']))
+            logger.debug('Subtask %s was failed, so let resent it',
+                         failed_subtask['subtask_id'])
             failed_subtask['status'] = SubtaskStatus.resent
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
-        else:
-            assert self.last_task < self.total_tasks
-            curr = self.last_task + 1
-            self.last_task = curr
-            return curr - 1
+
+        assert self.last_task < self.total_tasks
+        curr = self.last_task + 1
+        self.last_task = curr
+        return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
@@ -195,7 +202,7 @@ class TranscodingTask(CoreTask):
             sid = self.create_subtask_id()
 
             subtask_num = self._get_next_subtask()
-            subtask = {}
+            subtask: Dict[str, Any] = {}
             transcoding_params = self._get_extra_data(subtask_num)
             subtask['perf'] = perf_index
             subtask['node_id'] = node_id
@@ -207,14 +214,21 @@ class TranscodingTask(CoreTask):
             self.subtasks_given[sid] = subtask
 
             return Task.ExtraData(ctd=self._get_task_computing_definition(
-                sid, transcoding_params, perf_index, resources=list(self.chunks[subtask_num])))
+                sid,
+                transcoding_params,
+                perf_index,
+                resources=list(self.chunks[subtask_num])))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
         # TODO
         pass
 
-    def _get_task_computing_definition(self, sid, transcoding_params, perf_idx, resources):
+    def _get_task_computing_definition(self,
+                                       sid,
+                                       transcoding_params,
+                                       perf_idx,
+                                       resources):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = sid
@@ -232,19 +246,18 @@ class TranscodingTask(CoreTask):
 
 
 class TranscodingTaskBuilder(CoreTaskBuilder):
-    SUPPORTED_FILE_TYPES = []
-    SUPPORTED_VIDEO_CODECS = []
-    SUPPORTED_AUDIO_CODECS = []
-    TASK_CLASS = TranscodingTask
+    SUPPORTED_FILE_TYPES: List[Container] = []
+    SUPPORTED_VIDEO_CODECS: List[VideoCodec] = []
+    SUPPORTED_AUDIO_CODECS: List[AudioCodec] = []
 
     @classmethod
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
-                              dict: Dict[str, Any]):
-        task_def = super().build_full_definition(task_type, dict)
+                              dictionary: Dict[str, Any]):
+        task_def = super().build_full_definition(task_type, dictionary)
 
         try:
             presets = cls._get_presets(task_def.options.input_stream_path)
-            options = dict.get('options', {})
+            options = dictionary.get('options', {})
             video_options = options.get('video', {})
             audio_options = options.get('audio', {})
 
@@ -270,11 +283,11 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             task_def.options.video_params = video_params
             task_def.options.output_container = output_container
             task_def.options.audio_params = audio_params
-            task_def.options.name = dict.get('name', '')
+            task_def.options.name = dictionary.get('name', '')
 
             logger.debug(
-                'Transcoding task definition has been built [definition={}]'
-                .format(task_def.__dict__))
+                'Transcoding task definition has been built [definition=%s]',
+                task_def.__dict__)
 
             return task_def
 
@@ -299,10 +312,14 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,
-                                 dict: Dict[str, Any]):
+                                 dictionary: Dict[str, Any]):
         df = super(TranscodingTaskBuilder, cls).build_minimal_definition(
-            task_type, dict)
-        stream = cls._get_required_field(dict, 'resources', is_type_of(list))[0]
+            task_type, dictionary)
+        stream = cls._get_required_field(
+            dictionary,
+            'resources',
+            is_type_of(list),
+        )[0]
         df.options.input_stream_path = stream
         return df
 
@@ -319,9 +336,11 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         return {'container': 'mp4'}
 
     @classmethod
-    def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
-            -> Any:
-        v = dict.get(key)
+    def _get_required_field(cls,
+                            dictionary,
+                            key: str,
+                            validator=lambda _: True) -> Any:
+        v = dictionary.get(key)
         if not v or not validator(v):
             raise TranscodingTaskBuilderException(
                 'Field {} is required in the task definition'.format(key))

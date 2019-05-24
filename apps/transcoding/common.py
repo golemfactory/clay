@@ -1,8 +1,5 @@
 import logging
-from enum import Enum
 from typing import Type
-
-from golem.core.common import HandleValueError
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +17,7 @@ def file_io_error(path: str):
 
 
 def unsupported(name: str):
-    logger.warning('{} is not supported'.format(name))
+    logger.warning('%s is not supported', name)
     raise TranscodingTaskBuilderException('{} is not supported'.format(name))
 
 

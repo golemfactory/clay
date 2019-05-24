@@ -2,8 +2,9 @@ import json
 import os
 import sys
 
-# pylint: disable=import-error
 from ffmpeg_tools import commands, meta
+
+# pylint: disable=import-error
 import m3u8
 from m3u8_utils import create_and_dump_m3u8, join_playlists
 
@@ -12,12 +13,16 @@ RESOURCES_DIR = "/golem/resources"
 PARAMS_FILE = "params.json"
 
 
+class InvalidCommand(Exception):
+    pass
+
+
 def do_split(path_to_stream, parts):
 
     video_metadata = commands.get_metadata_json(path_to_stream)
     video_length = meta.get_duration(video_metadata)
     split_file = commands.split_video(path_to_stream,
-                                    OUTPUT_DIR, video_length / parts)
+                                      OUTPUT_DIR, video_length / parts)
     m3u8_main_list = m3u8.load(split_file)
 
     results = dict()
@@ -106,7 +111,7 @@ def run_ffmpeg(params):
         compute_metrics(
             params["metrics_params"])
     else:
-        print("Invalid command.")
+        raise InvalidCommand(f"Invalid command: {params['command']}")
 
 
 def run():

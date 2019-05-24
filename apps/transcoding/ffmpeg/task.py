@@ -77,8 +77,7 @@ class ffmpegTask(TranscodingTask):
 
 
 class ffmpegDefaults(TaskDefaults):
-    def __init__(self):
-        super(ffmpegDefaults, self).__init__()
+    pass
 
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):
