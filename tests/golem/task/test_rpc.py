@@ -68,10 +68,16 @@ class ProviderBase(test_client.TestClientBase):
         with mock.patch(
             'golem.network.concent.handlers_library.HandlersLibrary'
             '.register_handler',
+        ), mock.patch(
+            'golem.envs.docker.cpu.deferToThread',
+            lambda f, *args, **kwargs: f(*args, **kwargs)
         ):
+            config_desc = clientconfigdescriptor.ClientConfigDescriptor()
+            config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+            config_desc.num_cores = 1
             self.client.task_server = taskserver.TaskServer(
                 node=dt_p2p_factory.Node(),
-                config_desc=clientconfigdescriptor.ClientConfigDescriptor(),
+                config_desc=config_desc,
                 client=self.client,
                 use_docker_manager=False,
                 apps_manager=self.client.apps_manager,

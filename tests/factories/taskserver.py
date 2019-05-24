@@ -6,6 +6,17 @@ from golem import clientconfigdescriptor
 from golem.task import taskserver
 
 
+class ClientConfigDescriptor(factory.Factory):
+    class Meta:
+        model = clientconfigdescriptor.ClientConfigDescriptor
+
+    @factory.post_generation
+    # pylint: disable=attribute-defined-outside-init
+    def set_min_hardware_requirements(self, *_, **__):
+        self.max_memory_size = 1024 * 1024  # 1 GiB
+        self.num_cores = 1
+
+
 class TaskServer(factory.Factory):
     class Meta:
         model = taskserver.TaskServer
@@ -13,7 +24,7 @@ class TaskServer(factory.Factory):
     node = factory.SubFactory(
         'golem_messages.factories.datastructures.p2p.Node',
     )
-    config_desc = clientconfigdescriptor.ClientConfigDescriptor()
+    config_desc = factory.SubFactory(ClientConfigDescriptor)
     use_docker_manager = False
 
 

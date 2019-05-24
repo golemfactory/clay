@@ -5,6 +5,8 @@ from golem.testutils import DatabaseFixture
 from tests.golem.task.dummy import runner, task
 
 
+@mock.patch('golem.envs.docker.cpu.deferToThread',
+            lambda f, *args, **kwargs: f(*args, **kwargs))
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 

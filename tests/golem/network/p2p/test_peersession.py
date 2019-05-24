@@ -37,6 +37,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
+    @patch('golem.envs.docker.cpu.deferToThread',
+           lambda f, *args, **kwargs: f(*args, **kwargs))
     def setUp(self):
         super().setUp()
         random.seed()
@@ -490,6 +492,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         send_mock.assert_called()
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
+    @patch('golem.envs.docker.cpu.deferToThread',
+           lambda f, *args, **kwargs: f(*args, **kwargs))
     def _gen_data_for_test_react_to_remove_task(self):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth

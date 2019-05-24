@@ -71,6 +71,8 @@ def create_client(datadir, node_name):
     config_desc.key_difficulty = 0
     config_desc.use_upnp = False
     config_desc.node_name = node_name
+    config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+    config_desc.num_cores = 1
 
     from golem.core.keysauth import KeysAuth
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):

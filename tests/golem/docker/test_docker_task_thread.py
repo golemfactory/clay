@@ -1,7 +1,7 @@
 import time
 from threading import Thread
 from unittest import TestCase
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.docker.image import DockerImage
@@ -22,9 +22,13 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         TestDockerJob.tearDown(self)
         TestWithDatabase.tearDown(self)
 
+    @patch('golem.envs.docker.cpu.deferToThread',
+           lambda f, *args, **kwargs: f(*args, **kwargs))
     def test_termination(self):
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
+        task_server.config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+        task_server.config_desc.num_cores = 1
         task_server.client.datadir = self.test_dir
         task_server.benchmark_manager = Mock()
         task_server.benchmark_manager.benchmarks_needed.return_value = False

@@ -105,6 +105,8 @@ class DockerTaskTestCase(
         task.max_pending_client_results = 5
         return task
 
+    @patch('golem.envs.docker.cpu.deferToThread',
+           lambda f, *args, **kwargs: f(*args, **kwargs))
     def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
             -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
@@ -131,6 +133,8 @@ class DockerTaskTestCase(
         self.node._run()
 
         ccd = ClientConfigDescriptor()
+        ccd.max_memory_size = 1024 * 1024  # 1 GiB
+        ccd.num_cores = 1
 
         with patch("golem.network.concent.handlers_library.HandlersLibrary"
                    ".register_handler"):
