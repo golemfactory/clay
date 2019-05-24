@@ -352,6 +352,7 @@ function install_dependencies()
         rm runsc.sha512
 
         # Add runtime configuration
+        sudo mkdir -p /etc/docker
         sudo python << EOF
 import json
 
@@ -373,7 +374,7 @@ with open('/etc/docker/daemon.json', 'w+') as f:
 EOF
         chmod a+x runsc
         sudo mv runsc /usr/local/bin
-        sudo service docker restart
+        sudo service docker restart || true
     fi
 
 }
