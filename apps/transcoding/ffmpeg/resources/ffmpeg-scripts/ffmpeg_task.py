@@ -2,10 +2,10 @@ import json
 import os
 import sys
 
+from ffmpeg_tools import commands, meta
+
 # pylint: disable=import-error
 import m3u8
-
-from ffmpeg_tools import commands, meta
 from m3u8_utils import create_and_dump_m3u8, join_playlists
 
 OUTPUT_DIR = "/golem/output"
