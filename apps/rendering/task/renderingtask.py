@@ -34,17 +34,6 @@ class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS: 'Type[DockerEnvironment]'
 
-    @classmethod
-    def _get_task_collector_path(cls):
-        if is_windows():
-            build_path = os.path.join("x64", "Release", "taskcollector.exe")
-        else:
-            build_path = os.path.join("Release", "taskcollector")
-
-        return os.path.normpath(os.path.join(get_golem_path(), "apps",
-                                             "rendering", "resources",
-                                             "taskcollector", build_path))
-
     ################
     # Task methods #
     ################
@@ -179,16 +168,6 @@ class RenderingTask(CoreTask):
             for j in range(upper, lower):
                 img_task.set_pixel((i, j), color)
 
-    def _put_collected_files_together(self, output_file_name, files, arg):
-        task_collector_path = self._get_task_collector_path()
-
-        cmd = ["{}".format(task_collector_path),
-               "{}".format(arg),
-               "{}".format(self.res_x),
-               "{}".format(self.res_y),
-               output_file_name] + [f for f in files]
-        exec_cmd(cmd)
-
     def _get_next_task(self):
         if self.last_task != self.total_tasks:
             self.last_task += 1
@@ -242,12 +221,6 @@ class RenderingTask(CoreTask):
             os.path.exists(self.preview_file_path)
         )
         return OpenCVImgRepr.from_image_file(self.preview_file_path)
-
-    def _use_outer_task_collector(self):
-        unsupported_formats = ['EXR', 'EPS']
-        if self.output_format.upper() in unsupported_formats:
-            return True
-        return False
 
     def __get_path(self, path):
         if is_windows():

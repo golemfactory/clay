@@ -176,75 +176,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
 
-    def test_put_collected_files_together_exec_windows(self):
-
-        output_file_name = "out.exr"
-        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
-        arg = 'EXR'
-
-        with patch('apps.rendering.task.renderingtask.is_windows',
-                   return_value=True), \
-                patch('golem.core.fileshelper.is_windows', return_value=True), \
-                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(
-                output_file_name, files, arg)
-
-            args = exec_cmd.call_args[0][0]
-            assert not args[0].startswith('"')
-            assert not args[0].endswith('.exe"')
-            assert args[0].endswith('.exe')
-            exec_cmd.assert_called_with(
-                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
-                 '{}'.format(output_file_name)] +
-                ['{}'.format(f) for f in files])
-
-    def test_put_collected_files_together_exec_unix(self):
-        output_file_name = "out.exr"
-        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
-        arg = 'EXR'
-
-        with patch('apps.rendering.task.renderingtask.is_windows',
-                   return_value=False), \
-                patch('golem.core.fileshelper.is_windows', return_value=False),\
-                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(
-                output_file_name, files, arg)
-
-            args = exec_cmd.call_args[0][0]
-            assert not args[0].endswith('.exe"')
-            assert not args[0].endswith('.exe')
-            exec_cmd.assert_called_with(
-                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
-                 "{}".format(output_file_name)] +
-                ["{}".format(f) for f in files])
-
-    def test_get_outer_task(self):
-        task = self.task
-        task.output_format = "exr"
-        assert task._use_outer_task_collector()
-        task.output_format = "EXR"
-        assert task._use_outer_task_collector()
-        task.output_format = "eps"
-        assert task._use_outer_task_collector()
-        task.output_format = "EPS"
-        assert task._use_outer_task_collector()
-        task.output_format = "png"
-        assert not task._use_outer_task_collector()
-        task.output_format = "PNG"
-        assert not task._use_outer_task_collector()
-        task.output_format = "jpg"
-        assert not task._use_outer_task_collector()
-        task.output_format = "JPG"
-        assert not task._use_outer_task_collector()
-        task.output_format = "bmp"
-        assert not task._use_outer_task_collector()
-        task.output_format = "tga"
-        assert not task._use_outer_task_collector()
-        task.output_format = "TGA"
-        assert not task._use_outer_task_collector()
-
     def test_get_scene_file_path(self):
         task = self.task
         assert task._get_scene_file_rel_path() == ''
@@ -259,37 +190,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.total_tasks = 10
         task.last_task = 10
         assert task._get_next_task() is None
-
-    def test_put_collected_files_together(self):
-        output_name = self.temp_file_name("output.exr")
-        exr1 = _get_test_exr()
-        exr2 = _get_test_exr(alt=True)
-        assert path.isfile(exr1)
-        assert path.isfile(exr2)
-        assert load_img(output_name) is None
-        self.task.res_x = 10
-        self.task.res_y = 20
-
-        self.task._put_collected_files_together(output_name, [exr1, exr2],
-                                                "paste")
-        assert load_img(output_name) is not None
-
-    def test_get_task_collector_path(self):
-        assert path.isfile(self.task._get_task_collector_path())
-
-        mock_is_windows = Mock()
-        mock_is_windows.return_value = False
-        with patch(target="apps.rendering.task.renderingtask.is_windows",
-                   new=mock_is_windows):
-            linux_path = self.task._get_task_collector_path()
-            mock_is_windows.return_value = True
-
-            prefix, exe = os.path.split(linux_path)
-            prefix, exe_dir = os.path.split(prefix)
-            windows_path = str(self.task._get_task_collector_path())
-            assert windows_path.endswith(os.path.join(
-                prefix, 'x64', exe_dir, exe + '.exe'
-            ))
 
     def test_update_task_preview_ioerror(self):
         e = OpenCVError("test message")

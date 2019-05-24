@@ -547,18 +547,13 @@ class BlenderRenderTask(FrameRenderingTask):
         logger.debug('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
-        if not self._use_outer_task_collector():
-            collector = CustomCollector(width=self.res_x,
-                                        height=self.res_y)
-            for file in self.collected_file_names.values():
-                collector.add_img_file(file)
-            with handle_opencv_image_error(logger):
-                image = collector.finalize()
-                image.save_with_extension(output_file_name, self.output_format)
-        else:
-            self._put_collected_files_together(
-                os.path.join(self.tmp_dir, output_file_name),
-                list(self.collected_file_names.values()), "paste")
+        collector = CustomCollector(width=self.res_x,
+                                    height=self.res_y)
+        for file in self.collected_file_names.values():
+            collector.add_img_file(file)
+        with handle_opencv_image_error(logger):
+            image = collector.finalize()
+            image.save_with_extension(output_file_name, self.output_format)
 
     @staticmethod
     def mark_part_on_preview(part, img_task, color, preview_updater):
@@ -591,18 +586,13 @@ class BlenderRenderTask(FrameRenderingTask):
         frame_key = str(frame_num)
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
-        if not self._use_outer_task_collector():
-            collector = CustomCollector(width=self.res_x,
-                                        height=self.res_y)
-            for file in collected.values():
-                collector.add_img_file(file)
-            with handle_opencv_image_error(logger):
-                image = collector.finalize()
-                image.save_with_extension(output_file_name, self.output_format)
-        else:
-            self._put_collected_files_together(output_file_name,
-                                               list(collected.values()),
-                                               "paste")
+        collector = CustomCollector(width=self.res_x,
+                                    height=self.res_y)
+        for file in collected.values():
+            collector.add_img_file(file)
+        with handle_opencv_image_error(logger):
+            image = collector.finalize()
+            image.save_with_extension(output_file_name, self.output_format)
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
