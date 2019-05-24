@@ -156,11 +156,12 @@ class StreamOperator:
             for path in results
         ]
 
-    def merge_and_replace_video_streams(self,
+    def merge_and_replace_video_streams(self, # pylint: disable=too-many-arguments
                                         input_file_on_host,
                                         chunks_on_host,
                                         output_file_basename,
-                                        task_dir):
+                                        task_dir,
+                                        container):
 
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
@@ -184,6 +185,7 @@ class StreamOperator:
             'input_file': container_files['in'],
             'chunks': chunks_in_container,
             'output_file': container_files['out'],
+            'container': container.value if container is not None else None,
         }
 
         logger.debug('Merge and replace params: %s', extra_data)

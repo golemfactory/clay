@@ -3,6 +3,7 @@ import uuid
 from unittest import mock
 
 from coverage.annotate import os
+from ffmpeg_tools.formats import Container
 
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.common import ffmpegException
@@ -54,6 +55,7 @@ class TestffmpegTranscoding(TempDirFixture):
         parts = 2
         task_id = str(uuid.uuid4())
         output_name = 'test.mp4'
+        output_container = Container.c_MP4
         output_dir = self.dir_manager.get_task_output_dir(task_id)
 
         chunks, _ = self.stream_operator.extract_video_streams_and_split(
@@ -79,7 +81,9 @@ class TestffmpegTranscoding(TempDirFixture):
             self.RESOURCE_STREAM,
             tc_segments,
             output_name,
-            output_dir)
+            output_dir,
+            output_container,
+        )
         assert os.path.isfile(os.path.join(output_dir, 'merge',
                                            'output', output_name))
 
@@ -89,7 +93,8 @@ class TestffmpegTranscoding(TempDirFixture):
                 self.RESOURCE_STREAM,
                 [],
                 'output.mp4',
-                self.tempdir)
+                self.tempdir,
+                Container.c_MP4)
 
     def test_collect_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
@@ -158,7 +163,9 @@ class TestffmpegTranscoding(TempDirFixture):
                 self.RESOURCE_STREAM,
                 ['test_TC.ts'],
                 'output.mp4',
-                self.tempdir)
+                self.tempdir,
+                Container.c_MP4,
+            )
 
 class TestffmpegDockerJob(TestDockerJob):
     def _get_test_repository(self):

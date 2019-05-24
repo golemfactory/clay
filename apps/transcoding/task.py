@@ -170,7 +170,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             input_file,
             self.collected_files,
             output_basename,
-            self.task_dir)
+            self.task_dir,
+            self.task_definition.options.output_container,
+        )
 
         # Move result to desired location.
         os.makedirs(os.path.dirname(self.task_definition.output_file),
