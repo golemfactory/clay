@@ -524,6 +524,10 @@ class Performance(BaseModel):
             perf.save()
 
 
+class DockerWhitelist(BaseModel):
+    repository = CharField(primary_key=True)
+
+
 ##################
 # MESSAGE MODELS #
 ##################
