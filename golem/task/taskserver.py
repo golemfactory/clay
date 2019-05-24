@@ -404,7 +404,8 @@ class TaskServer(
 
     def new_connection(self, session):
         if not self.active:
-            session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
+            # FIXME: Properly handle disconnecting
+            # session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
             return
         logger.debug(
             'Incoming TaskSession. address=%s:%d',
@@ -866,10 +867,10 @@ class TaskServer(
         return super()._add_pending_request(request_type, node, prv_port,
                                             pub_port, args)
 
-    def _set_protocol_id_for_type(self):
-        self.protocol_id_for_type = {
-            ConnTypes.task: TaskSession.ProtocolId
-        }
+    def _set_channel_id_for_type(self):
+        self.channel_id_for_type.update({
+            ConnTypes.task: TaskSession.ChannelId
+        })
 
     #############################
     # SYNC METHODS

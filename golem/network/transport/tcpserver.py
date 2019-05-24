@@ -114,8 +114,8 @@ class PendingConnectionsServer(TCPServer):
         self.pending_connections: Dict[str, PendingConnection] = {}
         #  Sessions a.k.a Peers before handshake
         self.pending_sessions: Set[BasicSession] = set()
-        #  Protocol id per connection type
-        self.protocol_id_for_type: Dict[int, int] = {}
+        #  Multiplexed channel id per connection type
+        self.channel_id_for_type: Dict[int, int] = {}
         #  Reactions for established connections of certain types
         self.conn_established_for_type: Dict[int, Callable] = {}
         #  Reactions for failed connection attempts of certain types
@@ -123,7 +123,7 @@ class PendingConnectionsServer(TCPServer):
         #  Reactions for final connection attempts failure
         self.conn_final_failure_for_type: Dict[int, Callable] = {}
 
-        self._set_protocol_id_for_type()
+        self._set_channel_id_for_type()
 
         # Set reactions
         self._set_conn_established()
@@ -175,7 +175,7 @@ class PendingConnectionsServer(TCPServer):
                     node_info_str(node.node_name, node.key),
                     [str(socket) for socket in sockets])
 
-        pc = PendingConnection(self.protocol_id_for_type[request_type],
+        pc = PendingConnection(self.channel_id_for_type[request_type],
                                request_type,
                                sockets,
                                self.conn_established_for_type[request_type],
@@ -285,7 +285,7 @@ class PendingConnectionsServer(TCPServer):
     def _set_conn_final_failure(self):
         pass
 
-    def _set_protocol_id_for_type(self):
+    def _set_channel_id_for_type(self):
         pass
 
     def _mark_connected(self, conn_id, addr, port):

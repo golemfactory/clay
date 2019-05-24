@@ -24,7 +24,7 @@ class BasicSession(Session):
        to different types of messages.
     """
 
-    ProtocolId = 0
+    ChannelId = 0
 
     def __init__(self, conn):
         """
@@ -33,7 +33,6 @@ class BasicSession(Session):
                               this session should enhance.
         """
         Session.__init__(self, conn)
-        self.conn = conn
 
         pp = conn.transport.getPeer()
         self.address = pp.host
@@ -131,10 +130,9 @@ class BasicSafeSession(BasicSession):
     Cryptographic operation should be implemented in descendant class.
     """
 
-    key_id: Optional[str] = None
-
     def __init__(self, conn):
         super().__init__(conn)
+        self.key_id: Optional[str] = None
         # how many unverified messages can be stored before dropping connection
         self.unverified_cnt = UNVERIFIED_CNT
         self.rand_val = get_random_float()

@@ -29,7 +29,7 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.net.network import ProxyNetwork
+from golem.core.net.network import LibP2PNetwork
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
@@ -369,7 +369,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                                        use_ipv6=self.config_desc.use_ipv6)
         logger.debug("Is super node? %s", self.node.is_super_node())
 
-        self.network = ProxyNetwork(self.keys_auth._private_key)
+        self.network = LibP2PNetwork(self.keys_auth._private_key)
 
         self.task_server = TaskServer(
             self.network,
@@ -397,27 +397,25 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager.get_performance_values
         )
 
-        session_and_service = [
-            (PeerSession, self.p2pservice),
-            (TaskSession, self.task_server),
-        ]
+        # Pause p2p and task sessions to prevent receiving messages before
+        # the node is ready
+        self.pause()
+        self._restore_locks()
 
         def wrap_factories(wrapper):
             return [wrapper(ProtocolFactory(
                 session_class.ConnectionStateType,
                 service,
                 SessionFactory(session_class),
-            )) for session_class, service in session_and_service]
+            )) for session_class, service in (
+                (PeerSession, self.p2pservice),
+                (TaskSession, self.task_server),
+            )]
 
-        in_factories = wrap_factories(IncomingProtocolFactoryWrapper)
-        out_factories = wrap_factories(OutgoingProtocolFactoryWrapper)
-
-        # Pause p2p and task sessions to prevent receiving messages before
-        # the node is ready
-        self.pause()
-        self._restore_locks()
-
-        self.network.start(in_factories, out_factories)
+        self.network.start(
+            in_factories=wrap_factories(IncomingProtocolFactoryWrapper),
+            out_factories=wrap_factories(OutgoingProtocolFactoryWrapper),
+        )
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,

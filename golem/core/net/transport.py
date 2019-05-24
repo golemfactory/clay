@@ -2,19 +2,19 @@ from collections import namedtuple
 from typing import Tuple
 
 
-class ProxyTransport:
+class LibP2PTransport:
 
     Host = namedtuple('Host', ['host', 'port'])
 
     def __init__(
         self,
-        network: 'NativeNetwork',
+        network: 'LibP2PNetwork',
         address: Tuple[str, int],
-        protocol_id: int,
+        channel_id: int,
         peer_id: str
     ) -> None:
         self.network = network
-        self.protocol_id = protocol_id
+        self.channel_id = channel_id
         self.peer_id = peer_id
         self.peer = self.Host(address[0], address[1])
         self._disconnecting = False
@@ -36,4 +36,4 @@ class ProxyTransport:
         self.loseConnection()
 
     def write(self, data: bytes) -> None:
-        self.network.send(self.peer_id, self.protocol_id, data)
+        self.network.send(self.peer_id, self.channel_id, data)

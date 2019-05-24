@@ -53,9 +53,9 @@ class ProtocolFactory(Factory):
         self.session_factory = session_factory
 
         if session_factory:
-            self.protocol_id = session_factory.session_class.ProtocolId
+            self.channel_id = session_factory.session_class.ChannelId
         else:
-            self.protocol_id = None
+            self.channel_id = None
 
     def buildProtocol(self, addr):
         protocol = self.protocol_class(self.server)
@@ -65,7 +65,7 @@ class ProtocolFactory(Factory):
 
 class IncomingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
-        self.protocol_id = protocol_factory.protocol_id
+        self.channel_id = protocol_factory.channel_id
         self.protocol_factory = protocol_factory
         self.session_factory = IncomingSessionFactoryWrapper(
             protocol_factory.session_factory)
@@ -78,7 +78,7 @@ class IncomingProtocolFactoryWrapper(Factory):
 
 class OutgoingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
-        self.protocol_id = protocol_factory.protocol_id
+        self.channel_id = protocol_factory.channel_id
         self.protocol_factory = protocol_factory
         self.session_factory = OutgoingSessionFactoryWrapper(
             protocol_factory.session_factory)
@@ -105,7 +105,7 @@ class SessionProtocol(Protocol):
 
         # If the underlying transport is TCP, enable TCP keepalive.
         # Otherwise, the setTcpKeepAlive method will not be present
-        # in the 'transport' object and an AttributeError will be raised
+        # in the 'transport' object and the AttributeError will be raised
         try:
             self.transport.setTcpKeepAlive(1)
         except AttributeError:
@@ -113,6 +113,7 @@ class SessionProtocol(Protocol):
 
         Protocol.connectionMade(self)
         self.session = self.session_factory.get_session(self)
+        self.session.connected()
 
     def connectionLost(self, reason=connectionDone):
         del self.session
@@ -124,8 +125,12 @@ class Session(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def __init__(self, conn):
+        self.conn = conn
         self.conn_type = None
         return
+
+    def connected(self):
+        pass
 
     @abc.abstractmethod
     def dropped(self):

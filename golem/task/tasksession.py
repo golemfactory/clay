@@ -19,8 +19,8 @@ import golem
 from golem.config.active import EthereumConfig
 from golem.core import common
 from golem.core import golem_async
-from golem.core.keysauth import KeysAuth
 from golem.core import variables
+from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import scale_price, Offer, OfferPool
@@ -107,7 +107,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
 
     ConnectionStateType = SafeProtocol
-    ProtocolId = 2
+    ChannelId = 2
 
     def __init__(self, conn):
         """
@@ -121,6 +121,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # set in server.queue.msg_queue_connection_established()
         self.conn_id = None  # connection id
         self.key_id: Optional[str] = None
+        self.verified = True
+        self.running = True
 
         self.__set_msg_interpretations()
 
@@ -153,6 +155,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # BasicSession methods #
     ########################
 
+    def connected(self):
+        self.task_server.task_sessions[self.key_id] = self
+        self.task_server.peer_sessions[self.key_id] = self
+        async_request = golem_async.AsyncRequest(self.read_msg_queue)
+        golem_async.async_run(async_request)
+
     def interpret(self, msg):
         """React to specific message. Disconnect, if message type is unknown
            for that session. In middleman mode doesn't react to message, just
@@ -171,6 +179,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def dropped(self):
         """ Close connection """
+        self.running = False
         BasicSafeSession.dropped(self)
         self.task_server.remove_session_by_node_id(self.key_id)
 
@@ -237,12 +246,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def read_msg_queue(self):
-        if not self.key_id:
-            return
-        if not self.verified:
-            return
-        for msg in msg_queue.get(self.key_id):
-            self.send(msg)
+        logger.debug("Message queue loop started for %s", self.key_id)
+
+        while self.running:
+            for msg in msg_queue.get(self.key_id):
+                self.send(msg)
+            time.sleep(0.25)
+
+        logger.debug("Message queue loop stopped for %s", self.key_id)
 
     #########################
     # Reactions to messages #
@@ -255,7 +266,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 reason=reason,
             ),
         )
-        self.dropped()
+        # FIXME: session management
+        # self.dropped()
 
     # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
@@ -498,7 +510,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if ctd is None or want_to_compute_task is None:
             logger.debug(
                 'TaskToCompute without ctd or want_to_compute_task: %r', msg)
-            self.dropped()
+            # FIXME: session management
+            # self.dropped()
             return
 
         try:
@@ -508,7 +521,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug(
                 'WantToComputeTask attached to TaskToCompute is not signed '
                 'with key: %r.', want_to_compute_task.provider_public_key)
-            self.dropped()
+            # FIXME: session management
+            # self.dropped()
             return
 
         dispatcher.send(
@@ -525,7 +539,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     reason=reason,
                 ),
             )
-            self.dropped()
+            # FIXME: session management
+            # self.dropped()
 
         reasons = message.tasks.CannotComputeTask.REASON
 
@@ -637,7 +652,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.subtask_id):
-            self.dropped()
+            # FIXME: session management
+            # self.dropped()
             return
 
         logger.info(
@@ -659,7 +675,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_cannot_assign_task(self, msg):
         if self.check_requestor_for_task(msg.task_id) != \
                 RequestorCheckResult.OK:
-            self.dropped()
+            # FIXME: session management
+            # self.dropped()
             return
         logger.info(
             "Task request rejected. task_id: %r, reason: %r",
@@ -672,7 +689,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # Requestor doesn't want us to ask again
             self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
-        self.dropped()
+        # FIXME: session management
+        # self.dropped()
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
@@ -760,7 +778,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_to_compute.price,
             msg.payment_ts,
         )
-        self.dropped()
+        # FIXME: session management
+        # self.dropped()
 
     @history.provider_history
     def _react_to_subtask_results_rejected(
@@ -903,7 +922,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.verified = True
         self.task_server.verified_conn(self.conn_id, )
-        self.read_msg_queue()
 
     def _react_to_start_session_response(self, msg):
         raise NotImplementedError(

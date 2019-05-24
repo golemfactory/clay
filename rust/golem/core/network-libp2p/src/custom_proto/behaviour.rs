@@ -305,6 +305,8 @@ impl<TMessage, TSubstream> CustomProto<TMessage, TSubstream> {
 	/// without us knowing, in which case the packet will not be received.
 	pub fn send_packet(&mut self, target: &PeerId, message: TMessage) {
 		if !self.is_open(target) {
+			warn!(target: crate::LOG_TARGET, "Session not open, unable to send a packet to {:?}",
+				  target);
 			return;
 		}
 

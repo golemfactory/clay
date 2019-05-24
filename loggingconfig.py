@@ -95,6 +95,7 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'golem.core.net': {'propagate': True},
         'golem.network': {'propagate': True},
         'golem.network.transport': {'propagate': True},
         'apps': {

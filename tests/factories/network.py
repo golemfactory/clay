@@ -9,6 +9,6 @@ fake = faker.Faker()
 
 class NativeNetwork(factory.Factory):
     class Meta:
-        model = network.ProxyNetwork
+        model = network.LibP2PNetwork
 
     use_ipv6 = False

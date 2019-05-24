@@ -1,16 +1,17 @@
 import logging
 import threading
 import time
-from typing import Dict, Tuple, Any, List, Type, Callable
+from typing import Dict, Tuple, List, Type, Callable, Optional, Iterable
 
 from eth_utils import encode_hex
 from twisted.internet.defer import inlineCallbacks
+from twisted.internet.protocol import Protocol
 
 from golem.core.net import events, NetworkService, NetworkServiceError
 from golem.core.net.message import LabeledMessage
-from golem.core.net.transport import ProxyTransport
+from golem.core.net.transport import LibP2PTransport
 from golem.network.transport.limiter import CallRateLimiter
-from golem.network.transport.network import Network
+from golem.network.transport.network import Network, ProtocolFactory
 from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo, \
     SocketAddress, TCPListenInfo, TCPListeningInfo
 
@@ -18,10 +19,12 @@ logger = logging.getLogger(__name__)
 
 
 LISTEN_TIMEOUT: int = 2
-CONNECT_TIMEOUT: int = 3
+CONNECT_TIMEOUT: int = 20
+
+AddressTuple = Tuple[str, int]
 
 
-class EventLoop:
+class NetworkEventLoop:
     def __init__(
         self,
         network: NetworkService,
@@ -32,7 +35,7 @@ class EventLoop:
 
         self._stop = threading.Event()
         self._thread = threading.Thread(
-            name="core.net:events",
+            name="core.net.event_loop",
             daemon=True,
             target=self._run
         )
@@ -71,19 +74,50 @@ class EventLoop:
             logger.error("Invalid event %r: %r", args, exc)
 
 
-class ProxyNetwork(Network):
+class TCPConnectInfoWrapper:
 
-    class _Connections:
-        def __init__(self):
-            # (ip, port): connection info
-            self.pending: Dict[Tuple[str, int], TCPConnectInfo] = dict()
-            # (ip, port): { protocol_id: connection }
-            self.established: Dict[Tuple[str, int], Dict[str, Any]] = dict()
+    def __init__(self, connect_info: TCPConnectInfo) -> None:
+        self._inner = connect_info
+        self._addresses = list(connect_info.socket_addresses)
+        self._attempts = 0
+        self._failures = 0
+
+    @property
+    def channel_id(self) -> int:
+        return self._inner.channel_id
+
+    def initial_addresses(self) -> List[SocketAddress]:
+        return list(self._inner.socket_addresses)
+
+    def has_addresses(self) -> bool:
+        return bool(self._addresses)
+
+    def take_address(self) -> Optional[SocketAddress]:
+        if not self._addresses:
+            return None
+        self._attempts += 1
+        return self._addresses.pop(0)
+
+    def address_failure(self):
+        self._failures += 1
+
+    def is_failure(self) -> bool:
+        total = len(self._inner.socket_addresses)
+        return self._attempts == self._failures == total > 0
+
+    def established_callback(self, *args, **kwargs):
+        return self._inner.established_callback(*args, **kwargs)
+
+    def failure_callback(self, *args, **kwargs):
+        return self._inner.failure_callback(*args, **kwargs)
+
+
+class LibP2PNetwork(Network):
 
     def __init__(
         self,
         priv_key: bytes,
-        use_ipv6: bool = False
+        use_ipv6: bool = False,
     ) -> None:
 
         from twisted.internet import reactor
@@ -93,13 +127,17 @@ class ProxyNetwork(Network):
         self._priv_key = priv_key
 
         self._network = NetworkService()
-        self._event_loop = EventLoop(self._network, self._handle)
+        self._event_loop = NetworkEventLoop(self._network, self._handle_event)
         self._rate_limiter = CallRateLimiter()
-        self._conns = self._Connections()
 
-        self._listen_lock = None
+        # (ip, port): connection info
+        self._outgoing: Dict[AddressTuple, TCPConnectInfoWrapper] = dict()
+        # (ip, port): { protocol_id: connection }
+        self._connections: Dict[AddressTuple, Dict[int, Protocol]] = dict()
+
         self._in_factories = None
         self._out_factories = None
+        self._listen_info = None
 
     def start(self, in_factories, out_factories):
         assert in_factories, "Incoming connection factories are required"
@@ -109,14 +147,34 @@ class ProxyNetwork(Network):
         self._out_factories = out_factories
         self._event_loop.start()
 
-    # Network interface
+    #####################
+    # Network interface #
+    #####################
 
     def listen(self, listen_info: TCPListenInfo) -> None:
-        self._listen(listen_info)
+        address = self._address[0], listen_info.port_start
+
+        if self._listen_info:
+            return logger.info('Already trying to listen on %s:%r', *address)
+
+        try:
+            if not self._network.start(self._priv_key, *address):
+                raise NetworkServiceError(f'Unable to listen on {address}')
+        except NetworkServiceError as exc:
+            if listen_info.port_start < listen_info.port_end:
+                listen_info.port_start += 1
+                self.listen(listen_info)
+            else:
+                listen_info.failure_callback(f'Network error: {exc}')
+        else:
+            self._priv_key = None
+            self._listen_info = listen_info
+            self._reactor.callLater(LISTEN_TIMEOUT, self._listen_error,
+                                    'Timeout')
 
     def stop_listening(self, listening_info: TCPListeningInfo):
-        self._network.stop()
-        self._event_loop.stop()
+        if self._network:
+            self._network.stop()
 
     def connect(self, connect_info: TCPConnectInfo) -> None:
         addresses = self._filter_host_addresses(connect_info.socket_addresses)
@@ -125,10 +183,14 @@ class ProxyNetwork(Network):
         if addresses:
             self._rate_limiter.call(
                 self._reactor.callLater, 0,
-                self._connect, connect_info
+                self._connect, TCPConnectInfoWrapper(connect_info)
             )
         else:
             connect_info.failure_callback()
+
+    ###################
+    # Class interface #
+    ###################
 
     def disconnect(self, peer_id: str):
         try:
@@ -146,77 +208,68 @@ class ProxyNetwork(Network):
             logger.error("Couldn't send a message to %s", peer_id)
 
     @inlineCallbacks
-    def _connect(self, connect_info: TCPConnectInfo) -> None:
-        address = yield self._resolve_address(connect_info.socket_addresses[0])
+    def _connect(self, connect_info: TCPConnectInfoWrapper) -> None:
+        address = yield self._resolve_address(connect_info.take_address())
 
-        if address in self._conns.established:
-            # connections = self._conns.established[address]
-            # connection = connections[connect_info.protocol_id]
-            # connect_info.established_callback(connection.session)
+        if address in self._connections:
+            connections = self._connections[address]
+            connection = connections[connect_info.channel_id]
+            connect_info.established_callback(connection.session)
             logger.info('Already connected to %s:%r', *address)
             return
 
-        if address in self._conns.pending:
+        if address in self._outgoing:
             logger.info('Already connecting to %s:%r', *address)
             return
 
         logger.info("Connecting to %s:%r", *address)
 
-        try:
-            if not self._network.connect(*address):
-                raise NetworkServiceError(f'Unable to connect to {address}: '
-                                          'server is not running')
-        except Exception:  # pylint: disable=broad-except
-            if connect_info.socket_addresses:
-                connect_info.socket_addresses.pop(0)
+        if self._network.connect(*address):
+            self._outgoing[address] = connect_info
+            self._reactor.callLater(
+                CONNECT_TIMEOUT,
+                lambda: (
+                    connect_info.address_failure(),
+                    self._connect_error(connect_info, address)
+                )
+            )
+        else:
+            logger.error("Unable to connect to %s:%r : not running", *address)
+            connect_info.address_failure()
+            if connect_info.has_addresses():
                 self._connect(connect_info)
             else:
-                connect_info.failure_callback()
-        else:
-            self._conns.pending[address] = connect_info
-            self._reactor.callLater(CONNECT_TIMEOUT, self._connect_error,
-                                    address)
+                self._connect_error(connect_info, address)
 
-    def _connect_error(self, address: Tuple[str, int]):
-        connect_info = self._conns.pending.pop(address, None)
-        if connect_info:
+    @staticmethod
+    def _connect_error(
+        connect_info: TCPConnectInfoWrapper,
+        address: AddressTuple,
+    ) -> None:
+        logger.debug('Unable to connect to %s:%r', *address)
+
+        if connect_info.is_failure():
+            addresses = connect_info.initial_addresses()
+            logger.warning('Connection failed: %r', addresses)
             connect_info.failure_callback()
 
-    def _listen(self, listen_info: TCPListenInfo):
-        address = self._address[0], listen_info.port_start
-
-        if self._listen_lock:
-            return logger.info('Already trying to listen on %s:%r', *address)
-
-        try:
-            if not self._network.start(self._priv_key, *address):
-                raise NetworkServiceError(f'Unable to listen on {address}')
-        except NetworkServiceError as exc:
-            if listen_info.port_start < listen_info.port_end:
-                listen_info.port_start += 1
-                self._listen(listen_info)
-            else:
-                listen_info.failure_callback(f'Network error: {exc}')
-        else:
-            self._priv_key = None
-            self._listen_lock = listen_info
-            self._reactor.callLater(LISTEN_TIMEOUT, self._listen_error,
-                                    'Timeout')
-
     def _listen_error(self, message: str) -> None:
-        if not self._listen_lock:
+        if not self._listen_info:
             return
 
-        listen_info, self._listen_lock = self._listen_lock, None
+        listen_info, self._listen_info = self._listen_info, None
         listen_info.failure_callback(message, listen_info)
 
-    def _filter_host_addresses(self, addresses) -> List[SocketAddress]:
+    def _filter_host_addresses(
+        self,
+        addresses: Iterable[SocketAddress],
+    ) -> List[SocketAddress]:
         return list(filter(self._filter_host_address, addresses))
 
     def _filter_host_address(self, address: SocketAddress) -> bool:
         as_tuple = (address.address, address.port)
         return (
-            as_tuple not in self._conns.established and
+            as_tuple not in self._connections and
             as_tuple != self._address
         )
 
@@ -228,9 +281,11 @@ class ProxyNetwork(Network):
             host = socket_address.address
         return host, socket_address.port
 
-    # Event handlers
+    ##################
+    # Event handlers #
+    ##################
 
-    def _handle(self, event: events.Event) -> None:
+    def _handle_event(self, event: events.Event) -> None:
         if not event:
             return
 
@@ -241,60 +296,65 @@ class ProxyNetwork(Network):
             logger.error("Unknown event: %r", event)
 
     def _handle_started(self, event: events.Listening) -> None:
-        if not self._listen_lock:
+        if not self._listen_info:
             return
 
         self._address = event.address
-        logger.info('Network listening on %s:%r', *self._address)
+        logger.info('Listening on %s:%r', *self._address)
 
-        listen_info, self._listen_lock = self._listen_lock, None
+        listen_info, self._listen_info = self._listen_info, None
         listen_info.established_callback(SocketAddress(*event.address))
 
     def _handle_stopped(self, _event: events.Terminated) -> None:
-        if self._listen_lock:
+        if self._listen_info:
             return
 
-        logger.info("Network stopped")
+        logger.info("Stopped")
 
-        for key, conns in dict(self._conns.established).items():
+        for key, conns in dict(self._connections).items():
             for conn in conns.values():
                 conn.session.dropped()
-            self._conns.established.pop(key, None)
+            self._connections.pop(key, None)
+
+        if self._event_loop:
+            self._event_loop.stop()
 
     def _handle_connected(self, event: events.Connected) -> None:
-        connect_info = self._conns.pending.pop(event.endpoint.address, None)
         address = event.endpoint.address
-        key_id = encode_hex(event.peer_pubkey)[2:]
-
-        def create_conn(factory):
-            t = ProxyTransport(network=self,
-                               address=address,
-                               protocol_id=factory.protocol_id,
-                               peer_id=event.peer_id)
-            c = factory.buildProtocol(address)
-            c.makeConnection(t)
-            c.session.key_id = key_id
-            return c
+        connect_info = self._outgoing.pop(address, None)
 
         if connect_info:
-            connections = {f.protocol_id: create_conn(f)
-                           for f in self._out_factories}
-            self._conns.established[address] = connections
-
-            if connect_info.protocol_id in connections:
-                connection = connections[connect_info.protocol_id]
-                connect_info.established_callback(connection.session)
-            else:
-                logger.warning('_handle_connected: Unknown protocol id: %r',
-                               connect_info.protocol_id)
-
+            factories = self._out_factories
         else:
-            self._conns.established[address] = {
-                f.protocol_id: create_conn(f) for f in self._in_factories
-            }
+            factories = self._in_factories
+
+        self._connections[address] = {
+            factory.channel_id: self.__create_protocol(factory, event, address)
+            for factory in factories
+        }
+
+        if connect_info:
+            if connect_info.channel_id not in self._connections[address]:
+                raise ValueError("Invalid channel id")
+            connection = self._connections[address][connect_info.channel_id]
+            connect_info.established_callback(connection.session)
+
+    def __create_protocol(
+        self,
+        factory: ProtocolFactory,
+        event: events.Connected,
+        address: AddressTuple,
+    ) -> Protocol:
+        conn = factory.buildProtocol(address)
+        conn.makeConnection(LibP2PTransport(network=self,
+                                            address=address,
+                                            channel_id=factory.channel_id,
+                                            peer_id=event.peer_id))
+        conn.session.key_id = encode_hex(event.peer_pubkey)[2:]
+        return conn
 
     def _handle_disconnected(self, event: events.Disconnected) -> None:
-        conns = self._conns.established.pop(event.endpoint.address, None)
+        conns = self._connections.pop(event.endpoint.address, None)
         if not conns:
             return
 
@@ -307,7 +367,7 @@ class ProxyNetwork(Network):
         address = event.endpoint.address
         msg = LabeledMessage.unpack(event.blob)
 
-        conns = self._conns.established.get(address)
+        conns = self._connections.get(address)
         conn = conns.get(msg.label) if conns else None
 
         if conn:
