@@ -5,6 +5,7 @@ from unittest import mock
 
 from coverage.annotate import os
 
+from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.utils import StreamOperator, Commands, \
     FFMPEG_BASE_SCRIPT
@@ -151,10 +152,10 @@ class TestffmpegTranscoding(TempDirFixture, DockerTestCase):
 
 class TestffmpegDockerJob(TestDockerJob):
     def _get_test_repository(self):
-        return "golemfactory/ffmpeg"
+        return ffmpegEnvironment.DOCKER_IMAGE
 
     def _get_test_tag(self):
-        return "1.0"
+        return ffmpegEnvironment.DOCKER_TAG
 
     def test_ffmpeg_trancoding_job(self):
         stream_file = os.path.join(
