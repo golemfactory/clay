@@ -62,4 +62,6 @@ class TestNotEnoughFunds(TestCase):
             self.assertEqual(err_dict['error_type'], 'NotEnoughFunds')
             for i in range(2):
                 self.assertEqual(err_dict['error_details']['missing_funds'][i],
-                                 missing_funds[i]._asdict())
+                                 MissingFunds._make(
+                    [str(item) for item in missing_funds[i]]
+                )._asdict())
