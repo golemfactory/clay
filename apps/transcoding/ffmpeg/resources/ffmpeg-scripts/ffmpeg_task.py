@@ -18,8 +18,15 @@ class InvalidCommand(Exception):
     pass
 
 
-def do_extract(input_file, output_file, selected_streams):
-    commands.extract_streams(input_file, output_file, selected_streams)
+def do_extract(input_file,
+               output_file,
+               selected_streams,
+               container=None):
+    commands.extract_streams(
+        input_file,
+        output_file,
+        selected_streams,
+        container)
 
 
 def do_split(path_to_stream, parts):
@@ -44,7 +51,7 @@ def do_split(path_to_stream, parts):
         json.dump(results, f)
 
 
-def do_extract_and_split(input_file, parts):
+def do_extract_and_split(input_file, parts, container=None):
     input_basename = os.path.basename(input_file)
     [input_stem, input_extension] = os.path.splitext(input_basename)
 
@@ -52,7 +59,7 @@ def do_extract_and_split(input_file, parts):
         WORK_DIR,
         f"{input_stem}[video-only]{input_extension}")
 
-    do_extract(input_file, intermediate_file, ['v'])
+    do_extract(input_file, intermediate_file, ['v'], container)
     do_split(intermediate_file, parts)
 
 
@@ -106,7 +113,7 @@ def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
     return list_filename
 
 
-def do_merge(chunks, outputfilename):
+def do_merge(chunks, outputfilename, container=None):
     if len(chunks) <= 0:
         raise commands.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
@@ -121,22 +128,30 @@ def do_merge(chunks, outputfilename):
         chunks,
         outputfilename,
         FFCONCAT_LIST_BASENAME)
-    commands.merge_videos(ffconcat_list_filename, outputfilename)
+    commands.merge_videos(
+        ffconcat_list_filename,
+        outputfilename,
+        container)
 
 
 def do_replace(input_file,
                replacement_source,
                output_file,
-               stream_type):
+               stream_type,
+               container=None):
 
     commands.replace_streams(
         input_file,
         replacement_source,
         output_file,
-        stream_type)
+        stream_type,
+        container)
 
 
-def do_merge_and_replace(input_file, chunks, output_file):
+def do_merge_and_replace(input_file,
+                         chunks,
+                         output_file,
+                         container=None):
     output_basename = os.path.basename(output_file)
     [output_stem, output_extension] = os.path.splitext(output_basename)
 
@@ -144,8 +159,13 @@ def do_merge_and_replace(input_file, chunks, output_file):
         WORK_DIR,
         f"{output_stem}[video-only]{output_extension}")
 
-    do_merge(chunks, intermediate_file)
-    do_replace(input_file, intermediate_file, output_file, 'v')
+    do_merge(chunks, intermediate_file, container)
+    do_replace(
+        input_file,
+        intermediate_file,
+        output_file,
+        'v',
+        container)
 
 
 def compute_metric(cmd, function):
@@ -181,7 +201,8 @@ def run_ffmpeg(params):
         do_extract(
             params['input_file'],
             params['output_file'],
-            params['selected_streams'])
+            params['selected_streams'],
+            params.get('container'))
     elif params['command'] == "split":
         do_split(
             params['path_to_stream'],
@@ -189,7 +210,8 @@ def run_ffmpeg(params):
     elif params['command'] == "extract-and-split":
         do_extract_and_split(
             params['input_file'],
-            params['parts'])
+            params['parts'],
+            params.get('container'))
     elif params['command'] == "transcode":
         do_transcode(
             params['track'],
@@ -198,18 +220,21 @@ def run_ffmpeg(params):
     elif params['command'] == "merge":
         do_merge(
             params['chunks'],
-            params['output_stream'])
+            params['output_stream'],
+            params.get('container'))
     elif params['command'] == "replace":
         do_replace(
             params['input_file'],
             params['replacement_source'],
             params['output_file'],
-            params['stream_type'])
+            params['stream_type'],
+            params.get('container'))
     elif params['command'] == "merge-and-replace":
         do_merge_and_replace(
             params['input_file'],
             params['chunks'],
-            params['output_file'])
+            params['output_file'],
+            params.get('container'))
     elif params['command'] == "compute-metrics":
         compute_metrics(
             params["metrics_params"])
