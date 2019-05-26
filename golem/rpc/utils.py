@@ -40,3 +40,23 @@ def object_method_map(instance):
             continue
         mapping[uri] = method
     return mapping
+
+
+def big_int_to_string(collection):
+    # Deeply convert all big integer elements of collections to string
+    def _big_int_to_string(v):
+        if isinstance(v, dict) or isinstance(v, list):
+            v = big_int_to_string(v)
+        else:
+            if isinstance(v, int) and v > (2**53) - 1:  # MAX SAFE INTEGER IN JS
+                v = str(v)
+        return v
+
+    if isinstance(collection, list):
+        for k, v in enumerate(collection):
+            collection[k] = _big_int_to_string(v)
+    elif isinstance(collection, dict):
+        for k, v in collection.items():
+            collection[k] = _big_int_to_string(v)
+
+    return collection

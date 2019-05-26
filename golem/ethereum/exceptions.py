@@ -17,8 +17,8 @@ class MissingFunds(typing.NamedTuple):
     """
     Represents a single entry for missing funds in a given currency.
     """
-    required: any
-    available: any
+    required: int
+    available: int
     currency: str
 
 
@@ -47,8 +47,7 @@ class NotEnoughFunds(EthereumError):
     def to_dict(self) -> dict:
         err_dict = super().to_dict()
         err_dict['error_details']['missing_funds'] = \
-            [MissingFunds._make([str(item) for item in entry])._asdict()
-             for entry in self.missing_funds]
+            [entry._asdict() for entry in self.missing_funds]
 
         return err_dict
 
