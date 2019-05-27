@@ -282,6 +282,12 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        raise NotImplementedError
+
+    @abstractmethod
     def stop(self) -> Deferred:
         """ Interrupt the computation. Assumes current status is 'RUNNING'. """
         raise NotImplementedError
@@ -448,6 +454,11 @@ class Environment(ABC):
     def clean_up(self) -> Deferred:
         """ Deactivate the Environment. Assumes current status is 'ENABLED' or
             'ERROR'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def run_benchmark(self) -> Deferred:
+        """ Get the general performace score for this environment. """
         raise NotImplementedError
 
     @classmethod

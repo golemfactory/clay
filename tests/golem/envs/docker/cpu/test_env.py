@@ -1,6 +1,5 @@
 from logging import Logger
 from pathlib import Path
-from subprocess import SubprocessError
 from unittest.mock import patch as _patch, Mock, MagicMock, ANY
 
 from twisted.trial.unittest import TestCase
