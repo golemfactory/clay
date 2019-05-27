@@ -2,8 +2,8 @@
     "type": "Blender",
     "compute_on": "cpu",
     "name": "Horse 3s",
-    "timeout": "00:05:00",
-    "subtask_timeout": "00:01:00",
+    "timeout": "00:15:00",
+    "subtask_timeout": "00:10:00",
     "subtasks_count": 3,
     "bid": 3.3,
     "resources": [

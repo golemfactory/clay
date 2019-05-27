@@ -192,12 +192,16 @@ class TaskResourcesMixin:
 
         return True
 
-    def start_handshake(self, key_id, task_id: Optional[str] = None):
+    def start_handshake(self,
+                        key_id,
+                        task_id: Optional[str] = None,
+                        wtct_kwargs: Optional[dict] = None,) -> None:
         logger.info('Starting resource handshake with %r',
                     common.short_node_id(key_id))
 
         handshake = ResourceHandshake()
         handshake.task_id = task_id
+        handshake.wtct_kwargs = wtct_kwargs
         directory = self.resource_manager.storage.get_dir(self.NONCE_TASK)
 
         try:

@@ -18,7 +18,7 @@ class ResourceHandshake:
     __slots__ = (
         'nonce', 'file', 'hash', 'started',
         'local_result', 'remote_result',
-        'task_id',
+        'task_id', 'wtct_kwargs',
     )
 
     def __init__(self):
@@ -32,6 +32,7 @@ class ResourceHandshake:
         # If task_id is None it means that handshake was initialized
         # by other side (by potential Provider)
         self.task_id: typing.Optional[str] = None
+        self.wtct_kwargs: typing.Optional[dict] = None
 
     @staticmethod
     def read_nonce(nonce_file):
@@ -154,7 +155,9 @@ class ResourceHandshakeSessionMixin:
             logger.info('Finished resource handshake with %r',
                         short_node_id(key_id))
         if handshake.success() and handshake.task_id:
-            self.task_server.request_task_by_id(task_id=handshake.task_id)
+            self.task_server.request_task_by_id(
+                task_id=handshake.task_id,
+                wtct_kwargs=handshake.wtct_kwargs)
 
     # ########################
     #      DOWNLOAD NONCE

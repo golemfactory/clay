@@ -262,7 +262,7 @@ class Subscription(object):
     def want_subtask(self,
                      task_server: TaskServer,
                      task_id: str,
-                     num_subtasks: int = 1) -> bool:
+                     num_subtasks: int = 3) -> bool:
         if task_id not in self.tasks:
             return False
 
@@ -277,9 +277,11 @@ class Subscription(object):
 
         task_server.request_task_by_id(
             task_id=task_id,
-            performance=self.performance,
-            eth_pub_key=self.eth_pub_key,
-            num_subtasks=num_subtasks)
+            wtct_kwargs={
+                'performance': self.performance,
+                'eth_pub_key': self.eth_pub_key,
+                'num_subtasks': num_subtasks
+            })
         dispatcher.connect(self.add_subtask_event,
                            signal='golem.subtask')
         self.increment(SubtaskStatus.requested)

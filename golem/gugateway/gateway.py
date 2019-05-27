@@ -360,7 +360,7 @@ def subtask_result(node_id, subtask_id) -> (str, int):
                             subtask_id, subs)
                 return _json_response('OK')
         except KeyError as e:
-            return _invalid_input(f'{e} is required in body')
+            return _invalid_input(f'{e} is required')
         except (InvalidSubtaskStatus, ValueError) as e:
             return _invalid_input(e)
         except RuntimeError as e:

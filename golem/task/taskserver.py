@@ -230,9 +230,7 @@ class TaskServer(
 
     def request_task_by_id(self,
                            task_id: str,
-                           performance: Optional[float] = None,
-                           eth_pub_key: Optional[str] = None,
-                           num_subtasks: int = 1) -> None:
+                           wtct_kwargs: Optional[dict] = None) -> None:
         """Requests task possibly after successful resource handshake.
         """
         try:
@@ -242,7 +240,7 @@ class TaskServer(
         except KeyError:
             logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
             return
-        self._request_task(task_header, performance, eth_pub_key, num_subtasks)
+        self._request_task(task_header, wtct_kwargs)
 
     def request_task(self) -> Optional[str]:
         """Chooses random task from network to compute on our machine"""
@@ -254,10 +252,10 @@ class TaskServer(
 
     def _request_task(self,
                       theader: dt_tasks.TaskHeader,
-                      performance: Optional[float] = None,
-                      eth_pub_key: Optional[str] = None,
-                      num_subtasks: int = 1) -> Optional[str]:
+                      wtct_kwargs: Optional[dict] = None) -> Optional[str]:
+
         try:
+            performance = wtct_kwargs.get('performance')
             if not performance:
                 env = self.get_environment_by_id(theader.environment)
                 if env is not None:
@@ -302,6 +300,7 @@ class TaskServer(
                 self.start_handshake(
                     key_id=theader.task_owner.key,
                     task_id=theader.task_id,
+                    wtct_kwargs=wtct_kwargs,
                 )
                 return None
             if not handshake.success():
@@ -324,14 +323,17 @@ class TaskServer(
                 node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
-                num_subtasks=num_subtasks,
+                num_subtasks=wtct_kwargs.get('num_subtasks'),
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
                 provider_public_key=self.get_key_id(),
-                provider_ethereum_public_key=eth_pub_key,
+                provider_ethereum_public_key=wtct_kwargs.get('eth_pub_key'),
                 task_header=theader,
             )
+            if wtct.num_subtasks > 1:
+                logger.info('WTCT num_subtasks: %d', wtct.num_subtasks)
+
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
@@ -341,7 +343,7 @@ class TaskServer(
             return theader.task_id
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Cannot send request for task: %s", err)
-            logger.debug("Detailed traceback", exc_info=True)
+            logger.warning("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None

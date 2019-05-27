@@ -66,7 +66,7 @@ class ThirstTimer(ActionTimer):
 
     @property
     def profit_factor(self):
-        thrist = not self.finished and 0 or time.time() - self._finished
+        thrist = self.finished and time.time() - self._finished or 0
         return self._profit_factor * math.exp(-self._ALPHA * thrist)
 
     def _finish(self) -> None:
