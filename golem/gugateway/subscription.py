@@ -240,6 +240,17 @@ class Subscription(object):
         self.max_disk_size = int(request_json['maxDiskSize'])
         self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
 
+    # TODO: do we need to clean-up connections or dispatcher will automagically do that?
+    # def unsubscribe(self):
+    #     dispatcher.disconnect(self.add_task_event, signal='golem.task')
+    #     dispatcher.disconnect(self._remove_task_event, signal='golem.task.removed')
+    #     dispatcher.disconnect(self.add_subtask_event,
+    #                           signal='golem.subtask')
+    #     dispatcher.disconnect(self.add_resource_event,
+    #                           signal='golem.resource')
+    #     dispatcher.disconnect(self.add_result_verification_event,
+    #                           signal='golem.message')
+
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
             raise Exception('duplicated event hash %r: %r' % (event_hash, kw))
@@ -294,8 +305,6 @@ class Subscription(object):
         self.subtasks[subtask.subtask_id] = subtask
         if event == 'started' and subtask.task_id in self.tasks:
             self._add_event(subtask.subtask_id, subtask=subtask)
-            dispatcher.disconnect(self.add_subtask_event,
-                                  signal='golem.subtask')
             dispatcher.connect(self.add_resource_event,
                                signal='golem.resource')
         else:
@@ -310,18 +319,14 @@ class Subscription(object):
 
         self.set_config_to(task_server.config_desc)
         task_server.task_sessions[subtask_id].send_subtask_cancel(subtask_id)
-        dispatcher.disconnect(self.add_resource_event,
-                              signal='golem.resource')
         self.increment(SubtaskStatus.cancelled)
         return True
 
     def add_resource_event(self, **kwargs) -> None:
         resource = Resource(**kwargs)
-        logger.debug('event resource path: %s', resource.path)
+        logger.debug('event for subtask_id: %s', resource.subtask_id)
         if resource.subtask_id in self.subtasks:
             self._add_event(f'rs-{resource.subtask_id}', resource=resource)
-            dispatcher.disconnect(self.add_resource_event,
-                                  signal='golem.resource')
         else:
             logger.warning('unexpected resource event for %s/%s: %r' % (
                 self.node_id, self.task_type, kwargs
@@ -367,8 +372,6 @@ class Subscription(object):
                      or isinstance(msg, SubtaskResultsRejected)):
             self._add_event(f'rv-{msg.subtask_id}', subtask_verification=(
                 SubtaskVerification(msg)))
-            dispatcher.disconnect(self.add_result_verification_event,
-                                  signal='golem.message')
 
     def increment(self, status: Union[SubtaskStatus, str]) -> None:
         if isinstance(status, str):
