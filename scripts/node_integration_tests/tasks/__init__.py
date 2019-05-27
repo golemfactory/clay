@@ -23,8 +23,8 @@ _TASK_SETTINGS = {
     '2_short': {
         'type': "Blender",
         'name': 'test task',
-        'timeout': "0:04:00",
-        "subtask_timeout": "0:01:30",
+        'timeout': "0:08:00",
+        "subtask_timeout": "0:07:30",
         "subtasks_count": 2,
         "bid": 1.0,
         "resources": [],
@@ -106,6 +106,24 @@ _TASK_SETTINGS = {
         },
         'compute_on': 'gpu',
     },
+    '4k': {
+        'type': "Blender",
+        'name': 'test task',
+        'timeout': "0:20:00",
+        "subtask_timeout": "0:19:50",
+        "subtasks_count": 1,
+        "bid": 1.0,
+        "resources": [],
+        "options": {
+            "output_path": '',
+            "format": "PNG",
+            "resolution": [
+                4096,
+                2160,
+            ]
+        }
+    },
+
 }
 
 

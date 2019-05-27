@@ -126,11 +126,8 @@ function check_dependencies()
         info_msg "Already installed: nvidia-docker2"
     fi
 
-    if [[ -z "$(which runsc)" ]]; then
-        INSTALL_GVISOR_RUNTIME=1
-    else
-        info_msg "Already installed: gvisor runsc"
-    fi
+    # Installer will overwrite existing /usr/local/bin/runsc 
+    INSTALL_GVISOR_RUNTIME=1
 
     # Check for nvidia-modprobe
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
@@ -349,13 +346,13 @@ function install_dependencies()
     fi
 
     if [[ ${INSTALL_GVISOR_RUNTIME} -eq 1 ]]; then
-        # TODO: replace `latest` with fixed version
-        wget https://storage.googleapis.com/gvisor/releases/nightly/latest/runsc
-        wget https://storage.googleapis.com/gvisor/releases/nightly/latest/runsc.sha512
+        wget https://storage.googleapis.com/gvisor/releases/nightly/2019-04-01/runsc
+        wget https://storage.googleapis.com/gvisor/releases/nightly/2019-04-01/runsc.sha512
         sha512sum -c runsc.sha512
         rm runsc.sha512
 
         # Add runtime configuration
+        sudo mkdir -p /etc/docker
         sudo python << EOF
 import json
 
@@ -375,9 +372,9 @@ with open('/etc/docker/daemon.json', 'w+') as f:
     daemon_json['runtimes']['runsc'] = runtime_config
     json.dump(daemon_json, f, indent=4)
 EOF
-        sudo service docker restart
         chmod a+x runsc
         sudo mv runsc /usr/local/bin
+        sudo service docker restart || true
     fi
 
 }

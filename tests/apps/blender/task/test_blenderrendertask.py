@@ -639,7 +639,8 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                 "resolution": [
                     320,
                     240
-                ]
+                ],
+                "samples": 150
             }
         }
 
@@ -654,6 +655,15 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                 self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
+
+    def test_build_dictionary_samples(self):
+        task_type = BlenderTaskTypeInfo()
+        task_dict = self._task_dictionary
+        samples = task_dict.get('options').get('samples')
+        dictionary = BlenderRenderTaskBuilder.build_full_definition(
+            task_type, task_dict)
+        result = BlenderRenderTaskBuilder.build_dictionary(dictionary)
+        self.assertEqual(result['options']['samples'], samples)
 
     def test_build_correct_format(self):
         task_type = BlenderTaskTypeInfo()

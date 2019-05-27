@@ -276,6 +276,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIn(tb_id, tk.task_headers)
 
     def test_check_max_tasks_per_owner(self):
+
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
@@ -295,9 +296,13 @@ class TestTaskHeaderKeeper(LogTestCase):
         tb0_id = thd.task_id
         tk.add_task_header(thd)
 
-        for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
+        def _assert_headers(ids_, len_):
+            ids_.append(tb0_id)
+            for id_ in ids_:
+                self.assertIn(id_, tk.task_headers)
+            self.assertEqual(len_, len(tk.task_headers))
+
+        _assert_headers(ids, len(ids) + 1)
 
         while time.time() == last_add_time:
             time.sleep(0.1)
@@ -308,28 +313,49 @@ class TestTaskHeaderKeeper(LogTestCase):
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
 
-        for id_ in ids + new_ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(limit + 1, len(tk.task_headers))
+
+        _assert_headers(ids + new_ids, limit + 1)
 
         # shouldn't remove any tasks
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        for id_ in ids + new_ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(limit + 1, len(tk.task_headers))
+        _assert_headers(ids + new_ids, limit + 1)
+
+        # Test if it skips a running task
+        running_task_id = ids[0]
+        tk.task_started(running_task_id)
+        assert running_task_id in tk.running_tasks
+        tk.max_tasks_per_requestor = tk.max_tasks_per_requestor - 1
+        # shouldn't remove any tasks
+        tk.check_max_tasks_per_owner(thd.task_owner.key)
+
+        _assert_headers(ids + new_ids, limit + 1)
+
+        # finish the task, restore state
+        tk.task_ended(running_task_id)
+        assert running_task_id not in tk.running_tasks
 
         tk.max_tasks_per_requestor = new_limit
 
         # should remove ta{3..9}
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(new_limit + 1, len(tk.task_headers))
+        _assert_headers(ids, new_limit + 1)
+
+        # Test if it skips a running task
+        running_task_id = ids[2]
+        tk.task_started(running_task_id)
+        assert running_task_id in tk.running_tasks
+        tk.max_tasks_per_requestor = 1
+        # shouldn't remove running_task_id
+        tk.check_max_tasks_per_owner(thd.task_owner.key)
+
+        # Should keep 0 and 2, since 2 is running
+        _assert_headers([ids[0], ids[2]], 3)
+
+        # finish the task, restore state
+        tk.task_ended(running_task_id)
+        assert running_task_id not in tk.running_tasks
 
     def test_get_unsupport_reasons(self):
         tk = TaskHeaderKeeper(

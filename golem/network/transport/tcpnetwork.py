@@ -127,7 +127,7 @@ class TCPNetwork(Network):
         logger.debug('__try_to_connect_to_addresses(%r) filtered', addresses)
 
         if not addresses:
-            logger.warning("No addresses for connection given")
+            logger.debug("No addresses for connection given")
             TCPNetwork.__call_failure_callback(connect_info.failure_callback)
             return
 
