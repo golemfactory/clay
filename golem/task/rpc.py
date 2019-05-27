@@ -71,7 +71,7 @@ def _validate_task_dict(client, task_dict) -> None:
             subtasks_count=subtasks_count,
             optimize_total=False,
             use_frames=options.get('frame_count', 1) > 1,
-            frames=[None]*options.get('frame_count', 1),
+            frames=[None] * options.get('frame_count', 1),
         )
         if computed_subtasks != subtasks_count:
             raise ValueError(
@@ -347,7 +347,7 @@ def _start_task(client, task, resource_server_result):
 
 @defer.inlineCallbacks
 def enqueue_new_task(client, task, force=False) \
-            -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
+        -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
     validate_client(client)
     task_id = task.header.task_id
@@ -401,7 +401,8 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
     logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
-        return None, e.to_dict()
+        temp_dict = rpc_utils.int_to_string(e.to_dict())
+        return None, temp_dict
 
     return None, str(e)
 
@@ -729,10 +730,9 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \
-            typing.Tuple[
-                    typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
-                    typing.Optional[str]
-            ]:
+        typing.Tuple[
+                typing.Optional[typing.Dict[int, typing.List[typing.Dict]]],
+                typing.Optional[str]]:
         """
         Returns the task fragments for a given rendering task. A single task
         fragment is a collection of subtasks referring to the same, common part
