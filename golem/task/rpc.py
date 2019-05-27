@@ -401,8 +401,8 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
     logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
-        tempDict = rpc_utils.big_int_to_string(e.to_dict())
-        return None, tempDict
+        temp_dict = rpc_utils.int_to_string(e.to_dict())
+        return None, temp_dict
 
     return None, str(e)
 
