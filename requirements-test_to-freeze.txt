@@ -6,4 +6,5 @@ flake8
 freezegun==0.3.11
 pylint==1.9.2
 pytest-cov
+pytest-timeout==1.2.1
 pytest==3.3.1
