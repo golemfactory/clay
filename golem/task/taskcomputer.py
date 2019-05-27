@@ -123,6 +123,7 @@ class TaskComputer(object):
 
     def resource_failure(self, res_id, reason):
         subtask = self.assigned_subtask
+        self.assigned_subtask = None
         if not subtask or subtask['task_id'] != res_id:
             logger.error("Resource failure for a wrong task, %s", res_id)
             return
@@ -143,14 +144,17 @@ class TaskComputer(object):
             assert subtask is not None
             self.assigned_subtask = None
             subtask_id = subtask['subtask_id']
+            task_id = subtask['task_id']
+            task_header = self.task_server.task_keeper.task_headers[task_id]
             # get paid for max working time,
             # thus task withholding won't make profit
-            task_header = \
-                self.task_server.task_keeper.task_headers[subtask['task_id']]
             work_time_to_be_paid = task_header.subtask_timeout
 
-        except KeyError:
-            logger.error("No subtask with id %r", subtask_id)
+        except (KeyError, AssertionError):
+            logger.error("Task header not found in task keeper. "
+                         "task_id=%r, subtask_id=%r",
+                         task_id, subtask_id)
+            self.__task_finished(subtask)
             return
 
         was_success = False
@@ -382,6 +386,7 @@ class TaskComputer(object):
         with self.lock:
             self.counting_thread = tt
 
+        self.task_server.task_keeper.task_started(task_id)
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
@@ -396,6 +401,7 @@ class TaskComputer(object):
 
         with self.lock:
             self.counting_thread = None
+        self.task_server.task_keeper.task_ended(ctd['task_id'])
         if self.finished_cb:
             self.finished_cb()
 

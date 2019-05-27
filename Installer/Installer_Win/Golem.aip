@@ -14,19 +14,21 @@
     <ROW Property="AI_UNINSTALLER" Value="msiexec.exe"/>
     <ROW Property="ALLUSERS" Value="1"/>
     <ROW Property="ARPCOMMENTS" Value="This installer database contains the logic and data required to install [|ProductName]." ValueLocId="*"/>
+    <ROW Property="ARPHELPLINK" Value="https://docs.golem.network"/>
     <ROW Property="ARPNOREPAIR" Value="1" MultiBuildValue="DefaultBuild:1"/>
     <ROW Property="ARPPRODUCTICON" Value="favicon.exe" Type="8"/>
     <ROW Property="ARPSYSTEMCOMPONENT" Value="1"/>
+    <ROW Property="ARPURLINFOABOUT" Value="https://chat.golem.network"/>
     <ROW Property="AiFeatIcoMainFeature" Value="favicon.exe" Type="8"/>
     <ROW Property="BannerBitmap" Value="banner" MultiBuildValue="DefaultBuild:bannertop01.jpg" Type="1" MsiKey="BannerBitmap"/>
     <ROW Property="DialogBitmap" Value="dialog" MultiBuildValue="DefaultBuild:bannerfull01.jpg" Type="1" MsiKey="DialogBitmap"/>
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{36CB4E64-4AE6-4A04-A47B-012BF8BF528E} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{6DC72CA1-7779-4796-9CC8-22D561CE6F28} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.19.1" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.19.2" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -78,7 +80,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
     <ROW Component="AIShRegAnswer" ComponentId="{A5AAAB35-1647-4E0D-9EAD-EA32AC226446}" Directory_="APPDIR" Attributes="260" KeyPath="AIShRegAnswer"/>
-    <ROW Component="AI_CustomARPName" ComponentId="{2462EE81-3E77-4DD7-A871-F7FD7B37A3CD}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
+    <ROW Component="AI_CustomARPName" ComponentId="{9129F2CF-2E67-4D12-B0D3-5A16EB991DC6}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
     <ROW Component="AI_ExePath" ComponentId="{E4EBF48B-0937-4467-A8CE-BA9097359940}" Directory_="APPDIR" Attributes="260" KeyPath="AI_ExePath"/>
     <ROW Component="APPDIR" ComponentId="{33DBAA61-0C3E-4C0A-A5B6-FF9575EEB496}" Directory_="APPDIR" Attributes="0"/>
     <ROW Component="CL.command.1.tlog" ComponentId="{0F8E276D-C7B9-45A5-99B9-5A0377CEDD4A}" Directory_="taskcollector.tlog_Dir" Attributes="0" KeyPath="CL.command.1.tlog" Type="0"/>
@@ -134,7 +136,6 @@
     <ROW Component="default" ComponentId="{14EF1F20-E012-4401-83D8-1CD0451CF8A9}" Directory_="default_Dir" Attributes="0"/>
     <ROW Component="docker.exe" ComponentId="{8FF662FE-C33D-44A4-8903-49599E130CC1}" Directory_="APPDIR" Attributes="256" KeyPath="docker.exe"/>
     <ROW Component="dockermachine.exe" ComponentId="{C3AE4421-38AF-4639-B58A-A9BC57FE3984}" Directory_="APPDIR" Attributes="256" KeyPath="dockermachine.exe"/>
-    <ROW Component="elevate.exe" ComponentId="{4073942F-258D-4D55-A442-25A27CC86502}" Directory_="resources_1_Dir" Attributes="0" KeyPath="elevate.exe"/>
     <ROW Component="ffmpeg.dll" ComponentId="{8E8FEDF6-3B69-4220-9E9E-5484401EE438}" Directory_="APPDIR" Attributes="256" KeyPath="ffmpeg.dll"/>
     <ROW Component="golem.VisualElementsManifest.xml" ComponentId="{153DA665-95EF-405F-B0EA-BAAEC2F1E3A6}" Directory_="APPDIR" Attributes="0" KeyPath="golem.VisualElementsManifest.xml"/>
     <ROW Component="golem.exe" ComponentId="{D1B3082C-7C37-4D53-AB38-5D7CC9381165}" Directory_="APPDIR" Attributes="256" KeyPath="golem.exe"/>
@@ -144,6 +145,7 @@
     <ROW Component="golemcli.exe" ComponentId="{EB1A46BC-BFAC-4315-9747-8447B99B1551}" Directory_="APPDIR" Attributes="256" KeyPath="golemcli.exe"/>
     <ROW Component="hyperg.exe" ComponentId="{5B98F11F-C2E5-4A02-89D5-AAA83BF127C1}" Directory_="APPDIR" Attributes="256" KeyPath="hyperg.exe"/>
     <ROW Component="hypergclient.exe" ComponentId="{E8424E3C-258C-4B6F-9EDC-1F6CE636C5AF}" Directory_="APPDIR" Attributes="256" KeyPath="hypergclient.exe"/>
+    <ROW Component="hypergworker.exe" ComponentId="{D8660D1A-50D7-45FA-9482-0D00CED77106}" Directory_="APPDIR" Attributes="256" KeyPath="hypergworker.exe"/>
     <ROW Component="libEGL.dll" ComponentId="{1A0CB089-6257-4054-85DA-5394DABE5369}" Directory_="APPDIR" Attributes="256" KeyPath="libEGL.dll"/>
     <ROW Component="libGLESv2.dll" ComponentId="{7878988C-B0B5-4497-BC6A-8D18FA02811F}" Directory_="APPDIR" Attributes="256" KeyPath="libGLESv2.dll"/>
     <ROW Component="libeay32.dll" ComponentId="{2D3FE8B9-98CA-491A-860D-69D9322D1149}" Directory_="APPDIR" Attributes="256" KeyPath="libeay32.dll"/>
@@ -159,7 +161,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
     <ROW Feature="DockerForWin" Title="DockerForWin" Description="Description" Display="5" Level="4" Directory_="APPDIR" Attributes="0" Components="docker.exe dockermachine.exe"/>
-    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="3" Level="1" Directory_="APPDIR" Attributes="16" Components="AIShRegAnswer AI_CustomARPName AI_ExePath APPDIR CL.command.1.tlog FreeImage.dll NewFolder ProductInformation SHORTCUTDIR am.pak apimswincoreconsolel110.dll apimswincoredatetimel110.dll apimswincoredebugl110.dll apimswincoreerrorhandlingl110.dll apimswincorefilel110.dll apimswincorefilel120.dll apimswincorefilel210.dll apimswincorehandlel110.dll apimswincoreheapl110.dll apimswincoreinterlockedl110.dll apimswincorelibraryloaderl110.dll apimswincorelocalizationl120.dll apimswincorememoryl110.dll apimswincorenamedpipel110.dll apimswincoreprocessenvironmentl110.dll apimswincoreprocessthreadsl110.dll apimswincoreprocessthreadsl111.dll apimswincoreprofilel110.dll apimswincorertlsupportl110.dll apimswincorestringl110.dll apimswincoresynchl110.dll apimswincoresynchl120.dll apimswincoresysinfol110.dll apimswincoretimezonel110.dll apimswincoreutill110.dll apimswincrtconiol110.dll apimswincrtconvertl110.dll apimswincrtenvironmentl110.dll apimswincrtfilesysteml110.dll apimswincrtheapl110.dll apimswincrtlocalel110.dll apimswincrtmathl110.dll apimswincrtmultibytel110.dll apimswincrtprivatel110.dll apimswincrtprocessl110.dll apimswincrtruntimel110.dll apimswincrtstdiol110.dll apimswincrtstringl110.dll apimswincrttimel110.dll apimswincrtutilityl110.dll appupdate.yml blink_image_resources_200_percent.pak bmw27_cpu.blend d3dcompiler_47.dll elevate.exe ffmpeg.dll golem.exe golemapp.exe golemcli.exe hyperg.exe hypergclient.exe libEGL.dll libGLESv2.dll libeay32.dll msvcp140.dll node.dll ssleay32.dll taskcollector.exe taskcollector.iobj ucrtbase.dll vc141.pdb vcruntime140.dll"/>
+    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="3" Level="1" Directory_="APPDIR" Attributes="16" Components="AIShRegAnswer AI_CustomARPName AI_ExePath APPDIR CL.command.1.tlog FreeImage.dll NewFolder ProductInformation SHORTCUTDIR am.pak apimswincoreconsolel110.dll apimswincoredatetimel110.dll apimswincoredebugl110.dll apimswincoreerrorhandlingl110.dll apimswincorefilel110.dll apimswincorefilel120.dll apimswincorefilel210.dll apimswincorehandlel110.dll apimswincoreheapl110.dll apimswincoreinterlockedl110.dll apimswincorelibraryloaderl110.dll apimswincorelocalizationl120.dll apimswincorememoryl110.dll apimswincorenamedpipel110.dll apimswincoreprocessenvironmentl110.dll apimswincoreprocessthreadsl110.dll apimswincoreprocessthreadsl111.dll apimswincoreprofilel110.dll apimswincorertlsupportl110.dll apimswincorestringl110.dll apimswincoresynchl110.dll apimswincoresynchl120.dll apimswincoresysinfol110.dll apimswincoretimezonel110.dll apimswincoreutill110.dll apimswincrtconiol110.dll apimswincrtconvertl110.dll apimswincrtenvironmentl110.dll apimswincrtfilesysteml110.dll apimswincrtheapl110.dll apimswincrtlocalel110.dll apimswincrtmathl110.dll apimswincrtmultibytel110.dll apimswincrtprivatel110.dll apimswincrtprocessl110.dll apimswincrtruntimel110.dll apimswincrtstdiol110.dll apimswincrtstringl110.dll apimswincrttimel110.dll apimswincrtutilityl110.dll appupdate.yml blink_image_resources_200_percent.pak bmw27_cpu.blend d3dcompiler_47.dll ffmpeg.dll golem.exe golemapp.exe golemcli.exe hyperg.exe hypergclient.exe hypergworker.exe libEGL.dll libGLESv2.dll libeay32.dll msvcp140.dll node.dll ssleay32.dll taskcollector.exe taskcollector.iobj ucrtbase.dll vc141.pdb vcruntime140.dll"/>
     <ROW Feature="TileAssets_DefaultBuild" Title="TileAssets_DefaultBuild" Description="Description" Display="0" Level="1" Directory_="APPDIR" Attributes="0" Options="271" Components="golem.VisualElementsManifest.xml golem_Square150x150Logo.scale400.png golem_Square70x70Logo.scale400.png resources.pri" Builds="DefaultBuild"/>
     <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
   </COMPONENT>
@@ -220,7 +222,7 @@
     <ROW File="bg.pak" Component_="am.pak" FileName="bg.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bg.pak" SelfReg="false" NextFile="bn.pak"/>
     <ROW File="blink_image_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="BLINK_~1.PAK|blink_image_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\blink_image_resources_200_percent.pak" SelfReg="false" NextFile="content_resources_200_percent.pak"/>
     <ROW File="bmw27_cpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~1.BLE|bmw27_cpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_cpu.blend" SelfReg="false" NextFile="ffmpeg.dll"/>
-    <ROW File="bmw27_gpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~2.BLE|bmw27_gpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_gpu.blend" SelfReg="false"/>
+    <ROW File="bmw27_gpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~2.BLE|bmw27_gpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_gpu.blend" SelfReg="false" NextFile="taskcollector.iobj"/>
     <ROW File="bn.pak" Component_="am.pak" FileName="bn.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bn.pak" SelfReg="false" NextFile="ca.pak"/>
     <ROW File="ca.pak" Component_="am.pak" FileName="ca.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ca.pak" SelfReg="false" NextFile="cs.pak"/>
     <ROW File="content_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="CONTEN~1.PAK|content_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\content_resources_200_percent.pak" SelfReg="false" NextFile="content_shell.pak"/>
@@ -229,11 +231,10 @@
     <ROW File="d3dcompiler_47.dll" Component_="d3dcompiler_47.dll" FileName="D3DCOM~1.DLL|d3dcompiler_47.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\d3dcompiler_47.dll" SelfReg="false" NextFile="bmw27_cpu.blend"/>
     <ROW File="da.pak" Component_="am.pak" FileName="da.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\da.pak" SelfReg="false" NextFile="de.pak"/>
     <ROW File="de.pak" Component_="am.pak" FileName="de.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\de.pak" SelfReg="false" NextFile="el.pak"/>
-    <ROW File="docker.exe" Component_="docker.exe" FileName="docker.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker.exe" SelfReg="false" NextFile="bmw27_gpu.blend" DigSign="true"/>
-    <ROW File="dockermachine.exe" Component_="dockermachine.exe" FileName="DOCKER~1.EXE|docker-machine.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker-machine.exe" SelfReg="false" NextFile="docker.exe" DigSign="true"/>
+    <ROW File="docker.exe" Component_="docker.exe" FileName="docker.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker.exe" SelfReg="false" NextFile="bmw27_gpu.blend" DigSign="true"/>
+    <ROW File="dockermachine.exe" Component_="dockermachine.exe" FileName="DOCKER~1.EXE|docker-machine.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker-machine.exe" SelfReg="false" NextFile="docker.exe" DigSign="true"/>
     <ROW File="el.pak" Component_="am.pak" FileName="el.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\el.pak" SelfReg="false" NextFile="enGB.pak"/>
-    <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="elevate.exe"/>
-    <ROW File="elevate.exe" Component_="elevate.exe" FileName="elevate.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\elevate.exe" SelfReg="false" NextFile="snapshot_blob.bin" DigSign="true"/>
+    <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="snapshot_blob.bin"/>
     <ROW File="enGB.pak" Component_="am.pak" FileName="en-GB.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-GB.pak" SelfReg="false" NextFile="enUS.pak"/>
     <ROW File="enUS.pak" Component_="am.pak" FileName="en-US.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-US.pak" SelfReg="false" NextFile="es419.pak"/>
     <ROW File="es.pak" Component_="am.pak" FileName="es.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\es.pak" SelfReg="false" NextFile="et.pak"/>
@@ -247,7 +248,7 @@
     <ROW File="fr.pak" Component_="am.pak" FileName="fr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\fr.pak" SelfReg="false" NextFile="gu.pak"/>
     <ROW File="golem.VisualElementsManifest.xml" Component_="golem.VisualElementsManifest.xml" FileName="GOLEMV~1.XML|golem.VisualElementsManifest.xml" Attributes="0" SourcePath="&lt;AI_RES&gt;app.VisualElementsManifest.xml" SelfReg="false" NextFile="golem_Square70x70Logo.scale400.png"/>
     <ROW File="golem.exe" Component_="golem.exe" FileName="golem.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golem.exe" SelfReg="false" NextFile="golemapp.exe" DigSign="true"/>
-    <ROW File="golem_Square150x150Logo.scale400.png" Component_="golem_Square150x150Logo.scale400.png" FileName="GOLEM_~2.PNG|golem_Square150x150Logo.scale-400.png" Attributes="0" SourcePath="Installer\Golem_600x600.png" SelfReg="false" NextFile="taskcollector.log"/>
+    <ROW File="golem_Square150x150Logo.scale400.png" Component_="golem_Square150x150Logo.scale400.png" FileName="GOLEM_~2.PNG|golem_Square150x150Logo.scale-400.png" Attributes="0" SourcePath="Installer\Golem_600x600.png" SelfReg="false" NextFile="dockermachine.exe"/>
     <ROW File="golem_Square70x70Logo.scale400.png" Component_="golem_Square70x70Logo.scale400.png" FileName="GOLEM_~1.PNG|golem_Square70x70Logo.scale-400.png" Attributes="0" SourcePath="Installer\Golem_284x284.png" SelfReg="false" NextFile="resources.pri"/>
     <ROW File="golemapp.exe" Component_="golemapp.exe" FileName="golemapp.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemapp.exe" SelfReg="false" NextFile="golemcli.exe" DigSign="true"/>
     <ROW File="golemcli.exe" Component_="golemcli.exe" FileName="golemcli.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemcli.exe" SelfReg="false" NextFile="HashInfo.txt" DigSign="true"/>
@@ -258,6 +259,7 @@
     <ROW File="hu.pak" Component_="am.pak" FileName="hu.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hu.pak" SelfReg="false" NextFile="id.pak"/>
     <ROW File="hyperg.exe" Component_="hyperg.exe" FileName="hyperg.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg.exe" SelfReg="false" NextFile="icudtl.dat" DigSign="true"/>
     <ROW File="hypergclient.exe" Component_="hypergclient.exe" FileName="HYPERG~1.EXE|hyperg-client.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg-client.exe" SelfReg="false" NextFile="hyperg.exe" DigSign="true"/>
+    <ROW File="hypergworker.exe" Component_="hypergworker.exe" FileName="HYPERG~2.EXE|hyperg-worker.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg-worker.exe" SelfReg="false" DigSign="true"/>
     <ROW File="icudtl.dat" Component_="blink_image_resources_200_percent.pak" FileName="icudtl.dat" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\icudtl.dat" SelfReg="false" NextFile="leveldown.node"/>
     <ROW File="id.pak" Component_="am.pak" FileName="id.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\id.pak" SelfReg="false" NextFile="it.pak"/>
     <ROW File="it.pak" Component_="am.pak" FileName="it.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\it.pak" SelfReg="false" NextFile="ja.pak"/>
@@ -299,8 +301,9 @@
     <ROW File="sw.pak" Component_="am.pak" FileName="sw.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sw.pak" SelfReg="false" NextFile="ta.pak"/>
     <ROW File="ta.pak" Component_="am.pak" FileName="ta.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ta.pak" SelfReg="false" NextFile="te.pak"/>
     <ROW File="taskcollector.exe" Component_="taskcollector.exe" FileName="TASKCO~1.EXE|taskcollector.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.exe" SelfReg="false" NextFile="TaskCollector.obj" DigSign="true"/>
+    <ROW File="taskcollector.iobj" Component_="taskcollector.iobj" FileName="TASKCO~1.IOB|taskcollector.iobj" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.iobj" SelfReg="false" NextFile="taskcollector.ipdb"/>
+    <ROW File="taskcollector.ipdb" Component_="taskcollector.iobj" FileName="TASKCO~1.IPD|taskcollector.ipdb" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.ipdb" SelfReg="false" NextFile="hypergworker.exe"/>
     <ROW File="taskcollector.lastbuildstate" Component_="CL.command.1.tlog" FileName="TASKCO~1.LAS|taskcollector.lastbuildstate" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\taskcollector.lastbuildstate" SelfReg="false" NextFile="taskcollector.write.1u.tlog"/>
-    <ROW File="taskcollector.log" Component_="taskcollector.iobj" FileName="TASKCO~1.LOG|taskcollector.log" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.log" SelfReg="false" NextFile="dockermachine.exe"/>
     <ROW File="taskcollector.pdb" Component_="taskcollector.exe" FileName="TASKCO~1.PDB|taskcollector.pdb" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.pdb" SelfReg="false" NextFile="CL.command.1.tlog"/>
     <ROW File="taskcollector.write.1u.tlog" Component_="CL.command.1.tlog" FileName="TASKCO~1.TLO|taskcollector.write.1u.tlog" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\apps\rendering\resources\taskcollector\x64\Release\taskcollector.tlog\taskcollector.write.1u.tlog" SelfReg="false" NextFile="vc141.pdb"/>
     <ROW File="te.pak" Component_="am.pak" FileName="te.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\te.pak" SelfReg="false" NextFile="th.pak"/>

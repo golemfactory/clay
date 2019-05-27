@@ -27,6 +27,9 @@ kill_running_hyperg () {
 
 kill_running_hyperg
 
+# cleanup zombie workers
+pkill -f hyperg || echo "nothing to kill, good to go"
+
 echo "Starting hyperg"
 hyperg > /dev/null 2>&1 &
 H_PID=$!
