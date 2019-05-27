@@ -49,8 +49,7 @@ class GolemNodeTest(NodeTestBase):
         self._run_test('golem.task_output')
 
     def test_large_result(self):
-        exit_code = self._run_test(
-            'golem.separate_hyperg.SeparateHyperdrive',
+        self._run_test(
+            'golem.separate_hyperg',
             **{'task-package': 'cubes', 'task-settings': '4k'},
         )
-        self.assertEqual(exit_code, 0)
