@@ -117,8 +117,6 @@ class TestDockerDummyTask(
 
         output = self._extract_results(computer, ctd['subtask_id'])
 
-        task.create_reference_data_for_task_validation()
-
         def success(*args, **kwargs):
             # pylint: disable=unused-argument
             is_subtask_verified = task.verify_subtask(ctd['subtask_id'])

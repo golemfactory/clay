@@ -9,8 +9,6 @@ use winapi::um::processthreadsapi::OpenProcess;
 use winapi::um::psapi::EmptyWorkingSet;
 use winapi::um::psapi::EnumProcesses;
 use winapi::um::winnt::PROCESS_ALL_ACCESS;
-use winapi::um::winnt::PROCESS_QUERY_INFORMATION;
-use winapi::um::winnt::PROCESS_VM_READ;
 
 const MAX_PROCESS_COUNT: usize = 2048;
 

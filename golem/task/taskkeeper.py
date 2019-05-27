@@ -18,16 +18,14 @@ from golem_messages.constants import MTD
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 
-import golem
-from golem import constants as gconst
-from golem import utils
 from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.taskproviderstats import ProviderStatsManager
 
-logger = logging.getLogger('golem.task.taskkeeper')
+logger = logging.getLogger(__name__)
 
 
 def compute_subtask_value(price: int, computation_time: int) -> int:
@@ -59,10 +57,10 @@ class CompTaskInfo:
     def __init__(self, header: dt_tasks.TaskHeader) -> None:
         self.header = header
         self.requests = 1
-        self.subtasks: dict = {}
+        self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
-            self.header.subtask_timeout, self.header.resource_size)
+            self.header.subtask_timeout, 0)
 
     def __repr__(self):
         return "<CompTaskInfo(%r) reqs: %r>" % (
@@ -111,6 +109,10 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
+        # information about resource options for subtask
+        self.resources_options: typing.Dict[str, typing.Optional[
+            HyperdriveClientOptions]] = {}
+
         # price information per last task request
         self.active_task_offers: typing.Dict[str, int] = {}
 
@@ -118,7 +120,7 @@ class CompTaskKeeper:
         self.subtask_to_task: typing.Dict[str, str] = {}
 
         # task_id to package paths mapping
-        self.task_package_paths: typing.Dict[str, list] = {}
+        self.task_package_paths: typing.Dict[str, typing.List[str]] = {}
 
         # stats
         self.provider_stats_manager = ProviderStatsManager()
@@ -142,6 +144,7 @@ class CompTaskKeeper:
                 self.subtask_to_task,
                 self.task_package_paths,
                 self.active_task_offers,
+                self.resources_options
             )
             pickle.dump(dump_data, f)
 
@@ -159,6 +162,7 @@ class CompTaskKeeper:
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
                 active_task_offers = data[3] if len(data) > 3 else {}
+                resources_options = data[4] if len(data) > 4 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -171,6 +175,7 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
         self.active_task_offers.update(active_task_offers)
+        self.resources_options.update(resources_options)
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
@@ -186,10 +191,6 @@ class CompTaskKeeper:
             price, self.active_tasks[task_id].header.subtask_timeout
         )
         self.dump()
-
-    @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
 
     @handle_key_error
     def get_task_header(self, task_id):
@@ -221,8 +222,15 @@ class CompTaskKeeper:
 
         comp_task_info.requests -= 1
         comp_task_info.subtasks[subtask_id] = comp_task_def
+        header = self.get_task_header(task_id)
+        comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
+            header.subtask_timeout, task_to_compute.size)
 
         self.subtask_to_task[subtask_id] = task_id
+        if task_to_compute.resources_options:
+            task_to_compute.resources_options['options']['size'] = \
+                task_to_compute.size
+        self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
 
@@ -262,6 +270,10 @@ class CompTaskKeeper:
     def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
+    def get_resources_options(self, subtask_id: str) -> \
+            typing.Optional[HyperdriveClientOptions]:
+        return self.resources_options.get(subtask_id)
+
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)
@@ -283,6 +295,7 @@ class CompTaskKeeper:
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
+                self.resources_options.pop(subtask_id, None)
                 self.subtask_to_task.pop(subtask_id, None)
 
             self.active_tasks.pop(task_id, None)
@@ -320,16 +333,16 @@ class TaskHeaderKeeper:
         # all computing tasks that this node knows about
         self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
-        self.supported_tasks = []
+        self.supported_tasks: typing.List[str] = []
         # ids of tasks that are computing on this node
         self.running_tasks: typing.Set[str] = set()
         # results of tasks' support checks
-        self.support_status = {}
+        self.support_status: typing.Dict[str, SupportStatus] = {}
         # tasks that were removed from network recently, so they won't
         # be added again to task_headers
-        self.removed_tasks = {}
+        self.removed_tasks: typing.Dict[str, float] = {}
         # task ids by owner
-        self.tasks_by_owner: typing.Dict[str, set] = {}
+        self.tasks_by_owner: typing.Dict[str, typing.Set[str]] = {}
         # Keep track which tasks were checked when
         self.last_checking: typing.Dict[str, datetime.datetime] = {}
 
@@ -352,7 +365,6 @@ class TaskHeaderKeeper:
         supported = self.check_environment(header.environment)
         supported = supported.join(self.check_mask(header))
         supported = supported.join(self.check_price(header))
-        supported = supported.join(self.check_version(header))
         if not supported.is_ok():
             logger.info("Unsupported task %s, reason: %r",
                         header.task_id, supported.desc)
@@ -389,31 +401,6 @@ class TaskHeaderKeeper:
             return SupportStatus.ok()
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
-
-    @classmethod
-    def check_version(cls, header: dt_tasks.TaskHeader) -> SupportStatus:
-        """Check if this node has a version that isn't less than minimum
-           version described in task header.
-        :return SupportStatus: err() if node's version is lower than minimum
-                               version for this task, False otherwise.
-        """
-        min_v = getattr(header, "min_version", None)
-
-        ok = False
-        try:
-            ok = utils.is_version_compatible(
-                theirs=min_v,
-                spec=gconst.GOLEM_SPEC,
-            )
-        except ValueError:
-            logger.error(
-                "Wrong app version - app version %r, required version %r",
-                golem.__version__,
-                min_v
-            )
-        if ok:
-            return SupportStatus.ok()
-        return SupportStatus.err({UnsupportReason.APP_VERSION: min_v})
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
@@ -521,6 +508,21 @@ class TaskHeaderKeeper:
 
         return self.tasks_by_owner[owner_key_id]
 
+    def find_newest_node(self, node_id) -> typing.Optional[dt_p2p.Node]:
+        node: typing.Optional[dt_p2p.Node] = None
+        timestamp: int = 0
+        task_ids = self._get_tasks_by_owner_set(owner_key_id=node_id)
+        for task_id in task_ids:
+            try:
+                task_header: dt_tasks.TaskHeader = self.task_headers[task_id]
+            except KeyError:
+                continue
+            if task_header.timestamp < timestamp:
+                continue
+            node = task_header.task_owner
+            timestamp = task_header.timestamp
+        return node
+
     def check_max_tasks_per_owner(self, owner_key_id):
         owner_task_set = self._get_tasks_by_owner_set(owner_key_id)
 
@@ -627,9 +629,6 @@ class TaskHeaderKeeper:
             cur_time = time.time()
             if cur_time - remove_time > self.removed_task_timeout:
                 del self.removed_tasks[task_id]
-
-    def request_failure(self, task_id):
-        self.remove_task_header(task_id)
 
     def get_unsupport_reasons(self):
         """

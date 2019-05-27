@@ -13,6 +13,7 @@ from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
 from hexbytes import HexBytes
 
+from golem.core import variables
 from golem.core.common import timestamp_to_datetime
 from golem.ethereum.paymentprocessor import (
     PaymentProcessor,
@@ -21,6 +22,8 @@ from golem.ethereum.paymentprocessor import (
 from golem.model import Payment, PaymentStatus, PaymentDetails
 from golem.testutils import DatabaseFixture
 
+from tests.factories import model as model_factory
+
 
 class PaymentStatusTest(unittest.TestCase):
     def test_status(self):
@@ -28,15 +31,11 @@ class PaymentStatusTest(unittest.TestCase):
         self.assertEqual(s, PaymentStatus.awaiting)
 
 
-class PaymentProcessorInternalTest(DatabaseFixture):
-    """ In this suite we test internal logic of PaymentProcessor. The final
-        Ethereum transactions are not inspected.
-    """
-
+class PaymentProcessorBase(DatabaseFixture):
     def setUp(self):
         DatabaseFixture.setUp(self)
         self.addr = encode_hex(privtoaddr(urandom(32)))
-        self.sci = mock.Mock()
+        self.sci = mock.Mock(spec=golem_sci.SmartContractsInterface)
         self.sci.GAS_PRICE = 20
         self.sci.GAS_PER_PAYMENT = 300
         self.sci.GAS_BATCH_PAYMENT_BASE = 30
@@ -44,14 +43,23 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.get_eth_address.return_value = self.addr
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
-        latest_block = mock.Mock()
+        self.sci.get_gate_address.return_value = None
+        latest_block = mock.Mock(golem_sci.Block)
         latest_block.gas_limit = 10 ** 10
-        self.sci.get_latest_block.return_value = latest_block
+        self.sci.get_latest_confirmed_block.return_value = latest_block
+        self.tx_hash = '0xdead'
+        self.sci.batch_transfer.return_value = self.tx_hash
+
         self.pp = PaymentProcessor(self.sci)
         self.pp._gnt_converter = mock.Mock()
         self.pp._gnt_converter.is_converting.return_value = False
         self.pp._gnt_converter.get_gate_balance.return_value = 0
 
+
+class PaymentProcessorInternalTest(PaymentProcessorBase):
+    """ In this suite we test internal logic of PaymentProcessor. The final
+        Ethereum transactions are not inspected.
+    """
     def test_load_from_db_awaiting(self):
         self.assertEqual([], self.pp._awaiting)
 
@@ -150,7 +158,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         tx_timestamp = 1541766000.5
-        self.sci.get_block_number.return_value = tx_block_number
+        self.sci.get_latest_confirmed_block_number.return_value = \
+            tx_block_number
         self.sci.get_block_by_number.return_value = mock.Mock(
             timestamp=tx_timestamp)
         receipt = TransactionReceipt({
@@ -224,28 +233,7 @@ def _add_payment(pp, value=None, ts=None):
     return golem_sci.Payment(payee, value)
 
 
-class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
-
-    def setUp(self):
-        DatabaseFixture.setUp(self)
-        self.sci = mock.Mock()
-        self.sci.GAS_BATCH_PAYMENT_BASE = 10
-        self.sci.GAS_PER_PAYMENT = 1
-        self.sci.GAS_PRICE = 20
-        self.sci.get_gate_address.return_value = None
-        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
-        latest_block = mock.Mock()
-        latest_block.gas_limit = 10 ** 10
-        self.sci.get_latest_block.return_value = latest_block
-
-        self.tx_hash = '0xdead'
-        self.sci.batch_transfer.return_value = self.tx_hash
-
-        self.pp = PaymentProcessor(self.sci)
-        self.pp._gnt_converter = mock.Mock()
-        self.pp._gnt_converter.is_converting.return_value = False
-        self.pp._gnt_converter.get_gate_balance.return_value = 0
-
+class InteractionWithSmartContractInterfaceTest(PaymentProcessorBase):
     def _assert_batch_transfer_called_with(
             self,
             payments,
@@ -445,7 +433,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
-        self.sci.get_latest_block.return_value.gas_limit = \
+        self.sci.get_latest_confirmed_block.return_value.gas_limit = \
             (self.sci.GAS_BATCH_PAYMENT_BASE + self.sci.GAS_PER_PAYMENT) /\
             self.pp.BLOCK_GAS_LIMIT_RATIO
         self.pp.CLOSURE_TIME_DELAY = 0
@@ -459,3 +447,46 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
                 [scip1],
                 1)
             self.sci.batch_transfer.reset_mock()
+
+
+class UpdateOverdueTest(PaymentProcessorBase):
+    def add_payment(self, processed_ts: int):
+        payment = model_factory.Payment(processed_ts=processed_ts)
+        payment.save(force_insert=True)
+        self.pp._awaiting.add(payment)
+        return payment
+
+    def add_current_payment(self):
+        return self.add_payment(int(time.time()))
+
+    def add_overdue_payment(self):
+        deadline = int(time.time()) - variables.PAYMENT_DEADLINE
+        return self.add_payment(deadline - random.randint(1, 100))
+
+    def test_no_overdues(self):
+        payment = self.add_current_payment()
+        self.pp.update_overdue()
+        self.assertIs(payment.refresh().status, PaymentStatus.awaiting)
+
+    def test_one_overdue(self):
+        payment = self.add_current_payment()
+        payment_overdue = self.add_overdue_payment()
+        self.pp.update_overdue()
+        self.assertIs(payment.refresh().status, PaymentStatus.awaiting)
+        self.assertIs(payment_overdue.refresh().status, PaymentStatus.overdue)
+
+    def test_all_overdues(self):
+        payments = [self.add_overdue_payment() for _ in range(10)]
+        self.pp.update_overdue()
+        for payment_overdue in payments:
+            self.assertIs(
+                payment_overdue.refresh().status,
+                PaymentStatus.overdue,
+            )
+
+    def test_already_overdue(self):
+        payment_overdue = self.add_overdue_payment()
+        payment_overdue.status = PaymentStatus.overdue
+        payment_overdue.save()
+        self.pp.update_overdue()
+        self.assertIs(payment_overdue.refresh().status, PaymentStatus.overdue)

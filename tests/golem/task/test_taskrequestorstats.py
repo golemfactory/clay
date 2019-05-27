@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
@@ -10,9 +11,11 @@ from golem.task.taskrequestorstats import TaskInfo, TaskMsg, \
     EMPTY_CURRENT_STATS, EMPTY_FINISHED_STATS, AggregateTaskStats, \
     RequestorAggregateStatsManager
 from golem.task.taskstate import TaskStatus, Operation, TaskOp, SubtaskOp, \
-    OtherOp, SubtaskStatus, TaskState, SubtaskState
+    OtherOp, SubtaskStatus, TaskState
 from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
+
+from tests.factories.task import taskstate as taskstate_factory
 
 
 class TestTaskInfo(TestCase, testutils.PEP8MixIn):
@@ -314,9 +317,8 @@ class TestRequestorTaskStats(LogTestCase):
                          "Got work offer now")
 
         # add a subtask
-        tstate.subtask_states["st1"] = SubtaskState()
-        sst = tstate.subtask_states["st1"]  # type: SubtaskState
-        sst.subtask_status = SubtaskStatus.starting
+        tstate.subtask_states["st1"] = taskstate_factory.SubtaskState()
+        sst = tstate.subtask_states["st1"]
         rs.on_message("task1", tstate, "st1", SubtaskOp.ASSIGNED)
         # a subtask in progress
         cs = rs.get_current_stats()
@@ -325,7 +327,7 @@ class TestRequestorTaskStats(LogTestCase):
                          "should be no changes to stats")
 
         # download results of that subtask
-        sst.subtask_status = SubtaskStatus.downloading
+        sst.status = SubtaskStatus.downloading
         rs.on_message("task1", tstate, "st1", SubtaskOp.RESULT_DOWNLOADING)
         # still subtask in progress
         cs = rs.get_current_stats()
@@ -335,7 +337,7 @@ class TestRequestorTaskStats(LogTestCase):
                          "in the stats")
 
         # and finish the subtask now
-        sst.subtask_status = SubtaskStatus.finished
+        sst.status = SubtaskStatus.finished
         rs.on_message("task1", tstate, "st1", SubtaskOp.FINISHED)
         # no subtask in progress but task is still not finished
         cs = rs.get_current_stats()
@@ -372,17 +374,15 @@ class TestRequestorTaskStats(LogTestCase):
 
     @staticmethod
     def add_subtask(rs, task, tstate, subtask):
-        tstate.subtask_states[subtask] = SubtaskState()
-        sst = tstate.subtask_states[subtask]
-        sst.subtask_status = SubtaskStatus.starting
+        tstate.subtask_states[subtask] = taskstate_factory.SubtaskState()
         rs.on_message(task, tstate, subtask, SubtaskOp.ASSIGNED)
 
     @staticmethod
     def finish_subtask(rs, task, tstate, subtask):
         sst = tstate.subtask_states[subtask]
-        sst.subtask_status = SubtaskStatus.downloading
+        sst.status = SubtaskStatus.downloading
         rs.on_message(task, tstate, subtask, SubtaskOp.RESULT_DOWNLOADING)
-        sst.subtask_status = SubtaskStatus.finished
+        sst.status = SubtaskStatus.finished
         rs.on_message(task, tstate, subtask, SubtaskOp.FINISHED)
 
     @staticmethod
@@ -442,10 +442,8 @@ class TestRequestorTaskStats(LogTestCase):
         ts3 = TaskState()
         ts3.status = TaskStatus.notStarted
         ts3.time_started = 0.0
-        ts3.subtask_states["st3.1"] = SubtaskState()
-        ts3.subtask_states["st3.1"].subtask_status = SubtaskStatus.starting
-        ts3.subtask_states["st3.2"] = SubtaskState()
-        ts3.subtask_states["st3.2"].subtask_status = SubtaskStatus.starting
+        ts3.subtask_states["st3.1"] = taskstate_factory.SubtaskState()
+        ts3.subtask_states["st3.2"] = taskstate_factory.SubtaskState()
         rs.on_message("task3", ts3, op=TaskOp.RESTORED)
 
         self.assertFalse(rs.is_task_finished("task1"), "task1 is still active")
@@ -477,9 +475,9 @@ class TestRequestorTaskStats(LogTestCase):
         self.add_subtask(rs, "task1", ts1, "st1.4")
 
         # verification failure for st1.1
-        ts1.subtask_states["st1.1"].subtask_status = SubtaskStatus.downloading
+        ts1.subtask_states["st1.1"].status = SubtaskStatus.downloading
         rs.on_message("task1", ts1, "st1.1", SubtaskOp.RESULT_DOWNLOADING)
-        ts1.subtask_states["st1.1"].subtask_status = SubtaskStatus.failure
+        ts1.subtask_states["st1.1"].status = SubtaskStatus.failure
         rs.on_message("task1", ts1, "st1.1", SubtaskOp.NOT_ACCEPTED)
 
         stats1 = rs.get_task_stats("task1")
@@ -491,7 +489,7 @@ class TestRequestorTaskStats(LogTestCase):
                                           1, 4, 1, 0, 0, 0, 0))
 
         # timeout for st1.2
-        ts1.subtask_states["st1.2"].subtask_status = SubtaskStatus.failure
+        ts1.subtask_states["st1.2"].status = SubtaskStatus.failure
         rs.on_message("task1", ts1, "st1.2", SubtaskOp.TIMEOUT)
         # 1 timed out subtask, no other differences
         stats2 = rs.get_task_stats("task1")
@@ -504,7 +502,7 @@ class TestRequestorTaskStats(LogTestCase):
                          "them with timeout")
 
         # remote failure for st1.3
-        ts1.subtask_states["st1.3"].subtask_status = SubtaskStatus.failure
+        ts1.subtask_states["st1.3"].status = SubtaskStatus.failure
         rs.on_message("task1", ts1, "st1.3", SubtaskOp.FAILED)
         # no changes here, but the count of subtasks in progress decreases
         stats3 = rs.get_task_stats("task1")
@@ -517,7 +515,7 @@ class TestRequestorTaskStats(LogTestCase):
                          "running; we have one failed subtask")
 
         # download error for st1.4
-        ts1.subtask_states["st1.4"].subtask_status = SubtaskStatus.downloading
+        ts1.subtask_states["st1.4"].status = SubtaskStatus.downloading
         rs.on_message("task1", ts1, "st1.4", SubtaskOp.RESULT_DOWNLOADING)
         # one task not downloaded
         stats4 = rs.get_task_stats("task1")
@@ -580,9 +578,9 @@ class TestRequestorTaskStats(LogTestCase):
         rs.on_message("task1", ts1, op=TaskOp.RESTARTED)
         self.add_subtask(rs, "task1", ts1, "st1.2")
         sst = ts1.subtask_states["st1.2"]
-        sst.subtask_status = SubtaskStatus.downloading
+        sst.status = SubtaskStatus.downloading
         rs.on_message("task1", ts1, "st1.2", SubtaskOp.RESULT_DOWNLOADING)
-        sst.subtask_status = SubtaskStatus.failure
+        sst.status = SubtaskStatus.failure
         rs.on_message("task1", ts1, "st1.2", SubtaskOp.NOT_ACCEPTED)
         self.finish_task(rs, "task1", ts1)
 
@@ -685,8 +683,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
                          CurrentStats(1, 0, 0, 0, 0, 0, 0, 0, 1))
         self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
 
-        tstate.subtask_states["st1.1"] = SubtaskState()
-        tstate.subtask_states["st1.1"].subtask_status = SubtaskStatus.starting
+        tstate.subtask_states["st1.1"] = taskstate_factory.SubtaskState()
         dispatcher.send(
             signal='golem.taskmanager',
             event='task_status_updated',
@@ -700,7 +697,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
                          CurrentStats(1, 0, 1, 0, 0, 0, 0, 0, 1))
         self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
 
-        tstate.subtask_states["st1.1"].subtask_status = (
+        tstate.subtask_states["st1.1"].status = (
             SubtaskStatus.downloading)
         dispatcher.send(
             signal='golem.taskmanager',
@@ -709,7 +706,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
             task_state=tstate,
             subtask_id="st1.1",
             op=SubtaskOp.RESULT_DOWNLOADING)
-        tstate.subtask_states["st1.1"].subtask_status = SubtaskStatus.finished
+        tstate.subtask_states["st1.1"].status = SubtaskStatus.finished
         dispatcher.send(
             signal='golem.taskmanager',
             event='task_status_updated',
@@ -758,7 +755,8 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
 
 class TestAggregateTaskStats(TestCase):
 
-    def test_init(self):
+    @classmethod
+    def test_init(cls):
         stats_dict = dict(
             requestor_payment_cnt=1,
             requestor_payment_delay_avg=2.0,

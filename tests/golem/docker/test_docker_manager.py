@@ -52,7 +52,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         hypervisor = mock.Mock()
         hypervisor.constraints.return_value = DEFAULTS
-        hypervisor.restart_ctx.return_value = mock.Mock(
+        hypervisor.reconfig_ctx.return_value = mock.Mock(
             __enter__=mock.Mock(),
             __exit__=mock.Mock(),
         )
@@ -303,9 +303,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 5
+            expected = 8
         else:
-            expected = 3
+            expected = 6
 
         assert pulls[0] == expected
 
@@ -332,9 +332,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 5
+            expected = 8
         else:
-            expected = 3
+            expected = 6
 
         assert builds[0] == expected
         assert tags[0] == expected

@@ -7,7 +7,6 @@ from golem_messages import factories as msg_factories
 from golem_messages.message import tasks as tasks_msg
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 
 from golem.core.simplehash import SimpleHash
 
@@ -19,7 +18,6 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
     def setUp(self):
         super(SubtaskResultsVerifyBaseTest, self).setUp()
         self.env = BlenderEnvironment()
-        self.main_program_file = self.env.main_program_file
 
     def init_deposits(self):
         price = random.randint(1 << 20, 10 << 20)
@@ -50,29 +48,30 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
         ).decode()
 
     @property
-    def src_code(self):
-        with open(self.main_program_file, "r") as src_file:
-            return src_file.read()
-
-    @property
     def extra_data(self):
         return {
             "path_root": '',
             "start_task": 1,
             "total_tasks": 1,
-            "outfilebasename": 'test task',
             "scene_file": '/golem/resources/wlochaty3.blend',
-            "script_src": generate_blender_crop_file(
-                (320, 240), (0.0, 1.0), (0.0, 1.0), False, 0),
             "frames": [1],
             "output_format": 'PNG',
+            "resolution": [320, 240],
+            "use_compositing": False,
+            "samples": 0,
+            "crops": [
+                {
+                    "outfilebasename": 'test task_1',
+                    "borders_x": [0.0, 1.0],
+                    "borders_y": [0.0, 1.0],
+                }
+            ]
         }
 
     def get_ctd(self, **kwargs):
         ctd = msg_factories.tasks.ComputeTaskDefFactory(
             docker_images=[
                 di.to_dict() for di in self.env.docker_images],
-            src_code=self.src_code,
             extra_data=self.extra_data,
             **kwargs,
         )

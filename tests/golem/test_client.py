@@ -39,11 +39,13 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
+from golem.task import taskstate
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
+
+from tests.factories.task import taskstate as taskstate_factory
 
 random = Random(__name__)
 
@@ -86,7 +88,6 @@ def make_mock_ets(eth=100, gnt=100):
     )
     ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
-    ets.get_payment_address.return_value = '0x' + 40 * 'a'
     return ets
 
 
@@ -142,29 +143,6 @@ class TestClient(TestClientBase):
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
-    def test_get_gas_price(self, *_):
-        test_gas_price = 1234
-        test_price_limit = 12345
-        ets = self.client.transaction_system
-        ets.gas_price = test_gas_price
-        ets.gas_price_limit = test_price_limit
-
-        result = self.client.get_gas_price()
-
-        self.assertEqual(result["current_gas_price"], str(test_gas_price))
-        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
-
-    def test_get_payments(self, *_):
-        ets = self.client.transaction_system
-        assert self.client.get_payments_list() == \
-            ets.get_payments_list.return_value
-
-    def test_get_incomes(self, *_):
-        ets = self.client.transaction_system
-        ets.get_incomes_list.return_value = []
-        self.client.get_incomes_list()
-        ets.get_incomes_list.assert_called_once_with()
-
     def test_withdraw(self, *_):
         ets = self.client.transaction_system
         ets.return_value = ets
@@ -178,11 +156,6 @@ class TestClient(TestClientBase):
         ets = self.client.transaction_system
         self.client.get_withdraw_gas_cost('123', dest, 'ETH')
         ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
-
-    def test_payment_address(self, *_):
-        payment_address = self.client.get_payment_address()
-        self.assertIsInstance(payment_address, str)
-        self.assertTrue(len(payment_address) > 0)
 
     def test_remove_resources(self, *_):
         def unique_dir():
@@ -359,19 +332,15 @@ class TestClient(TestClientBase):
         self.client.task_server = Mock(task_manager=tm)
         self.client.funds_locker = Mock()
         tm.tasks_states = {
-            "t1": Mock(status=Mock(is_completed=Mock(return_value=True))),
+            "t1": Mock(status=taskstate.TaskStatus.finished),
             "t2": Mock(
-                status=Mock(is_completed=Mock(return_value=False)),
+                status=taskstate.TaskStatus.computing,
                 subtask_states={
-                    "sub1": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=True),
-                        ),
+                    "sub1": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.finished,
                     ),
-                    "sub2": Mock(
-                        subtask_status=Mock(
-                            is_finished=Mock(return_value=False),
-                        ),
+                    "sub2": taskstate_factory.SubtaskState(
+                        status=taskstate.SubtaskStatus.failure,
                     ),
                 },
             ),
@@ -812,9 +781,12 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         result = c.check_test_status()
         self.assertFalse(result)
 
-        c.task_test_result = {"status": TaskTestStatus.started}
+        c.task_test_result = {"status": taskstate.TaskTestStatus.started}
         result = c.check_test_status()
-        self.assertEqual({"status": TaskTestStatus.started.value}, result)
+        self.assertEqual(
+            {"status": taskstate.TaskTestStatus.started.value},
+            result,
+        )
 
     def test_delete_task(self, *_):
         c = self.client
@@ -1043,17 +1015,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_provider_status_computing(self, *_):
         # given
+        start_task = 1
         task_computer = Mock()
         state_snapshot_dict = {
             'subtask_id': str(uuid.uuid4()),
             'progress': 0.0,
             'seconds_to_timeout': 0.0,
             'running_time_seconds': 0.0,
-            'outfilebasename': "Test Task",
+            'outfilebasename': "Test Task_{}".format(start_task),
             'output_format': "PNG",
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
-            'start_task': 1,
+            'start_task': start_task,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \
@@ -1227,39 +1200,6 @@ class TestDepositBalance(TestClientBase):
         self.assertEqual(result['status'], 'locked')
 
 
-class DepositPaymentsListTest(TestClientBase):
-
-    def test_empty(self):
-        self.assertEqual(self.client.get_deposit_payments_list(), [])
-
-    def test_one(self):
-        tx_hash = \
-            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
-        value = 31337
-        ts = 1514761200.0
-        dt = datetime.datetime.fromtimestamp(ts)
-        model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
-            created_date=dt,
-            modified_date=dt,
-        )
-        expected = [
-            {
-                'created': ts,
-                'modified': ts,
-                'fee': None,
-                'status': 'awaiting',
-                'transaction': tx_hash,
-                'value': str(value),
-            },
-        ]
-        self.assertEqual(
-            expected,
-            self.client.get_deposit_payments_list(),
-        )
-
-
 @patch(
     'golem.network.concent.client.ConcentClientService.__init__',
     return_value=None,
@@ -1282,7 +1222,6 @@ class TestConcentInitialization(TestClientBase):
             keys_auth=ANY,
             variant=CONCENT_CHOICES['disabled'],
         )
-
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

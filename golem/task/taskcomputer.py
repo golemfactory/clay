@@ -19,7 +19,6 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
-from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
@@ -62,8 +61,8 @@ class TaskComputer(object):
         self.listeners = []
         self.last_task_request = time.time()
 
-        self.dir_manager = None
-        self.resource_manager: Optional[ResourcesManager] = None
+        self.dir_manager: DirManager = DirManager(
+            task_server.get_task_computer_root())
         self.task_request_frequency = None
 
         self.docker_manager: DockerManager = DockerManager.install()
@@ -84,7 +83,6 @@ class TaskComputer(object):
 
         self.assigned_subtask: Optional['ComputeTaskDef'] = None
 
-        self.delta = None
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
@@ -102,36 +100,32 @@ class TaskComputer(object):
         self.assigned_subtask = ctd
         self.__request_resource(
             ctd['task_id'],
-            ctd['subtask_id']
+            ctd['subtask_id'],
+            ctd['resources'],
         )
         return True
 
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
+    def resource_collected(self, res_id):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
-            logger.error("Resource collected for a wrong task, %s", task_id)
+        if not subtask or subtask['task_id'] != res_id:
+            logger.error("Resource collected for a wrong task, %s", res_id)
             return False
-        if unpack_delta:
-            rs_dir = self.dir_manager.get_task_resource_dir(task_id)
-            self.task_server.unpack_delta(rs_dir, self.delta, task_id)
-        self.delta = None
         self.last_task_timeout_checking = time.time()
         self.__compute_task(
             subtask['subtask_id'],
             subtask['docker_images'],
-            subtask['src_code'],
             subtask['extra_data'],
             subtask['deadline'])
         return True
 
-    def task_resource_failure(self, task_id, reason):
+    def resource_failure(self, res_id, reason):
         subtask = self.assigned_subtask
         self.assigned_subtask = None
-        if not subtask or subtask['task_id'] != task_id:
-            logger.error("Resource failure for a wrong task, %s", task_id)
+        if not subtask or subtask['task_id'] != res_id:
+            logger.error("Resource failure for a wrong task, %s", res_id)
             return
         self.task_server.send_task_failed(
             subtask['subtask_id'],
@@ -139,26 +133,17 @@ class TaskComputer(object):
             'Error downloading resources: {}'.format(reason),
         )
         self.__task_finished(subtask)
-        self.session_closed()
-
-    def wait_for_resources(self, task_id, delta):
-        if self.assigned_subtask and \
-                self.assigned_subtask['task_id'] == task_id:
-            self.delta = delta
-
-    def task_request_rejected(self, task_id, reason):
-        logger.info("Task %r request rejected: %r", task_id, reason)
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
-        subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtask
             assert subtask is not None
             self.assigned_subtask = None
+            subtask_id = subtask['subtask_id']
             task_id = subtask['task_id']
             task_header = self.task_server.task_keeper.task_headers[task_id]
             # get paid for max working time,
@@ -226,12 +211,12 @@ class TaskComputer(object):
                 self.__request_task()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
-        if not self.is_computing():
+        if not self.is_computing() or self.assigned_subtask is None:
             return None
 
         c: TaskThread = self.counting_thread
         tcss = ComputingSubtaskStateSnapshot(
-            subtask_id=c.get_subtask_id(),
+            subtask_id=self.assigned_subtask['subtask_id'],
             progress=c.get_progress(),
             seconds_to_timeout=c.task_timeout,
             running_time_seconds=(time.time() - c.start_time),
@@ -266,7 +251,6 @@ class TaskComputer(object):
                       run_benchmarks=False):
         self.dir_manager = DirManager(
             self.task_server.get_task_computer_root())
-        self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.compute_tasks = config_desc.accept_tasks \
             and not config_desc.in_shutdown
@@ -336,12 +320,6 @@ class TaskComputer(object):
         for l in self.listeners:
             l.lock_config(on)
 
-    def session_timeout(self):
-        self.session_closed()
-
-    def session_closed(self):
-        pass
-
     def __request_task(self):
         if self.has_assigned_task():
             return
@@ -351,11 +329,11 @@ class TaskComputer(object):
         if requested_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, subtask_id):
-        self.task_server.request_resource(task_id, subtask_id)
+    def __request_resource(self, task_id, subtask_id, resources):
+        self.task_server.request_resource(task_id, subtask_id, resources)
 
     def __compute_task(self, subtask_id, docker_images,
-                       src_code, extra_data, subtask_deadline):
+                       extra_data, subtask_deadline):
         task_id = self.assigned_subtask['task_id']
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
@@ -363,7 +341,7 @@ class TaskComputer(object):
             logger.warning("Subtask '%s' of task '%s' cannot be computed: "
                            "task header has been unexpectedly removed",
                            subtask_id, task_id)
-            return self.session_closed()
+            return
 
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
@@ -375,9 +353,9 @@ class TaskComputer(object):
                     docker_images)
 
         with self.dir_lock:
-            resource_dir = self.resource_manager.get_resource_dir(task_id)
+            resource_dir = self.dir_manager.get_task_resource_dir(task_id)
             temp_dir = os.path.join(
-                self.resource_manager.get_temporary_dir(task_id), unique_str)
+                self.dir_manager.get_task_temporary_dir(task_id), unique_str)
             # self.dir_manager.clear_temporary(task_id)
 
             if not os.path.exists(temp_dir):
@@ -387,12 +365,10 @@ class TaskComputer(object):
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(subtask_id, docker_images,
-                                  src_code, extra_data,
+            tt = DockerTaskThread(docker_images, extra_data,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(subtask_id, src_code,
-                              extra_data, resource_dir, temp_dir,
+            tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
@@ -434,27 +410,17 @@ class TaskComputer(object):
             self.counting_thread.end_comp()
 
 
-class AssignedSubTask(object):
-    def __init__(self, src_code, extra_data, owner_address, owner_port):
-        self.src_code = src_code
-        self.extra_data = extra_data
-        self.owner_address = owner_address
-        self.owner_port = owner_port
-
-
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, src_code,
-                 extra_data, res_path, tmp_path, timeout):
+    def __init__(self, extra_data, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
+            extra_data, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, src_code,
-                 extra_data, res_path, tmp_path, timeout):
+    def __init__(self, extra_data, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
+            extra_data, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

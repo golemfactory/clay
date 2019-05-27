@@ -3,8 +3,7 @@ import inspect
 import logging
 import sys
 import types
-from abc import ABCMeta, abstractmethod
-from typing import Optional
+from abc import ABC, abstractmethod
 
 from golem_messages import datastructures
 
@@ -147,12 +146,15 @@ class DictSerializer(object):
         return DictCoder.from_dict(dictionary, as_class=as_class)
 
 
-class DictSerializable(metaclass=ABCMeta):
+class DictSerializable(ABC):
+
     @abstractmethod
     def to_dict(self) -> dict:
-        "Converts the object to a dict containing only primitive types"
+        """ Convert the object to a dict containing only primitive types. """
+        raise NotImplementedError
 
     @staticmethod
     @abstractmethod
-    def from_dict(data: Optional[dict]) -> 'DictSerializable':
-        "Converts the object to a dict containing only primitive types"
+    def from_dict(data: dict) -> 'DictSerializable':
+        """ Construct object from a dict containing only primitive types. """
+        raise NotImplementedError

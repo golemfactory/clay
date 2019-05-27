@@ -10,7 +10,7 @@ class DummyTask(Task):
     def initialize(self, dir_manager):
         pass
 
-    def query_extra_data(self, perf_index, num_cores, node_id, node_name):
+    def query_extra_data(self, perf_index, node_id, node_name):
         pass
 
     def needs_computation(self):
@@ -91,7 +91,7 @@ class BenchmarkRunnerFixture(TempDirFixture):
         super().setUp()
         self.benchmark = mock.MagicMock()
         self.instance = benchmarkrunner.BenchmarkRunner(
-            task=DummyTask(None, None, None),
+            task=DummyTask(None, None),
             root_path=self.tempdir,
             success_callback=self._success,
             error_callback=self._error,
@@ -260,7 +260,7 @@ class TestBenchmarkRunnerIsSuccess(BenchmarkRunnerFixture):
 
 
 class WrongTask(DummyTask):
-    def query_extra_data(self, perf_index, num_cores, node_id, node_name):
+    def query_extra_data(self, perf_index, node_id, node_name):
         raise ValueError("Wrong task")
 
 
@@ -269,7 +269,7 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
     def test_run_with_error(self):
         benchmark = mock.MagicMock()
         instance = benchmarkrunner.BenchmarkRunner(
-            task=WrongTask(None, None, None),
+            task=WrongTask(None, None),
             root_path=self.tempdir,
             success_callback=mock.Mock(),
             error_callback=mock.Mock(),

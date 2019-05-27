@@ -1,8 +1,10 @@
 from enum import Enum, auto
+import functools
 import time
 from typing import Dict
 
-from golem.core.common import to_unicode
+from golem_messages import datastructures
+from golem_messages import validators
 
 
 class TaskState(object):
@@ -47,41 +49,96 @@ class TaskState(object):
         }
 
 
-class SubtaskState(object):
-    def __init__(self):
-        self.subtask_id = ""
-        self.subtask_progress = 0.0
-        self.time_started = 0
-        self.node_id = ""
-        self.node_name = ""
-        self.deadline = 0
-        self.price = 0
-        self.extra_data = {}
-        # FIXME: subtask_rem_time is always equal 0 (#2562)
-        self.subtask_rem_time = 0
-        self.subtask_status: SubtaskStatus = SubtaskStatus.starting
-        self.stdout = ""
-        self.stderr = ""
-        self.results = []
+class SubtaskStatus(Enum):
+    starting = "Starting"
+    downloading = "Downloading"
+    verifying = "Verifying"
+    resent = "Failed - Resent"
+    finished = "Finished"
+    failure = "Failure"
+    restarted = "Restart"
+    cancelled = "Cancelled"
 
-    def to_dictionary(self):
-        return {
-            'subtask_id': to_unicode(self.subtask_id),
-            'node_id': to_unicode(self.node_id),
-            'node_name': to_unicode(self.node_name),
-            'status': self.subtask_status.value,
-            'progress': self.subtask_progress,
-            'time_started': self.time_started,
-            'time_remaining': self.subtask_rem_time,
-            'results': [to_unicode(r) for r in self.results],
-            'stderr': to_unicode(self.stderr),
-            'stdout': to_unicode(self.stdout),
-        }
+    def is_computed(self) -> bool:
+        return self in [self.starting, self.downloading]
 
-    def __repr__(self):
-        return '<%s: %r>' % (
-            type(self).__name__, self.to_dictionary()
-        )
+    def is_active(self) -> bool:
+        return self in [self.starting, self.downloading, self.verifying]
+
+    def is_finished(self) -> bool:
+        return self == self.finished
+
+    def is_finishing(self) -> bool:
+        return self in {self.downloading, self.verifying}
+
+
+validate_varchar_inf = functools.partial(
+    validators.validate_varchar,
+    max_length=float('infinity'),
+)
+
+
+class SubtaskState(datastructures.Container):
+    __slots__ = {
+        'subtask_id': (validators.validate_varchar128, ),
+        'progress': (
+            functools.partial(
+                validators.fail_unless,
+                check=lambda x: isinstance(x, float),
+                fail_msg="Should be a float",
+            ),
+        ),
+        'time_started': (validators.validate_integer, ),
+        'node_id': (validators.validate_varchar128, ),
+        'node_name': (validate_varchar_inf, ),
+        'deadline': (validators.validate_integer, ),
+        'price': (validators.validate_integer, ),
+        'extra_data': (),
+        'status': (
+            functools.partial(
+                validators.fail_unless,
+                check=lambda x: isinstance(x, (str, SubtaskStatus)),
+                fail_msg="Should be str or SubtaskStatus",
+            ),
+        ),
+        'stdout': (validate_varchar_inf, ),
+        'stderr': (validate_varchar_inf, ),
+        'results': (
+            functools.partial(
+                validators.fail_unless,
+                check=lambda x: isinstance(x, list),
+                fail_msg="Should be a list",
+            ),
+        ),
+    }
+
+    DEFAULTS = {
+        'progress': lambda: 0.0,
+        'time_started': lambda: int(time.time()),
+        'node_name': lambda: "",
+        'extra_data': lambda: {},
+        'status': lambda: SubtaskStatus.starting,
+        'stdout': lambda: "",
+        'stderr': lambda: "",
+        'results': lambda: [],
+    }
+
+    REQUIRED = frozenset((
+        'subtask_id',
+        'node_id',
+        'deadline',
+        'price',
+    ))
+
+    @classmethod
+    def deserialize_status(cls, value):
+        if isinstance(value, SubtaskStatus):
+            return value
+        return SubtaskStatus(value)
+
+    @classmethod
+    def serialize_status(cls, value: SubtaskStatus):
+        return value.value
 
 
 class TaskStatus(Enum):
@@ -109,25 +166,6 @@ class TaskStatus(Enum):
     def is_active(self) -> bool:
         return self in [self.sending, self.waiting,
                         self.starting, self.computing]
-
-
-class SubtaskStatus(Enum):
-    starting = "Starting"
-    downloading = "Downloading"
-    verifying = "Verifying"
-    resent = "Failed - Resent"
-    finished = "Finished"
-    failure = "Failure"
-    restarted = "Restart"
-
-    def is_computed(self) -> bool:
-        return self in [self.starting, self.downloading]
-
-    def is_active(self) -> bool:
-        return self in [self.starting, self.downloading, self.verifying]
-
-    def is_finished(self) -> bool:
-        return self == self.finished
 
 
 class TaskTestStatus(Enum):
@@ -194,12 +232,14 @@ class SubtaskOp(Operation):
     FAILED = auto()
     TIMEOUT = auto()
     RESTARTED = auto()
+    VERIFYING = auto()
 
     def is_completed(self) -> bool:
         return self not in (
             SubtaskOp.ASSIGNED,
             SubtaskOp.RESULT_DOWNLOADING,
-            SubtaskOp.RESTARTED
+            SubtaskOp.RESTARTED,
+            SubtaskOp.VERIFYING
         )
 
 

@@ -571,12 +571,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         self.suggested_address[client_key_id] = addr
 
-    def get_suggested_conn_reverse(self, client_key_id):
-        return self.suggested_conn_reverse.get(client_key_id, False)
-
-    def set_suggested_conn_reverse(self, client_key_id, value=True):
-        self.suggested_conn_reverse[client_key_id] = value
-
     def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
         """ Change node info into tcp addresses. Adds a suggested address.
         :param Node node_info: node information
@@ -751,6 +745,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                                           node with public ip that took part
                                           in message transport
         """
+        # TODO #4005
         if not self.task_server.task_connections_helper.is_new_conn_request(
                 key_id, node_info):
             self.task_server.remove_pending_conn(conn_id)
@@ -763,13 +758,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         connected_peer = self.peers.get(key_id)
         if connected_peer:
             if node_info.key == self.node.key:
-                self.set_suggested_conn_reverse(key_id)
+                self.suggested_conn_reverse[key_id] = True
             connected_peer.send_want_to_start_task_session(
                 node_info,
                 conn_id,
                 super_node_info
             )
-            logger.debug("Starting task session with {}".format(key_id))
+            logger.debug("Starting task session with %s", key_id)
             return
 
         msg_snd = False
@@ -792,20 +787,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         if not msg_snd and node_info.key == self.get_key_id():
             self.task_server\
                 .task_connections_helper.cannot_start_task_session(conn_id)
-
-    def peer_want_task_session(self, node_info, super_node_info, conn_id):
-        """Process request to start task session from this node to a node
-           from node_info.
-        :param Node node_info: node that requests task session with this node
-        :param Node|None super_node_info: information about supernode
-                                          that has passed this information
-        :param conn_id: connection id
-        """
-        self.task_server.start_task_session(
-            node_info,
-            super_node_info,
-            conn_id
-        )
 
     #############################
     # RANKING FUNCTIONS         #

@@ -28,6 +28,6 @@ One can choose a different variant by supplying the
 `CONCENT_VARIANT` environment variable, e.g.:
 
 ```
-$ CONCENT_VARIANT=test pytest scripts/concent_integration_tests
+$ CONCENT_VARIANT=test pytest scripts/concent_acceptance_tests
 ``` 
 

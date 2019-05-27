@@ -91,9 +91,6 @@ class PeerSession(BasicSafeSession):
 
         self.__set_msg_interpretations()
 
-    def __str__(self):
-        return "{} : {}".format(self.address, self.port)
-
     def dropped(self):
         """
         Close connection and inform p2p service about disconnection
@@ -289,6 +286,10 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
+        if msg.node_info is None:
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
+            return
+
         self.node_info = msg.node_info
 
         if not KeysAuth.is_pubkey_difficult(
@@ -305,7 +306,7 @@ class PeerSession(BasicSafeSession):
         self.node_name = msg.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
-        self.key_id = msg.client_key_id
+        self.key_id = msg.node_info.key
         self.metadata = msg.metadata
 
         solve_challenge = msg.solve_challenge
@@ -456,12 +457,10 @@ class PeerSession(BasicSafeSession):
                 message.base.Disconnect.REASON.Unverified
             )
 
-    def _react_to_want_to_start_task_session(self, msg):
-        self.p2p_service.peer_want_task_session(
-            msg.node_info,
-            msg.super_node_info,
-            msg.conn_id
-        )
+    @classmethod
+    def _react_to_want_to_start_task_session(cls, msg):
+        # TODO: https://github.com/golemfactory/golem/issues/4005
+        logger.debug("Ignored WTSTS. msg=%s", msg)
 
     def _react_to_set_task_session(self, msg):
         self.p2p_service.want_to_start_task_session(
@@ -487,7 +486,6 @@ class PeerSession(BasicSafeSession):
             proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
-            client_key_id=self.p2p_service.keys_auth.key_id,
             node_info=self.p2p_service.node,
             client_ver=golem.__version__,
             rand_val=self.rand_val,

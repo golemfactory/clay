@@ -497,6 +497,7 @@ def set_keys_auth(obj):
     obj._keys_auth = Mock(
         key_id='a'*32,
     )
+    return succeed(None)
 
 
 def call_now(fn, *args, **kwargs):
@@ -523,6 +524,7 @@ class MockThread:
 @patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
 @patch('golem.terms.TermsOfUse.are_accepted', return_value=True)
+@patch('golem.core.golem_async.async_run')
 @patch('golem.node.Session')
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
@@ -654,6 +656,7 @@ class TestOptNode(TempDirFixture):
             mock_gather_results,
             reactor,
             mock_session,
+            async_run,
             *_):
         # given
         mock_gather_results.return_value = mock_gather_results
@@ -664,6 +667,7 @@ class TestOptNode(TempDirFixture):
         mock_session.connect.return_value = mock_session
         mock_session.addCallbacks.side_effect = \
             lambda callback, _: callback(None)
+        async_run.side_effect = mock_async_run
 
         # when
         self.node = Node(**self.node_kwargs)
@@ -680,7 +684,7 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.node.gatherResults')
     def test_start_starts_client(
-            self, mock_gather_results, reactor, mock_session, *_):
+            self, mock_gather_results, reactor, mock_session, async_run, *_):
 
         # given
         mock_gather_results.return_value = mock_gather_results
@@ -697,6 +701,7 @@ class TestOptNode(TempDirFixture):
             None,
             ['10.0.0.10:40104'],
         )
+        async_run.side_effect = mock_async_run
 
         # when
         self.node = Node(**self.node_kwargs,
@@ -756,7 +761,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(**self.node_kwargs)
         self.node.rpc_router = None
 
-        assert self.node._start_session() is None
+        assert isinstance(self.node._start_session().result, Failure)
         reactor.callFromThread.assert_called_with(reactor.stop)
 
     def test_error(self, reactor, *_):

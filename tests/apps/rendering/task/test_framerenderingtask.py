@@ -4,14 +4,12 @@ import uuid
 from pathlib import Path
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from PIL import Image
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
-from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
-                                                    FrameRenderingTaskBuilder,
-                                                    FrameRendererOptions, logger)
-from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.framerenderingtask import get_frame_name, \
+    FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions, logger
+from apps.rendering.task.renderingtaskstate import RendererDefaults, \
+    RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -20,15 +18,10 @@ from golem.tools.testdirfixture import TestDirFixture
 
 class FrameRenderingTaskMock(FrameRenderingTask):
     class ENVIRONMENT_CLASS(object):
-        main_program_file = None
         docker_images = []
 
         def get_id(self):
             return "TEST"
-
-    def __init__(self, main_program_file, *args, **kwargs):
-        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
-        super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
     def query_extra_data(*args, **kwargs):
         pass
@@ -54,7 +47,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.estimated_memory = 1000
         rt.max_price = 15
         task = FrameRenderingTaskMock(
-            files_[0],
             owner=dt_p2p_factory.Node(node_name="ABC", ),
             task_definition=rt,
             total_tasks=num_tasks,
@@ -77,26 +69,25 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = self._get_frame_task(use_frames=False)
         task.accept_client("NODE 1")
         task.tmp_dir = self.path
-        task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "frames": [1],
+        task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1",
+                                           "parts": 1, "frames": [1],
                                            "status": SubtaskStatus.starting}
         img_file = os.path.join(self.path, "img1.png")
-        img = Image.new("RGB", (800, 600), "#0000ff")
+        img = OpenCVImgRepr.empty(800, 600, color=(0, 0, 255))
         img.save(img_file)
         task.accept_results("SUBTASK1", [img_file])
         assert task.num_tasks_received == 1
         assert task.collected_file_names[3] == img_file
-        preview_img = Image.open(task.preview_file_path)
-        assert preview_img.getpixel((100, 100)) == (0, 0, 255)
-        preview_img.close()
-        preview_img = Image.open(task.preview_task_file_path)
-        assert preview_img.getpixel((100, 100)) == (0, 0, 255)
-        preview_img.close()
-
-        task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
+        preview_img = OpenCVImgRepr.from_image_file(task.preview_file_path)
+        assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
+        preview_img = OpenCVImgRepr.from_image_file(task.preview_task_file_path)
+        assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
+        task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1",
+                                           "parts": 1,
                                            "frames": [1],
                                            "status": SubtaskStatus.starting}
-        task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1", "parts": 1,
+        task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1",
+                                           "parts": 1,
                                            "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.accept_results("SUBTASK2", [img_file])
@@ -116,7 +107,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
                                            "status": SubtaskStatus.downloading}
         img_file2 = os.path.join(self.path, "img2.png")
         img.save(img_file2)
-        img.close()
         task.accept_results("SUBTASK1", [img_file, img_file2])
         assert task.frames_given["4"][0] == img_file
         assert task.frames_given["5"][0] == img_file2
@@ -137,15 +127,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         frame_task.total_tasks = 4
         frame_task.frames = [5, 7]
         frame_task.scale_factor = 1
-        new_img = Image.new("RGB", (10, 10), (0, 255, 0))
+        new_img = OpenCVImgRepr.empty(10, 10, color=(0, 255, 0))
         img_path = self.temp_file_name("image1.png")
         new_img.save(img_path)
         frame_task._update_frame_preview(img_path, 5)
-
-        new_img = Image.new("RGB", (10, 10), (255, 0, 0))
+        new_img = OpenCVImgRepr.empty(10, 10, color=(255, 0, 0))
         img_path = self.temp_file_name("image2.png")
         new_img.save(img_path)
-        new_img.close()
         frame_task._update_frame_preview(img_path, 5, 2)
         frame_task._update_frame_preview(img_path, 7, 2)
         frame_task._update_frame_preview(img_path, 7, 1, True)
@@ -166,15 +154,21 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert any("Can't add new chunk to preview" in log for log in l.output)
         assert any("Can't generate preview" in log for log in l.output)
 
-        img = Image.new("RGB", (10, 10), (0, 122, 0))
+        img = OpenCVImgRepr.empty(10, 10, color=(0, 122, 0))
         img.save(preview_path)
         with self.assertLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk("nota image", preview_path, 1, 10)
-        assert isinstance(new_img, Image.Image)
+        assert isinstance(new_img, OpenCVImgRepr)
+
+        with self.assertLogs(logger, level="ERROR"):
+            new_img = task._paste_new_chunk(img, preview_path, 1, 10)
+        assert isinstance(new_img, OpenCVImgRepr)
+
+        img = OpenCVImgRepr.empty(10, 20, color=(0, 122, 0))
+        img.save(preview_path)
         with self.assertNoLogs(logger, level="ERROR"):
             new_img = task._paste_new_chunk(img, preview_path, 1, 10)
-        assert isinstance(new_img, Image.Image)
-        img.close()
+        assert isinstance(new_img, OpenCVImgRepr)
 
     def test_mark_task_area(self):
         task = self._get_frame_task()
@@ -183,26 +177,25 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.scale_factor = 0.5
         task.res_x = 20
         task.res_y = 40
-        img = Image.new("RGB", (10, 20), (0, 0, 0))
+        img = OpenCVImgRepr.empty(10, 20, color=(0, 0, 0))
         task._mark_task_area({'start_task': 2}, img, (121, 0, 0))
         for i in range(10):
             for j in range(20):
-                assert img.getpixel((i, j)) == (121, 0, 0)
+                assert img.get_pixel((i, j)) == (121, 0, 0)
 
         task.total_tasks = 2
         task._mark_task_area({'start_task': 2}, img, (0, 13, 0))
         for i in range(10):
             for j in range(20):
-                assert img.getpixel((i, j)) == (0, 13, 0)
+                assert img.get_pixel((i, j)) == (0, 13, 0)
 
         task.total_tasks = 8
         task._mark_task_area({'start_task': 2}, img, (0, 0, 201))
         for i in range(10):
             for j in range(10):
-                assert img.getpixel((i, j)) == (0, 13, 0)
+                assert img.get_pixel((i, j)) == (0, 13, 0)
             for j in range(10, 20):
-                assert img.getpixel((i, j)) == (0, 0, 201)
-        img.close()
+                assert img.get_pixel((i, j)) == (0, 0, 201)
 
     def test_choose_frames(self):
         task = self._get_frame_task()
@@ -260,10 +253,9 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test_update_preview_task_file_path(self):
         task = self._get_frame_task()
-        img = Image.new("RGB", (10, 10), (0, 0, 0))
+        img = OpenCVImgRepr.empty(10, 10, color=(0, 0, 0))
         tmp_path = self.temp_file_name("img.png")
         img.save(tmp_path)
-        img.close()
         task._update_preview_task_file_path(tmp_path)
         task = self._get_frame_task(False)
         task._update_preview_task_file_path(tmp_path)
@@ -310,8 +302,8 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.subtasks_given["abc"] = {"ABC": 3}
         task.subtasks_given["def"] = {"DEF": 4}
         states = task.get_subtasks(4)
-        assert states["abc"].extra_data["ABC"] == 3
-        assert states["def"].extra_data["DEF"] == 4
+        assert states["abc"]["ABC"] == 3
+        assert states["def"]["DEF"] == 4
         assert len(states) == 2
 
 

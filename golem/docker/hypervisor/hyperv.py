@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from enum import Enum
 import logging
 import os
@@ -83,9 +84,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
-    BOOT2DOCKER_URL = "https://s3.eu-central-1.amazonaws.com/" \
-                      "golem-bootdocker/boot2docker/v18.06.1-ce%2Bdvn-v0.35/" \
-                      "boot2docker-v18.06.1-ce%2Bdvn-v0.35-release.iso"
+    BOOT2DOCKER_URL = "https://golem-bootdocker.cdn.golem.network/boot2docker" \
+                      "/v18.09.1-golem/boot2docker-v18.09.1-golem.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
@@ -308,6 +308,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # Ensure that working directory is shared via SMB
         smbshare.create_share(self.DOCKER_USER, work_dir)
 
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+
+        # VM running -> restart
+        if self.vm_running():
+            with self.restart_ctx(name) as res:
+                yield res
+
+        # VM suspended -> remove saved state
+        elif self._vm_utils.get_vm_state(name) == HYPERV_VM_STATE_SUSPENDED:
+            self._vm_utils.set_vm_state(name, HYPERV_VM_STATE_DISABLED)
+            yield name
+
+        # VM disabled -> do nothing
+        else:
+            yield name
+
     @classmethod
     def _get_vswitch_name(cls) -> str:
         return run_powershell(
@@ -323,10 +342,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not hostname:
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
-
-    @staticmethod
-    def uses_volumes() -> bool:
-        return True
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         hostname = self._get_hostname_for_sharing()

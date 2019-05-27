@@ -14,7 +14,6 @@ from twisted.internet import threads
 
 import golem_sci
 
-from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
@@ -49,6 +48,7 @@ class PaymentProcessor:
         self._gntb_reserved = 0
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self.load_from_db()
+        self.last_print_time = 0
 
     @property
     def recipients_count(self) -> int:
@@ -77,9 +77,14 @@ class PaymentProcessor:
 
         for awaiting_payment in Payment \
                 .select() \
-                .where(Payment.status == PaymentStatus.awaiting):
+                .where(
+                        Payment.status.in_([
+                            PaymentStatus.awaiting,
+                            PaymentStatus.overdue,
+                        ]),
+                ):
             log.info(
-                "Restoring awaiting payment for subtask %s to %s, value %f",
+                "Restoring awaiting payment for subtask %s to %s of %.3f GNTB",
                 awaiting_payment.subtask,
                 encode_hex(awaiting_payment.payee),
                 awaiting_payment.value / denoms.ether,
@@ -101,7 +106,7 @@ class PaymentProcessor:
         total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
         log.info(
-            "Batch transfer confirmed %s average gas fee per subtask %f",
+            "Batch transfer confirmed %s average gas fee per subtask %.8f ETH",
             receipt,
             fee / denoms.ether,
         )
@@ -117,7 +122,7 @@ class PaymentProcessor:
     @staticmethod
     def _payment_confirmed(payment: Payment, timestamp: int) -> None:
         log.debug(
-            "- %s confirmed fee %.6f",
+            "- %s confirmed fee: %.18f ETH",
             payment.subtask,
             payment.details.fee / denoms.ether
         )
@@ -135,7 +140,7 @@ class PaymentProcessor:
 
     def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
         log.info(
-            "Adding payment for %s to %s (value: %f)",
+            "Adding payment for %s to %s (%.3f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
@@ -150,7 +155,7 @@ class PaymentProcessor:
         self._awaiting.add(payment)
         self._gntb_reserved += value
 
-        log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
+        log.info("Reserved %.3f GNTB", self._gntb_reserved / denoms.ether)
         return payment.processed_ts
 
     def __get_next_batch(self, closure_time: int) -> int:
@@ -159,8 +164,8 @@ class PaymentProcessor:
         gas_price = self._sci.get_current_gas_price()
 
         ind = 0
-        gas_limit = \
-            self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
+        gas_limit = self._sci.get_latest_confirmed_block().gas_limit * \
+            self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
         for p in self._awaiting:
             if p.processed_ts > closure_time:
@@ -169,7 +174,7 @@ class PaymentProcessor:
             if gntb_balance < 0:
                 log.debug(
                     'Insufficient GNTB balance.'
-                    ' value=%(value).6f, subtask_id=%(subtask)s',
+                    ' value=%(value).18f, subtask_id=%(subtask)s',
                     {
                         'value': p.value / denoms.ether,
                         'subtask': p.subtask,
@@ -186,7 +191,7 @@ class PaymentProcessor:
             if gas_cost > eth_balance:
                 log.debug(
                     'Not enough ETH to pay gas for transaction.'
-                    ' gas_cost=%(gas_cost).6f, subtask_id=%(subtask)s',
+                    ' gas_cost=%(gas_cost).18f, subtask_id=%(subtask)s',
                     {
                         'gas_cost': gas_cost / denoms.ether,
                         'subtask': p.subtask,
@@ -211,7 +216,10 @@ class PaymentProcessor:
         now = get_timestamp()
         deadline = self._awaiting[0].processed_ts + acceptable_delay
         if deadline > now:
-            log.info("Next sendout in %r s", deadline - now)
+            if now > self.last_print_time + 300:
+                log.info("Next sendout at %s",
+                         datetime.datetime.fromtimestamp(deadline))
+                self.last_print_time = now
             return False
 
         payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
@@ -220,7 +228,7 @@ class PaymentProcessor:
         payments = self._awaiting[:payments_count]
 
         value = sum([p.value for p in payments])
-        log.info("Batch payments value: %.6f", value / denoms.ether)
+        log.info("Batch payments value: %.3f GNTB", value / denoms.ether)
 
         closure_time = payments[-1].processed_ts
         tx_hash = self._sci.batch_transfer(
@@ -233,7 +241,7 @@ class PaymentProcessor:
             payment.status = PaymentStatus.sent
             payment.details.tx = tx_hash[2:]
             payment.save()
-            log.debug("- {} send to {} ({:.6f})".format(
+            log.debug("- {} send to {} ({:.18f} GNTB)".format(
                 payment.subtask,
                 encode_hex(payment.payee),
                 payment.value / denoms.ether))
@@ -245,3 +253,22 @@ class PaymentProcessor:
         )
 
         return True
+
+    def update_overdue(self) -> None:
+        """Sets overdue status for awaiting payments"""
+
+        processed_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
+        counter = 0
+        for payment in self._awaiting:
+            if payment.processed_ts >= processed_ts_deadline:
+                # All subsequent payments won't be overdue
+                # because list is sorted.
+                break
+            if payment.status is PaymentStatus.overdue:
+                continue
+            payment.status = PaymentStatus.overdue
+            payment.save()
+            log.debug("Marked as overdue. payment=%r", payment)
+            counter += 1
+        if counter:
+            log.info("Marked %d payments as overdue.", counter)

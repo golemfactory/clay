@@ -1,6 +1,6 @@
 from queue import Queue, Empty
 
-from twisted.internet.defer import DebugInfo, Deferred, TimeoutError
+from twisted.internet.defer import Deferred, TimeoutError
 from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
 
@@ -32,18 +32,6 @@ def sync_wait(deferred, timeout=10):
     if isinstance(result, Failure):
         result.raiseException()
     return result
-
-
-def install_unhandled_error_logger():
-    import logging
-    logger = logging.getLogger('golem')
-
-    def delete(self):
-        if self.failResult is not None:
-            logger.error("Unhandled error in Deferred:\n{}"
-                         .format(self.failResult))
-
-    setattr(DebugInfo, '__del__', delete)
 
 
 def call_later(delay: int, callable, *args, **kwargs) -> None:

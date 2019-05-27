@@ -5,7 +5,7 @@ from typing import Iterable, List, Optional
 from eth_utils import encode_hex
 
 from golem.core.common import to_unicode, datetime_to_timestamp_utc
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +110,10 @@ class PaymentsKeeper:
             "fee": to_unicode(payment.details.fee),
             "block_number": to_unicode(payment.details.block_number),
             "transaction": to_unicode(payment.details.tx),
+            "node":
+                payment.details.node_info.to_dict()
+                if payment.details.node_info
+                else None,
             "created": datetime_to_timestamp_utc(payment.created_date),
             "modified": datetime_to_timestamp_utc(payment.modified_date)
         } for payment in self.db.get_newest_payment(num, interval)]

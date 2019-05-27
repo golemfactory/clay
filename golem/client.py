@@ -23,7 +23,6 @@ from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
-    datetime_to_timestamp_utc,
     get_timestamp_utc,
     node_info_str,
     string_to_timeout,
@@ -33,7 +32,7 @@ from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService
+from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -42,11 +41,12 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
@@ -54,6 +54,7 @@ from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.transport import msg_queue
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.ranking import Ranking
@@ -166,6 +167,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
+            DailyJobsService(),
         ]
 
         clean_resources_older_than = \
@@ -448,8 +450,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
-            dir_manager=dir_manager,
-            keys_auth=self.keys_auth,
             client=self
         )
 
@@ -535,8 +535,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 task = tm.tasks[task_id]
                 unfinished_subtasks = task.get_total_tasks()
                 for subtask_state in task_state.subtask_states.values():
-                    if subtask_state.subtask_status is not None and\
-                            subtask_state.subtask_status.is_finished():
+                    if subtask_state.status is not None and\
+                            subtask_state.status.is_finished():
                         unfinished_subtasks -= 1
                 try:
                     self.funds_locker.lock_funds(
@@ -635,7 +635,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
-    @report_calls(Component.client, 'quit', once=True)
     def quit(self):
         logger.info('Shutting down ...')
         self.stop()
@@ -651,14 +650,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.db:
             self.db.close()
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+    def resource_collected(self, res_id):
+        self.task_server.task_computer.resource_collected(res_id)
 
-    def task_resource_failure(self, task_id, reason):
-        self.task_server.task_computer.task_resource_failure(task_id, reason)
+    def resource_failure(self, res_id, reason):
+        self.task_server.task_computer.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
@@ -723,9 +719,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
-
-    def get_suggested_conn_reverse(self, key_id):
-        return self.p2pservice.get_suggested_conn_reverse(key_id)
 
     def get_peers(self):
         if self.p2pservice:
@@ -882,6 +875,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return subtasks
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
+            return None
 
     @rpc_utils.expose('comp.task.subtask')
     def get_subtask(self, subtask_id: str) \
@@ -923,13 +917,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             raise ValueError("Incorrect number of days: {}".format(last_days))
         if last_days > 0:
             return self.task_archiver.get_unsupport_reasons(last_days)
-        else:
-            return self.task_server.task_keeper.get_unsupport_reasons()
-
-    @rpc_utils.expose('pay.ident')
-    def get_payment_address(self):
-        address = self.transaction_system.get_payment_address()
-        return str(address) if address else None
+        return self.task_server.task_keeper.get_unsupport_reasons()
 
     def get_comp_stat(self, name):
         if self.task_server and self.task_server.task_computer:
@@ -987,65 +975,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'status': status.value,
             'timelock': str(timelock),
         }
-
-    @rpc_utils.expose('pay.gas_price')
-    def get_gas_price(self) -> Dict[str, str]:
-        return {
-            "current_gas_price": str(self.transaction_system.gas_price),
-            "gas_price_limit": str(self.transaction_system.gas_price_limit)
-        }
-
-    @rpc_utils.expose('pay.payments')
-    def get_payments_list(
-            self,
-            num: Optional[int] = None,
-            last_seconds: Optional[int] = None,
-    ) -> List[Dict[str, Any]]:
-        interval = None
-        if last_seconds is not None:
-            interval = timedelta(seconds=last_seconds)
-        return self.transaction_system.get_payments_list(num, interval)
-
-    @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self) -> List[Dict[str, Any]]:
-        incomes = self.transaction_system.get_incomes_list()
-
-        def item(o):
-            status = "confirmed" if o.transaction else "awaiting"
-
-            return {
-                "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
-                "value": to_unicode(o.value),
-                "status": to_unicode(status),
-                "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp_utc(o.created_date),
-                "modified": datetime_to_timestamp_utc(o.modified_date)
-            }
-
-        return [item(income) for income in incomes]
-
-    @rpc_utils.expose('pay.deposit_payments')
-    @classmethod
-    def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[Dict[str, Any]]:
-        deposit_payments = TransactionSystem.get_deposit_payments_list(
-            limit,
-            offset,
-        )
-        result = []
-        for dpayment in deposit_payments:
-            entry = {}
-            entry['value'] = to_unicode(dpayment.value)
-            entry['status'] = to_unicode(dpayment.status.name)
-            entry['fee'] = to_unicode(dpayment.fee)
-            entry['transaction'] = to_unicode(dpayment.tx)
-            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
-            entry['modified'] = datetime_to_timestamp_utc(
-                dpayment.modified_date,
-            )
-            result.append(entry)
-        return result
 
     @rpc_utils.expose('pay.withdraw.gas_cost')
     def get_withdraw_gas_cost(
@@ -1135,23 +1064,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
-        if state:
-            return DictSerializer.dump(state)
+        return DictSerializer.dump(state)
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.resource_server.download_resources(
             resources,
             task_id,
             client_options=client_options
-        )
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
         )
 
     @rpc_utils.expose('res.dirs')
@@ -1215,7 +1134,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server is None:
             return {}
         headers = {}
-        for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
+        for key, header in\
+                list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
         return headers
 
@@ -1245,14 +1165,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.environment.enable')
     def enable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, True)
+            return self.environments_manager.change_accept_tasks(env_id, True)
         except KeyError:
             return "No such environment"
 
     @rpc_utils.expose('comp.environment.disable')
     def disable_environment(self, env_id):
         try:
-            self.environments_manager.change_accept_tasks(env_id, False)
+            return self.environments_manager.change_accept_tasks(env_id, False)
         except KeyError:
             return "No such environment"
 
@@ -1403,6 +1323,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
+        return None
 
     @staticmethod
     def enable_talkback(value):
@@ -1429,10 +1350,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
-    def __init__(self, client: Client):
+    def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts = {}
+        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)
@@ -1603,3 +1524,24 @@ class MaskUpdateService(LoopingCallService):
                 num_bits=self._update_num_bits)
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
+
+
+class DailyJobsService(LoopingCallService):
+    def __init__(self):
+        super().__init__(
+            interval_seconds=timedelta(days=1).total_seconds(),
+        )
+
+    def _run(self) -> None:
+        jobs = (
+            nodeskeeper.sweep,
+            msg_queue.sweep,
+        )
+        logger.info('Running daily jobs')
+        for job in jobs:
+            try:
+                job()
+            except Exception as e:  # pylint: disable=broad-except
+                logger.warning("Daily job failed. job=%r, e=%s", job, e)
+                logger.debug("Details", exc_info=True)
+        logger.info('Finished daily jobs')

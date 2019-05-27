@@ -4,10 +4,14 @@ import inspect
 import json
 import pickle
 import sys
+import time
 from typing import Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
+import golem_messages
+from golem_messages import datastructures as msg_dt
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
@@ -23,7 +27,9 @@ from peewee import (
     SmallIntegerField,
     TextField,
 )
+import semantic_version
 
+from golem.core import common
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -86,6 +92,7 @@ class HexIntegerField(CharField):
     def python_value(self, value):
         if value is not None:
             return int(value, 16)
+        return None
 
 
 class FixedLengthHexField(CharField):
@@ -130,6 +137,7 @@ class EnumFieldBase:
         return value
 
     def python_value(self, value):
+        # pylint: disable=not-callable
         return self.enum_type(value)
 
 
@@ -175,7 +183,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype: Optional[DictSerializable] = None
+    objtype: DictSerializable
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -183,6 +191,9 @@ class DictSerializableJSONField(TextField):
         return json.dumps(value.to_dict())
 
     def python_value(self, value: str) -> DictSerializable:
+        if issubclass(self.objtype, msg_dt.Container):  # type: ignore
+            # pylint: disable=not-callable
+            return self.objtype(**json.loads(value))  # type: ignore
         return self.objtype.from_dict(json.loads(value))
 
 
@@ -191,6 +202,15 @@ class PaymentStatus(enum.Enum):
     awaiting = 1  # Created but not introduced to the payment network.
     sent = 2  # Sent to the payment network.
     confirmed = 3  # Confirmed on the payment network.
+    # overdue - As a Provider try to use Concent
+    # reasons may include:
+    #  * Requestor made a transaction that didn’t cover this payment
+    #    (can be detected earlier)
+    #  * Requestor didn’t make a transaction at all (actual overdue payment)
+    # As a Requestor reasons may include:
+    #  * insufficient ETH/GNT
+    #  * Golem bug
+    overdue = 4
 
     # Workarounds for peewee_migration
 
@@ -227,8 +247,11 @@ class PaymentDetails(DictSerializable):
     def from_dict(data: dict) -> 'PaymentDetails':
         det = PaymentDetails()
         det.__dict__.update(data)
-        if det.__dict__['node_info']:
-            det.__dict__['node_info'] = dt_p2p.Node(**data['node_info'])
+        if data['node_info']:
+            try:
+                det.node_info = dt_p2p.Node(**data['node_info'])
+            except msg_exceptions.FieldError:
+                det.node_info = None
         return det
 
     def __eq__(self, other: object) -> bool:
@@ -253,6 +276,20 @@ class PaymentStatusField(EnumField):
     """ Database field that stores PaymentStatusField objects as integers. """
     def __init__(self, *args, **kwargs):
         super().__init__(PaymentStatus, *args, **kwargs)
+
+
+class VersionField(CharField):
+    """Semantic version field"""
+
+    def db_value(self, value):
+        if not isinstance(value, semantic_version.Version):
+            raise TypeError(f"Value {value} is not a semantic version")
+        return str(value)
+
+    def python_value(self, value):
+        if value is not None:
+            return semantic_version.Version(value)
+        return None
 
 
 class Payment(BaseModel):
@@ -330,6 +367,14 @@ class Income(BaseModel):
     @property
     def value_expected(self):
         return self.value - self.value_received
+
+    @property
+    def status(self) -> PaymentStatus:
+        if self.value_expected == 0:
+            return PaymentStatus.confirmed
+        if self.overdue:
+            return PaymentStatus.overdue
+        return PaymentStatus.awaiting
 
 ##################
 # RANKING MODELS #
@@ -479,6 +524,10 @@ class Performance(BaseModel):
             perf.save()
 
 
+class DockerWhitelist(BaseModel):
+    repository = CharField(primary_key=True)
+
+
 ##################
 # MESSAGE MODELS #
 ##################
@@ -513,6 +562,70 @@ class NetworkMessage(BaseModel):
     def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
+
+
+class QueuedMessage(BaseModel):
+    node = CharField(null=False, index=True)
+    msg_version = VersionField(null=False)
+    msg_cls = CharField(null=False)
+    msg_data = BlobField(null=False)
+
+    @classmethod
+    def from_message(cls, node_id: str, msg: message.base.Message):
+        instance = cls()
+        instance.node = node_id
+        instance.msg_cls = '.'.join(
+            [msg.__class__.__module__, msg.__class__.__qualname__, ],
+        )
+        instance.msg_version = semantic_version.Version(
+            golem_messages.__version__,
+        )
+        instance.msg_data = golem_messages.dump(msg, None, None)
+        return instance
+
+    def as_message(self) -> message.base.Message:
+        message.base.verify_version(str(self.msg_version))
+        msg = golem_messages.load(
+            self.msg_data,
+            None,
+            None,
+            check_time=False,
+        )
+        msg.header = msg_dt.MessageHeader(
+            msg.header[0],
+            int(time.time()),
+            False,
+        )
+        msg.sig = None
+        return msg
+
+    def __str__(self):
+        node = self.node or ''
+        return (
+            f"{ self.__class__.__name__ }"
+            f" node={common.short_node_id(node)}"
+            f", version={self.msg_version}"
+            f", class={self.msg_cls}"
+        )
+
+
+class CachedNode(BaseModel):
+    node = CharField(null=False, index=True, unique=True)
+    node_field = NodeField(null=False)
+
+    def __str__(self):
+        # pylint: disable=no-member
+        node_name = self.node_field.node_name if self.node_field else ''
+        node_id = self.node or ''
+        return (
+            f"{common.node_info_str(node_name, node_id)}"
+        )
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
+            f" {self}>"
+        )
 
 
 def collect_db_models(module: str = __name__):
