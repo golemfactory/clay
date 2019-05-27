@@ -55,9 +55,9 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader) -> None:
+    def __init__(self, header: dt_tasks.TaskHeader, requests: int) -> None:
         self.header = header
-        self.requests = 1
+        self.requests = requests
         self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
@@ -178,16 +178,19 @@ class CompTaskKeeper:
         self.active_task_offers.update(active_task_offers)
         self.resources_options.update(resources_options)
 
-    def add_request(self, theader: dt_tasks.TaskHeader, price: int):
+    def add_request(self,
+                    theader: dt_tasks.TaskHeader,
+                    price: int,
+                    num_subtasks: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %d)', theader, price)
+        logger.info('CT.add_request(%r, %d, %d)', theader, price, num_subtasks)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
         if task_id in self.active_tasks:
-            self.active_tasks[task_id].requests += 1
+            self.active_tasks[task_id].requests += num_subtasks
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader)
+            self.active_tasks[task_id] = CompTaskInfo(theader, num_subtasks)
         self.active_task_offers[task_id] = compute_subtask_value(
             price, self.active_tasks[task_id].header.subtask_timeout
         )

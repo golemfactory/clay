@@ -317,13 +317,14 @@ class TaskServer(
                 theader.task_owner.key,
             )
             price = min(price, theader.max_price)
+            num_subtasks = wtct_kwargs.get('num_subtasks')
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price)
+                theader=theader, price=price, num_subtasks=num_subtasks)
             wtct = message.tasks.WantToComputeTask(
                 node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
-                num_subtasks=wtct_kwargs.get('num_subtasks'),
+                num_subtasks=num_subtasks,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
@@ -331,8 +332,8 @@ class TaskServer(
                 provider_ethereum_public_key=wtct_kwargs.get('eth_pub_key'),
                 task_header=theader,
             )
-            if wtct.num_subtasks > 1:
-                logger.info('WTCT num_subtasks: %d', wtct.num_subtasks)
+            if num_subtasks > 1:
+                logger.info('WTCT num_subtasks: %d', num_subtasks)
 
             msg_queue.put(
                 node_id=theader.task_owner.key,

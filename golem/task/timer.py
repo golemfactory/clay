@@ -31,6 +31,7 @@ class ActionTimer:
         logger.debug("ActionTimer.start() at %r", time.time())
 
         if self._finished is None:
+            # TODO 2rec: timer per subtask?
             logger.error("action was not finished")
 
         self._started = time.time()

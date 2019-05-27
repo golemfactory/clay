@@ -1122,9 +1122,9 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    def add_comp_task_request(self, theader, price):
+    def add_comp_task_request(self, theader, price, num_subtasks):
         """ Add a header of a task which this node may try to compute """
-        self.comp_task_keeper.add_request(theader, price)
+        self.comp_task_keeper.add_request(theader, price, num_subtasks)
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, price: int):
