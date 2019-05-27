@@ -110,6 +110,10 @@ class PaymentsKeeper:
             "fee": to_unicode(payment.details.fee),
             "block_number": to_unicode(payment.details.block_number),
             "transaction": to_unicode(payment.details.tx),
+            "node":
+                payment.details.node_info.to_dict()
+                if payment.details.node_info
+                else None,
             "created": datetime_to_timestamp_utc(payment.created_date),
             "modified": datetime_to_timestamp_utc(payment.modified_date)
         } for payment in self.db.get_newest_payment(num, interval)]

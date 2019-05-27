@@ -1,4 +1,5 @@
 import logging
+import shutil
 import subprocess
 import time
 from typing import List, Optional, Dict, Union, Callable, Tuple
@@ -25,11 +26,15 @@ class DockerCommandHandler:
         build=['docker', 'build'],
         tag=['docker', 'tag'],
         pull=['docker', 'pull'],
-        version=['docker', '-v'],
+        version=['docker', '--version'],
         help=['docker', '--help'],
         images=['docker', 'images', '-q'],
         info=['docker', 'info'],
     )
+
+    @staticmethod
+    def docker_available() -> bool:
+        return bool(shutil.which('docker'))
 
     @classmethod
     def run(cls,
