@@ -45,7 +45,7 @@ def object_method_map(instance):
 def big_int_to_string(collection):
     # Deeply convert all big integer elements of collections to string
     def _big_int_to_string(v):
-        if isinstance(v, dict) or isinstance(v, list):
+        if isinstance(v, (dict, list)):
             v = big_int_to_string(v)
         else:
             if isinstance(v, int) and v > (2**53) - 1:  # MAX SAFE INTEGER IN JS
