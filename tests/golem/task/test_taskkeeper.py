@@ -284,17 +284,25 @@ class TestTaskHeaderKeeper(LogTestCase):
             max_tasks_per_requestor=10)
         limit = tk.max_tasks_per_requestor
         new_limit = 3
+        last_add_time = time.time()
 
         ids = []
         for _ in range(new_limit):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
+
+            while time.time() == last_add_time:
+                time.sleep(0.1)
+            last_add_time = time.time()
 
         thd = get_task_header("tb0")
         tb0_id = thd.task_id
         tk.add_task_header(thd)
+
+        while time.time() == last_add_time:
+            time.sleep(0.1)
+        last_add_time = time.time()
 
         def _assert_headers(ids_, len_):
             ids_.append(tb0_id)
@@ -304,14 +312,15 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         _assert_headers(ids, len(ids) + 1)
 
-        while time.time() == last_add_time:
-            time.sleep(0.1)
-
         new_ids = []
         for _ in range(new_limit, limit):
             thd = get_task_header("ta")
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
+
+            while time.time() == last_add_time:
+                time.sleep(0.1)
+            last_add_time = time.time()
 
 
         _assert_headers(ids + new_ids, limit + 1)
