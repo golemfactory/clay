@@ -146,6 +146,8 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
             tmp_dir=self.tempdir)
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_frame_rate_change(frame_rate)
+        operation.request_video_codec_change(VideoCodec.H_264)
+        operation.request_resolution_change((320, 240))
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
 
