@@ -1,6 +1,10 @@
-from factory import Factory, Faker, SubFactory
+from factory import (
+    Factory,
+    Faker,
+    fuzzy,
+    SubFactory,
+)
 
-from golem_messages.factories.datastructures import p2p
 from golem import model
 
 
@@ -14,19 +18,23 @@ class Income(Factory):
     value = Faker('random_int', min=1, max=10 << 20)
 
 
-class PaymentDetails(Factory):
+class WalletOperation(Factory):
     class Meta:
-        model = model.PaymentDetails
+        model = model.WalletOperation
 
-    node_info = SubFactory(p2p.Node)
-    fee = Faker('pyint')
+    direction = fuzzy.FuzzyChoice(model.WalletOperation.DIRECTION)
+    operation_type = fuzzy.FuzzyChoice(model.WalletOperation.TYPE)
+    sender_address = '0x' + 40 * '3'
+    recipient_address = '0x' + 40 * '4'
+    amount = fuzzy.FuzzyInteger(1, 10 << 20)
+    currency = fuzzy.FuzzyChoice(model.WalletOperation.CURRENCY)
 
-
-class Payment(Factory):
+class TaskPayment(Factory):
     class Meta:
-        model = model.Payment
+        model = model.TaskPayment
 
+    wallet_operation = SubFactory(WalletOperation)
+    node = '00adbeef' + 'deadbeef' * 15
+    task = Faker('uuid4')
     subtask = Faker('uuid4')
-    payee = Faker('binary', length=20)
-    value = Faker('pyint')
-    details = SubFactory(PaymentDetails)
+    expected_amount = fuzzy.FuzzyInteger(1, 10 << 20)

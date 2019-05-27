@@ -950,9 +950,11 @@ class TestTaskServer2(TaskServerBase):
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            "xxyyzz",
-            expected_value,
-            "eth_address")
+            subtask_id="xxyyzz",
+            value=expected_value,
+            eth_address="eth_address",
+            task_header=task_mock.header,
+        )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):

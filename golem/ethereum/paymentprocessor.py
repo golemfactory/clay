@@ -1,4 +1,3 @@
-import calendar
 import datetime
 import logging
 import time
@@ -6,16 +5,16 @@ import time
 from collections import defaultdict
 from typing import List
 
+from ethereum.utils import denoms
+from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from sortedcontainers import SortedListWithKey
-from eth_utils import decode_hex, encode_hex
-from ethereum.utils import denoms
 from twisted.internet import threads
 
 import golem_sci
 
+from golem import model
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.model import Payment, PaymentStatus
 
 log = logging.getLogger(__name__)
 
@@ -23,18 +22,16 @@ log = logging.getLogger(__name__)
 PAYMENT_MAX_DELAY = PAYMENT_DEADLINE - 30 * 60
 
 
-def get_timestamp() -> int:
-    """This is platform independent timestamp, needed for payments logic"""
-    return calendar.timegm(time.gmtime())
-
-
-def _make_batch_payments(payments: List[Payment]) -> List[golem_sci.Payment]:
+def _make_batch_payments(
+        payments: List[model.TaskPayment]
+) -> List[golem_sci.Payment]:
     payees: defaultdict = defaultdict(lambda: 0)
     for p in payments:
-        payees[p.payee] += p.value
+        payees[p.wallet_operation.recipient_address] += \
+            p.wallet_operation.amount
     res = []
     for payee, amount in payees.items():
-        res.append(golem_sci.Payment(encode_hex(payee), amount))
+        res.append(golem_sci.Payment(payee, amount))
     return res
 
 
@@ -46,7 +43,7 @@ class PaymentProcessor:
     def __init__(self, sci) -> None:
         self._sci = sci
         self._gntb_reserved = 0
-        self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
+        self._awaiting = SortedListWithKey(key=lambda p: p.created_date)
         self.load_from_db()
         self.last_print_time = 0
 
@@ -60,14 +57,17 @@ class PaymentProcessor:
 
     def load_from_db(self):
         sent = {}
-        for sent_payment in Payment \
+        for sent_payment in model.TaskPayment \
                 .select() \
-                .where(Payment.status == PaymentStatus.sent):
-            tx_hash = '0x' + sent_payment.details.tx
-            if tx_hash not in sent:
-                sent[tx_hash] = []
-            sent[tx_hash].append(sent_payment)
-            self._gntb_reserved += sent_payment.value
+                .join(model.WalletOperation) \
+                .where(
+                        model.WalletOperation.status == \
+                        model.WalletOperation.STATUS.sent,
+                ):
+            if sent_payment.wallet_operation.tx_hash not in sent:
+                sent[sent_payment.wallet_operation.tx_hash] = []
+            sent[sent_payment.wallet_operation.tx_hash].append(sent_payment)
+            self._gntb_reserved += sent_payment.wallet_operation.amount
         for tx_hash, payments in sent.items():
             self._sci.on_transaction_confirmed(
                 tx_hash,
@@ -75,29 +75,35 @@ class PaymentProcessor:
                     self._on_batch_confirmed, p, r),
             )
 
-        for awaiting_payment in Payment \
+        for awaiting_payment in model.TaskPayment \
                 .select() \
+                .join(model.WalletOperation) \
                 .where(
-                        Payment.status.in_([
-                            PaymentStatus.awaiting,
-                            PaymentStatus.overdue,
+                        model.WalletOperation.status.in_([
+                            model.WalletOperation.STATUS.awaiting,
+                            model.WalletOperation.STATUS.overdue,
                         ]),
                 ):
             log.info(
-                "Restoring awaiting payment for subtask %s to %s of %.3f GNTB",
+                "Restoring awaiting payment for subtask %s to %s of %.6f GNTB",
                 awaiting_payment.subtask,
-                encode_hex(awaiting_payment.payee),
-                awaiting_payment.value / denoms.ether,
+                awaiting_payment.wallet_operation.recipient_address,
+                awaiting_payment.wallet_operation.amount / denoms.ether,
             )
             self._awaiting.add(awaiting_payment)
-            self._gntb_reserved += awaiting_payment.value
+            self._gntb_reserved += awaiting_payment.wallet_operation.amount
 
-    def _on_batch_confirmed(self, payments: List[Payment], receipt) -> None:
+    def _on_batch_confirmed(
+            self,
+            payments: List[model.TaskPayment],
+            receipt
+    ) -> None:
         if not receipt.status:
             log.critical("Failed batch transfer: %s", receipt)
             for p in payments:
-                p.status = PaymentStatus.awaiting  # type: ignore
-                p.save()
+                wallet_operation = p.wallet_operation
+                wallet_operation.status = model.WalletOperation.STATUS.awaiting
+                wallet_operation.save()
                 self._awaiting.add(p)
             return
 
@@ -111,20 +117,19 @@ class PaymentProcessor:
             fee / denoms.ether,
         )
         for p in payments:
-            p.status = PaymentStatus.confirmed  # type: ignore
-            p.details.block_number = receipt.block_number
-            p.details.block_hash = receipt.block_hash[2:]
-            p.details.fee = fee
-            p.save()
-            self._gntb_reserved -= p.value
+            wallet_operation = p.wallet_operation
+            wallet_operation.status = model.WalletOperation.STATUS.confirmed
+            wallet_operation.gas_cost = fee
+            wallet_operation.save()
+            self._gntb_reserved -= p.wallet_operation.amount
             self._payment_confirmed(p, block.timestamp)
 
     @staticmethod
-    def _payment_confirmed(payment: Payment, timestamp: int) -> None:
+    def _payment_confirmed(payment: model.TaskPayment, timestamp: int) -> None:
         log.debug(
             "- %s confirmed fee: %.18f ETH",
             payment.subtask,
-            payment.details.fee / denoms.ether
+            payment.wallet_operation.gas_cost / denoms.ether
         )
 
         reference_date = datetime.datetime.fromtimestamp(timestamp)
@@ -134,23 +139,38 @@ class PaymentProcessor:
             signal="golem.payment",
             event="confirmed",
             subtask_id=payment.subtask,
-            payee=payment.payee,
+            payee=payment.wallet_operation.recipient_address,
             delay=delay,
         )
 
-    def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
+    def add(
+            self,
+            task_header: dt_tasks.TaskHeader,
+            subtask_id: str,
+            eth_addr: str,
+            value: int,
+    ) -> int:
         log.info(
             "Adding payment for %s to %s (%.3f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
         )
-        payment = Payment.create(
+        payment = model.TaskPayment.create(
+            wallet_operation=model.WalletOperation.create(
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.task_payment,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=eth_addr,
+                currency=model.WalletOperation.CURRENCY.GNT,
+                amount=value,
+            ),
+            node=task_header.task_owner.key,
+            task=task_header.task_id,
             subtask=subtask_id,
-            payee=decode_hex(eth_addr),
-            value=value,
-            processed_ts=get_timestamp(),
+            expected_amount=value,
         )
+
 
         self._awaiting.add(payment)
         self._gntb_reserved += value
@@ -168,21 +188,22 @@ class PaymentProcessor:
             self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
         for p in self._awaiting:
+            p: model.TaskPayment
             if p.processed_ts > closure_time:
                 break
-            gntb_balance -= p.value
+            gntb_balance -= p.wallet_operation.amount
             if gntb_balance < 0:
                 log.debug(
                     'Insufficient GNTB balance.'
                     ' value=%(value).18f, subtask_id=%(subtask)s',
                     {
-                        'value': p.value / denoms.ether,
+                        'value': p.wallet_operation.amount / denoms.ether,
                         'subtask': p.subtask,
                     },
                 )
                 break
 
-            payees.add(p.payee)
+            payees.add(p.wallet_operation.recipient_address)
             gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
                 self._sci.GAS_BATCH_PAYMENT_BASE
             if gas > gas_limit:
@@ -213,7 +234,7 @@ class PaymentProcessor:
         if not self._awaiting:
             return False
 
-        now = get_timestamp()
+        now = int(time.time())
         deadline = self._awaiting[0].processed_ts + acceptable_delay
         if deadline > now:
             if now > self.last_print_time + 300:
@@ -227,7 +248,7 @@ class PaymentProcessor:
             return False
         payments = self._awaiting[:payments_count]
 
-        value = sum([p.value for p in payments])
+        value = sum([p.wallet_operation.amount for p in payments])
         log.info("Batch payments value: %.3f GNTB", value / denoms.ether)
 
         closure_time = payments[-1].processed_ts
@@ -238,13 +259,14 @@ class PaymentProcessor:
         del self._awaiting[:payments_count]
 
         for payment in payments:
-            payment.status = PaymentStatus.sent
-            payment.details.tx = tx_hash[2:]
-            payment.save()
+            wallet_operation = payment.wallet_operation
+            wallet_operation.status = model.WalletOperation.STATUS.sent
+            wallet_operation.tx_hash = tx_hash
+            wallet_operation.save()
             log.debug("- {} send to {} ({:.18f} GNTB)".format(
                 payment.subtask,
-                encode_hex(payment.payee),
-                payment.value / denoms.ether))
+                wallet_operation.recipient_address,
+                wallet_operation.amount / denoms.ether))
 
         self._sci.on_transaction_confirmed(
             tx_hash,
@@ -264,10 +286,11 @@ class PaymentProcessor:
                 # All subsequent payments won't be overdue
                 # because list is sorted.
                 break
-            if payment.status is PaymentStatus.overdue:
+            wallet_operation = payment.wallet_operation
+            if wallet_operation.status is model.WalletOperation.STATUS.overdue:
                 continue
-            payment.status = PaymentStatus.overdue
-            payment.save()
+            wallet_operation.status = model.WalletOperation.STATUS.overdue
+            wallet_operation.save()
             log.debug("Marked as overdue. payment=%r", payment)
             counter += 1
         if counter:

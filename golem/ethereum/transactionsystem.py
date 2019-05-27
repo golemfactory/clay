@@ -21,6 +21,8 @@ from typing import (
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import is_address
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
     contracts,
@@ -72,6 +74,20 @@ def gnt_deposit_required():
             return f(self, *args, **kwargs)
         return curry
     return wrapper
+
+
+def lru_node_factory():
+    # Our version of peewee (2.10.2) doesn't support
+    # .join(attr='XXX'). So we'll have to join manually
+    lru_node = functools.lru_cache()(nodeskeeper.get)
+    def _inner(node_id):
+        if node_id is None:
+            return None
+        node = lru_node(node_id)
+        if node is None:
+            node = dt_p2p.Node(key=node_id)
+        return node.to_dict()
+    return _inner
 
 
 class ConversionStatus(Enum):
@@ -327,12 +343,18 @@ class TransactionSystem(LoopingCallService):
 
     def add_payment_info(
             self,
+            task_header: dt_tasks.TaskHeader,
             subtask_id: str,
             value: int,
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._payment_processor.add(subtask_id, eth_address, value)
+        return self._payment_processor.add(
+            task_header=task_header,
+            subtask_id=subtask_id,
+            eth_addr=eth_address,
+            value=value,
+        )
 
     @rpc_utils.expose('pay.ident')
     @sci_required()
@@ -351,7 +373,11 @@ class TransactionSystem(LoopingCallService):
         interval = None
         if last_seconds is not None:
             interval = timedelta(seconds=last_seconds)
-        return self._payments_keeper.get_list_of_all_payments(num, interval)
+        lru_node = lru_node_factory()
+        payments = self._payments_keeper.get_list_of_all_payments(num, interval)
+        for payment in payments:
+            payment['node'] = lru_node(payment['node'])
+        return payments
 
     @rpc_utils.expose('pay.deposit_payments')
     @classmethod
@@ -379,16 +405,14 @@ class TransactionSystem(LoopingCallService):
 
     def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> List[model.Payment]:
+            subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     @rpc_utils.expose('pay.incomes')
     def get_incomes_list(self) -> List[Dict[str, Any]]:
         incomes = self._incomes_keeper.get_list_of_all_incomes()
 
-        # Our version of peewee (2.10.2) doesn't support
-        # .join(attr='XXX'). So we'll have to join manually
-        lru_node = functools.lru_cache()(nodeskeeper.get)
+        lru_node = lru_node_factory()
 
         def item(o):
             return {
@@ -399,9 +423,7 @@ class TransactionSystem(LoopingCallService):
                 "transaction": common.to_unicode(o.transaction),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node":
-                    lru_node(o.sender_node).to_dict()
-                    if o.sender_node else None,
+                "node": lru_node(o.sender_node),
             }
 
         return [item(income) for income in incomes]
@@ -601,6 +623,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             return self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
@@ -614,6 +637,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
@@ -624,6 +648,7 @@ class TransactionSystem(LoopingCallService):
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
+                # TODO Update WalletOperation #4172
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash

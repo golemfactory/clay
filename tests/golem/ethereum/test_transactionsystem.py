@@ -10,6 +10,7 @@ from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
 from golem_messages.factories import p2p as p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 import golem_sci.contracts
 import golem_sci.structs
 
@@ -116,7 +117,12 @@ class TestTransactionSystem(TransactionSystemBase):
         subtask_id = 'derp'
         value = 10
         payee = '0x' + 40 * '1'
-        self.ets.add_payment_info(subtask_id, value, payee)
+        self.ets.add_payment_info(
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=payee,
+            task_header=dt_tasks_factory.TaskHeaderFactory(),
+        )
         payments = self.ets.get_payments_list()
         assert len(payments) == 1
         assert payments[0]['subtask'] == subtask_id

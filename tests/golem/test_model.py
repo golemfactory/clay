@@ -10,75 +10,25 @@ from golem.testutils import DatabaseFixture
 from tests.factories import model as m_factory
 
 
+class TestBaseModel(DatabaseFixture):
+    def test_utc(self):
+        instance = m.GenericKeyValue.create(key='test')
+        instance_copy = m.GenericKeyValue.get()
+        self.assertEqual(instance.created_date, instance_copy.created_date)
+        # pylint: disable=no-member
+        self.assertIsNone(instance.created_date.tzinfo)
+        self.assertIsNone(instance_copy.created_date.tzinfo)
+
+
 class TestPayment(DatabaseFixture):
-    def test_default_fields(self):
-        p = m.Payment()
-        self.assertGreaterEqual(datetime.now(), p.created_date)
-        self.assertGreaterEqual(datetime.now(), p.modified_date)
-
-    def test_create(self):
-        p = m.Payment(payee=b"\xDE", subtask="xyz", value=5,
-                      status=m.PaymentStatus.awaiting)
-        self.assertEqual(p.save(force_insert=True), 1)
-
-        with self.assertRaises(IntegrityError):
-            m.Payment.create(payee=b"\xDE", subtask="xyz", value=5,
-                             status=m.PaymentStatus.awaiting)
-        m.Payment.create(payee=b"\xDE", subtask="xyz2", value=4,
-                         status=m.PaymentStatus.confirmed)
-        m.Payment.create(payee=b"\xDE\xF2", subtask="xyz4", value=5,
-                         status=m.PaymentStatus.sent)
-
-        self.assertEqual(3, len([payment for payment in m.Payment.select()]))
-
-    def test_status_base_type(self):
-        payee = b"\xab"
-        subtask = 'zz'
-        m.Payment.create(payee=payee, subtask=subtask, value=5,
-                         status=m.PaymentStatus.awaiting.value)
-        p2 = m.Payment.get(payee=payee, subtask=subtask)
-        self.assertEqual(p2.status, m.PaymentStatus.awaiting)
-
-    def test_invalid_status(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="zz", value=5, status=667)
-
-    def test_invalid_value_type(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="float", value=5.5,
-                             status=m.PaymentStatus.sent)
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="str", value="500",
-                             status=m.PaymentStatus.sent)
-
-    def test_payment_details(self):
-        p1 = m.Payment(payee=b"\xab", subtask="T1000", value=123456)
-        p2 = m.Payment(payee=b"\xcd", subtask="T900", value=654321)
-        self.assertNotEqual(p1.payee, p2.payee)
-        self.assertNotEqual(p1.subtask, p2.subtask)
-        self.assertNotEqual(p1.value, p2.value)
-        self.assertEqual(p1.details, m.PaymentDetails())
-        self.assertEqual(p1.details, p2.details)
-        self.assertIsNot(p1.details, p2.details)
-        p1.details.check = True
-        self.assertTrue(p1.details.check)
-        self.assertEqual(p2.details.check, None)
-
     def test_payment_big_value(self):
         value = 10000 * 10**18
-        assert value > 2**64
-        m.Payment.create(payee=b"\xab", subtask="T1000", value=value,
-                         status=m.PaymentStatus.sent)
-
-    def test_payment_details_serialization(self):
-        p = m.PaymentDetails(node_info=dt_p2p_factory.Node(),
-                             fee=700)
-        dct = p.to_dict()
-        self.assertIsInstance(dct, dict)
-        self.assertIsInstance(dct['node_info'], dict)
-        pd = m.PaymentDetails.from_dict(dct)
-        self.assertIsInstance(pd.node_info, dt_p2p.Node)
-        self.assertEqual(p, pd)
+        self.assertGreater(value, 2**64)
+        payment = m_factory.TaskPayment(
+            value=value,
+        )
+        payment.wallet_operation.save(force_insert=True)
+        payment.save(force_insert=True)
 
 
 class TestIncome(DatabaseFixture):

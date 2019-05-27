@@ -1,5 +1,4 @@
 # pylint: disable=protected-access,too-many-lines
-import datetime
 import os
 import time
 import uuid
@@ -18,7 +17,6 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred, inlineCallbacks
 
-from golem import model
 from golem import testutils
 from golem.appconfig import (
     DEFAULT_HYPERDRIVE_RPC_PORT, DEFAULT_HYPERDRIVE_RPC_ADDRESS

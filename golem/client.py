@@ -19,6 +19,7 @@ from twisted.internet.defer import (
 
 from apps.appsmanager import AppsManager
 import golem
+from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
@@ -32,7 +33,7 @@ from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService, IService
+from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -41,7 +42,6 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -833,17 +833,22 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
             self.transaction_system.get_subtasks_payments(subtask_ids)
+        statuses_of_interest = (
+            model.WalletOperation.STATUS.sent,
+            model.WalletOperation.STATUS.confirmed,
+        )
         all_sent = all(
-            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
+            p.wallet_operation.status in statuses_of_interest
             for p in subtasks_payments)
         if not subtasks_payments or not all_sent:
             task_dict['cost'] = None
             task_dict['fee'] = None
         else:
-            # Because details are JSON field
-            task_dict['cost'] = sum(p.value or 0 for p in subtasks_payments)
+            task_dict['cost'] = sum(
+                p.wallet_oepration.amount for p in subtasks_payments
+            )
             task_dict['fee'] = \
-                sum(p.details.fee or 0 for p in subtasks_payments)
+                sum(p.wallet_operation.gas_cost for p in subtasks_payments)
 
         # Convert to string because RPC serializer fails on big numbers
         for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):

@@ -575,11 +575,13 @@ class TaskServer(
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
+        task = self.task_manager.tasks[task_id]
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
-            subtask_id,
-            value,
-            eth_address,
+            task_header=task.header,
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=eth_address,
         )
         self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
