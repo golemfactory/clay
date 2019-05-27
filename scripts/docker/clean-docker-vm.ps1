@@ -40,10 +40,18 @@ try {
 "Done"
 #>
 "Clean Docker Machine..."
+
+"hasInstalled: " + $hasInstalled
+"pfSFFolder: " + $pfSFFolder
 # TODO: Change to docker or docker-machine updated, always execute this time from TB -> binaries.
 #if ( -Not ( $hasInstalled.indexof("Docker") = -1 ))
 #{
-$dockerRmCmd = """" + $pfSFFolder + "Docker Toolbox\docker-machine.exe"" rm -f golem"
+$dockerBin = """" + $pfSFFolder + "Golem\docker-machine.exe"""
+$dockerVersionCmd = $dockerBin + " --version"
+"Executing: " + $dockerVersionCmd
+cmd.exe /c $dockerVersionCmd
+$dockerRmCmd = $dockerBin + " rm -f golem"
+"Executing: " + $dockerRmCmd
 cmd.exe /c $dockerRmCmd
 #}
 

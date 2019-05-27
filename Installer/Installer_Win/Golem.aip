@@ -561,41 +561,41 @@
     <ROW Action="AI_DATA_SETTER" Sequence="3997"/>
     <ROW Action="AI_EstimateExtractFiles" Sequence="3999" Builds="DefaultBuild"/>
     <ROW Action="AI_AiRemoveFilesRollback" Sequence="3099"/>
-    <ROW Action="StopProcess_DockerToolbox" Sequence="1612"/>
-    <ROW Action="AI_DATA_SETTER_4" Sequence="1611"/>
-    <ROW Action="StopProcess_VBoxHeadless" Sequence="1614"/>
-    <ROW Action="AI_DATA_SETTER_5" Sequence="1613"/>
-    <ROW Action="StopProcess_Golem" Sequence="1604"/>
-    <ROW Action="AI_DATA_SETTER_1" Sequence="1603"/>
-    <ROW Action="StopProcess_Golemapp" Sequence="1606"/>
-    <ROW Action="AI_DATA_SETTER_2" Sequence="1605"/>
-    <ROW Action="StopProcess_hyperg" Sequence="1608"/>
-    <ROW Action="AI_DATA_SETTER_3" Sequence="1607"/>
-    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1618"/>
-    <ROW Action="AI_DATA_SETTER_6" Sequence="1617"/>
-    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1616"/>
-    <ROW Action="AI_DATA_SETTER_7" Sequence="1615"/>
+    <ROW Action="StopProcess_DockerToolbox" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_4" Sequence="1609"/>
+    <ROW Action="StopProcess_VBoxHeadless" Sequence="1612"/>
+    <ROW Action="AI_DATA_SETTER_5" Sequence="1611"/>
+    <ROW Action="StopProcess_Golem" Sequence="1602"/>
+    <ROW Action="AI_DATA_SETTER_1" Sequence="1601"/>
+    <ROW Action="StopProcess_Golemapp" Sequence="1604"/>
+    <ROW Action="AI_DATA_SETTER_2" Sequence="1603"/>
+    <ROW Action="StopProcess_hyperg" Sequence="1606"/>
+    <ROW Action="AI_DATA_SETTER_3" Sequence="1605"/>
+    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1616"/>
+    <ROW Action="AI_DATA_SETTER_6" Sequence="1615"/>
+    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1614"/>
+    <ROW Action="AI_DATA_SETTER_7" Sequence="1613"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
     <ROW Action="AI_DELETE_SHORTCUTS" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="1402"/>
     <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6402"/>
     <ROW Action="AI_DATA_SETTER_8" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6401"/>
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
-    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1621"/>
-    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1619"/>
-    <ROW Action="Execute_CleanDockerVM" Condition="( NOT Installed )" Sequence="1602"/>
-    <ROW Action="AI_DATA_SETTER_10" Condition="( NOT Installed )" Sequence="1601"/>
+    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1619"/>
+    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1617"/>
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1622"/>
-    <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (&amp;DockerForWin = 3) )" Sequence="1620"/>
+    <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1618"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
     <ROW Action="AI_RemoveAllTempFiles" Sequence="1502"/>
     <ROW Action="AI_DATA_SETTER_12" Sequence="1501"/>
-    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1610"/>
-    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1609"/>
+    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1608"/>
+    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1607"/>
     <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
+    <ROW Action="Execute_CleanDockerVM" Condition="( NOT Installed )" Sequence="6603"/>
+    <ROW Action="AI_DATA_SETTER_10" Condition="( NOT Installed )" Sequence="6602"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
