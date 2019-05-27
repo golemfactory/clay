@@ -126,6 +126,7 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_resolution_change(resolution)
         operation.request_video_codec_change(VideoCodec.H_264)
+        operation.exclude_from_diff({'video': {'bitrate'}})
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
 
