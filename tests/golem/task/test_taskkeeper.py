@@ -234,7 +234,6 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
 
         for id_ in ids:
             self.assertIn(id_, tk.task_headers)
@@ -248,9 +247,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         self.assertIn(tb_id, tk.task_headers)
 
-        while time.time() == last_add_time:
-            frozen_time.tick(  # pylint: disable=no-member
-                delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
@@ -261,8 +258,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(id_, tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-        frozen_time.tick(  # pylint: disable=no-member
-            delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
         tk.remove_old_tasks()
 
         thd = get_task_header("ta")
@@ -275,7 +271,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(ids[i], tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-    def test_check_max_tasks_per_owner(self):
+    @freeze_time(as_arg=True)
+    # pylint: disable=no-self-argument
+    def test_check_max_tasks_per_owner(freezer, self):
 
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
@@ -290,11 +288,14 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
+
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("tb0")
         tb0_id = thd.task_id
         tk.add_task_header(thd)
+
+        freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         def _assert_headers(ids_, len_):
             ids_.append(tb0_id)
@@ -304,15 +305,13 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         _assert_headers(ids, len(ids) + 1)
 
-        while time.time() == last_add_time:
-            time.sleep(0.1)
-
         new_ids = []
         for _ in range(new_limit, limit):
             thd = get_task_header("ta")
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
 
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         _assert_headers(ids + new_ids, limit + 1)
 
@@ -463,7 +462,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         test_headers = []
         test_subtasks_ids = []
-        for x in range(10):
+        for _ in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 3
