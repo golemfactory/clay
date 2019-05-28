@@ -1,4 +1,4 @@
-FROM golemfactory/blender:1.9
+FROM golemfactory/blender:blender_igor_pr
 
 # Install scripts requirements first, then add scripts.
 ADD entrypoints/scripts/verifier_tools/requirements.txt /golem/work/

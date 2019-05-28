@@ -37,7 +37,7 @@ RUN apt-get update && \
     make install && \
     chmod -R 757 ${RASPA_DIR}/
 
-FROM golemfactory/base:1.4
+FROM golemfactory/base:base_igor_pr
 ENV RASPA_DIR=/opt/RASPA
 
 RUN set -x \
