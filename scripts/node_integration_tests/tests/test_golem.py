@@ -47,3 +47,9 @@ class GolemNodeTest(NodeTestBase):
 
     def test_task_output_directory(self):
         self._run_test('golem.task_output')
+
+    def test_large_result(self):
+        self._run_test(
+            'golem.separate_hyperg',
+            **{'task-package': 'cubes', 'task-settings': '4k'},
+        )

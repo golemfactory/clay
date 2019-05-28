@@ -39,6 +39,56 @@ class NodeTestPlaybook:
     INTERVAL = 1
     RECONNECT_COUNTDOWN_INITIAL = 10
 
+    def __init__(self, config: 'TestConfigBase') -> None:
+        self.config = config
+
+        def setup_datadir(
+                node_id: NodeId,
+                node_configs:
+                'typing.Union[NodeConfig, typing.List[NodeConfig]]') \
+                -> None:
+            if isinstance(node_configs, list):
+                datadir: typing.Optional[str] = None
+                for node_config in node_configs:
+                    if node_config.datadir is None:
+                        if datadir is None:
+                            datadir = helpers.mkdatadir(node_id.value)
+                        node_config.datadir = datadir
+            else:
+                if node_configs.datadir is None:
+                    node_configs.datadir = helpers.mkdatadir(node_id.value)
+
+        for node_id, node_configs in self.config.nodes.items():
+            setup_datadir(node_id, node_configs)
+
+        self.output_path = tempfile.mkdtemp(
+            prefix="golem-integration-test-output-")
+        helpers.set_task_output_path(self.config.task_dict, self.output_path)
+
+        self.nodes: 'typing.Dict[NodeId, Popen]' = {}
+        self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
+        self.nodes_ports: typing.Dict[NodeId, int] = {}
+        self.nodes_keys: typing.Dict[NodeId, str] = {}
+        self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
+
+        self._loop = task.LoopingCall(self.run)
+        self.start_time: float = 0
+        self.exit_code = 0
+        self.current_step = 0
+        self.known_tasks: typing.Optional[typing.Set[str]] = None
+        self.task_id: typing.Optional[str] = None
+        self.nodes_started = False
+        self.task_in_creation = False
+        self.subtasks: typing.Optional[typing.Set[str]] = None
+
+        self.reconnect_attempts_left = 7
+        self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
+        self.has_requested_eth: bool = False
+        self.retry_counter = 0
+
+        self.start_nodes()
+        self.started = True
+
     @property
     def task_settings_dict(self) -> dict:
         return tasks.get_settings(self.config.task_settings)
@@ -99,11 +149,15 @@ class NodeTestPlaybook:
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
             print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            # FIXME: Remove this sleep when golem handles it ( #4221 )
+            if self.has_requested_eth:
+                time.sleep(30)
             self.next()
 
         else:
             print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            self.has_requested_eth = True
             time.sleep(15)
 
     def step_wait_for_gnt(self, node_id: NodeId):
@@ -311,7 +365,7 @@ class NodeTestPlaybook:
             unpaid = self.subtasks - payments
             if unpaid:
                 print("Found subtasks with no matching payments: %s" % unpaid)
-                self.fail()
+                time.sleep(3)
                 return
 
             print("All subtasks accounted for.")
@@ -460,55 +514,6 @@ class NodeTestPlaybook:
             traceback.print_tb(tb)
             self.fail()
             return
-
-    def __init__(self, config: 'TestConfigBase') -> None:
-        self.config = config
-
-        def setup_datadir(
-                node_id: NodeId,
-                node_configs:
-                'typing.Union[NodeConfig, typing.List[NodeConfig]]') \
-                -> None:
-            if isinstance(node_configs, list):
-                datadir: typing.Optional[str] = None
-                for node_config in node_configs:
-                    if node_config.datadir is None:
-                        if datadir is None:
-                            datadir = helpers.mkdatadir(node_id.value)
-                        node_config.datadir = datadir
-            else:
-                if node_configs.datadir is None:
-                    node_configs.datadir = helpers.mkdatadir(node_id.value)
-
-        for node_id, node_configs in self.config.nodes.items():
-            setup_datadir(node_id, node_configs)
-
-        self.output_path = tempfile.mkdtemp(
-            prefix="golem-integration-test-output-")
-        helpers.set_task_output_path(self.config.task_dict, self.output_path)
-
-        self.nodes: 'typing.Dict[NodeId, Popen]' = {}
-        self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
-        self.nodes_ports: typing.Dict[NodeId, int] = {}
-        self.nodes_keys: typing.Dict[NodeId, str] = {}
-        self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
-
-        self._loop = task.LoopingCall(self.run)
-        self.start_time: float = 0
-        self.exit_code = 0
-        self.current_step = 0
-        self.known_tasks: typing.Optional[typing.Set[str]] = None
-        self.task_id: typing.Optional[str] = None
-        self.nodes_started = False
-        self.task_in_creation = False
-        self.subtasks: typing.Optional[typing.Set[str]] = None
-
-        self.reconnect_attempts_left = 7
-        self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
-        self.retry_counter = 0
-
-        self.start_nodes()
-        self.started = True
 
     def start(self) -> None:
         self.start_time = time.time()
