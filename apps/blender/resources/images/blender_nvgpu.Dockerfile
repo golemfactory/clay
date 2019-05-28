@@ -1,4 +1,4 @@
-FROM golemfactory/nvgpu:basenvgpu_igor_pr
+FROM golemfactory/nvgpu:1.4
 
 # Contents of blender.Dockerfile
 
