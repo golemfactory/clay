@@ -226,10 +226,12 @@ class Subscription(object):
             if header.environment.lower() != self.task_type.name.lower():
                 continue
 
-            self.add_task_event(header)
+            self._handle_add_task(header)
 
-        dispatcher.connect(self.add_task_event, signal='golem.task')
-        dispatcher.connect(self._remove_task_event, signal='golem.task.removed')
+        # we don't need to clean-up connections -- dispatcher will do that
+        # when object is deleted
+        dispatcher.connect(self._handle_add_task, signal='golem.task')
+        dispatcher.connect(self._handle_remove_task, signal='golem.task.removed')
 
     def update(self, request_json: dict):
         self.name = request_json.get('name', '')
@@ -240,17 +242,6 @@ class Subscription(object):
         self.max_disk_size = int(request_json['maxDiskSize'])
         self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
 
-    # TODO: do we need to clean-up connections or dispatcher will automagically do that?
-    # def unsubscribe(self):
-    #     dispatcher.disconnect(self.add_task_event, signal='golem.task')
-    #     dispatcher.disconnect(self._remove_task_event, signal='golem.task.removed')
-    #     dispatcher.disconnect(self.add_subtask_event,
-    #                           signal='golem.subtask')
-    #     dispatcher.disconnect(self.add_resource_event,
-    #                           signal='golem.resource')
-    #     dispatcher.disconnect(self.add_result_verification_event,
-    #                           signal='golem.message')
-
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
             raise Exception('duplicated event hash %r: %r' % (event_hash, kw))
@@ -259,15 +250,14 @@ class Subscription(object):
         self.event_counter += 1
         self.events[event_hash] = event
 
-    def _remove_task_event(self, task_id: str):
-        # TODO: remove also subtasks and resources?
-        del self.tasks[task_id]
-
-    def add_task_event(self, header: TaskHeader):
+    def _handle_add_task(self, header: TaskHeader):
         task = Task(header)
         logger.debug('event: task_id: %r', task.task_id)
         self.tasks[task.task_id] = task
         self._add_event(task.task_id, task=task)
+
+    def _handle_remove_task(self, task_id: str):
+        del self.tasks[task_id]
 
     # TODO: add num subtasks in swagger
     def want_subtask(self,
@@ -293,19 +283,19 @@ class Subscription(object):
                 'eth_pub_key': self.eth_pub_key,
                 'num_subtasks': num_subtasks
             })
-        dispatcher.connect(self.add_subtask_event,
+        dispatcher.connect(self._handle_add_subtask,
                            signal='golem.subtask')
         self.increment(SubtaskStatus.requested)
         return True
 
-    def add_subtask_event(self, event='default', **kwargs) -> None:
+    def _handle_add_subtask(self, event='default', **kwargs) -> None:
         # TODO: persist or read existing subtasks upon start
         subtask = Subtask(**kwargs)
         logger.debug('event subtask_id: %s', subtask.subtask_id)
         self.subtasks[subtask.subtask_id] = subtask
         if event == 'started' and subtask.task_id in self.tasks:
             self._add_event(subtask.subtask_id, subtask=subtask)
-            dispatcher.connect(self.add_resource_event,
+            dispatcher.connect(self._handle_add_resource,
                                signal='golem.resource')
         else:
             logger.warning('unexpected subtask event for %s/%s: %r' % (
@@ -322,7 +312,7 @@ class Subscription(object):
         self.increment(SubtaskStatus.cancelled)
         return True
 
-    def add_resource_event(self, **kwargs) -> None:
+    def _handle_add_resource(self, **kwargs) -> None:
         resource = Resource(**kwargs)
         logger.debug('event for subtask_id: %s', resource.subtask_id)
         if resource.subtask_id in self.subtasks:
@@ -359,12 +349,12 @@ class Subscription(object):
             raise InvalidSubtaskStatus(f'subtask result status {status} '
                                        'must be one of: succeeded or failed')
 
-        dispatcher.connect(self.add_result_verification_event,
+        dispatcher.connect(self._handle_add_result_verification,
                            signal='golem.message')
         self.increment(status)
         return True
 
-    def add_result_verification_event(self, **kwargs) -> None:
+    def _handle_add_result_verification(self, **kwargs) -> None:
         logger.debug('kwargs: %r ', kwargs)
         msg = kwargs['message']
         if msg.subtask_id in self.subtasks \
