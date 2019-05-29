@@ -25,7 +25,7 @@ class TestDockerEnvironment(DockerTestCase):
             DockerEnvironmentMock(additional_images=["aaa"])
 
         de = DockerEnvironmentMock(additional_images=[
-            DockerImage("golemfactory/blender", tag="1.9")])
+            DockerImage("golemfactory/blender", tag="1.10")])
         self.assertTrue(de.check_support())
         self.assertTrue(de.check_docker_images())
 

@@ -157,12 +157,10 @@ class DockerTaskThread(TaskThread):
 
         binds = self._get_default_binds()
         volumes = list(bind.target for bind in binds)
-        environment = DockerJob.get_environment()
-
-        environment.update(
+        environment = dict(
             WORK_DIR=DockerJob.WORK_DIR,
             RESOURCES_DIR=DockerJob.RESOURCES_DIR,
-            OUTPUT_DIR=DockerJob.OUTPUT_DIR
+            OUTPUT_DIR=DockerJob.OUTPUT_DIR,
         )
 
         assert self.image is not None
