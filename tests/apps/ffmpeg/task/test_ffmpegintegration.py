@@ -20,15 +20,31 @@ logger = logging.getLogger(__name__)
 
 
 @ci_skip
-class FfmpegIntegrationTestCase(TestTaskIntegration):
+class TestFfmpegIntegration(TestTaskIntegration):
 
     VIDEO_FILES = [
         "test_video.mp4",
         "test_video2.mp4",
     ]
 
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+
+        cls._ffprobe_report_set = None
+        # Uncomment this to enable report generation:
+        #from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
+        #cls._ffprobe_report_set = FfprobeReportSet()
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+
+        if cls._ffprobe_report_set is not None:
+            print(cls._ffprobe_report_set.to_markdown())
+
     def setUp(self):
-        super(FfmpegIntegrationTestCase, self).setUp()
+        super().setUp()
 
         # We'll be comparing output from FfprobeFormatReport.diff() which
         # can be long but we still want to see it all.
@@ -63,28 +79,9 @@ class FfmpegIntegrationTestCase(TestTaskIntegration):
 
         return task_def_for_transcoding
 
-
-@ci_skip
-class TestffmpegIntegration(FfmpegIntegrationTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-
-        cls._ffprobe_report_set = None
-        # Uncomment this to enable report generation:
-        #from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
-        #cls._ffprobe_report_set = FfprobeReportSet()
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-
-        if cls._ffprobe_report_set is not None:
-            print(cls._ffprobe_report_set.to_markdown())
-
     @parameterized.expand(
         (video_file, video_codec, container)
-        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for video_file in VIDEO_FILES
         for video_codec, container in [
             (VideoCodec.H_264, Container.c_AVI),
         ]
@@ -109,7 +106,7 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
 
     @parameterized.expand(
         (video_file, resolution)
-        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for video_file in VIDEO_FILES
         for resolution in (
             (320, 240),
         )
@@ -132,7 +129,7 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
 
     @parameterized.expand(
         (video_file, frame_rate)
-        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for video_file in VIDEO_FILES
         for frame_rate in ('25/1', '25/2')
     )
     @pytest.mark.slow
@@ -154,7 +151,7 @@ class TestffmpegIntegration(FfmpegIntegrationTestCase):
 
     @parameterized.expand(
         (video_file, subtasks_count)
-        for video_file in FfmpegIntegrationTestCase.VIDEO_FILES
+        for video_file in VIDEO_FILES
         for subtasks_count in (1, 6, 10)
     )
     @pytest.mark.slow
