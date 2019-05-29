@@ -601,7 +601,8 @@ class ClientProvider:
         :param disable_concent: setting this flag to True will result in forcing
         Concent to be disabled for the task. This only has effect when the task
         is already finished and needs to be restarted.
-        :return:
+        :return: In case of any errors, returns the representation of the error
+        (either a string or a dict). Otherwise, returns None.
         """
         try:
             task = self.task_manager.tasks[task_id]
