@@ -19,6 +19,7 @@ from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
+from golem.client import Client
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
@@ -155,11 +156,11 @@ def _run_test_task(client, task_dict):
 
 @golem_async.deferred_run()
 def _restart_subtasks(
-        client,
-        old_task_id,
-        task_dict,
-        subtask_ids_to_copy,
-        force,
+        client: Client,
+        old_task_id: str,
+        task_dict: dict,
+        subtask_ids_to_copy: typing.Iterable[str],
+        ignore_gas_price: bool = False,
 ):
     @defer.inlineCallbacks
     @safe_run(
@@ -173,7 +174,7 @@ def _restart_subtasks(
         new_task = yield enqueue_new_task(
             client=client,
             task=client.task_manager.create_task(task_dict),
-            force=force,
+            force=ignore_gas_price,
         )
 
         client.task_manager.copy_results(
@@ -580,11 +581,16 @@ class ClientProvider:
             disable_concent: bool = False
     ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         """
-        TODO
-        :param task_id:
-        :param subtask_ids:
-        :param ignore_gas_price:
-        :param disable_concent:
+        Restarts a set of subtasks from the same task. If the specified task is
+        already finished it will be restarted, clearing the state of the given
+        subtasks and copying over the remaining results.
+        :param task_id: the ID of the task which contains the given subtasks.
+        :param subtask_ids: the set of subtask IDs which should be restarted.
+        :param ignore_gas_price: if True, this will ignore long transaction time
+        errors and proceed with the restart.
+        :param disable_concent: setting this flag to True will result in forcing
+        Concent to be disabled for the task. This only has effect when the task
+        is already finished and needs to be restarted.
         :return:
         """
         try:
@@ -597,10 +603,13 @@ class ClientProvider:
                 ignore_gas_price
             )
         except KeyError:
-            logger.error('Task not found: %r', task_id)
+            err_msg = f'Task not found: {task_id!r}'
+            logger.error(err_msg)
+            return err_msg
 
-        logger.debug('restart_subtasks. TODO',
-                     task_id)
+        logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
+                     'ignore_gas_price=%r, disable_concent=%r', task_id,
+                     subtask_ids, ignore_gas_price, disable_concent)
 
         task_state = self.client.task_manager.tasks_states[task_id]
 
@@ -610,7 +619,7 @@ class ClientProvider:
 
             return None
         else:
-            return self.restart_subtasks_from_task(
+            return self._restart_finished_task_subtasks(
                 task_id,
                 subtask_ids,
                 ignore_gas_price,
@@ -642,17 +651,17 @@ class ClientProvider:
 
         self.restart_subtasks(task_id, frame_subtasks)
 
-    @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(_restart_subtasks_error)
-    def restart_subtasks_from_task(
+    def _restart_finished_task_subtasks(
             self,
             task_id: str,
             subtask_ids: typing.Iterable[str],
-            force: bool = False,
+            ignore_gas_price: bool = False,
             disable_concent: bool = False
     ) -> typing.Optional[typing.Union[str, typing.Dict]]:
-        logger.debug('restart_subtasks_from_task. task_id=%r, subtask_ids=%r,'
-                     'force=%r', task_id, subtask_ids, force)
+        logger.debug('_restart_finished_task_subtasks. task_id=%r, '
+                     'subtask_ids=%r, ignore_gas_price=%r', task_id,
+                     subtask_ids, ignore_gas_price)
 
         try:
             self.task_manager.put_task_in_restarted_state(
@@ -668,8 +677,8 @@ class ClientProvider:
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
 
-            logger.debug('restart_subtasks_from_task. subtask_ids_to_copy=%r',
-                         subtask_ids_to_copy)
+            logger.debug('_restart_finished_task_subtasks. '
+                         'subtask_ids_to_copy=%r', subtask_ids_to_copy)
         except self.task_manager.AlreadyRestartedError:
             err_msg = f'Task already restarted: {task_id!r}'
             logger.error(err_msg)
@@ -686,14 +695,14 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
-        logger.debug('Restarting task. task_dict=%s', task_dict)
+        logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
         prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
             old_task_id=task_id,
             task_dict=task_dict,
-            force=force,
+            ignore_gas_price=ignore_gas_price,
         )
         # Don't wait for deferred
 
