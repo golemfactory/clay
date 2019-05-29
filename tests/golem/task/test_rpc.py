@@ -619,6 +619,26 @@ class TestRestartSubtasks(ProviderBase):
 
         self.assertIn(task_id, error)
 
+    @mock.patch('golem.task.rpc.ClientProvider.'
+                '_validate_enough_funds_to_pay_for_task')
+    def test_insufficient_funds(self, mock_validate_funds, *_):
+        mock_validate_funds.side_effect =\
+            exceptions.NotEnoughFunds.single_currency(
+                required=0.1 * denoms.ether,
+                available=0,
+                currency='ETH'
+            )
+        subtask_ids = ['subtask-uuid-1', 'subtask-uuid-2']
+
+        error = self.provider.restart_subtasks(
+            task_id=self.task.header.task_id,
+            subtask_ids=subtask_ids
+        )
+
+        self.assertEqual(error['error_type'], 'NotEnoughFunds')
+        self.assertIsNotNone(error['error_msg'])
+        self.assertIsNotNone(error['error_details'])
+
 
 class TestRestartFrameSubtasks(ProviderBase):
     def setUp(self):
