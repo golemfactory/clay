@@ -24,6 +24,9 @@ from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
 
+if typing.TYPE_CHECKING:
+    from golem.client import Client # noqa pylint: disable=unused-import
+
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
 
@@ -155,7 +158,7 @@ def _run_test_task(client, task_dict):
 
 @golem_async.deferred_run()
 def _restart_subtasks(
-        client,
+        client: 'Client',
         old_task_id: str,
         task_dict: dict,
         subtask_ids_to_copy: typing.Iterable[str],
@@ -623,8 +626,6 @@ class ClientProvider:
         if task_state.status.is_active():
             for subtask_id in subtask_ids:
                 self.client.restart_subtask(subtask_id)
-
-            return None
         else:
             return self._restart_finished_task_subtasks(
                 task_id,
@@ -632,6 +633,8 @@ class ClientProvider:
                 ignore_gas_price,
                 disable_concent
             )
+
+        return None
 
     @rpc_utils.expose('comp.task.subtasks.frame.restart')
     @safe_run(
