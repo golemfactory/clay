@@ -545,6 +545,14 @@ class ClientProvider:
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
         try:
+            task = self.task_manager.tasks[task_id]
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                task.get_total_tasks(),
+                task.header.concent_enabled,
+                force
+            )
+
             task_dict = copy.deepcopy(
                 self.task_manager.get_task_definition_dict(
                     self.task_manager.tasks[task_id],
