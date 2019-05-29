@@ -154,7 +154,7 @@ class SimulatedTranscodingOperation:
 
     def _build_file_names(self, relative_input_file: str):
         if self._task_options['output_container'] is not None:
-            output_extension = self._task_options['output_container'].value
+            output_extension = "." + self._task_options['output_container'].value
         else:
             output_extension = os.path.splitext(relative_input_file)[1]
 
@@ -162,9 +162,10 @@ class SimulatedTranscodingOperation:
             self._host_dirs['resource'],
             relative_input_file,
         )
+        input_file_stem = os.path.splitext(relative_input_file)[0]
         output_file = os.path.join(
             self._host_dirs['tmp'],
-            f"transcoded-{os.path.basename(input_file)}.{output_extension}",
+            f"transcoded-{input_file_stem}{output_extension}",
         )
 
         return (input_file, output_file)
