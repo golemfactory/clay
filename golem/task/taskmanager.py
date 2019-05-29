@@ -392,7 +392,7 @@ class TaskManager(TaskEventListener):
 
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size, address=""):
+            max_resource_size, max_memory_size):
         """ Assign next subtask from task <task_id> to node with given
         id <node_id> and name. If subtask is assigned the function
         is returning a tuple

@@ -405,11 +405,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
+        task = self.task_manager.tasks[msg.task_id]
+        task_state = self.task_manager.tasks_states[msg.task_id]
+        price = taskkeeper.compute_subtask_value(
+            msg.price,
+            task.header.subtask_timeout,
+        )
+        task.max_pending_client_results = msg.num_subtasks
+
         for i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-                msg.price, msg.max_resource_size, msg.max_memory_size,
-                self.address)
+                msg.price, msg.max_resource_size, msg.max_memory_size)
 
             logger.debug(
                 "CTD generated. task_id=%s, node=%s ctd=%s",
@@ -440,12 +447,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 node_name_id,
                 ctd["subtask_id"],
-            )
-            task = self.task_manager.tasks[ctd['task_id']]
-            task_state = self.task_manager.tasks_states[ctd['task_id']]
-            price = taskkeeper.compute_subtask_value(
-                msg.price,
-                task.header.subtask_timeout,
             )
             if resources_result:
                 _, _, package_hash, package_size = resources_result
