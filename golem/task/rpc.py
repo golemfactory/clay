@@ -19,7 +19,6 @@ from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
-from golem.client import Client
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
@@ -156,7 +155,7 @@ def _run_test_task(client, task_dict):
 
 @golem_async.deferred_run()
 def _restart_subtasks(
-        client: Client,
+        client,
         old_task_id: str,
         task_dict: dict,
         subtask_ids_to_copy: typing.Iterable[str],
