@@ -50,7 +50,7 @@ def default_now():
 
 # Bug in peewee_migrate 0.14.0 induces setting __self__
 # noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
-default_now.__self__ = datetime.datetime
+default_now.__self__ = datetime.datetime  # type: ignore
 
 
 class BaseModel(Model):
