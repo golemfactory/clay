@@ -1,4 +1,5 @@
 import logging
+import psutil
 import subprocess
 import time
 from multiprocessing import Process
@@ -71,18 +72,24 @@ class ProcessMonitor(Thread):
     @classmethod
     def kill_process(cls, process):
         if cls.is_process_alive(process):
+            process_info = psutil.Process(process.pid)
+            children = process_info.children(recursive=True)
             try:
+                for c in children:
+                    c.terminate()
+                    if c.wait(timeout=60) is not None:
+                        c.kill()
+
                 process.terminate()
 
                 if isinstance(process, (psutil.Popen, subprocess.Popen)):
                     process.communicate()
                 elif isinstance(process, Process):
                     process.join()
-
             except Exception as exc:
-                logger.error("Error terminating process %d: %r", process, exc)
+                logger.error("Error terminating process %s: %r", process, exc)
             else:
-                logger.warning("Subprocess %d terminated", cls._pid(process))
+                logger.warning("Subprocess %s terminated", cls._pid(process))
 
     @staticmethod
     def _pid(process):

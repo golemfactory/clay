@@ -328,11 +328,11 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _save_subscription_block_number(self) -> None:
         self._sci: SmartContractsInterface
-        block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
+        block_number = self._sci.get_latest_confirmed_block_number()
         kv, _ = model.GenericKeyValue.get_or_create(
             key=self.BLOCK_NUMBER_DB_KEY,
         )
-        kv.value = block_number - 1
+        kv.value = block_number + 1
         kv.save()
 
     def stop(self):
@@ -463,7 +463,7 @@ class TransactionSystem(LoopingCallService):
             'gnt_nonconverted': self._gnt_balance,
             'eth_available': self.get_available_eth(),
             'eth_locked': self.get_locked_eth(),
-            'block_number': self._sci.get_block_number(),
+            'block_number': self._sci.get_latest_confirmed_block_number(),
             'gnt_update_time': self._last_gnt_update,
             'eth_update_time': self._last_eth_update,
         }

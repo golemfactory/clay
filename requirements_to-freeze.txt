@@ -16,7 +16,7 @@ enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==3.4.0
-Golem-Smart-Contracts-Interface==1.7.0
+Golem-Smart-Contracts-Interface==1.10.0
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
@@ -51,6 +51,7 @@ tabulate
 token_bucket==0.2.0
 Twisted==17.9.0
 txaio==2.8.2
+urllib3==1.24.3
 web3==4.2.1
 zope.interface==4.4.2
 zxcvbn-python

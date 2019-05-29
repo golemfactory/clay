@@ -11,6 +11,7 @@ import faker
 from freezegun import freeze_time
 from golem_messages.factories import p2p as p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
+import golem_sci
 import golem_sci.contracts
 import golem_sci.structs
 
@@ -29,17 +30,15 @@ PASSWORD = 'derp'
 class TransactionSystemBase(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
-        self.sci = Mock()
+        self.sci = Mock(spec=golem_sci.SmartContractsInterface)
         self.sci.GAS_PRICE = 10 ** 9
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
-        self.sci.get_block_number.return_value = 1223
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE - 1
         self.sci.get_eth_balance.return_value = 0
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
-        self.sci.REQUIRED_CONFS = 6
         self.sci.get_deposit_locked_until.return_value = 0
         self.ets = self._make_ets()
 
@@ -83,6 +82,7 @@ class TestTransactionSystem(TransactionSystemBase):
             e = self._make_ets()
 
             mock_is_service_running.return_value = True
+            self.sci.get_latest_confirmed_block_number.return_value = 1223
             e._payment_processor = Mock()  # noqa pylint: disable=no-member
             e.stop()
             e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
@@ -294,7 +294,7 @@ class TestTransactionSystem(TransactionSystemBase):
         )
 
         block_number = 123
-        self.sci.get_block_number.return_value = block_number
+        self.sci.get_latest_confirmed_block_number.return_value = block_number
         with patch('golem.ethereum.transactionsystem.LoopingCallService.stop'):
             self.ets.stop()
 
@@ -303,7 +303,7 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.sci.get_eth_address(),
-            block_number - self.sci.REQUIRED_CONFS - 1,
+            block_number + 1,
             ANY,
         )
 

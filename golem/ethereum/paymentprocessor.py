@@ -184,11 +184,11 @@ class PaymentProcessor:
         gas_price = self._sci.get_current_gas_price()
 
         ind = 0
-        gas_limit = \
-            self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
+        gas_limit = self._sci.get_latest_confirmed_block().gas_limit * \
+            self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
+        p: model.TaskPayment
         for p in self._awaiting:
-            p: model.TaskPayment
             if p.processed_ts > closure_time:
                 break
             gntb_balance -= p.wallet_operation.amount
