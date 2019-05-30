@@ -2,8 +2,8 @@ import os
 import logging
 
 from ffmpeg_tools.codecs import VideoCodec
-from ffmpeg_tools.formats import Container
-from ffmpeg_tools.validation import UnsupportedVideoCodec
+from ffmpeg_tools.formats import Container, list_matching_resolutions
+from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution
 
 from parameterized import parameterized
 import pytest
@@ -128,8 +128,13 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_video_codec_change(VideoCodec.H_264)
         operation.request_container_change(Container.c_MP4)
         operation.exclude_from_diff({'video': {'bitrate'}})
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+
+        if resolution in list_matching_resolutions(video["resolution"]):
+            (_input_report, _output_report, diff) = operation.run(video["path"])
+            self.assertEqual(diff, [])
+        else:
+            with self.assertRaises(InvalidResolution):
+                operation.run(video["path"])
 
     @parameterized.expand(
         (video, frame_rate)
