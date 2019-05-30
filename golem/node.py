@@ -24,7 +24,7 @@ import golem
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.config.active import IS_MAINNET, EthereumConfig
+from golem.config.active import EthereumConfig
 from golem.core.deferred import chain_function
 from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
@@ -108,11 +108,12 @@ class Node(HardwarePresetsMixin):
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        ethereum_config = EthereumConfig()
         if geth_address:
-            EthereumConfig.NODE_LIST = [geth_address]
+            ethereum_config.NODE_LIST = [geth_address]
         self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
-            EthereumConfig,
+            ethereum_config,
         )
         self._ets.backwards_compatibility_tx_storage(Path(datadir))
         self.concent_variant = concent_variant
@@ -267,7 +268,7 @@ class Node(HardwarePresetsMixin):
     @rpc_utils.expose('golem.mainnet')
     @classmethod
     def is_mainnet(cls) -> bool:
-        return IS_MAINNET
+        return EthereumConfig().IS_MAINNET
 
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(

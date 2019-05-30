@@ -248,8 +248,8 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
-            from golem.config.active import IS_MAINNET
-            assert IS_MAINNET is False
+            from golem.config.active import EthereumConfig
+            assert EthereumConfig().IS_MAINNET is False
 
         # then
         assert return_value.exit_code == 0
@@ -275,8 +275,8 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
-            from golem.config.active import IS_MAINNET
-            assert IS_MAINNET is True
+            from golem.config.active import EthereumConfig
+            assert EthereumConfig().IS_MAINNET is True
 
         # then
         assert return_value.exit_code == 0
@@ -296,10 +296,8 @@ class TestNode(TestWithDatabase):
         def compare_config(m):
             from golem.config import active as a
 
-            assert a.IS_MAINNET == m.IS_MAINNET
-            assert a.ACTIVE_NET == m.ACTIVE_NET
             assert a.DATA_DIR == m.DATA_DIR
-            assert a.EthereumConfig == m.EthereumConfig
+            assert a.EthereumConfig() == m.EthereumConfig()
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES

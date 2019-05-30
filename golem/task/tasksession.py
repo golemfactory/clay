@@ -16,7 +16,6 @@ from pydispatch import dispatcher
 from twisted.internet import defer
 
 import golem
-from golem.config.active import EthereumConfig
 from golem.core import common
 from golem.core import golem_async
 from golem.core.keysauth import KeysAuth
@@ -136,6 +135,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @property
     def concent_service(self):
         return self.task_server.client.concent_service
+
+    @property
+    def deposit_contract_address(self):
+        return self.task_server.client\
+            .transaction_system.deposit_contract_address
 
     @property
     def is_active(self) -> bool:
@@ -468,10 +472,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         ttc.generate_ethsig(self.my_private_key)
         if ttc.concent_enabled:
+            logger.debug(
+                f"Signing promissory notes for GNTDeposit at: "
+                f"{self.deposit_contract_address}"
+            )
             ttc.sign_promissory_note(private_key=self.my_private_key)
             ttc.sign_concent_promissory_note(
-                deposit_contract_address=getattr(
-                    EthereumConfig, 'deposit_contract_address'),
+                deposit_contract_address=self.deposit_contract_address,
                 private_key=self.my_private_key
             )
 
@@ -582,8 +589,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             if not (msg.verify_promissory_note() and
                     msg.verify_concent_promissory_note(
-                        deposit_contract_address=getattr(
-                            EthereumConfig, 'deposit_contract_address')
+                        deposit_contract_address=self.deposit_contract_address
                     )):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
@@ -787,8 +793,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     subtask_results_rejected=msg
                 )
                 srv.sign_concent_promissory_note(
-                    deposit_contract_address=getattr(
-                        EthereumConfig, 'deposit_contract_address'),
+                    deposit_contract_address=self.deposit_contract_address,
                     private_key=self.my_private_key,
                 )
 
