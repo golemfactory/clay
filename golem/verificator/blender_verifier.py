@@ -1,4 +1,6 @@
+import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Type
 
 import logging
@@ -72,10 +74,18 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addErrback(failure)
 
         subtask_info = self.verification_data['subtask_info']
-        work_dir = os.path.dirname(self.verification_data['results'][0])
+        work_dir = Path(os.path.dirname(self.verification_data['results'][0])).parent
+        res_dir = os.path.join(work_dir, 'resources')
+        tmp_dir = os.path.join(work_dir, "tmp")
+
+        assert(len(self.verification_data['resources']) > 0)
+
+        shutil.copy(self.verification_data['resources'][0], res_dir)
+        shutil.copy(self.verification_data['results'][0], work_dir)
+
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
-            resources=subtask_info['path_root'],
-            temporary=os.path.dirname(work_dir),
+            resources=res_dir,
+            temporary=tmp_dir,
             work=work_dir,
             output=os.path.join(work_dir, "output"),
             logs=os.path.join(work_dir, "logs"),
