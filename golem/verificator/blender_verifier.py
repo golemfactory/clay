@@ -81,7 +81,11 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         assert self.verification_data['resources']
 
-        shutil.copy(self.verification_data['resources'][0], res_dir)
+        if os.path.isdir(self.verification_data['resources'][0]):
+            shutil.copytree(self.verification_data['resources'][0], res_dir)
+        else:
+            shutil.copy(self.verification_data['resources'][0], res_dir)
+
         shutil.copy(self.verification_data['results'][0], work_dir)
 
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
