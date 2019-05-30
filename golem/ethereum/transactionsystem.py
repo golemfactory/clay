@@ -16,13 +16,13 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import is_address
 from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
     contracts,
@@ -47,6 +47,10 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from golem_messages.datastructures import tasks as dt_tasks
 
 
 log = logging.getLogger(__name__)
@@ -343,7 +347,7 @@ class TransactionSystem(LoopingCallService):
 
     def add_payment_info(
             self,
-            task_header: dt_tasks.TaskHeader,
+            task_header: 'dt_tasks.TaskHeader',
             subtask_id: str,
             value: int,
             eth_address: str) -> int:

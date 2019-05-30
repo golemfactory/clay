@@ -3,10 +3,12 @@ import logging
 import time
 
 from collections import defaultdict
-from typing import List
+from typing import (
+    List,
+    TYPE_CHECKING,
+)
 
 from ethereum.utils import denoms
-from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from sortedcontainers import SortedListWithKey
 from twisted.internet import threads
@@ -15,6 +17,10 @@ import golem_sci
 
 from golem import model
 from golem.core.variables import PAYMENT_DEADLINE
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem_messages.datastructures import tasks as dt_tasks
 
 log = logging.getLogger(__name__)
 
@@ -145,7 +151,7 @@ class PaymentProcessor:
 
     def add(
             self,
-            task_header: dt_tasks.TaskHeader,
+            task_header: 'dt_tasks.TaskHeader',
             subtask_id: str,
             eth_addr: str,
             value: int,
