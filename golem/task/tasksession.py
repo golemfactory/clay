@@ -258,7 +258,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
     # Reactions to messages #
     #########################
-    def _cannot_assign_task(self, task_id, reason):
+    def _cannot_assign_task(self, task_id, reason, drop_session=True):
         logger.debug("Cannot assign task: %r", reason)
         self.send(
             message.tasks.CannotAssignTask(
@@ -266,8 +266,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 reason=reason,
             ),
         )
-        # FIXME: session management
-        # self.dropped()
+        if drop_session:
+            self.dropped()
 
     # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
@@ -324,7 +324,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         if not task_server_ok:
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks,
+                                     drop_session=False)
             return
 
         if not self.task_manager.check_next_subtask(
@@ -334,7 +335,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 node_name_id,
             )
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks,
+                                     drop_session=False)
             return
 
         if self.task_manager.task_finished(msg.task_id):
@@ -416,7 +418,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 node_name_id,
             )
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks,
+                                     drop_session=False)
             return
 
         logger.info("Offer confirmed, assigning subtask")
@@ -433,7 +436,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         if ctd is None:
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks,
+                                     drop_session=False)
             return
 
         resources_result = None
@@ -510,8 +514,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if ctd is None or want_to_compute_task is None:
             logger.debug(
                 'TaskToCompute without ctd or want_to_compute_task: %r', msg)
-            # FIXME: session management
-            # self.dropped()
+            self.dropped()
             return
 
         try:
@@ -521,8 +524,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug(
                 'WantToComputeTask attached to TaskToCompute is not signed '
                 'with key: %r.', want_to_compute_task.provider_public_key)
-            # FIXME: session management
-            # self.dropped()
+            self.dropped()
             return
 
         dispatcher.send(
@@ -539,8 +541,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     reason=reason,
                 ),
             )
-            # FIXME: session management
-            # self.dropped()
 
         reasons = message.tasks.CannotComputeTask.REASON
 
@@ -652,8 +652,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.subtask_id):
-            # FIXME: session management
-            # self.dropped()
+            self.dropped()
             return
 
         logger.info(
@@ -675,8 +674,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_cannot_assign_task(self, msg):
         if self.check_requestor_for_task(msg.task_id) != \
                 RequestorCheckResult.OK:
-            # FIXME: session management
-            # self.dropped()
+            self.dropped()
             return
         logger.info(
             "Task request rejected. task_id: %r, reason: %r",
@@ -688,9 +686,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if msg.reason is reasons.TaskFinished:
             # Requestor doesn't want us to ask again
             self.task_server.remove_task_header(msg.task_id)
+            self.dropped()
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
-        # FIXME: session management
-        # self.dropped()
 
     @history.requestor_history
     def _react_to_report_computed_task(self, msg):
@@ -778,8 +775,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_to_compute.price,
             msg.payment_ts,
         )
-        # FIXME: session management
-        # self.dropped()
 
     @history.provider_history
     def _react_to_subtask_results_rejected(
