@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class TestFfmpegIntegration(TestTaskIntegration):
 
     VIDEO_FILES = [
-        "test_video.mp4",
-        "test_video2",
+        {"resolution": (320, 240), "path": "test_video.mp4"},
+        {"resolution": (320, 240), "path": "test_video2"},
     ]
 
     @classmethod
@@ -82,8 +82,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
         return task_def_for_transcoding
 
     @parameterized.expand(
-        (video_file, video_codec, container)
-        for video_file in VIDEO_FILES
+        (video, video_codec, container)
+        for video in VIDEO_FILES
         for video_codec, container in [
             (VideoCodec.H_264, Container.c_AVI),
         ]
@@ -91,7 +91,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_codec_change(self,
-                                               video_file,
+                                               video,
                                                video_codec,
                                                container):
         operation = SimulatedTranscodingOperation(
@@ -105,21 +105,19 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(container)
         operation.request_resolution_change((320, 240))
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
-        (_input_report, _output_report, diff) = operation.run(video_file)
+        (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
     @parameterized.expand(
-        (video_file, resolution)
-        for video_file in VIDEO_FILES
+        (video, resolution)
+        for video in VIDEO_FILES
         for resolution in (
             (320, 240),
         )
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
-    def test_split_and_merge_with_resolution_change(self,
-                                                    video_file,
-                                                    resolution):
+    def test_split_and_merge_with_resolution_change(self, video, resolution):
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="resolution change",
@@ -130,19 +128,17 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_video_codec_change(VideoCodec.H_264)
         operation.request_container_change(Container.c_MP4)
         operation.exclude_from_diff({'video': {'bitrate'}})
-        (_input_report, _output_report, diff) = operation.run(video_file)
+        (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
     @parameterized.expand(
-        (video_file, frame_rate)
-        for video_file in VIDEO_FILES
-        for frame_rate in ('25/1',)
+        (video, frame_rate)
+        for video in VIDEO_FILES
+        for frame_rate in ('25/1')
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
-    def test_split_and_merge_with_frame_rate_change(self,
-                                                    video_file,
-                                                    frame_rate):
+    def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="frame rate change",
@@ -155,18 +151,18 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change((320, 240))
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
-        (_input_report, _output_report, diff) = operation.run(video_file)
+        (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
     @parameterized.expand(
-        (video_file, subtasks_count)
-        for video_file in VIDEO_FILES
+        (video, subtasks_count)
+        for video in VIDEO_FILES
         for subtasks_count in (1, 6, 10)
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_different_subtask_counts(self,
-                                                           video_file,
+                                                           video,
                                                            subtasks_count):
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -180,7 +176,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change((320, 240))
         operation.exclude_from_diff({'video': {'bitrate'}})
-        (_input_report, _output_report, diff) = operation.run(video_file)
+        (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
     @remove_temporary_dirtree_if_test_passed
