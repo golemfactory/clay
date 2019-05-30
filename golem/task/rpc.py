@@ -416,8 +416,8 @@ def _restart_task_error(e, _self, task_id, **_kwargs):
 
 def _restart_subtasks_error(e, _self, task_id, subtask_ids, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
-    logger.error("Failed to restart subtasks from task: %r, subtask_ids: %r,"
-                 "%s", task_id, subtask_ids, e)
+    logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
+                 task_id, subtask_ids, e)
 
     if hasattr(e, 'to_dict'):
         return e.to_dict()
@@ -606,17 +606,17 @@ class ClientProvider:
         """
         try:
             task = self.task_manager.tasks[task_id]
-
-            self._validate_enough_funds_to_pay_for_task(
-                task.subtask_price,
-                len(subtask_ids),
-                False if disable_concent else task.header.concent_enabled,
-                ignore_gas_price
-            )
         except KeyError:
             err_msg = f'Task not found: {task_id!r}'
             logger.error(err_msg)
             return err_msg
+
+        self._validate_enough_funds_to_pay_for_task(
+            task.subtask_price,
+            len(subtask_ids),
+            False if disable_concent else task.header.concent_enabled,
+            ignore_gas_price
+        )
 
         logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
                      'ignore_gas_price=%r, disable_concent=%r', task_id,
