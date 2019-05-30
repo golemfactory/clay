@@ -845,10 +845,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_dict['fee'] = None
         else:
             task_dict['cost'] = sum(
-                p.wallet_oepration.amount for p in subtasks_payments
+                p.wallet_operation.amount for p in subtasks_payments
             )
             task_dict['fee'] = \
-                sum(p.wallet_operation.gas_cost for p in subtasks_payments)
+                sum(
+                    p.wallet_operation.gas_cost for p in subtasks_payments
+                    if p.wallet_operation.gas_cost
+                )
 
         # Convert to string because RPC serializer fails on big numbers
         for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
