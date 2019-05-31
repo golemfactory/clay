@@ -88,7 +88,19 @@ class TestFfmpegIntegration(TestTaskIntegration):
         (video, video_codec, container)
         for video in VIDEO_FILES
         for video_codec, container in [
+            (VideoCodec.FLV1, Container.c_FLV),
             (VideoCodec.H_264, Container.c_AVI),
+            (VideoCodec.H_265, Container.c_MP4),
+            (VideoCodec.HEVC, Container.c_MP4),
+            (VideoCodec.MJPEG, Container.c_MOV),
+            (VideoCodec.MPEG_1, Container.c_MPEG),
+            (VideoCodec.MPEG_2, Container.c_MPEG),
+            (VideoCodec.MPEG_4, Container.c_MPEGTS),
+            (VideoCodec.THEORA, Container.c_OGG),
+            (VideoCodec.VP8, Container.c_WEBM),
+            (VideoCodec.VP9, Container.c_MATROSKA),
+            (VideoCodec.WMV1, Container.c_ASF),
+            (VideoCodec.WMV2, Container.c_ASF),
         ]
     )
     @pytest.mark.slow
