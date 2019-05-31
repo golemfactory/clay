@@ -31,7 +31,6 @@ class CrossbarRouter(object):
                  host: Optional[str] = CROSSBAR_HOST,
                  port: Optional[int] = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
-                 crossbar_log_level: str = 'info',
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
 
@@ -47,7 +46,6 @@ class CrossbarRouter(object):
 
         self.address = WebSocketAddress(host, port, realm, ssl)
 
-        self.log_level = crossbar_log_level
         self.node = None
         self.pubkey = None
 
