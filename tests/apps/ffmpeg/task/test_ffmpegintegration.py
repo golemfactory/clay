@@ -113,6 +113,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
         for video in VIDEO_FILES
         for resolution in (
             (320, 240),
+            (640, 260),
+            (640, 480),
         )
     )
     @pytest.mark.slow
