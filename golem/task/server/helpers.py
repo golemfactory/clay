@@ -136,16 +136,18 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         options=client_options.__dict__,
     )
 
+    signed_report_computed_task = msg_utils.copy_and_sign(
+        msg=report_computed_task,
+        private_key=task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
+    )
+
     msg_queue.put(
         waiting_task_result.owner.key,
         report_computed_task,
     )
-    report_computed_task = msg_utils.copy_and_sign(
-        msg=report_computed_task,
-        private_key=task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
-    )
+
     history.add(
-        msg=report_computed_task,
+        msg=signed_report_computed_task,
         node_id=waiting_task_result.owner.key,
         local_role=model.Actor.Provider,
         remote_role=model.Actor.Requestor,
@@ -176,7 +178,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
     # cancelled and thus, never sent to the Concent.
 
     delayed_forcing_msg = message.concents.ForceReportComputedTask(
-        report_computed_task=report_computed_task,
+        report_computed_task=signed_report_computed_task,
         result_hash='sha1:' + waiting_task_result.package_sha1
     )
     logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
