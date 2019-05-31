@@ -1,6 +1,5 @@
 import datetime
 import logging
-import time
 
 from collections import defaultdict
 from typing import (
@@ -17,6 +16,7 @@ import golem_sci
 
 from golem import model
 from golem.core.variables import PAYMENT_DEADLINE
+PAYMENT_DEADLINE_TD = datetime.timedelta(seconds=PAYMENT_DEADLINE)
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import
@@ -51,7 +51,9 @@ class PaymentProcessor:
         self._gntb_reserved = 0
         self._awaiting = SortedListWithKey(key=lambda p: p.created_date)
         self.load_from_db()
-        self.last_print_time = 0
+        self.last_print_time = datetime.datetime.min.replace(
+            tzinfo=datetime.timezone.utc,
+        )
 
     @property
     def recipients_count(self) -> int:
@@ -138,7 +140,10 @@ class PaymentProcessor:
             payment.wallet_operation.gas_cost / denoms.ether
         )
 
-        reference_date = datetime.datetime.fromtimestamp(timestamp)
+        reference_date = datetime.datetime.fromtimestamp(
+            timestamp,
+            tz=datetime.timezone.utc,
+        )
         delay = (reference_date - payment.created_date).seconds
 
         dispatcher.send(
@@ -155,7 +160,7 @@ class PaymentProcessor:
             subtask_id: str,
             eth_addr: str,
             value: int,
-    ) -> int:
+    ) -> model.TaskPayment:
         log.info(
             "Adding payment for %s to %s (%.3f GNTB)",
             subtask_id,
@@ -182,9 +187,9 @@ class PaymentProcessor:
         self._gntb_reserved += value
 
         log.info("Reserved %.3f GNTB", self._gntb_reserved / denoms.ether)
-        return payment.processed_ts
+        return payment
 
-    def __get_next_batch(self, closure_time: int) -> int:
+    def __get_next_batch(self, closure_time: datetime.datetime) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         eth_balance = self._sci.get_eth_balance(self._sci.get_eth_address())
         gas_price = self._sci.get_current_gas_price()
@@ -195,7 +200,7 @@ class PaymentProcessor:
         payees = set()
         p: model.TaskPayment
         for p in self._awaiting:
-            if p.processed_ts > closure_time:
+            if p.created_date > closure_time:
                 break
             gntb_balance -= p.wallet_operation.amount
             if gntb_balance < 0:
@@ -228,10 +233,10 @@ class PaymentProcessor:
 
             ind += 1
 
-        # we need to take either all payments with given processed_ts or none
+        # we need to take either all payments with given created_date or none
         if ind < len(self._awaiting):
             while ind > 0 and self._awaiting[ind - 1]\
-                    .processed_ts == self._awaiting[ind].processed_ts:
+                    .created_date == self._awaiting[ind].created_date:
                 ind -= 1
 
         return ind
@@ -240,16 +245,18 @@ class PaymentProcessor:
         if not self._awaiting:
             return False
 
-        now = int(time.time())
-        deadline = self._awaiting[0].processed_ts + acceptable_delay
+        now = datetime.datetime.now(tz=datetime.timezone.utc)
+        deadline = self._awaiting[0].created_date +\
+            datetime.timedelta(seconds=acceptable_delay)
         if deadline > now:
-            if now > self.last_print_time + 300:
-                log.info("Next sendout at %s",
-                         datetime.datetime.fromtimestamp(deadline))
+            if now > self.last_print_time + datetime.timedelta(minutes=5):
+                log.info("Next sendout at %s", deadline)
                 self.last_print_time = now
             return False
 
-        payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
+        payments_count = self.__get_next_batch(
+            now - datetime.timedelta(seconds=self.CLOSURE_TIME_DELAY),
+        )
         if payments_count == 0:
             return False
         payments = self._awaiting[:payments_count]
@@ -257,7 +264,11 @@ class PaymentProcessor:
         value = sum([p.wallet_operation.amount for p in payments])
         log.info("Batch payments value: %.3f GNTB", value / denoms.ether)
 
-        closure_time = payments[-1].processed_ts
+        closure_time = int(
+            payments[-1].created_date.replace(
+                tzinfo=datetime.timezone.utc,
+            ).timestamp()
+        )
         tx_hash = self._sci.batch_transfer(
             _make_batch_payments(payments),
             closure_time,
@@ -285,10 +296,12 @@ class PaymentProcessor:
     def update_overdue(self) -> None:
         """Sets overdue status for awaiting payments"""
 
-        processed_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
+        processed_ts_deadline = datetime.datetime.now(
+            tz=datetime.timezone.utc
+        ) - PAYMENT_DEADLINE_TD
         counter = 0
         for payment in self._awaiting:
-            if payment.processed_ts >= processed_ts_deadline:
+            if payment.created_date >= processed_ts_deadline:
                 # All subsequent payments won't be overdue
                 # because list is sorted.
                 break

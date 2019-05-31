@@ -1,5 +1,5 @@
+import datetime
 import logging
-from datetime import datetime, timedelta
 from typing import Iterable, List, Optional
 
 from golem import model
@@ -40,7 +40,7 @@ class PaymentsDatabase(object):
 
     @staticmethod
     def get_newest_payment(num: Optional[int] = None,
-                           interval: Optional[timedelta] = None):
+                           interval: Optional[datetime.timedelta] = None):
         """ Return specific number of recently modified payments
         :param num: Number of payments to return. Unlimited if None.
         :param interval: Return payments from last interval of time. Unlimited
@@ -54,7 +54,7 @@ class PaymentsDatabase(object):
         )
 
         if interval is not None:
-            then = datetime.now() - interval
+            then = datetime.datetime.now(tz=datetime.timezone.utc) - interval
             query = query.where(
                 model.WalletOperation.modified_date >= then,
             )
@@ -73,7 +73,7 @@ class PaymentsKeeper:
         self.db = PaymentsDatabase()
 
     def get_list_of_all_payments(self, num: Optional[int] = None,
-                                 interval: Optional[timedelta] = None):
+                                 interval: Optional[datetime.timedelta] = None):
         # This data is used by UI.
         return [{
             "subtask": to_unicode(payment.subtask),

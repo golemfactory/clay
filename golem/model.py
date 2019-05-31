@@ -45,20 +45,23 @@ db = GolemSqliteDatabase(None, threadlocals=True,
 
 # Use proxy function to always use current .utcnow() (allows mocking)
 def default_now():
-    return datetime.datetime.utcnow()
+    return datetime.datetime.now(tz=datetime.timezone.utc)
 
 
 # Bug in peewee_migrate 0.14.0 induces setting __self__
 # noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
 default_now.__self__ = datetime.datetime  # type: ignore
+tz_formats = DateTimeField.formats + [
+    '%Y-%m-%d %H:%M:%S.%f+00:00',
+]
 
 
 class BaseModel(Model):
     class Meta:
         database = db
 
-    created_date = DateTimeField(default=default_now)
-    modified_date = DateTimeField(default=default_now)
+    created_date = DateTimeField(default=default_now, formats=tz_formats)
+    modified_date = DateTimeField(default=default_now, formats=tz_formats)
 
     def refresh(self):
         """
@@ -301,15 +304,6 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField(null=False)
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
-
-    @property
-    def processed_ts(self) -> int:
-        # pylint: disable=no-member
-        return int(
-            self.created_date.replace(
-                tzinfo=datetime.timezone.utc,
-            ).timestamp(),
-        )
 
 
 class DepositPayment(BaseModel):

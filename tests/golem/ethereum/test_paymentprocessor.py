@@ -237,14 +237,15 @@ def _add_payment(pp, value=None, ts=None):
     value = value if value else random.randint(1, 10)
     if not ts:
         ts = int(time.time())
-    with freeze_time(timestamp_to_datetime(ts)):
-        got_ts = pp.add(
+    freezed = timestamp_to_datetime(ts)
+    with freeze_time(freezed):
+        payment = pp.add(
             subtask_id=uuid.uuid4(),
             eth_addr=payee,
             value=value,
             task_header=dt_tasks_factory.TaskHeaderFactory(),
         )
-        assert got_ts == ts
+        assert payment.created_date == freezed
     return golem_sci.Payment(payee, value)
 
 
