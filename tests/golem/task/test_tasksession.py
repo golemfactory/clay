@@ -122,6 +122,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             client=server.client
         )
         self.ethereum_config = EthereumConfig()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -351,6 +353,8 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         super().setUp()
         random.seed()
         self.conn = Mock()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
         self.task_session = TaskSession(self.conn)
         self.task_session.key_id = 'deadbeef'
         self.task_session.task_server.get_share_options.return_value = \

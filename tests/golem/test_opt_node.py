@@ -253,15 +253,17 @@ class TestNode(TestWithDatabase):
 
         # then
         assert return_value.exit_code == 0
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
-                                     app_config=ANY,
-                                     config_desc=ANY,
-                                     geth_address=None,
-                                     peers=[],
-                                     concent_variant=concent_disabled,
-                                     use_monitor=None,
-                                     use_talkback=None,
-                                     password=None)
+        mock_node.assert_called_with(
+            datadir=path.join(self.path, 'rinkeby'),
+            app_config=ANY,
+            config_desc=ANY,
+            geth_address=None,
+            peers=[],
+            concent_variant=variables.CONCENT_CHOICES['test'],
+            use_monitor=None,
+            use_talkback=None,
+            password=None
+        )
 
     @patch('golem.node.Node')
     def test_net_mainnet_should_be_passed_to_node(self, mock_node, *_):
@@ -296,8 +298,12 @@ class TestNode(TestWithDatabase):
         def compare_config(m):
             from golem.config import active as a
 
+            def objattrs(obj):
+                return [(a, getattr(obj, a))
+                        for a in dir(obj) if not a.startswith('__')]
+
             assert a.DATA_DIR == m.DATA_DIR
-            assert a.EthereumConfig() == m.EthereumConfig()
+            assert objattrs(a.EthereumConfig()) == objattrs(m.EthereumConfig())
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES
