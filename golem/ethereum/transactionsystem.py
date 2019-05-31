@@ -345,16 +345,18 @@ class TransactionSystem(LoopingCallService):
         self._sci.stop()
         super().stop()
 
-    def add_payment_info(
+    def add_payment_info(  # pylint: disable=too-many-arguments
             self,
-            task_header: 'dt_tasks.TaskHeader',
+            node_id: str,
+            task_id: str,
             subtask_id: str,
             value: int,
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
         return self._payment_processor.add(
-            task_header=task_header,
+            node_id=node_id,
+            task_id=task_id,
             subtask_id=subtask_id,
             eth_addr=eth_address,
             value=value,

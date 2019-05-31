@@ -51,17 +51,27 @@ def default_now():
 # Bug in peewee_migrate 0.14.0 induces setting __self__
 # noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
 default_now.__self__ = datetime.datetime  # type: ignore
-tz_formats = DateTimeField.formats + [
-    '%Y-%m-%d %H:%M:%S.%f+00:00',
-]
+
+
+class UTCDateTimeField(DateTimeField):
+    formats = DateTimeField.formats + [
+        '%Y-%m-%d %H:%M:%S+00:00',
+        '%Y-%m-%d %H:%M:%S.%f+00:00',
+    ]
+
+    def python_value(self, value):
+        value = super().python_value(value)
+        if value is None:
+            return None
+        return value.replace(tzinfo=datetime.timezone.utc)
 
 
 class BaseModel(Model):
     class Meta:
         database = db
 
-    created_date = DateTimeField(default=default_now, formats=tz_formats)
-    modified_date = DateTimeField(default=default_now, formats=tz_formats)
+    created_date = UTCDateTimeField(default=default_now)
+    modified_date = UTCDateTimeField(default=default_now)
 
     def refresh(self):
         """

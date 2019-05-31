@@ -6,7 +6,6 @@ import unittest
 import unittest.mock as mock
 from os import urandom
 
-from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 import golem_sci
 from golem_sci.interface import TransactionReceipt
 from eth_utils import encode_hex
@@ -151,7 +150,8 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             subtask_id="test_subtask_id",
             eth_addr=urandom(20),
             value=gnt_value,
-            task_header=dt_tasks_factory.TaskHeaderFactory(),
+            node_id='00adbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
         )
         assert self.pp.reserved_gntb == gnt_value
         assert self.pp.recipients_count == 1
@@ -207,7 +207,8 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             subtask_id="test_subtask_id",
             eth_addr=encode_hex(urandom(20)),
             value=gnt_value,
-            task_header=dt_tasks_factory.TaskHeaderFactory(),
+            node_id='00adbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
         )
 
         self.pp.CLOSURE_TIME_DELAY = 0
@@ -243,7 +244,8 @@ def _add_payment(pp, value=None, ts=None):
             subtask_id=uuid.uuid4(),
             eth_addr=payee,
             value=value,
-            task_header=dt_tasks_factory.TaskHeaderFactory(),
+            node_id='00adbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
         )
         assert payment.created_date == freezed
     return golem_sci.Payment(payee, value)

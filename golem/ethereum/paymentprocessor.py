@@ -4,7 +4,6 @@ import logging
 from collections import defaultdict
 from typing import (
     List,
-    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -17,10 +16,6 @@ import golem_sci
 from golem import model
 from golem.core.variables import PAYMENT_DEADLINE
 PAYMENT_DEADLINE_TD = datetime.timedelta(seconds=PAYMENT_DEADLINE)
-
-if TYPE_CHECKING:
-    # pylint: disable=unused-import
-    from golem_messages.datastructures import tasks as dt_tasks
 
 log = logging.getLogger(__name__)
 
@@ -154,9 +149,10 @@ class PaymentProcessor:
             delay=delay,
         )
 
-    def add(
+    def add(  # pylint: disable=too-many-arguments
             self,
-            task_header: 'dt_tasks.TaskHeader',
+            node_id: str,
+            task_id: str,
             subtask_id: str,
             eth_addr: str,
             value: int,
@@ -176,8 +172,8 @@ class PaymentProcessor:
                 currency=model.WalletOperation.CURRENCY.GNT,
                 amount=value,
             ),
-            node=task_header.task_owner.key,
-            task=task_header.task_id,
+            node=node_id,
+            task=task_id,
             subtask=subtask_id,
             expected_amount=value,
         )

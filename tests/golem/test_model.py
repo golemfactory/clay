@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import (
+    datetime,
+    timezone,
+)
 
-from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from peewee import IntegrityError
 
 import golem.model as m
@@ -16,8 +17,8 @@ class TestBaseModel(DatabaseFixture):
         instance_copy = m.GenericKeyValue.get()
         self.assertEqual(instance.created_date, instance_copy.created_date)
         # pylint: disable=no-member
-        self.assertIsNone(instance.created_date.tzinfo)
-        self.assertIsNone(instance_copy.created_date.tzinfo)
+        self.assertIs(instance.created_date.tzinfo, timezone.utc)
+        self.assertIs(instance_copy.created_date.tzinfo, timezone.utc)
 
 
 class TestPayment(DatabaseFixture):
@@ -53,8 +54,14 @@ class TestLocalRank(DatabaseFixture):
     def test_default_fields(self):
         # pylint: disable=no-member
         r = m.LocalRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(
+            datetime.now(tz=timezone.utc),
+            r.created_date,
+        )
+        self.assertGreaterEqual(
+            datetime.now(tz=timezone.utc),
+            r.modified_date,
+        )
         self.assertEqual(0, r.positive_computed)
         self.assertEqual(0, r.negative_computed)
         self.assertEqual(0, r.wrong_computed)
@@ -70,8 +77,8 @@ class TestLocalRank(DatabaseFixture):
 class TestGlobalRank(DatabaseFixture):
     def test_default_fields(self):
         r = m.GlobalRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.modified_date)
         self.assertEqual(m.NEUTRAL_TRUST, r.requesting_trust_value)
         self.assertEqual(m.NEUTRAL_TRUST, r.computing_trust_value)
         self.assertEqual(0, r.gossip_weight_computing)
@@ -81,8 +88,8 @@ class TestGlobalRank(DatabaseFixture):
 class TestNeighbourRank(DatabaseFixture):
     def test_default_fields(self):
         r = m.NeighbourLocRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.modified_date)
         self.assertEqual(m.NEUTRAL_TRUST, r.requesting_trust_value)
         self.assertEqual(m.NEUTRAL_TRUST, r.computing_trust_value)
 
@@ -90,15 +97,15 @@ class TestNeighbourRank(DatabaseFixture):
 class TestTaskPreset(DatabaseFixture):
     def test_default_fields(self):
         tp = m.TaskPreset()
-        assert datetime.now() >= tp.created_date
-        assert datetime.now() >= tp.modified_date
+        assert datetime.now(tz=timezone.utc) >= tp.created_date
+        assert datetime.now(tz=timezone.utc) >= tp.modified_date
 
 
 class TestPerformance(DatabaseFixture):
     def test_default_fields(self):
         perf = m.Performance()
-        assert datetime.now() >= perf.created_date
-        assert datetime.now() >= perf.modified_date
+        assert datetime.now(tz=timezone.utc) >= perf.created_date
+        assert datetime.now(tz=timezone.utc) >= perf.modified_date
         assert perf.value == 0.0
 
     def test_constraints(self):
