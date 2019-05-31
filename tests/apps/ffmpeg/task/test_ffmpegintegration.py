@@ -24,10 +24,12 @@ logger = logging.getLogger(__name__)
 @ci_skip
 class TestFfmpegIntegration(TestTaskIntegration):
 
+    # pylint: disable=line-too-long
     VIDEO_FILES = [
-        {"resolution": [320, 240], "path": "test_video.mp4"},
-        {"resolution": [320, 240], "path": "test_video2"},
+        {"resolution": [320, 240], "container": Container.c_MP4, "video_codec": VideoCodec.H_264, "path": "test_video.mp4"},
+        {"resolution": [320, 240], "container": Container.c_MP4, "video_codec": VideoCodec.H_264, "path": "test_video2"},
     ]
+    # pylint: enable=line-too-long
 
     @classmethod
     def setUpClass(cls):
