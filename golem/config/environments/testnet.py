@@ -20,7 +20,7 @@ ENABLE_TALKBACK = 1
 # need to be refactored to remove reliance on system environment variables
 
 
-class EthereumConfig:
+class EthereumConfig:  # pylint:disable=too-many-instance-attributes
     def __init__(self):
         self.IS_MAINNET = False
         self.ACTIVE_NET = TESTNET
