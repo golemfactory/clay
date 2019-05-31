@@ -30,7 +30,6 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
-from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
@@ -946,7 +945,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'contract_addresses': {
                 contract.name: address
                 for contract, address in
-                EthereumConfig.CONTRACT_ADDRESSES.items()
+                self.transaction_system.contract_addresses.items()
             }
         }
 
