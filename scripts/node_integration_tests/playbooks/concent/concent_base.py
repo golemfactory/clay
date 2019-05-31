@@ -12,7 +12,7 @@ if typing.TYPE_CHECKING:
 
 class ConcentTestPlaybook(NodeTestPlaybook):
     def __init__(self, config: 'TestConfigBase') -> None:
-        super().__init(config)
+        super().__init__(config)
         self.retry_limit = 256
 
     def step_clear_output(self, node_id: NodeId):

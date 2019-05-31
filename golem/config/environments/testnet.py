@@ -14,6 +14,10 @@ ENABLE_TALKBACK = 1
 
 # ETH
 
+# todo FIXME before 0.21 release
+# https://github.com/golemfactory/golem/issues/4254
+# this class and actually, `golem.config` in general
+# need to be refactored to remove reliance on system environment variables
 
 class EthereumConfig:
     def __init__(self):
