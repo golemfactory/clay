@@ -3,7 +3,8 @@ import logging
 
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, list_matching_resolutions
-from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution
+from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
+    UnsupportedVideoCodecConversion
 
 from parameterized import parameterized
 import pytest
@@ -96,6 +97,9 @@ class TestFfmpegIntegration(TestTaskIntegration):
                                                video,
                                                video_codec,
                                                container):
+        assert Container.is_supported(container.value)
+        assert container.is_supported_video_codec(video_codec.value)
+
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="codec change",
@@ -107,8 +111,14 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(container)
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+
+        supported_conversions = video["video_codec"].get_supported_conversions()
+        if video_codec.value in supported_conversions:
+            (_input_report, _output_report, diff) = operation.run(video["path"])
+            self.assertEqual(diff, [])
+        else:
+            with self.assertRaises(UnsupportedVideoCodecConversion):
+                operation.run(video["path"])
 
     @parameterized.expand(
         (video, resolution)
