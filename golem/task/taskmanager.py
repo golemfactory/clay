@@ -27,7 +27,7 @@ from apps.core.task.coretaskstate import TaskDefinition
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
-    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
+    HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
@@ -653,10 +653,7 @@ class TaskManager(TaskEventListener):
             new_task.copy_subtask_results(
                 new_subtask_id, old_subtask, results)
 
-            new_subtask_state = \
-                self.__set_subtask_state_finished(new_subtask_id)
-            old_subtask_state = self.tasks_states[old_task_id] \
-                .subtask_states[old_subtask_id]
+            self.__set_subtask_state_finished(new_subtask_id)
 
             self.notice_task_updated(
                 task_id=new_task_id,
