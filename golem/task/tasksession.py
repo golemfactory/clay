@@ -411,8 +411,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.info("Offer confirmed, assigning subtask")
         ctd = self.task_manager.get_next_subtask(
             self.key_id, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            self.address)
+            msg.price, msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "CTD generated. task_id=%s, node=%s ctd=%s",
