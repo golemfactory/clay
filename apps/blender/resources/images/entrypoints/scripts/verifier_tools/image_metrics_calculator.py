@@ -68,8 +68,10 @@ def calculate_metrics(
 
 
 def _generate_path_for_providers_result_crop(reference_crop_path):
-    return PROVIDER_RESULT_CROP_NAME_PREFIX + os.path.splitext(os.path.basename(
-        reference_crop_path))[0]
+    return '{0}{1}.png'.format(
+        PROVIDER_RESULT_CROP_NAME_PREFIX,
+        os.path.splitext(os.path.basename(reference_crop_path))[0]
+    )
 
 
 def load_classifier():
