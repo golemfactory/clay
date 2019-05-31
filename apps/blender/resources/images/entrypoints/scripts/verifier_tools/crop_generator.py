@@ -101,19 +101,28 @@ class Crop:
 
     @staticmethod
     def _get_coordinate_limits(lower_border, upper_border, span):
-        coordinate_beginning_limit = round((upper_border - span) * 100)
-        beginning = random.randint(round(lower_border * 100),
-                                   coordinate_beginning_limit) / 100
-        end = round(beginning + span, 2)
+        beginning = numpy.float32(random.uniform(lower_border, upper_border - span))
+        beginning = max(beginning, lower_border)
+        end = min(numpy.float32(beginning + span), upper_border)
         return beginning, end
 
     def _get_relative_crop_size(self) -> Tuple[float, float]:
-        relative_crop_width = CROP_RELATIVE_SIZE
-        relative_crop_height = CROP_RELATIVE_SIZE
-        while relative_crop_width * self.resolution.width < MIN_CROP_SIZE:
-            relative_crop_width += self.STEP_SIZE
-        while relative_crop_height * self.resolution.height < MIN_CROP_SIZE:
-            relative_crop_height += self.STEP_SIZE
+        subtask_relative_width = self._subtask_box.right - \
+                                 self._subtask_box.left
+        subtask_relative_height = self._subtask_box.bottom - \
+                                  self._subtask_box.top
+        relative_crop_width = numpy.float32(CROP_RELATIVE_SIZE) * numpy.float32(
+            subtask_relative_width)
+        relative_crop_height = numpy.float32(
+            CROP_RELATIVE_SIZE) * numpy.float32(subtask_relative_height)
+        print(
+            f"initial relative_crop_width: {relative_crop_width}, "
+            f"initial relative_crop_height: {relative_crop_height}"
+        )
+        while numpy.float32(relative_crop_width * self.resolution.width) < MIN_CROP_SIZE:
+            relative_crop_width += numpy.float32(self.STEP_SIZE)
+        while numpy.float32(relative_crop_height * self.resolution.height) < MIN_CROP_SIZE:
+            relative_crop_height += numpy.float32(self.STEP_SIZE)
         print(
             f"relative_crop_width: {relative_crop_width}, "
             f"relative_crop_height: {relative_crop_height}"
