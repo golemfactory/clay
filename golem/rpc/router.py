@@ -1,9 +1,9 @@
+import enum
 import json
 import logging
 import os
 from typing import Iterable, Optional
 
-import enum
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
@@ -16,10 +16,17 @@ from golem.rpc.session import WebSocketAddress
 logger = logging.getLogger('golem.rpc.crossbar')
 
 
+@enum.unique
+class SerializerType(enum.Enum):
+    def _generate_next_value_(name, *_):  # pylint: disable=no-self-argument
+        return name
+
+    json = enum.auto()
+    msgpack = enum.auto()
+
+
 # pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
-    serializers = ['msgpack']
-
     @enum.unique
     class CrossbarRoles(enum.Enum):
         admin = enum.auto()
@@ -32,8 +39,8 @@ class CrossbarRouter(object):
                  port: Optional[int] = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  ssl: bool = True,
-                 generate_secrets: bool = False) -> None:
-
+                 generate_secrets: bool = False,
+                 crossbar_serializer: Optional[SerializerType] = None) -> None:
         self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
@@ -49,8 +56,11 @@ class CrossbarRouter(object):
         self.node = None
         self.pubkey = None
 
+        if crossbar_serializer is None:
+            crossbar_serializer = SerializerType.msgpack
+
         self.config = self._build_config(self.address,
-                                         self.serializers,
+                                         [crossbar_serializer.name],
                                          self.cert_manager)
 
         logger.debug('xbar init with cfg: %s', json.dumps(self.config))
