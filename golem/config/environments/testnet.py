@@ -19,6 +19,7 @@ ENABLE_TALKBACK = 1
 # this class and actually, `golem.config` in general
 # need to be refactored to remove reliance on system environment variables
 
+
 class EthereumConfig:
     def __init__(self):
         self.IS_MAINNET = False
@@ -50,10 +51,12 @@ class EthereumConfig:
             os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
         ]
 
-        self.deposit_contract_address = self.CONCENT_VARIANT.get('deposit_contract_address')
+        self.deposit_contract_address = \
+            self.CONCENT_VARIANT.get('deposit_contract_address')
 
         if self.deposit_contract_address:
-            self.CONTRACT_ADDRESSES[contracts.GNTDeposit] = self.deposit_contract_address
+            self.CONTRACT_ADDRESSES[contracts.GNTDeposit] = \
+                self.deposit_contract_address
 
         self.WITHDRAWALS_ENABLED = False
 
