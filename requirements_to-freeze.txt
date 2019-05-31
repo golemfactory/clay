@@ -5,6 +5,7 @@ asn1crypto==0.22.0
 autobahn==17.10.1
 Automat==0.6.0
 base58
+bidict
 cbor==1.0.0
 certifi
 cffi==1.10.0

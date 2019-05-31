@@ -60,5 +60,6 @@
       "id": null
     }
   ],
-  "concent_enabled": false
+  "concent_enabled": false,
+  "run_verification":{"py/enum":"apps.core.task.coretaskstate.RunVerification.enabled"}
 }

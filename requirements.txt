@@ -8,6 +8,7 @@ autobahn==17.10.1
 Automat==0.6.0
 Babel==2.6.0
 base58==0.2.5
+bidict==0.18.0
 bitcoin==1.1.42
 bitstring==3.1.5
 cached-property==1.4.2
