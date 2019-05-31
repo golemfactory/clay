@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from collections import namedtuple
 from typing import Iterable, Optional
 
 import enum
@@ -15,11 +14,6 @@ from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
-
-CrossbarRouterOptions = namedtuple(
-    'CrossbarRouterOptions',
-    ['cbdir', 'logdir', 'loglevel', 'argv', 'config']
-)
 
 
 # pylint: disable=too-many-instance-attributes
@@ -57,23 +51,21 @@ class CrossbarRouter(object):
         self.node = None
         self.pubkey = None
 
-        self.options = self._build_options()
         self.config = self._build_config(self.address,
                                          self.serializers,
                                          self.cert_manager)
 
         logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
-    def start(self, reactor, options=None):
+    def start(self, reactor):
         # imports reactor
         from crossbar.controller.node import Node, default_native_workers
 
-        options = options or self.options
         if self.address.ssl:
             self.cert_manager.generate_if_needed()
 
-        self.node = Node(options.cbdir, reactor=reactor)
-        self.pubkey = self.node.maybe_generate_key(options.cbdir)
+        self.node = Node(self.working_dir, reactor=reactor)
+        self.pubkey = self.node.maybe_generate_key(self.working_dir)
 
         workers = default_native_workers()
 
@@ -84,15 +76,6 @@ class CrossbarRouter(object):
     @inlineCallbacks
     def stop(self):
         yield self.node._controller.shutdown()  # noqa # pylint: disable=protected-access
-
-    def _build_options(self, argv=None, config=None):
-        return CrossbarRouterOptions(
-            cbdir=self.working_dir,
-            logdir=None,
-            loglevel=self.log_level,
-            argv=argv,
-            config=config
-        )
 
     @staticmethod
     def _users_config(cert_manager: cert.CertificateManager):
