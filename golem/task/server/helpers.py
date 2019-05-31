@@ -123,7 +123,6 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
 
     report_computed_task = message.tasks.ReportComputedTask(
         task_to_compute=task_to_compute,
-        node_name=my_node.node_name,
         address=my_node.prv_addr,
         port=task_server.cur_port,
         key_id=my_node.key,
