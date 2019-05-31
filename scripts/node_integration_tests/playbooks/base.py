@@ -85,6 +85,7 @@ class NodeTestPlaybook:
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
         self.has_requested_eth: bool = False
         self.retry_counter = 0
+        self.retry_limit = 128
 
         self.start_nodes()
         self.started = True
@@ -503,8 +504,8 @@ class NodeTestPlaybook:
 
         try:
             self.retry_counter += 1
-            if self.retry_counter >= 100:
-                raise Exception("Step tried 100 times, failing")
+            if self.retry_counter >= self.retry_limit:
+                raise Exception(f"Step tried {self.retry_limit} times, failing")
             method = self.current_step_method
             return method(self)
         except Exception as e:  # noqa pylint:disable=too-broad-exception

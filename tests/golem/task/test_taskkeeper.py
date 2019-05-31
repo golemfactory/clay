@@ -234,7 +234,6 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
 
         for id_ in ids:
             self.assertIn(id_, tk.task_headers)
@@ -248,9 +247,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         self.assertIn(tb_id, tk.task_headers)
 
-        while time.time() == last_add_time:
-            frozen_time.tick(  # pylint: disable=no-member
-                delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
@@ -261,8 +258,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(id_, tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-        frozen_time.tick(  # pylint: disable=no-member
-            delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
         tk.remove_old_tasks()
 
         thd = get_task_header("ta")
@@ -275,7 +271,10 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(ids[i], tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-    def test_check_max_tasks_per_owner(self):
+    @freeze_time(as_arg=True)
+    # pylint: disable=no-self-argument
+    def test_check_max_tasks_per_owner(freezer, self):
+
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
@@ -289,18 +288,22 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
+
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("tb0")
         tb0_id = thd.task_id
         tk.add_task_header(thd)
 
-        for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
+        freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
-        while time.time() == last_add_time:
-            time.sleep(0.1)
+        def _assert_headers(ids_, len_):
+            ids_.append(tb0_id)
+            for id_ in ids_:
+                self.assertIn(id_, tk.task_headers)
+            self.assertEqual(len_, len(tk.task_headers))
+
+        _assert_headers(ids, len(ids) + 1)
 
         new_ids = []
         for _ in range(new_limit, limit):
@@ -308,28 +311,50 @@ class TestTaskHeaderKeeper(LogTestCase):
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
 
-        for id_ in ids + new_ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(limit + 1, len(tk.task_headers))
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
+
+        _assert_headers(ids + new_ids, limit + 1)
 
         # shouldn't remove any tasks
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        for id_ in ids + new_ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(limit + 1, len(tk.task_headers))
+        _assert_headers(ids + new_ids, limit + 1)
+
+        # Test if it skips a running task
+        running_task_id = ids[0]
+        tk.task_started(running_task_id)
+        assert running_task_id in tk.running_tasks
+        tk.max_tasks_per_requestor = tk.max_tasks_per_requestor - 1
+        # shouldn't remove any tasks
+        tk.check_max_tasks_per_owner(thd.task_owner.key)
+
+        _assert_headers(ids + new_ids, limit + 1)
+
+        # finish the task, restore state
+        tk.task_ended(running_task_id)
+        assert running_task_id not in tk.running_tasks
 
         tk.max_tasks_per_requestor = new_limit
 
         # should remove ta{3..9}
         tk.check_max_tasks_per_owner(thd.task_owner.key)
 
-        for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb0_id, tk.task_headers)
-        self.assertEqual(new_limit + 1, len(tk.task_headers))
+        _assert_headers(ids, new_limit + 1)
+
+        # Test if it skips a running task
+        running_task_id = ids[2]
+        tk.task_started(running_task_id)
+        assert running_task_id in tk.running_tasks
+        tk.max_tasks_per_requestor = 1
+        # shouldn't remove running_task_id
+        tk.check_max_tasks_per_owner(thd.task_owner.key)
+
+        # Should keep 0 and 2, since 2 is running
+        _assert_headers([ids[0], ids[2]], 3)
+
+        # finish the task, restore state
+        tk.task_ended(running_task_id)
+        assert running_task_id not in tk.running_tasks
 
     def test_get_unsupport_reasons(self):
         tk = TaskHeaderKeeper(
@@ -437,7 +462,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         test_headers = []
         test_subtasks_ids = []
-        for x in range(10):
+        for _ in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 3

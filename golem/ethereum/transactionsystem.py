@@ -146,8 +146,16 @@ class TransactionSystem(LoopingCallService):
         }
 
     @property
+    def contract_addresses(self):
+        return self._config.CONTRACT_ADDRESSES
+
+    @property
     def deposit_contract_available(self) -> bool:
-        return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
+        return contracts.GNTDeposit in self.contract_addresses
+
+    @property
+    def deposit_contract_address(self) -> Optional[str]:
+        return self.contract_addresses.get(contracts.GNTDeposit, None)
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:

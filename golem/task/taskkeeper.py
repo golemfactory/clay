@@ -334,6 +334,8 @@ class TaskHeaderKeeper:
         self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks: typing.List[str] = []
+        # ids of tasks that are computing on this node
+        self.running_tasks: typing.Set[str] = set()
         # results of tasks' support checks
         self.support_status: typing.Dict[str, SupportStatus] = {}
         # tasks that were removed from network recently, so they won't
@@ -524,18 +526,22 @@ class TaskHeaderKeeper:
     def check_max_tasks_per_owner(self, owner_key_id):
         owner_task_set = self._get_tasks_by_owner_set(owner_key_id)
 
-        if len(owner_task_set) <= self.max_tasks_per_requestor:
+        not_running = owner_task_set - self.running_tasks
+
+        if len(not_running) <= self.max_tasks_per_requestor:
             return
 
-        by_age = sorted(owner_task_set,
+        by_age = sorted(not_running,
                         key=lambda tid: self.last_checking[tid])
 
         # leave alone the first (oldest) max_tasks_per_requestor
         # headers, remove the rest
         to_remove = by_age[self.max_tasks_per_requestor:]
 
-        logger.warning("Too many tasks from %s, dropping %d tasks",
-                       owner_key_id, len(to_remove))
+        logger.warning(
+            "Too many tasks, dropping %d tasks. owner=%s, ids_to_remove=%r",
+            len(to_remove), common.short_node_id(owner_key_id), to_remove
+        )
 
         for tid in to_remove:
             self.remove_task_header(tid)
@@ -545,6 +551,11 @@ class TaskHeaderKeeper:
         return: False if task was already removed
         """
         if task_id in self.removed_tasks:
+            return False
+
+        if task_id in self.running_tasks:
+            logger.warning("Can not remove task header, task is running. "
+                           "task_id=%s", task_id)
             return False
 
         try:
@@ -649,3 +660,14 @@ class TaskHeaderKeeper:
                 avg = None
             ret.append({'reason': reason.value, 'ntasks': count, 'avg': avg})
         return ret
+
+    def task_started(self, task_id):
+        self.running_tasks.add(task_id)
+
+    def task_ended(self, task_id):
+        try:
+            self.running_tasks.remove(task_id)
+        except ValueError:
+            logger.warning("Can not remove running task, already removed. "
+                           "Maybe the callback is called twice. task_id=%r",
+                           task_id)
