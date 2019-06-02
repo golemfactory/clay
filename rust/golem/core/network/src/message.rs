@@ -1,4 +1,4 @@
-use network_libp2p::{CustomMessage, CustomMessageId};
+use network_libp2p::CustomMessage;
 
 use crate::codec::{Decoder, Encoder};
 use crate::codec::serde::SerdeCodec;
@@ -14,6 +14,9 @@ pub enum NetworkMessage {
 	Blob(Vec<u8>),
 }
 
+unsafe impl Send for NetworkMessage {}
+unsafe impl Sync for NetworkMessage {}
+
 impl CustomMessage for NetworkMessage {
 	fn into_bytes(self) -> Vec<u8> {
 		CODEC.encode(&self).unwrap()
@@ -26,12 +29,6 @@ impl CustomMessage for NetworkMessage {
 				None => Err(()),
 			},
 			Err(_) => Err(())
-		}
-	}
-
-	fn request_id(&self) -> CustomMessageId {
-		match *self {
-			_ => CustomMessageId::OneWay,
 		}
 	}
 }

@@ -1,25 +1,25 @@
 import logging
 import threading
-import time
 from typing import Dict, Tuple, List, Type, Callable, Optional, Iterable
 
 from eth_utils import encode_hex
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import Protocol
 
-from golem.core.net import events, NetworkService, NetworkServiceError
+from golem.core.net import events
 from golem.core.net.message import LabeledMessage
 from golem.core.net.transport import LibP2PTransport
 from golem.network.transport.limiter import CallRateLimiter
 from golem.network.transport.network import Network, ProtocolFactory
 from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo, \
     SocketAddress, TCPListenInfo, TCPListeningInfo
+from rust.golem import NetworkService, NetworkServiceError
 
 logger = logging.getLogger(__name__)
 
 
 LISTEN_TIMEOUT: int = 2  # s
-CONNECT_TIMEOUT: int = 20  # s
+CONNECT_TIMEOUT: int = 5  # s
 
 AddressTuple = Tuple[str, int]
 
@@ -59,20 +59,24 @@ class TCPConnectInfoWrapper:
         return list(self._inner.socket_addresses)
 
     def take_address(self) -> Optional[SocketAddress]:
+        """ Increases the 'attempts' counter and returns an address (if any) """
         if not self._addresses:
             return None
         self._attempts += 1
         return self._addresses.pop(0)
 
     def address_failure(self):
+        """ Increases the 'failures' counter """
         self._failures += 1
 
     def is_failure(self) -> bool:
+        """ Returns whether all connection attempts failed """
         total = len(self._inner.socket_addresses)
         return self._attempts == self._failures == total > 0
 
-    def finished(self) -> bool:
-        return bool(self._addresses)
+    def exhausted(self) -> bool:
+        """ Returns whether all addresses were used for connection attempts """
+        return not self._addresses
 
 
 class LibP2PEventLoop:
@@ -104,22 +108,23 @@ class LibP2PEventLoop:
             self._stop.set()
 
     def _run(self) -> None:
+        import time
         while not self._stop.is_set():
-            try:
-                event_data = self._network.poll(1)
-            except NetworkServiceError as exc:
-                logger.error('Network poll error: %r', exc)
+            if not self._network.running():
+                time.sleep(0.25)
                 continue
 
-            if not event_data:
-                time.sleep(0.25)
+            try:
+                event_data = self._network.poll(0.5)
+            except NetworkServiceError as exc:
+                logger.error(f'Network poll error: {exc}')
                 continue
 
             try:
                 event = events.Event.convert_from(event_data)
                 self._handler(event)
             except (ValueError, AttributeError, IndexError) as exc:
-                logger.error("Invalid event %r: %r", event_data, exc)
+                logger.error(f"Invalid event {event_data}: {exc}")
 
 
 class LibP2PNetwork(Network):
@@ -165,8 +170,9 @@ class LibP2PNetwork(Network):
         address = self._address[0], listen_info.port_start
 
         if self._listen_info:
-            return logger.info('Already trying to listen on %s:%r',
-                               self._address[0], self._listen_info.port_start)
+            return logger.warning(f'Already trying to listen on '
+                                  f'{self._address[0]}:'
+                                  f'{self._listen_info.port_start}')
 
         try:
             if not self._network.start(self._priv_key, *address):
@@ -189,7 +195,6 @@ class LibP2PNetwork(Network):
 
     def connect(self, connect_info: TCPConnectInfo) -> None:
         addresses = self._filter_host_addresses(connect_info.socket_addresses)
-        logger.debug('connect(%r) filtered', addresses)
 
         if addresses:
             self._rate_limiter.call(
@@ -206,21 +211,20 @@ class LibP2PNetwork(Network):
     def disconnect(self, peer_id: str) -> None:
         try:
             if not self._network.disconnect(peer_id):
-                raise NetworkServiceError(
-                    'Cannot disconnect from %s: network is not running',
-                    peer_id
-                )
+                raise NetworkServiceError(f'Cannot disconnect from {peer_id}: '
+                                          'network is not running')
         except NetworkServiceError as exc:
-            logger.warning('Network: %r', exc)
+            logger.warning(f'Network: {exc}')
 
     def send(self, peer_id: str, protocol_id: int, blob: bytes):
         msg = LabeledMessage(protocol_id, blob).pack()
         if not self._network.send(peer_id, msg):
-            logger.error("Cannot send a message to %s", peer_id)
+            logger.error(f"Cannot send a message to {peer_id}")
 
     @inlineCallbacks
     def _connect(self, connect_info: TCPConnectInfoWrapper) -> None:
-        address = yield self._resolve_address(connect_info.take_address())
+        socket_address = connect_info.take_address()
+        address = yield self._resolve_address(socket_address)
 
         if address in self._connections:
             logger.info('Already connected to %s:%r', *address)
@@ -245,27 +249,28 @@ class LibP2PNetwork(Network):
             )
         else:
             connect_info.address_failure()
-            if connect_info.finished():
+            if connect_info.exhausted():
                 self._connect_error(connect_info, address)
             else:
                 self._connect(connect_info)
 
-    @staticmethod
     def _connect_error(
+        self,
         connect_info: TCPConnectInfoWrapper,
         address: AddressTuple,
     ) -> None:
         logger.debug('Unable to connect to %s:%r', *address)
 
         if connect_info.is_failure():
-            logger.warning('Unable to connect to %r', connect_info.addresses)
+            logger.warning(f'Unable to connect to {connect_info.addresses}')
+            self._outgoing.pop(address, None)
             connect_info.failure_callback()
 
     def _listen_error(self, message: str) -> None:
         if not self._listen_info:
             return
 
-        logger.error('Unable to listen on %r: %s', self._listen_info, message)
+        logger.error(f'Unable to listen on {self._listen_info}: {message}')
 
         listen_info, self._listen_info = self._listen_info, None
         listen_info.failure_callback(message, listen_info)
@@ -295,14 +300,15 @@ class LibP2PNetwork(Network):
     # Event handlers #
     ##################
 
+    @inlineCallbacks
     def _handle_event(self, event: events.Event) -> None:
         if not event:
             return
         handler = self.EVENT_HANDLERS.get(event.__class__)
         if handler:
-            self._reactor.callFromThread(handler, self, event)
+            yield self._reactor.callFromThread(handler, self, event)
         else:
-            logger.error("Unknown event: %r", event)
+            logger.error(f"Unknown event: {event}")
 
     def _handle_started(self, event: events.Listening) -> None:
         if not self._listen_info:
@@ -338,27 +344,28 @@ class LibP2PNetwork(Network):
             factories = self._in_factories
 
         self._connections[address] = {
-            factory.channel_id: self.__create_protocol(factory, event, address)
+            factory.channel_id: self.__build_protocol(factory, event, address)
             for factory in factories
         }
 
         if connect_info:
             if connect_info.channel_id not in self._connections[address]:
-                raise ValueError("Invalid channel id")
+                raise ValueError(f"Invalid channel: {connect_info.channel_id}")
             connection = self._connections[address][connect_info.channel_id]
             connect_info.established_callback(connection.session)
 
-    def __create_protocol(
+    def __build_protocol(
         self,
         factory: ProtocolFactory,
         event: events.Connected,
         address: AddressTuple,
     ) -> Protocol:
         conn = factory.buildProtocol(address)
-        conn.makeConnection(LibP2PTransport(network=self,
-                                            address=address,
-                                            channel_id=factory.channel_id,
-                                            peer_id=event.peer_id))
+        transport = LibP2PTransport(network=self,
+                                    address=address,
+                                    channel_id=factory.channel_id,
+                                    peer_id=event.peer_id)
+        conn.makeConnection(transport)
         conn.session.key_id = encode_hex(event.peer_pubkey)[2:]
         return conn
 
@@ -383,16 +390,16 @@ class LibP2PNetwork(Network):
         if conn:
             conn.dataReceived(msg.data)
         else:
-            logger.warning('_handle_message: No session for peer: %s',
-                           event.peer_id)
+            logger.warning('Incoming message: No session for peer: '
+                           f'{event.peer_id}')
 
     @staticmethod
     def _handle_clogged(event: events.Clogged) -> None:
-        logger.warning('Peer clogged:', event.peer_id)
+        logger.warning(f'Peer clogged: {event.peer_id}')
 
     @staticmethod
     def _handle_error(event: events.Error) -> None:
-        logger.error('Error:', event.error)
+        logger.error(f'Error: {event.error}')
 
     EVENT_HANDLERS: Dict[Type[events.Event], Callable] = {
         events.Listening: _handle_started,

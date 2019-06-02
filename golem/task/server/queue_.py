@@ -51,9 +51,6 @@ class TaskMessagesQueueMixin:
 
     def initiate_session(self, node_id: str) -> None:
         if node_id in self.task_sessions:
-            session = self.task_sessions[node_id]
-            if session is not None:
-                session.read_msg_queue()
             return
 
         node = self.task_keeper.find_newest_node(node_id)
@@ -99,7 +96,7 @@ class TaskMessagesQueueMixin:
             self.initiate_session(node_id)
 
     def sweep_sessions(self):
-        for node_id in self.task_sessions:
+        for node_id in list(self.task_sessions):
             session = self.task_sessions[node_id]
             if session is None:
                 continue

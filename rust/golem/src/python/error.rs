@@ -1,9 +1,9 @@
-use std::{convert, error, fmt};
+use std::{convert, error, fmt, io, sync};
+use std::net::AddrParseError;
 
 use cpython::{PyErr, PyInt, PyString, Python, ToPyObject};
 
 use crate::bindings::net::PyNetworkServiceError;
-use std::net::AddrParseError;
 
 #[derive(Debug, Copy, Clone)]
 pub enum ErrorKind {
@@ -91,6 +91,28 @@ impl error::Error for Error {
 
     fn cause(&self) -> Option<&error::Error> {
         None
+    }
+}
+
+impl convert::From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
+        Error::new(
+            ErrorKind::Io,
+            ErrorSeverity::Medium,
+            format!("{:?}", e),
+            None,
+        )
+    }
+}
+
+impl convert::From<sync::mpsc::RecvError> for Error {
+    fn from(e: sync::mpsc::RecvError) -> Self {
+        Error::new(
+            ErrorKind::Other,
+            ErrorSeverity::High,
+            format!("{:?}", e),
+            None,
+        )
     }
 }
 

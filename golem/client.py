@@ -29,10 +29,10 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.net.network import LibP2PNetwork
 from golem.hardware.presets import HardwarePresets
 from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
+from golem.core.net import LibP2PNetwork
 from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database

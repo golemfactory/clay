@@ -1,6 +1,5 @@
-from rust.golem import NetworkService, NetworkServiceError  # noqa pylint: disable=no-name-in-module,import-error
+from .network import LibP2PNetwork
 
 __all__ = (
-    'NetworkService',
-    'NetworkServiceError',
+    'LibP2PNetwork',
 )

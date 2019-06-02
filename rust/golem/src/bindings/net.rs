@@ -1,16 +1,21 @@
 #![allow(non_upper_case_globals)]
 #![allow(unused_variables)]
+use std::time::Duration;
 
 use cpython::*;
-use std::time::Duration;
+use parking_lot::{Mutex, MutexGuard};
 
 use crate::net::event::event_into;
 use crate::net::service::NetworkService;
 
-static mut NETWORK_SERVICE: NetworkService = NetworkService {
-    controller: None,
-    event_rx: None,
-};
+lazy_static! {
+    static ref NETWORK_SERVICE: Mutex<NetworkService> = Mutex::new(NetworkService::new());
+}
+
+#[inline]
+fn net() -> MutexGuard<'static, NetworkService> {
+    NETWORK_SERVICE.lock()
+}
 
 py_exception!(libgolem_core, PyNetworkServiceError);
 py_class!(pub class PyNetworkService |py| {
@@ -25,27 +30,21 @@ py_class!(pub class PyNetworkService |py| {
         host: PyString,
         port: PyInt
     ) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.start(py, priv_key, host, port) {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into())
-            }
+        match net().start(py, priv_key, host, port) {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into())
         }
     }
 
     def stop(&self) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.stop() {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into())
-            }
+        match net().stop() {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into())
         }
     }
 
     def running(&self) -> PyResult<bool> {
-        unsafe {
-            Ok(NETWORK_SERVICE.running())
-        }
+        Ok(net().running())
     }
 
     def connect(
@@ -53,11 +52,9 @@ py_class!(pub class PyNetworkService |py| {
         host: PyString,
         port: PyLong
     ) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.connect(py, host, port) {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into()),
-            }
+        match net().connect(py, host, port) {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -65,11 +62,9 @@ py_class!(pub class PyNetworkService |py| {
         &self,
         peer_id: PyString
     ) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.connect_to_peer(py, peer_id) {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into()),
-            }
+        match net().connect_to_peer(py, peer_id) {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -77,11 +72,9 @@ py_class!(pub class PyNetworkService |py| {
         &self,
         peer_id: PyString
     ) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.disconnect(py, peer_id) {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into()),
-            }
+        match net().disconnect(py, peer_id) {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into()),
         }
     }
 
@@ -90,39 +83,38 @@ py_class!(pub class PyNetworkService |py| {
         peer_id: PyString,
         message: PyBytes
     ) -> PyResult<bool> {
-        unsafe {
-            match NETWORK_SERVICE.send(py, peer_id, message) {
-                Ok(_) => Ok(true),
-                Err(e) => Err(e.into()),
-            }
+        match net().send(py, peer_id, message) {
+            Ok(_) => Ok(true),
+            Err(e) => Err(e.into()),
         }
     }
 
-    def poll(&self, timeout: PyLong) -> PyResult<Option<PyTuple>> {
-        unsafe {
-            if !NETWORK_SERVICE.running() {
+    def poll(&self, timeout: PyFloat) -> PyResult<Option<PyTuple>> {
+        let rx = {
+            let net = net();
+            if !net.running() {
                 return Ok(None);
             }
+            net.event_rx.clone()
+        };
 
-            match NETWORK_SERVICE.event_rx {
-                None => Ok(None),
-                Some(ref event_rx) => {
-                    let rx = event_rx.clone();
-                    let timeout: i64 = timeout.into_object().extract(py)?;
+        match rx {
+            None => Ok(None),
+            Some(ref rx) => {
+                let timeout: f64 = timeout.into_object().extract(py)?;
+                let timeout: u64 = (timeout * 1000.0) as u64;
 
-                    if timeout > 0 {
-                        let duration = Duration::from_millis((timeout * 1000) as u64);
-                        // give control back to Python's VM for the time
-                        match py.allow_threads(|| rx.recv_timeout(duration)) {
-                            Ok(ev) => Ok(Some(event_into(py, ev))),
-                            Err(e) => Ok(None),
-                        }
-                    } else {
-                        // in-place poll
-                        match rx.recv() {
-                            Ok(ev) => Ok(Some(event_into(py, ev))),
-                            Err(e) => Ok(None),
-                        }
+                if timeout > 0 {
+                    let duration = Duration::from_millis(timeout);
+                    // give control back to Python's VM for the time
+                    match py.allow_threads(|| rx.recv_timeout(duration)) {
+                        Ok(ev) => Ok(Some(event_into(py, ev))),
+                        Err(e) => Ok(None),
+                    }
+                } else {
+                    match py.allow_threads(|| rx.recv()) {
+                        Ok(ev) => Ok(Some(event_into(py, ev))),
+                        Err(e) => Ok(None),
                     }
                 }
             }

@@ -47,7 +47,7 @@ class ResourceHandshake:
             f.write(self.nonce)
 
     def verify_local(self, nonce):
-        self.local_result = nonce == self.nonce
+        self.local_result = nonce == self.nonce and self.nonce is not None
         return self.local_result
 
     def remote_verdict(self, verdict):

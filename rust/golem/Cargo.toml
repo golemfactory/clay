@@ -1,6 +1,6 @@
 [package]
 name = "pyext-golem"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Golem Tech <tech@golem.network>"]
 edition = "2018"
 
@@ -18,9 +18,12 @@ members = [
 crossbeam-channel = "0.3"
 env_logger = "0.6"
 futures = "0.1.17"
+lazy_static = "1.3"
 log = "0.4"
+parking_lot = "0.8.0"
 secp256k1 = "0.12"
-spin = "0.5"
+tokio = "0.1"
+tokio-executor = "0.1"
 
 [dependencies.cpython]
 version = "0.2"

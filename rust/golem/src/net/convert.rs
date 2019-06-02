@@ -5,8 +5,7 @@ use std::str::FromStr;
 use secp256k1;
 
 use network::identity;
-use network::multiaddr::{Multiaddr, Protocol};
-use network::{PeerId, PublicKey};
+use network::{Multiaddr, MultiaddrProtocol as Protocol, PeerId, PublicKey};
 
 use crate::python::error::{Error, ErrorKind, ErrorSeverity};
 
@@ -25,7 +24,7 @@ pub fn sa_to_host_port(socket_addr: &SocketAddr) -> (String, u16) {
 
 pub fn sa_to_tcp_multiaddr(socket_addr: &SocketAddr) -> Multiaddr {
     let mut multiaddr = Multiaddr::from(Protocol::from(socket_addr.ip()));
-    multiaddr.append(Protocol::Tcp(socket_addr.port()));
+    multiaddr.push(Protocol::Tcp(socket_addr.port()));
     multiaddr
 }
 

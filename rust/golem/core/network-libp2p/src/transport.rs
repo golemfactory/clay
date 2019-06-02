@@ -23,9 +23,10 @@ use futures::prelude::*;
 use parking_lot::Mutex;
 
 use libp2p::{ InboundUpgradeExt, OutboundUpgradeExt, PeerId, Transport };
-use libp2p::{ mplex, identity, secio, yamux, tcp, dns, bandwidth };
+use libp2p::{ mplex, identity, secio, yamux, tcp, dns, bandwidth, wasm_ext, websocket };
 use libp2p::core;
 use libp2p::core::muxing::StreamMuxerBox;
+use libp2p::core::transport::OptionalTransport;
 use libp2p::core::transport::boxed::Boxed;
 
 pub use self::bandwidth::BandwidthSinks;
@@ -36,7 +37,8 @@ use crate::PublicKey;
 /// Returns a `BandwidthSinks` object that allows querying the average bandwidth produced by all
 /// the connections spawned with this transport.
 pub fn build_transport(
-	keypair: identity::Keypair
+	keypair: identity::Keypair,
+	wasm_external_transport: Option<wasm_ext::ExtTransport>,
 ) -> (
 	Boxed<(PeerId, StreamMuxerBox), io::Error>,
 	Arc<bandwidth::BandwidthSinks>,
@@ -49,8 +51,20 @@ pub fn build_transport(
 	mplex_config.max_buffer_len_behaviour(mplex::MaxBufferBehaviour::Block);
 	mplex_config.max_buffer_len(usize::MAX);
 
-	let transport = tcp::TcpConfig::new();
-	let transport = dns::DnsConfig::new(transport);
+	let transport = if let Some(t) = wasm_external_transport {
+		OptionalTransport::some(t)
+	} else {
+		OptionalTransport::none()
+	};
+
+	#[cfg(not(target_os = "unknown"))]
+	let transport = {
+		let tcp_trans = tcp::TcpConfig::new();
+		let tcp_ws_trans = websocket::WsConfig::new(tcp_trans.clone())
+			.or_transport(tcp_trans);
+		transport.or_transport(dns::DnsConfig::new(tcp_ws_trans))
+	};
+
 	let (transport, sinks) = bandwidth::BandwidthLogging::new(transport, Duration::from_secs(5));
 
 	// TODO: rework the transport creation (https://github.com/libp2p/rust-libp2p/issues/783)
@@ -69,7 +83,7 @@ pub fn build_transport(
 				.map_outbound(move |muxer| (peer_id2, muxer));
 
 			core::upgrade::apply(out.stream, upgrade, endpoint)
-				.map(|(id, muxer)| (id, StreamMuxerBox::new(muxer)))
+				.map(|(id, muxer)| (id, core::muxing::StreamMuxerBox::new(muxer)))
 		})
 		.with_timeout(Duration::from_secs(20))
 		.map_err(|err| io::Error::new(io::ErrorKind::Other, err))

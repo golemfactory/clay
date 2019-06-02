@@ -5,8 +5,9 @@
 extern crate cpython;
 extern crate env_logger;
 extern crate futures;
+#[macro_use]
+extern crate lazy_static;
 extern crate log;
-extern crate spin;
 #[cfg(windows)]
 extern crate winapi;
 

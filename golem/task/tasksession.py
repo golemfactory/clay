@@ -246,12 +246,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def read_msg_queue(self):
+        from twisted.internet import reactor
         logger.debug("Message queue loop started for %s", self.key_id)
 
         while self.running:
             for msg in msg_queue.get(self.key_id):
-                self.send(msg)
-            time.sleep(0.25)
+                reactor.callFromThread(self.send, msg)
+            time.sleep(0.1)
 
         logger.debug("Message queue loop stopped for %s", self.key_id)
 

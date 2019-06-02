@@ -15,111 +15,109 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::fs;
-use std::io::Error as IoError;
+use std::io;
 use std::path::Path;
 use std::sync::Arc;
-use std::time::Duration;
 use std::collections::HashMap;
 
-use fnv::FnvHashMap;
 use futures::{prelude::*, Stream};
-use libp2p::{multiaddr::Protocol, Multiaddr, core::swarm::NetworkBehaviour, PeerId};
-use libp2p::bandwidth::BandwidthSinks;
+use libp2p::{Multiaddr, core::swarm::NetworkBehaviour, PeerId};
 use libp2p::core::{Swarm, nodes::Substream, transport::boxed::Boxed, muxing::StreamMuxerBox};
 use libp2p::core::nodes::ConnectedPoint;
-use log::{debug, info, warn, error};
+use log::{info, warn, error};
 use parking_lot::Mutex;
 
-use crate::{behaviour::Behaviour, behaviour::BehaviourOut, transport, NetworkState, NetworkStatePeer, NetworkStateNotConnectedPeer, PublicKey};
-use crate::custom_proto::{CustomMessage, RegisteredProtocol};
+use crate::{behaviour::Behaviour, transport, NetworkState, NetworkStatePeer, NetworkStateNotConnectedPeer, PublicKey};
+use crate::custom_proto::{CustomProto, CustomProtoOut, CustomMessage, RegisteredProtocol};
 use crate::{NetworkConfiguration, NonReservedPeerMode, parse_str_addr};
 
-/// Starts the substrate libp2p service.
+/// Starts the libp2p service.
 ///
 /// Returns a stream that must be polled regularly in order for the networking to function.
 pub fn start_service<TMessage>(
 	config: NetworkConfiguration,
 	registered_custom: RegisteredProtocol<TMessage>,
-) -> Result<(Service<TMessage>, Arc<peerset::Peerset>), IoError>
+) -> Result<(Service<TMessage>, peerset::PeersetHandle, Vec<Multiaddr>), io::Error>
 where TMessage: CustomMessage + Send + 'static {
 
 	if let Some(ref path) = config.net_config_path {
 		fs::create_dir_all(Path::new(path))?;
 	}
 
-	// List of multiaddresses that we know in the network.
-	let mut known_addresses = Vec::new();
-	let mut bootnodes = Vec::new();
-	let mut reserved_nodes = Vec::new();
-
-	// Process the bootnodes.
-	for bootnode in config.boot_nodes.iter() {
-		match parse_str_addr(bootnode) {
-			Ok((peer_id, addr)) => {
-				bootnodes.push(peer_id.clone());
-				known_addresses.push((peer_id, addr));
-			},
-			Err(_) => warn!(target: crate::LOG_TARGET, "Not a valid bootnode address: {}", bootnode),
-		}
-	}
-
-	// Initialize the reserved peers.
-	for reserved in config.reserved_nodes.iter() {
-		if let Ok((peer_id, addr)) = parse_str_addr(reserved) {
-			reserved_nodes.push(peer_id.clone());
-			known_addresses.push((peer_id, addr));
-		} else {
-			warn!(target: crate::LOG_TARGET, "Not a valid reserved node address: {}", reserved);
-		}
-	}
-
-	// Build the peerset.
-	let (peerset, peerset_receiver) = peerset::Peerset::from_config(peerset::PeersetConfig {
-		in_peers: config.in_peers,
-		out_peers: config.out_peers,
-		bootnodes,
-		reserved_only: config.non_reserved_mode == NonReservedPeerMode::Deny,
-		reserved_nodes,
-	});
-
 	// Private and public keys configuration.
 	let local_identity = config.node_key.clone().into_keypair()?;
 	let local_public = local_identity.public();
 	let local_peer_id = local_public.clone().into_peer_id();
 
+	// List of multiaddresses that we know in the network.
+	let mut known_addresses = Vec::new();
+	let mut listen_addresses = Vec::new();
+	let mut bootstrap_nodes = Vec::new();
+	let mut reserved_nodes = Vec::new();
+
+	let mut process_nodes = |src: &Vec<String>, dest: &mut Vec<PeerId>, tag: &str| {
+		for node in src.iter() {
+			match parse_str_addr(node) {
+				Ok((peer_id, addr)) => {
+					dest.push(peer_id.clone());
+					known_addresses.push((peer_id, addr));
+				},
+				Err(_) => warn!(target: crate::LOG_TARGET, "Not a valid {} node address: {}", tag, node),
+			}
+		}
+	};
+
+	process_nodes(&config.boot_nodes, &mut bootstrap_nodes, "bootstrap");
+	process_nodes(&config.reserved_nodes, &mut reserved_nodes, "reserved");
+
+	// Build the peerset.
+	let (peerset, peerset_handle) = peerset::Peerset::from_config(peerset::PeersetConfig {
+		in_peers: config.in_peers,
+		out_peers: config.out_peers,
+		bootnodes: bootstrap_nodes,
+		reserved_only: config.non_reserved_mode == NonReservedPeerMode::Deny,
+		reserved_nodes,
+	});
+
 	// Build the swarm.
 	let (mut swarm, bandwidth, keystore) = {
 		let user_agent = format!("{} ({})", config.client_version, config.node_name);
-		let behaviour = Behaviour::new(user_agent, local_public, registered_custom, known_addresses, peerset_receiver, config.enable_mdns);
-		let (transport, bandwidth, keystore) = transport::build_transport(local_identity);
+		let proto = CustomProto::new(registered_custom, peerset);
+		let behaviour = Behaviour::new(proto, user_agent, local_public, known_addresses, config.enable_mdns);
+		let (transport, bandwidth, keystore) = transport::build_transport(
+			local_identity,
+			config.wasm_external_transport,
+		);
 		(Swarm::new(transport, behaviour, local_peer_id.clone()), bandwidth, keystore)
 	};
 
 	// Listen on multiaddresses.
 	for addr in &config.listen_addresses {
-		match Swarm::listen_on(&mut swarm, addr.clone()) {
-			Ok(mut new_addr) => {
-				new_addr.append(Protocol::P2p(local_peer_id.clone().into()));
-				info!(target: crate::LOG_TARGET, "Local node address is: {}", new_addr);
-			},
-			Err(err) => warn!(target: crate::LOG_TARGET, "Can't listen on {} because: {:?}", addr, err)
+		if let Err(err) = Swarm::listen_on(&mut swarm, addr.clone()) {
+			warn!(target: crate::LOG_TARGET, "Can't listen on {}: {:?}", addr, err)
+		} else {
+			listen_addresses.push(addr.clone())
 		}
 	}
+	if listen_addresses.len() == 0 {
+        return Err(io::Error::from(io::ErrorKind::AddrNotAvailable).into());
+    }
 
 	// Add external addresses.
 	for addr in &config.public_addresses {
 		Swarm::add_external_address(&mut swarm, addr.clone());
 	}
 
+	info!(target: crate::LOG_TARGET, "Local node identity is: {}", local_peer_id.to_base58());
+
 	let service = Service {
 		swarm,
 		keystore,
 		bandwidth,
-		nodes_info: Default::default(),
 		injected_events: Vec::new(),
 	};
 
-	Ok((service, peerset))
+	Ok((service, peerset_handle, listen_addresses))
 }
 
 /// Event produced by the service.
@@ -171,61 +169,61 @@ pub enum ServiceEvent<TMessage> {
 /// Network service. Must be polled regularly in order for the networking to work.
 pub struct Service<TMessage> where TMessage: CustomMessage {
 	/// Stream of events of the swarm.
-	swarm: Swarm<Boxed<(PeerId, StreamMuxerBox), IoError>, Behaviour<TMessage, Substream<StreamMuxerBox>>>,
+	swarm: Swarm<
+		Boxed<(PeerId, StreamMuxerBox), io::Error>,
+		Behaviour<CustomProto<TMessage, Substream<StreamMuxerBox>>, CustomProtoOut<TMessage>, Substream<StreamMuxerBox>>
+	>,
 
 	/// Remote peer key storage
 	// TODO: Incorporate into NodeInfo
 	keystore: Arc<Mutex<HashMap<PeerId, PublicKey>>>,
 
 	/// Bandwidth logging system. Can be queried to know the average bandwidth consumed.
-	bandwidth: Arc<BandwidthSinks>,
-
-	/// Information about all the nodes we're connected to.
-	nodes_info: FnvHashMap<PeerId, NodeInfo>,
+	bandwidth: Arc<transport::BandwidthSinks>,
 
 	/// Events to produce on the Stream.
 	injected_events: Vec<ServiceEvent<TMessage>>,
-}
-
-/// Information about a node we're connected to.
-#[derive(Debug)]
-struct NodeInfo {
-	/// How we're connected to the node.
-	endpoint: ConnectedPoint,
-	/// Version reported by the remote, or `None` if unknown.
-	client_version: Option<String>,
-	/// Latest ping time with this node.
-	latest_ping: Option<Duration>,
 }
 
 impl<TMessage> Service<TMessage>
 where TMessage: CustomMessage + Send + 'static {
 	/// Returns a struct containing tons of useful information about the network.
 	pub fn state(&mut self) -> NetworkState {
+		let open = self.swarm.user_protocol().open_peers().cloned().collect::<Vec<_>>();
+
 		let connected_peers = {
 			let swarm = &mut self.swarm;
-			self.nodes_info.iter().map(move |(peer_id, info)| {
+			open.iter().filter_map(move |peer_id| {
 				let known_addresses = NetworkBehaviour::addresses_of_peer(&mut **swarm, peer_id)
 					.into_iter().collect();
 
-				(peer_id.to_base58(), NetworkStatePeer {
-					endpoint: info.endpoint.clone().into(),
-					version_string: info.client_version.clone(),
-					latest_ping_time: info.latest_ping,
-					enabled: swarm.is_enabled(&peer_id),
-					open: swarm.is_open(&peer_id),
+				let endpoint = if let Some(e) = swarm.node(peer_id).map(|i| i.endpoint()) {
+					e.clone().into()
+				} else {
+					error!(target: crate::LOG_TARGET, "Found state inconsistency between custom protocol \
+						and debug information about {:?}", peer_id);
+					return None
+				};
+
+				Some((peer_id.to_base58(), NetworkStatePeer {
+					endpoint,
+					version_string: swarm.node(peer_id).and_then(|i| i.client_version().map(|s| s.to_owned())).clone(),
+					latest_ping_time: swarm.node(peer_id).and_then(|i| i.latest_ping()),
+					enabled: swarm.user_protocol().is_enabled(&peer_id),
+					open: swarm.user_protocol().is_open(&peer_id),
 					known_addresses,
-				})
+				}))
 			}).collect()
 		};
 
 		let not_connected_peers = {
 			let swarm = &mut self.swarm;
-			let nodes_info = &self.nodes_info;
-			let list = swarm.known_peers().filter(|p| !nodes_info.contains_key(p))
+			let list = swarm.known_peers().filter(|p| open.iter().all(|n| n != *p))
 				.cloned().collect::<Vec<_>>();
 			list.into_iter().map(move |peer_id| {
 				(peer_id.to_base58(), NetworkStateNotConnectedPeer {
+					version_string: swarm.node(&peer_id).and_then(|i| i.client_version().map(|s| s.to_owned())).clone(),
+					latest_ping_time: swarm.node(&peer_id).and_then(|i| i.latest_ping()),
 					known_addresses: NetworkBehaviour::addresses_of_peer(&mut **swarm, &peer_id)
 						.into_iter().collect(),
 				})
@@ -240,7 +238,7 @@ where TMessage: CustomMessage + Send + 'static {
 			average_upload_per_sec: self.bandwidth.average_upload_per_sec(),
 			connected_peers,
 			not_connected_peers,
-			peerset: self.swarm.peerset_debug_info(),
+			peerset: self.swarm.user_protocol_mut().peerset_debug_info(),
 		}
 	}
 
@@ -263,27 +261,28 @@ where TMessage: CustomMessage + Send + 'static {
 	}
 
 	/// Returns the peer id of the local node.
-	#[inline]
 	pub fn peer_id(&self) -> &PeerId {
 		Swarm::local_peer_id(&self.swarm)
 	}
 
 	/// Returns the list of all the peers we are connected to.
-	#[inline]
 	pub fn connected_peers<'a>(&'a self) -> impl Iterator<Item = &'a PeerId> + 'a {
-		self.nodes_info.keys()
+		self.swarm.user_protocol().open_peers()
 	}
 
-	/// Returns the way we are connected to a node.
-	#[inline]
+	/// Returns the way we are connected to a node. Returns `None` if we are not connected to it.
 	pub fn node_endpoint(&self, peer_id: &PeerId) -> Option<&ConnectedPoint> {
-		self.nodes_info.get(peer_id).map(|info| &info.endpoint)
+		if self.swarm.user_protocol().is_open(peer_id) {
+			self.swarm.node(peer_id).map(|n| n.endpoint())
+		} else {
+			None
+		}
 	}
 
-	/// Returns the client version reported by a node.
+	/// Returns the latest client version reported by a node. Can return `Some` even for nodes
+	/// we're not connected to.
 	pub fn node_client_version(&self, peer_id: &PeerId) -> Option<&str> {
-		self.nodes_info.get(peer_id)
-			.and_then(|info| info.client_version.as_ref().map(|s| &s[..]))
+		self.swarm.node(peer_id).and_then(|n| n.client_version())
 	}
 
 	/// Sends a message to a peer using the custom protocol.
@@ -295,7 +294,7 @@ where TMessage: CustomMessage + Send + 'static {
 		peer_id: &PeerId,
 		message: TMessage
 	) {
-		self.swarm.send_custom_message(peer_id, message);
+		self.swarm.user_protocol_mut().send_packet(peer_id, message);
 	}
 
 	/// Disconnects a peer.
@@ -303,11 +302,7 @@ where TMessage: CustomMessage + Send + 'static {
 	/// This is asynchronous and will not immediately close the peer.
 	/// Corresponding closing events will be generated once the closing actually happens.
 	pub fn drop_node(&mut self, peer_id: &PeerId) {
-		if let Some(info) = self.nodes_info.get(peer_id) {
-			debug!(target: crate::LOG_TARGET, "Dropping {:?} on purpose ({:?}, {:?})",
-				peer_id, info.endpoint, info.client_version);
-			self.swarm.drop_node(peer_id);
-		}
+		self.swarm.user_protocol_mut().disconnect_peer(peer_id);
 	}
 
 	/// Adds a hard-coded address for the given peer, that never expires.
@@ -317,23 +312,19 @@ where TMessage: CustomMessage + Send + 'static {
 
 	/// Get debug info for a given peer.
 	pub fn peer_debug_info(&self, who: &PeerId) -> String {
-		if let Some(info) = self.nodes_info.get(who) {
-			format!("{:?} (version: {:?}) through {:?}", who, info.client_version, info.endpoint)
+		if let Some(node) = self.swarm.node(who) {
+			format!("{:?} {}", who, node.debug_info())
 		} else {
-			"unknown".to_string()
+			format!("{:?} (unknown)", who)
 		}
 	}
 
 	/// Polls for what happened on the network.
-	fn poll_swarm(&mut self) -> Poll<Option<ServiceEvent<TMessage>>, IoError> {
+	fn poll_swarm(&mut self) -> Poll<Option<ServiceEvent<TMessage>>, io::Error> {
 		loop {
 			match self.swarm.poll() {
-				Ok(Async::Ready(Some(BehaviourOut::CustomProtocolOpen { peer_id, version, endpoint }))) => {
-					self.nodes_info.insert(peer_id.clone(), NodeInfo {
-						endpoint: endpoint.clone(),
-						client_version: None,
-						latest_ping: None,
-					});
+				Ok(Async::Ready(Some(CustomProtoOut::CustomProtocolOpen { peer_id, version, endpoint }))) => {
+					let debug_info = self.peer_debug_info(&peer_id);
 					let peer_pubkey = match self.keystore.lock().get(&peer_id) {
 						Some(pk) => pk.clone(),
 						None => {
@@ -342,7 +333,6 @@ where TMessage: CustomMessage + Send + 'static {
 						}
 					};
 
-					let debug_info = self.peer_debug_info(&peer_id);
 					break Ok(Async::Ready(Some(ServiceEvent::OpenedCustomProtocol {
 						peer_id,
 						peer_pubkey,
@@ -351,43 +341,26 @@ where TMessage: CustomMessage + Send + 'static {
 						debug_info,
 					})))
 				}
-				Ok(Async::Ready(Some(BehaviourOut::CustomProtocolClosed { peer_id, endpoint, .. }))) => {
+				Ok(Async::Ready(Some(CustomProtoOut::CustomProtocolClosed { peer_id, endpoint, .. }))) => {
 					let debug_info = self.peer_debug_info(&peer_id);
-					self.nodes_info.remove(&peer_id);
 					break Ok(Async::Ready(Some(ServiceEvent::ClosedCustomProtocol {
 						peer_id,
 						endpoint,
 						debug_info,
 					})))
 				}
-				Ok(Async::Ready(Some(BehaviourOut::CustomMessage { peer_id, endpoint, message }))) => {
+				Ok(Async::Ready(Some(CustomProtoOut::CustomMessage { peer_id, endpoint, message }))) => {
 					break Ok(Async::Ready(Some(ServiceEvent::CustomMessage {
 						peer_id,
 						endpoint,
 						message,
 					})))
 				}
-				Ok(Async::Ready(Some(BehaviourOut::Clogged { peer_id, messages }))) => {
+				Ok(Async::Ready(Some(CustomProtoOut::Clogged { peer_id, messages }))) => {
 					break Ok(Async::Ready(Some(ServiceEvent::Clogged {
 						peer_id,
 						messages,
 					})))
-				}
-				Ok(Async::Ready(Some(BehaviourOut::Identified { peer_id, info }))) => {
-					// Contrary to the other events, this one can happen even on nodes which don't
-					// have any open custom protocol slot. Therefore it is not necessarily in the
-					// list.
-					if let Some(n) = self.nodes_info.get_mut(&peer_id) {
-						n.client_version = Some(info.agent_version);
-					}
-				}
-				Ok(Async::Ready(Some(BehaviourOut::PingSuccess { peer_id, ping_time }))) => {
-					// Contrary to the other events, this one can happen even on nodes which don't
-					// have any open custom protocol slot. Therefore it is not necessarily in the
-					// list.
-					if let Some(n) = self.nodes_info.get_mut(&peer_id) {
-						n.latest_ping = Some(ping_time);
-					}
 				}
 				Ok(Async::NotReady) => break Ok(Async::NotReady),
 				Ok(Async::Ready(None)) => unreachable!("The Swarm stream never ends"),
@@ -399,7 +372,7 @@ where TMessage: CustomMessage + Send + 'static {
 
 impl<TMessage> Stream for Service<TMessage> where TMessage: CustomMessage + Send + 'static {
 	type Item = ServiceEvent<TMessage>;
-	type Error = IoError;
+	type Error = io::Error;
 
 	fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
 		if !self.injected_events.is_empty() {
