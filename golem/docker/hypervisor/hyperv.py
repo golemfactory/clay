@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import time
-from typing import Any, ClassVar, Dict, Iterable, List, Optional
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
@@ -43,7 +43,7 @@ MESSAGES = {
     events.DISK: 'Not enough disk space. Creating VM with min memory',
 }
 
-EVENTS = {
+EVENTS: Dict[events, Dict[str, Union[str, Optional[Dict]]]] = {
     events.SMB: {
         'component': Component.hypervisor,
         'method': 'setup',
