@@ -1,6 +1,6 @@
 from typing import Any, Dict, Tuple
 
-from tests.apps.ffmpeg.task.ffprobe_report import Diff
+from tests.apps.ffmpeg.task.utils.ffprobe_report import Diff
 
 
 class FfprobeReportSet:

@@ -13,7 +13,7 @@ from apps.transcoding.common import TranscodingTaskBuilderException, \
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
-from tests.apps.ffmpeg.task.simulated_transcoding_operation import \
+from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
 logger = logging.getLogger(__name__)

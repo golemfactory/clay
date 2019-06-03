@@ -7,9 +7,9 @@ from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 
 from golem.testutils import TestTaskIntegration
-from tests.apps.ffmpeg.task.ffprobe_report import FfprobeFormatReport, FuzzyInt
-from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
-from tests.apps.ffmpeg.task.simulated_transcoding_operation import \
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, FuzzyInt
+from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
 
@@ -18,10 +18,9 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
     def setUp(self):
         super(TestSimulatedTranscodingOperationIntegration, self).setUp()
 
-        self.RESOURCES = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            'resources'
-        )
+        self.RESOURCES = self.RESOURCES = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__)))),
+            'resources')
 
         self.operation = SimulatedTranscodingOperation(
             task_executor=self,

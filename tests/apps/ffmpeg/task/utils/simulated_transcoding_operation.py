@@ -5,9 +5,9 @@ from typing import Any, Dict, Optional, Tuple
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 
-from tests.apps.ffmpeg.task.ffprobe_report import FfprobeFormatReport, \
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
     FileExcludes, FileOverrides, fuzzy_int_if_possible, parse_ffprobe_frame_rate
-from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 
 
 CONTAINER_TO_FFMPEG_MUXER = {

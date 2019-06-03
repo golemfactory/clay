@@ -10,10 +10,10 @@ from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.testutils import TempDirFixture
-from tests.apps.ffmpeg.task.ffprobe_report import FfprobeFormatReport, \
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
     FuzzyDuration, FuzzyInt, FfprobeAudioAndVideoStreamReport, \
     FfprobeVideoStreamReport, FfprobeAudioStreamReport, FfprobeStreamReport
-from tests.apps.ffmpeg.task.ffprobe_report_sample_reports import \
+from tests.apps.ffmpeg.task.utils.ffprobe_report_sample_reports import \
     RAW_REPORT_ORIGINAL, RAW_REPORT_WITH_MPEG4
 
 
@@ -710,11 +710,9 @@ class TestFfprobeReportBuild(TempDirFixture):
             done_callback=mock.Mock(),
             work_dir=self.new_path,
             in_background=True)
-
-        self.resources_dir = os.path.join(
-            os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
-            'resources',
-        )
+        self.resources_dir = self.RESOURCES = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.dirname(os.path.realpath(__file__)))),
+            'resources')
 
     @pytest.mark.slow
     def test_build_should_return_list_with_one_ffprobe_format_report_instance(

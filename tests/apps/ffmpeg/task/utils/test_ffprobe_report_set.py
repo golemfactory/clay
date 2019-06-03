@@ -1,8 +1,8 @@
 from parameterized import parameterized
 
 from golem.testutils import TestTaskIntegration
-from tests.apps.ffmpeg.task.ffprobe_report import FuzzyInt
-from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyInt
+from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 
 
 class TestFfprobeReportSet(TestTaskIntegration):
