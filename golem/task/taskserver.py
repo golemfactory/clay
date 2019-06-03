@@ -317,7 +317,7 @@ class TaskServer(
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
                 provider_public_key=self.get_key_id(),
-                provider_ethereum_address=self.get_eth_addr(),
+                provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
             msg_queue.put(
@@ -494,9 +494,6 @@ class TaskServer(
 
     def sign(self, data):
         return self.keys_auth.sign(data)
-
-    def get_eth_addr(self):
-        return self.keys_auth.eth_addr
 
     def get_resource_addr(self):
         return self.client.node.prv_addr

@@ -172,7 +172,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         handshake.remote_result = True
         self.ts.get_environment_by_id = Mock(return_value=None)
         self.ts.get_key_id = Mock(return_value='0'*128)
-        self.ts.get_eth_addr = Mock(return_value=pubkey_to_address('0' * 128))
+        self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
