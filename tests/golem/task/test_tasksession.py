@@ -121,6 +121,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             resource_manager=resource_manager,
             client=server.client
         )
+        self.ethereum_config = EthereumConfig()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -144,7 +147,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
     def _get_task_parameters(self):
         return {
-            'node_name': self.node_name,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
@@ -321,7 +323,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
              ttc._get_promissory_note().sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc._get_concent_promissory_note(
-                 getattr(EthereumConfig, 'deposit_contract_address')
+                 getattr(self.ethereum_config, 'deposit_contract_address')
              ).sign(
                  self.requestor_keys.raw_privkey)],
         ]
@@ -336,7 +338,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
         self.assertTrue(ttc.verify_promissory_note())
         self.assertTrue(ttc.verify_concent_promissory_note(
-            getattr(EthereumConfig, 'deposit_contract_address')
+            getattr(self.ethereum_config, 'deposit_contract_address')
         ))
 
 
@@ -350,6 +352,8 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         super().setUp()
         random.seed()
         self.conn = Mock()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
         self.task_session = TaskSession(self.conn)
         self.task_session.key_id = 'deadbeef'
         self.task_session.task_server.get_share_options.return_value = \
@@ -365,6 +369,7 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
         self.privkey = self.keys._private_key
+        self.ethereum_config = EthereumConfig()
 
 
 class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
@@ -516,7 +521,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
 class TestTaskSession(TaskSessionTestBase):
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock, *_):
-        self.task_session.conn.server.get_key_id.return_value = key_id = \
+        self.task_session.conn.server.get_key_id.return_value = \
             'key id%d' % (random.random() * 1000,)
         node = dt_p2p_factory.Node()
         self.task_session.task_server.client.node = node
@@ -524,11 +529,9 @@ class TestTaskSession(TaskSessionTestBase):
         expected = [
             ['rand_val', self.task_session.rand_val],
             ['proto_id', variables.PROTOCOL_CONST.ID],
-            ['node_name', None],
             ['node_info', node.to_dict()],
             ['port', None],
             ['client_ver', golem.__version__],
-            ['client_key_id', key_id],
             ['solve_challenge', None],
             ['challenge', None],
             ['difficulty', None],
@@ -601,7 +604,7 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            getattr(EthereumConfig, 'deposit_contract_address')
+            getattr(self.ethereum_config, 'deposit_contract_address')
         ))
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
@@ -1122,7 +1125,6 @@ class HelloTest(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
         self.msg = msg_factories.base.HelloFactory(
-            client_key_id='deadbeef',
             node_info=dt_p2p_factory.Node(),
             proto_id=variables.PROTOCOL_CONST.ID,
         )
@@ -1209,7 +1211,7 @@ class HelloTest(testutils.TempDirFixture):
         self.task_session.task_server.config_desc.key_difficulty = difficulty
         ka = KeysAuth(datadir=self.path, difficulty=difficulty,
                       private_key_name='prv', password='')
-        self.msg.client_key_id = ka.key_id
+        self.msg.node_info.key = ka.key_id
 
         # when
         self.task_session._react_to_hello(self.msg)

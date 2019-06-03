@@ -60,7 +60,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     def __setup_handshake_server_test(self, send_mock) -> message.base.Hello:
         self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
-        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
         self.peer_session.conn.server.key_difficulty = 2
@@ -70,11 +70,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.assertEqual(1, send_mock.call_count)
         expected = message.base.Hello(
             challenge=None,
-            client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
             node_info=node,
-            node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
@@ -95,9 +93,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         client_peer_info = dt_p2p_factory.Node()
         client_hello = message.base.Hello(
             port=1,
-            node_name='client',
             rand_val=random.random(),
-            client_key_id=client_peer_info.key,
             node_info=client_peer_info,
             proto_id=PROTOCOL_CONST.ID)
         fill_slots(client_hello)
@@ -182,7 +178,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
-        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = node.key
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
@@ -201,9 +197,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.enough_peers = lambda: False
         server_hello = message.base.Hello(
             port=1,
-            node_name='server',
             rand_val=random.random(),
-            client_key_id=server_peer_info.key,
             node_info=server_peer_info,
             proto_id=PROTOCOL_CONST.ID,
             metadata={},
@@ -211,11 +205,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         fill_slots(server_hello)
         expected = message.base.Hello(
             challenge=None,
-            client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
             node_info=node,
-            node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
@@ -286,9 +278,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         )
         msg_kwargs = {
             'port': random.randint(0, 65535),
-            'node_name': 'How could youths better learn to live than by at'
-                         'once trying the experiment of living? --HDT',
-            'client_key_id': peer_info.key,
             'client_ver': None,
             'node_info': peer_info,
             'proto_id': random.randint(0, sys.maxsize),

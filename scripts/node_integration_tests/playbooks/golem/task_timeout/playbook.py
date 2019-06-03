@@ -17,7 +17,7 @@ class Playbook(NodeTestPlaybook):
     * afterwards, the nodes are restarted, this time both as unmodified
       Golem nodes,
     * the timed-out task (with only one subtask successfully finished) is then
-      restarted using the `comp.task.restart_subtasks` call - the result is a
+      restarted using the `comp.task.subtasks.restart` call - the result is a
       new task which contains one already-completed subtask and another,
       failed one,
     * the Provider should then be able to pick up that second subtask, thus
@@ -29,12 +29,15 @@ class Playbook(NodeTestPlaybook):
     def step_wait_subtask_completed(self):
         def on_success(result):
             if result:
-                statuses = map(lambda s: s.get('status'), result)
-                if any(map(lambda s: s == 'Finished', statuses)):
+                statuses = [s.get('status') for s in result]
+                if 'Finished' in statuses:
                     print("First subtask finished")
                     self.next()
-                    return
-                print("Subtasks status: {}".format(list(statuses)))
+                elif 'Failure' in statuses:
+                    print('Subtask failed :(')
+                    self.fail("Got status 'Failure', expected 'Finished'.")
+                else:
+                    print("Subtasks status: {}".format(statuses))
 
             time.sleep(10)
 
@@ -66,7 +69,7 @@ class Playbook(NodeTestPlaybook):
         if not self.task_in_creation:
             print("Restarting subtasks for {}".format(self.previous_task_id))
             self.task_in_creation = True
-            return self.call(NodeId.requestor, 'comp.task.restart_subtasks',
+            return self.call(NodeId.requestor, 'comp.task.subtasks.restart',
                              self.previous_task_id, [],
                              on_success=on_success)
 

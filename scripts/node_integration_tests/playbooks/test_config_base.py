@@ -30,6 +30,8 @@ class NodeConfig:
         self.protocol_id = 1337
         self.rpc_port = 61000
         self.script = 'node'
+        self.hyperdrive_port: Optional[int] = None
+        self.hyperdrive_rpc_port: Optional[int] = None
 
     def make_args(self) -> Dict[str, Any]:
         args = {
@@ -45,6 +47,11 @@ class NodeConfig:
             args['--log-level'] = self.log_level
         if self.mainnet:
             args['--mainnet'] = None
+        if self.hyperdrive_port:
+            args['--hyperdrive-port'] = self.hyperdrive_port
+        if self.hyperdrive_rpc_port:
+            args['--hyperdrive-rpc-port'] = self.hyperdrive_rpc_port
+
         return args
 
     def __repr__(self) -> str:

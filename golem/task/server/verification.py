@@ -5,6 +5,8 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
 
+from apps.core.task.coretaskstate import RunVerification
+
 from golem import model
 from golem.core import common
 from golem.network import history
@@ -17,6 +19,7 @@ if typing.TYPE_CHECKING:
     from golem.task import taskmanager
 
 logger = logging.getLogger(__name__)
+
 
 class VerificationMixin:
     keys_auth: 'keysauth.KeysAuth'
@@ -42,14 +45,27 @@ class VerificationMixin:
 
         def verification_finished():
             logger.debug("Verification finished handler.")
-            if not self.task_manager.verify_subtask(subtask_id):
-                logger.debug("Verification failure. subtask_id=%r", subtask_id)
-                self.send_result_rejected(
-                    report_computed_task=report_computed_task,
-                    reason=message.tasks.SubtaskResultsRejected.REASON
-                    .VerificationNegative
-                )
-                return
+
+            task_id = self.task_manager.subtask_to_task(
+                subtask_id, model.Actor.Requestor)
+            is_verification_lenient = (
+                self.task_manager.tasks[task_id]
+                .task_definition.run_verification == RunVerification.lenient)
+
+            verification_failed = \
+                not self.task_manager.verify_subtask(subtask_id)
+            if verification_failed:
+                if not is_verification_lenient:
+                    logger.debug("Verification failure. subtask_id=%r",
+                                 subtask_id)
+                    self.send_result_rejected(
+                        report_computed_task=report_computed_task,
+                        reason=message.tasks.SubtaskResultsRejected.REASON
+                        .VerificationNegative
+                    )
+                    return
+                logger.info("Verification failed, but I'm paying anyway."
+                            " subtask_id=%s", subtask_id)
 
             task_to_compute = report_computed_task.task_to_compute
 
@@ -75,6 +91,8 @@ class VerificationMixin:
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
                 task_to_compute.price,
+                unlock_funds=not (verification_failed
+                                  and is_verification_lenient),
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
