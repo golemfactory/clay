@@ -10,7 +10,7 @@ SCHEMA_VERSION = 27
 def migrate(migrator, database, fake=False, **kwargs):
     @migrator.create_model  # pylint: disable=unused-variable
     class TaskPayment(pw.Model):
-        wallet_operation = pw.IntegerField()
+        wallet_operation_id = pw.IntegerField()
         node = pw.CharField()
         task = pw.CharField()
         subtask = pw.CharField()
