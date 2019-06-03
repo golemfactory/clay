@@ -235,6 +235,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import ethereum as api_ethereum
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
@@ -247,6 +248,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            api_ethereum.ETSProvider(self.transaction_system),
         )
         mapping = {}
         for rpc_provider in providers:

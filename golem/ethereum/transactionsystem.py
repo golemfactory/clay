@@ -5,7 +5,7 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import (
     Any,
@@ -22,7 +22,6 @@ from typing import (
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import is_address
-from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
     contracts,
@@ -41,7 +40,6 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.network import nodeskeeper
 from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
@@ -78,20 +76,6 @@ def gnt_deposit_required():
             return f(self, *args, **kwargs)
         return curry
     return wrapper
-
-
-def lru_node_factory():
-    # Our version of peewee (2.10.2) doesn't support
-    # .join(attr='XXX'). So we'll have to join manually
-    lru_node = functools.lru_cache()(nodeskeeper.get)
-    def _inner(node_id):
-        if node_id is None:
-            return None
-        node = lru_node(node_id)
-        if node is None:
-            node = dt_p2p.Node(key=node_id)
-        return node.to_dict()
-    return _inner
 
 
 class ConversionStatus(Enum):
@@ -370,20 +354,12 @@ class TransactionSystem(LoopingCallService):
         address = self._sci.get_eth_address()
         return str(address) if address else None
 
-    @rpc_utils.expose('pay.payments')
     def get_payments_list(
             self,
             num: Optional[int] = None,
             last_seconds: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
-        interval = None
-        if last_seconds is not None:
-            interval = timedelta(seconds=last_seconds)
-        lru_node = lru_node_factory()
-        payments = self._payments_keeper.get_list_of_all_payments(num, interval)
-        for payment in payments:
-            payment['node'] = lru_node(payment['node'])
-        return payments
+        return self._payments_keeper.get_list_of_all_payments(num, last_seconds)
 
     @rpc_utils.expose('pay.deposit_payments')
     @classmethod
@@ -414,25 +390,8 @@ class TransactionSystem(LoopingCallService):
             subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
-    @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self) -> List[Dict[str, Any]]:
-        incomes = self._incomes_keeper.get_list_of_all_incomes()
-
-        lru_node = lru_node_factory()
-
-        def item(o):
-            return {
-                "subtask": common.to_unicode(o.subtask),
-                "payer": common.to_unicode(o.sender_node),
-                "value": common.to_unicode(o.value),
-                "status": common.to_unicode(o.status.name),
-                "transaction": common.to_unicode(o.transaction),
-                "created": common.datetime_to_timestamp_utc(o.created_date),
-                "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node": lru_node(o.sender_node),
-            }
-
-        return [item(income) for income in incomes]
+    def get_incomes_list(self):
+        return self._incomes_keeper.get_list_of_all_incomes()
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
