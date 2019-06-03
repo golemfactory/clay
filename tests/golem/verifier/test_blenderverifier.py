@@ -122,7 +122,6 @@ class TestBlenderVerifier(TempDirFixture):
         Test that uses border_y value (0.53) that was known to be problematic
         for the old cropping mechanism
         """
-        random.seed(0)
         scene_y_min = 0.0
         scene_y_max = 0.53
 
