@@ -235,6 +235,7 @@ class SCIBaseTest(ConcentBaseTest):
         super().setUp()
         from golem.config.environments.testnet import EthereumConfig
         random.seed()
+        ethereum_config = EthereumConfig()
 
         self.transaction_timeout = datetime.timedelta(seconds=300)
         self.sleep_interval = 15
@@ -249,19 +250,19 @@ class SCIBaseTest(ConcentBaseTest):
 
         self.requestor_sci = new_sci_rpc(
             storage=requestor_storage,
-            rpc=EthereumConfig.NODE_LIST[0],
+            rpc=ethereum_config.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
-            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
-            chain=EthereumConfig.CHAIN,
+            contract_addresses=ethereum_config.CONTRACT_ADDRESSES,
+            chain=ethereum_config.CHAIN,
         )
         self.provider_sci = new_sci_rpc(
             storage=provider_storage,
-            rpc=EthereumConfig.NODE_LIST[0],
+            rpc=ethereum_config.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
-            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
-            chain=EthereumConfig.CHAIN,
+            contract_addresses=ethereum_config.CONTRACT_ADDRESSES,
+            chain=ethereum_config.CHAIN,
         )
 
     # pylint: disable=too-many-arguments

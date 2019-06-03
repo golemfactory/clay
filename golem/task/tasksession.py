@@ -16,7 +16,6 @@ from pydispatch import dispatcher
 from twisted.internet import defer
 
 import golem
-from golem.config.active import EthereumConfig
 from golem.core import common
 from golem.core import golem_async
 from golem.core import variables
@@ -121,6 +120,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @property
     def concent_service(self):
         return self.task_server.client.concent_service
+
+    @property
+    def deposit_contract_address(self):
+        return self.task_server.client\
+            .transaction_system.deposit_contract_address
 
     @property
     def is_active(self) -> bool:
@@ -281,7 +285,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
-        node_name_id = common.node_info_str(msg.node_name, self.key_id)
+        node_name_id = common.short_node_id(
+            self.key_id,
+        )
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
@@ -291,8 +297,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id,
             node_name_id,
         )
-        self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
-                                               msg.node_name)
+        self.task_manager.got_wants_to_compute(msg.task_id)
 
         logger.debug(
             "WTCT processing... task_id=%s, node=%s",
@@ -303,7 +308,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id,
             self.address,
-            msg.node_name,
             msg.task_id,
             msg.perf_index,
             msg.max_resource_size,
@@ -401,7 +405,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg: message.tasks.WantToComputeTask,
             node_id: str,
     ):
-        node_name_id = common.node_info_str(msg.node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
             logger.info(
@@ -414,9 +418,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         logger.info("Offer confirmed, assigning subtask")
         ctd = self.task_manager.get_next_subtask(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            self.address)
+            self.key_id, msg.task_id, msg.perf_index,
+            msg.price, msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "CTD generated. task_id=%s, node=%s ctd=%s",
@@ -476,10 +479,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         ttc.generate_ethsig(self.my_private_key)
         if ttc.concent_enabled:
+            logger.debug(
+                f"Signing promissory notes for GNTDeposit at: "
+                f"{self.deposit_contract_address}"
+            )
             ttc.sign_promissory_note(private_key=self.my_private_key)
             ttc.sign_concent_promissory_note(
-                deposit_contract_address=getattr(
-                    EthereumConfig, 'deposit_contract_address'),
+                deposit_contract_address=self.deposit_contract_address,
                 private_key=self.my_private_key
             )
 
@@ -590,8 +596,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             if not (msg.verify_promissory_note() and
                     msg.verify_concent_promissory_note(
-                        deposit_contract_address=getattr(
-                            EthereumConfig, 'deposit_contract_address')
+                        deposit_contract_address=self.deposit_contract_address
                     )):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
@@ -795,8 +800,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     subtask_results_rejected=msg
                 )
                 srv.sign_concent_promissory_note(
-                    deposit_contract_address=getattr(
-                        EthereumConfig, 'deposit_contract_address'),
+                    deposit_contract_address=self.deposit_contract_address,
                     private_key=self.my_private_key,
                 )
 
