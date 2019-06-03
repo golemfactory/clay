@@ -26,7 +26,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     VIDEO_FILES = [
         "test_video.mp4",
-        "test_video2.mp4",
+        "test_video2",
     ]
 
     @classmethod
@@ -181,7 +181,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_simple_case(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
@@ -198,7 +198,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_output_dir(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
                                    'test_invalid_task_definition.mp4')
         task_def = self._create_task_def_for_transcoding(
@@ -255,7 +255,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_task_invalid_params(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
         task_def = self._create_task_def_for_transcoding(
             resource_stream,

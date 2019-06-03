@@ -32,7 +32,7 @@ class TestffmpegTask(TempDirFixture):
     RESOURCES = os.path.join(os.path.dirname(
         os.path.dirname(os.path.realpath(__file__))), 'resources')
     RESOURCE_STREAM = os.path.join(RESOURCES, 'test_video.mp4')
-    RESOURCE_STREAM2 = os.path.join(RESOURCES, 'test_video2.mp4')
+    RESOURCE_STREAM2 = os.path.join(RESOURCES, 'test_video2')
 
     def setUp(self):
         super(TestffmpegTask, self).setUp()
