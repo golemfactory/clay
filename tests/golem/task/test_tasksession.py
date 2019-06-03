@@ -114,6 +114,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             resource_manager=resource_manager,
             client=server.client
         )
+        self.ethereum_config = EthereumConfig()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -137,7 +140,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
     def _get_task_parameters(self):
         return {
-            'node_name': self.node_name,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
@@ -314,7 +316,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
              ttc._get_promissory_note().sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc._get_concent_promissory_note(
-                 getattr(EthereumConfig, 'deposit_contract_address')
+                 getattr(self.ethereum_config, 'deposit_contract_address')
              ).sign(
                  self.requestor_keys.raw_privkey)],
         ]
@@ -329,7 +331,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
         self.assertTrue(ttc.verify_promissory_note())
         self.assertTrue(ttc.verify_concent_promissory_note(
-            getattr(EthereumConfig, 'deposit_contract_address')
+            getattr(self.ethereum_config, 'deposit_contract_address')
         ))
 
 
@@ -343,6 +345,8 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         super().setUp()
         random.seed()
         self.conn = Mock()
+        self.conn.server.client.transaction_system.deposit_contract_address = \
+            EthereumConfig().deposit_contract_address
         self.task_session = TaskSession(self.conn)
         self.task_session.key_id = 'deadbeef'
         self.task_session.task_server.get_share_options.return_value = \
@@ -358,6 +362,7 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
         self.privkey = self.keys._private_key
+        self.ethereum_config = EthereumConfig()
 
 
 class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
@@ -517,7 +522,6 @@ class TestTaskSession(TaskSessionTestBase):
         expected = [
             ['rand_val', self.task_session.rand_val],
             ['proto_id', variables.PROTOCOL_CONST.ID],
-            ['node_name', None],
             ['node_info', node.to_dict()],
             ['port', None],
             ['client_ver', golem.__version__],
@@ -525,7 +529,6 @@ class TestTaskSession(TaskSessionTestBase):
             ['challenge', None],
             ['difficulty', None],
             ['metadata', None],
-            ['client_key_id', None],
         ]
         msg = send_mock.call_args[0][0]
         self.assertCountEqual(msg.slots(), expected)
@@ -594,7 +597,7 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            getattr(EthereumConfig, 'deposit_contract_address')
+            getattr(self.ethereum_config, 'deposit_contract_address')
         ))
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())

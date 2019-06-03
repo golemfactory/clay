@@ -4,13 +4,17 @@ import typing
 from scripts.node_integration_tests import helpers
 
 from ..base import NodeTestPlaybook
-from ..test_config_base import NodeId
+from ..test_config_base import NodeId, TestConfigBase
 
 if typing.TYPE_CHECKING:
     import queue
 
 
 class ConcentTestPlaybook(NodeTestPlaybook):
+    def __init__(self, config: 'TestConfigBase') -> None:
+        super().__init__(config)
+        self.retry_limit = 256
+
     def step_clear_output(self, node_id: NodeId):
         helpers.clear_output(self.output_queues[node_id])
         self.next()

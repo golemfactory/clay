@@ -44,7 +44,7 @@ CONCENT_CHOICES: dict = {
         'pubkey': b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x84\x81b6C\xe8\xe0\xdb\\.P\x00;rZM\xafQI\xf7G\x95\xe3\xe3.h\x19\xf1\x0f\xfa\x8c\xed\x12:\x88\x8aK\x00C9 \xf0~P',  # noqa pylint: disable=line-too-long
         'certificate': str(CONCENT_CERTIFICATES_DIR / 'staging.crt'),
         'deposit_contract_address':
-            '0xA172A4B929Ae9589E3228F723CB99508b8c0709a',
+            '0x6486b37b9BaF682B4Eb5Ad05A5757734eD67629f',
     },
     'test': {
         'url': 'https://test.concent.golem.network',
@@ -132,4 +132,4 @@ NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER = 3
 # TASK DEFINITION PICKLED VERSION #
 #################
 
-PICKLED_VERSION = 2
+PICKLED_VERSION = 3

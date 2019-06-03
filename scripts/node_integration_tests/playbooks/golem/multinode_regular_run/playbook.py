@@ -24,7 +24,8 @@ class Playbook(NodeTestPlaybook):
 
     def step_verify_incomes(self):
         paid_subtasks = reduce(or_, self.paid_subtasks.values())
-        unpaid = self.subtasks - paid_subtasks
+        all_subtasks = reduce(or_, self.subtasks.values())
+        unpaid = all_subtasks - paid_subtasks
 
         if unpaid:
             print("Found subtasks with no matching payments: %s" % unpaid)
