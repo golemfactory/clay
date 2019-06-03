@@ -4,26 +4,25 @@ import datetime
 
 import peewee as pw
 
-SCHEMA_VERSION = 26
+SCHEMA_VERSION = 28
 
 
 def migrate(migrator, database, fake=False, **kwargs):
     @migrator.create_model  # pylint: disable=unused-variable
-    class WalletOperation(pw.Model):
-        tx_hash = pw.CharField()
-        direction = pw.CharField()
-        status = pw.CharField()
-        sender_address = pw.CharField()
-        recipient_address = pw.CharField()
-        amount = pw.CharField()
-        currency = pw.CharField()
-        gas_cost = pw.CharField()
+    class TaskPayment(pw.Model):
+        wallet_operation_id = pw.IntegerField()
+        node = pw.CharField()
+        task = pw.CharField()
+        subtask = pw.CharField()
+        expected_amount = pw.CharField()
+        accepted_ts = pw.DateTimeField()
+        settled_ts = pw.DateTimeField()
         created_date = pw.DateTimeField(default=datetime.datetime.now)
         modified_date = pw.DateTimeField(default=datetime.datetime.now)
 
         class Meta:
-            db_table = "walletoperation"
+            db_table = "taskpayment"
 
 
 def rollback(migrator, database, fake=False, **kwargs):
-    migrator.remove_model("walletoperation")
+    migrator.remove_model("taskpayment")

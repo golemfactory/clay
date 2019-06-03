@@ -9,20 +9,21 @@ SCHEMA_VERSION = 27
 
 def migrate(migrator, database, fake=False, **kwargs):
     @migrator.create_model  # pylint: disable=unused-variable
-    class TaskPayment(pw.Model):
-        wallet_operation_id = pw.IntegerField()
-        node = pw.CharField()
-        task = pw.CharField()
-        subtask = pw.CharField()
-        expected_amount = pw.CharField()
-        accepted_ts = pw.DateTimeField()
-        settled_ts = pw.DateTimeField()
+    class WalletOperation(pw.Model):
+        tx_hash = pw.CharField()
+        direction = pw.CharField()
+        status = pw.CharField()
+        sender_address = pw.CharField()
+        recipient_address = pw.CharField()
+        amount = pw.CharField()
+        currency = pw.CharField()
+        gas_cost = pw.CharField()
         created_date = pw.DateTimeField(default=datetime.datetime.now)
         modified_date = pw.DateTimeField(default=datetime.datetime.now)
 
         class Meta:
-            db_table = "taskpayment"
+            db_table = "walletoperation"
 
 
 def rollback(migrator, database, fake=False, **kwargs):
-    migrator.remove_model("taskpayment")
+    migrator.remove_model("walletoperation")
