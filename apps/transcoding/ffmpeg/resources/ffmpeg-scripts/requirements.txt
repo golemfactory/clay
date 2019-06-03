@@ -1,3 +1,3 @@
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 m3u8
-ffmpeg-tools==0.11.0
+ffmpeg-tools==0.12.0
