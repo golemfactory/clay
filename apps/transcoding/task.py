@@ -3,7 +3,7 @@ import logging
 import os
 from shutil import move
 from threading import Lock
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional, Union
 
 import golem_messages.message
 
@@ -39,7 +39,7 @@ class TranscodingTaskOptions(Options):
         def __init__(self,
                      codec: Optional[VideoCodec] = None,
                      bitrate: Optional[str] = None,
-                     frame_rate: Optional[int] = None,
+                     frame_rate: Optional[Union[int, str]] = None,
                      resolution: Optional[Tuple[int, int]] = None) -> None:
             self.codec = codec
             self.bitrate = bitrate
