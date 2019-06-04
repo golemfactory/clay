@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class NodeConfig:
     def __init__(self) -> None:
+        self.additional_args: Dict[str, Any] = {}
         self.concent = 'staging'
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
@@ -51,6 +52,7 @@ class NodeConfig:
             args['--hyperdrive-port'] = self.hyperdrive_port
         if self.hyperdrive_rpc_port:
             args['--hyperdrive-rpc-port'] = self.hyperdrive_rpc_port
+        args.update(self.additional_args)
 
         return args
 

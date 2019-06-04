@@ -102,10 +102,11 @@ class Playbook(ConcentTestPlaybook):
                 int(p.get('value'))
                 for p in result
                 if p.get('payer') == self.nodes_keys[NodeId.requestor] and
-                   p.get('subtask') in self.subtasks
+                   p.get('subtask') in self.subtasks[NodeId.provider]
             ]))
             if not self.expected_payment:
-                self.fail("No expected payments found for the task.")
+                print("No expected payments found for the task...")
+                return
 
             print("Expected payment: %s" % self.expected_payment)
             self.next()
