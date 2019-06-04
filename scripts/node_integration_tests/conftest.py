@@ -1,43 +1,10 @@
 from typing import List
 import _pytest
 
-REUSE_KEYS = True
+from .key_reuse import NodeKeyReuse
+
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
-
-
-class NodeKeyReuseException(Exception):
-    pass
-
-
-class NodeKeyReuse:
-    instance = None
-    _first_test = True
-
-    @classmethod
-    def get(cls):
-        if not cls.instance:
-            cls.instance = cls()
-        return cls.instance
-
-    @property
-    def keys_ready(self):
-        return not self._first_test
-
-    def mark_keys_ready(self):
-        if not self.enabled:
-            raise NodeKeyReuseException("Key reuse disabled.")
-        self._first_test = False
-
-    @staticmethod
-    def disable():
-        global REUSE_KEYS
-        REUSE_KEYS = False
-
-    @property
-    def enabled(self):
-        return REUSE_KEYS
-
 
 class DumpOutput:
     @staticmethod
