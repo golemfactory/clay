@@ -24,6 +24,7 @@ class ForceGetTaskResultTest(ForceDownloadBaseTest, unittest.TestCase):
         ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline(
             **self.gen_ttc_kwargs(),
         )
+        self.ttc_add_promissory_and_sign(ttc)
         fgtr = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task__task_to_compute=ttc,
             **self.gen_rtc_kwargs('report_computed_task__'),

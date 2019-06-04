@@ -20,6 +20,7 @@ import golem_messages
 from golem_messages import cryptography
 from golem_messages import helpers
 from golem_messages import serializer
+from golem_messages import factories as msg_factories
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents
@@ -72,6 +73,8 @@ class ConcentBaseTest(unittest.TestCase):
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
                      base64.b64encode(self.requestor_pub_key).decode())
+        from golem.config.environments.testnet import EthereumConfig
+        self.ethereum_config = EthereumConfig()
 
     @property
     def provider_priv_key(self):
@@ -88,6 +91,24 @@ class ConcentBaseTest(unittest.TestCase):
     @property
     def requestor_pub_key(self):
         return self.requestor_keys.raw_pubkey
+
+    def ttc_add_promissory_and_sign(self, ttc, priv_key=None) -> None:
+        priv_key = priv_key or self.requestor_priv_key
+        ttc.sign_promissory_note(private_key=priv_key)
+        ttc.sign_concent_promissory_note(
+            deposit_contract_address=
+            self.ethereum_config.deposit_contract_address,
+            private_key=priv_key,
+        )
+        ttc.sign_message(priv_key)
+
+    def gen_ttc(self, **kwargs):
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            **self.gen_ttc_kwargs(),
+            **kwargs
+        )
+        self.ttc_add_promissory_and_sign(ttc)
+        return ttc
 
     def gen_ttc_kwargs(self, prefix=''):
         encoded_requestor_pubkey = msg_utils.encode_hex(self.requestor_pub_key)
@@ -233,10 +254,6 @@ class SCIBaseTest(ConcentBaseTest):
 
     def setUp(self):
         super().setUp()
-        from golem.config.environments.testnet import EthereumConfig
-        random.seed()
-        ethereum_config = EthereumConfig()
-
         self.transaction_timeout = datetime.timedelta(seconds=300)
         self.sleep_interval = 15
 
@@ -250,19 +267,19 @@ class SCIBaseTest(ConcentBaseTest):
 
         self.requestor_sci = new_sci_rpc(
             storage=requestor_storage,
-            rpc=ethereum_config.NODE_LIST[0],
+            rpc=self.ethereum_config.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
-            contract_addresses=ethereum_config.CONTRACT_ADDRESSES,
-            chain=ethereum_config.CHAIN,
+            contract_addresses=self.ethereum_config.CONTRACT_ADDRESSES,
+            chain=self.ethereum_config.CHAIN,
         )
         self.provider_sci = new_sci_rpc(
             storage=provider_storage,
-            rpc=ethereum_config.NODE_LIST[0],
+            rpc=self.ethereum_config.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
-            contract_addresses=ethereum_config.CONTRACT_ADDRESSES,
-            chain=ethereum_config.CHAIN,
+            contract_addresses=self.ethereum_config.CONTRACT_ADDRESSES,
+            chain=self.ethereum_config.CHAIN,
         )
 
     # pylint: disable=too-many-arguments

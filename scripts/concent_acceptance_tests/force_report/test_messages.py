@@ -15,10 +15,11 @@ logger = logging.getLogger(__name__)
 
 class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
-    def get_frct(self, **kwargs):
+    def get_frct(self, ttc_kwargs, **kwargs):
         return msg_factories.concents.ForceReportComputedTaskFactory(
             **self.gen_rtc_kwargs('report_computed_task__'),
-            **self.gen_ttc_kwargs('report_computed_task__task_to_compute__'),
+            **{'report_computed_task__task_to_compute':
+                   self.gen_ttc(**ttc_kwargs)},
             **kwargs,
         )
 
@@ -30,7 +31,9 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
     def test_send_ttc_deadline_float(self):
         deadline = calendar.timegm(time.gmtime()) + \
                    datetime.timedelta(days=1, microseconds=123).total_seconds()
-        frct = self.get_frct(report_computed_task__task_to_compute__compute_task_def__deadline=deadline)  # noqa pylint:disable=line-too-long
+        frct = self.get_frct(
+            ttc_kwargs={'compute_task_def__deadline': deadline}
+        )
         response = self.provider_send(frct)
         self.assertIsNone(response)
 
@@ -43,6 +46,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline(
             **self.gen_ttc_kwargs(),
         )
+        self.ttc_add_promissory_and_sign(ttc)
         frct = msg_factories.concents.ForceReportComputedTaskFactory(
             report_computed_task__task_to_compute=ttc,
             **self.gen_rtc_kwargs('report_computed_task__'),
