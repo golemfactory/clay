@@ -455,7 +455,6 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.assert_allowed(send_mock)
 
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
-        task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
         task_session = self.task_session
         task_session.concent_service.enabled = False
@@ -473,6 +472,11 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task.header.max_price = 0
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
+
+        class X:
+            pass
+
+        task_session.task_server.get_share_options.return_value = X()
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',

@@ -57,6 +57,7 @@ class Playbook(ConcentTestPlaybook):
             'Concent request failed',
             'Problem interpreting',
             'ForceSubtaskResultsRejected',
+            'SubtaskResultsSettled',
         ]
 
         sra_trigger = [
@@ -74,7 +75,7 @@ class Playbook(ConcentTestPlaybook):
         if log_match:
             match = log_match.group(0)
             if any([t in match for t in concent_fail_triggers]):
-                self.fail("Provider<->Concent comms failure: %s " % match)
+                self.fail("Force accept comms failure: %s " % match)
                 return
             if any([t in match and 'Concent Message received' in match
                     for t in sra_trigger]):
