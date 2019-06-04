@@ -168,7 +168,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (video, frame_rate)
         for video in VIDEO_FILES
-        for frame_rate in (25,)
+        for frame_rate in (1, 25, '30000/1001', 60)
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
