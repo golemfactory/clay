@@ -407,7 +407,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task.header.subtask_timeout,
         )
         wtct_hash = msg.get_short_hash()
-        for i in range(msg.num_subtasks):
+        for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.task_id, msg.perf_index, msg.price,
                 msg.max_resource_size, msg.max_memory_size,

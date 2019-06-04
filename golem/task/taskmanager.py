@@ -387,6 +387,7 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
+    # noqa pylint: disable=too-many-arguments,too-many-return-statements
     def get_next_subtask(self,
                          node_id,
                          task_id,

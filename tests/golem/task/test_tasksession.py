@@ -65,6 +65,13 @@ class DockerEnvironmentMock(DockerEnvironment):
     SHORT_DESCRIPTION = ""
 
 
+class TestTaskSessionPep8(testutils.PEP8MixIn, TestCase):
+    PEP8_FILES = [
+        'golem/task/tasksession.py',
+        'tests/golem/task/test_tasksession.py',
+    ]
+
+
 class ConcentMessageMixin():
     def assert_concent_cancel(self, mock_call, subtask_id, message_class_name):
         self.assertEqual(mock_call[0], subtask_id)
