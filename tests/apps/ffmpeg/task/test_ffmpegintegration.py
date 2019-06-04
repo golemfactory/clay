@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 class TestFfmpegIntegration(TestTaskIntegration):
 
     VIDEO_FILES = [
-        {"resolution": (320, 240), "path": "test_video.mp4"},
-        {"resolution": (320, 240), "path": "test_video2"},
+        {"resolution": [320, 240], "path": "test_video.mp4"},
+        {"resolution": [320, 240], "path": "test_video2"},
     ]
 
     @classmethod
@@ -112,9 +112,9 @@ class TestFfmpegIntegration(TestTaskIntegration):
         (video, resolution)
         for video in VIDEO_FILES
         for resolution in (
-            (320, 240),
-            (640, 260),
-            (640, 480),
+            [320, 240],
+            [640, 260],
+            [640, 480],
         )
     )
     @pytest.mark.slow

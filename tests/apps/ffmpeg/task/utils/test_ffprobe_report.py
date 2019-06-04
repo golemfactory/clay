@@ -216,7 +216,7 @@ class TestFfprobeFormatReport(TestCase):
 
         report = FfprobeFormatReport(raw_report)
 
-        self.assertEqual(report.stream_reports[0].resolution, (560, 320))
+        self.assertEqual(report.stream_reports[0].resolution, [560, 320])
         self.assertEqual(report.stream_reports[0].pixel_format, 'yuv420p')
         self.assertEqual(report.stream_reports[0].frame_rate, 30)
 
@@ -434,8 +434,8 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'video',
                 'attribute': 'resolution',
-                'actual_value': (1920, 576),
-                'expected_value': (1024, 576),
+                'actual_value': [1920, 576],
+                'expected_value': [1024, 576],
                 'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
@@ -443,12 +443,12 @@ class TestFfprobeFormatReport(TestCase):
         ),
         (
             [('streams', 0, 'resolution')],
-            (1920, 1080),
+            [1920, 1080],
             [{
                 'location': 'video',
                 'attribute': 'resolution',
-                'actual_value': ((1920, 1080), 1024, 576),
-                'expected_value': (1024, 576),
+                'actual_value': [[1920, 1080], 1024, 576],
+                'expected_value': [1024, 576],
                 'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
@@ -456,7 +456,7 @@ class TestFfprobeFormatReport(TestCase):
         ),
         (
             [('streams', 0, 'resolution')],
-            (1024, 576),
+            [1024, 576],
             [],
         ),
 
