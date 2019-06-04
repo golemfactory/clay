@@ -34,6 +34,10 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
              "All node_integration_tests run with new, fresh keys."
     )
     parser.addoption(
+        "--granary-hostname", action="store",
+        help="The ssh hostname for the granary server to use."
+    )
+    parser.addoption(
         "--dump-output-on-fail", action="store_true",
         help="Dump the nodes' outputs on any test failure."
     )
@@ -47,6 +51,9 @@ def pytest_collection_modifyitems(config: _pytest.config.Config,
                                   items: List[_pytest.main.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
         NodeKeyReuse.disable()
+    hostname = config.getoption("--granary-hostname")
+    if hostname:
+        NodeKeyReuse.set_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):
