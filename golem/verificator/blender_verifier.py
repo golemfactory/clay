@@ -74,10 +74,12 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addErrback(failure)
 
         subtask_info = self.verification_data['subtask_info']
-        work_dir = Path(os.path.dirname(
+        root_dir = Path(os.path.dirname(
             self.verification_data['results'][0])).parent
-        res_dir = os.path.join(work_dir, 'resources')
-        tmp_dir = os.path.join(work_dir, "tmp")
+        work_dir = os.path.join(root_dir, 'work')
+        os.makedirs(work_dir, exist_ok=True)
+        res_dir = os.path.join(root_dir, 'resources')
+        tmp_dir = os.path.join(root_dir, "tmp")
 
         assert self.verification_data['resources']
 
@@ -92,8 +94,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             resources=res_dir,
             temporary=tmp_dir,
             work=work_dir,
-            output=os.path.join(work_dir, "output"),
-            logs=os.path.join(work_dir, "logs"),
+            output=os.path.join(root_dir, "output"),
+            logs=os.path.join(root_dir, "logs"),
         )
 
         extra_data = dict(
