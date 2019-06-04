@@ -102,7 +102,6 @@ class DockerTaskTestCase(
         )
         task = task_builder.build()
         task.__class__._update_task_preview = lambda self_: ()
-        task.max_pending_client_results = 5
         return task
 
     def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \

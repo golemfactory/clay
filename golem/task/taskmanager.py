@@ -16,6 +16,7 @@ from typing import (
 from zipfile import ZipFile
 
 from golem_messages import message
+from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -386,20 +387,17 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
-    def get_next_subtask(
-            self, node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size):
+    def get_next_subtask(self,
+                         node_id,
+                         task_id,
+                         estimated_performance,
+                         price,
+                         max_resource_size,
+                         max_memory_size,
+                         wtct_hash,) -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
-        id <node_id> and name. If subtask is assigned the function
-        is returning a tuple
-        :param node_id:
-        :param task_id:
-        :param estimated_performance:
-        :param price:
-        :param max_resource_size:
-        :param max_memory_size:
-        :return (ComputeTaskDef|None: Function returns a ComputeTaskDef.
-        First element is either ComputeTaskDef that describe assigned subtask
+        id <node_id>.
+        :return ComputeTaskDef that describe assigned subtask
         or None. It is recommended to call is_my_task and should_wait_for_node
         before this to find the reason why the task is not able to be picked up
         """
@@ -422,7 +420,7 @@ class TaskManager(TaskEventListener):
         if not self.task_needs_computation(task_id):
             return None
 
-        if self.should_wait_for_node(task_id, node_id):
+        if self.should_wait_for_node(task_id, node_id, wtct_hash):
             return None
 
         task = self.tasks[task_id]
@@ -461,8 +459,6 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None
 
-        task.accept_client(node_id)
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_id, ctd, price,
@@ -484,7 +480,7 @@ class TaskManager(TaskEventListener):
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
-    def should_wait_for_node(self, task_id, node_id) -> bool:
+    def should_wait_for_node(self, task_id, node_id, wtct_hash) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(
@@ -496,7 +492,7 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
-        verdict = task.should_accept_client(node_id)
+        verdict = task.should_accept_client(node_id, wtct_hash)
         logger.debug(
             "Should accept client verdict. verdict=%s, task=%s, node=%s",
             verdict,

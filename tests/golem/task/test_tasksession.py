@@ -1247,16 +1247,13 @@ class TestOfferChosen(TestCase):
             ),
         )
         self.ts = TaskSession(conn)
+        self.ts.key_id = 'deadbeef'
         self.msg = msg_factories.tasks.WantToComputeTaskFactory()
 
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
     def test_ctd_is_none(self, mock_cat, *_):
         self.ts.task_manager.get_next_subtask.return_value = None
-        self.ts._offer_chosen(
-            msg=self.msg,
-            node_id='deadbeef',
-            is_chosen=True,
-        )
+        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         mock_cat.assert_called_once_with(
             self.msg.task_id,
             message.tasks.CannotAssignTask.REASON.NoMoreSubtasks,
@@ -1273,7 +1270,7 @@ class TestOfferChosen(TestCase):
         self.ts.task_manager.get_next_subtask.return_value = ctd
 
         # when
-        self.ts._offer_chosen(True, self.msg, node_id='deadbeef')
+        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
 
         # then
         self.assertEqual(self.ts.task_manager.get_next_subtask.call_count, 3)

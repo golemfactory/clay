@@ -48,9 +48,6 @@ def log_key_error(*args, **_):
     return False
 
 
-MAX_PENDING_CLIENT_RESULTS = 1
-
-
 class CoreTaskTypeInfo(TaskTypeInfo):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
@@ -106,7 +103,6 @@ class CoreTask(Task):
     def __init__(self,
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
                  total_tasks=1):
@@ -174,7 +170,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.max_pending_client_results = max_pending_client_results
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -384,8 +379,6 @@ class CoreTask(Task):
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log",
@@ -476,25 +469,20 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def should_accept_client(self, node_id):
+    def should_accept_client(self, node_id, wtct_hash=None):
         client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or \
-                client.started() - finishing >= max_finishing:
+        elif client.should_wait(wtct_hash):
             return AcceptClientVerdict.SHOULD_WAIT
 
         return AcceptClientVerdict.ACCEPTED
 
-    def accept_client(self, node_id):
-        verdict = self.should_accept_client(node_id)
+    def accept_client(self, node_id, wtct_hash=None, num_subtasks=1):
+        verdict = self.should_accept_client(node_id, wtct_hash)
 
-        if verdict == AcceptClientVerdict.ACCEPTED:
-            client = TaskClient.assert_exists(node_id, self.counting_nodes)
-            client.start()
+        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        client.start(wtct_hash, num_subtasks)
 
         return verdict
 

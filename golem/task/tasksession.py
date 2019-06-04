@@ -335,7 +335,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
             return
 
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id,
+                                                  msg.get_short_hash()):
             logger.warning("Can not accept offer: Still waiting on results."
                            "task_id=%r, node=%r", msg.task_id, node_name_id)
             task = self.task_manager.tasks[msg.task_id]
@@ -376,18 +377,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         d = OfferPool.add(msg.task_id, offer)
-        logger.debug(
-            "Offer accepted & added to pool. offer=%s",
-            offer,
-        )
-        d.addCallback(
-            functools.partial(
-                self._offer_chosen,
-                msg=msg,
-                node_id=self.key_id,
-            ),
-        )
-        # Adding errback won't be needed in asyncio
+        logger.debug("Offer accepted & added to pool. offer=%s", offer)
+        d.addCallback(functools.partial(self._offer_chosen, msg=msg))
         d.addErrback(golem_async.default_errback)
 
     @defer.inlineCallbacks
@@ -395,9 +386,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self,
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
-            node_id: str,
     ):
-        node_name_id = common.short_node_id(node_id)
+        node_name_id = common.short_node_id(self.key_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
             logger.info(
@@ -410,17 +400,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         logger.info("Offer confirmed, assigning subtask(s)")
         task = self.task_manager.tasks[msg.task_id]
+
         task_state = self.task_manager.tasks_states[msg.task_id]
         price = taskkeeper.compute_subtask_value(
             msg.price,
             task.header.subtask_timeout,
         )
-        task.max_pending_client_results = msg.num_subtasks
-
+        wtct_hash = msg.get_short_hash()
         for i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
-                self.key_id, msg.task_id, msg.perf_index,
-                msg.price, msg.max_resource_size, msg.max_memory_size)
+                self.key_id, msg.task_id, msg.perf_index, msg.price,
+                msg.max_resource_size, msg.max_memory_size,
+                wtct_hash)
 
             logger.debug(
                 "CTD generated. task_id=%s, node=%s ctd=%s",
@@ -432,6 +423,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if ctd is None:
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
+
+            task.accept_client(self.key_id, wtct_hash, msg.num_subtasks)
 
             resources_result = None
             if ctd["resources"]:

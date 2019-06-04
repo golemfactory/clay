@@ -337,11 +337,11 @@ class Task(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def should_accept_client(self, node_id):
+    def should_accept_client(self, node_id, wtct_hash=None):
         pass
 
     @abc.abstractmethod
-    def accept_client(self, node_id):
+    def accept_client(self, node_id, wtct_hash=None, num_subtasks=1) -> bool:
         pass
 
     # pylint: disable=unused-argument, no-self-use
