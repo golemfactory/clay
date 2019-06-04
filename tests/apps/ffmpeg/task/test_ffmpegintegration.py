@@ -13,6 +13,7 @@ from apps.transcoding.common import TranscodingTaskBuilderException, \
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
+from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
@@ -30,18 +31,17 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-
-        cls._ffprobe_report_set = None
-        # Uncomment this to enable report generation:
-        #from tests.apps.ffmpeg.task.ffprobe_report_set import FfprobeReportSet
-        #cls._ffprobe_report_set = FfprobeReportSet()
+        cls._ffprobe_report_set = FfprobeReportSet()
 
     @classmethod
     def tearDownClass(cls):
         super().tearDownClass()
-
-        if cls._ffprobe_report_set is not None:
-            print(cls._ffprobe_report_set.to_markdown())
+        report_file_name = os.path.join(
+            cls.root_dir,
+            'ffmpeg-integration-test-transcoding-diffs.md'
+        )
+        with open(report_file_name, 'w') as file:
+            file.write(cls._ffprobe_report_set.to_markdown())
 
     def setUp(self):
         super().setUp()
