@@ -81,6 +81,11 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
+class FaucetRequests(Enum):
+    ETH = 0
+    GNT = 1
+
+
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
@@ -110,7 +115,7 @@ class TransactionSystem(LoopingCallService):
         self._incomes_keeper = IncomesKeeper()
         self._payment_processor: Optional[PaymentProcessor] = None
 
-        self._gnt_faucet_requested = False
+        self._faucet_requested: Optional[FaucetRequests] = None
         self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
             (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
@@ -808,17 +813,21 @@ class TransactionSystem(LoopingCallService):
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.005 * denoms.ether:
-            log.info("Requesting tETH from faucet")
-            tETH_faucet_donate(self._sci.get_eth_address())
+            if self._faucet_requested != FaucetRequests.ETH:
+                log.info("Requesting tETH from faucet")
+                if tETH_faucet_donate(self._sci.get_eth_address()):
+                    self._faucet_requested = FaucetRequests.ETH
             return
+        if self._faucet_requested == FaucetRequests.ETH:
+            self._faucet_requested = None
 
         if self._gnt_balance + self._gntb_balance < 100 * denoms.ether:
-            if not self._gnt_faucet_requested:
+            if self._faucet_requested != FaucetRequests.GNT:
                 log.info("Requesting GNT from faucet")
                 self._sci.request_gnt_from_faucet()
-                self._gnt_faucet_requested = True
-        else:
-            self._gnt_faucet_requested = False
+                self._faucet_requested = FaucetRequests.GNT
+            return
+        self._faucet_requested = None
 
     @sci_required()
     def _refresh_balances(self) -> None:
