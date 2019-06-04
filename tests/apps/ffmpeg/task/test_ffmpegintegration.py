@@ -2,7 +2,8 @@ import os
 import logging
 
 from ffmpeg_tools.codecs import VideoCodec
-from ffmpeg_tools.formats import Container, list_matching_resolutions
+from ffmpeg_tools.formats import Container, list_matching_resolutions, \
+    list_supported_frame_rates
 from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
     UnsupportedVideoCodecConversion
 
@@ -167,11 +168,12 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (video, frame_rate)
         for video in VIDEO_FILES
-        for frame_rate in ('25/1',)
+        for frame_rate in (25,)
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
+        assert frame_rate in list_supported_frame_rates()
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="frame rate change",
