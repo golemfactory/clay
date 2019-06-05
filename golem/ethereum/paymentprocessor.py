@@ -293,12 +293,12 @@ class PaymentProcessor:
     def update_overdue(self) -> None:
         """Sets overdue status for awaiting payments"""
 
-        processed_ts_deadline = datetime.datetime.now(
+        created_deadline = datetime.datetime.now(
             tz=datetime.timezone.utc
         ) - PAYMENT_DEADLINE_TD
         counter = 0
         for payment in self._awaiting:
-            if payment.created_date >= processed_ts_deadline:
+            if payment.created_date >= created_deadline:
                 # All subsequent payments won't be overdue
                 # because list is sorted.
                 break
