@@ -51,6 +51,7 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str) -> None:
     print("%s shut down correctly." % node_type)
 
 
+
 def _params_from_dict(d: typing.Dict[str, typing.Any]) -> typing.List[str]:
     return list(
         itertools.chain.from_iterable(

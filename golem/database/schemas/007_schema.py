@@ -170,7 +170,7 @@ def migrate(migrator, _database, **_kwargs):
                               index=True)
         payee = pw.RawCharField()
         value = pw.HexIntegerField()
-        details = pw.PaymentDetailsField()
+        details = pw.TextField()
         processed_ts = pw.IntegerField(null=True)
 
         class Meta:

@@ -21,7 +21,7 @@ from requests import HTTPError
 from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str
+from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -368,15 +368,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
         task_id = "tid"
 
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, 'tid', 27.18, 1, 1)
+                node_id, "127.0.0.1", 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
@@ -405,8 +404,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -419,7 +417,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id,
+                node_id, "127.0.0.1", task_id,
                 provider_perf,
                 DEFAULT_MAX_MEMORY_SIZE_KB, 1)
 
@@ -450,8 +448,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task(estimated_memory=estimated_memory)
         task_id = task.header.task_id
@@ -464,7 +461,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -493,8 +490,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -513,7 +509,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ts.config_desc.computing_trust + 0.2
         # when/then
         assert ts.should_accept_provider(
-            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
@@ -521,7 +517,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ts.config_desc.computing_trust
         # when/then
         assert ts.should_accept_provider(
-            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
@@ -530,7 +526,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -558,8 +554,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -576,7 +571,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -600,7 +595,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -615,7 +609,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(node_id, "127.0.0.1",
-                                                 node_name, task_id, 99, 3, 4)
+                                                 task_id, 99, 3, 4)
 
             # then
             assert not accepted
@@ -643,8 +637,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -664,7 +657,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             assert not ts.should_accept_provider(
                 node_id=node_id,
                 address="127.0.0.1",
-                node_name=node_name,
                 task_id=task_id,
                 provider_perf=DEFAULT_PROVIDER_PERF,
                 max_resource_size=DEFAULT_MAX_RESOURCE_SIZE_KB,
@@ -688,7 +680,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.acl_ip.disallow("127.0.0.1")
         # then
         assert not ts.should_accept_provider(
-            "XYZ", "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            "XYZ", "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
         listener.assert_called_once_with(
             sender=ANY,
@@ -896,19 +888,20 @@ class TestTaskServer2(TaskServerBase):
             ts.task_manager.activeStatus[0]
         subtask = ts.task_manager.get_next_subtask(
             "DEF",
-            "DEF",
             task_id,
             1000, 10,
-            5, 10,
-            "10.10.10.10")
+            5, 10)
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            "xxyyzz",
-            expected_value,
-            "eth_address")
+            subtask_id="xxyyzz",
+            value=expected_value,
+            eth_address="eth_address",
+            node_id=task_mock.header.task_owner.key,  # pylint: disable=no-member
+            task_id=task_mock.header.task_id,
+        )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):

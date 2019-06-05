@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 from pathlib import Path
 import re
 import sys
@@ -6,6 +6,8 @@ import tempfile
 import time
 import traceback
 import typing
+
+from bidict import bidict
 
 from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
@@ -35,9 +37,70 @@ def print_error(error):
     print(f"Error: {error}")
 
 
+def catch_and_print_exceptions(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except:
+            traceback.print_exc()
+    return wrapper
+
+
 class NodeTestPlaybook:
     INTERVAL = 1
     RECONNECT_COUNTDOWN_INITIAL = 10
+
+    def __init__(self, config: 'TestConfigBase') -> None:
+        self.config = config
+
+        def setup_datadir(
+                node_id: NodeId,
+                node_configs:
+                'typing.Union[NodeConfig, typing.List[NodeConfig]]') \
+                -> None:
+            if isinstance(node_configs, list):
+                datadir: typing.Optional[str] = None
+                for node_config in node_configs:
+                    if node_config.datadir is None:
+                        if datadir is None:
+                            datadir = helpers.mkdatadir(node_id.value)
+                        node_config.datadir = datadir
+            else:
+                if node_configs.datadir is None:
+                    node_configs.datadir = helpers.mkdatadir(node_id.value)
+
+        for node_id, node_configs in self.config.nodes.items():
+            setup_datadir(node_id, node_configs)
+
+        self.output_path = tempfile.mkdtemp(
+            prefix="golem-integration-test-output-")
+        helpers.set_task_output_path(self.config.task_dict, self.output_path)
+
+        self.nodes: 'typing.Dict[NodeId, Popen]' = {}
+        self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
+        self.nodes_ports: typing.Dict[NodeId, int] = {}
+        self.nodes_keys: bidict[NodeId, str] = bidict()
+        self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
+
+        self._loop = task.LoopingCall(self.run)
+        self.start_time: float = 0
+        self.exit_code = 0
+        self.current_step = 0
+        self.known_tasks: typing.Optional[typing.Set[str]] = None
+        self.task_id: typing.Optional[str] = None
+        self.nodes_started = False
+        self.task_in_creation = False
+        self.subtasks: typing.Dict[NodeId, typing.Set[str]] = {}
+
+        self.reconnect_attempts_left = 7
+        self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
+        self.has_requested_eth: bool = False
+        self.retry_counter = 0
+        self.retry_limit = 128
+
+        self.start_nodes()
+        self.started = True
 
     @property
     def task_settings_dict(self) -> dict:
@@ -85,10 +148,12 @@ class NodeTestPlaybook:
             self._success()
             return
         self.current_step += 1
+        self.retry_counter = 0
 
     def previous(self):
         assert (self.current_step > 0), "Cannot move back past step 0"
         self.current_step -= 1
+        self.retry_counter = 0
 
     def _wait_gnt_eth(self, node_id: NodeId, result):
         gnt_balance = helpers.to_ether(result.get('gnt'))
@@ -97,11 +162,15 @@ class NodeTestPlaybook:
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
             print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            # FIXME: Remove this sleep when golem handles it ( #4221 )
+            if self.has_requested_eth:
+                time.sleep(30)
             self.next()
 
         else:
             print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
                 node_id.value, gnt_balance, gntb_balance, eth_balance))
+            self.has_requested_eth = True
             time.sleep(15)
 
     def step_wait_for_gnt(self, node_id: NodeId):
@@ -283,13 +352,20 @@ class NodeTestPlaybook:
             print("Failed to find the output.")
             self.fail()
 
-    def step_get_subtasks(self, node_id: NodeId = NodeId.requestor):
+    def step_get_subtasks(self, node_id: NodeId = NodeId.requestor,
+                          statuses: typing.Set[str] = {'Finished'}):
         def on_success(result):
-            self.subtasks = {
-                s.get('subtask_id')
+            subtasks = {
+                self.nodes_keys.inverse[s['node_id']]: s.get('subtask_id')
                 for s in result
-                if s.get('status') == 'Finished'
+                if s.get('status') in statuses
             }
+            for k, v in subtasks.items():
+                if k not in self.subtasks:
+                    self.subtasks[k] = {v}
+                else:
+                    self.subtasks[k].add(v)
+
             if not self.subtasks:
                 self.fail("No subtasks found???")
             self.next()
@@ -306,10 +382,10 @@ class NodeTestPlaybook:
                 for p in result
                 if p.get('payer') == self.nodes_keys[from_node]
             }
-            unpaid = self.subtasks - payments
+            unpaid = self.subtasks[node_id] - payments
             if unpaid:
                 print("Found subtasks with no matching payments: %s" % unpaid)
-                self.fail()
+                time.sleep(3)
                 return
 
             print("All subtasks accounted for.")
@@ -402,8 +478,8 @@ class NodeTestPlaybook:
             port=node_config.rpc_port,
             datadir=node_config.datadir,
             *args,
-            on_success=on_success,
-            on_error=on_error,
+            on_success=catch_and_print_exceptions(on_success),
+            on_error=catch_and_print_exceptions(on_error),
             **kwargs,
         )
 
@@ -446,6 +522,9 @@ class NodeTestPlaybook:
                 self.fail("A node exited abnormally.")
 
         try:
+            self.retry_counter += 1
+            if self.retry_counter >= self.retry_limit:
+                raise Exception(f"Step tried {self.retry_limit} times, failing")
             method = self.current_step_method
             return method(self)
         except Exception as e:  # noqa pylint:disable=too-broad-exception
@@ -455,54 +534,6 @@ class NodeTestPlaybook:
             traceback.print_tb(tb)
             self.fail()
             return
-
-    def __init__(self, config: 'TestConfigBase') -> None:
-        self.config = config
-
-        def setup_datadir(
-                node_id: NodeId,
-                node_configs:
-                'typing.Union[NodeConfig, typing.List[NodeConfig]]') \
-                -> None:
-            if isinstance(node_configs, list):
-                datadir: typing.Optional[str] = None
-                for node_config in node_configs:
-                    if node_config.datadir is None:
-                        if datadir is None:
-                            datadir = helpers.mkdatadir(node_id.value)
-                        node_config.datadir = datadir
-            else:
-                if node_configs.datadir is None:
-                    node_configs.datadir = helpers.mkdatadir(node_id.value)
-
-        for node_id, node_configs in self.config.nodes.items():
-            setup_datadir(node_id, node_configs)
-
-        self.output_path = tempfile.mkdtemp(
-            prefix="golem-integration-test-output-")
-        helpers.set_task_output_path(self.config.task_dict, self.output_path)
-
-        self.nodes: 'typing.Dict[NodeId, Popen]' = {}
-        self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
-        self.nodes_ports: typing.Dict[NodeId, int] = {}
-        self.nodes_keys: typing.Dict[NodeId, str] = {}
-        self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
-
-        self._loop = task.LoopingCall(self.run)
-        self.start_time: float = 0
-        self.exit_code = 0
-        self.current_step = 0
-        self.known_tasks: typing.Optional[typing.Set[str]] = None
-        self.task_id: typing.Optional[str] = None
-        self.nodes_started = False
-        self.task_in_creation = False
-        self.subtasks: typing.Optional[typing.Set[str]] = None
-
-        self.reconnect_attempts_left = 7
-        self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
-
-        self.start_nodes()
-        self.started = True
 
     def start(self) -> None:
         self.start_time = time.time()

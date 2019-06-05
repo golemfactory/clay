@@ -7,7 +7,7 @@ from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import nt_path_to_posix_path, is_osx, is_windows
+from golem.core.common import nt_path_to_posix_path, is_windows
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -126,20 +126,14 @@ class DockerJob:
 
         host_cfg = client.create_host_config(**self.host_config)
 
-        # FIXME: Make the entrypoint.sh behaviour consistent between Windows
-        #  and other OSes. See issue #4102
-        if is_windows():
-            command = self.entrypoint
-        else:
-            command = [self.entrypoint]
-
         self.container = client.create_container(
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=command,
+            command=self.entrypoint,
             working_dir=self.WORK_DIR,
             environment=self.environment,
+            user=None if is_windows() else os.getuid(),
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:
@@ -294,12 +288,3 @@ class DockerJob:
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
-
-    @staticmethod
-    def get_environment() -> dict:
-        if is_windows():
-            return {}
-        if is_osx():
-            return dict(OSX_USER=1)
-
-        return dict(LOCAL_USER_ID=os.getuid())

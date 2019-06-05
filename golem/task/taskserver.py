@@ -3,6 +3,7 @@ import functools
 import itertools
 import logging
 import os
+import shutil
 import time
 import weakref
 from enum import Enum
@@ -312,7 +313,6 @@ class TaskServer(
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price)
             wtct = message.tasks.WantToComputeTask(
-                node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
@@ -357,6 +357,13 @@ class TaskServer(
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
+
+        # this is purely for tests
+        if self.config_desc.overwrite_results:
+            for file_path in result['data']:
+                shutil.copyfile(
+                    src=self.config_desc.overwrite_results,
+                    dst=file_path)
 
         header = self.task_keeper.task_headers[task_id]
 
@@ -568,20 +575,25 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
+                      *, unlock_funds=True):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
+        task = self.task_manager.tasks[task_id]
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
-            subtask_id,
-            value,
-            eth_address,
+            node_id=task.header.task_owner.key,
+            task_id=task.header.task_id,
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=eth_address,
         )
-        self.client.funds_locker.remove_subtask(task_id)
+        if unlock_funds:
+            self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
@@ -701,13 +713,12 @@ class TaskServer(
             self,
             node_id,
             address,
-            node_name,
             task_id,
             provider_perf,
             max_resource_size,
             max_memory_size):
 
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id not in self.task_manager.tasks:
