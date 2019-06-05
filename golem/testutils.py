@@ -259,8 +259,8 @@ class PEP8MixIn(object):
 
 def dont_remove_dirs_on_failed_test(fun):
     @wraps(fun)
-    def wrapper(self):
-        fun(self)
+    def wrapper(self, *args, **kwargs):
+        fun(self, *args, **kwargs)
         # If test fails, we won't reach this point, but tearDown
         # will be called and directories won't be removed.
         self.REMOVE_TMP_DIRS = True
