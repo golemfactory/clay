@@ -199,12 +199,13 @@ class TestFfprobeFormatReport(TestCase):
         self.assertCountEqual(diff, expected_diff)
 
     def test_report_should_have_video_fields_with_proper_values(self):
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['width'] == 560
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['height'] == 320
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['pix_fmt'] == 'yuv420p'
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['r_frame_rate'] == '30/1'
+        raw_report = copy.deepcopy(RAW_REPORT_WITH_MPEG4)
+        raw_report['streams'][0]['width'] = 560
+        raw_report['streams'][0]['height'] = 320
+        raw_report['streams'][0]['pix_fmt'] = 'yuv420p'
+        raw_report['streams'][0]['r_frame_rate'] = '30/1'
 
-        report = FfprobeFormatReport(RAW_REPORT_WITH_MPEG4)
+        report = FfprobeFormatReport(raw_report)
 
         self.assertEqual(report.stream_reports[0].resolution, (560, 320))
         self.assertEqual(report.stream_reports[0].pixel_format, 'yuv420p')
@@ -222,10 +223,12 @@ class TestFfprobeFormatReport(TestCase):
         )
 
     def test_report_should_have_audio_fields_with_proper_values(self):
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['sample_rate'] == '48000'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['channels'] == 1
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['channel_layout'] == 'mono'
-        assert not hasattr(RAW_REPORT_WITH_MPEG4['streams'][1], 'sample_format')
+        raw_report = copy.deepcopy(RAW_REPORT_WITH_MPEG4)
+        raw_report['streams'][1]['sample_rate'] = '48000'
+        raw_report['streams'][1]['channels'] = 1
+        raw_report['streams'][1]['channel_layout'] = 'mono'
+        if hasattr(raw_report['streams'][1], 'sample_format'):
+            del raw_report['streams'][1]['sample_format']
 
         report = FfprobeFormatReport(RAW_REPORT_WITH_MPEG4)
 
@@ -246,13 +249,14 @@ class TestFfprobeFormatReport(TestCase):
         )
 
     def test_report_should_have_audio_and_video_fields_with_proper_values(self):
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['duration'] == '5.566667'
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['bit_rate'] == '499524'
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['nb_frames'] == '167'
+        raw_report = copy.deepcopy(RAW_REPORT_WITH_MPEG4)
+        raw_report['streams'][0]['duration'] = '5.566667'
+        raw_report['streams'][0]['bit_rate'] = '499524'
+        raw_report['streams'][0]['nb_frames'] = '167'
 
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['duration'] == '5.640000'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['bit_rate'] == '64275'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['nb_frames'] == '235'
+        raw_report['streams'][1]['duration'] = '5.640000'
+        raw_report['streams'][1]['bit_rate'] = '64275'
+        raw_report['streams'][1]['nb_frames'] = '235'
 
         report = FfprobeFormatReport(RAW_REPORT_WITH_MPEG4)
 
@@ -276,13 +280,14 @@ class TestFfprobeFormatReport(TestCase):
         )
 
     def test_report_should_have_stream_fields_with_proper_values(self):
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['codec_type'] == 'video'
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['codec_name'] == 'mpeg4'
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['start_time'] == '0.000000'
+        raw_report = copy.deepcopy(RAW_REPORT_WITH_MPEG4)
+        raw_report['streams'][0]['codec_type'] = 'video'
+        raw_report['streams'][0]['codec_name'] = 'mpeg4'
+        raw_report['streams'][0]['start_time'] = '0.000000'
 
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['codec_type'] == 'audio'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['codec_name'] == 'mp3'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['start_time'] == '0.000000'
+        raw_report['streams'][1]['codec_type'] = 'audio'
+        raw_report['streams'][1]['codec_name'] = 'mp3'
+        raw_report['streams'][1]['start_time'] = '0.000000'
 
         report = FfprobeFormatReport(RAW_REPORT_WITH_MPEG4)
 
@@ -301,13 +306,14 @@ class TestFfprobeFormatReport(TestCase):
         )
 
     def test_report_should_have_format_fields_with_proper_values(self):
-        assert RAW_REPORT_WITH_MPEG4['streams'][0]['codec_type'] == 'video'
-        assert RAW_REPORT_WITH_MPEG4['streams'][1]['codec_type'] == 'audio'
+        raw_report = copy.deepcopy(RAW_REPORT_WITH_MPEG4)
+        raw_report['streams'][0]['codec_type'] = 'video'
+        raw_report['streams'][1]['codec_type'] = 'audio'
         assert len(RAW_REPORT_WITH_MPEG4['streams']) == 2
-        assert RAW_REPORT_WITH_MPEG4['format']['format_name'] == 'avi'
-        assert RAW_REPORT_WITH_MPEG4['format']['duration'] == '5.640000'
-        assert RAW_REPORT_WITH_MPEG4['format']['start_time'] == '0.000000'
-        assert RAW_REPORT_WITH_MPEG4['format']['nb_programs'] == 0
+        raw_report['format']['format_name'] = 'avi'
+        raw_report['format']['duration'] = '5.640000'
+        raw_report['format']['start_time'] = '0.000000'
+        raw_report['format']['nb_programs'] = 0
 
         report = FfprobeFormatReport(RAW_REPORT_WITH_MPEG4)
 
