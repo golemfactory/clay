@@ -1,6 +1,7 @@
 import json
 import os
 from pathlib import Path
+from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
@@ -122,7 +123,7 @@ def make_verdict(
 
         for crop, providers_result_image_path in zip(
                 crop_data['results'], providers_result_images_paths):
-            crop_path = os.path.join(OUTPUT_DIR, crop)
+            crop_path = get_crop_path(OUTPUT_DIR, crop)
             results_path = calculate_metrics(
                 crop_path,
                 providers_result_image_path,
@@ -213,9 +214,11 @@ def verify(  # pylint: disable=too-many-arguments
         crops_count,
         crops_borders
     )
-
+    print("blender_render_params:")
+    pprint(blender_render_parameters)
     results = blender.render(blender_render_parameters, mounted_paths)
 
-    print(results)
+    print("results:")
+    pprint(results)
 
     make_verdict(subtask_file_paths, crops, results)

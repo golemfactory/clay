@@ -70,7 +70,7 @@ def calculate_metrics(
 def _generate_path_for_providers_result_crop(reference_crop_path):
     return '{0}{1}.png'.format(
         PROVIDER_RESULT_CROP_NAME_PREFIX,
-        os.path.splitext(os.path.basename(reference_crop_path))[0]
+        os.path.splitext(os.path.basename(reference_crop_path))[0],
     )
 
 
@@ -103,6 +103,8 @@ def _load_and_prepare_images_for_comparison(
     :param top_left_corner_y: y position of crop (left, top)
     :return:
     """
+    print(f"result_image_path = {result_image_path}")
+    print(f"reference_crop_path = {reference_crop_path}")
     providers_result_image = convert_to_png_if_needed(result_image_path)
     reference_crop = convert_to_png_if_needed(reference_crop_path)
     (crop_width, crop_height) = reference_crop.size
