@@ -257,7 +257,7 @@ class PEP8MixIn(object):
                          "Found code style errors (and warnings).")
 
 
-def dont_remove_dirs_on_failed_test(fun):
+def remove_temporary_dirtree_if_test_passed(fun):
     @wraps(fun)
     def wrapper(self, *args, **kwargs):
         fun(self, *args, **kwargs)
