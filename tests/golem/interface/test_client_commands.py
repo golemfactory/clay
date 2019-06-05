@@ -49,7 +49,12 @@ class TestAccount(unittest.TestCase):
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
-        client.get_payment_address.return_value = 'f0f0f0ababab'
+
+        def call(uri, *_args, **_kwargs):
+            if uri == 'pay.ident':
+                return 'f0f0f0ababab'
+            return None
+        client._call.side_effect = call
         client.get_balance.return_value = {
             'gnt': 3 * denoms.ether,
             'av_gnt': 2 * denoms.ether,
