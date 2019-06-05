@@ -298,7 +298,7 @@ class WalletOperation(BaseModel):
     tx_hash = BlockchainTransactionField(null=True)
     direction = StringEnumField(enum_type=DIRECTION)
     operation_type = StringEnumField(enum_type=TYPE)
-    status = StringEnumField(enum_type=STATUS, default=STATUS.awaiting.value)
+    status = StringEnumField(enum_type=STATUS)
     sender_address = CharField()
     recipient_address = CharField()
     amount = HexIntegerField(null=True)

@@ -1,3 +1,4 @@
+import datetime
 import functools
 import json
 import logging
@@ -5,7 +6,6 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime
 from pathlib import Path
 from typing import (
     Any,
@@ -800,7 +800,7 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _refresh_balances(self) -> None:
         self._sci: SmartContractsInterface
-        now = time.mktime(datetime.today().timetuple())
+        now = time.mktime(datetime.datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
         # Sometimes web3 may throw but it's fine here, we'll just update the

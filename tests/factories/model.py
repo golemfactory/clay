@@ -33,7 +33,10 @@ class TaskPayment(Factory):
     class Meta:
         model = model.TaskPayment
 
-    wallet_operation = SubFactory(WalletOperation)
+    wallet_operation = SubFactory(
+        WalletOperation,
+        status=model.WalletOperation.STATUS.awaiting,
+    )
     node = '0xadbeef' + 'deadbeef' * 15
     task = Faker('uuid4')
     subtask = Faker('uuid4')

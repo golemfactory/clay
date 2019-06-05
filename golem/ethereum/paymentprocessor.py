@@ -171,6 +171,7 @@ class PaymentProcessor:
                 recipient_address=eth_addr,
                 currency=model.WalletOperation.CURRENCY.GNT,
                 amount=value,
+                status=model.WalletOperation.STATUS.awaiting,
             ),
             node=node_id,
             task=task_id,
