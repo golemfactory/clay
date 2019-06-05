@@ -4,6 +4,7 @@ import logging
 import sys
 import types
 from abc import ABC, abstractmethod
+from enum import Enum
 
 from golem_messages import datastructures
 
@@ -14,6 +15,7 @@ logger = logging.getLogger('golem.core.simpleserializer')
 
 class DictCoder:
     cls_key = 'py/object'
+    enum_key = 'py/enum'
     deep_serialization = True
     builtin_types = [i for i in types.__dict__.values() if isinstance(i, type)]
 
@@ -48,11 +50,29 @@ class DictCoder:
         obj = sub_cls.__new__(sub_cls)
 
         for k, v in list(dictionary.items()):
-            if cls._is_class(v):
-                setattr(obj, k, cls.obj_from_dict(v))
-            else:
-                setattr(obj, k, cls._from_dict_traverse_obj(v))
+            setattr(obj, k, cls._from_dict_traverse_obj(v))
         return obj
+
+    @classmethod
+    def _enum_to_dict(cls, obj: Enum):
+        result = dict()
+        result[cls.enum_key] = "{}.{}".format(
+            cls.module_and_class(obj), obj.name)
+        return result
+
+    @classmethod
+    def _enum_from_dict(cls, dictionary):
+        path = dictionary[cls.enum_key]
+        idx1 = path.rfind('.')
+        idx2 = path.rfind('.', 0, idx1)
+
+        module_name = path[:idx2]
+        cls_name = path[idx2+1:idx1]
+        enum_name = path[idx1+1:]
+
+        module = sys.modules[module_name]
+        cls = getattr(module, cls_name)
+        return getattr(cls, enum_name)
 
     @classmethod
     def _to_dict_traverse_dict(cls, dictionary, typed=True):
@@ -81,6 +101,8 @@ class DictCoder:
             )
         elif isinstance(obj, datastructures.Container):
             return obj.to_dict()
+        elif isinstance(obj, Enum):
+            return cls._enum_to_dict(obj)
         elif cls.deep_serialization:
             if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
                 return cls.obj_to_dict(obj, typed)
@@ -96,18 +118,16 @@ class DictCoder:
     @classmethod
     def _from_dict_traverse_obj(cls, obj):
         if isinstance(obj, dict):
-            if cls._is_class(obj):
+            if cls.cls_key in obj:
                 return cls.obj_from_dict(obj)
+            if cls.enum_key in obj:
+                return cls._enum_from_dict(obj)
             return cls._from_dict_traverse_dict(obj)
         elif isinstance(obj, str):
             return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             return obj.__class__([cls._from_dict_traverse_obj(o) for o in obj])
         return obj
-
-    @classmethod
-    def _is_class(cls, obj):
-        return isinstance(obj, dict) and cls.cls_key in obj
 
     @classmethod
     def _is_builtin(cls, obj):

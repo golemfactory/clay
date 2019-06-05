@@ -64,5 +64,6 @@
   "task_type":"Blender",
   "subtask_timeout":1200,
   "subtasks_count":6,
-  "concent_enabled": false
+  "concent_enabled": false,
+  "run_verification":{"py/enum":"apps.core.task.coretaskstate.RunVerification.enabled"}
 }

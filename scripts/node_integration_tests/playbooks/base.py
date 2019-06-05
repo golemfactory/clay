@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 from pathlib import Path
 import re
 import sys
@@ -6,6 +6,8 @@ import tempfile
 import time
 import traceback
 import typing
+
+from bidict import bidict
 
 from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
@@ -33,6 +35,16 @@ def print_result(result):
 
 def print_error(error):
     print(f"Error: {error}")
+
+
+def catch_and_print_exceptions(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        try:
+            f(*args, **kwargs)
+        except:
+            traceback.print_exc()
+    return wrapper
 
 
 class NodeTestPlaybook:
@@ -68,7 +80,7 @@ class NodeTestPlaybook:
         self.nodes: 'typing.Dict[NodeId, Popen]' = {}
         self.output_queues: 'typing.Dict[NodeId, Queue]' = {}
         self.nodes_ports: typing.Dict[NodeId, int] = {}
-        self.nodes_keys: typing.Dict[NodeId, str] = {}
+        self.nodes_keys: bidict[NodeId, str] = bidict()
         self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
 
         self._loop = task.LoopingCall(self.run)
@@ -79,12 +91,13 @@ class NodeTestPlaybook:
         self.task_id: typing.Optional[str] = None
         self.nodes_started = False
         self.task_in_creation = False
-        self.subtasks: typing.Optional[typing.Set[str]] = None
+        self.subtasks: typing.Dict[NodeId, typing.Set[str]] = {}
 
         self.reconnect_attempts_left = 7
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
         self.has_requested_eth: bool = False
         self.retry_counter = 0
+        self.retry_limit = 128
 
         self.start_nodes()
         self.started = True
@@ -339,13 +352,20 @@ class NodeTestPlaybook:
             print("Failed to find the output.")
             self.fail()
 
-    def step_get_subtasks(self, node_id: NodeId = NodeId.requestor):
+    def step_get_subtasks(self, node_id: NodeId = NodeId.requestor,
+                          statuses: typing.Set[str] = {'Finished'}):
         def on_success(result):
-            self.subtasks = {
-                s.get('subtask_id')
+            subtasks = {
+                self.nodes_keys.inverse[s['node_id']]: s.get('subtask_id')
                 for s in result
-                if s.get('status') == 'Finished'
+                if s.get('status') in statuses
             }
+            for k, v in subtasks.items():
+                if k not in self.subtasks:
+                    self.subtasks[k] = {v}
+                else:
+                    self.subtasks[k].add(v)
+
             if not self.subtasks:
                 self.fail("No subtasks found???")
             self.next()
@@ -362,7 +382,7 @@ class NodeTestPlaybook:
                 for p in result
                 if p.get('payer') == self.nodes_keys[from_node]
             }
-            unpaid = self.subtasks - payments
+            unpaid = self.subtasks[node_id] - payments
             if unpaid:
                 print("Found subtasks with no matching payments: %s" % unpaid)
                 time.sleep(3)
@@ -458,8 +478,8 @@ class NodeTestPlaybook:
             port=node_config.rpc_port,
             datadir=node_config.datadir,
             *args,
-            on_success=on_success,
-            on_error=on_error,
+            on_success=catch_and_print_exceptions(on_success),
+            on_error=catch_and_print_exceptions(on_error),
             **kwargs,
         )
 
@@ -503,8 +523,8 @@ class NodeTestPlaybook:
 
         try:
             self.retry_counter += 1
-            if self.retry_counter >= 100:
-                raise Exception("Step tried 100 times, failing")
+            if self.retry_counter >= self.retry_limit:
+                raise Exception(f"Step tried {self.retry_limit} times, failing")
             method = self.current_step_method
             return method(self)
         except Exception as e:  # noqa pylint:disable=too-broad-exception

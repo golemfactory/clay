@@ -50,13 +50,19 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.msg.generate_ethsig(self.requestor_keys.raw_privkey)
         self.msg.sign_promissory_note(self.requestor_keys.raw_privkey)
+        self.ethereum_config = EthereumConfig()
         self.msg.sign_concent_promissory_note(
             deposit_contract_address=getattr(
-                EthereumConfig, 'deposit_contract_address'),
+                self.ethereum_config, 'deposit_contract_address'),
             private_key=self.requestor_keys.raw_privkey
         )
         self.msg.sign_message(self.requestor_keys.raw_privkey)  # noqa go home pylint, you're drunk pylint: disable=no-value-for-parameter
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+
+        self.task_session.task_server.client\
+            .transaction_system.deposit_contract_address = \
+            self.ethereum_config.deposit_contract_address
+
         self.task_session.concent_service.enabled = True
         self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
@@ -211,7 +217,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
     def test_bad_concent_promissory_note_sig(self, send_mock, *_):
         self.msg.sign_concent_promissory_note(
             deposit_contract_address=getattr(
-                EthereumConfig, 'deposit_contract_address'),
+                self.ethereum_config, 'deposit_contract_address'),
             private_key=self.different_keys.raw_privkey
         )
         self.task_session._react_to_task_to_compute(self.msg)
@@ -449,7 +455,6 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.assert_allowed(send_mock)
 
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
-        task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
         task_session = self.task_session
         task_session.concent_service.enabled = False
@@ -467,6 +472,11 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task.header.max_price = 0
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
+
+        class X:
+            pass
+
+        task_session.task_server.get_share_options.return_value = X()
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',

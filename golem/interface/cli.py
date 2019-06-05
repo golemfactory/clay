@@ -50,7 +50,7 @@ def disable_withdraw(
     """
     new_children = deepcopy(children)
     from golem.config.active import EthereumConfig
-    if not EthereumConfig.WITHDRAWALS_ENABLED:
+    if not EthereumConfig().WITHDRAWALS_ENABLED:
         if 'withdraw' in new_children:
             new_children.pop('withdraw')
     return new_children
