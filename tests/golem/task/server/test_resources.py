@@ -5,6 +5,7 @@ from golem_messages import cryptography
 from golem_messages import utils as msg_utils
 from golem_messages.factories import helpers as msg_helpers
 
+from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.task.taskkeeper import TaskHeaderKeeper
 from golem.task.server.resources import TaskResourcesMixin
 from golem.testutils import TestWithClient
@@ -17,7 +18,8 @@ class TestTaskResourcesMixin(TestWithClient):
         self.server.task_manager = self.client.task_manager
         self.server.client = self.client
         self.server.task_keeper = TaskHeaderKeeper(
-            environments_manager=self.client.environments_manager,
+            old_env_manager=self.client.environments_manager,
+            new_env_manager=NewEnvManager(),
             node=self.client.node,
             min_price=0
         )

@@ -106,22 +106,18 @@ def _assert_log_msg(logger_mock, msg):
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient):
-    def setUp(self):
+
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
         self.ccd.init_from_app_config(
             AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
-        self.ccd.max_memory_size = 1024 * 1024  # 1 GiB
-        self.ccd.num_cores = 1
         self.client.concent_service.enabled = False
         with patch(
-            'golem.network.concent.handlers_library.HandlersLibrary'
-            '.register_handler',
-        ), patch(
-            'golem.envs.docker.cpu.deferToThread',
-            lambda f, *args, **kwargs: f(*args, **kwargs)
-        ):
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
             self.ts = TaskServer(
                 node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
@@ -145,14 +141,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         '.register_handler',
     )
     @patch('golem.task.taskarchiver.TaskArchiver')
-    @patch('golem.envs.docker.cpu.deferToThread',
-           lambda f, *args, **kwargs: f(*args, **kwargs))
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
     # pylint: disable=too-many-locals,too-many-statements
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
-        ccd.max_memory_size = 1024 * 1024  # 1 GiB
-        ccd.num_cores = 1
         n = dt_p2p_factory.Node()
         ts = TaskServer(
             node=n,
@@ -263,8 +256,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ),
         )
 
-    @patch('golem.envs.docker.cpu.deferToThread',
-           lambda f, *args, **kwargs: f(*args, **kwargs))
     def test_change_config(self, *_):
         ts = self.ts
 
@@ -272,8 +263,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
         ccd2.task_request_interval = 31
-        ccd2.max_memory_size = 1024 * 1024  # 1 GiB
-        ccd2.num_cores = 1
         # ccd2.use_waiting_ttl = False
         ts.change_config(ccd2)
         self.assertEqual(ts.config_desc, ccd2)
@@ -860,8 +849,6 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
 
 
 # pylint: disable=too-many-ancestors
-@patch('golem.envs.docker.cpu.deferToThread',
-       lambda f, *args, **kwargs: f(*args, **kwargs))
 class TestTaskServer2(TaskServerBase):
 
     @patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
@@ -915,8 +902,6 @@ class TestTaskServer2(TaskServerBase):
 # pylint: disable=too-many-ancestors
 class TestSubtaskWaiting(TaskServerBase):
 
-    @patch('golem.envs.docker.cpu.deferToThread',
-           lambda f, *args, **kwargs: f(*args, **kwargs))
     def test_requested_tasks(self, *_):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -928,7 +913,8 @@ class TestSubtaskWaiting(TaskServerBase):
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
-    def setUp(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
@@ -943,19 +929,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
-        with patch(
-            'golem.network.concent.handlers_library.HandlersLibrary'
-            '.register_handler'
-        ), patch(
-            'golem.envs.docker.cpu.deferToThread',
-            lambda f, *args, **kwargs: f(*args, **kwargs)
-        ):
-            config_desc = ClientConfigDescriptor()
-            config_desc.max_memory_size = 1024 * 1024  # 1 GiB
-            config_desc.num_cores = 1
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=self.node,
-                config_desc=config_desc,
+                config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
             )

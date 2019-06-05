@@ -6,9 +6,11 @@ from freezegun import freeze_time
 from golem_messages.factories import tasks as tasks_factories
 
 from golem import testutils
+from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.network.transport import tcpserver
 from golem.task import taskkeeper
 from golem.task.server import queue_ as srv_queue
+
 
 class TestTaskQueueMixin(
         testutils.DatabaseFixture,
@@ -22,7 +24,8 @@ class TestTaskQueueMixin(
         self.server.task_manager = self.client.task_manager
         self.server.client = self.client
         self.server.task_keeper = taskkeeper.TaskHeaderKeeper(
-            environments_manager=self.client.environments_manager,
+            old_env_manager=self.client.environments_manager,
+            new_env_manager=NewEnvManager(),
             node=self.client.node,
             min_price=0
         )

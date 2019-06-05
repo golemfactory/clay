@@ -1,11 +1,12 @@
 import time
 from threading import Thread
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread, EXIT_CODE_MESSAGE
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.task.taskcomputer import TaskComputer
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -22,8 +23,6 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         TestDockerJob.tearDown(self)
         TestWithDatabase.tearDown(self)
 
-    @patch('golem.envs.docker.cpu.deferToThread',
-           lambda f, *args, **kwargs: f(*args, **kwargs))
     def test_termination(self):
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
@@ -35,8 +34,11 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = \
             task_server.client.datadir
-        task_computer = TaskComputer(task_server,
-                                     use_docker_manager=False)
+        docker_cpu_env = Mock(spec=DockerCPUEnvironment)
+        task_computer = TaskComputer(
+            task_server,
+            docker_cpu_env,
+            use_docker_manager=False)
         image = DockerImage("golemfactory/base", tag="1.4")
 
         with self.assertRaises(AttributeError):

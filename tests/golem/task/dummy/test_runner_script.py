@@ -5,8 +5,7 @@ from golem.testutils import DatabaseFixture
 from tests.golem.task.dummy import runner, task
 
 
-@mock.patch('golem.envs.docker.cpu.deferToThread',
-            lambda f, *args, **kwargs: f(*args, **kwargs))
+@mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
@@ -15,7 +14,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_requesting(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node):
+            mock_run_requesting_node, _):
         args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7"]
         runner.dispatch(args)
         self.assertTrue(mock_run_requesting_node.called)
@@ -28,7 +27,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_computing(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node):
+            mock_run_requesting_node, _):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
                 self.path, "1.2.3.4:5678", "pid", ]
         runner.dispatch(args)
@@ -46,7 +45,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_computing_with_failure(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node):
+            mock_run_requesting_node, _):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
                 self.path, "10.0.255.127:16000", "pid", "25"]
         runner.dispatch(args)
@@ -64,7 +63,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_run_simulation(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node):
+            mock_run_requesting_node, _):
         args = ["runner.py"]
         mock_run_simulation.return_value = None
         runner.dispatch(args)
@@ -91,7 +90,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     @mock.patch("golem.core.common.config_logging")
-    def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
+    def test_run_computing_node(self, mock_config_logging, mock_reactor, *_):
         client = runner.run_computing_node(
             self.path,
             SocketAddress("127.0.0.1", 40102),
@@ -106,7 +105,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         client.quit()
 
     @mock.patch("subprocess.Popen")
-    def test_run_simulation(self, mock_popen):
+    def test_run_simulation(self, mock_popen, _):
         mock_process = mock.MagicMock()
         mock_process.pid = 12345
         mock_popen.return_value = mock_process
