@@ -27,6 +27,7 @@ from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
+from golem.rpc.router import SerializerType  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -104,6 +105,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--enable-talkback', is_flag=True, default=None)
 @click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
 @click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
+@click.option('--crossbar-serializer', default=None,
+              type=click.Choice([
+                  SerializerType.msgpack.value,
+                  SerializerType.json.value,
+              ]),
+              help="Crossbar serializer (default: msgpack)")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -122,7 +129,7 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback, m,
-        hyperdrive_port, hyperdrive_rpc_port,
+        hyperdrive_port, hyperdrive_rpc_port, crossbar_serializer
 ):
 
     freeze_support()
@@ -197,6 +204,8 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             concent_variant=ethereum_config.CONCENT_VARIANT,
             geth_address=geth_address,
             password=password,
+            crossbar_serializer=(SerializerType(crossbar_serializer)
+                                 if crossbar_serializer else None),
         )
 
         if accept_terms:
