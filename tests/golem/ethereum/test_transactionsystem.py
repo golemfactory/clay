@@ -121,7 +121,7 @@ class TestTransactionSystem(TransactionSystemBase):
             subtask_id=subtask_id,
             value=value,
             eth_address=payee,
-            node_id='00adbeef' + 'deadbeef' * 15,
+            node_id='0xadbeef' + 'deadbeef' * 15,
             task_id=str(uuid.uuid4()),
         )
         payments = self.ets.get_payments_list()

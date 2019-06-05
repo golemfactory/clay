@@ -150,7 +150,7 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             subtask_id="test_subtask_id",
             eth_addr=urandom(20),
             value=gnt_value,
-            node_id='00adbeef' + 'deadbeef' * 15,
+            node_id='0xadbeef' + 'deadbeef' * 15,
             task_id=str(uuid.uuid4()),
         )
         assert self.pp.reserved_gntb == gnt_value
@@ -207,7 +207,7 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             subtask_id="test_subtask_id",
             eth_addr=encode_hex(urandom(20)),
             value=gnt_value,
-            node_id='00adbeef' + 'deadbeef' * 15,
+            node_id='0xadbeef' + 'deadbeef' * 15,
             task_id=str(uuid.uuid4()),
         )
 
@@ -244,7 +244,7 @@ def _add_payment(pp, value=None, ts=None):
             subtask_id=uuid.uuid4(),
             eth_addr=payee,
             value=value,
-            node_id='00adbeef' + 'deadbeef' * 15,
+            node_id='0xadbeef' + 'deadbeef' * 15,
             task_id=str(uuid.uuid4()),
         )
         assert payment.created_date == freezed

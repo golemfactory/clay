@@ -12,7 +12,7 @@ class Income(Factory):
     class Meta:
         model = model.Income
 
-    sender_node = '00adbeef' + 'deadbeef' * 15
+    sender_node = '0xadbeef' + 'deadbeef' * 15
     payer_address = '0x' + 40 * '3'
     subtask = Faker('uuid4')
     value = Faker('random_int', min=1, max=10 << 20)
@@ -34,7 +34,7 @@ class TaskPayment(Factory):
         model = model.TaskPayment
 
     wallet_operation = SubFactory(WalletOperation)
-    node = '00adbeef' + 'deadbeef' * 15
+    node = '0xadbeef' + 'deadbeef' * 15
     task = Faker('uuid4')
     subtask = Faker('uuid4')
     expected_amount = fuzzy.FuzzyInteger(1, 10 << 20)
