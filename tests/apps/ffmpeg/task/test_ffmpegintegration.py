@@ -11,7 +11,7 @@ import pytest
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
-from golem.testutils import TestTaskIntegration
+from golem.testutils import TestTaskIntegration, dont_remove_dirs_on_failed_test
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
@@ -174,7 +174,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @dont_remove_dirs_on_failed_test
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -191,7 +191,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @dont_remove_dirs_on_failed_test
     def test_nonexistent_output_dir(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
@@ -212,7 +212,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @dont_remove_dirs_on_failed_test
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'test_nonexistent_video.mp4')
@@ -230,7 +230,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @dont_remove_dirs_on_failed_test
     def test_invalid_resource_stream(self):
         resource_stream = os.path.join(self.RESOURCES, 'invalid_test_video.mp4')
         result_file = os.path.join(self.root_dir,
@@ -248,7 +248,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @dont_remove_dirs_on_failed_test
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
