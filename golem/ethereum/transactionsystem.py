@@ -16,7 +16,6 @@ from typing import (
     List,
     Optional,
     Tuple,
-    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -45,10 +44,6 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
-
-if TYPE_CHECKING:
-    # pylint: disable=unused-import,ungrouped-imports
-    from golem_messages.datastructures import tasks as dt_tasks
 
 
 log = logging.getLogger(__name__)
