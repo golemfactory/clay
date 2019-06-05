@@ -415,7 +415,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiConditionComponent">
     <ROW Feature_="TileAssets_DefaultBuild" Level="4" Condition="VersionNT &lt; 603"/>
-    <ROW Feature_="DockerForWin" Level="1" Condition="(HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) AND (INSTALL_HYPERV = &quot;IDYES&quot;)"/>
+    <ROW Feature_="DockerForWin" Level="1" Condition="(HYPER_V_AVAILABLE = &quot;True&quot;) AND ((INSTALL_HYPERV = &quot;IDYES&quot;) OR (HYPER_V_INSTALLED = &quot;True&quot;))"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiControlComponent">
     <ROW Dialog_="LicenseAgreementDlg" Control="AgreementText" Type="ScrollableText" X="20" Y="60" Width="330" Height="120" Attributes="7" Text="Installer\Installer_Win\LICENCE.rtf" Order="400" TextLocId="Control.Text.LicenseAgreementDlg#AgreementText_2" MsiKey="LicenseAgreementDlg#AgreementText"/>
