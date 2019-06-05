@@ -87,6 +87,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         ]
     )
     @pytest.mark.slow
+    @dont_remove_dirs_on_failed_test
     def test_split_and_merge_with_codec_change(self,
                                                video_file,
                                                video_codec,
@@ -113,6 +114,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         )
     )
     @pytest.mark.slow
+    @dont_remove_dirs_on_failed_test
     def test_split_and_merge_with_resolution_change(self,
                                                     video_file,
                                                     resolution):
@@ -134,6 +136,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         for frame_rate in ('25/1', '25/2')
     )
     @pytest.mark.slow
+    @dont_remove_dirs_on_failed_test
     def test_split_and_merge_with_frame_rate_change(self,
                                                     video_file,
                                                     frame_rate):
@@ -157,6 +160,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         for subtasks_count in (1, 6, 10)
     )
     @pytest.mark.slow
+    @dont_remove_dirs_on_failed_test
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video_file,
                                                            subtasks_count):
