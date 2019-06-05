@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
+import uuid
 
 from ethereum.utils import denoms
 import faker
@@ -116,7 +117,13 @@ class TestTransactionSystem(TransactionSystemBase):
         subtask_id = 'derp'
         value = 10
         payee = '0x' + 40 * '1'
-        self.ets.add_payment_info(subtask_id, value, payee)
+        self.ets.add_payment_info(
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=payee,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
         payments = self.ets.get_payments_list()
         assert len(payments) == 1
         assert payments[0]['subtask'] == subtask_id
@@ -739,7 +746,10 @@ class DepositPaymentsListTest(TransactionSystemBase):
             '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         value = 31337
         ts = 1514761200.0
-        dt = datetime.datetime.fromtimestamp(ts)
+        dt = datetime.datetime.fromtimestamp(
+            ts,
+            tz=datetime.timezone.utc,
+        )
         model.DepositPayment.create(
             value=value,
             tx=tx_hash,
