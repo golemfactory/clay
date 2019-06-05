@@ -256,20 +256,20 @@ class PEP8MixIn(object):
                          "Found code style errors (and warnings).")
 
 
+def dont_remove_dirs_on_failed_test(fun):
+    def wrapper(self):
+        fun(self)
+        # If test fails, we won't reach this point, but tearDown
+        # will be called and directories won't be removed.
+        self.REMOVE_TMP_DIRS = True
+    return wrapper
+
+
 class TestTaskIntegration(TempDirFixture):
 
     class MockCompTaskKeeper:
         def __init__(**kwargs):
             self.provider_stats_manager = None
-
-
-    def dont_remove_dirs_on_failed_test(fun):
-        def wrapper(self):
-            fun(self)
-            # If test fails, we won't reach this point, but tearDown
-            # will be called and directories won't be removed.
-            self.REMOVE_TMP_DIRS = True
-        return wrapper
 
     @staticmethod
     def check_file_existence(filename):
