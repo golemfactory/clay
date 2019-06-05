@@ -357,9 +357,9 @@ class TransactionSystem(LoopingCallService):
     def get_payments_list(
             self,
             num: Optional[int] = None,
-            last_seconds: Optional[int] = None,
+            interval: Optional[datetime.timedelta] = None,
     ) -> List[Dict[str, Any]]:
-        return self._payments_keeper.get_list_of_all_payments(num, last_seconds)
+        return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @rpc_utils.expose('pay.deposit_payments')
     @classmethod

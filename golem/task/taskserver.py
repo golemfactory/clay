@@ -578,7 +578,7 @@ class TaskServer(
         task = self.task_manager.tasks[task_id]
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
-            node_id=task.header.owner.key,
+            node_id=task.header.task_owner.key,
             task_id=task.header.task_id,
             subtask_id=subtask_id,
             value=value,

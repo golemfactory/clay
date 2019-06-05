@@ -10,6 +10,10 @@ from golem.core import common
 from golem.network import nodeskeeper
 from golem.rpc import utils as rpc_utils
 
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.ethereum.transactionsystem import TransactionSystem
+
 def lru_node_factory():
     # Our version of peewee (2.10.2) doesn't support
     # .join(attr='XXX'). So we'll have to join manually
