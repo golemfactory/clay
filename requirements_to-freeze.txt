@@ -24,7 +24,7 @@ incremental==17.5.0
 miniupnpc<2.1,>=2.0
 ndg-httpsclient
 netifaces==0.10.4
-numpy==1.13.1
+numpy==1.15.4
 OpenEXR
 os-win
 packaging
@@ -34,7 +34,7 @@ pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
 py-cpuinfo==4.0.0
-pyasn1==0.4.1
+pyasn1==0.4.5
 pycparser==2.17
 pydispatcher
 pyOpenSSL==17.1.0
@@ -51,7 +51,7 @@ six==1.11.0
 tabulate
 token_bucket==0.2.0
 Twisted==17.9.0
-txaio==2.8.2
+txaio==18.8.1
 urllib3==1.24.3
 web3==4.2.1
 zope.interface==4.4.2
