@@ -102,13 +102,19 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
 
         ttc = self.gen_ttc(**self.ttc_file_kwargs())
 
-        return msg_factories.concents.SubtaskResultsVerifyFactory(
+        srv = msg_factories.concents.SubtaskResultsVerifyFactory(
             **self.gen_rtc_kwargs(rct_path),
-            **{rct_path + 'task_to_compute__': ttc},
+            **{rct_path + 'task_to_compute': ttc},
             subtask_results_rejected__sign__privkey=self.requestor_priv_key,
             **files_kwargs,
             **kwargs,
         )
+        srv.sign_concent_promissory_note(
+            deposit_contract_address=
+            self.ethereum_config.deposit_contract_address,
+            private_key=self.provider_priv_key,
+        )
+        return srv
 
     def get_correct_srv(self, results_filename=None, **kwargs):
         vn = tasks_msg.SubtaskResultsRejected.REASON.VerificationNegative

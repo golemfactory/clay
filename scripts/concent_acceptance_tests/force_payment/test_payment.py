@@ -125,7 +125,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         )
         rct2 = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **ttc2_kwargs,
+            **{'task_to_compute': ttc2},
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct2,
@@ -219,7 +219,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
             ],
         )
         response = self.assertPaymentRejected(fp, fpr_reasons.TimestampError)
-        self.assertEqual(response.force_payment, fp)
+        self.assertMessageEqual(response.force_payment, fp)
 
     def test_force_payment_committed_requestor_has_more_funds(self):
         """Concent service commits forced payment

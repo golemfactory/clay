@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
-    def get_frct(self, ttc_kwargs, **kwargs):
+    def get_frct(self, ttc_kwargs=None, **kwargs):
+        ttc_kwargs = ttc_kwargs or {}
         return msg_factories.concents.ForceReportComputedTaskFactory(
             **self.gen_rtc_kwargs('report_computed_task__'),
             **{'report_computed_task__task_to_compute':
@@ -66,8 +67,11 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         frct = self.get_frct()
         self.provider_send(frct)
         frct_rcv = self.requestor_receive()
-        self.assertEqual(frct.report_computed_task,
-                         frct_rcv.report_computed_task)
+
+        self.assertMessageEqual(
+            frct.report_computed_task,
+            frct_rcv.report_computed_task
+        )
 
     ###
     #
@@ -130,8 +134,10 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(arct_rcv, message.tasks.AckReportComputedTask)
         arct_rcv.verify_signature(self.variant['pubkey'])
-        self.assertEqual(arct_rcv.report_computed_task,
-                         frct.report_computed_task)
+        self.assertMessageEqual(
+            arct_rcv.report_computed_task,
+            frct.report_computed_task
+        )
 
     def send_and_verify_received_reject(self, rrct):
         response = self.requestor_send(rrct)
@@ -147,7 +153,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         )
         rrct_rcv = frct_response.reject_report_computed_task
         rrct_rcv.verify_signature(self.requestor_pub_key)
-        self.assertEqual(rrct_rcv, rrct)
+        self.assertMessageEqual(rrct_rcv, rrct)
 
     def test_reject_rct_cannot_compute_task(self):
         frct = self.get_frct()

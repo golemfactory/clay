@@ -90,7 +90,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         rct_kwargs = rct_kwargs or {}
         price = random.randint(1 << 20, 10 << 20)
         self.requestor_put_deposit(helpers.requestor_deposit_amount(price)[0])
-        rct_kwargs['task_to_compute__price'] = price
+        ttc_kwargs['price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
             ttc_kwargs=ttc_kwargs,

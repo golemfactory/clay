@@ -5,7 +5,6 @@ import datetime
 import functools
 import logging
 import os
-import random
 import sys
 import tempfile
 import time
@@ -22,6 +21,7 @@ from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import factories as msg_factories
 from golem_messages import utils as msg_utils
+from golem_messages import shortcuts
 from golem_messages.message.base import Message
 from golem_messages.message import concents
 
@@ -211,6 +211,19 @@ class ConcentBaseTest(unittest.TestCase):
             msg="Message payload differs: \n\n%s\n\n%s" % (
                 msg1.slots(), msg2.slots()
             )
+        )
+
+    @staticmethod
+    def _dump_and_load(msg):
+        msg_d = shortcuts.dump(msg, None, None)
+        return shortcuts.load(msg_d, None, None)
+
+    def assertMessageEqual(self, msg1, msg2):
+        # @todo: remove after this is implemented:
+        # https://github.com/golemfactory/golem-messages/issues/348
+        return self.assertEqual(
+            self._dump_and_load(msg1),
+            self._dump_and_load(msg2)
         )
 
     def assertServiceRefused(
