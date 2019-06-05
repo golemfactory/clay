@@ -21,7 +21,7 @@ cloudpickle==0.6.1
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==17.12.1
-cryptography==2.2.2
+cryptography==2.3.1
 cytoolz==0.9.0.1
 distro==1.3.0
 dnspython==1.15.0
