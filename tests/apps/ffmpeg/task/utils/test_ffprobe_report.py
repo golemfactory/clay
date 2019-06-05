@@ -60,29 +60,29 @@ class TestFfprobeFormatReport(TestCase):
 
         self.assertEqual(report_original, report_shuffled)
 
-    def test_missing_modified_stream_should_be_reported(self):
+    def test_missing_expected_stream_should_be_reported(self):
         raw_report_original = copy.deepcopy(RAW_REPORT_ORIGINAL)
         del raw_report_original['streams'][2]
         report_original = FfprobeFormatReport(raw_report_original)
 
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        del raw_report_modified['streams'][10]
-        del raw_report_modified['streams'][9]
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        del raw_report_expected['streams'][10]
+        del raw_report_expected['streams'][9]
+        report_expected = FfprobeFormatReport(raw_report_expected)
 
-        diff = report_modified.diff(report_original)
+        diff = report_expected.diff(report_original)
 
         expected_diff = [
             {
                 'location': 'format',
                 'attribute': 'stream_types',
-                'original_value':
+                'actual_value':
                     {
                         'video': 1,
                         'audio': 2,
                         'subtitle': 6
                     },
-                'modified_value':
+                'expected_value':
                     {
                         'video': 1,
                         'audio': 2,
@@ -93,86 +93,86 @@ class TestFfprobeFormatReport(TestCase):
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'eng',
-                'modified_value': 'hun',
+                'actual_value': 'eng',
+                'expected_value': 'hun',
                 'reason': 'Different attribute values',
-                'original_stream_index': 2,
-                'modified_stream_index': 3
+                'actual_stream_index': 2,
+                'expected_stream_index': 3
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'hun',
-                'modified_value': 'ger',
+                'actual_value': 'hun',
+                'expected_value': 'ger',
                 'reason': 'Different attribute values',
-                'original_stream_index': 3,
-                'modified_stream_index': 4
+                'actual_stream_index': 3,
+                'expected_stream_index': 4
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'ger',
-                'modified_value': 'fre',
+                'actual_value': 'ger',
+                'expected_value': 'fre',
                 'reason': 'Different attribute values',
-                'original_stream_index': 4,
-                'modified_stream_index': 5
+                'actual_stream_index': 4,
+                'expected_stream_index': 5
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'fre',
-                'modified_value': 'spa',
+                'actual_value': 'fre',
+                'expected_value': 'spa',
                 'reason': 'Different attribute values',
-                'original_stream_index': 5,
-                'modified_stream_index': 6
+                'actual_stream_index': 5,
+                'expected_stream_index': 6
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'spa',
-                'modified_value': 'ita',
+                'actual_value': 'spa',
+                'expected_value': 'ita',
                 'reason': 'Different attribute values',
-                'original_stream_index': 6,
-                'modified_stream_index': 7
+                'actual_stream_index': 6,
+                'expected_stream_index': 7
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'ita',
-                'modified_value': 'jpn',
+                'actual_value': 'ita',
+                'expected_value': 'jpn',
                 'reason': 'Different attribute values',
-                'original_stream_index': 7,
-                'modified_stream_index': 9
+                'actual_stream_index': 7,
+                'expected_stream_index': 9
             },
             {
                 'location': 'subtitle',
-                'original_stream_index': None,
-                'modified_stream_index': 10,
+                'actual_stream_index': None,
+                'expected_stream_index': 10,
                 'reason': 'No matching stream'}
         ]
         self.assertCountEqual(diff, expected_diff)
 
-    def test_missing_original_stream_should_be_reported(self):
+    def test_missing_actual_stream_should_be_reported(self):
         raw_report_original = copy.deepcopy(RAW_REPORT_ORIGINAL)
         del raw_report_original['streams'][10]
         del raw_report_original['streams'][9]
         report_original = FfprobeFormatReport(raw_report_original)
 
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        del raw_report_modified['streams'][2]
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        del raw_report_expected['streams'][2]
+        report_expected = FfprobeFormatReport(raw_report_expected)
 
-        diff = (report_modified.diff(report_original))
+        diff = (report_expected.diff(report_original))
         expected_diff = [
             {
                 'location': 'format',
                 'attribute': 'stream_types',
-                'original_value': {
+                'actual_value': {
                     'audio': 2,
                     'video': 1,
                     'subtitle': 7
                 },
-                'modified_value': {
+                'expected_value': {
                     'video': 1,
                     'audio': 2,
                     'subtitle': 6,
@@ -182,17 +182,17 @@ class TestFfprobeFormatReport(TestCase):
             {
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'jpn',
-                'modified_value': 'eng',
+                'actual_value': 'jpn',
+                'expected_value': 'eng',
                 'reason': 'Different attribute values',
-                'original_stream_index': 9,
-                'modified_stream_index': 2,
+                'actual_stream_index': 9,
+                'expected_stream_index': 2,
 
             },
             {
                 'location': 'subtitle',
-                'original_stream_index': 6,
-                'modified_stream_index': None,
+                'actual_stream_index': 6,
+                'expected_stream_index': None,
                 'reason': 'No matching stream'
             },
         ]
@@ -334,14 +334,14 @@ class TestFfprobeFormatReport(TestCase):
 
     def test_diff_equal_to_expected(self):
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        raw_report_modified['format']['start_time'] = 10
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        raw_report_expected['format']['start_time'] = 10
+        report_expected = FfprobeFormatReport(raw_report_expected)
 
-        diff = (report_modified.diff(report_original))
+        diff = (report_expected.diff(report_original))
         expected_diff = [{'location': 'format', 'attribute': 'start_time',
-                          'original_value': FuzzyDuration(10, 0),
-                          'modified_value': FuzzyDuration(0.0, 0),
+                          'actual_value': FuzzyDuration(10, 0),
+                          'expected_value': FuzzyDuration(0.0, 0),
                           'reason': 'Different attribute values'}]
 
         self.assertCountEqual(diff, expected_diff)
@@ -353,8 +353,8 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'format',
                 'attribute': 'start_time',
-                'original_value': FuzzyDuration(10.0, 0),
-                'modified_value': FuzzyDuration(0.0, 0),
+                'actual_value': FuzzyDuration(10.0, 0),
+                'expected_value': FuzzyDuration(0.0, 0),
                 'reason': 'Different attribute values',
             }],
         ),
@@ -364,8 +364,8 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'format',
                 'attribute': 'duration',
-                'original_value': FuzzyDuration(80, 10),
-                'modified_value': FuzzyDuration(46.665, 10),
+                'actual_value': FuzzyDuration(80, 10),
+                'expected_value': FuzzyDuration(46.665, 10),
                 'reason': 'Different attribute values',
             }],
         ),
@@ -375,8 +375,8 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'format',
                 'attribute': 'program_count',
-                'original_value': 2,
-                'modified_value': 0,
+                'actual_value': 2,
+                'expected_value': 0,
                 'reason': 'Different attribute values',
             }],
         ),
@@ -386,11 +386,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'video',
                 'attribute': 'codec_name',
-                'original_value': 'flv',
-                'modified_value': 'h264',
+                'actual_value': 'flv',
+                'expected_value': 'h264',
                 'reason': 'Different attribute values',
-                'original_stream_index': 0,
-                'modified_stream_index': 0,
+                'actual_stream_index': 0,
+                'expected_stream_index': 0,
             }],
         ),
         (
@@ -399,11 +399,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'audio',
                 'attribute': 'start_time',
-                'original_value': FuzzyDuration(0.5, 0.05),
-                'modified_value': FuzzyDuration(0.012, 0.05),
+                'actual_value': FuzzyDuration(0.5, 0.05),
+                'expected_value': FuzzyDuration(0.012, 0.05),
                 'reason': 'Different attribute values',
-                'original_stream_index': 1,
-                'modified_stream_index': 1,
+                'actual_stream_index': 1,
+                'expected_stream_index': 1,
             }],
         ),
         (
@@ -412,11 +412,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'audio',
                 'attribute': 'duration',
-                'original_value': FuzzyDuration(0.5, 0.05),
-                'modified_value': None,
+                'actual_value': FuzzyDuration(0.5, 0.05),
+                'expected_value': None,
                 'reason': 'Different attribute values',
-                'original_stream_index': 1,
-                'modified_stream_index': 1,
+                'actual_stream_index': 1,
+                'expected_stream_index': 1,
             }],
         ),
         (
@@ -425,11 +425,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'video',
                 'attribute': 'resolution',
-                'original_value': (1920, 576),
-                'modified_value': (1024, 576),
+                'actual_value': (1920, 576),
+                'expected_value': (1024, 576),
                 'reason': 'Different attribute values',
-                'original_stream_index': 0,
-                'modified_stream_index': 0,
+                'actual_stream_index': 0,
+                'expected_stream_index': 0,
             }],
         ),
         (
@@ -438,11 +438,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'video',
                 'attribute': 'resolution',
-                'original_value': ((1920, 1080), 1024, 576),
-                'modified_value': (1024, 576),
+                'actual_value': ((1920, 1080), 1024, 576),
+                'expected_value': (1024, 576),
                 'reason': 'Different attribute values',
-                'original_stream_index': 0,
-                'modified_stream_index': 0,
+                'actual_stream_index': 0,
+                'expected_stream_index': 0,
             }],
         ),
         (
@@ -457,11 +457,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'video',
                 'attribute': 'frame_rate',
-                'original_value': 12,
-                'modified_value': 24,
+                'actual_value': 12,
+                'expected_value': 24,
                 'reason': 'Different attribute values',
-                'original_stream_index': 0,
-                'modified_stream_index': 0,
+                'actual_stream_index': 0,
+                'expected_stream_index': 0,
             }],
         ),
         (
@@ -470,11 +470,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'audio',
                 'attribute': 'sample_rate',
-                'original_value': 24000,
-                'modified_value': 48000,
+                'actual_value': 24000,
+                'expected_value': 48000,
                 'reason': 'Different attribute values',
-                'original_stream_index': 1,
-                'modified_stream_index': 1,
+                'actual_stream_index': 1,
+                'expected_stream_index': 1,
             }],
         ),
         (
@@ -483,11 +483,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'subtitle',
                 'attribute': 'language',
-                'original_value': 'eng',
-                'modified_value': 'ger',
+                'actual_value': 'eng',
+                'expected_value': 'ger',
                 'reason': 'Different attribute values',
-                'original_stream_index': 4,
-                'modified_stream_index': 4,
+                'actual_stream_index': 4,
+                'expected_stream_index': 4,
             }],
         ),
         (
@@ -496,11 +496,11 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'audio',
                 'attribute': 'bitrate',
-                'original_value': FuzzyInt(499524, 5),
-                'modified_value': None,
+                'actual_value': FuzzyInt(499524, 5),
+                'expected_value': None,
                 'reason': 'Different attribute values',
-                'original_stream_index': 1,
-                'modified_stream_index': 1,
+                'actual_stream_index': 1,
+                'expected_stream_index': 1,
             }],
         ),
     ])
@@ -511,16 +511,16 @@ class TestFfprobeFormatReport(TestCase):
             expected_diff,
     ):
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        raw_report_modified = self._change_value_in_dict(
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        raw_report_expected = self._change_value_in_dict(
             dict_path,
             new_value,
-            raw_report_modified,
+            raw_report_expected,
         )
-        assert raw_report_modified != RAW_REPORT_ORIGINAL
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        assert raw_report_expected != RAW_REPORT_ORIGINAL
+        report_expected = FfprobeFormatReport(raw_report_expected)
 
-        diff = report_modified.diff(report_original)
+        diff = report_expected.diff(report_original)
         self.assertEqual(diff, expected_diff)
 
     @parameterized.expand([
@@ -560,17 +560,17 @@ class TestFfprobeFormatReport(TestCase):
             overrides,
     ):
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        raw_report_modified = self._change_value_in_dict(
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        raw_report_expected = self._change_value_in_dict(
             dict_path,
             new_value,
-            raw_report_modified
+            raw_report_expected
         )
-        assert raw_report_modified != RAW_REPORT_ORIGINAL
+        assert raw_report_expected != RAW_REPORT_ORIGINAL
 
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        report_expected = FfprobeFormatReport(raw_report_expected)
         diff = (report_original.diff(
-            modified_report=report_modified,
+            expected_report=report_expected,
             overrides=overrides,
         ))
         self.assertEqual(diff, [])
@@ -613,17 +613,17 @@ class TestFfprobeFormatReport(TestCase):
     ):
 
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
-        raw_report_modified = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        raw_report_modified = self._change_value_in_dict(
+        raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
+        raw_report_expected = self._change_value_in_dict(
             fields_to_change,
             new_value,
-            raw_report_modified,
+            raw_report_expected,
         )
-        assert raw_report_modified != RAW_REPORT_ORIGINAL
+        assert raw_report_expected != RAW_REPORT_ORIGINAL
 
-        report_modified = FfprobeFormatReport(raw_report_modified)
+        report_expected = FfprobeFormatReport(raw_report_expected)
         diff = (report_original.diff(
-            modified_report=report_modified,
+            expected_report=report_expected,
             excludes=excludes,
         ))
         self.assertEqual(diff, [])

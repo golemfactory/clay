@@ -38,8 +38,8 @@ class FfprobeReportSet:
                 line = "`{}.{}`: `{}` -> `{}`".format(
                     diff_dict['location'],
                     diff_dict['attribute'],
-                    diff_dict['modified_value'],
-                    diff_dict['original_value'],
+                    diff_dict['expected_value'],
+                    diff_dict['actual_value'],
                 )
 
                 if (diff_dict['location'] == 'format' and

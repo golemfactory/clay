@@ -13,11 +13,11 @@ class TestFfprobeReportSet(TestTaskIntegration):
                 {
                     'location': 'video',
                     'attribute': 'bitrate',
-                    'original_value': FuzzyInt(13795, 5),
-                    'modified_value': FuzzyInt(12376, 5),
+                    'actual_value': FuzzyInt(13795, 5),
+                    'expected_value': FuzzyInt(12376, 5),
                     'reason': DiffReason.DifferentAttributeValues.value,
-                    'original_stream_index': 0,
-                    'modified_stream_index': 0,
+                    'actual_stream_index': 0,
+                    'expected_stream_index': 0,
                 },
             ],
             {
@@ -45,12 +45,12 @@ class TestFfprobeReportSet(TestTaskIntegration):
                 {
                     'location': 'format',
                     'attribute': 'stream_types',
-                    'original_value': {
+                    'actual_value': {
                         'audio': 2,
                         'video': 1,
                         'subtitle': 7,
                     },
-                    'modified_value': {
+                    'expected_value': {
                         'video': 1,
                         'audio': 2,
                         'subtitle': 8,
@@ -59,8 +59,8 @@ class TestFfprobeReportSet(TestTaskIntegration):
                 },
                 {
                     'location': 'subtitle',
-                    'original_stream_index': None,
-                    'modified_stream_index': 1,
+                    'actual_stream_index': None,
+                    'expected_stream_index': 1,
                     'reason': DiffReason.NoMatchingStream.value,
                 },
             ],
