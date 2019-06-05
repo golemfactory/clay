@@ -2,7 +2,8 @@ from parameterized import parameterized
 
 from golem.testutils import TestTaskIntegration
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyInt
-from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet, \
+    DiffReason
 
 
 class TestFfprobeReportSet(TestTaskIntegration):
@@ -14,7 +15,7 @@ class TestFfprobeReportSet(TestTaskIntegration):
                     'attribute': 'bitrate',
                     'original_value': FuzzyInt(13795, 5),
                     'modified_value': FuzzyInt(12376, 5),
-                    'reason': 'Different attribute values',
+                    'reason': DiffReason.DifferentAttributeValues.value,
                     'original_stream_index': 0,
                     'modified_stream_index': 0,
                 },
@@ -54,13 +55,13 @@ class TestFfprobeReportSet(TestTaskIntegration):
                         'audio': 2,
                         'subtitle': 8,
                     },
-                    'reason': 'Different attribute values',
+                    'reason': DiffReason.DifferentAttributeValues.value,
                 },
                 {
                     'location': 'subtitle',
                     'original_stream_index': None,
                     'modified_stream_index': 1,
-                    'reason': 'No matching stream',
+                    'reason': DiffReason.NoMatchingStream.value,
                 },
             ],
             {

@@ -1,6 +1,12 @@
+from enum import Enum
 from typing import Any, Dict, Tuple
 
 from tests.apps.ffmpeg.task.utils.ffprobe_report import Diff
+
+
+class DiffReason(Enum):
+    DifferentAttributeValues = "Different attribute values"
+    NoMatchingStream = "No matching stream"
 
 
 class FfprobeReportSet:
@@ -28,7 +34,7 @@ class FfprobeReportSet:
         stream_mismatch_found = False
         stream_types_different = False
         for diff_dict in diff:
-            if diff_dict['reason'] == "Different attribute values":
+            if diff_dict['reason'] == DiffReason.DifferentAttributeValues.value:
                 line = "`{}.{}`: `{}` -> `{}`".format(
                     diff_dict['location'],
                     diff_dict['attribute'],
@@ -40,7 +46,7 @@ class FfprobeReportSet:
                         diff_dict['attribute'] == 'stream_types'):
                     stream_types_different = True
 
-            elif diff_dict['reason'] == "No matching stream":
+            elif diff_dict['reason'] == DiffReason.NoMatchingStream.value:
                 # We can skip this one because the difference will show up
                 # in the stream_types dict anyway if the diff is consistent.
                 stream_mismatch_found = True
