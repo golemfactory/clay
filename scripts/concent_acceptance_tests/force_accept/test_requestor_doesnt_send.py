@@ -24,16 +24,16 @@ moment = datetime.timedelta(seconds=2)
 class RequestorDoesntSendTestCase(SCIBaseTest):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
 
-    def prepare_report_computed_task(self, mode, **kwargs):
+    def prepare_report_computed_task(self, mode, ttc_kwargs, rct_kwargs):
         """Returns ReportComputedTask with open force acceptance window
 
         Can be modified by delta
         """
-
+        _rct_kwargs = self.gen_rtc_kwargs()
+        _rct_kwargs.update(rct_kwargs)
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory(
-            **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs('task_to_compute__'),
-            **kwargs,
+            **_rct_kwargs,
+            **{'task_to_compute': self.gen_ttc(**ttc_kwargs)},
         )
         # Difference between timestamp and deadline has to be constant
         # because it's part of SVT formula
@@ -85,25 +85,19 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         return report_computed_task
 
     def provider_send_force(
-            self, mode='within', rct_kwargs=None, **kwargs):
-        if rct_kwargs is None:
-            rct_kwargs = {}
+            self, mode='within', ttc_kwargs=None, rct_kwargs=None, **kwargs):
+        ttc_kwargs = ttc_kwargs or {}
+        rct_kwargs = rct_kwargs or {}
         price = random.randint(1 << 20, 10 << 20)
         self.requestor_put_deposit(helpers.requestor_deposit_amount(price)[0])
-        rct_kwargs['task_to_compute__price'] = price
+        ttc_kwargs['price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
-            **rct_kwargs,
+            ttc_kwargs=ttc_kwargs,
+            rct_kwargs=rct_kwargs,
         )
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
             ack_report_computed_task__report_computed_task=report_computed_task,
-            **self.gen_rtc_kwargs(
-                'ack_report_computed_task__'
-                'report_computed_task__'),
-            **self.gen_ttc_kwargs(
-                'ack_report_computed_task__'
-                'report_computed_task__'
-                'task_to_compute__'),
             **kwargs,
         )
         fsr.task_to_compute.generate_ethsig(private_key=self.requestor_priv_key)
@@ -176,12 +170,12 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         task_id = fake_golem_uuid(requestor_id)
         subtask_id = fake_golem_uuid(requestor_id)
         kwargs = {
-            'task_to_compute__requestor_id': requestor_id,
-            'task_to_compute__task_id': task_id,
-            'task_to_compute__subtask_id': subtask_id,
+            'requestor_id': requestor_id,
+            'task_id': task_id,
+            'subtask_id': subtask_id,
         }
-        self.assertIsNone(self.provider_send_force(rct_kwargs=kwargs))
-        second_response = self.provider_send_force(rct_kwargs=kwargs)
+        self.assertIsNone(self.provider_send_force(ttc_kwargs=kwargs))
+        second_response = self.provider_send_force(ttc_kwargs=kwargs)
         self.assertIsInstance(second_response, message.concents.ServiceRefused)
 
     def test_no_response_from_requestor(self):

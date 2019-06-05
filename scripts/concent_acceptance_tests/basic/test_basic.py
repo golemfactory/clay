@@ -20,7 +20,7 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
     def test_send(self):
         msg = msg_factories.concents.ForceReportComputedTaskFactory(
             **self.gen_rtc_kwargs('report_computed_task__'),
-            **self.gen_ttc_kwargs('report_computed_task__task_to_compute__'),
+            **{'report_computed_task__task_to_compute': self.gen_ttc()},
         )
 
         logger.debug("Sending FRCT: %s", msg)
@@ -52,7 +52,7 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
             version = msg_factories_helpers.fake_version()
         msg = msg_factories.concents.ForceReportComputedTaskFactory(
             **self.gen_rtc_kwargs('report_computed_task__'),
-            **self.gen_ttc_kwargs('report_computed_task__task_to_compute__'),
+            **{'report_computed_task__task_to_compute': self.gen_ttc()},
         )
         with mock.patch('golem_messages.__version__', version):
             with self.assertRaisesRegex(
