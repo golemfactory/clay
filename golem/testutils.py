@@ -5,6 +5,7 @@ import shutil
 import string
 import tempfile
 import unittest
+from functools import wraps
 from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
@@ -257,6 +258,7 @@ class PEP8MixIn(object):
 
 
 def dont_remove_dirs_on_failed_test(fun):
+    @wraps(fun)
     def wrapper(self):
         fun(self)
         # If test fails, we won't reach this point, but tearDown
