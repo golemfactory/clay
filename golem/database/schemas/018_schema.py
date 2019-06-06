@@ -1,7 +1,7 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
 import peewee as pw
-from golem.utils import pubkeytoaddr
+from golem_messages.utils import pubkey_to_address
 
 SCHEMA_VERSION = 18
 
@@ -19,7 +19,7 @@ def _fill_payer_address(database):
             break
         for entry in entries:
             sender_node, subtask = entry
-            payer_address = pubkeytoaddr(sender_node)[2:]
+            payer_address = pubkey_to_address(sender_node)[2:]
             database.execute_sql(
                 "UPDATE income SET payer_address = ?"
                 " WHERE sender_node = ? AND subtask = ?",

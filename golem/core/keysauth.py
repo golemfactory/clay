@@ -11,7 +11,7 @@ from eth_keyfile import create_keyfile_json, decode_keyfile_json
 from eth_utils import encode_hex, decode_hex
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
-
+from golem_messages.utils import pubkey_to_address
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +85,7 @@ class KeysAuth:
         self.ecc = ECCx(prv)
         self.public_key = pub
         self.key_id = encode_hex(pub)[2:]
+        self.eth_addr = pubkey_to_address(pub)
         self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
