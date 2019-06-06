@@ -87,7 +87,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         if os.path.isdir(self.verification_data['resources'][0]):
             shutil.copytree(self.verification_data['resources'][0], res_dir)
         else:
-            shutil.copy(self.verification_data['resources'][0], res_dir)
+            for resource_file in self.verification_data['resources']:
+                shutil.copy(resource_file, res_dir)
 
         for result_file in self.verification_data['results']:
             shutil.copy(result_file, work_dir)
