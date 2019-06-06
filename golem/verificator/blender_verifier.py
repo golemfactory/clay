@@ -81,6 +81,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         assert self.verification_data['resources']
 
+        os.makedirs(res_dir, exist_ok=True)
         if os.path.isdir(self.verification_data['resources'][0]):
             shutil.copytree(self.verification_data['resources'][0], res_dir)
         else:
