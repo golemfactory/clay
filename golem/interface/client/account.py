@@ -1,7 +1,11 @@
 import datetime
 import getpass
 import sys
-from typing import Dict, Any
+from typing import (
+    Any,
+    Dict,
+    TYPE_CHECKING,
+)
 
 from decimal import Decimal
 from ethereum.utils import denoms
@@ -11,13 +15,17 @@ from golem.node import ShutdownResponse
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, command, group
 
+if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.rpc.session import ClientProxy
+
 MIN_LENGTH = 5
 MIN_SCORE = 2
 
 
 @group(help="Manage account")
 class Account:
-    client = None
+    client: 'ClientProxy'
 
     amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
     address_arg = Argument('destination', help='Address to send the funds to')
@@ -37,7 +45,8 @@ class Account:
 
         computing_trust = sync_wait(client.get_computing_trust(node_key))
         requesting_trust = sync_wait(client.get_requesting_trust(node_key))
-        payment_address = sync_wait(client.get_payment_address())
+        # pylint: disable=protected-access
+        payment_address = sync_wait(client._call('pay.ident'))
 
         balance = sync_wait(client.get_balance())
 
