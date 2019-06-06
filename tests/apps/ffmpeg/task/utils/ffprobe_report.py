@@ -85,8 +85,10 @@ class FfprobeFormatReport:
         self._stream_reports = self._create_stream_reports(raw_report)
 
     @classmethod
-    def _create_stream_report(cls, raw_stream_report: dict) -> \
-            'FfprobeStreamReport':
+    def _create_stream_report(cls,
+                              raw_stream_report: dict,
+                              format_report: 'FfprobeFormatReport',
+                             ) -> 'FfprobeStreamReport':
         codec_type_to_report_class = {
             'video':    FfprobeVideoStreamReport,
             'audio':    FfprobeAudioStreamReport,
@@ -102,16 +104,15 @@ class FfprobeFormatReport:
             )
 
         report_class = codec_type_to_report_class[codec_type]
-        return report_class(raw_stream_report)
+        return report_class(raw_stream_report, format_report)
 
-    @classmethod
-    def _create_stream_reports(cls, raw_report: dict) -> \
+    def _create_stream_reports(self, raw_report: dict) -> \
             List['FfprobeStreamReport']:
         if 'streams' not in raw_report:
             return []
 
         return [
-            cls._create_stream_report(raw_stream_report)
+            self._create_stream_report(raw_stream_report, self)
             for raw_stream_report in raw_report['streams']
         ]
 
@@ -484,10 +485,13 @@ class FfprobeStreamReport:
         'start_time'
     }
 
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert 'codec_type' in raw_report
 
         self._raw_report = raw_report
+        self._format_report = format_report
 
     @property
     def codec_type(self) -> str:
@@ -503,6 +507,23 @@ class FfprobeStreamReport:
             self._raw_report.get('start_time'),
             0.1,
         )
+
+    @property
+    def relative_start_time(self) -> Optional[Union[FuzzyDuration, tuple]]:
+        raw_start_time = self._raw_report.get('start_time')
+        raw_format_start_time = self._format_report._raw_report['format'].get(
+            'start_time'
+        )
+        parsed_start_time = number_if_possible(raw_start_time)
+        parsed_format_start_time = number_if_possible(raw_format_start_time)
+
+        if (
+                not isinstance(parsed_start_time, (int, float)) or
+                not isinstance(parsed_format_start_time, (int, float))
+        ):
+            return (parsed_start_time, parsed_format_start_time)
+
+        return FuzzyDuration(parsed_start_time - parsed_format_start_time, 0.1)
 
     @property
     def index(self) -> int:
@@ -612,9 +633,11 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
             'frame_rate',
         }
 
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'video'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     @property
     def resolution(self) -> Union[Collection, list]:
@@ -643,9 +666,11 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
 
 
 class FfprobeAudioStreamReport(FfprobeAudioAndVideoStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'audio'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     ATTRIBUTES_TO_COMPARE = \
         FfprobeAudioAndVideoStreamReport.ATTRIBUTES_TO_COMPARE | {
@@ -673,9 +698,11 @@ class FfprobeAudioStreamReport(FfprobeAudioAndVideoStreamReport):
 
 
 class FfprobeSubtitleStreamReport(FfprobeStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'subtitle'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     ATTRIBUTES_TO_COMPARE = FfprobeStreamReport.ATTRIBUTES_TO_COMPARE | {
         'language',
@@ -687,6 +714,8 @@ class FfprobeSubtitleStreamReport(FfprobeStreamReport):
 
 
 class FfprobeDataStreamReport(FfprobeStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'data'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
