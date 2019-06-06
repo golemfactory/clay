@@ -22,6 +22,13 @@ class WrongRawReportFormatException(TypeError):
 
 
 class TestFfprobeFormatReport(TestCase):
+    def setUp(self):
+        super().setUp()
+
+        # We'll be comparing output from FfprobeFormatReport.diff() which
+        # can be long but we still want to see it all.
+        self.maxDiff = None
+
     @staticmethod
     def _change_value_in_dict(dict_path: List[tuple],
                               new_value: Any,
