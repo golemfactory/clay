@@ -353,7 +353,7 @@ function install_dependencies()
 
         # Add runtime configuration
         sudo mkdir -p /etc/docker
-        sudo python << EOF
+        sudo ${PYTHON} << EOF
 import json
 
 runtime_config = {
