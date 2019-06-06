@@ -5,7 +5,7 @@ from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, list_matching_resolutions, \
     list_supported_frame_rates
 from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
-    UnsupportedVideoCodecConversion
+    UnsupportedVideoCodecConversion, InvalidFrameRate
 
 from parameterized import parameterized
 import pytest
@@ -173,7 +173,6 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
-        assert frame_rate in list_supported_frame_rates()
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="frame rate change",
@@ -186,8 +185,13 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+
+        if set([frame_rate, str(frame_rate)]) & list_supported_frame_rates() != set():
+            (_input_report, _output_report, diff) = operation.run(video["path"])
+            self.assertEqual(diff, [])
+        else:
+            with self.assertRaises(InvalidFrameRate):
+                operation.run(video["path"])
 
     @parameterized.expand(
         (video, subtasks_count)
