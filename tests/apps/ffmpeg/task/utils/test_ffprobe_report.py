@@ -330,7 +330,7 @@ class TestFfprobeFormatReport(TestCase):
         self.assertEqual(report.format_name, 'avi')
         self.assertEqual(report.duration.duration, 5.64)
         self.assertEqual(report.start_time.duration, 0)
-        self.assertEqual(report.program_count, 0)
+        self.assertEqual(report.program_count, None)
 
     def test_all_format_properties_are_tested(self):
         self.assertCountEqual(
@@ -404,7 +404,7 @@ class TestFfprobeFormatReport(TestCase):
                 'location': 'format',
                 'attribute': 'program_count',
                 'actual_value': 2,
-                'expected_value': 0,
+                'expected_value': None,
                 'reason': DiffReason.DifferentAttributeValues.value,
             }],
         ),

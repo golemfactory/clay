@@ -163,10 +163,19 @@ class FfprobeFormatReport:
         )
 
     @property
-    def program_count(self) -> Optional[str]:
-        return number_if_possible(
+    def program_count(self) -> Optional[Any]:
+        result = number_if_possible(
             self._raw_report.get('format', {}).get('nb_programs', None)
         )
+
+        if result == 0:
+            # Most containers formats do not support programs. Only a few do,
+            # like MPEG for example. ffprobe returns zero (rather than no value)
+            # for these containers. Let's treat it as no value to avoid false
+            # positives in diff.
+            return None
+
+        return result
 
     @classmethod
     def _classify_streams(cls,
@@ -525,6 +534,12 @@ class FfprobeStreamReport:
         )
         parsed_start_time = number_if_possible(raw_start_time)
         parsed_format_start_time = number_if_possible(raw_format_start_time)
+
+        if parsed_start_time is None and parsed_format_start_time is None:
+            # This case seems pretty common. If both values are missing we
+            # want to be able to ignore it when diff() gets
+            # assume_attribute_unchanged_if_missing=True.
+            return None
 
         if (
                 not isinstance(parsed_start_time, (int, float)) or
