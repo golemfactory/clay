@@ -18,7 +18,7 @@ from golem.report import report_calls, Component
 logger = logging.getLogger('golem.resources')
 
 
-GOLEM_HYPERDRIVE_VERSION = '0.2.4'
+GOLEM_HYPERDRIVE_VERSION = '0.3.1'
 GOLEM_HYPERDRIVE_LOGFILE = 'hyperg.log'
 
 

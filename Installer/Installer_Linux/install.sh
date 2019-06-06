@@ -302,7 +302,7 @@ function install_dependencies()
         ! sudo apt-mark hold nvidia-docker2 docker-ce
     fi
 
-    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/golem-hyperdrive/releases")
+    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/simple-transfer/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
     ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
@@ -321,7 +321,6 @@ function install_dependencies()
         tar -xvf ${HYPERG_PACKAGE} >/dev/null
         [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
-        [[ ! -f /usr/local/bin/hyperg-worker ]] && sudo ln -s $HOME/hyperg/hyperg-worker /usr/local/bin/hyperg-worker
         rm -f ${HYPERG_PACKAGE} &>/dev/null
     fi
 
