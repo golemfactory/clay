@@ -1,5 +1,7 @@
 # Golem
 
+*WARNING* This branch is closed
+
 [![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_linux)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_linux)
 [![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_macOS)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_macOS)
 [![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_windows)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_windows)
