@@ -76,8 +76,12 @@ class FfprobeFormatReport:
         'format_name',
         'stream_types',
         'duration',
-        'start_time',
         'program_count',
+
+        # Don't compare start_time. It's better to compare relative_start_time
+        # of individual streams because some encoders seem to use non-zero
+        # start_time while still preserving the relative values.
+        # 'start_time',
     }
 
     def __init__(self, raw_report: dict) -> None:
@@ -482,7 +486,12 @@ class FfprobeStreamReport:
     ATTRIBUTES_TO_COMPARE = {
         'codec_type',
         'codec_name',
-        'start_time'
+
+        # Don't compare start_time. It's better to compare relative_start_time
+        # of individual streams because some encoders seem to use non-zero
+        # start_time while still preserving the relative values.
+        # 'start_time',
+        'relative_start_time',
     }
 
     def __init__(self,

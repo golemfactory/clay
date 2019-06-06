@@ -311,7 +311,7 @@ class TestFfprobeFormatReport(TestCase):
     def test_all_stream_properties_are_tested(self):
         self.assertCountEqual(
             FfprobeStreamReport.ATTRIBUTES_TO_COMPARE,
-            ['codec_type', 'codec_name', 'start_time']
+            ['codec_type', 'codec_name', 'relative_start_time'],
         )
 
     def test_report_should_have_format_fields_with_proper_values(self):
@@ -336,22 +336,25 @@ class TestFfprobeFormatReport(TestCase):
         self.assertCountEqual(
             FfprobeFormatReport.ATTRIBUTES_TO_COMPARE,
             [
-                'format_name', 'stream_types', 'duration', 'start_time',
-                'program_count'
+                'format_name',
+                'stream_types',
+                'duration',
+                'program_count',
             ]
         )
 
     def test_diff_equal_to_expected(self):
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
         raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
-        raw_report_expected['format']['start_time'] = 10
+        raw_report_expected['format']['duration'] = 10
         report_expected = FfprobeFormatReport(raw_report_expected)
 
         diff = (report_expected.diff(report_original))
-        expected_diff = [{'location': 'format', 'attribute': 'start_time',
+        expected_diff = [{'location': 'format',
+                          'attribute': 'duration',
                           'actual_value': FuzzyDuration(10, 0),
-                          'expected_value': FuzzyDuration(0.0, 0),
-                          'reason': DiffReason.DifferentAttributeValues.value}]
+                          'expected_value': FuzzyDuration(46.665, 0),
+                          'reason': 'Different attribute values'}]
 
         self.assertCountEqual(diff, expected_diff)
 
@@ -359,13 +362,29 @@ class TestFfprobeFormatReport(TestCase):
         (
             [('format', 'start_time')],
             10,
-            [{
-                'location': 'format',
-                'attribute': 'start_time',
-                'actual_value': FuzzyDuration(10.0, 0),
-                'expected_value': FuzzyDuration(0.0, 0),
-                'reason': DiffReason.DifferentAttributeValues.value,
-            }],
+            [
+                {
+                    'location': stream_type,
+                    'attribute': 'relative_start_time',
+                    'actual_value': FuzzyDuration(stream_start_time - 10, 0.1),
+                    'expected_value': FuzzyDuration(stream_start_time, 0.1),
+                    'reason': DiffReason.DifferentAttributeValues.value,
+                    'actual_stream_index': stream_index,
+                    'expected_stream_index': stream_index,
+                } for stream_index, stream_type, stream_start_time in [
+                    (0, 'video', 0),
+                    (1, 'audio', 0.012),
+                    (2, 'subtitle', 0),
+                    (3, 'subtitle', 0.042),
+                    (4, 'subtitle', 0.042),
+                    (5, 'subtitle', 0.042),
+                    (6, 'subtitle', 0.042),
+                    (7, 'subtitle', 0.042),
+                    (8, 'audio', 0.009),
+                    (9, 'subtitle', 0.042),
+                    (10, 'subtitle', 0.042),
+                ]
+            ],
         ),
         (
             [('format', 'duration')],
@@ -407,7 +426,7 @@ class TestFfprobeFormatReport(TestCase):
             '0.5',
             [{
                 'location': 'audio',
-                'attribute': 'start_time',
+                'attribute': 'relative_start_time',
                 'actual_value': FuzzyDuration(0.5, 0.05),
                 'expected_value': FuzzyDuration(0.012, 0.05),
                 'reason': DiffReason.DifferentAttributeValues.value,
@@ -536,22 +555,52 @@ class TestFfprobeFormatReport(TestCase):
         (
             [('format', 'start_time')],
             10,
-            {'format': {'start_time': 0}},
+            {
+                'video': {'relative_start_time': 1},
+                'audio': {'relative_start_time': 2},
+                'subtitle': {'relative_start_time': 3},
+            },
+            [
+                {
+                    'location': stream_type,
+                    'attribute': 'relative_start_time',
+                    'actual_value': FuzzyDuration(stream_start_time, 0.1),
+                    'expected_value': new_relative_start_time,
+                    'reason': 'Different attribute values',
+                    'actual_stream_index': stream_index,
+                    'expected_stream_index': stream_index,
+                } for stream_index, stream_type, new_relative_start_time, stream_start_time in [
+                    (0, 'video', 1, 0),
+                    (1, 'audio', 2, 0.012),
+                    (2, 'subtitle', 3, 0),
+                    (3, 'subtitle', 3, 0.042),
+                    (4, 'subtitle', 3, 0.042),
+                    (5, 'subtitle', 3, 0.042),
+                    (6, 'subtitle', 3, 0.042),
+                    (7, 'subtitle', 3, 0.042),
+                    (8, 'audio', 2, 0.009),
+                    (9, 'subtitle', 3, 0.042),
+                    (10, 'subtitle', 3, 0.042),
+                ]
+            ],
         ),
         (
             [('format', 'duration')],
             80,
             {'format': {'duration': 46.665}},
+            [],
         ),
         (
             [('format', 'nb_programs')],
             2,
-            {'format': {'program_count': 0}},
+            {'format': {'program_count': None}},
+            [],
         ),
         (
             [('streams', 0, 'codec_name')],
             'h265',
             {'video': {'codec_name': 'h264'}},
+            [],
         ),
         (
             [
@@ -560,6 +609,7 @@ class TestFfprobeFormatReport(TestCase):
             ],
             'xx',
             {'audio': {'codec_name': 'aac'}},
+            [],
         ),
     ])
     def test_that_override_in_diff_should_work_correctly(
@@ -567,6 +617,7 @@ class TestFfprobeFormatReport(TestCase):
             dict_path,
             new_value,
             overrides,
+            expected_diff,
     ):
         report_original = FfprobeFormatReport(RAW_REPORT_ORIGINAL)
         raw_report_expected = copy.deepcopy(RAW_REPORT_ORIGINAL)
@@ -582,13 +633,17 @@ class TestFfprobeFormatReport(TestCase):
             expected_report=report_expected,
             overrides=overrides,
         ))
-        self.assertCountEqual(diff, [])
+        self.assertCountEqual(diff, expected_diff)
 
     @parameterized.expand([
         (
             [('format', 'start_time')],
             100,
-            {'format': {'start_time'}},
+            {
+                'video': {'relative_start_time'},
+                'audio': {'relative_start_time'},
+                'subtitle': {'relative_start_time'},
+            },
         ),
         (
             [('format', 'duration')],
