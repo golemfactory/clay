@@ -530,7 +530,7 @@ class TestFfprobeFormatReport(TestCase):
         report_expected = FfprobeFormatReport(raw_report_expected)
 
         diff = report_expected.diff(report_original)
-        self.assertEqual(diff, expected_diff)
+        self.assertCountEqual(diff, expected_diff)
 
     @parameterized.expand([
         (
@@ -582,7 +582,7 @@ class TestFfprobeFormatReport(TestCase):
             expected_report=report_expected,
             overrides=overrides,
         ))
-        self.assertEqual(diff, [])
+        self.assertCountEqual(diff, [])
 
     @parameterized.expand([
         (
@@ -635,7 +635,7 @@ class TestFfprobeFormatReport(TestCase):
             expected_report=report_expected,
             excludes=excludes,
         ))
-        self.assertEqual(diff, [])
+        self.assertCountEqual(diff, [])
 
 
 class TestFuzzyDuration(TestCase):
