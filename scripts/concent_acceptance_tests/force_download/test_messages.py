@@ -18,12 +18,13 @@ class ForceGetTaskResultTest(ForceDownloadBaseTest, unittest.TestCase):
         response = self.requestor_send(fgtr)
         msg = self.requestor_load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
-        self.assertEqual(msg.force_get_task_result, fgtr)
+        self.assertMessageEqual(msg.force_get_task_result, fgtr)
 
     def test_send_fail_timeout(self):
         ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline(
             **self.gen_ttc_kwargs(),
         )
+        self.ttc_add_promissory_and_sign(ttc)
         fgtr = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task__task_to_compute=ttc,
             **self.gen_rtc_kwargs('report_computed_task__'),

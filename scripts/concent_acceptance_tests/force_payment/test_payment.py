@@ -7,7 +7,7 @@ import typing
 from golem_messages import cryptography
 from golem_messages import factories as msg_factories
 from golem_messages import message
-from golem_messages.utils import encode_hex as encode_key_id
+from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
 import golem_sci.structs
 
 from golem.network.concent import exceptions as concent_exceptions
@@ -37,7 +37,7 @@ class ForcePaymentBase(SCIBaseTest):
         for _ in range(3):
             rct = msg_factories.tasks.ReportComputedTaskFactory(
                 **self.gen_rtc_kwargs(),
-                **self.gen_ttc_kwargs('task_to_compute__'),
+                **{'task_to_compute': self.gen_ttc()},
             )
             sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
                 report_computed_task=rct,
@@ -100,7 +100,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         """
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs('task_to_compute__'),
+            **{'task_to_compute': self.gen_ttc()},
         )
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -109,19 +109,23 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         sra1.sign_message(self.requestor_priv_key)
 
         requestor2_keys = cryptography.ECCx(None)
-        ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        ttc2_kwargs = self.gen_ttc_kwargs()
         ttc2_kwargs.update({
-            'task_to_compute__sign__privkey': requestor2_keys.raw_privkey,
-            'task_to_compute__requestor_public_key': encode_key_id(
+            'sign__privkey': requestor2_keys.raw_privkey,
+            'requestor_public_key': encode_key_id(
                 requestor2_keys.raw_pubkey,
             ),
-            'task_to_compute__requestor_ethereum_public_key': encode_key_id(
+            'requestor_ethereum_public_key': encode_key_id(
                 requestor2_keys.raw_pubkey,
             ),
         })
+        ttc2 = msg_factories.tasks.TaskToComputeFactory(**ttc2_kwargs)
+        self.ttc_add_promissory_and_sign(
+            ttc2, priv_key=requestor2_keys.raw_privkey
+        )
         rct2 = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **ttc2_kwargs,
+            **{'task_to_compute': ttc2},
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct2,
@@ -147,36 +151,39 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         self.assertServiceRefused(response)
 
     def test_multiple_eth_accounts(self):
-        ttc_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        ttc_kwargs = self.gen_ttc_kwargs()
         provider1_keys = cryptography.ECCx(None)
         ttc_kwargs.update({
-            'task_to_compute__'
             'want_to_compute_task__'
-            'provider_ethereum_public_key': encode_key_id(
+            'provider_ethereum_address': pubkey_to_address(
                 provider1_keys.raw_pubkey
             ),
         })
+        ttc = msg_factories.tasks.TaskToComputeFactory(**ttc_kwargs)
+        self.ttc_add_promissory_and_sign(ttc)
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             sign__privkey=provider1_keys.privkey,
-            **ttc_kwargs,
+            task_to_compute=ttc,
         )
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra1.sign_message(self.requestor_priv_key)
-        ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        ttc2_kwargs = self.gen_ttc_kwargs()
         provider2_keys = cryptography.ECCx(None)
         ttc2_kwargs.update({
             'task_to_compute__'
             'want_to_compute_task__'
-            'provider_ethereum_public_key': encode_key_id(
+            'provider_ethereum_address': pubkey_to_address(
                 provider2_keys.raw_pubkey
             ),
         })
+        ttc2 = msg_factories.tasks.TaskToComputeFactory(**ttc_kwargs)
+        self.ttc_add_promissory_and_sign(ttc2)
         rct2 = msg_factories.tasks.ReportComputedTaskFactory(
             sign__privkey=provider2_keys.privkey,
-            **ttc2_kwargs,
+            task_to_compute=ttc2,
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct2,
@@ -199,7 +206,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         """
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs('task_to_compute__'),
+            **{'task_to_compute': self.gen_ttc()},
         )
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -212,7 +219,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
             ],
         )
         response = self.assertPaymentRejected(fp, fpr_reasons.TimestampError)
-        self.assertEqual(response.force_payment, fp)
+        self.assertMessageEqual(response.force_payment, fp)
 
     def test_force_payment_committed_requestor_has_more_funds(self):
         """Concent service commits forced payment
@@ -251,7 +258,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
     def test_sra_not_signed(self):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs('task_to_compute__'),
+            **{'task_to_compute': self.gen_ttc()},
         )
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,

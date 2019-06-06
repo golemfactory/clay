@@ -6,6 +6,7 @@ from pathlib import Path
 from golem_messages import factories as msg_factories
 from golem_messages.message import tasks as tasks_msg
 
+
 from apps.blender.blenderenvironment import BlenderEnvironment
 
 from golem.core.simplehash import SimpleHash
@@ -77,32 +78,43 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
         )
         return ctd
 
-    def get_srv_file_kwargs(self, results_filename=None):
-        if not results_filename:
-            results_filename = self.results_filename
-
-        rct_path = 'subtask_results_rejected__report_computed_task__'
-        ttc_path = rct_path + 'task_to_compute__'
+    def ttc_file_kwargs(self, ttc_path = ''):
         return {
             ttc_path + 'compute_task_def': self.get_ctd(),
             ttc_path + 'size': self.size(self.resources_filename),
             ttc_path + 'package_hash': self.hash(self.resources_filename),
             ttc_path + 'concent_enabled': True,
+        }
+
+    def rct_file_kwargs(self, results_filename=None):
+        if not results_filename:
+            results_filename = self.results_filename
+
+        rct_path = 'subtask_results_rejected__report_computed_task__'
+        return {
             rct_path + 'size': self.size(results_filename),
             rct_path + 'package_hash': self.hash(results_filename),
         }
 
     def get_srv(self, results_filename=None, **kwargs):
         rct_path = 'subtask_results_rejected__report_computed_task__'
-        files_kwargs = self.get_srv_file_kwargs(
-            results_filename=results_filename)
-        files_kwargs.update(kwargs)
-        return msg_factories.concents.SubtaskResultsVerifyFactory(
+        files_kwargs = self.rct_file_kwargs(results_filename=results_filename)
+
+        ttc = self.gen_ttc(**self.ttc_file_kwargs())
+
+        srv = msg_factories.concents.SubtaskResultsVerifyFactory(
             **self.gen_rtc_kwargs(rct_path),
-            **self.gen_ttc_kwargs(rct_path + 'task_to_compute__'),
+            **{rct_path + 'task_to_compute': ttc},
             subtask_results_rejected__sign__privkey=self.requestor_priv_key,
             **files_kwargs,
+            **kwargs,
         )
+        srv.sign_concent_promissory_note(
+            deposit_contract_address=
+            self.ethereum_config.deposit_contract_address,
+            private_key=self.provider_priv_key,
+        )
+        return srv
 
     def get_correct_srv(self, results_filename=None, **kwargs):
         vn = tasks_msg.SubtaskResultsRejected.REASON.VerificationNegative
