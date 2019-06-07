@@ -158,6 +158,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.exclude_from_diff({'video': {'bitrate'}})
 
+        supported_conversions = video["video_codec"].get_supported_conversions()
+        if video["video_codec"].value not in supported_conversions:
+            pytest.skip("Transcoding is not possible for this file without"
+                        "also changing the video codec.")
+
         if resolution in list_matching_resolutions(video["resolution"]):
             (_input_report, _output_report, diff) = operation.run(video["path"])
             self.assertEqual(diff, [])
@@ -185,6 +190,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
+
+        supported_conversions = video["video_codec"].get_supported_conversions()
+        if video["video_codec"].value not in supported_conversions:
+            pytest.skip("Transcoding is not possible for this file without"
+                        "also changing the video codec.")
 
         if set([frame_rate, str(frame_rate)]) & list_supported_frame_rates() != set():
             (_input_report, _output_report, diff) = operation.run(video["path"])
@@ -215,6 +225,12 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate'}})
+
+        supported_conversions = video["video_codec"].get_supported_conversions()
+        if video["video_codec"].value not in supported_conversions:
+            pytest.skip("Transcoding is not possible for this file without"
+                        "also changing the video codec.")
+
         (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
