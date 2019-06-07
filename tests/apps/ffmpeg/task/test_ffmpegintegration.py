@@ -155,23 +155,32 @@ class TestFfmpegIntegration(TestTaskIntegration):
         return task_def_for_transcoding
 
     @parameterized.expand(
-        (video, video_codec, container)
-        for video in VIDEO_FILES
-        for video_codec, container in [
-            (VideoCodec.FLV1, Container.c_FLV),
-            (VideoCodec.H_264, Container.c_AVI),
-            (VideoCodec.H_265, Container.c_MP4),
-            (VideoCodec.HEVC, Container.c_MP4),
-            (VideoCodec.MJPEG, Container.c_MOV),
-            (VideoCodec.MPEG_1, Container.c_MPEG),
-            (VideoCodec.MPEG_2, Container.c_MPEG),
-            (VideoCodec.MPEG_4, Container.c_MPEGTS),
-            (VideoCodec.THEORA, Container.c_OGG),
-            (VideoCodec.VP8, Container.c_WEBM),
-            (VideoCodec.VP9, Container.c_MATROSKA),
-            (VideoCodec.WMV1, Container.c_ASF),
-            (VideoCodec.WMV2, Container.c_ASF),
-        ]
+        (
+            (video, video_codec, container)
+            for video in VIDEO_FILES
+            for video_codec, container in [
+                (VideoCodec.FLV1, Container.c_FLV),
+                (VideoCodec.H_264, Container.c_AVI),
+                (VideoCodec.H_265, Container.c_MP4),
+                (VideoCodec.HEVC, Container.c_MP4),
+                (VideoCodec.MJPEG, Container.c_MOV),
+                (VideoCodec.MPEG_1, Container.c_MPEG),
+                (VideoCodec.MPEG_2, Container.c_MPEG),
+                (VideoCodec.MPEG_4, Container.c_MPEGTS),
+                (VideoCodec.THEORA, Container.c_OGG),
+                (VideoCodec.VP8, Container.c_WEBM),
+                (VideoCodec.VP9, Container.c_MATROSKA),
+                (VideoCodec.WMV1, Container.c_ASF),
+                (VideoCodec.WMV2, Container.c_ASF),
+            ]
+        ),
+        testcase_func_name=lambda testcase_func, param_num, param: (
+            f"{testcase_func.__name__}_{param_num}_from_"
+            f"{param[0][0]['video_codec'].value}_"
+            f"{param[0][0]['container'].value}_to_"
+            f"{param[0][1].value}_"
+            f"{param[0][2].value}"
+        ),
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -218,13 +227,20 @@ class TestFfmpegIntegration(TestTaskIntegration):
             pytest.skip("Video codec conversion not supported")
 
     @parameterized.expand(
-        (video, resolution)
-        for video in VIDEO_FILES
-        for resolution in (
-            [320, 240],
-            [640, 260],
-            [640, 480],
-        )
+        (
+            (video, resolution)
+            for video in VIDEO_FILES
+            for resolution in (
+                [320, 240],
+                [640, 260],
+                [640, 480],
+            )
+        ),
+        testcase_func_name=lambda testcase_func, param_num, param: (
+            f"{testcase_func.__name__}_{param_num}_from_"
+            f"{param[0][0]['resolution'][0]}x{param[0][0]['resolution'][1]}_to_"
+            f"{param[0][1][0]}x{param[0][1][1]}"
+        ),
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -270,9 +286,17 @@ class TestFfmpegIntegration(TestTaskIntegration):
             pytest.skip("Target resolution not supported")
 
     @parameterized.expand(
-        (video, frame_rate)
-        for video in VIDEO_FILES
-        for frame_rate in (1, 25, '30000/1001', 60)
+        (
+            (video, frame_rate)
+            for video in VIDEO_FILES
+            for frame_rate in (1, 25, '30000/1001', 60)
+        ),
+        testcase_func_name=lambda testcase_func, param_num, param: (
+            f"{testcase_func.__name__}_{param_num}_of_"
+            f"{param[0][0]['video_codec'].value}_"
+            f"{param[0][0]['container'].value}_to_"
+            f"{str(param[0][1]).replace('/', '_')}_fps"
+        ),
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -315,9 +339,17 @@ class TestFfmpegIntegration(TestTaskIntegration):
             pytest.skip("Target frame rate not supported")
 
     @parameterized.expand(
-        (video, subtasks_count)
-        for video in VIDEO_FILES
-        for subtasks_count in (1, 6, 10)
+        (
+            (video, subtasks_count)
+            for video in VIDEO_FILES
+            for subtasks_count in (1, 6, 10)
+        ),
+        testcase_func_name=lambda testcase_func, param_num, param: (
+            f"{testcase_func.__name__}_{param_num}_of_"
+            f"{param[0][0]['video_codec'].value}_"
+            f"{param[0][0]['container'].value}_into_"
+            f"{param[0][1]}_subtasks"
+        ),
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
