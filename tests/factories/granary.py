@@ -15,7 +15,6 @@ _logging = False
 class Account:
     def __init__(self, raw_key, ts):
         self.key = ECCx(raw_key)
-        random.seed()
         assert self.key.raw_privkey == raw_key
         self.raw_key = self.key.raw_privkey
         if _logging:
@@ -39,35 +38,28 @@ class Granary:
             universal_newlines=True)
         if _logging:
             print('returncode:', completed.returncode)
-
-        if _logging:
             if completed.stderr:
                 print('stderr:', completed.stderr)
             else:
                 print('stderr: EMPTY')
 
-        if completed.stdout:
-            if _logging:
-                print('stdout:', completed.stdout)
-            out_lines = completed.stdout.split('\n')
-            raw_key = out_lines[0].strip()
-
-            if _logging:
-                print('raw_key:', raw_key)
-            key = decode_hex(raw_key)
-            if _logging:
-                print('key:', key)
-            return Account(key, out_lines[1] or None)
-        elif _logging:
+        if not completed.stdout:
             print('stdout: EMPTY')
-        return None
+            return None
+        elif _logging:
+            print('stdout:', completed.stdout)
+
+        out_lines = completed.stdout.split('\n')
+        raw_key = out_lines[0].strip()
+
+        key = decode_hex(raw_key)
+        if _logging:
+            print('raw_key:', raw_key, 'key:', key)
+        return Account(key, out_lines[1] or None)
 
     def return_account(self, account):
         if _logging:
-            print("Granary called, account returned")
-            print(account)
-            print(account.raw_key)
-            print(account.transaction_store)
+            print("Granary called, account returned. account=", account)
 
         key_pub_addr = encode_hex(sha3(account.key.raw_pubkey)[12:])
 

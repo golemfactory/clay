@@ -7,6 +7,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     TYPE_CHECKING
 )
 
@@ -33,7 +34,15 @@ def disable_key_reuse(test_function: Callable) -> Callable:
 
 
 class NodeTestBase(unittest.TestCase):
-    reuse_keys = NodeKeyReuse.get(get_testdir())
+    reuse_keys: Optional[NodeKeyReuse] = None
+
+    @classmethod
+    def setUpClass(cls):
+        cls.reuse_keys = NodeKeyReuse.get(get_testdir())
+
+    @classmethod
+    def tearDownClass(cls):
+        NodeKeyReuse.reset()
 
     def setUp(self):
         self.test_dir = get_testdir() / self._relative_id()
@@ -76,6 +85,7 @@ class NodeTestBase(unittest.TestCase):
         if conftest.DumpOutput.enabled_on_crash():
             test_args.append('--dump-output-on-crash')
 
+        assert self.reuse_keys is not None, "reuse_keys is not configured"
         self.reuse_keys.begin_test(self.datadirs)
         exit_code = subprocess.call(args=test_args)
         self.reuse_keys.end_test()

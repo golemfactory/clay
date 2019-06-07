@@ -19,22 +19,29 @@ PASSWORD = 'dupa.8'
 _logging = False
 
 
+class NodeKeyReuseBase():
+    def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
+        raise NotImplementedError()
+
+    def end_test(self) -> None:
+        raise NotImplementedError()
+
+
 class NodeKeyReuse:
-    instance = None
-    provider = None
-    enabled = True
-    granary_hostname = None
+    instance: 'Optional[NodeKeyReuse]' = None
+    provider: Optional[NodeKeyReuseBase]  = None
+    enabled: bool = True
+    granary_hostname: Optional[str] = None
 
     @classmethod
     def get(cls, test_dir: Path):
         if not cls.instance:
-            if _logging:
-                print("NodeKeyReuse.get() called, no instance. "
-                      "dir= ", test_dir)
             cls.instance = cls()
             if cls.granary_hostname:
+                print("key_reuse - granary selected:", cls.granary_hostname)
                 cls.provider = NodeKeyReuseGranary(cls.granary_hostname)
             else:
+                print("key_reuse - local folder selected:", test_dir)
                 cls.provider = NodeKeyReuseLocalFolder(test_dir)
         return cls.instance
 
@@ -61,11 +68,15 @@ class NodeKeyReuse:
         cls.enabled = True
 
     @classmethod
+    def reset(cls):
+        cls.instance = None
+
+    @classmethod
     def set_granary(cls, hostname):
         cls.granary_hostname = hostname
 
 
-class NodeKeyReuseLocalFolder():
+class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
     def __init__(self, test_dir: Path):
         self.dir: Path = test_dir / 'key_reuse'
         self.datadirs: Dict[NodeId, Path] = {}
@@ -81,7 +92,8 @@ class NodeKeyReuseLocalFolder():
             self._recycle_keys()
 
     def end_test(self) -> None:
-        print("NodeKeyReuseLocalFolder.end_test() called.")
+        if _logging:
+            print("NodeKeyReuseLocalFolder.end_test() called.")
         try:
             if _logging:
                 print("Moving keys from data-dirs to reuse-dirs")
@@ -143,7 +155,7 @@ class NodeKeyReuseLocalFolder():
         shutil.copyfile(src, dst)
 
 
-class NodeKeyReuseGranary():
+class NodeKeyReuseGranary(NodeKeyReuseBase):
     def __init__(self, hostname: str):
         self.datadirs: Dict[NodeId, Path] = {}
         self.granary = Granary(hostname)
@@ -152,12 +164,12 @@ class NodeKeyReuseGranary():
         self.datadirs = datadirs
         if _logging:
             print("NodeKeyReuseGranary.begin_test() called.")
-        if _logging:
             print("Moving keys from granary to data-dirs")
-            self._recycle_keys()
+        self._recycle_keys()
 
     def end_test(self) -> None:
-        print("NodeKeyReuseGranary.end_test() called.")
+        if _logging:
+            print("NodeKeyReuseGranary.end_test() called.")
         try:
             if _logging:
                 print("Moving keys from data-dirs to granary")
@@ -167,7 +179,8 @@ class NodeKeyReuseGranary():
             return
 
     def _recycle_keys(self) -> None:
-        print("Recycle keys")
+        if _logging:
+            print("Recycle keys")
         # this is run before running second and later tests
         for i, node_id in enumerate(self.datadirs):
             account = self.granary.request_account()
@@ -207,12 +220,14 @@ class NodeKeyReuseGranary():
             with open(src_ts_file, 'r') as f:
                 ts = f.read()
         except FileNotFoundError:
-            print('No tx.json, continue')
+            if _logging:
+                print('No tx.json, continue')
         try:  # read keystore.json
             with open(src_key_file, 'r') as f:
                 keystore = f.read()
         except FileNotFoundError:
-            print('No File, no key')
+            if _logging:
+                print('No File, no key')
             return None
         keystore = json.loads(keystore)
 
@@ -225,8 +240,8 @@ class NodeKeyReuseGranary():
 
     @staticmethod
     def _save_private_key(key, key_path: Path, password: str) -> None:
-        print("_save_private_key")
-        print(password)
+        if _logging:
+            print("_save_private_key() password=", password)
         keystore = create_keyfile_json(
             key,
             password.encode('utf-8'),
