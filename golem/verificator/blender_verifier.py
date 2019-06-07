@@ -1,4 +1,6 @@
+import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Type
 
 import logging
@@ -72,13 +74,31 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addErrback(failure)
 
         subtask_info = self.verification_data['subtask_info']
-        work_dir = os.path.dirname(self.verification_data['results'][0])
+        root_dir = Path(os.path.dirname(
+            self.verification_data['results'][0])).parent
+        work_dir = os.path.join(root_dir, 'work')
+        os.makedirs(work_dir, exist_ok=True)
+        res_dir = os.path.join(root_dir, 'resources')
+        tmp_dir = os.path.join(root_dir, "tmp")
+
+        assert self.verification_data['resources']
+
+        os.makedirs(res_dir, exist_ok=True)
+        if os.path.isdir(self.verification_data['resources'][0]):
+            shutil.copytree(self.verification_data['resources'][0], res_dir)
+        else:
+            for resource_file in self.verification_data['resources']:
+                shutil.copy(resource_file, res_dir)
+
+        for result_file in self.verification_data['results']:
+            shutil.copy(result_file, work_dir)
+
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
-            resources=subtask_info['path_root'],
-            temporary=os.path.dirname(work_dir),
+            resources=res_dir,
+            temporary=tmp_dir,
             work=work_dir,
-            output=os.path.join(work_dir, "output"),
-            logs=os.path.join(work_dir, "logs"),
+            output=os.path.join(root_dir, "output"),
+            logs=os.path.join(root_dir, "logs"),
         )
 
         extra_data = dict(

@@ -407,6 +407,7 @@
     <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
     <ROW Name="bannerfull01.jpg" SourcePath="Installer\Installer_Win\banner-full-01.jpg"/>
     <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
+    <ROW Name="checkhypervinstallation.ps1" SourcePath="scripts\virtualization\check-hyperv-installation.ps1"/>
     <ROW Name="cleandockervm.ps1" SourcePath="scripts\docker\clean-docker-vm.ps1"/>
     <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
     <ROW Name="preparedockerasadmin.ps1" SourcePath="scripts\docker\prepare-docker-as-admin.ps1"/>
@@ -414,7 +415,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiConditionComponent">
     <ROW Feature_="TileAssets_DefaultBuild" Level="4" Condition="VersionNT &lt; 603"/>
-    <ROW Feature_="DockerForWin" Level="1" Condition="(HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) AND (INSTALL_HYPERV = &quot;IDYES&quot;)"/>
+    <ROW Feature_="DockerForWin" Level="1" Condition="(HYPER_V_AVAILABLE = &quot;True&quot;) AND ((INSTALL_HYPERV = &quot;IDYES&quot;) OR (HYPER_V_INSTALLED = &quot;True&quot;))"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiControlComponent">
     <ROW Dialog_="LicenseAgreementDlg" Control="AgreementText" Type="ScrollableText" X="20" Y="60" Width="330" Height="120" Attributes="7" Text="Installer\Installer_Win\LICENCE.rtf" Order="400" TextLocId="Control.Text.LicenseAgreementDlg#AgreementText_2" MsiKey="LicenseAgreementDlg#AgreementText"/>
@@ -469,10 +470,10 @@
     <ROW Action="AI_DATA_SETTER" Type="51" Source="AI_ExtractFiles" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER_1" Type="51" Source="StopProcess_Golem" Target="Golem.exe"/>
     <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGwAZQBhAG4AZABvAGMAawBlAHIAdgBtAC4AcABzADE="/>
-    <ROW Action="AI_DATA_SETTER_11" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
     <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
     <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGEAcwBhAGQAbQBpAG4ALgBwAHMAMQ=="/>
     <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="We have detected that you are trying to install Golem on Windows 10 Home. Unfortunately, your operating system does not support Hyper-V, but we have kept Docker Toolbox support.&#13;\n&#13;\nPlease download it manually from the official website https://docs.docker.com/toolbox/toolbox_install_windows/ in case you don&apos;t have it already installed on your computer. |Virtualization for Windows Home |MB_OK,MB_ICONINFORMATION,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
+    <ROW Action="AI_DATA_SETTER_15" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADEAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGgAZQBjAGsAaAB5AHAAZQByAHYAaQBuAHMAdABhAGwAbABhAHQAaQBvAG4ALgBwAHMAMQ=="/>
     <ROW Action="AI_DATA_SETTER_16" Type="51" Source="CustomActionData" Target="Since 0.19.0 Golem supports Hyper-V.&#13;\n&#13;\nPlease be aware that if you are using any other virtualization software (e.g. Docker Toolbox, VMware) do not to install Hyper-V as this may cause issues with other applications on your system. &#13;\n&#13;\nBy clicking &quot;Yes&quot; you are agreeing for Hyper-V to be installed. Otherwise please make sure you have Docker Toolbox installed before running Golem. |Hyper-V in Windows Professional |MB_YESNO,MB_ICONINFORMATION,MB_DEFBUTTON1|INSTALL_HYPERV|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
     <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
@@ -513,7 +514,7 @@
     <ROW Action="AI_WinOptFeaturesRemove" Type="11265" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRemove" WithoutSeq="true"/>
     <ROW Action="AI_WinOptFeaturesRollback" Type="11521" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRollback" WithoutSeq="true"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesUninstall"/>
-    <ROW Action="CheckHyperVAvailability" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_11"/>
+    <ROW Action="CheckHyperVInstallation" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_15"/>
     <ROW Action="ExecuteUninstallDockerTb" Type="3122" Source="DOCKER_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_10"/>
@@ -602,9 +603,9 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
-    <ROW Action="AI_ResolveKnownFolders" Sequence="55"/>
-    <ROW Action="AI_DpiContentScale" Sequence="54"/>
-    <ROW Action="AI_EnableDebugLog" Sequence="53"/>
+    <ROW Action="AI_ResolveKnownFolders" Sequence="53"/>
+    <ROW Action="AI_DpiContentScale" Sequence="52"/>
+    <ROW Action="AI_EnableDebugLog" Sequence="51"/>
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99"/>
     <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
@@ -612,13 +613,13 @@
     <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="205"/>
     <ROW Action="ForceReboot" Condition="( Installed AND ( REMOVE = &quot;ALL&quot; OR AI_INSTALL_MODE = &quot;Remove&quot; ) )" Sequence="1301"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
-    <ROW Action="MessageBox_HyperVUnavailable" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="202"/>
-    <ROW Action="AI_DATA_SETTER_14" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="201"/>
-    <ROW Action="CheckHyperVAvailability" Condition="( NOT Installed )" Sequence="52"/>
-    <ROW Action="AI_DATA_SETTER_11" Condition="( NOT Installed )" Sequence="51"/>
-    <ROW Action="MessageBox_DoYouWantHyperV" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="204"/>
-    <ROW Action="AI_DATA_SETTER_16" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="203"/>
+    <ROW Action="MessageBox_HyperVUnavailable" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;True&quot; )" Sequence="202"/>
+    <ROW Action="AI_DATA_SETTER_14" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;True&quot; )" Sequence="201"/>
+    <ROW Action="MessageBox_DoYouWantHyperV" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;True&quot; AND HYPER_V_INSTALLED &lt;&gt; &quot;True&quot; )" Sequence="204"/>
+    <ROW Action="AI_DATA_SETTER_16" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;True&quot; AND HYPER_V_INSTALLED &lt;&gt; &quot;True&quot; )" Sequence="203"/>
     <ROW Action="SetRunningUser" Condition="( NOT Installed )" Sequence="1299"/>
+    <ROW Action="CheckHyperVInstallation" Condition="( NOT Installed )" Sequence="77"/>
+    <ROW Action="AI_DATA_SETTER_15" Condition="( NOT Installed )" Sequence="76"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
     <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10240)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 10586)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 14393)) AND ((VersionNT64 &lt;&gt; 1000) OR (MsiNTProductType &lt;&gt; 1) OR (WindowsBuild &lt;&gt; 15063)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
