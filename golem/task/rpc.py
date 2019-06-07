@@ -416,7 +416,7 @@ def _restart_task_error(e, _self, task_id, **_kwargs):
     return None, str(e)
 
 
-def _restart_subtasks_error(e, _self, task_id, subtask_ids, **_kwargs) \
+def _restart_subtasks_error(e, _self, task_id, subtask_ids, *args, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
     logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
                  task_id, subtask_ids, e)
@@ -628,13 +628,6 @@ class ClientProvider:
                 return f'Subtask does not belong to the given task.' \
                     f'task_id: {task_id}, subtask_id: {sub_id}'
 
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            len(subtask_ids),
-            False if disable_concent else task.header.concent_enabled,
-            ignore_gas_price
-        )
-
         logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
                      'ignore_gas_price=%r, disable_concent=%r', task_id,
                      subtask_ids, ignore_gas_price, disable_concent)
@@ -642,6 +635,13 @@ class ClientProvider:
         task_state = self.client.task_manager.tasks_states[task_id]
 
         if task_state.status.is_active():
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                len(subtask_ids),
+                False if disable_concent else task.header.concent_enabled,
+                ignore_gas_price
+            )
+
             for subtask_id in subtask_ids:
                 self.client.restart_subtask(subtask_id)
         else:
@@ -692,11 +692,6 @@ class ClientProvider:
                      subtask_ids, ignore_gas_price)
 
         try:
-            self.task_manager.put_task_in_restarted_state(
-                task_id,
-                clear_tmp=False,
-            )
-
             old_task = self.task_manager.tasks[task_id]
 
             finished_subtask_ids = set(
@@ -704,6 +699,18 @@ class ClientProvider:
                 if sub['status'] == taskstate.SubtaskStatus.finished
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+
+            self._validate_enough_funds_to_pay_for_task(
+                old_task.subtask_price,
+                old_task.get_total_tasks() - len(subtask_ids_to_copy),
+                False if disable_concent else old_task.header.concent_enabled,
+                ignore_gas_price
+            )
+
+            self.task_manager.put_task_in_restarted_state(
+                task_id,
+                clear_tmp=False,
+            )
 
             logger.debug('_restart_finished_task_subtasks. '
                          'subtask_ids_to_copy=%r', subtask_ids_to_copy)

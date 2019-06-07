@@ -552,9 +552,40 @@ class TestRestartSubtasks(ProviderBase):
             )
 
         self.task_id = self.task.header.task_id
-        self.subtask_ids = ['subtask-uuid-1', 'subtask-uuid-2']
+        self.subtask_ids = ['subtask-id-1', 'subtask-id-2']
         self.provider.task_manager.subtask2task_mapping = \
             {sub_id: self.task_id for sub_id in self.subtask_ids}
+
+    @mock.patch('golem.task.rpc.ClientProvider.'
+                '_validate_lock_funds_possibility')
+    @mock.patch('golem.task.rpc.enqueue_new_task')
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
+    @mock.patch('golem.task.rpc._restart_subtasks')
+    def test_empty_subtasks_list(self, restart_subtasks_mock, *_):
+        ignore_gas_price = fake.pybool()
+        disable_concent = fake.pybool()
+
+        self.task.subtasks_given = {
+            'finished-subtask-id': {'status': taskstate.SubtaskStatus.finished},
+            'failed-subtask-id-1': {'status': taskstate.SubtaskStatus.failure},
+            'failed-subtask-id-2': {'status': taskstate.SubtaskStatus.failure}
+        }
+        self.task.get_total_tasks = lambda: len(self.task.subtasks_given)
+
+        self.provider.restart_subtasks(
+            task_id=self.task_id,
+            subtask_ids=[],
+            ignore_gas_price=ignore_gas_price,
+            disable_concent=disable_concent,
+        )
+
+        restart_subtasks_mock.assert_called_once_with(
+            client=self.client,
+            old_task_id=self.task_id,
+            task_dict=mock.ANY,
+            subtask_ids_to_copy={'finished-subtask-id'},
+            ignore_gas_price=ignore_gas_price
+        )
 
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
     @mock.patch('golem.client.Client.restart_subtask')
@@ -583,12 +614,20 @@ class TestRestartSubtasks(ProviderBase):
         )
 
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
-    @mock.patch("golem.task.rpc.ClientProvider._restart_finished_task_subtasks")
+    @mock.patch('golem.task.rpc._restart_subtasks')
     @mock.patch('golem.task.rpc.ClientProvider.'
                 '_validate_enough_funds_to_pay_for_task')
     def test_task_inactive(self, validate_funds_mock, restart_mock, *_):
         ignore_gas_price = fake.pybool()
         disable_concent = fake.pybool()
+        self.task.subtasks_given = {
+            'subtask-id-1': {'status': taskstate.SubtaskStatus.finished},
+            'subtask-id-2': {'status': taskstate.SubtaskStatus.finished},
+            'finished-subtask-id': {'status': taskstate.SubtaskStatus.finished},
+            'failed-subtask-id-1': {'status': taskstate.SubtaskStatus.failure},
+            'failed-subtask-id-2': {'status': taskstate.SubtaskStatus.failure}
+        }
+        self.task.get_total_tasks = lambda: len(self.task.subtasks_given)
 
         self.provider.restart_subtasks(
             task_id=self.task_id,
@@ -599,16 +638,18 @@ class TestRestartSubtasks(ProviderBase):
 
         validate_funds_mock.assert_called_once_with(
             self.task.subtask_price,
-            len(self.subtask_ids),
+            # there's one finished subtask which is not in subtasks to restart
+            len(self.task.subtasks_given) - 1,
             self.task.header.concent_enabled,
             ignore_gas_price
         )
 
         restart_mock.assert_called_once_with(
-            self.task_id,
-            self.subtask_ids,
-            ignore_gas_price,
-            disable_concent
+            client=self.client,
+            old_task_id=self.task_id,
+            task_dict=mock.ANY,
+            subtask_ids_to_copy={'finished-subtask-id'},
+            ignore_gas_price=ignore_gas_price
         )
 
     def test_task_unknown(self, *_):
@@ -642,11 +683,10 @@ class TestRestartSubtasks(ProviderBase):
                 available=0,
                 currency='ETH'
             )
-        subtask_ids = ['subtask-uuid-1', 'subtask-uuid-2']
 
         error = self.provider.restart_subtasks(
             task_id=self.task.header.task_id,
-            subtask_ids=subtask_ids
+            subtask_ids=self.subtask_ids
         )
 
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
