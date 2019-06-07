@@ -53,3 +53,6 @@ class GolemNodeTest(NodeTestBase):
             'golem.separate_hyperg',
             **{'task-package': 'cubes', 'task-settings': '4k'},
         )
+
+    def test_restart_failed_subtasks(self):
+        self._run_test('golem.restart_failed_subtasks')
