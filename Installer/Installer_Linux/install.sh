@@ -332,17 +332,6 @@ function install_dependencies()
         else
             sudo usermod -aG docker ${SUDO_USER}
         fi
-        sudo docker run hello-world &>/dev/null
-        if [[ ${?} -eq 0 ]]; then
-            info_msg "Docker installed successfully"
-        else
-            warning_msg "Error occurred during installation"
-            sleep 5s
-        fi
-    fi
-
-    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
-        sudo pkill -SIGHUP dockerd
     fi
 
     if [[ ${INSTALL_GVISOR_RUNTIME} -eq 1 ]]; then
@@ -374,9 +363,22 @@ with open('/etc/docker/daemon.json', 'w+') as f:
 EOF
         chmod a+x runsc
         sudo mv runsc /usr/local/bin
-        sudo service docker restart || true
     fi
 
+    sudo service docker restart || true
+
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+        output=$(sudo docker run hello-world)
+        exit_code=${?}
+
+        if [[ ${exit_code} -eq 0 ]]; then
+            info_msg "Docker installed successfully"
+        else
+            warning_msg "Docker installation error: 'docker run hello-world' failed with exit code ${exit_code}"
+            warning_msg "${output}"
+            sleep 5s
+        fi
+    fi
 }
 
 # @brief Download latest Golem package (if package wasn't passed)
