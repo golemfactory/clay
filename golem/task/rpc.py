@@ -531,8 +531,12 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
-    def restart_task(self, task_id: str, force: bool = False) \
-            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
+    def restart_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
@@ -553,7 +557,7 @@ class ClientProvider:
             self._validate_enough_funds_to_pay_for_task(
                 task.subtask_price,
                 task.get_total_tasks(),
-                task.header.concent_enabled,
+                False if disable_concent else task.header.concent_enabled,
                 force
             )
 
@@ -565,7 +569,10 @@ class ClientProvider:
         except KeyError:
             return None, "Task not found: '{}'".format(task_id)
 
-        task_dict.pop('id', None)
+        del task_dict['id']
+        if disable_concent:
+            task_dict['concent_enabled'] = False
+
         prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
         validate_client(self.client)
