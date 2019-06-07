@@ -122,9 +122,9 @@ class SimulatedTranscodingOperation:
 
         components = [
             self._video_options.get('codec', None),
+            container,
             resolution,
             self._video_options.get('frame_rate', None),
-            container,
             self._video_options.get('bit_rate', None),
             subtasks,
         ]

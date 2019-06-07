@@ -43,7 +43,7 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
         self.assertEqual(
             set(self.ffprobe_report_set._report_tables[
                 'codec change']['test_video.mp4']),
-            {'h264/320x240/mp4/2seg'},
+            {'h264/mp4/320x240/2seg'},
         )
 
     @mock.patch(
