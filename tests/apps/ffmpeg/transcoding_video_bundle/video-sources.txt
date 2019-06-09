@@ -25,7 +25,7 @@ http://mirrors.standaloneinstaller.com/video-sample/video-sample.mts            
 https://archive.org/download/RelaxAtTheRiverLakeCCBYNatureClip/Relax%20at%20the%20River%20Lake%20CC-BY%20NatureClip.mov                                             natureclip      relaxriver           bad
 
 http://mirrors.standaloneinstaller.com/video-sample/jellyfish-25-mbps-hd-hevc.mkv                                                                                   standalone      jellyfish            5
-http://dl3.h265files.com/video-h265.mkv                                                                                                                             h265files       alps                 5
+http://dl5.webmfiles.org/video-h265.mkv                                                                                                                             h265files       alps                 5
 
 http://mirrors.standaloneinstaller.com/video-sample/P6090053.mov                                                                                                    standalone      p6090053             5
 http://mirrors.standaloneinstaller.com/video-sample/TRA3106.avi                                                                                                     standalone      tra3106              5
@@ -53,7 +53,7 @@ https://sample-videos.com/video123/mp4/360/big_buck_bunny_360p_1mb.mp4          
 http://mirrors.standaloneinstaller.com/video-sample/small.webm                                                                                                      standalone      small                5
 https://base-n.de/webm/out8.webm                                                                                                                                    basen           out8                 5
 https://upload.wikimedia.org/wikipedia/commons/9/99/Video_Codec_Test_tractor_1080p25.y4m.webm                                                                       wikipedia       tractor              5
-http://dl3.webmfiles.org/big-buck-bunny_trailer.webm                                                                                                                webmfiles       bigbuckbunny         5
+http://dl5.webmfiles.org/big-buck-bunny_trailer.webm                                                                                                                webmfiles       bigbuckbunny         5
 
 http://mirrors.standaloneinstaller.com/video-sample/star_trails.webm                                                                                                standalone      startrails           5
 https://base-n.de/webm/out9.webm                                                                                                                                    basen           out9                 5
