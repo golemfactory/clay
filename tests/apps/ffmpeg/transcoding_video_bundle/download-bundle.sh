@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-bundle_version=3
+bundle_version=4
 resource_dir="$(dirname "${BASH_SOURCE[0]}")/../resources"
 package_name="transcoding-video-bundle-v$bundle_version.zip"
 package_url="http://builder.concent.golem.network/download/$package_name"
