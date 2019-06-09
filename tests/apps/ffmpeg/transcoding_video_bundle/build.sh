@@ -1,7 +1,8 @@
 #!/bin/bash -e
 
-output_dir="$1"
+bundle_version="$1"
 
+output_dir="$(dirname "${BASH_SOURCE[0]}")/transcoding-video-bundle"
 index_file="$output_dir/index.md"
 
 
@@ -71,3 +72,25 @@ grep --invert-match "^$" video-sources.txt | while IFS=' ' read -r url source_na
     printf "| %110s | %120s |\n" "$(basename "$renamed_original_file")" "$url" >> "$index_file"
     i=$(( ++i ))
 done
+
+
+# NOTE: Surprisingly Using level 9 zip compression does save some space (5-10%) even though
+# the archive contains only highly compressed videos.
+cd "$(dirname "${BASH_SOURCE[0]}")"
+zip                                                  \
+    -9                                               \
+    --recurse-paths                                  \
+    "transcoding-video-bundle-v$bundle_version.zip"  \
+    transcoding-video-bundle/                        \
+    --exclude transcoding-video-bundle/original/\*   \
+    --exclude transcoding-video-bundle/download/\*   \
+    --exclude transcoding-video-bundle/tmp-splits/\*
+zip                                                          \
+    -9                                                       \
+    --recurse-paths                                          \
+    "transcoding-video-bundle-v$bundle_version-original.zip" \
+    transcoding-video-bundle/                                \
+    --exclude transcoding-video-bundle/bad/\*                \
+    --exclude transcoding-video-bundle/good/\*               \
+    --exclude transcoding-video-bundle/download/\*           \
+    --exclude transcoding-video-bundle/tmp-splits/\*
