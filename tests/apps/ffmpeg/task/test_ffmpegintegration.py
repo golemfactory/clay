@@ -95,7 +95,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
             task_executor=self,
             experiment_name="codec change",
             resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir)
+            tmp_dir=self.tempdir,
+            dont_include_in_option_description=["resolution"])
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_video_codec_change(video_codec)
         operation.request_container_change(container)
@@ -140,7 +141,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
             task_executor=self,
             experiment_name="frame rate change",
             resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir)
+            tmp_dir=self.tempdir,
+            dont_include_in_option_description=["resolution", "video_codec"])
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_frame_rate_change(frame_rate)
         operation.request_video_codec_change(VideoCodec.H_264)
@@ -162,7 +164,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
             task_executor=self,
             experiment_name="number of subtasks",
             resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir)
+            tmp_dir=self.tempdir,
+            dont_include_in_option_description=["resolution", "video_codec"])
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_subtasks_count(subtasks_count)
         operation.request_video_codec_change(VideoCodec.H_264)
