@@ -301,17 +301,17 @@ class WalletOperation(BaseModel):
     status = StringEnumField(enum_type=STATUS)
     sender_address = CharField()
     recipient_address = CharField()
-    amount = HexIntegerField(null=True)
+    amount = HexIntegerField()
     currency = StringEnumField(enum_type=CURRENCY)
     gas_cost = HexIntegerField(null=True)
 
 
 class TaskPayment(BaseModel):
-    wallet_operation = ForeignKeyField(WalletOperation, unique=True, null=False)
-    node = CharField(null=False)
+    wallet_operation = ForeignKeyField(WalletOperation, unique=True)
+    node = CharField()
     task = CharField()
     subtask = CharField()
-    expected_amount = HexIntegerField(null=False)
+    expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
 
