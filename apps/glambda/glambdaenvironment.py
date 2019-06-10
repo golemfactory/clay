@@ -26,5 +26,5 @@ class GLambdaTaskEnvironment(DockerEnvironment):
             volumes=[],
             binds={},
             devices=[],
-            environment={}
+            environment={'HOME': '/home/user'}
         )
