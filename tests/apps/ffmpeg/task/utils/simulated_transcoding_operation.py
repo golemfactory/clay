@@ -145,6 +145,7 @@ class SimulatedTranscodingOperation:
     def _build_task_def(cls,
                         video_file: str,
                         result_file: str,
+                        container: Container,
                         video_options: Dict[str, str],
                         subtasks_count: int) -> dict:
         return {
@@ -158,7 +159,7 @@ class SimulatedTranscodingOperation:
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
-                'container': os.path.splitext(result_file)[1][1:]
+                'container': container.value if container is not None else None,
             }
         }
 
@@ -214,6 +215,7 @@ class SimulatedTranscodingOperation:
             task_def = self._build_task_def(
                 input_file,
                 output_file,
+                self._task_options['output_container'],
                 self._video_options,
                 self._task_options['subtasks_count'],
             )
