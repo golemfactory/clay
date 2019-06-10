@@ -21,6 +21,7 @@ fake = Faker()
 def message_count():
     return NetworkMessage.select().count()
 
+
 class MessageHistoryServiceTestBase(DatabaseFixture):
 
     def setUp(self):
