@@ -26,5 +26,8 @@ class GLambdaTaskEnvironment(DockerEnvironment):
             volumes=[],
             binds={},
             devices=[],
-            environment={'HOME': '/home/user'}
+            # gVisor uses HOME variable before starting the image.
+            # Starting docker as a particular user (docker --user parameter)
+            # does not set HOME and that's why we define it here.
+            environment={'HOME': '/home/user'} if is_linux() else {}
         )
