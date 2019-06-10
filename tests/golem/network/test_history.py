@@ -285,10 +285,8 @@ class TestMessageHistoryGet(MessageHistoryServiceTestBase):
         self.assertEqual(self.msg, msg_retrieved)
 
     def test_get_pickle_fail(self):
-        with mock.patch(
-                'golem.model.pickle.loads',
-                mock.Mock(side_effect=AttributeError)
-        ):
+        with mock.patch('golem.model.pickle.loads',
+                        mock.Mock(side_effect=AttributeError)):
             msg_retrieved = history.get(
                 'TaskToCompute',
                 subtask_id=self.msg.subtask_id,
