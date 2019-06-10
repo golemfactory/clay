@@ -363,9 +363,9 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(value, '10')
 
     @patch('golem.database.Database._create_tables')
-    def test_30_payments_migration(self, *_args):
+    def test_31_payments_migration(self, *_args):
         with self.database_context() as database:
-            database._migrate_schema(6, 29)
+            database._migrate_schema(6, 30)
 
             details = '{"node_info": {"node_name": "Laughing Octopus", "key": "392e54805752937326aa87da97a69c9271f7b4423382fb2563a349d54c44d9a904f38b4f2e3a022572c8257220426d8e5e34198be2cc8971bc149f1a368161e3", "prv_port": 40201, "pub_port": 40201, "p2p_prv_port": 40200, "p2p_pub_port": 40200, "prv_addr": "10.30.8.12", "pub_addr": "194.181.80.91", "prv_addresses": ["10.30.8.12", "172.17.0.1"], "hyperdrive_prv_port": 3282, "hyperdrive_pub_port": 3282, "port_statuses": {"3282": "timeout", "40200": "timeout", "40201": "timeout"}, "nat_type": "Symmetric NAT"}, "fee": 116264444444444, "block_hash": "184575de00b91fdac0ccd1c763d5b56b967898e3a541f400480b01a6dbf1fef9", "block_number": 1937551, "check": null, "tx": "4b9f628f16c82d0fe3f3ab144feef7940a0093107d521b45a8a0bfb5739400be"}'  # noqa pylint: disable=line-too-long
             database.db.execute_sql(
@@ -376,7 +376,7 @@ class TestSavedMigrations(TempDirFixture):
                 "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C', 10,"
                 f"        '{details}')"
             )
-            database._migrate_schema(29, 30)
+            database._migrate_schema(30, 31)
 
             # UNIONS don't work here. Do it manually
             cursor = database.db.execute_sql("SELECT count(*) FROM payment")

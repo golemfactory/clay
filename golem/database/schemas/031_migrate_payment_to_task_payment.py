@@ -38,10 +38,8 @@ def migrate_payment(database, db_row):
     cursor.execute(
         "INSERT INTO taskpayment"
         " (wallet_operation_id, node, task, subtask,"
-        "  expected_amount, created_date, modified_date,"
-        "  accepted_ts, settled_ts)"
-        " VALUES (?, ?, '', ?, ?, ?, datetime('now'),"
-        "         ?, ?)",
+        "  expected_amount, created_date, modified_date)"
+        " VALUES (?, ?, '', ?, ?, ?, datetime('now'))",
         (
             wallet_operation_id,
             details['node_info']['key'],
