@@ -2,7 +2,7 @@
 import json
 import logging
 
-SCHEMA_VERSION = 29
+SCHEMA_VERSION = 31
 
 logger = logging.getLogger('golem.database')
 
@@ -35,7 +35,6 @@ def migrate_payment(database, db_row):
         ),
     )
     wallet_operation_id = cursor.lastrowid
-    fake_date = '2000-01-01 00:00:00.000'
     cursor.execute(
         "INSERT INTO taskpayment"
         " (wallet_operation_id, node, task, subtask,"
@@ -49,10 +48,6 @@ def migrate_payment(database, db_row):
             db_row['subtask'],
             db_row['value'],
             db_row['created_date'],
-            # accepted_ts & settled_ts have mixed types & will be fixed
-            # by another migration in #4248 .
-            fake_date,
-            fake_date,
         ),
     )
 
