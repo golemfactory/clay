@@ -31,7 +31,8 @@ class SimulatedTranscodingOperation:
                  task_executor,
                  experiment_name: str,
                  resource_dir: str,
-                 tmp_dir: str) -> None:
+                 tmp_dir: str,
+                 dont_include_in_option_description: Optional[list] = None) -> None:
         # task_executor is an object with execute_task(task_def) method
         assert hasattr(task_executor, 'execute_task')
         assert os.path.isdir(resource_dir)
@@ -43,6 +44,11 @@ class SimulatedTranscodingOperation:
             'resource': resource_dir,
             'tmp': tmp_dir,
         }
+        self._dont_include_in_option_description = (
+            dont_include_in_option_description
+            if dont_include_in_option_description is not None
+            else []
+        )
         self._diff_overrides: FileOverrides = {}
         self._diff_excludes: FileExcludes = {}
         self._video_options: Dict[str, Any] = {}
@@ -120,16 +126,20 @@ class SimulatedTranscodingOperation:
         else:
             subtasks = None
 
-        components = [
-            self._video_options.get('codec', None),
-            container,
-            resolution,
-            self._video_options.get('frame_rate', None),
-            self._video_options.get('bit_rate', None),
-            subtasks,
-        ]
-        assert any(components)
-        return "/".join(c for c in components if c is not None)
+        components = {
+            'video_codec': self._video_options.get('codec', None),
+            'container': container,
+            'resolution': resolution,
+            'frame_rate': self._video_options.get('frame_rate', None),
+            'bitrate': self._video_options.get('bit_rate', None),
+            'subtasks_count': subtasks,
+        }
+        assert any(components.values())
+        return "/".join(
+            value
+            for name, value in components.items()
+            if value is not None and name not in self._dont_include_in_option_description
+        )
 
     @classmethod
     def _build_task_def(cls,
