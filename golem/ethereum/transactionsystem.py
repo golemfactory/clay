@@ -1,3 +1,4 @@
+import datetime
 import functools
 import json
 import logging
@@ -5,7 +6,6 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
     Any,
@@ -39,7 +39,6 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.network import nodeskeeper
 from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
@@ -81,6 +80,11 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
+class FaucetRequests(Enum):
+    ETH = 0
+    GNT = 1
+
+
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
@@ -110,7 +114,7 @@ class TransactionSystem(LoopingCallService):
         self._incomes_keeper = IncomesKeeper()
         self._payment_processor: Optional[PaymentProcessor] = None
 
-        self._gnt_faucet_requested = False
+        self._faucet_requested: Optional[FaucetRequests] = None
         self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
             (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
@@ -333,14 +337,22 @@ class TransactionSystem(LoopingCallService):
         self._sci.stop()
         super().stop()
 
-    def add_payment_info(
+    def add_payment_info(  # pylint: disable=too-many-arguments
             self,
+            node_id: str,
+            task_id: str,
             subtask_id: str,
             value: int,
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._payment_processor.add(subtask_id, eth_address, value)
+        return self._payment_processor.add(
+            node_id=node_id,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            eth_addr=eth_address,
+            value=value,
+        )
 
     @rpc_utils.expose('pay.ident')
     @sci_required()
@@ -350,15 +362,11 @@ class TransactionSystem(LoopingCallService):
         address = self._sci.get_eth_address()
         return str(address) if address else None
 
-    @rpc_utils.expose('pay.payments')
     def get_payments_list(
             self,
             num: Optional[int] = None,
-            last_seconds: Optional[int] = None,
+            interval: Optional[datetime.timedelta] = None,
     ) -> List[Dict[str, Any]]:
-        interval = None
-        if last_seconds is not None:
-            interval = timedelta(seconds=last_seconds)
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @rpc_utils.expose('pay.deposit_payments')
@@ -387,32 +395,11 @@ class TransactionSystem(LoopingCallService):
 
     def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> List[model.Payment]:
+            subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
-    @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self) -> List[Dict[str, Any]]:
-        incomes = self._incomes_keeper.get_list_of_all_incomes()
-
-        # Our version of peewee (2.10.2) doesn't support
-        # .join(attr='XXX'). So we'll have to join manually
-        lru_node = functools.lru_cache()(nodeskeeper.get)
-
-        def item(o):
-            return {
-                "subtask": common.to_unicode(o.subtask),
-                "payer": common.to_unicode(o.sender_node),
-                "value": common.to_unicode(o.value),
-                "status": common.to_unicode(o.status.name),
-                "transaction": common.to_unicode(o.transaction),
-                "created": common.datetime_to_timestamp_utc(o.created_date),
-                "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node":
-                    lru_node(o.sender_node).to_dict()
-                    if o.sender_node else None,
-            }
-
-        return [item(income) for income in incomes]
+    def get_incomes_list(self):
+        return self._incomes_keeper.get_list_of_all_incomes()
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
@@ -609,6 +596,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             return self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
@@ -622,6 +610,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
@@ -632,6 +621,7 @@ class TransactionSystem(LoopingCallService):
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
+                # TODO Update WalletOperation #4172
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
@@ -808,22 +798,26 @@ class TransactionSystem(LoopingCallService):
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.005 * denoms.ether:
-            log.info("Requesting tETH from faucet")
-            tETH_faucet_donate(self._sci.get_eth_address())
+            if self._faucet_requested != FaucetRequests.ETH:
+                log.info("Requesting tETH from faucet")
+                if tETH_faucet_donate(self._sci.get_eth_address()):
+                    self._faucet_requested = FaucetRequests.ETH
             return
+        if self._faucet_requested == FaucetRequests.ETH:
+            self._faucet_requested = None
 
         if self._gnt_balance + self._gntb_balance < 100 * denoms.ether:
-            if not self._gnt_faucet_requested:
+            if self._faucet_requested != FaucetRequests.GNT:
                 log.info("Requesting GNT from faucet")
                 self._sci.request_gnt_from_faucet()
-                self._gnt_faucet_requested = True
-        else:
-            self._gnt_faucet_requested = False
+                self._faucet_requested = FaucetRequests.GNT
+            return
+        self._faucet_requested = None
 
     @sci_required()
     def _refresh_balances(self) -> None:
         self._sci: SmartContractsInterface
-        now = time.mktime(datetime.today().timetuple())
+        now = time.mktime(datetime.datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
         # Sometimes web3 may throw but it's fine here, we'll just update the

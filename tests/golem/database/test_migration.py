@@ -147,7 +147,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
         create_db_data()
 
         # -- Create a schema snapshot (0)
-        create_migration(data_dir, out_dir)
+        create_migration(data_dir, out_dir, migration_name='test_0_init')
         assert len(os.listdir(out_dir)) == 1
 
         # -- Store initial state of the database (0)
@@ -167,7 +167,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
             ExtraTestModel.create_table()
 
             # -- Create a new migration file (1)
-            create_migration(data_dir, out_dir)
+            create_migration(data_dir, out_dir, migration_name='test_1_ETM')
             assert len(os.listdir(out_dir)) == 2
 
             # -- Add a second model, alter other and bump version (2)
@@ -178,7 +178,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
             SecondExtraTestModel.create_table()
 
             # -- Create a new migration file (2)
-            create_migration(data_dir, out_dir)
+            create_migration(data_dir, out_dir, migration_name='test_2_SETM')
             assert len(os.listdir(out_dir)) == 3
 
             # -- Drop the model table, downgrade version (0)

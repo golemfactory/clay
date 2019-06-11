@@ -581,11 +581,14 @@ class TaskServer(
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
+        task = self.task_manager.tasks[task_id]
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
-            subtask_id,
-            value,
-            eth_address,
+            node_id=task.header.task_owner.key,
+            task_id=task.header.task_id,
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=eth_address,
         )
         if unlock_funds:
             self.client.funds_locker.remove_subtask(task_id)
