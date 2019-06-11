@@ -3,8 +3,8 @@
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
 #email          :contact@golem.network
-#date           :20190111
-#version        :0.5
+#date           :20190606
+#version        :0.6
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
@@ -14,7 +14,7 @@ declare -r PYTHON=python3
 declare -r HOME=$(readlink -f ~)
 declare -r GOLEM_DIR="$HOME/golem"
 declare -r PACKAGE="golem-linux.tar.gz"
-declare -r HYPERG_PACKAGE=/tmp/hyperg.tar.gz
+declare -r HYPERG_PACKAGE="hyperg.tar.gz"
 declare -r ELECTRON_PACKAGE="electron.tar.gz"
 
 # Questions
@@ -302,7 +302,7 @@ function install_dependencies()
         ! sudo apt-mark hold nvidia-docker2 docker-ce
     fi
 
-    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/golem-hyperdrive/releases")
+    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/simple-transfer/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
     ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
@@ -318,10 +318,10 @@ function install_dependencies()
         wget --show-progress -qO- ${hyperg} > ${HYPERG_PACKAGE}
         info_msg "Installing HyperG into $HOME/hyperg"
         [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
-        tar -xvf ${HYPERG_PACKAGE} >/dev/null
-        [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
+        hyperg_dir=$(tar -tzf ${HYPERG_PACKAGE} | head -1 | cut -f1 -d"/")
+        tar -xf ${HYPERG_PACKAGE} > /dev/null
+        mv ${hyperg_dir} $HOME/hyperg
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
-        [[ ! -f /usr/local/bin/hyperg-worker ]] && sudo ln -s $HOME/hyperg/hyperg-worker /usr/local/bin/hyperg-worker
         rm -f ${HYPERG_PACKAGE} &>/dev/null
     fi
 
@@ -332,17 +332,6 @@ function install_dependencies()
         else
             sudo usermod -aG docker ${SUDO_USER}
         fi
-        sudo docker run hello-world &>/dev/null
-        if [[ ${?} -eq 0 ]]; then
-            info_msg "Docker installed successfully"
-        else
-            warning_msg "Error occurred during installation"
-            sleep 5s
-        fi
-    fi
-
-    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
-        sudo pkill -SIGHUP dockerd
     fi
 
     if [[ ${INSTALL_GVISOR_RUNTIME} -eq 1 ]]; then
@@ -353,7 +342,7 @@ function install_dependencies()
 
         # Add runtime configuration
         sudo mkdir -p /etc/docker
-        sudo python << EOF
+        sudo ${PYTHON} << EOF
 import json
 
 runtime_config = {
@@ -374,9 +363,22 @@ with open('/etc/docker/daemon.json', 'w+') as f:
 EOF
         chmod a+x runsc
         sudo mv runsc /usr/local/bin
-        sudo service docker restart || true
     fi
 
+    sudo service docker restart || true
+
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+        output=$(sudo docker run hello-world)
+        exit_code=${?}
+
+        if [[ ${exit_code} -eq 0 ]]; then
+            info_msg "Docker installed successfully"
+        else
+            warning_msg "Docker installation error: 'docker run hello-world' failed with exit code ${exit_code}"
+            warning_msg "${output}"
+            sleep 5s
+        fi
+    fi
 }
 
 # @brief Download latest Golem package (if package wasn't passed)
