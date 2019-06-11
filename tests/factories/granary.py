@@ -1,4 +1,3 @@
-import random
 import subprocess
 from typing import Optional
 
@@ -53,7 +52,7 @@ class Granary:
 
         key = decode_hex(raw_key)
         _log('raw_key:', raw_key, 'key:', key)
-        return Account(key, out_lines[1] or None)
+        return Account(key, out_lines[1] or '{}')
 
     def return_account(self, account: Account):
         _log("Granary called, account returned. account=", account)

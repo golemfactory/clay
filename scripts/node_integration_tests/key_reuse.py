@@ -26,7 +26,7 @@ def _log(*args):
 
 
 class NodeKeyReuseBase:
-    ### Base class for key reuse providers
+    # Base class for key reuse providers
     def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
         raise NotImplementedError()
 
@@ -39,12 +39,12 @@ class NodeKeyReuseConfig:
     # Selects the right provider ( subclass of NodeKeyReuseBase )
     # Based on command line arguments ( TBA: and enviromnet vars )
     instance: 'Optional[NodeKeyReuseConfig]' = None
-    provider: Optional[NodeKeyReuseBase]  = None
+    provider: Optional[NodeKeyReuseBase] = None
     enabled: bool = True
 
     # Provider specific variables
     granary_hostname: Optional[str] = None
-    local_reuse_dir : Optional[Path] = None
+    local_reuse_dir: Optional[Path] = None
 
     @classmethod
     def get(cls):
@@ -170,7 +170,7 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
         src = str(datadir / KEYSTORE_DIR / KEYSTORE_FILE)
         dst = str(reuse_dir / KEYSTORE_FILE)
         _log("NodeKeyReuseLocalFolder._copy_keystore() file. "
-                  "src=", src, ", dst=", dst)
+             "src=", src, ", dst=", dst)
         shutil.copyfile(src, dst)
 
 
@@ -230,7 +230,7 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
         src_key_dir = datadir / KEYSTORE_DIR
         src_ts_file = src_key_dir / TRANSACTION_FILE
         src_key_file = src_key_dir / KEYSTORE_FILE
-        ts = None
+        ts = '{}'
         keystore = None
 
         try:  # read tx.json
