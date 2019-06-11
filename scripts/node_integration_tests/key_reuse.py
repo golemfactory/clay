@@ -128,9 +128,9 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
 
     def _recycle_keys(self) -> None:
         # this is run before running second and later tests
-        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+        for i, datadir in enumerate(self.datadirs.values()):
             _log("NodeKeyReuseLocalFolder._recycle_keys() loop. "
-                 "i", i, 'node_id', node_id, 'datadir', datadir)
+                 "i", i, 'datadir', datadir)
             reuse_dir = self.dir / str(i)
             if not reuse_dir.exists():
                 continue
@@ -146,9 +146,9 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
     def _copy_keystores(self) -> None:
         # this is run after tests
         self._prepare_keystore_reuse_folders()
-        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+        for i, datadir in enumerate(self.datadirs.values()):
             _log("NodeKeyReuseLocalFolder._copy_keystores() loop. "
-                 "i", i, 'node_id', node_id, 'datadir', datadir)
+                 "i", i, 'datadir', datadir)
             self._copy_keystore(
                 datadir, self.dir / str(i))
 
@@ -197,7 +197,7 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
 
     def _recycle_keys(self) -> None:
         # this is run before tests
-        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+        for datadir in self.datadirs.values():
             account = self.granary.request_account()
             if account is not None:
                 self._replace_keystore(
@@ -219,7 +219,7 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
         # this is run after tests
         # return key to granary as binary private key and transactions.json
 
-        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+        for datadir in self.datadirs.values():
             account = self._copy_keystore(datadir)
             if account:
                 self.granary.return_account(account)
