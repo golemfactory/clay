@@ -108,6 +108,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
             dont_include_in_option_description=["resolution"])
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_video_codec_change(video_codec)
+        if video_codec == VideoCodec.H_265:
+            operation.set_override('video', 'codec_name', VideoCodec.HEVC.value)
         operation.request_container_change(container)
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
