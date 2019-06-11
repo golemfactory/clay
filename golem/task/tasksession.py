@@ -872,21 +872,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     return
             send_hello = True
 
-        if not KeysAuth.is_pubkey_difficult(
-                self.key_id,
-                self.task_server.config_desc.key_difficulty):
-            logger.info(
-                "Key from %s (%s:%d) is not difficult enough (%d < %d).",
-                common.node_info_str(
-                    msg.node_info.node_name,
-                    msg.node_info.key,
-                ),
-                self.address, self.port,
-                KeysAuth.get_difficulty(self.key_id),
-                self.task_server.config_desc.key_difficulty)
-            self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
-            return
-
         nodeskeeper.store(msg.node_info)
 
         if send_hello:

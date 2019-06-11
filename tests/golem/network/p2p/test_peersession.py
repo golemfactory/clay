@@ -63,7 +63,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.conn.server.node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
-        self.peer_session.conn.server.key_difficulty = 2
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_SERVER
         self.peer_session.start()
@@ -138,19 +137,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 reason=message.base.Disconnect.REASON.ProtocolVersion).slots())
 
     @patch('golem.network.transport.session.BasicSession.send')
-    @patch('golem.core.keysauth.KeysAuth.is_pubkey_difficult',
-           return_value=False)
-    def test_react_to_hello_key_not_difficult(self, is_difficult_fn, send_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-
-        self.peer_session._react_to_hello(client_hello)
-        assert self.peer_session.key_id is None
-
-        # should not throw
-        self.peer_session._react_to_rand_val(
-            message.base.RandVal(rand_val=self.peer_session.rand_val))
-
-    @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_randval(self, send_mock):
         client_hello = self.__setup_handshake_server_test(send_mock)
         self.peer_session._react_to_hello(client_hello)
@@ -164,17 +150,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             send_mock.call_args_list[2][0][1].slots(),
             message.base.Disconnect(
                 reason=message.base.Disconnect.REASON.Unverified).slots())
-
-    @patch('golem.network.transport.session.BasicSession.send')
-    def test_handshake_server_key_not_difficult(self, send_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-        client_hello.node_info.key = 'deadbeef' * 16
-        self.peer_session._react_to_hello(client_hello)
-
-        self.assertEqual(
-            send_mock.call_args_list[1][0][1].slots(),
-            message.base.Disconnect(
-                reason=message.base.Disconnect.REASON.KeyNotDifficult).slots())
 
     def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = dt_p2p_factory.Node()

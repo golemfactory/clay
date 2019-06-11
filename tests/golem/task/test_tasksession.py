@@ -360,7 +360,6 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
         self.keys = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -805,7 +804,6 @@ class WaitingForResultsTestCase(
         self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
         requestor_keys = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -816,7 +814,6 @@ class WaitingForResultsTestCase(
 
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -866,7 +863,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -1019,7 +1015,6 @@ class ReportComputedTaskTest(
         super().setUp()
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -1139,7 +1134,6 @@ class HelloTest(testutils.TempDirFixture):
             ),
         )
         self.task_session = TaskSession(conn)
-        self.task_session.task_server.config_desc.key_difficulty = 1
         self.task_session.task_server.sessions = {}
 
     @patch('golem.task.tasksession.TaskSession.send_hello')
@@ -1186,30 +1180,10 @@ class HelloTest(testutils.TempDirFixture):
         mock_disconnect.assert_called_once_with(
             message.base.Disconnect.REASON.ProtocolVersion)
 
-    def test_react_to_hello_key_not_difficult(
-            self,
-            _mock_store,
-            mock_disconnect,
-            *_,
-    ):
-        # given
-        self.task_session.task_server.config_desc.key_difficulty = 80
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            self.task_session._react_to_hello(self.msg)
-
-        # then
-        mock_disconnect.assert_called_with(
-            message.base.Disconnect.REASON.KeyNotDifficult,
-        )
-
     @patch('golem.task.tasksession.TaskSession.send_hello')
-    def test_react_to_hello_key_difficult(self, mock_hello, *_):
+    def test_react_to_hello(self, mock_hello, *_):
         # given
-        difficulty = 4
-        self.task_session.task_server.config_desc.key_difficulty = difficulty
-        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
+        ka = KeysAuth(datadir=self.path,
                       private_key_name='prv', password='')
         self.msg.node_info.key = ka.key_id
 

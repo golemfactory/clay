@@ -224,7 +224,6 @@ class Node(HardwarePresetsMixin):
                 datadir=self._datadir,
                 private_key_name=PRIVATE_KEY,
                 password=password,
-                difficulty=self._config_desc.key_difficulty,
             )
             # When Golem is ready to use different Ethereum account for
             # payments and identity this should be called only when
