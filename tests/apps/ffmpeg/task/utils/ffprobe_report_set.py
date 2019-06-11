@@ -1,12 +1,6 @@
-from enum import Enum
 from typing import Any, Dict, Tuple
 
-from tests.apps.ffmpeg.task.utils.ffprobe_report import Diff
-
-
-class DiffReason(Enum):
-    DifferentAttributeValues = "Different attribute values"
-    NoMatchingStream = "No matching stream"
+from tests.apps.ffmpeg.task.utils.ffprobe_report import Diff, DiffReason
 
 
 class FfprobeReportSet:

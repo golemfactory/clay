@@ -1,5 +1,6 @@
 import json
 import os
+from enum import Enum
 from typing import Any, Collection, Dict, List, Optional, Set, Tuple, Union
 
 from apps.transcoding.ffmpeg.utils import StreamOperator
@@ -15,6 +16,11 @@ FileExcludes = Dict[str, Set[str]]
 
 class UnsupportedCodecType(Exception):
     pass
+
+
+class DiffReason(Enum):
+    DifferentAttributeValues = "Different attribute values"
+    NoMatchingStream = "No matching stream"
 
 
 def number_if_possible(value: Any) -> Any:
