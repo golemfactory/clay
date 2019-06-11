@@ -6,7 +6,9 @@ SCHEMA_VERSION = 30
 
 
 def migrate(migrator, database, fake=False, **kwargs):
+    migrator.sql("PRAGMA foreign_keys=off;")
     migrator.drop_not_null('walletoperation', 'tx_hash')
+    migrator.sql("PRAGMA foreign_keys=on;")
     migrator.remove_fields('taskpayment', 'accepted_ts', 'settled_ts')
     migrator.add_fields(
         'taskpayment',
