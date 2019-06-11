@@ -155,7 +155,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_resolution_change(resolution)
         operation.request_video_codec_change(video['video_codec'])
-        operation.request_container_change(Container.c_MP4)
+        operation.request_container_change(video['container'])
         operation.exclude_from_diff({'video': {'bitrate'}})
 
         supported_conversions = video["video_codec"].get_supported_conversions()
@@ -187,7 +187,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_frame_rate_change(frame_rate)
         operation.request_video_codec_change(video['video_codec'])
-        operation.request_container_change(Container.c_MP4)
+        operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
 
@@ -222,7 +222,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_subtasks_count(subtasks_count)
         operation.request_video_codec_change(video['video_codec'])
-        operation.request_container_change(Container.c_MP4)
+        operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff({'video': {'bitrate'}})
 
