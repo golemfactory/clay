@@ -41,46 +41,62 @@ class NodeKeyReuseConfig:
     instance: 'Optional[NodeKeyReuseConfig]' = None
     provider: Optional[NodeKeyReuseBase]  = None
     enabled: bool = True
+
+    # Provider specific variables
     granary_hostname: Optional[str] = None
+    local_reuse_dir : Optional[Path] = None
 
     @classmethod
-    def get(cls, test_dir: Path):
+    def get(cls):
+        _log("NodeKeyReuseConfig.get() called.")
         if not cls.instance:
             cls.instance = cls()
             if cls.granary_hostname:
                 print("key_reuse - granary selected:", cls.granary_hostname)
                 cls.provider = NodeKeyReuseGranary(cls.granary_hostname)
             else:
-                print("key_reuse - local folder selected:", test_dir)
-                cls.provider = NodeKeyReuseLocalFolder(test_dir)
+                print("key_reuse - local folder selected:", cls.local_reuse_dir)
+                assert cls.local_reuse_dir is not None, \
+                    "ERROR: No folder for reuse, call set_dir() first"
+                cls.provider = NodeKeyReuseLocalFolder(cls.local_reuse_dir)
         return cls.instance
 
     @classmethod
+    def set_dir(cls, dir: Path):
+        _log("NodeKeyReuseConfig.set_dir() called. dir=", dir)
+        assert cls.provider is None, "ERROR: Can not set_dir() after get()"
+        cls.local_reuse_dir = dir
+
+    @classmethod
     def begin_test(cls, datadirs: Dict[NodeId, Path]):
+        _log("NodeKeyReuseConfig.begin_test() called. dirs= ", datadirs)
         if cls.enabled and cls.provider:
-            _log("NodeKeyReuseConfig.begin_test() called. dirs= ", datadirs)
             cls.provider.begin_test(datadirs)
 
     @classmethod
     def end_test(cls):
+        _log("NodeKeyReuseConfig.end_test() called.")
         if cls.enabled and cls.provider:
-            _log("NodeKeyReuseConfig.end_test() called.")
             cls.provider.end_test()
 
     @classmethod
     def disable(cls):
+        _log("NodeKeyReuseConfig.disable() called.")
         cls.enabled = False
 
     @classmethod
     def enable(cls):
+        _log("NodeKeyReuseConfig.enable() called.")
         cls.enabled = True
 
     @classmethod
     def reset(cls):
+        _log("NodeKeyReuseConfig.reset() called.")
         cls.instance = None
 
     @classmethod
     def set_granary(cls, hostname):
+        _log("NodeKeyReuseConfig.set_granary() called. host=", hostname)
         cls.granary_hostname = hostname
 
 
@@ -92,8 +108,8 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
         self._first_test = True
 
     def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
-        self.datadirs = datadirs
         _log("NodeKeyReuseLocalFolder.begin_test() called.")
+        self.datadirs = datadirs
 
         if not self._first_test:
             _log("Moving keys from reuse-dirs to data-dirs")
@@ -113,7 +129,7 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
     def _recycle_keys(self) -> None:
         # this is run before running second and later tests
         for i, (node_id, datadir) in enumerate(self.datadirs.items()):
-            _log("NodeKeyReuseLocalFolder._copy_keystores() loop. "
+            _log("NodeKeyReuseLocalFolder._recycle_keys() loop. "
                  "i", i, 'node_id', node_id, 'datadir', datadir)
             reuse_dir = self.dir / str(i)
             if not reuse_dir.exists():
@@ -180,7 +196,6 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
             return
 
     def _recycle_keys(self) -> None:
-        _log("Recycle keys")
         # this is run before tests
         for i, (node_id, datadir) in enumerate(self.datadirs.items()):
             account = self.granary.request_account()
@@ -239,7 +254,6 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
 
     @staticmethod
     def _save_private_key(key, key_path: Path, password: str) -> None:
-        _log("_save_private_key() password=", password)
         keystore = create_keyfile_json(
             key,
             password.encode('utf-8'),

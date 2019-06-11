@@ -38,7 +38,8 @@ class NodeTestBase(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.reuse_keys = NodeKeyReuseConfig.get(get_testdir())
+        NodeKeyReuseConfig.set_dir(get_testdir())
+        cls.reuse_keys = NodeKeyReuseConfig.get()
 
     @classmethod
     def tearDownClass(cls):
