@@ -29,6 +29,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -1123,10 +1124,11 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r)',
                      node_id, ctd)
 
+        node_info = nodeskeeper.get(node_id)
         ss = SubtaskState(
             subtask_id=ctd['subtask_id'],
             node_id=node_id,
-            node_name="",
+            node_name=node_info.node_name if node_info else '',
             price=price,
             deadline=ctd['deadline'],
             extra_data=ctd['extra_data'],
