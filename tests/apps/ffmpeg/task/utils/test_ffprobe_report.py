@@ -12,7 +12,8 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.testutils import TempDirFixture
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
     FuzzyDuration, FuzzyInt, FfprobeAudioAndVideoStreamReport, \
-    FfprobeVideoStreamReport, FfprobeAudioStreamReport, FfprobeStreamReport
+    FfprobeVideoStreamReport, FfprobeAudioStreamReport, FfprobeStreamReport, \
+    DiffReason
 from tests.apps.ffmpeg.task.utils.ffprobe_report_sample_reports import \
     RAW_REPORT_ORIGINAL, RAW_REPORT_WITH_MPEG4
 
@@ -95,14 +96,14 @@ class TestFfprobeFormatReport(TestCase):
                         'audio': 2,
                         'subtitle': 7
                     },
-                'reason': 'Different attribute values'
+                'reason': DiffReason.DifferentAttributeValues.value,
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
                 'actual_value': 'eng',
                 'expected_value': 'hun',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 2,
                 'expected_stream_index': 3
             },
@@ -111,7 +112,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'hun',
                 'expected_value': 'ger',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 3,
                 'expected_stream_index': 4
             },
@@ -120,7 +121,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'ger',
                 'expected_value': 'fre',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 4,
                 'expected_stream_index': 5
             },
@@ -129,7 +130,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'fre',
                 'expected_value': 'spa',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 5,
                 'expected_stream_index': 6
             },
@@ -138,7 +139,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'spa',
                 'expected_value': 'ita',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 6,
                 'expected_stream_index': 7
             },
@@ -147,7 +148,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'ita',
                 'expected_value': 'jpn',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 7,
                 'expected_stream_index': 9
             },
@@ -155,7 +156,7 @@ class TestFfprobeFormatReport(TestCase):
                 'location': 'subtitle',
                 'actual_stream_index': None,
                 'expected_stream_index': 10,
-                'reason': 'No matching stream'}
+                'reason': DiffReason.NoMatchingStream.value}
         ]
         self.assertCountEqual(diff, expected_diff)
 
@@ -184,14 +185,14 @@ class TestFfprobeFormatReport(TestCase):
                     'audio': 2,
                     'subtitle': 6,
                 },
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
             },
             {
                 'location': 'subtitle',
                 'attribute': 'language',
                 'actual_value': 'jpn',
                 'expected_value': 'eng',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 9,
                 'expected_stream_index': 2,
 
@@ -200,7 +201,7 @@ class TestFfprobeFormatReport(TestCase):
                 'location': 'subtitle',
                 'actual_stream_index': 6,
                 'expected_stream_index': None,
-                'reason': 'No matching stream'
+                'reason': DiffReason.NoMatchingStream.value,
             },
         ]
         self.assertCountEqual(diff, expected_diff)
@@ -349,7 +350,7 @@ class TestFfprobeFormatReport(TestCase):
         expected_diff = [{'location': 'format', 'attribute': 'start_time',
                           'actual_value': FuzzyDuration(10, 0),
                           'expected_value': FuzzyDuration(0.0, 0),
-                          'reason': 'Different attribute values'}]
+                          'reason': DiffReason.DifferentAttributeValues.value}]
 
         self.assertCountEqual(diff, expected_diff)
 
@@ -362,7 +363,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'start_time',
                 'actual_value': FuzzyDuration(10.0, 0),
                 'expected_value': FuzzyDuration(0.0, 0),
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
             }],
         ),
         (
@@ -373,7 +374,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'duration',
                 'actual_value': FuzzyDuration(80, 10),
                 'expected_value': FuzzyDuration(46.665, 10),
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
             }],
         ),
         (
@@ -384,7 +385,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'program_count',
                 'actual_value': 2,
                 'expected_value': 0,
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
             }],
         ),
         (
@@ -395,7 +396,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'codec_name',
                 'actual_value': 'flv',
                 'expected_value': 'h264',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
             }],
@@ -408,7 +409,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'start_time',
                 'actual_value': FuzzyDuration(0.5, 0.05),
                 'expected_value': FuzzyDuration(0.012, 0.05),
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 1,
                 'expected_stream_index': 1,
             }],
@@ -421,7 +422,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'duration',
                 'actual_value': FuzzyDuration(0.5, 0.05),
                 'expected_value': None,
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 1,
                 'expected_stream_index': 1,
             }],
@@ -434,7 +435,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'resolution',
                 'actual_value': (1920, 576),
                 'expected_value': (1024, 576),
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
             }],
@@ -447,7 +448,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'resolution',
                 'actual_value': ((1920, 1080), 1024, 576),
                 'expected_value': (1024, 576),
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
             }],
@@ -466,7 +467,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'frame_rate',
                 'actual_value': 12,
                 'expected_value': 24,
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 0,
                 'expected_stream_index': 0,
             }],
@@ -479,7 +480,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'sample_rate',
                 'actual_value': 24000,
                 'expected_value': 48000,
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 1,
                 'expected_stream_index': 1,
             }],
@@ -492,7 +493,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'language',
                 'actual_value': 'eng',
                 'expected_value': 'ger',
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 4,
                 'expected_stream_index': 4,
             }],
@@ -505,7 +506,7 @@ class TestFfprobeFormatReport(TestCase):
                 'attribute': 'bitrate',
                 'actual_value': FuzzyInt(499524, 5),
                 'expected_value': None,
-                'reason': 'Different attribute values',
+                'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 1,
                 'expected_stream_index': 1,
             }],

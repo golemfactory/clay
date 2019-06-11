@@ -234,7 +234,7 @@ class FfprobeFormatReport:
                     'location': actual_stream_reports[0].codec_type,
                     'actual_stream_index': actual_idx,
                     'expected_stream_index': None,
-                    'reason': "No matching stream",
+                    'reason': DiffReason.NoMatchingStream.value,
                 })
 
         for expected_idx in unmatched_reports:
@@ -243,7 +243,7 @@ class FfprobeFormatReport:
                 'actual_stream_index': None,
                 'expected_stream_index':
                     expected_stream_reports[expected_idx].index,
-                'reason': "No matching stream",
+                'reason': DiffReason.NoMatchingStream.value,
             })
 
         return diffs
@@ -306,7 +306,7 @@ class FfprobeFormatReport:
                     'attribute': attribute,
                     'actual_value': actual_value,
                     'expected_value': expected_value,
-                    'reason': "Different attribute values",
+                    'reason': DiffReason.DifferentAttributeValues.value,
                 }
                 differences.append(diff_dict)
 
@@ -522,7 +522,7 @@ class FfprobeStreamReport:
                     'attribute': attribute,
                     'actual_value': actual_value,
                     'expected_value': expected_value,
-                    'reason': "Different attribute values",
+                    'reason': DiffReason.DifferentAttributeValues.value,
                 }
                 differences.append(diff_dict)
 
