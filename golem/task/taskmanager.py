@@ -1124,6 +1124,9 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r)',
                      node_id, ctd)
 
+        # we're retrieving the node_info so that we can set `node_name` on
+        # SubtaskState, which is later used e.g. to render the subtasks list
+        # in CLI and on the front-end
         node_info = nodeskeeper.get(node_id)
         ss = SubtaskState(
             subtask_id=ctd['subtask_id'],
