@@ -12,23 +12,27 @@ from golem_messages.cryptography import ECCx
 _logging = False
 
 
+def _log(*args):
+    # Private log function since pytest.tearDown() does not print logger
+    if _logging:
+        print(*args)
+
+
 class Account:
-    def __init__(self, raw_key, ts):
+    def __init__(self, raw_key: bytes, ts: str):
         self.key = ECCx(raw_key)
         assert self.key.raw_privkey == raw_key
         self.raw_key = self.key.raw_privkey
-        if _logging:
-            print("Account created: " + str(self.raw_key))
+        _log("Account created: " + str(self.raw_key))
         self.transaction_store = ts
 
 
 class Granary:
-    def __init__(self, hostname):
+    def __init__(self, hostname: str):
         self.hostname = hostname
 
     def request_account(self) -> Optional[Account]:
-        if _logging:
-            print("Granary called, account requested")
+        _log("Granary called, account requested")
         cmd = ['ssh', self.hostname, 'golem-granary', 'get_used_account']
 
         completed = subprocess.run(
@@ -36,30 +40,23 @@ class Granary:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True)
-        if _logging:
-            print('returncode:', completed.returncode)
-            if completed.stderr:
-                print('stderr:', completed.stderr)
-            else:
-                print('stderr: EMPTY')
+        _log('returncode:', completed.returncode, 'stderr:', completed.stderr)
 
         if not completed.stdout:
             print('stdout: EMPTY')
             return None
-        elif _logging:
-            print('stdout:', completed.stdout)
+
+        _log('stdout:', completed.stdout)
 
         out_lines = completed.stdout.split('\n')
         raw_key = out_lines[0].strip()
 
         key = decode_hex(raw_key)
-        if _logging:
-            print('raw_key:', raw_key, 'key:', key)
+        _log('raw_key:', raw_key, 'key:', key)
         return Account(key, out_lines[1] or None)
 
-    def return_account(self, account):
-        if _logging:
-            print("Granary called, account returned. account=", account)
+    def return_account(self, account: Account):
+        _log("Granary called, account returned. account=", account)
 
         key_pub_addr = encode_hex(sha3(account.key.raw_pubkey)[12:])
 
@@ -69,22 +66,14 @@ class Granary:
         cmd = ['ssh', self.hostname, 'golem-granary', 'return_used_account',
                '-p', key_pub_addr, '-P', encode_hex(account.raw_key), '-t', ts]
 
-        if _logging:
-            print(cmd)
+        _log(cmd)
         completed = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             universal_newlines=True)
-        if _logging:
-            print('returncode:', completed.returncode)
-            if completed.stdout:
-                print('stdout:', completed.stdout)
-            else:
-                print('stdout: EMPTY')
-
-            if completed.stderr:
-                print('stderr:', completed.stderr)
-            else:
-                print('stderr: EMPTY')
+        _log(
+            'returncode:', completed.returncode,
+            'stdout:', completed.stdout,
+            'stderr:', completed.stderr)
         return

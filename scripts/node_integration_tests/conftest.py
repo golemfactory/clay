@@ -1,7 +1,7 @@
 from typing import List
 import _pytest
 
-from .key_reuse import NodeKeyReuse
+from .key_reuse import NodeKeyReuseConfig
 
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
@@ -50,10 +50,10 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 def pytest_collection_modifyitems(config: _pytest.config.Config,
                                   items: List[_pytest.main.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
-        NodeKeyReuse.disable()
+        NodeKeyReuseConfig.disable()
     hostname = config.getoption("--granary-hostname")
     if hostname:
-        NodeKeyReuse.set_granary(hostname)
+        NodeKeyReuseConfig.set_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):

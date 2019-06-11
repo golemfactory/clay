@@ -12,7 +12,7 @@ from typing import (
 )
 
 from scripts.node_integration_tests import conftest
-from scripts.node_integration_tests.key_reuse import NodeKeyReuse
+from scripts.node_integration_tests.key_reuse import NodeKeyReuseConfig
 
 from ..helpers import get_testdir
 from ..playbook_loader import get_config
@@ -34,15 +34,15 @@ def disable_key_reuse(test_function: Callable) -> Callable:
 
 
 class NodeTestBase(unittest.TestCase):
-    reuse_keys: Optional[NodeKeyReuse] = None
+    reuse_keys: Optional[NodeKeyReuseConfig] = None
 
     @classmethod
     def setUpClass(cls):
-        cls.reuse_keys = NodeKeyReuse.get(get_testdir())
+        cls.reuse_keys = NodeKeyReuseConfig.get(get_testdir())
 
     @classmethod
     def tearDownClass(cls):
-        NodeKeyReuse.reset()
+        NodeKeyReuseConfig.reset()
 
     def setUp(self):
         self.test_dir = get_testdir() / self._relative_id()

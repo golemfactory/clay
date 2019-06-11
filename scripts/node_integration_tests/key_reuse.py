@@ -14,12 +14,19 @@ from scripts.node_integration_tests.playbooks.test_config_base import NodeId
 KEYSTORE_DIR = 'rinkeby/keys'
 KEYSTORE_FILE = 'keystore.json'
 TRANSACTION_FILE = 'tx.json'
-PASSWORD = 'dupa.8'
+PASSWORD = 'goleM.8'
 
 _logging = False
 
 
-class NodeKeyReuseBase():
+def _log(*args):
+    # Private log function since pytest.tearDown() does not print logger
+    if _logging:
+        print(*args)
+
+
+class NodeKeyReuseBase:
+    ### Base class for key reuse providers
     def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
         raise NotImplementedError()
 
@@ -27,8 +34,11 @@ class NodeKeyReuseBase():
         raise NotImplementedError()
 
 
-class NodeKeyReuse:
-    instance: 'Optional[NodeKeyReuse]' = None
+class NodeKeyReuseConfig:
+    # Configuration singleton class for reusing keys
+    # Selects the right provider ( subclass of NodeKeyReuseBase )
+    # Based on command line arguments ( TBA: and enviromnet vars )
+    instance: 'Optional[NodeKeyReuseConfig]' = None
     provider: Optional[NodeKeyReuseBase]  = None
     enabled: bool = True
     granary_hostname: Optional[str] = None
@@ -48,15 +58,13 @@ class NodeKeyReuse:
     @classmethod
     def begin_test(cls, datadirs: Dict[NodeId, Path]):
         if cls.enabled and cls.provider:
-            if _logging:
-                print("NodeKeyReuse.begin_test() called. dirs= ", datadirs)
+            _log("NodeKeyReuseConfig.begin_test() called. dirs= ", datadirs)
             cls.provider.begin_test(datadirs)
 
     @classmethod
     def end_test(cls):
         if cls.enabled and cls.provider:
-            if _logging:
-                print("NodeKeyReuse.end_test() called.")
+            _log("NodeKeyReuseConfig.end_test() called.")
             cls.provider.end_test()
 
     @classmethod
@@ -77,6 +85,7 @@ class NodeKeyReuse:
 
 
 class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
+    # Key reuse provider implementation that uses a local folder to store keys
     def __init__(self, test_dir: Path):
         self.dir: Path = test_dir / 'key_reuse'
         self.datadirs: Dict[NodeId, Path] = {}
@@ -84,19 +93,16 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
 
     def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
         self.datadirs = datadirs
-        if _logging:
-            print("NodeKeyReuseLocalFolder.begin_test() called.")
+        _log("NodeKeyReuseLocalFolder.begin_test() called.")
+
         if not self._first_test:
-            if _logging:
-                print("Moving keys from reuse-dirs to data-dirs")
+            _log("Moving keys from reuse-dirs to data-dirs")
             self._recycle_keys()
 
     def end_test(self) -> None:
-        if _logging:
-            print("NodeKeyReuseLocalFolder.end_test() called.")
+        _log("NodeKeyReuseLocalFolder.end_test() called.")
         try:
-            if _logging:
-                print("Moving keys from data-dirs to reuse-dirs")
+            _log("Moving keys from data-dirs to reuse-dirs")
             self._copy_keystores()
         except FileNotFoundError:
             print('Copying keystores failed...')
@@ -106,14 +112,12 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
 
     def _recycle_keys(self) -> None:
         # this is run before running second and later tests
-        for i, node_id in enumerate(self.datadirs):
-            datadir = self.datadirs[node_id]
+        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+            _log("NodeKeyReuseLocalFolder._copy_keystores() loop. "
+                 "i", i, 'node_id', node_id, 'datadir', datadir)
             reuse_dir = self.dir / str(i)
             if not reuse_dir.exists():
                 continue
-            if _logging:
-                print("NodeKeyReuseLocalFolder._copy_keystores() loop. "
-                      "dir= ", datadir)
             self._replace_keystore(reuse_dir, datadir)
 
     @staticmethod
@@ -126,11 +130,9 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
     def _copy_keystores(self) -> None:
         # this is run after tests
         self._prepare_keystore_reuse_folders()
-        for i, node_id in enumerate(self.datadirs):
-            datadir = self.datadirs[node_id]
-            if _logging:
-                print("NodeKeyReuseLocalFolder._copy_keystores() loop. "
-                      "dir= ", datadir)
+        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+            _log("NodeKeyReuseLocalFolder._copy_keystores() loop. "
+                 "i", i, 'node_id', node_id, 'datadir', datadir)
             self._copy_keystore(
                 datadir, self.dir / str(i))
 
@@ -139,6 +141,8 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
         try:
             for i in range(len(self.datadirs)):
                 reuse_dir = self.dir / str(i)
+                _log("NodeKeyReuseLocalFolder._prepare_keystore_reuse_folders()"
+                     "i", i, 'reuse_dir', reuse_dir)
                 shutil.rmtree(reuse_dir, ignore_errors=True)
                 os.makedirs(reuse_dir)
         except OSError:
@@ -149,45 +153,43 @@ class NodeKeyReuseLocalFolder(NodeKeyReuseBase):
     def _copy_keystore(datadir: Path, reuse_dir: Path) -> None:
         src = str(datadir / KEYSTORE_DIR / KEYSTORE_FILE)
         dst = str(reuse_dir / KEYSTORE_FILE)
-        if _logging:
-            print("NodeKeyReuseLocalFolder._copy_keystore() file. "
+        _log("NodeKeyReuseLocalFolder._copy_keystore() file. "
                   "src=", src, ", dst=", dst)
         shutil.copyfile(src, dst)
 
 
 class NodeKeyReuseGranary(NodeKeyReuseBase):
+    # Key reuse provider implementation that uses a remote granary to store keys
     def __init__(self, hostname: str):
         self.datadirs: Dict[NodeId, Path] = {}
         self.granary = Granary(hostname)
 
     def begin_test(self, datadirs: Dict[NodeId, Path]) -> None:
         self.datadirs = datadirs
-        if _logging:
-            print("NodeKeyReuseGranary.begin_test() called.")
-            print("Moving keys from granary to data-dirs")
+        _log("NodeKeyReuseGranary.begin_test() called. "
+             "Moving keys from granary to data-dirs")
         self._recycle_keys()
 
     def end_test(self) -> None:
-        if _logging:
-            print("NodeKeyReuseGranary.end_test() called.")
+        _log("NodeKeyReuseGranary.end_test() called.")
         try:
-            if _logging:
-                print("Moving keys from data-dirs to granary")
+            _log("Moving keys from data-dirs to granary")
             self._copy_keystores()
         except FileNotFoundError:
             print('Copying keystores failed...')
             return
 
     def _recycle_keys(self) -> None:
-        if _logging:
-            print("Recycle keys")
-        # this is run before running second and later tests
-        for i, node_id in enumerate(self.datadirs):
+        _log("Recycle keys")
+        # this is run before tests
+        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
             account = self.granary.request_account()
             if account is not None:
                 self._replace_keystore(
-                    account, self.datadirs[node_id]
+                    account, datadir
                 )
+            else:
+                print("WARNING: No key from granary, will generate one")
 
     def _replace_keystore(self, account: Account, dst: Path) -> None:
         dst_key_dir = dst / KEYSTORE_DIR
@@ -202,8 +204,8 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
         # this is run after tests
         # return key to granary as binary private key and transactions.json
 
-        for i, node_id in enumerate(self.datadirs):
-            account = self._copy_keystore(self.datadirs[node_id])
+        for i, (node_id, datadir) in enumerate(self.datadirs.items()):
+            account = self._copy_keystore(datadir)
             if account:
                 self.granary.return_account(account)
 
@@ -220,16 +222,13 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
             with open(src_ts_file, 'r') as f:
                 ts = f.read()
         except FileNotFoundError:
-            if _logging:
-                print('No tx.json, continue')
+            _log('No tx.json, continue')
         try:  # read keystore.json
             with open(src_key_file, 'r') as f:
-                keystore = f.read()
+                keystore = json.load(f)
         except FileNotFoundError:
-            if _logging:
-                print('No File, no key')
+            _log('No File, no key')
             return None
-        keystore = json.loads(keystore)
 
         try:  # unlock the key
             priv_key = decode_keyfile_json(keystore, PASSWORD.encode('utf-8'))
@@ -240,12 +239,11 @@ class NodeKeyReuseGranary(NodeKeyReuseBase):
 
     @staticmethod
     def _save_private_key(key, key_path: Path, password: str) -> None:
-        if _logging:
-            print("_save_private_key() password=", password)
+        _log("_save_private_key() password=", password)
         keystore = create_keyfile_json(
             key,
             password.encode('utf-8'),
             iterations=1024,
         )
         with open(key_path, 'w') as f:
-            f.write(json.dumps(keystore))
+            json.dump(keystore, f)
