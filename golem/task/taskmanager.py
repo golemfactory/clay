@@ -225,9 +225,11 @@ class TaskManager(TaskEventListener):
                                  op=TaskOp.CREATED,
                                  persist=False)
 
-    def task_creation_failed(self, task_id: str) -> None:
+    def task_creation_failed(self, task_id: str, reason: str) -> None:
         if task_id in self.tasks_states:
-            self.tasks_states[task_id].status = TaskStatus.errorCreating
+            task_state = self.tasks_states[task_id]
+            task_state.status = TaskStatus.errorCreating
+            task_state.status_message = reason
         else:
             logger.debug("task_creation_failed called on unknown Task %s",
                          task_id)

@@ -1,15 +1,18 @@
 from enum import Enum, auto
 import functools
 import time
-from typing import Dict
+from typing import Dict, Optional
 
 from golem_messages import datastructures
 from golem_messages import validators
 
 
 class TaskState:
+    # pylint: disable=too-many-instance-attributes
+
     def __init__(self, task=None) -> None:
         self.status = TaskStatus.creating
+        self.status_message: Optional[str] = None
         self.progress = 0.0
         self.remaining_time = 0
         self.elapsed_time = 0
@@ -50,6 +53,7 @@ class TaskState:
             'time_remaining': self.remaining_time,
             'last_updated': getattr(self, 'last_update_time', None),
             'status': self.status.value,
+            'status_message': self.status_message,
             'estimated_cost': getattr(self, 'estimated_cost', None),
             'estimated_fee': getattr(self, 'estimated_fee', None)
         }

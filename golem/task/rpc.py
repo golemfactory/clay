@@ -409,7 +409,7 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
         temp_dict = rpc_utils.int_to_string(e.to_dict())
         return None, temp_dict
 
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'))
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
     return None, str(e)
 
 
