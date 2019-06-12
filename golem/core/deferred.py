@@ -1,8 +1,7 @@
 from queue import Queue, Empty
 from typing import Any
 
-from twisted.internet.defer import Deferred, TimeoutError, inlineCallbacks, \
-    maybeDeferred
+from twisted.internet.defer import Deferred, inlineCallbacks, maybeDeferred
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure

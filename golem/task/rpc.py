@@ -418,7 +418,7 @@ def _restart_task_error(e, _self, task_id, **_kwargs):
     return None, str(e)
 
 
-def _restart_subtasks_error(e, _self, task_id, subtask_ids, *args, **_kwargs) \
+def _restart_subtasks_error(e, _self, task_id, subtask_ids, *_args, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
     logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
                  task_id, subtask_ids, e)
@@ -678,7 +678,7 @@ class ClientProvider:
         if not frame_subtasks:
             logger.error('Frame restart failed, frame has no subtasks.'
                          'task_id=%r, frame=%r', task_id, frame)
-            return
+            return None
 
         return self.restart_subtasks(task_id, list(frame_subtasks))
 

@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import logging
 import os
 import pickle
@@ -69,6 +71,8 @@ class TaskManager(TaskEventListener):
     """ Keeps and manages information about requested tasks
     Requestor uses TaskManager to assign task to providers
     """
+    # pylint: disable=too-many-public-methods
+
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
     handle_generic_key_error = HandleForwardedError(KeyError,
@@ -87,6 +91,7 @@ class TaskManager(TaskEventListener):
             apps_manager=AppsManager(),
             finished_cb=None,
     ) -> None:
+        # pylint: disable=too-many-instance-attributes
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -273,7 +278,7 @@ class TaskManager(TaskEventListener):
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
             logger.debug('TASK %s DUMPED in %r', task_id, filepath)
-        except Exception as e:
+        except Exception:  # pylint: disable=broad-except
             logger.exception(
                 'DUMP ERROR task_id: %r task: %r state: %r',
                 task_id, self.tasks.get(task_id, '<not found>'),
@@ -370,7 +375,7 @@ class TaskManager(TaskEventListener):
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.notice_task_updated(task_id)
-        logger.info("Resources for task {} sent".format(task_id))
+        logger.info("Resources for task %s sent", task_id)
 
     def got_wants_to_compute(self,
                              task_id: str):
@@ -414,7 +419,7 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
-    def get_next_subtask(
+    def get_next_subtask(  # pylint: disable=too-many-arguments
             self, node_id, task_id, estimated_performance, price,
             max_resource_size, max_memory_size):
         """ Assign next subtask from task <task_id> to node with given
@@ -431,6 +436,7 @@ class TaskManager(TaskEventListener):
         or None. It is recommended to call is_my_task and should_wait_for_node
         before this to find the reason why the task is not able to be picked up
         """
+        # pylint: disable=too-many-return-statements
         logger.debug(
             'get_next_subtask(%r, %r, %r, %r, %r, %r)',
             node_id, task_id, estimated_performance, price,
@@ -705,9 +711,9 @@ class TaskManager(TaskEventListener):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
-        else:
-            logger.error("This is not my subtask {}".format(subtask_id))
-            return 0
+
+        logger.error("This is not my subtask %s", subtask_id)
+        return 0
 
     def update_task_signatures(self):
         for task in list(self.tasks.values()):
@@ -721,8 +727,7 @@ class TaskManager(TaskEventListener):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)
-        else:
-            return False
+        return False
 
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:

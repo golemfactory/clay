@@ -532,6 +532,7 @@ class CoreTaskBuilder(TaskBuilder):
         self.environment = None
 
     def build(self):
+        # pylint:disable=abstract-class-instantiated
         return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
