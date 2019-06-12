@@ -124,7 +124,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
         def execute(f, *args, **kwargs):
             return defer.succeed(f(*args, **kwargs))
 
-        with mock.patch('golem.core.deferred.deferToThread', execute):
+        with mock.patch('twisted.internet.threads.deferToThread', execute):
             result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
@@ -751,6 +751,7 @@ class TestExceptionPropagation(ProviderBase):
                 rpc.enqueue_new_task(self.client, self.task),
             )
 
+    @mock.patch('twisted.internet.reactor', mock.Mock())
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
     def test_create_task(self, mock_method, *_):
         t = dummytaskstate.DummyTaskDefinition()

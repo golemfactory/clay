@@ -7,6 +7,8 @@ from twisted.python.failure import Failure
 from golem.core.deferred import chain_function, DeferredSeq
 
 
+@mock.patch('twisted.internet.threads.deferToThread', lambda x: succeed(x()))
+@mock.patch('twisted.internet.reactor', mock.Mock(), create=True)
 class TestDeferredSeq(unittest.TestCase):
 
     def test_init_empty(self):
@@ -19,11 +21,9 @@ class TestDeferredSeq(unittest.TestCase):
         ]
         assert DeferredSeq(*fns)._seq == fns
 
-    @mock.patch('golem.core.deferred.deferToThread', lambda x: succeed(x()))
     def test_execute_empty(self):
         assert DeferredSeq().execute().result
 
-    @mock.patch('golem.core.deferred.deferToThread', lambda x: succeed(x()))
     def test_execute_functions(self):
         fn_1, fn_2 = mock.Mock(), mock.Mock()
         fns = [fn_1, fn_2]
@@ -43,7 +43,7 @@ class TestDeferredSeq(unittest.TestCase):
             except Exception as exc:  # pylint: disable=broad-except
                 return fail(exc)
 
-        with mock.patch('golem.core.deferred.deferToThread', def2t):
+        with mock.patch('twisted.internet.threads.deferToThread', def2t):
             DeferredSeq(fn_1, fn_2, fn_3, fn_4).execute()
 
         assert fn_1.called
