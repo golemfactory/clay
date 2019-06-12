@@ -532,11 +532,7 @@ class CoreTaskBuilder(TaskBuilder):
         self.environment = None
 
     def build(self):
-        # pylint:disable=abstract-class-instantiated
-        task = self.TASK_CLASS(**self.get_task_kwargs())
-
-        task.initialize(self.dir_manager)
-        return task
+        return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
@@ -556,8 +552,12 @@ class CoreTaskBuilder(TaskBuilder):
         definition.options = task_type.options()
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
-        definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
+        definition.concent_enabled = dictionary.get('concent_enabled', False)
+
+        if 'resources' in dictionary:
+            definition.resources = set(dictionary['resources'])
+
         return definition
 
     @classmethod

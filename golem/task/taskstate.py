@@ -7,17 +7,15 @@ from golem_messages import datastructures
 from golem_messages import validators
 
 
-class TaskState(object):
-    def __init__(self):
-        self.status = TaskStatus.notStarted
+class TaskState:
+    def __init__(self, task=None) -> None:
+        self.status = TaskStatus.creating
         self.progress = 0.0
         self.remaining_time = 0
         self.elapsed_time = 0
-        self.time_started = 0
+        self.time_started = 0.0
         self.payment_booked = False
         self.payment_settled = False
-        self.outputs = []
-        self.subtasks_count = 0
         self.subtask_states: Dict[str, SubtaskState] = {}
         self.resource_hash = None
         self.package_hash = None
@@ -25,8 +23,16 @@ class TaskState(object):
         self.package_size = None
         self.extra_data = {}
         self.last_update_time = time.time()
-        self.estimated_cost = 0
         self.estimated_fee = 0
+
+        if task:
+            self.outputs = task.get_output_names()
+            self.subtasks_count = task.get_total_tasks()
+            self.estimated_cost = task.price
+        else:
+            self.outputs = []
+            self.subtasks_count = 0
+            self.estimated_cost = 0
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
@@ -142,6 +148,8 @@ class SubtaskState(datastructures.Container):
 
 
 class TaskStatus(Enum):
+    creating = "Creating"
+    errorCreating = "Error creating"
     notStarted = "Not started"
     creatingDeposit = "Creating the deposit"
     sending = "Sending"

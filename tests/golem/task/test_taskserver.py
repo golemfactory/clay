@@ -41,7 +41,7 @@ from golem.task.taskserver import (
     WaitingTaskFailure,
     WaitingTaskResult,
 )
-from golem.task.taskstate import TaskState, TaskOp
+from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -867,8 +867,7 @@ class TestTaskServer2(TaskServerBase):
 
         ts.task_manager.keys_auth._private_key = b'a' * 32
         ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states[task_id].status = \
-            ts.task_manager.activeStatus[0]
+        ts.task_manager.tasks_states[task_id].status = TaskStatus.computing
         subtask = ts.task_manager.get_next_subtask(
             "DEF",
             task_id,

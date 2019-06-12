@@ -19,6 +19,7 @@ from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
+from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
@@ -408,6 +409,7 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
         temp_dict = rpc_utils.int_to_string(e.to_dict())
         return None, temp_dict
 
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'))
     return None, str(e)
 
 
@@ -470,17 +472,18 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task, force=force)
-        # We want to return quickly from create_task without waiting for
-        # deferred completion.
-        deferred.addErrback(  # pylint: disable=no-member
+        DeferredSeq(
+            lambda _: self.task_manager.initialize_task(task),
+            lambda _: enqueue_new_task(self.client, task, force=force),
+        ).execute().addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
                 force=force
-            ),
+            )
         )
+
         return task_id, None
 
     def _validate_enough_funds_to_pay_for_task(

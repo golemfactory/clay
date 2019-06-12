@@ -101,6 +101,7 @@ class DockerTaskTestCase(
             dir_manager=DirManager(self.tempdir)
         )
         task = task_builder.build()
+        task.initialize(task_builder.dir_manager)
         task.__class__._update_task_preview = lambda self_: ()
         task.max_pending_client_results = 5
         return task

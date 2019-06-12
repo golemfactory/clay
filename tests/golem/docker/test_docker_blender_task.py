@@ -91,6 +91,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
             dir_manager,
         )
         task = builder.build()
+        task.initialize(builder.dir_manager)
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
         assert not task.use_frames

@@ -122,8 +122,15 @@ class TaskManager(TaskEventListener):
             resource_manager
         )
 
-        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting]
+        self.CREATING_STATUS = frozenset([
+            TaskStatus.creating,
+            TaskStatus.errorCreating,
+        ])
+        self.ACTIVE_STATUS = frozenset([
+            TaskStatus.computing,
+            TaskStatus.starting,
+            TaskStatus.waiting,
+        ])
         self.FINISHED_STATUS = frozenset([
             TaskStatus.finished,
             TaskStatus.aborted,
@@ -164,9 +171,17 @@ class TaskManager(TaskEventListener):
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-        builder = builder_type(self.node, definition, self.dir_manager)
 
-        return builder.build()
+        task = builder_type(self.node, definition, self.dir_manager).build()
+        task_id = task.header.task_id
+
+        logger.info("Creating task %r (%s)", type(task), task_id)
+        self.tasks[task_id] = task
+        self.tasks_states[task_id] = TaskState(task)
+        return task
+
+    def initialize_task(self, task: Task):
+        task.initialize(self.dir_manager)
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
@@ -177,8 +192,15 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task: Task, estimated_fee: int = 0) -> None:
         task_id = task.header.task_id
-        if task_id in self.tasks:
-            raise RuntimeError("Task {} has been already added"
+        task_state = self.tasks_states.get(task_id)
+
+        if not task_state:
+            task_state = TaskState(task)
+            self.tasks[task_id] = task
+            self.tasks_states[task_id] = task_state
+
+        if task_state.status is not TaskStatus.creating:
+            raise RuntimeError("Task {} has already been added"
                                .format(task.header.task_id))
 
         task.header.task_owner = self.node
@@ -186,16 +208,10 @@ class TaskManager(TaskEventListener):
 
         task.register_listener(self)
 
-        ts = TaskState()
-        ts.status = TaskStatus.notStarted
-        ts.outputs = task.get_output_names()
-        ts.subtasks_count = task.get_total_tasks()
-        ts.time_started = time.time()
-        ts.estimated_cost = task.price
-        ts.estimated_fee = estimated_fee
+        task_state.status = TaskStatus.notStarted
+        task_state.time_started = time.time()
+        task_state.estimated_fee = estimated_fee
 
-        self.tasks[task_id] = task
-        self.tasks_states[task_id] = ts
         logger.info("Task %s added", task_id)
 
         self._create_task_output_dir(task.task_definition)
@@ -203,6 +219,13 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  op=TaskOp.CREATED,
                                  persist=False)
+
+    def task_creation_failed(self, task_id: str) -> None:
+        if task_id in self.tasks_states:
+            self.tasks_states[task_id].status = TaskStatus.errorCreating
+        else:
+            logger.debug("task_creation_failed called on unknown Task %s",
+                         task_id)
 
     @handle_task_key_error
     def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
@@ -366,12 +389,16 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
+    def task_being_created(self, task_id: str) -> bool:
+        task_status = self.tasks_states[task_id].status
+        return task_status in self.CREATING_STATUS
+
     def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
         return task_status in self.FINISHED_STATUS
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.task_finished(task_id):
+        if self.task_being_created(task_id) or self.task_finished(task_id):
             task_status = self.tasks_states[task_id].status
             logger.info(
                 'task is not active: %(task_id)s, status: %(task_status)s',
@@ -669,7 +696,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             status = self.tasks_states[tid].status
-            if task.needs_computation() and status in self.activeStatus:
+            if task.needs_computation() and status in self.ACTIVE_STATUS:
                 ret.append(task.header)
 
         return ret
@@ -748,7 +775,7 @@ class TaskManager(TaskEventListener):
 
             verification_finished()
 
-            if self.tasks_states[task_id].status in self.activeStatus:
+            if self.tasks_states[task_id].status in self.ACTIVE_STATUS:
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
@@ -864,7 +891,7 @@ class TaskManager(TaskEventListener):
         nodes_with_timeouts = []
         for t in list(self.tasks.values()):
             th = t.header
-            if self.tasks_states[th.task_id].status not in self.activeStatus:
+            if self.tasks_states[th.task_id].status not in self.ACTIVE_STATUS:
                 continue
             cur_time = int(get_timestamp_utc())
             # Check subtask timeout
