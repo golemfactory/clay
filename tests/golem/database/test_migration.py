@@ -351,6 +351,50 @@ class TestSavedMigrations(TempDirFixture):
             value = cursor.fetchone()[0]
             self.assertEqual(value, '10')
 
+    @patch('golem.database.Database._create_tables')
+    def test_30_wallet_operation_alter(self, _create_tables_mock):
+        tx_hash = (
+            '0x8f30cb104c188f612f3492f53c069f65a4c4e2a8d4432a4878b1fd33f36787d3'
+        )
+        with self.database_context() as database:
+            database._migrate_schema(6, 29)
+            cursor = database.db.execute_sql(
+                "INSERT INTO walletoperation"
+                " (tx_hash, direction, operation_type, status,"
+                "  sender_address, recipient_address, gas_cost,"
+                "  amount, currency, created_date, modified_date)"
+                " VALUES"
+                " (?, 'outgoing', 'task_payment', 'awaiting',"
+                "  '', '', 0,"
+                "  1, 'GNT', datetime('now'), datetime('now'))",
+                (
+                    tx_hash,
+                )
+            )
+            wallet_operation_id = cursor.lastrowid
+            # Migration used to fail because of foreign key and
+            # sqlite inability to DROP NOT NULL
+            cursor.execute(
+                "INSERT INTO taskpayment"
+                " (wallet_operation_id, node, task, subtask,"
+                "  accepted_ts, settled_ts,"
+                "  expected_amount, created_date, modified_date)"
+                " VALUES"
+                " (?, '', '', '',"
+                "  datetime('now'), datetime('now'),"
+                "  1, datetime('now'), datetime('now'))",
+                (
+                    wallet_operation_id,
+                )
+            )
+            database._migrate_schema(29, 30)
+            cursor = database.db.execute_sql(
+                "SELECT tx_hash FROM walletoperation"
+                " LIMIT 1"
+            )
+            value = cursor.fetchone()[0]
+            self.assertEqual(value, tx_hash)
+
 
 def generate(start, stop):
     return ['{:03}_script'.format(i) for i in range(start, stop + 1)]
