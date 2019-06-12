@@ -55,46 +55,47 @@ def do_transcode(track, targs, output, use_playlist):
     commands.transcode_video(track, targs, output, use_playlist)
 
 
+def select_transcoded_video_paths(output_file_paths, output_extension):
+    return [path
+            for path in output_file_paths
+            if path.endswith(f'_TC{output_extension}')]
+
+
+def sorted_transcoded_video_paths(transcoded_video_paths):
+    path_index = {int(re.findall(TRANSCODED_VIDEO_REGEX, path)[0]): path
+                    for path in transcoded_video_paths}
+    return [value for key, value in sorted(path_index.items())]
+
+
+def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
+    assert len(chunks) >= 1
+    assert len(set(os.path.dirname(chunk) for chunk in chunks)) == 1, \
+        "Merge won't work if chunks are not all in the same directory"
+
+    # NOTE: The way the ffmpeg merge command works now, the list file
+    # must be in the same directory as the chunks.
+    list_filename = os.path.join(os.path.dirname(chunks[0]), list_basename)
+
+    [_output_basename, output_extension] = os.path.splitext(
+        os.path.basename(output_filename))
+
+    merge_input_files = sorted_transcoded_video_paths(
+        select_transcoded_video_paths(
+            chunks,
+            output_extension))
+
+    ffconcat_entries = [
+        "file '{}'".format(path.replace("'", "\\'"))
+        for path in merge_input_files
+    ]
+
+    with open(list_filename, 'w') as file:
+        file.write('\n'.join(ffconcat_entries))
+
+    return list_filename
+
+
 def do_merge(chunks, outputfilename):
-    def select_transcoded_video_paths(output_file_paths, output_extension):
-        return [path
-                for path in output_file_paths
-                if path.endswith(f'_TC{output_extension}')]
-
-
-    def sorted_transcoded_video_paths(transcoded_video_paths):
-        path_index = {int(re.findall(TRANSCODED_VIDEO_REGEX, path)[0]): path
-                      for path in transcoded_video_paths}
-        return [value for key, value in sorted(path_index.items())]
-
-
-    def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
-        assert len(chunks) >= 1
-        assert len(set(os.path.dirname(chunk) for chunk in chunks)) == 1, \
-            "Merge won't work if chunks are not all in the same directory"
-
-        # NOTE: The way the ffmpeg merge command works now, the list file
-        # must be in the same directory as the chunks.
-        list_filename = os.path.join(os.path.dirname(chunks[0]), list_basename)
-
-        [_output_basename, output_extension] = os.path.splitext(
-            os.path.basename(output_filename))
-
-        merge_input_files = sorted_transcoded_video_paths(
-            select_transcoded_video_paths(
-                chunks,
-                output_extension))
-
-        ffconcat_entries = [
-            "file '{}'".format(path.replace("'", "\\'"))
-            for path in merge_input_files
-        ]
-
-        with open(list_filename, 'w') as file:
-            file.write('\n'.join(ffconcat_entries))
-
-        return list_filename
-
     ffconcat_list_filename = build_and_store_ffconcat_list(
         chunks,
         outputfilename,
