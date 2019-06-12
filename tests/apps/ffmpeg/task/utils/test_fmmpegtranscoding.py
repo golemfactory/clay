@@ -22,8 +22,8 @@ from tests.golem.docker.test_docker_job import TestDockerJob
 class TestffmpegTranscoding(TempDirFixture):
     def setUp(self):
         super(TestffmpegTranscoding, self).setUp()
-        self.RESOURCES = os.path.join(os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__))), 'resources')
+        self.RESOURCES = os.path.join(os.path.dirname(os.path.dirname(
+            os.path.dirname(os.path.realpath(__file__)))), 'resources')
         self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video2.mp4')
         self.stream_operator = StreamOperator()
         self.dir_manager = DirManager(self.tempdir)
@@ -162,7 +162,9 @@ class TestffmpegDockerJob(TestDockerJob):
     def test_ffmpeg_trancoding_job(self):
         stream_file = os.path.join(
             os.path.join(
-                os.path.dirname(os.path.dirname(os.path.realpath(__file__))),
+                os.path.dirname(
+                    os.path.dirname(
+                        os.path.dirname(os.path.realpath(__file__)))),
                 'resources'),
             'test_video.mp4')
 

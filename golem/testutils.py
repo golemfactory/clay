@@ -40,6 +40,10 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 logger = logging.getLogger(__name__)
 
 
+class DockerTestJobFailure(Exception):
+    pass
+
+
 class TestTaskManager(TaskManager):
     def __init__(self, node, keys_auth, root_path, config_desc: ClientConfigDescriptor, tasks_dir="tasks",
                  task_persistence=False, apps_manager=AppsManager(), finished_cb=None):
@@ -482,7 +486,7 @@ class TestTaskIntegration(TempDirFixture):
         self._log_docker_logs(dtt)
 
         if dtt.error:
-            raise Exception(dtt.error_msg)
+            raise DockerTestJobFailure(dtt.error_msg)
 
         return dtt.result.get('data')
 
