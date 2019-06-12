@@ -236,7 +236,7 @@ class WasmTask(CoreTask):
         Coordinate with `query_extra_data` and `computation_finished` on what node has been
         assigned to particular task and has completed it to make sure that particular Node is
         not computing the same subtask twice, because this would not provide the desired computation provider redundancy.
-        By "The same task twice" I mean two redundant jobs of the same task.
+        By "The same subtask twice" I mean two redundant jobs of the same subtask.
 
         Handling a negative scenario where a subtask computation failed must be addressed here too, only if
         we decide to change:
