@@ -399,6 +399,7 @@ class TransactionSystem(LoopingCallService):
         lru_node = functools.lru_cache()(nodeskeeper.get)
 
         def item(o):
+            node = lru_node(o.sender_node) if o.sender_node else None
             return {
                 "subtask": common.to_unicode(o.subtask),
                 "payer": common.to_unicode(o.sender_node),
@@ -407,11 +408,8 @@ class TransactionSystem(LoopingCallService):
                 "transaction": common.to_unicode(o.transaction),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node":
-                    lru_node(o.sender_node).to_dict()
-                    if o.sender_node else None,
+                "node": node.to_dict() if node else None,
             }
-
         return [item(income) for income in incomes]
 
     def get_available_eth(self) -> int:

@@ -792,3 +792,25 @@ class IncomesListTest(TransactionSystemBase):
             ],
             self.ets.get_incomes_list(),
         )
+
+    def test_nodeskeeper_record_not_present(self):
+        income = model_factory.Income()
+        self.assertEqual(
+            income.save(force_insert=True),
+            1,
+        )
+        self.assertEqual(
+            [
+                {
+                    'created': ANY,
+                    'modified': ANY,
+                    'node': None,
+                    'payer': income.sender_node,
+                    'status': 'awaiting',
+                    'subtask': income.subtask,
+                    'transaction': None,
+                    'value': str(income.value),
+                },
+            ],
+            self.ets.get_incomes_list(),
+        )
