@@ -1,6 +1,7 @@
 import factory
 
 from golem_messages.factories.datastructures import p2p
+from golem_messages.factories.helpers import random_eth_pub_key
 from golem import model
 
 
@@ -8,7 +9,7 @@ class Income(factory.Factory):
     class Meta:
         model = model.Income
 
-    sender_node = '00adbeef' + 'deadbeef' * 15
+    sender_node = factory.LazyFunction(lambda: random_eth_pub_key())
     payer_address = '0x' + 40 * '3'
     subtask = factory.Faker('uuid4')
     value = factory.Faker('random_int', min=1, max=10 << 20)
