@@ -68,9 +68,15 @@ def sorted_transcoded_video_paths(transcoded_video_paths):
 
 
 def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
-    assert len(chunks) >= 1
-    assert len(set(os.path.dirname(chunk) for chunk in chunks)) == 1, \
-        "Merge won't work if chunks are not all in the same directory"
+    if len(chunks) <= 0:
+        raise commands.InvalidArgument(
+            "Need at least one video segment to perform a merge operation")
+
+    if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
+        # It would be possible to handle chunks residing in different
+        # directories but it's not implemented (and not needed right now).
+        raise commands.InvalidArgument(
+            "All video chunks to merge must be in the same directory")
 
     # NOTE: The way the ffmpeg merge command works now, the list file
     # must be in the same directory as the chunks.
@@ -96,6 +102,16 @@ def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
 
 
 def do_merge(chunks, outputfilename):
+    if len(chunks) <= 0:
+        raise commands.InvalidArgument(
+            "Need at least one video segment to perform a merge operation")
+
+    if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
+        # It would be possible to handle chunks residing in different
+        # directories but it's not implemented (and not needed right now).
+        raise commands.InvalidArgument(
+            "All video chunks to merge must be in the same directory")
+
     ffconcat_list_filename = build_and_store_ffconcat_list(
         chunks,
         outputfilename,
