@@ -13,7 +13,7 @@ from apps.core.task.coretask import (
 )
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
-from golem.task.taskbase import Task
+from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
@@ -216,6 +216,58 @@ class WasmTask(CoreTask):
     # def finished_computation(self):
     #     logger.info("Finished computaing Wasm task")
     #     return self.num_tasks_received == self.total_tasks * 2
+
+        def should_accept_client(self, node_id: str) -> AcceptClientVerdict:
+        """Deciding whether to accept particular node_id for next task computation.
+
+        Arguments:
+            node_id {str} -- Node offered to compute next task
+
+        Returns:
+            AcceptClientVerdict -- When AcceptClientVerdict.ACCEPTED value is returned the task will get a call to
+            `query_extra_data` with corresponding `node_id`. On AcceptClientVerdict.REJECTED and
+            AcceptClientVerdict.SHOULD_WAIT the node offer will be turned down, but might appear
+            in subsequent `should_accept_client` invocation. The only difference between REJECTED
+            and SHOULD_WAIT is the log message.
+        """
+
+        """TODO
+        What this method should do for VbR:
+        Coordinate with `query_extra_data` and `computation_finished` on what node has been
+        assigned to particular task and has completed it to make sure that particular Node is
+        not computing the same task twice, because we want a redundancy on both computation and computation provider.
+        By "The same task twice" I mean two redundant jobs of the same task.
+
+        Handling a negative scenario where a subtask computation failed must be addressed here too, only if
+        we decide to change:
+
+        if client.rejected():
+            return AcceptClientVerdict.REJECTED
+        elif finishing >= max_finishing or \
+                client.started() - finishing >= max_finishing:
+            return AcceptClientVerdict.SHOULD_WAIT
+
+        This part of the routine depends on `CoreTask._mark_subtask_failed`. If we change this logic we should coordinate
+        with or override  `CoreTask.computation_failed` and `CoreTask.restart_subtask`. Also, in `computation_finished`
+        we get some results, but we might decide that they are undoubtedly wrong and we need to communicate it to this method.
+        To sum up negative scenario, we have three cases:
+            - task has been restarted
+            - task has failed on provider side (exception or segfault)
+            - task has not passed sanity check (if any) in computation_finished
+        All of them should somehow affect choosing next provider here.
+        """
+
+       client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        finishing = client.finishing()
+        max_finishing = self.max_pending_client_results
+
+        if client.rejected():
+            return AcceptClientVerdict.REJECTED
+        elif finishing >= max_finishing or \
+                client.started() - finishing >= max_finishing:
+            return AcceptClientVerdict.SHOULD_WAIT
+
+        return AcceptClientVerdict.ACCEPTED
 
 
 class WasmTaskBuilder(CoreTaskBuilder):
