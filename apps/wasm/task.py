@@ -235,7 +235,7 @@ class WasmTask(CoreTask):
         What this method should do for VbR:
         Coordinate with `query_extra_data` and `computation_finished` on what node has been
         assigned to particular task and has completed it to make sure that particular Node is
-        not computing the same task twice, because we want a redundancy on both computation and computation provider.
+        not computing the same subtask twice, because this would not provide the desired computation provider redundancy.
         By "The same task twice" I mean two redundant jobs of the same task.
 
         Handling a negative scenario where a subtask computation failed must be addressed here too, only if
