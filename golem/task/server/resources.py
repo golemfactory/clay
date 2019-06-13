@@ -287,7 +287,7 @@ class TaskResourcesMixin:
             session = self.sessions.get(key_id)
             if not session:
                 logger.info(
-                    'Resource handshake timeout. node=%s',
+                    'Session not found. node=%s',
                     common.short_node_id(key_id),
                 )
                 return
