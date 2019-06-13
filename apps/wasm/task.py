@@ -63,57 +63,34 @@ class WasmTaskDefinition(TaskDefinition):
         self.resources = [self.options.input_dir]
 
 
-class VbrSubtaskQueue:
-    def __init__(self):
-        self.buffer = []
-        self.index = 0
-
-    def get(self, s_id):
-        for subtask in self.buffer:
-            if subtask.contains(s_id):
-                return subtask
-
-        return None
-
-    def push(self, subtask):
-        self.buffer += [subtask]
-
-    def next(self):
-        while True:
-            if self.buffer.len() == self.index:
-                return None
-
-            subtask = self.buffer[self.index]
-            subtask_ttc = subtask.next()
-            if subtask_ttc is None:
-                self.index += 1
-                continue
-
-            yield subtask_ttc
-
-
 class VbrSubtask:
-    def __init__(self, id_gen, name, params, redundancy_factor=2):
+    class State(Enum):
+        READY = 0
+        BASE_VERIFICATION = 1
+        DISPUTE = 2
+
+    def __init__(self, id_gen, name, params):
         self.id_gen = id_gen
         self.name = name
         self.params = params
-        self.count = 0
-        self.redundancy_factor = redundancy_factor
+        self.state = VbrSubtask.State.READY
 
-        self.subtask_ids = set()
+        self.subtask_ids = {}
 
     def contains(self, s_id):
         s_id in self.subtask_ids
 
-    def next(self):
-        if self.count == self.redundancy_factor:
-            return None
-
-        self.count += 1
+    def new_instance(self, node_id):
         s_id = self.id_gen()
-        self.subtask_ids.insert(s_id)
+        self.subtask_ids[s_id] = {
+            "status": SubtaskStatus.starting,
+            "node_id": node_id,
+        }
 
         return s_id, deepcopy(self.params)
+
+    def get_instance(self, s_id):
+        return self.subtask_ids[s_id]
 
 
 class WasmTask(CoreTask):
@@ -130,15 +107,17 @@ class WasmTask(CoreTask):
             root_path=root_path, owner=owner
         )
         self.options: WasmTaskOptions = task_definition.options
-        self.subtask_queue = VbrSubtaskQueue()
+        self.subtasks = []
+        self.subtask_queue = collections.deque()
 
         for s_name, s_params in self.options.get_subtask_iterator():
             s_params = {
                 'entrypoint': self.JOB_ENTRYPOINT,
                 **next_subtask_params
             }
-            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params, REDUNDANCY_FACTOR)
-            self.subtask_queue.push(subtask)
+            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params)
+            self.subtasks += [subtask]
+            self.subtask_queue.extend([subtask.new_instance() for i in range(REDUNDANCY_FACTOR)])
 
         self.results: Dict[str, Dict[str, list]] = {}
         self.next_actor = None
@@ -147,12 +126,19 @@ class WasmTask(CoreTask):
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
-        next_subtask = self.subtask_queue.next()
+        next_subtask = self.subtask_queue.popleft()
         # TODO should we worry about next_subtask == None?
         s_id, s_params = next_subtask
         ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
         return Task.ExtraData(ctd=ctd)
+
+    def _find_vbrsubtask_by_id(self, subtask_id):
+        for subtask in self.subtasks:
+            if subtask.contains(subtask_id):
+                return subtask
+
+        return None
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
@@ -163,7 +149,8 @@ class WasmTask(CoreTask):
 
         self.interpret_task_results(subtask_id, task_result)
 
-        subtask = self.subtask_queue.get(subtask_id)
+        # find the VbrSubtask that contains subtask_id
+        subtask = self._find_vbrsubtask_by_id(subtask_id)
         results_dict = self.results.get(subtask.name)
 
         WasmTask.CALLBACKS[subtask_id] = verification_finished
