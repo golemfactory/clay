@@ -14,7 +14,6 @@
 # https://github.com/pyinstaller/pyinstaller/issues/1881
 # https://github.com/pyinstaller/pyinstaller/issues/1969
 # for more information
-import os
 import os.path
 import re
 from PyInstaller.utils.hooks import get_package_paths
@@ -29,7 +28,7 @@ logger = logging.getLogger(__name__)
 pkg_base, pkg_dir = get_package_paths('numpy')
 dll_dir = os.path.join(pkg_dir, 'DLLs')
 logger.info("pkg_base=%r, pkg_dir=%r, dll_dir=%r", pkg_base, pkg_dir, dll_dir)
-if os.exists(dll_dir):
+if os.path.exists(dll_dir):
     re_anylib = re.compile(r'\w+\.(?:dll|so|dylib)', re.IGNORECASE)
     dlls_pkg = [f for f in os.listdir(dll_dir) if re_anylib.match(f)]
     logger.info("dlls_pkg=%r", dlls_pkg)
