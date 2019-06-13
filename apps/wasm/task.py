@@ -303,6 +303,67 @@ class WasmTask(CoreTask):
         #     return AcceptClientVerdict.SHOULD_WAIT
 
         # return AcceptClientVerdict.ACCEPTED
+    
+    def needs_computation(self):
+        return (self.last_task != self.total_tasks) or \
+               (self.num_failed_subtasks > 0)
+
+    def finished_computation(self):
+        return self.num_tasks_received == self.total_tasks
+
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
+        self._mark_subtask_failed(subtask_id, ban_node)
+
+    def verify_task(self):
+        return self.finished_computation()
+
+    def get_total_tasks(self):
+        return self.total_tasks
+
+    def get_active_tasks(self):
+        return self.last_task
+
+    def get_tasks_left(self):
+        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+
+    # pylint:disable=unused-argument
+    @classmethod
+    def get_subtasks(cls, part):
+        return dict()
+
+    def restart(self):
+        for subtask_id in list(self.subtasks_given.keys()):
+            self.restart_subtask(subtask_id)
+
+    @handle_key_error
+    def restart_subtask(self, subtask_id):
+        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
+
+        subtask_info = self.subtasks_given[subtask_id]
+        was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
+                                                        SubtaskStatus.resent]
+
+        if subtask_info['status'].is_active():
+            # TODO Restarted tasks that were waiting for verification should
+            # cancel it. Issue #2423
+            self._mark_subtask_failed(subtask_id)
+        elif subtask_info['status'] == SubtaskStatus.finished:
+            self._mark_subtask_failed(subtask_id)
+            self.num_tasks_received -= 1
+
+        if not was_failure_before:
+            subtask_info['status'] = SubtaskStatus.restarted
+
+    def abort(self):
+        pass
+
+    def get_progress(self):
+        if self.total_tasks == 0:
+            return 0.0
+        return self.num_tasks_received / self.total_tasks
+
+    def get_results(self, subtask_id):
+        return self.results.get(subtask_id, [])
 
 
 class WasmTaskBuilder(CoreTaskBuilder):
