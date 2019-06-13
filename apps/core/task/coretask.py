@@ -32,6 +32,8 @@ from golem.verifier.core_verifier import CoreVerifier
 
 from .coretaskstate import RunVerification
 
+from .coretaskstate import RunVerification
+
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
