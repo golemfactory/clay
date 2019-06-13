@@ -45,6 +45,8 @@ class DockerManager(DockerConfigManager):
         try:
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
+                logger.info("Docker-hypervisor selected. type=%r",
+                            type(self.hypervisor))
                 self.hypervisor.setup()
         except Exception as e:  # pylint: disable=broad-except
             logger.error(

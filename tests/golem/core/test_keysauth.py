@@ -1,18 +1,19 @@
+# pylint: disable=protected-access
 import os
 import shutil
 import time
 from random import random, randint
 from unittest.mock import patch
 
+from eth_utils import decode_hex, encode_hex
 from golem_messages import message
 from golem_messages.cryptography import ECCx, privtopub
-from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
+from golem_messages.factories import tasks as tasks_factory
 
 from golem import testutils
 from golem.core.keysauth import (
     KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.tools.testwithreactor import TestWithReactor
-from eth_utils import decode_hex, encode_hex
 
 
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
@@ -180,14 +181,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         ek.key_id = encode_hex(ek.public_key)[2:]
         ek.ecc = ECCx(ek._private_key)
 
-        msg = message.tasks.WantToComputeTask(
-            node_name='node_name',
-            perf_index=2200,
-            price=5 * 10 ** 18,
-            max_resource_size=250000000,
-            max_memory_size=300000000,
-            task_header=TaskHeaderFactory(),
-        )
+        msg = tasks_factory.WantToComputeTaskFactory()
 
         dumped_l = msg.serialize(
             sign_as=ek._private_key, encrypt_func=lambda x: x)

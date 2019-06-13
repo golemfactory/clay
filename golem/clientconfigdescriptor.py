@@ -80,6 +80,8 @@ class ClientConfigDescriptor(object):
         self.hyperdrive_rpc_port: typing.Optional[int] = None
         self.hyperdrive_rpc_address: typing.Optional[str] = None
 
+        self.overwrite_results: typing.Optional[str] = None
+
     def __repr__(self):
         return '{}: {}'.format(self.__class__, {
             v: getattr(self, v) for v in vars(self)})

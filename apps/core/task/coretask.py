@@ -30,6 +30,8 @@ from golem.task.taskstate import SubtaskStatus
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
 from golem.verifier.core_verifier import CoreVerifier
 
+from .coretaskstate import RunVerification
+
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -208,9 +210,18 @@ class CoreTask(Task):
         self.interpret_task_results(subtask_id, task_result)
         result_files = self.results.get(subtask_id)
 
-        def verification_finished_(subtask_id, verdict, result):
+        def verification_finished_(subtask_id,
+                                   verdict: SubtaskVerificationState, result):
             self.verification_finished(subtask_id, verdict, result)
             verification_finished()
+
+        if self.task_definition.run_verification == RunVerification.disabled:
+            logger.debug("verification disabled; calling verification_finished."
+                         " subtask_id=%s", subtask_id)
+            result = {'extra_data': {'results': result_files}}
+            verification_finished_(
+                subtask_id, SubtaskVerificationState.VERIFIED, result)
+            return
 
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
@@ -580,6 +591,10 @@ class CoreTaskBuilder(TaskBuilder):
         )
         definition.output_file = cls.get_output_path(dictionary, definition)
         definition.estimated_memory = dictionary.get('estimated_memory', 0)
+
+        if 'x-run-verification' in dictionary:
+            definition.run_verification = \
+                RunVerification(dictionary['x-run-verification'])
 
         return definition
 

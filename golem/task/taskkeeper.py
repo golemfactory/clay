@@ -538,8 +538,9 @@ class TaskHeaderKeeper:
         # headers, remove the rest
         to_remove = by_age[self.max_tasks_per_requestor:]
 
-        logger.warning(
-            "Too many tasks, dropping %d tasks. owner=%s, ids_to_remove=%r",
+        logger.debug(
+            "Limiting tasks for this node, dropping %d tasks. "
+            "owner=%s, ids_to_remove=%r",
             len(to_remove), common.short_node_id(owner_key_id), to_remove
         )
 
@@ -621,8 +622,9 @@ class TaskHeaderKeeper:
         for t in list(self.task_headers.values()):
             cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.warning("Task owned by %s dies, task_id: %s",
-                               t.task_owner.key, t.task_id)
+                logger.debug("Task owned by %s removed after deadline, "
+                             "task_id: %s",
+                             t.task_owner.key, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):

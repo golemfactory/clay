@@ -19,6 +19,7 @@ from twisted.internet.defer import (
 
 from apps.appsmanager import AppsManager
 import golem
+from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
@@ -30,9 +31,8 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
-from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService, IService
+from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -41,7 +41,6 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -235,6 +234,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
@@ -247,6 +247,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            api_ethereum.ETSProvider(self.transaction_system),
         )
         mapping = {}
         for rpc_provider in providers:
@@ -833,21 +834,31 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
             self.transaction_system.get_subtasks_payments(subtask_ids)
+        statuses_of_interest = (
+            model.WalletOperation.STATUS.sent,
+            model.WalletOperation.STATUS.confirmed,
+        )
         all_sent = all(
-            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
+            p.wallet_operation.status in statuses_of_interest
             for p in subtasks_payments)
         if not subtasks_payments or not all_sent:
             task_dict['cost'] = None
             task_dict['fee'] = None
         else:
-            # Because details are JSON field
-            task_dict['cost'] = sum(p.value or 0 for p in subtasks_payments)
+            task_dict['cost'] = sum(
+                p.wallet_operation.amount for p in subtasks_payments
+            )
             task_dict['fee'] = \
-                sum(p.details.fee or 0 for p in subtasks_payments)
+                sum(
+                    p.wallet_operation.gas_cost for p in subtasks_payments
+                    if p.wallet_operation.gas_cost
+                )
 
         # Convert to string because RPC serializer fails on big numbers
-        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
-            if task_dict[k] is not None:
+        # and enums
+        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee',
+                  'x-run-verification'):
+            if k in task_dict and task_dict[k] is not None:
                 task_dict[k] = str(task_dict[k])
 
         return task_dict
@@ -946,7 +957,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'contract_addresses': {
                 contract.name: address
                 for contract, address in
-                EthereumConfig.CONTRACT_ADDRESSES.items()
+                self.transaction_system.contract_addresses.items()
             }
         }
 

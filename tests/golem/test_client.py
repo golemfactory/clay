@@ -1,5 +1,4 @@
 # pylint: disable=protected-access,too-many-lines
-import datetime
 import os
 import time
 import uuid
@@ -7,6 +6,7 @@ from random import Random
 from unittest import TestCase
 from unittest.mock import (
     ANY,
+    create_autospec,
     MagicMock,
     Mock,
     patch,
@@ -41,10 +41,13 @@ from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
 from golem.task import taskstate
 from golem.task.acl import Acl
+from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
+from golem.task.taskmanager import TaskManager
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
+from tests.factories import model as model_factory
 from tests.factories.task import taskstate as taskstate_factory
 
 random = Random(__name__)
@@ -649,8 +652,11 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_get_balance(self, *_):
         c = self.client
+        ethconfig = EthereumConfig()
 
-        c.transaction_system = Mock()
+        c.transaction_system = Mock(
+            contract_addresses=ethconfig.CONTRACT_ADDRESSES
+        )
 
         result = {
             'gnt_available': 2,
@@ -677,7 +683,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'contract_addresses': {
                 contract.name: address
                 for contract, address
-                in EthereumConfig.CONTRACT_ADDRESSES.items()
+                in ethconfig.CONTRACT_ADDRESSES.items()
             }
         }
         assert all(isinstance(entry, str) for entry in balance)
@@ -1073,7 +1079,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_golem_status_no_publisher(self, *_):
         component = 'component'
-        status = 'method', 'stage', 'data'
+        status = 'method', 'stage', {'status': 'message', 'value': 'data'}
 
         # status published, no rpc publisher
         StatusPublisher.publish(component, *status)
@@ -1082,7 +1088,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     @inlineCallbacks
     def test_golem_status_with_publisher(self, *_):
         component = 'component'
-        status = 'method', 'stage', 'data'
+        status = 'method', 'stage', {'status': 'message', 'value': 'data'}
 
         # status published, with rpc publisher
         StatusPublisher._rpc_publisher = Mock()
@@ -1222,6 +1228,24 @@ class TestConcentInitialization(TestClientBase):
             keys_auth=ANY,
             variant=CONCENT_CHOICES['disabled'],
         )
+
+
+class TestGetTask(TestClientBase):
+    def test_all_sent(self):
+        self.client.task_server = create_autospec(TaskServer)
+        self.client.task_server.task_manager = create_autospec(TaskManager)
+        self.client.task_server.task_computer = create_autospec(TaskComputer)
+        self.client.transaction_system.get_subtasks_payments.return_value \
+            = [
+                model_factory.TaskPayment(
+                    wallet_operation__status=model.WalletOperation.STATUS.sent,
+                ),
+                model_factory.TaskPayment(
+                    wallet_operation__status=model.WalletOperation.STATUS.sent,
+                    wallet_operation__gas_cost=1,
+                ),
+            ]
+        self.client.get_task(uuid.uuid4())
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

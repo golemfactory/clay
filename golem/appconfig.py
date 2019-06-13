@@ -201,6 +201,8 @@ class AppConfig:
             hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
             hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
             hyperdrive_rpc_address=DEFAULT_HYPERDRIVE_RPC_ADDRESS,
+            # testing
+            overwrite_results=None,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)

@@ -1,7 +1,9 @@
 import json
 import logging
 import os
+import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Type
 
 import numpy
@@ -84,13 +86,31 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addCallback(success)
         self.finished.addErrback(failure)
 
-        work_dir = os.path.dirname(self.results[0])
+        root_dir = Path(os.path.dirname(
+            self.results[0])).parent
+        work_dir = os.path.join(root_dir, 'work')
+        os.makedirs(work_dir, exist_ok=True)
+        res_dir = os.path.join(root_dir, 'resources')
+        tmp_dir = os.path.join(root_dir, "tmp")
+
+        assert self.resources
+
+        os.makedirs(res_dir, exist_ok=True)
+        if os.path.isdir(self.resources[0]):
+            shutil.copytree(self.resources[0], res_dir)
+        else:
+            for resource_file in self.resources:
+                shutil.copy(resource_file, res_dir)
+
+        for result_file in self.results:
+            shutil.copy(result_file, work_dir)
+
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
-            resources=self.subtask_info['path_root'],
-            temporary=os.path.dirname(work_dir),
+            resources=res_dir,
+            temporary=tmp_dir,
             work=work_dir,
-            output=os.path.join(work_dir, 'output'),
-            logs=os.path.join(work_dir, 'logs'),
+            output=os.path.join(root_dir, 'output'),
+            logs=os.path.join(root_dir, 'logs'),
         )
 
         extra_data = dict(

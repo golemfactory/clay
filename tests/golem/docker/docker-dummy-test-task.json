@@ -55,5 +55,6 @@
     }
   ],
   "concent_enabled": false,
-  "output_file": "output.png"
+  "output_file": "output.png",
+  "run_verification":{"py/enum":"apps.core.task.coretaskstate.RunVerification.enabled"}
 }
