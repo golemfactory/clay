@@ -40,15 +40,14 @@ class WasmTaskOptions(Options):
 
     def _subtasks(self) -> Generator[Tuple[str, Dict[str, Any]], None, None]:
         for subtask_name, subtask_opts in self.subtasks.items():
-            for _ in range(WasmTaskOptions.VERIFICATION_FACTOR):
-                yield subtask_name, {
-                    'name': subtask_name,
-                    'js_name': self.js_name,
-                    'wasm_name': self.wasm_name,
-                    'exec_args': subtask_opts.exec_args,
-                    'input_dir_name': PurePath(self.input_dir).name,
-                    'output_file_paths': subtask_opts.output_file_paths,
-                }
+            yield subtask_name, {
+                'name': subtask_name,
+                'js_name': self.js_name,
+                'wasm_name': self.wasm_name,
+                'exec_args': subtask_opts.exec_args,
+                'input_dir_name': PurePath(self.input_dir).name,
+                'output_file_paths': subtask_opts.output_file_paths,
+            }
 
     def get_subtask_iterator(self) -> Iterator[Tuple[str, Dict[str, Any]]]:
         # The generator has to be listed first because the resulting iterator
@@ -83,6 +82,9 @@ class WasmTask(CoreTask):
         self.subtask_iterator = self.options.get_subtask_iterator()
 
         self.results: Dict[str, Dict[str, list]] = {}
+        self.next_actor = None
+        self.reputation_ranking = ReputationRanking()
+        self.reputation_view = ReputationRankingView(self.reputation_ranking)
 
     def get_next_subtask_extra_data(self) -> Tuple[str, Dict[str, Any]]:
         next_subtask_name, next_subtask_params = next(self.subtask_iterator)
@@ -108,6 +110,8 @@ class WasmTask(CoreTask):
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["subtask_id"] = sid
+
+        self.next_actor = None
 
         return Task.ExtraData(ctd=ctd)
 
@@ -257,17 +261,48 @@ class WasmTask(CoreTask):
         All of them should somehow affect choosing next provider here.
         """
 
-       client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
+        """If we have already chosen the next actor, then lets wait for OfferPool to provide him.
+        """
+        if self.next_actor:
+            if self.next_actor.id == node_id:
+                return AcceptClientVerdict.ACCEPTED
+            else:
+                return AcceptClientVerdict.REJECTED
 
-        if client.rejected():
-            return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or \
-                client.started() - finishing >= max_finishing:
+        # Add node to ReputationRanking
+        # TODO Add method to check if this node_id exists in ReputationRanking
+        # So we don't have to traverse entire list.
+        if node_id not in list(map(lambda actor: actor.id, self.reputation_ranking.get_actors()))
+            self.reputation_ranking.add_actor(Actor(node_id))
+
+        if len(self.reputation.get_actors()) < self.options.VERIFICATION_FACTOR:
+            logger.info('Not enough providers, postponing')
             return AcceptClientVerdict.SHOULD_WAIT
 
-        return AcceptClientVerdict.ACCEPTED
+        """For now I assumed that there is subtask `s` instance of some class Subtask
+        that has method "get_next_actor" implemented. Probably this is a forward call to it's
+        internal VerificationByRedundancy instance. @kubkon
+        """
+        for s in self.subtasks:
+            self.next_actor = s.get_next_actor()
+            if self.next_actor:
+                """Since query_extra_data is called immediately after this function returns we can
+                safely save subtask that yielded next actor to retrieve ComputeTaskDef from it.
+                """
+                self.next_subtask = s
+                return AcceptClientVerdict.ACCEPTED
+
+        """No subtask has yielded next actor meaning that there is no work to be done at the moment
+        """
+        return AcceptClientVerdict.SHOULD_WAIT
+
+        # if client.rejected():
+        #     return AcceptClientVerdict.REJECTED
+        # elif finishing >= max_finishing or \
+        #         client.started() - finishing >= max_finishing:
+        #     return AcceptClientVerdict.SHOULD_WAIT
+
+        # return AcceptClientVerdict.ACCEPTED
 
 
 class WasmTaskBuilder(CoreTaskBuilder):
