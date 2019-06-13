@@ -1,7 +1,10 @@
 from copy import deepcopy
 from pathlib import Path, PurePath
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Type
+from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Type, Callable
 import logging
+from abc import ABC, abstractmethod
+from enum import IntEnum
+from threading import Lock
 
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
@@ -18,6 +21,195 @@ from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
 logger = logging.getLogger("apps.wasm")
+
+
+class Actor:
+    def __init__(self, uuid: str) -> None:
+        self.uuid = uuid
+
+
+class VerificationResult(IntEnum):
+    SUCCESS = 0
+    FAIL = 1
+    UNDECIDED = 2
+
+
+class VerificationByRedundancy(ABC):
+    def __init__(self, redundancy_factor: int, comparator: Callable[[Any, Any], int]) -> None:
+        self.redundancy_factor = redundancy_factor
+        assert comparator.func_closure is None
+        self.comparator = comparator
+
+    @abstractmethod
+    def add_actor(self, actor: Actor) -> None:
+        """Caller informs class that this is the next actor he wants to assign to the next subtask.
+
+        Raises:
+            NotAllowedError -- Actor given by caller is not allowed to compute next task.
+            MissingResultsError -- Raised when caller wants to add next actor but has already
+            exhausted this method. Now the caller should provide results by `add_result` method.
+        """
+
+    @abstractmethod
+    def add_result(self, actor: Actor, result: Optional[Any]) -> None:
+        """Add a result for verification.
+
+        If a task computation has failed for some reason then the caller should use this method with the
+        result equal to None.
+
+        When user has added a result for each actor it reported by `add_actor` a side effect might be
+        the verdict being available or caller should continue adding actors and results.
+
+        Arguments:
+            actor {Actor} -- Actor who has computed the result
+            result {Any} --  Computation result
+        Raises:
+            UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
+        """
+
+    @abstractmethod
+    def get_verdicts(self) -> Optional[List[Tuple[Any, Actor, VerificationResult]]]:
+        """
+        Returns:
+            Optional[List[Any, Actor, VerificationResult]] -- If verification is resolved a list of 3-element
+            tuples (result reference, actor, verification_result) is returned. A None is returned
+            when verification has not been finished yet.
+        """
+        pass
+
+
+class SimpleSubtaskVerifier(VerificationByRedundancy):
+    """Simple verification by redundancy: subtask is executed by 2 providers,
+with a possible third if no decision can be reached based on the first 2."""
+
+    def __init__(self,
+                 redundancy_factor: int, comparator: Callable[[Any, Any], int]) -> None:
+        super().__init__(redundancy_factor, comparator)
+        self.actors = []
+        self.results = {}
+
+    def add_actor(self, actor):
+        """Caller informs class that this is the next actor he wants to assign to the next subtask.
+        Raises:
+            NotAllowedError -- Actor given by caller is not allowed to compute next task.
+            MissingResultsError -- Raised when caller wants to add next actor but has already
+            exhausted this method. Now the caller should provide results by `add_result` method.
+        """
+
+        if actor in self.actors:
+            raise NotAllowedError
+
+        # TODO: when should we raise MissingResultsError?
+
+    def add_result(self, actor: Actor, result: Optional[Any]) -> None:
+        """Add a result for verification.
+        If a task computation has failed for some reason then the caller should use this method with the
+        result equal to None.
+        When user has added a result for each actor it reported by `add_actor` a side effect might be
+        the verdict being available or caller should continue adding actors and results.
+        Arguments:
+            actor {Actor} -- Actor who has computed the result
+            result {Any} --  Computation result
+        Raises:
+            UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
+            ValueError - raised when attempting to add a result for some actor more than once
+        """
+
+        if actor not in self.actors:
+            raise UnknownActorError
+
+        if actor in self.results:
+            raise ValueError
+
+        self.results[actor] = result
+
+    def get_verdicts(self) -> Optional[List[Tuple[Any, Actor, VerificationResult]]]:
+        actor_cnt = len(self.actors)
+        result_cnt = len(self.results.keys())
+
+        # get_verdicts should only get called when all results have been added
+        # calling it otherwise is a contract violation
+        assert(actor_cnt == result_cnt)
+
+        assert(actor_cnt <= 3)
+
+        if actor_cnt < 2:
+            return None
+
+        verdict_undecided = [(a, self.results[a], VerificationResult.UNDECIDED) for a in self.actors]
+        real_results = [(a, self.results[a]) for a in self.actors if self.results[a] is not None]
+        reporting_actors = [r[0] for r in real_results]
+        reported_results = [r[1] for r in real_results]
+
+
+        if actor_cnt == 2:
+            if len(real_results) == 0:
+                return verdict_undecided # more actors won't help, giving up
+
+            if len(real_results) == 1:
+                return None  # not enough real results, need more actors
+
+        if actor_cnt > 2 and len(real_results) < 2:
+                return verdict_undecided
+
+        if len(real_results) == 2:
+            a1, a2 = reporting_actors
+            r1, r2 = reported_results
+
+            if self.comparator(r1, r2) == 0:
+                return [(a1, r1, VerificationResult.SUCCESS), (a2, r2, VerificationResult.SUCCESS)]
+            else:
+                if actor_cnt > 2:
+                    return verdict_undecided # give up
+                else:
+                    return None # more actors needed
+        else: # 3 real results
+            a1, a2, a3 = reporting_actors
+            r1, r2, r3 = real_results
+
+            if self.comparator(r1, r2) == 0 and self.comparator(r2, r3) == 0 and self.comparator(r3, r1) == 0:
+                return [(r[0], r[1], VerificationResult.SUCCESS) for r in real_results]
+
+            for permutation in [(0,1,2), (1,2,0), (2,0,1)]:
+                permuted_pairs = [real_results[i] for i in permutation]
+                a1, a2, a3 = [p[0] for p in permuted_pairs]
+                r1, r2, r3 = [p[1] for p in permuted_pairs]
+                if self.comparator(r1, r2) == 0:  # r1 and r2 are equal, hence r3 differs
+                    return[(a1, r1, VerificationResult.SUCCESS), (a2, r2, VerificationResult.SUCCESS), (a3, r3, VerificationResult.FAIL)]
+
+            return verdict_undecided # all 3 results different
+
+
+class VbrSubtask:
+    def __init__(self, id_gen, name, params, redundancy_factor):
+        self.id_gen = id_gen
+        self.name = name
+        self.params = params
+
+        self.subtasks = {}
+        self.verifier = SimpleSubtaskVerifier(redundancy_factor, WasmTask._cmp_results)
+
+    def contains(self, s_id):
+        s_id in self.subtasks
+
+    def new_instance(self, node_id):
+        s_id = self.id_gen()
+        self.subtasks[s_id] = {
+            "status": SubtaskStatus.starting,
+            "actor": Actor(node_id),
+            "results": None
+        }
+        self.verified.add_actor(self.subtasks[s_id]["actor"])
+
+        return s_id, deepcopy(self.params)
+
+    def get_instance(self, s_id):
+        return self.subtasks[s_id]
+
+    def add_result(self, s_id, task_result):
+        self.subtasks[s_id]["results"] = task_result
+        # TODO pass hash of the results rather than actual results
+        self.verified.add_result(self.subtasks[s_id]["actor"], task_result)
 
 
 class WasmTaskOptions(Options):
@@ -63,30 +255,6 @@ class WasmTaskDefinition(TaskDefinition):
         self.resources = [self.options.input_dir]
 
 
-class VbrSubtask:
-    def __init__(self, id_gen, name, params):
-        self.id_gen = id_gen
-        self.name = name
-        self.params = params
-
-        self.subtask_ids = {}
-
-    def contains(self, s_id):
-        s_id in self.subtask_ids
-
-    def new_instance(self, node_id):
-        s_id = self.id_gen()
-        self.subtask_ids[s_id] = {
-            "status": SubtaskStatus.starting,
-            "node_id": node_id,
-        }
-
-        return s_id, deepcopy(self.params)
-
-    def get_instance(self, s_id):
-        return self.subtask_ids[s_id]
-
-
 class WasmTask(CoreTask):
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
@@ -109,7 +277,7 @@ class WasmTask(CoreTask):
                 'entrypoint': self.JOB_ENTRYPOINT,
                 **next_subtask_params
             }
-            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params)
+            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params, REDUNDANCY_FACTOR)
             self.subtasks += [subtask]
             self.subtask_queue.extend([subtask.new_instance() for i in range(REDUNDANCY_FACTOR)])
 
@@ -134,6 +302,18 @@ class WasmTask(CoreTask):
 
         return None
 
+    def _cmp_results(results: List[list]) -> int:
+        for r1, r2 in zip(*results):
+            with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
+                b1 = f1.read()
+                b2 = f2.read()
+                if b1 != b2:
+                    logger.info("Verification of task failed")
+                    return -1
+
+        logger.info("Verification of task was successful")
+        return 0
+
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
         logger.info("Called in WasmTask")
@@ -145,32 +325,10 @@ class WasmTask(CoreTask):
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        results_dict = self.results.get(subtask.name)
+        subtask.add_result(task_result)
+        VbrSubtask.CALLBACKS[subtask_id] = verification_finished
 
-        WasmTask.CALLBACKS[subtask_id] = verification_finished
-
-        if len(results_dict) < 2:
-            return
-
-        # VbR time!
-        results = [results_dict[key] for key in results_dict]
-        if self.verify_results(results):
-            self.save_results(subtask.name, results[0])
-            self.accept([sid for sid in results_dict])
-        # else:
-        #     self.computation_failed(subtask_id)
-
-    def verify_results(self, results: List[list]) -> bool:
-        for r1, r2 in zip(*results):
-            with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
-                b1 = f1.read()
-                b2 = f2.read()
-                if b1 != b2:
-                    logger.info("Verification of task failed")
-                    return False
-
-        logger.info("Verification of task was successful")
-        return True
+        # TODO the rest of the logic
 
     def accept(self, subtask_ids: List[str]) -> None:
         for sid in subtask_ids:
