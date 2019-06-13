@@ -21,8 +21,6 @@ logger = logging.getLogger("apps.wasm")
 
 
 class WasmTaskOptions(Options):
-    VERIFICATION_FACTOR = 2
-
     class SubtaskOptions:
         def __init__(self, name: str, exec_args: List[str],
                      output_file_paths: List[str]) -> None:
@@ -65,10 +63,64 @@ class WasmTaskDefinition(TaskDefinition):
         self.resources = [self.options.input_dir]
 
 
+class VbrSubtaskQueue:
+    def __init__(self):
+        self.buffer = []
+        self.index = 0
+
+    def get(self, s_id):
+        for subtask in self.buffer:
+            if subtask.contains(s_id):
+                return subtask
+
+        return None
+
+    def push(self, subtask):
+        self.buffer += [subtask]
+
+    def next(self):
+        while True:
+            if self.buffer.len() == self.index:
+                return None
+
+            subtask = self.buffer[self.index]
+            subtask_ttc = subtask.next()
+            if subtask_ttc is None:
+                self.index += 1
+                continue
+
+            yield subtask_ttc
+
+
+class VbrSubtask:
+    def __init__(self, id_gen, name, params, redundancy_factor=2):
+        self.id_gen = id_gen
+        self.name = name
+        self.params = params
+        self.count = 0
+        self.redundancy_factor = redundancy_factor
+
+        self.subtask_ids = set()
+
+    def contains(self, s_id):
+        s_id in self.subtask_ids
+
+    def next(self):
+        if self.count == self.redundancy_factor:
+            return None
+
+        self.count += 1
+        s_id = self.id_gen()
+        self.subtask_ids.insert(s_id)
+
+        return s_id, deepcopy(self.params)
+
+
 class WasmTask(CoreTask):
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
+    REDUNDANCY_FACTOR = 2
     CALLBACKS = {}
 
     def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
@@ -78,40 +130,27 @@ class WasmTask(CoreTask):
             root_path=root_path, owner=owner
         )
         self.options: WasmTaskOptions = task_definition.options
-        self.subtask_names: Dict[str, str] = {}
-        self.subtask_iterator = self.options.get_subtask_iterator()
+        self.subtask_queue = VbrSubtaskQueue()
+
+        for s_name, s_params in self.options.get_subtask_iterator():
+            s_params = {
+                'entrypoint': self.JOB_ENTRYPOINT,
+                **next_subtask_params
+            }
+            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params, REDUNDANCY_FACTOR)
+            self.subtask_queue.push(subtask)
 
         self.results: Dict[str, Dict[str, list]] = {}
         self.next_actor = None
         self.reputation_ranking = ReputationRanking()
         self.reputation_view = ReputationRankingView(self.reputation_ranking)
 
-    def get_next_subtask_extra_data(self) -> Tuple[str, Dict[str, Any]]:
-        next_subtask_name, next_subtask_params = next(self.subtask_iterator)
-        return next_subtask_name, {
-            'entrypoint': self.JOB_ENTRYPOINT,
-            **next_subtask_params
-        }
-
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
-        next_subtask_name, next_extra_data = self.get_next_subtask_extra_data()
-        self.last_task += 1
-
-        ctd = self._new_compute_task_def(
-            subtask_id=self.create_subtask_id(), extra_data=next_extra_data,
-            perf_index=perf_index
-        )
-        sid = ctd['subtask_id']
-
-        self.subtask_names[sid] = next_subtask_name
-
-        self.subtasks_given[sid] = deepcopy(ctd['extra_data'])
-        self.subtasks_given[sid]["status"] = SubtaskStatus.starting
-        self.subtasks_given[sid]["node_id"] = node_id
-        self.subtasks_given[sid]["subtask_id"] = sid
-
-        self.next_actor = None
+        next_subtask = self.subtask_queue.next()
+        # TODO should we worry about next_subtask == None?
+        s_id, s_params = next_subtask
+        ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
         return Task.ExtraData(ctd=ctd)
 
@@ -121,11 +160,12 @@ class WasmTask(CoreTask):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
+
         self.interpret_task_results(subtask_id, task_result)
 
-        subtask_name = self.subtask_names[subtask_id]
-        results_dict = self.results.get(subtask_name)
-        self.subtasks_given[subtask_id]["status"] = SubtaskStatus.verifying
+        subtask = self.subtask_queue.get(subtask_id)
+        results_dict = self.results.get(subtask.name)
+
         WasmTask.CALLBACKS[subtask_id] = verification_finished
 
         if len(results_dict) < 2:
@@ -134,7 +174,7 @@ class WasmTask(CoreTask):
         # VbR time!
         results = [results_dict[key] for key in results_dict]
         if self.verify_results(results):
-            self.save_results(self.subtask_names[subtask_id], results[0])
+            self.save_results(subtask.name, results[0])
             self.accept([sid for sid in results_dict])
         # else:
         #     self.computation_failed(subtask_id)
