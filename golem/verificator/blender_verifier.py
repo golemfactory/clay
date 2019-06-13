@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/blender_verifier"
-    DOCKER_TAG = '1.3'
+    DOCKER_TAG = '1.5'
 
     def __init__(self, verification_data,
                  docker_task_cls: Type) -> None:
