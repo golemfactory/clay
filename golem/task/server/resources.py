@@ -282,7 +282,18 @@ class TaskResourcesMixin:
                                                   self.NONCE_TASK,
                                                   client_options=options,
                                                   async_=True)
+
+        def handshake_error(exc):
+            session = self.sessions.get(key_id)
+            if not session:
+                logger.info(
+                    'Resource handshake timeout. node=%s',
+                    common.short_node_id(key_id),
+                )
+                return
+            session._handshake_error(key_id, exc)  # noqa pylint:disable=protected-access
+
         deferred.addCallbacks(
             lambda res: self._nonce_shared(key_id, res, options),
-            lambda exc: self._handshake_error(key_id, exc)
+            handshake_error,
         )
