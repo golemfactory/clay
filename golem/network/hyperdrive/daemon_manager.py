@@ -144,8 +144,8 @@ class HyperdriveDaemonManager(object):
     def _check_version(self):
         version = self.version()
         if version < self._min_version:
-            raise RuntimeError('HyperG version >={} is required'
-                               .format(self._min_version))
+            raise RuntimeError('HyperG version >={} is required, you have {}.'
+                               .format(self._min_version, version))
         return version
 
     @report_calls(Component.hyperdrive, 'instance.check')
