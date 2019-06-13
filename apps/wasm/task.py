@@ -64,16 +64,10 @@ class WasmTaskDefinition(TaskDefinition):
 
 
 class VbrSubtask:
-    class State(Enum):
-        READY = 0
-        BASE_VERIFICATION = 1
-        DISPUTE = 2
-
     def __init__(self, id_gen, name, params):
         self.id_gen = id_gen
         self.name = name
         self.params = params
-        self.state = VbrSubtask.State.READY
 
         self.subtask_ids = {}
 
