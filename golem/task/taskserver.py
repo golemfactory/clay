@@ -32,6 +32,7 @@ from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
+from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -588,7 +589,7 @@ class TaskServer(
         self.task_manager.task_computation_failure(subtask_id, err)
 
     def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
-                      *, unlock_funds=True):
+                      *, unlock_funds=True) -> TaskPayment:
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -597,7 +598,7 @@ class TaskServer(
         task_id = self.task_manager.get_task_id(subtask_id)
         task = self.task_manager.tasks[task_id]
 
-        payment_processed_ts = self.client.transaction_system.add_payment_info(
+        payment = self.client.transaction_system.add_payment_info(
             node_id=task.header.task_owner.key,
             task_id=task.header.task_id,
             subtask_id=subtask_id,
@@ -607,8 +608,8 @@ class TaskServer(
         if unlock_funds:
             self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
-                     subtask_id, payment_processed_ts)
-        return payment_processed_ts
+                     subtask_id, payment)
+        return payment
 
     def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':

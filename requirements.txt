@@ -1,4 +1,4 @@
-#git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
+#Golem-Messages==3.8.0
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2
@@ -36,7 +36,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 fs==2.4.4
-Golem-Messages==3.8.0
+git+https://github.com/golemfactory/golem-messages@mwu/finish-rename-pay#egg=golem-messages
 Golem-Smart-Contracts-Interface==1.10.0
 greenlet==0.4.15
 h2==3.0.1
