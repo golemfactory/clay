@@ -68,7 +68,6 @@ def create_client(datadir, node_name):
     app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
-    config_desc.key_difficulty = 0
     config_desc.use_upnp = False
     config_desc.node_name = node_name
 
@@ -78,7 +77,6 @@ def create_client(datadir, node_name):
             datadir=datadir,
             private_key_name=faker.Faker().pystr(),
             password='password',
-            difficulty=config_desc.key_difficulty,
         )
 
     database = Database(
