@@ -1,7 +1,7 @@
 import datetime
 import itertools
 import os
-import pathlib
+from pathlib import Path
 import queue
 import re
 import subprocess
@@ -15,13 +15,13 @@ from ethereum.utils import denoms
 from . import tasks
 
 
-def get_testdir() -> str:
+def get_testdir() -> Path:
     env_key = 'GOLEM_INTEGRATION_TEST_DIR'
     datadir = os.environ.get(env_key, None)
     if not datadir:
         datadir = tempfile.mkdtemp(prefix='golem-integration-test-')
         os.environ[env_key] = datadir
-    return datadir
+    return Path(datadir)
 
 
 def mkdatadir(role: str) -> str:
@@ -63,10 +63,10 @@ def _params_from_dict(d: typing.Dict[str, typing.Any]) -> typing.List[str]:
 def run_golem_node(
         node_type: str,
         args: typing.Dict[str, typing.Any],
-        nodes_root: typing.Optional[pathlib.Path] = None
+        nodes_root: typing.Optional[Path] = None
         ) -> subprocess.Popen:
     node_file = node_type + '.py'
-    cwd = pathlib.Path(__file__).resolve().parent
+    cwd = Path(__file__).resolve().parent
     node_script = str(cwd / 'nodes' / node_file)
     return subprocess.Popen(
         args=['python', node_script, *_params_from_dict(args)],
@@ -121,7 +121,7 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
 def construct_test_task(task_package_name: str, task_settings: str) \
         -> typing.Dict[str, typing.Any]:
     settings = tasks.get_settings(task_settings)
-    cwd = pathlib.Path(__file__).resolve().parent
+    cwd = Path(__file__).resolve().parent
     tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
     settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     return settings
