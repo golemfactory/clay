@@ -102,9 +102,14 @@ def make_mock_ets(eth=100, gnt=100):
 @patch('signal.signal')
 @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 def make_client(*_, **kwargs):
+    config_desc = ClientConfigDescriptor()
+    config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+    config_desc.num_cores = 1
+    config_desc.hyperdrive_rpc_address = DEFAULT_HYPERDRIVE_RPC_ADDRESS
+    config_desc.hyperdrive_rpc_port = DEFAULT_HYPERDRIVE_RPC_PORT
     default_kwargs = {
         'app_config': Mock(),
-        'config_desc': ClientConfigDescriptor(),
+        'config_desc': config_desc,
         'keys_auth': Mock(
             _private_key=b'a' * 32,
             key_id='a' * 64,
@@ -117,10 +122,6 @@ def make_client(*_, **kwargs):
         'use_monitor': False,
         'concent_variant': CONCENT_CHOICES['disabled'],
     }
-    default_kwargs['config_desc'].hyperdrive_rpc_address = \
-        DEFAULT_HYPERDRIVE_RPC_ADDRESS
-    default_kwargs['config_desc'].hyperdrive_rpc_port = \
-        DEFAULT_HYPERDRIVE_RPC_PORT
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
     return client
@@ -594,7 +595,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                    '.register_handler', ):
             self.client.task_server = TaskServer(
                 node=dt_p2p_factory.Node(),
-                config_desc=ClientConfigDescriptor(),
+                config_desc=self.client.config_desc,
                 client=self.client,
                 use_docker_manager=False,
                 apps_manager=self.client.apps_manager,

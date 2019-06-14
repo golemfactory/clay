@@ -28,13 +28,13 @@ class DummyHypervisor(Hypervisor):
         pass
 
     def stop_vm(self, name: Optional[str] = None) -> bool:
-        pass
+        return True
 
     def create(self, vm_name: Optional[str] = None, **params) -> bool:
-        pass
+        return True
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         pass
 
     def constraints(self, name: Optional[str] = None) -> Dict:
-        pass
+        return {}

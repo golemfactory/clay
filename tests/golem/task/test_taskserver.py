@@ -10,7 +10,6 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 from pydispatch import dispatcher
 import freezegun
 
-from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
@@ -107,7 +106,9 @@ def _assert_log_msg(logger_mock, msg):
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient):
-    def setUp(self):
+
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
@@ -140,6 +141,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         '.register_handler',
     )
     @patch('golem.task.taskarchiver.TaskArchiver')
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    # pylint: disable=too-many-locals,too-many-statements
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
@@ -841,6 +844,8 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
+        ccd.max_memory_size = 1024 * 1024  # 1 GiB
+        ccd.num_cores = 1
         return ccd
 
 
@@ -897,6 +902,7 @@ class TestTaskServer2(TaskServerBase):
 
 # pylint: disable=too-many-ancestors
 class TestSubtaskWaiting(TaskServerBase):
+
     def test_requested_tasks(self, *_):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -908,7 +914,8 @@ class TestSubtaskWaiting(TaskServerBase):
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
-    def setUp(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 

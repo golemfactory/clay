@@ -160,6 +160,8 @@ class TestOnForceReportComputedTaskResponseReject(FrctResponseTestBase):
 class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
+    @mock.patch('golem.envs.docker.cpu.deferToThread',
+                lambda f, *args, **kwargs: f(*args, **kwargs))
     def setUp(self):
         # Avoid warnings caused by previous tests leaving handlers
         library._handlers = {}
