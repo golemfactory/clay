@@ -728,6 +728,7 @@ class TestFfprobeReportBuild(TempDirFixture):
             os.path.dirname(os.path.dirname(os.path.realpath(__file__)))),
             'resources')
 
+    @ci_skip
     @pytest.mark.slow
     def test_build_should_return_list_with_one_ffprobe_format_report_instance(
             self):
