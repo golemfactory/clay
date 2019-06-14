@@ -30,6 +30,7 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
         self.ffprobe_report_set = FfprobeReportSet()
         self.operation.attach_to_report_set(self.ffprobe_report_set)
 
+    @ci_skip
     @pytest.mark.slow
     def test_run_collects_reports_and_diff(self):
         self.operation.request_video_codec_change(VideoCodec.H_264)
