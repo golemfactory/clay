@@ -508,13 +508,16 @@ class WasmTask(CoreTask):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return self.total_tasks
+        # TODO
+        pass
 
     def get_active_tasks(self):
-        return self.active_tasks
+        # TODO
+        pass
 
     def get_tasks_left(self):
-        return self.tasks_left
+        # TODO
+        pass
 
     # pylint:disable=unused-argument
     @classmethod
