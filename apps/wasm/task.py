@@ -198,9 +198,6 @@ class WasmTask(CoreTask):
         if not self.subtask.is_finished():
             return
 
-        for instance in self.subtask.get_verdicts():
-            if instance
-
         verdicts = self.subtask.get_verdicts()
 
         s_ids = [s_id for s_id in subtask.instances]
