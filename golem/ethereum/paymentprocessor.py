@@ -61,8 +61,7 @@ class PaymentProcessor:
     def load_from_db(self):
         sent = {}
         for sent_payment in model.TaskPayment \
-                .select() \
-                .join(model.WalletOperation) \
+                .payments() \
                 .where(
                         model.WalletOperation.status == \
                         model.WalletOperation.STATUS.sent,
@@ -79,8 +78,7 @@ class PaymentProcessor:
             )
 
         for awaiting_payment in model.TaskPayment \
-                .select() \
-                .join(model.WalletOperation) \
+                .payments() \
                 .where(
                         model.WalletOperation.status.in_([
                             model.WalletOperation.STATUS.awaiting,
@@ -172,6 +170,7 @@ class PaymentProcessor:
                 currency=model.WalletOperation.CURRENCY.GNT,
                 amount=value,
                 status=model.WalletOperation.STATUS.awaiting,
+                gas_cost=0,
             ),
             node=node_id,
             task=task_id,

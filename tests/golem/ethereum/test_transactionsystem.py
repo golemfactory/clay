@@ -777,12 +777,18 @@ class IncomesListTest(TransactionSystemBase):
         self.assertEqual(self.ets.get_incomes_list(), [])
 
     def test_one(self):
-        income = model_factory.Income()
-        node = p2p_factory.Node(key=income.sender_node)
+        income = model_factory.TaskPayment(
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.incoming,
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+        )
+        node = p2p_factory.Node(key=income.node)
         model.CachedNode(
             node=node.key,
             node_field=node,
         ).save(force_insert=True)
+        income.wallet_operation.save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
@@ -793,11 +799,11 @@ class IncomesListTest(TransactionSystemBase):
                     'created': ANY,
                     'modified': ANY,
                     'node': node.to_dict(),
-                    'payer': income.sender_node,
+                    'payer': income.node,
                     'status': 'awaiting',
                     'subtask': income.subtask,
                     'transaction': None,
-                    'value': str(income.value),
+                    'value': str(income.expected_amount),
                 },
             ],
             self.ets.get_incomes_list(),

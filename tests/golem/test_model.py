@@ -32,24 +32,6 @@ class TestPayment(DatabaseFixture):
         payment.save(force_insert=True)
 
 
-class TestIncome(DatabaseFixture):
-    def setUp(self):
-        super().setUp()
-        self.income = m_factory.Income()
-
-    def test_status_overdue_but_settled(self):
-        self.income.overdue = True
-        self.income.value_received = self.income.value
-        self.assertIs(self.income.status, m.PaymentStatus.confirmed)
-
-    def test_status_overdue(self):
-        self.income.overdue = True
-        self.assertIs(self.income.status, m.PaymentStatus.overdue)
-
-    def test_status_awaiting(self):
-        self.assertIs(self.income.status, m.PaymentStatus.awaiting)
-
-
 class TestLocalRank(DatabaseFixture):
     def test_default_fields(self):
         # pylint: disable=no-member
