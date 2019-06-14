@@ -124,7 +124,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
         def execute(f, *args, **kwargs):
             return defer.succeed(f(*args, **kwargs))
 
-        with mock.patch('twisted.internet.threads.deferToThread', execute):
+        with mock.patch('golem.core.deferred.deferToThread', execute):
             result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))

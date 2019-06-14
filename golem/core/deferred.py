@@ -3,6 +3,7 @@ from typing import Any
 
 from twisted.internet import defer
 from twisted.internet.task import deferLater
+from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 
@@ -11,9 +12,10 @@ class DeferredSeq:
         self._seq = list(fns)
 
     def execute(self) -> defer.Deferred:
-        from twisted.internet.threads import deferToThread
-        # The executed function cannot return a Deferred, hence the bool cast
-        return deferToThread(lambda *_: bool(self._execute()))
+        # The executed function cannot return a Deferred object
+        def wrapper():
+            self._execute()
+        return deferToThread(wrapper)
 
     @defer.inlineCallbacks
     def _execute(self) -> Any:
