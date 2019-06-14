@@ -1,12 +1,9 @@
 [package]
-name = "network"
+name = "network-controller"
 version = "0.1.0"
 license = "GPL-3.0"
 edition = "2018"
-authors = [
-    "Golem Tech <tech@golem.network>",
-    "Parity Technologies <admin@parity.io>",
-]
+authors = ["Golem Tech <tech@golem.network>"]
 
 [lib]
 
@@ -24,11 +21,12 @@ futures = "0.1.17"
 linked-hash-map = "0.5"
 linked_hash_set = "0.1"
 lru-cache = "0.1.1"
-network_libp2p = { package = "network-libp2p", path = "../network-libp2p" }
-peerset = { package = "peerset", path = "../peerset" }
 rand = "0.6"
 serde = "1.0"
 serde_derive = "1.0"
 tokio = "0.1"
 tokio-codec = "0.1.1"
 
+[dependencies.network_libp2p]
+package = "network-libp2p"
+path = "../network-libp2p"

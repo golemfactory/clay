@@ -7,7 +7,6 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.protocol import Protocol
 
 from golem.core.net import events
-from golem.core.net.message import LabeledMessage
 from golem.core.net.transport import LibP2PTransport
 from golem.network.transport.limiter import CallRateLimiter
 from golem.network.transport.network import Network, ProtocolFactory
@@ -40,8 +39,8 @@ class TCPConnectInfoWrapper:
     #################
 
     @property
-    def channel_id(self) -> int:
-        return self._inner.channel_id
+    def protocol_id(self) -> int:
+        return self._inner.protocol_id
 
     def established_callback(self, *args, **kwargs):
         return self._inner.established_callback(*args, **kwargs)
@@ -217,8 +216,7 @@ class LibP2PNetwork(Network):
             logger.warning(f'Network: {exc}')
 
     def send(self, peer_id: str, protocol_id: int, blob: bytes):
-        msg = LabeledMessage(protocol_id, blob).pack()
-        if not self._network.send(peer_id, msg):
+        if not self._network.send(peer_id, protocol_id, blob):
             logger.error(f"Cannot send a message to {peer_id}")
 
     @inlineCallbacks
@@ -228,7 +226,7 @@ class LibP2PNetwork(Network):
 
         if address in self._connections:
             logger.info('Already connected to %s:%r', *address)
-            connection = self._connections[address][connect_info.channel_id]
+            connection = self._connections[address][connect_info.protocol_id]
             connect_info.established_callback(connection.session)
             return
 
@@ -344,14 +342,14 @@ class LibP2PNetwork(Network):
             factories = self._in_factories
 
         self._connections[address] = {
-            factory.channel_id: self.__build_protocol(factory, event, address)
+            factory.protocol_id: self.__build_protocol(factory, event, address)
             for factory in factories
         }
 
         if connect_info:
-            if connect_info.channel_id not in self._connections[address]:
-                raise ValueError(f"Invalid channel: {connect_info.channel_id}")
-            connection = self._connections[address][connect_info.channel_id]
+            if connect_info.protocol_id not in self._connections[address]:
+                raise ValueError(f"Invalid channel: {connect_info.protocol_id}")
+            connection = self._connections[address][connect_info.protocol_id]
             connect_info.established_callback(connection.session)
 
     def __build_protocol(
@@ -363,7 +361,7 @@ class LibP2PNetwork(Network):
         conn = factory.buildProtocol(address)
         transport = LibP2PTransport(network=self,
                                     address=address,
-                                    channel_id=factory.channel_id,
+                                    protocol_id=factory.protocol_id,
                                     peer_id=event.peer_id)
         conn.makeConnection(transport)
         conn.session.key_id = encode_hex(event.peer_pubkey)[2:]
@@ -381,14 +379,11 @@ class LibP2PNetwork(Network):
                     event.peer_id)
 
     def _handle_message(self, event: events.Message) -> None:
-        address = event.endpoint.address
-        msg = LabeledMessage.unpack(event.blob)
-
-        conns = self._connections.get(address)
-        conn = conns.get(msg.label) if conns else None
+        conns = self._connections.get(event.endpoint.address)
+        conn = conns.get(event.protocol_id) if conns else None
 
         if conn:
-            conn.dataReceived(msg.data)
+            conn.dataReceived(event.blob)
         else:
             logger.warning('Incoming message: No session for peer: '
                            f'{event.peer_id}')

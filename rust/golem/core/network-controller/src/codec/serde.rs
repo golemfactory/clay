@@ -15,7 +15,7 @@ const LEN_SZ: usize = size_of::<u32>();
 
 pub struct SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     config: bincode::Config,
     phantom: PhantomData<M>,
@@ -23,12 +23,15 @@ where
 
 impl<M> SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     pub fn new() -> Self {
         let mut config = bincode::config();
         config.big_endian();
-        SerdeCodec { config, phantom: PhantomData }
+        SerdeCodec {
+            config,
+            phantom: PhantomData,
+        }
     }
 
     fn encode_impl(&self, item: &M, dst: &mut BytesMut) -> Result<(), error::CodecError> {
@@ -61,7 +64,7 @@ where
 
 impl<M> Encoder for SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     type Item = M;
     type Error = error::CodecError;
@@ -75,7 +78,7 @@ where
 
 impl<M> Decoder for SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     type Item = M;
     type Error = error::CodecError;
@@ -88,7 +91,7 @@ where
 
 impl<M> tokio_codec::Encoder for SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     type Item = M;
     type Error = error::CodecError;
@@ -100,7 +103,7 @@ where
 
 impl<M> tokio_codec::Decoder for SerdeCodec<M>
 where
-    M: for<'de> Deserialize<'de> + Serialize
+    M: for<'de> Deserialize<'de> + Serialize,
 {
     type Item = M;
     type Error = error::CodecError;

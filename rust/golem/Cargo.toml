@@ -10,8 +10,9 @@ crate-type = ["cdylib"]
 
 [workspace]
 members = [
-    "core/peerset",
+    "core/network-controller",
     "core/network-libp2p",
+    "core/network-protocol",
 ]
 
 [dependencies]
@@ -29,8 +30,13 @@ tokio-executor = "0.1"
 version = "0.2"
 features = ["extension-module"]
 
-[dependencies.network]
-path = "core/network"
+[dependencies.network-controller]
+path = "core/network-controller"
+
+[dependencies.libp2p]
+version = "0.9.1"
+default-features = false
+features = ["secp256k1", "libp2p-websocket"]
 
 [target.'cfg(windows)'.dependencies]
 winapi = { version = "0.3", features = ["psapi", "processthreadsapi"] }

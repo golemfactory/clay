@@ -15,7 +15,6 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 use std::{io, usize};
-use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -30,7 +29,7 @@ use libp2p::core::transport::OptionalTransport;
 use libp2p::core::transport::boxed::Boxed;
 
 pub use self::bandwidth::BandwidthSinks;
-use crate::PublicKey;
+use crate::peers::manager::PeerManager;
 
 /// Builds the transport that serves as a common ground for all connections.
 ///
@@ -38,36 +37,33 @@ use crate::PublicKey;
 /// the connections spawned with this transport.
 pub fn build_transport(
 	keypair: identity::Keypair,
-	wasm_external_transport: Option<wasm_ext::ExtTransport>,
+	peer_manager: Arc<Mutex<PeerManager>>,
+	transport: Option<wasm_ext::ExtTransport>,
 ) -> (
 	Boxed<(PeerId, StreamMuxerBox), io::Error>,
 	Arc<bandwidth::BandwidthSinks>,
-	Arc<Mutex<HashMap<PeerId, PublicKey>>>,
 ) {
-	let keystore = Arc::new(Mutex::new(HashMap::new()));
-	let keystore_update = Arc::clone(&keystore);
-
 	let mut mplex_config = mplex::MplexConfig::new();
 	mplex_config.max_buffer_len_behaviour(mplex::MaxBufferBehaviour::Block);
 	mplex_config.max_buffer_len(usize::MAX);
 
-	let transport = if let Some(t) = wasm_external_transport {
-		OptionalTransport::some(t)
-	} else {
-		OptionalTransport::none()
+	let transport = match transport {
+		Some(t) => OptionalTransport::some(t),
+		None => OptionalTransport::none(),
 	};
 
 	#[cfg(not(target_os = "unknown"))]
 	let transport = {
 		let tcp_trans = tcp::TcpConfig::new();
-		let tcp_ws_trans = websocket::WsConfig::new(tcp_trans.clone())
+		let ws_trans = websocket::WsConfig::new(tcp_trans.clone())
 			.or_transport(tcp_trans);
-		transport.or_transport(dns::DnsConfig::new(tcp_ws_trans))
+		let dns_trans = dns::DnsConfig::new(ws_trans);
+
+		transport.or_transport(dns_trans)
 	};
 
-	let (transport, sinks) = bandwidth::BandwidthLogging::new(transport, Duration::from_secs(5));
+	let (transport, bandwidth) = bandwidth::BandwidthLogging::new(transport, Duration::from_secs(5));
 
-	// TODO: rework the transport creation (https://github.com/libp2p/rust-libp2p/issues/783)
 	let transport = transport
 		.with_upgrade(secio::SecioConfig::new(keypair))
 		.and_then(move |out, endpoint| {
@@ -75,19 +71,18 @@ pub fn build_transport(
 			let peer_id = out.remote_key.into_peer_id();
 			let peer_id2 = peer_id.clone();
 
-			// TODO: reject non-secp256k1 keys
-			keystore_update.lock().insert(peer_id.clone(), key);
+			peer_manager.lock().add_key(&peer_id, &key);
 
 			let upgrade = core::upgrade::SelectUpgrade::new(yamux::Config::default(), mplex_config)
 				.map_inbound(move |muxer| (peer_id, muxer))
 				.map_outbound(move |muxer| (peer_id2, muxer));
 
 			core::upgrade::apply(out.stream, upgrade, endpoint)
-				.map(|(id, muxer)| (id, core::muxing::StreamMuxerBox::new(muxer)))
+				.map(|(id, muxer)| (id, StreamMuxerBox::new(muxer)))
 		})
 		.with_timeout(Duration::from_secs(20))
 		.map_err(|err| io::Error::new(io::ErrorKind::Other, err))
 		.boxed();
 
-	(transport, sinks, keystore)
+	(transport, bandwidth)
 }

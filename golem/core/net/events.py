@@ -2,7 +2,6 @@ import inspect
 import sys
 
 from abc import ABCMeta
-from enum import Enum
 from typing import Dict, List, Tuple, Type, Union, Optional
 
 __all__ = (
@@ -80,8 +79,8 @@ class Connected(PeerEndpointEvent):
     def __init__(
         self,
         peer_id: str,
-        peer_pubkey: bytes,
         endpoint: Tuple,
+        peer_pubkey: bytes,
     ) -> None:
         super().__init__(peer_id, endpoint)
         self.peer_pubkey = peer_pubkey
@@ -98,11 +97,11 @@ class Message(PeerEvent):
         self,
         peer_id: str,
         connected_point: Tuple,
-        blob: bytes,
+        user_message: Tuple[bytes, bytes],
     ) -> None:
         super().__init__(peer_id)
         self.endpoint = Endpoint(connected_point)
-        self.blob = blob
+        self.protocol_id, self.blob = user_message
 
 
 class Clogged(PeerEvent):

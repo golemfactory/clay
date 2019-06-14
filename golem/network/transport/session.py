@@ -24,7 +24,7 @@ class BasicSession(Session):
        to different types of messages.
     """
 
-    ChannelId = 0
+    ProtocolId = b"\0\0\0"
 
     def __init__(self, conn):
         """

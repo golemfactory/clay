@@ -180,7 +180,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             return
 
         connect_info = tcpnetwork.TCPConnectInfo(
-            PeerSession.ChannelId,
+            PeerSession.ProtocolId,
             [socket_address],
             self.__connection_established,
             P2PService.__connection_failure
@@ -862,7 +862,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def _set_channel_id_for_type(self):
         self.channel_id_for_type.update({
-            ConnTypes.p2p: PeerSession.ChannelId
+            ConnTypes.p2p: PeerSession.ProtocolId
         })
 
     # In the future it may be changed to something more flexible

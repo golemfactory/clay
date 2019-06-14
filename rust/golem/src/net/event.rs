@@ -1,10 +1,9 @@
 use cpython::{PyBytes, PyInt, PyTuple, Python, ToPyObject};
 
-use network::event::NetworkEvent;
-use network::message::NetworkMessage;
-use network::ConnectedPoint;
+use network_controller::event::NetworkEvent;
+use network_controller::{ConnectedPoint, UserMessage};
 
-use crate::net::convert::{multiaddr_to_host_port, peer_id_to_str, PublicKeyToBytes};
+use crate::net::util::{MultiaddrConv, PublicKeyConv};
 
 pub fn event_into(py: Python, event: NetworkEvent) -> PyTuple {
     EventWrapper::NetworkEvent(event).into_py_object(py)
@@ -60,21 +59,21 @@ impl ToPyObject for EventWrapper {
                 NetworkEvent::Listening(addresses) => {
                     let addresses: Vec<(String, u16)> = addresses
                         .into_iter()
-                        .filter_map(|ref address| multiaddr_to_host_port(address))
+                        .filter_map(|ref address| address.to_host_port())
                         .collect();
 
                     py_wrap!(py, (EventId::Listening, addresses))
                 }
                 NetworkEvent::Terminated => py_wrap!(py, (EventId::Terminated,)),
-                NetworkEvent::Connected(peer_id, peer_pubkey, connected_point) => {
-                    let encoded = peer_pubkey.to_bytes();
-                    let py_pubkey = PyBytes::new(py, &encoded[..]);
+                NetworkEvent::Connected(peer_id, connected_point, peer_pubkey) => {
+                    let pubkey_bytes = peer_pubkey.to_bytes();
+                    let py_pubkey = PyBytes::new(py, &pubkey_bytes[..]);
 
                     py_wrap!(
                         py,
                         (
                             EventId::Connected,
-                            peer_id_to_str(peer_id),
+                            peer_id.to_string(),
                             py_pubkey,
                             connected_point_to_tuple(connected_point),
                         )
@@ -84,28 +83,31 @@ impl ToPyObject for EventWrapper {
                     py,
                     (
                         EventId::Disconnected,
-                        peer_id_to_str(peer_id),
+                        peer_id.to_string(),
                         connected_point_to_tuple(connected_point),
                     )
                 ),
                 NetworkEvent::Message(peer_id, connected_point, message) => {
-                    let peer_id = peer_id_to_str(peer_id);
-                    let message = match message {
-                        NetworkMessage::Blob(v) => PyBytes::new(py, &v[..]),
+                    let message_tuple = match message {
+                        UserMessage::Blob(protocol_id, message) => {
+                            let protocol_id = PyBytes::new(py, &protocol_id);
+                            let message = PyBytes::new(py, &message);
+                            (protocol_id, message)
+                        }
                     };
 
                     py_wrap!(
                         py,
                         (
                             EventId::Message,
-                            peer_id,
+                            peer_id.to_string(),
                             connected_point_to_tuple(connected_point),
-                            message
+                            message_tuple
                         )
                     )
                 }
                 NetworkEvent::Clogged(peer_id, _) => {
-                    py_wrap!(py, (EventId::Clogged, peer_id_to_str(peer_id),))
+                    py_wrap!(py, (EventId::Clogged, peer_id.to_string(),))
                 }
             },
         }
@@ -120,18 +122,16 @@ fn connected_point_to_tuple(
     Option<(String, u16)>,
 ) {
     match connected_point {
-        ConnectedPoint::Dialer { address } => (
-            ConnectedPointId::Dialer,
-            multiaddr_to_host_port(&address),
-            None,
-        ),
+        ConnectedPoint::Dialer { address } => {
+            (ConnectedPointId::Dialer, address.to_host_port(), None)
+        }
         ConnectedPoint::Listener {
             listen_addr,
             send_back_addr,
         } => (
             ConnectedPointId::Listener,
-            multiaddr_to_host_port(&send_back_addr),
-            multiaddr_to_host_port(&listen_addr),
+            send_back_addr.to_host_port(),
+            listen_addr.to_host_port(),
         ),
     }
 }

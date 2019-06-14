@@ -17,12 +17,12 @@
 use futures::{future, stream, prelude::*, try_ready};
 use rand::seq::SliceRandom;
 use std::io;
-use substrate_network_libp2p::{CustomMessage, multiaddr::Protocol, ServiceEvent, build_multiaddr};
+use network_libp2p::{SerializableMessage, multiaddr::Protocol, ServiceEvent, build_multiaddr};
 
 /// Builds two services. The second one and further have the first one as its bootstrap node.
 /// This is to be used only for testing, and a panic will happen if something goes wrong.
 fn build_nodes<TMsg>(num: usize) -> Vec<substrate_network_libp2p::Service<TMsg>>
-	where TMsg: CustomMessage + Send + 'static
+	where TMsg: SerializableMessage + Send + 'static
 {
 	let mut result: Vec<substrate_network_libp2p::Service<_>> = Vec::with_capacity(num);
 
@@ -114,7 +114,7 @@ fn two_nodes_transfer_lots_of_packets() {
 		loop {
 			match try_ready!(service2.poll()) {
 				Some(ServiceEvent::OpenedCustomProtocol { .. }) => {},
-				Some(ServiceEvent::CustomMessage { message, .. }) => {
+				Some(ServiceEvent::SerializableMessage { message, .. }) => {
 					assert_eq!(message.len(), 1);
 					packet_counter += 1;
 					if packet_counter == NUM_PACKETS {
@@ -241,7 +241,7 @@ fn basic_two_nodes_requests_in_parallel() {
 		loop {
 			match try_ready!(service2.poll()) {
 				Some(ServiceEvent::OpenedCustomProtocol { .. }) => {},
-				Some(ServiceEvent::CustomMessage { message, .. }) => {
+				Some(ServiceEvent::SerializableMessage { message, .. }) => {
 					let pos = to_receive.iter().position(|m| *m == message).unwrap();
 					to_receive.remove(pos);
 					if to_receive.is_empty() {

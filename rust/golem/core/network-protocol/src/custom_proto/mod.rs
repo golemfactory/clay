@@ -15,8 +15,37 @@
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
 pub use self::behaviour::{CustomProto, CustomProtoOut};
-pub use self::upgrade::{CustomMessage, RegisteredProtocol};
+pub use self::handler::CustomProtoHandler;
+pub use self::upgrade::RegisteredProtocol;
+use crate::message::SerializableMessage;
+use crate::ProtocolId;
 
 mod behaviour;
 mod handler;
 mod upgrade;
+
+#[derive(Clone, Debug)]
+pub enum ProtocolMessage {
+    Blob(ProtocolId, Vec<u8>),
+}
+
+impl ProtocolMessage {
+    pub fn partial(data: Vec<u8>) -> Self {
+        ProtocolMessage::Blob([0, 0, 0], data)
+    }
+}
+
+impl SerializableMessage for ProtocolMessage {
+    fn into_bytes(self) -> Vec<u8> {
+        match self {
+            ProtocolMessage::Blob(_, data) => data,
+        }
+    }
+
+    fn from_bytes(bytes: &[u8]) -> Result<Self, ()>
+    where
+        Self: Sized,
+    {
+        Ok(ProtocolMessage::partial(bytes.to_owned()))
+    }
+}

@@ -21,6 +21,7 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
+from golem.core.net import PROTOCOLS
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import scale_price, Offer, OfferPool
@@ -107,7 +108,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
 
     ConnectionStateType = SafeProtocol
-    ChannelId = 2
+    ProtocolId = PROTOCOLS['task']
 
     def __init__(self, conn):
         """

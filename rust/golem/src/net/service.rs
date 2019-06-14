@@ -1,5 +1,6 @@
 use std::convert;
 use std::io;
+use std::net::SocketAddr;
 use std::thread;
 
 use cpython::*;
@@ -8,15 +9,18 @@ use futures::sync::{mpsc, oneshot};
 use futures::{future, Future, Sink};
 use tokio;
 
-use network::event::NetworkEvent;
-use network::identity;
-use network::message::NetworkMessage;
-use network::{ClientRequest, NetworkConfiguration, NetworkController, NodeKeyConfig, Secret};
+use libp2p::identity;
 
-use crate::net::convert::*;
+use network_controller::event::NetworkEvent;
+use network_controller::{
+    ClientRequest, NetworkConfiguration, NetworkController, NodeKeyConfig, PeerId, Secret, UserMessage
+};
+
 use crate::net::runtime::create_runtime;
+use crate::net::util::*;
 use crate::python::convert::*;
 use crate::python::error::{Error, ErrorKind, ErrorSeverity};
+
 
 impl convert::From<identity::error::DecodingError> for Error {
     fn from(e: identity::error::DecodingError) -> Self {
@@ -55,34 +59,22 @@ impl NetworkService {
             return Err(Error::already_running());
         }
 
-        let protocol_id: [u8; 3] = *b"fwd";
-        let protocol_versions = &[1 as u8];
-
         let priv_key = py_priv_key.data(py).to_vec();
-        let priv_key = identity::secp256k1::SecretKey::from_bytes(priv_key)?;
-
-        let address = to_socket_address(py, py_host, py_port)?;
-        let multiaddr = sa_to_tcp_multiaddr(&address);
-
-        let mut config = NetworkConfiguration::default();
-        config.node_key = NodeKeyConfig::Secp256k1(Secret::Input(priv_key));
-        config.listen_addresses = vec![multiaddr];
-        config.in_peers = 40;
-        config.out_peers = 80;
+        let socket_addr = to_socket_address(py, py_host, py_port)?;
+        let config = Self::build_config(priv_key, socket_addr)?;
 
         let (request_tx, request_rx) = mpsc::channel::<ClientRequest>(128);
         let (shutdown_tx, shutdown_rx) = oneshot::channel();
         let (spawn_tx, spawn_rx) = std::sync::mpsc::sync_channel(1);
 
         thread::spawn(move || {
-            let (controller, event_rx) =
-                match NetworkController::new(config, protocol_id, protocol_versions) {
-                    Ok((controller, event_rx)) => (controller, event_rx),
-                    Err(e) => {
-                        let _ = spawn_tx.send(Err(e));
-                        return;
-                    }
-                };
+            let (controller, event_rx) = match NetworkController::new(config) {
+                Ok((controller, event_rx)) => (controller, event_rx),
+                Err(e) => {
+                    let _ = spawn_tx.send(Err(e));
+                    return;
+                }
+            };
 
             let mut runtime = create_runtime(future::lazy(move || {
                 tokio::spawn(
@@ -146,6 +138,23 @@ impl NetworkService {
         }
     }
 
+    fn build_config(
+        priv_key: Vec<u8>,
+        socket_addr: SocketAddr,
+    ) -> Result<NetworkConfiguration, Error> {
+        let priv_key = identity::secp256k1::SecretKey::from_bytes(priv_key)?;
+        let priv_key = NodeKeyConfig::Secp256k1(Secret::Input(priv_key));
+        let multiaddr = socket_addr.to_tcp_multiaddr();
+        let mut config = NetworkConfiguration::default();
+
+        config.node_key = priv_key;
+        config.listen_addresses = vec![multiaddr];
+        config.in_peers = 40;
+        config.out_peers = 80;
+
+        Ok(config)
+    }
+
     #[inline]
     fn request(&mut self, request: ClientRequest) {
         let _ = self.request_tx.as_mut().unwrap().start_send(request);
@@ -157,7 +166,7 @@ impl NetworkService {
         self.assert_running()?;
 
         let address = to_socket_address(py, py_host, py_port)?;
-        let multiaddr = sa_to_tcp_multiaddr(&address);
+        let multiaddr = address.to_tcp_multiaddr();
 
         self.request(ClientRequest::Connect(multiaddr));
         Ok(())
@@ -167,7 +176,7 @@ impl NetworkService {
         self.assert_running()?;
 
         let peer_id_string = py_extract!(py, py_peer_id)?;
-        let peer_id = peer_id_from_str(&peer_id_string)?;
+        let peer_id = PeerId::from_string(&peer_id_string)?;
 
         self.request(ClientRequest::ConnectToPeer(peer_id));
         Ok(())
@@ -177,7 +186,7 @@ impl NetworkService {
         self.assert_running()?;
 
         let peer_id_string = py_extract!(py, py_peer_id)?;
-        let peer_id = peer_id_from_str(&peer_id_string)?;
+        let peer_id = PeerId::from_string(&peer_id_string)?;
 
         self.request(ClientRequest::DisconnectPeer(peer_id));
         Ok(())
@@ -187,13 +196,18 @@ impl NetworkService {
         &mut self,
         py: Python,
         py_peer_id: PyString,
+        py_protocol_id: PyBytes,
         py_message: PyBytes,
     ) -> Result<(), Error> {
         self.assert_running()?;
 
         let peer_id_string = py_extract!(py, py_peer_id)?;
-        let peer_id = peer_id_from_str(&peer_id_string)?;
-        let message = NetworkMessage::Blob(py_message.data(py).to_vec());
+        let peer_id = PeerId::from_string(&peer_id_string)?;
+
+        let mut protocol_id: [u8; 3] = [0, 0, 0];
+        protocol_id.copy_from_slice(&py_protocol_id.data(py).to_vec()[0..3]);
+
+        let message = UserMessage::Blob(protocol_id, py_message.data(py).to_vec());
 
         self.request(ClientRequest::SendMessage(peer_id, message));
         Ok(())

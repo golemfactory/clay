@@ -81,9 +81,10 @@ py_class!(pub class PyNetworkService |py| {
     def send(
         &self,
         peer_id: PyString,
+        protocol_id: PyBytes,
         message: PyBytes
     ) -> PyResult<bool> {
-        match net().send(py, peer_id, message) {
+        match net().send(py, peer_id, protocol_id, message) {
             Ok(_) => Ok(true),
             Err(e) => Err(e.into()),
         }
@@ -95,6 +96,7 @@ py_class!(pub class PyNetworkService |py| {
             if !net.running() {
                 return Ok(None);
             }
+            // FIXME: clone once
             net.event_rx.clone()
         };
 

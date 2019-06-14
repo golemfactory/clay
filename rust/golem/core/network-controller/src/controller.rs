@@ -7,24 +7,22 @@ use futures::{stream, Future, Stream};
 use log::{debug, info, trace, warn};
 use parking_lot::Mutex;
 
-pub use network_libp2p::identity;
-pub use network_libp2p::{
-    ConnectedPoint, Multiaddr, MultiaddrProtocol, NetworkConfiguration, NodeKeyConfig, PeerId,
-    PublicKey, Secret,
+use network_libp2p::behaviour::Behaviour;
+use network_libp2p::{multiaddr, NetworkBehaviour};
+use network_libp2p::{start_service, CustomProto, LOG_TARGET};
+use network_libp2p::{
+    ConnectedPoint, NetworkConfiguration, PeerId, ProtocolId, PublicKey, StreamMuxerBox, Substream,
 };
-
-use network_libp2p::{start_service, ProtocolId, RegisteredProtocol, LOG_TARGET};
 use network_libp2p::{Service as InternalService, ServiceEvent as InternalServiceEvent};
 
 use crate::error::Error;
 use crate::event::NetworkEvent;
-use crate::message::NetworkMessage;
-use crate::{ClientRequest, PROTOCOL_VERSION};
+use crate::message::UserMessage;
+use crate::ClientRequest;
 
 pub struct NetworkController {
-    network_service: Arc<Mutex<InternalService<NetworkMessage>>>,
-    peerset: peerset::PeersetHandle,
-    pub(self) listen_addresses: Vec<Multiaddr>,
+    network_service: Arc<Mutex<InternalService>>,
+    listen_addresses: Vec<multiaddr::Multiaddr>,
     event_tx: Sender<NetworkEvent>,
     shutting_down: bool,
 }
@@ -38,14 +36,11 @@ impl Drop for NetworkController {
 impl NetworkController {
     pub fn new(
         config: NetworkConfiguration,
-        protocol_id: ProtocolId,
-        protocol_versions: &[u8],
     ) -> Result<(Arc<Mutex<NetworkController>>, Receiver<NetworkEvent>), Error> {
-        let protocol = RegisteredProtocol::new(protocol_id, protocol_versions);
-        let (service, peerset, addrs) = match start_service(config, protocol) {
-            Ok((service, peerset, addrs)) => {
+        let (service, addrs) = match start_service(config) {
+            Ok((service, addrs)) => {
                 info!(target: LOG_TARGET, "Network service started: {:?}", addrs);
-                (Arc::new(Mutex::new(service)), peerset, addrs)
+                (Arc::new(Mutex::new(service)), addrs)
             }
             Err(err) => {
                 warn!(target: LOG_TARGET, "Network service error: {}", err);
@@ -56,7 +51,6 @@ impl NetworkController {
         let (event_tx, event_rx) = crossbeam_channel::unbounded::<NetworkEvent>();
         let controller = Arc::new(Mutex::new(NetworkController {
             network_service: service.clone(),
-            peerset,
             listen_addresses: addrs,
             event_tx,
             shutting_down: false,
@@ -66,25 +60,29 @@ impl NetworkController {
     }
 
     #[inline]
-    pub fn connect(&self, address: Multiaddr) {
-        self.peerset.dial_addr(address);
+    pub fn connect(&self, address: multiaddr::Multiaddr) {
+        self.network_service.lock().connect(&address);
     }
 
     #[inline]
     pub fn connect_to_peer(&self, peer_id: PeerId) {
-        self.peerset.add_reserved_peer(peer_id);
+        self.network_service.lock().connect_to_peer(&peer_id);
     }
 
     #[inline]
     pub fn disconnect_peer(&self, peer_id: PeerId) {
-        self.peerset.remove_reserved_peer(peer_id);
+        self.network_service.lock().disconnect_from_peer(&peer_id);
     }
 
     #[inline]
-    pub fn send_message(&self, peer_id: PeerId, message: NetworkMessage) {
+    pub fn send_message(&self, peer_id: PeerId, message: UserMessage) {
+        let protocol_id = match message {
+            UserMessage::Blob(protcol_id, _) => protcol_id,
+        };
+
         self.network_service
             .lock()
-            .send_custom_message(&peer_id, message);
+            .send_message(&protocol_id, &peer_id, message.into());
     }
 
     #[inline]
@@ -100,23 +98,17 @@ impl NetworkController {
         peer_id: PeerId,
         peer_pubkey: PublicKey,
         connected_point: ConnectedPoint,
-        _debug_info: String,
     ) {
         debug!(
             target: LOG_TARGET,
             "Connected {:?} {}", connected_point, peer_id
         );
 
-        let event = NetworkEvent::Connected(peer_id, peer_pubkey, connected_point);
+        let event = NetworkEvent::Connected(peer_id, connected_point, peer_pubkey);
         let _ = self.event_tx.send(event);
     }
 
-    fn on_peer_disconnected(
-        &mut self,
-        peer_id: PeerId,
-        connected_point: ConnectedPoint,
-        _debug_info: String,
-    ) {
+    fn on_peer_disconnected(&mut self, peer_id: PeerId, connected_point: ConnectedPoint) {
         debug!(
             target: LOG_TARGET,
             "Disconnected {:?} {}", connected_point, peer_id
@@ -126,7 +118,7 @@ impl NetworkController {
         let _ = self.event_tx.send(event);
     }
 
-    fn on_peer_clogged(&self, peer_id: PeerId, msg: Option<NetworkMessage>) {
+    fn on_peer_clogged(&self, peer_id: PeerId, msg: Option<UserMessage>) {
         debug!(target: LOG_TARGET, "Clogged: {} {:?}", peer_id, msg);
 
         let event = NetworkEvent::Clogged(peer_id, msg);
@@ -137,7 +129,7 @@ impl NetworkController {
         &mut self,
         peer_id: PeerId,
         connected_point: ConnectedPoint,
-        message: NetworkMessage,
+        message: UserMessage,
     ) {
         trace!(target: LOG_TARGET, "Message: {} {:?}", peer_id, message);
 
@@ -206,25 +198,17 @@ impl NetworkController {
                 InternalServiceEvent::OpenedCustomProtocol {
                     peer_id,
                     peer_pubkey,
-                    version,
                     endpoint,
-                    debug_info,
                     ..
                 } => {
-                    debug_assert_eq!(version, PROTOCOL_VERSION as u8);
                     controller
                         .lock()
-                        .on_peer_connected(peer_id, peer_pubkey, endpoint, debug_info);
+                        .on_peer_connected(peer_id, peer_pubkey, endpoint);
                 }
                 InternalServiceEvent::ClosedCustomProtocol {
-                    peer_id,
-                    endpoint,
-                    debug_info,
-                    ..
+                    peer_id, endpoint, ..
                 } => {
-                    controller
-                        .lock()
-                        .on_peer_disconnected(peer_id, endpoint, debug_info);
+                    controller.lock().on_peer_disconnected(peer_id, endpoint);
                 }
                 InternalServiceEvent::CustomMessage {
                     peer_id,
@@ -232,17 +216,16 @@ impl NetworkController {
                     message,
                     ..
                 } => {
+                    let message = UserMessage::from(message);
                     controller.lock().on_message(peer_id, endpoint, message);
                 }
                 InternalServiceEvent::Clogged {
                     peer_id, messages, ..
                 } => {
-                    debug!(target: LOG_TARGET, "{} clogging messages:", messages.len());
-
                     for msg in messages.into_iter().take(5) {
                         controller
                             .lock()
-                            .on_peer_clogged(peer_id.clone(), Some(msg));
+                            .on_peer_clogged(peer_id.clone(), Some(msg.into()));
                     }
                 }
             };

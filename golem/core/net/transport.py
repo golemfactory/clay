@@ -10,11 +10,11 @@ class LibP2PTransport:
         self,
         network: 'LibP2PNetwork',
         address: Tuple[str, int],
-        channel_id: int,
+        protocol_id: int,
         peer_id: str
     ) -> None:
         self.network = network
-        self.channel_id = channel_id
+        self.protocol_id = protocol_id
         self.peer_id = peer_id
         self.peer = self.Host(address[0], address[1])
         self._disconnecting = False
@@ -36,4 +36,4 @@ class LibP2PTransport:
         self.loseConnection()
 
     def write(self, data: bytes) -> None:
-        self.network.send(self.peer_id, self.channel_id, data)
+        self.network.send(self.peer_id, self.protocol_id, data)

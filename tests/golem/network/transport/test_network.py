@@ -17,7 +17,7 @@ from golem.tools.testwithreactor import TestWithReactor
 
 
 class ASession(object):
-    ChannelId = 100
+    ProtocolId = 100
 
     def __init__(self, conn):
         self.address = '127.0.0.1'

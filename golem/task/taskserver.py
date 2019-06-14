@@ -869,7 +869,7 @@ class TaskServer(
 
     def _set_channel_id_for_type(self):
         self.channel_id_for_type.update({
-            ConnTypes.task: TaskSession.ChannelId
+            ConnTypes.task: TaskSession.ProtocolId
         })
 
     #############################

@@ -13,6 +13,7 @@ from golem import constants as gconst
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
+from golem.core.net import PROTOCOLS
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -55,7 +56,7 @@ class PeerSession(BasicSafeSession):
     """ Session for Golem P2P Network. """
 
     ConnectionStateType = SafeProtocol
-    ChannelId = 1
+    ProtocolId = PROTOCOLS['peer']
 
     def __init__(self, conn):
         """

@@ -127,8 +127,8 @@ impl convert::From<AddrParseError> for Error {
     }
 }
 
-impl convert::From<network::error::Error> for Error {
-    fn from(e: network::error::Error) -> Self {
+impl convert::From<network_controller::error::Error> for Error {
+    fn from(e: network_controller::error::Error) -> Self {
         Error::new(
             ErrorKind::Io,
             ErrorSeverity::Other,

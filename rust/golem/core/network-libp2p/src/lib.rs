@@ -14,35 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with Substrate.  If not, see <http://www.gnu.org/licenses/>.
 
-mod behaviour;
-mod config;
-mod custom_proto;
+pub mod behaviour;
+pub mod config;
+mod peers;
 mod service;
 mod transport;
 
-pub use crate::config::*;
-pub use crate::custom_proto::{CustomMessage, RegisteredProtocol};
-pub use crate::config::{NetworkConfiguration, NodeKeyConfig, Secret, NonReservedPeerMode};
-pub use crate::service::{start_service, Service, ServiceEvent};
+use std::{error, fmt};
+use std::collections::{HashMap, HashSet};
+use std::time::Duration;
+
 pub use libp2p::{identity, multiaddr, build_multiaddr};
 pub use libp2p::PeerId;
 pub use libp2p::core::PublicKey;
-pub use libp2p::core::nodes::ConnectedPoint;
+pub use libp2p::core::nodes::{ConnectedPoint, Substream};
+pub use libp2p::core::protocols_handler::{IntoProtocolsHandler, ProtocolsHandler};
+pub use libp2p::core::muxing::StreamMuxerBox;
+pub use libp2p::core::swarm::NetworkBehaviour;
 pub use parity_multiaddr::{Multiaddr, Protocol as MultiaddrProtocol};
+
+pub use network_protocol::{PROTOCOL_NAME, PROTOCOL_VERSION, LOG_TARGET};
+pub use network_protocol::{ProtocolId, CustomProto, ProtocolMessage, SerializableMessage, PeerNetBehaviour, DiscoveryNetBehaviour};
+
 
 use serde::{Deserialize, Serialize};
 use slog_derive::SerdeValue;
-use std::{collections::{HashMap, HashSet}, error, fmt, time::Duration};
 
-/// Protocol name
-pub const PROTOCOL_NAME: &str = "golem";
-/// Protocol version
-pub const PROTOCOL_VERSION: &str = "1.0";
-/// Log target name
-pub const LOG_TARGET: &str = "golem-libp2p";
-
-/// Protocol / handler id
-pub type ProtocolId = [u8; 3];
+pub use crate::config::*;
+pub use crate::config::{NetworkConfiguration, NodeKeyConfig, Secret, NonReservedPeerMode};
+pub use crate::service::{start_service, Service, ServiceEvent};
 
 /// Parses a string address and returns the component, if valid.
 pub fn parse_str_addr(addr_str: &str) -> Result<(PeerId, Multiaddr), ParseErr> {
@@ -116,8 +116,6 @@ pub struct NetworkState {
 	pub average_download_per_sec: u64,
 	/// Uploaded bytes per second averaged over the past few seconds.
 	pub average_upload_per_sec: u64,
-	/// State of the peerset manager.
-	pub peerset: serde_json::Value,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

@@ -53,9 +53,9 @@ class ProtocolFactory(Factory):
         self.session_factory = session_factory
 
         if session_factory:
-            self.channel_id = session_factory.session_class.ChannelId
+            self.protocol_id = session_factory.session_class.ProtocolId
         else:
-            self.channel_id = None
+            self.protocol_id = None
 
     def buildProtocol(self, addr):
         protocol = self.protocol_class(self.server)
@@ -65,7 +65,7 @@ class ProtocolFactory(Factory):
 
 class IncomingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
-        self.channel_id = protocol_factory.channel_id
+        self.protocol_id = protocol_factory.protocol_id
         self.protocol_factory = protocol_factory
         self.session_factory = IncomingSessionFactoryWrapper(
             protocol_factory.session_factory)
@@ -78,7 +78,7 @@ class IncomingProtocolFactoryWrapper(Factory):
 
 class OutgoingProtocolFactoryWrapper(Factory):
     def __init__(self, protocol_factory):
-        self.channel_id = protocol_factory.channel_id
+        self.protocol_id = protocol_factory.protocol_id
         self.protocol_factory = protocol_factory
         self.session_factory = OutgoingSessionFactoryWrapper(
             protocol_factory.session_factory)

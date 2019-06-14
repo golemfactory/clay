@@ -1,5 +1,5 @@
-use tokio::runtime::current_thread::Runtime;
 use futures::Future;
+use tokio::runtime::current_thread::Runtime;
 
 pub fn create_runtime<F>(future: F) -> Runtime
 where
