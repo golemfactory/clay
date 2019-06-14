@@ -136,21 +136,22 @@ with a possible third if no decision can be reached based on the first 2."""
         if actor_cnt < 2:
             return None
 
-        verdict_undecided = [(a, self.results[a], VerificationResult.UNDECIDED) for a in self.actors]
-        real_results = [(a, self.results[a]) for a in self.actors if self.results[a] is not None]
+        verdict_undecided = [
+            (a, self.results[a], VerificationResult.UNDECIDED) for a in self.actors]
+        real_results = [(a, self.results[a])
+                        for a in self.actors if self.results[a] is not None]
         reporting_actors = [r[0] for r in real_results]
         reported_results = [r[1] for r in real_results]
 
-
         if actor_cnt == 2:
             if len(real_results) == 0:
-                return verdict_undecided # more actors won't help, giving up
+                return verdict_undecided  # more actors won't help, giving up
 
             if len(real_results) == 1:
                 return None  # not enough real results, need more actors
 
         if actor_cnt > 2 and len(real_results) < 2:
-                return verdict_undecided
+            return verdict_undecided
 
         if len(real_results) == 2:
             a1, a2 = reporting_actors
@@ -160,24 +161,24 @@ with a possible third if no decision can be reached based on the first 2."""
                 return [(a1, r1, VerificationResult.SUCCESS), (a2, r2, VerificationResult.SUCCESS)]
             else:
                 if actor_cnt > 2:
-                    return verdict_undecided # give up
+                    return verdict_undecided  # give up
                 else:
-                    return None # more actors needed
-        else: # 3 real results
+                    return None  # more actors needed
+        else:  # 3 real results
             a1, a2, a3 = reporting_actors
             r1, r2, r3 = real_results
 
             if self.comparator(r1, r2) == 0 and self.comparator(r2, r3) == 0 and self.comparator(r3, r1) == 0:
                 return [(r[0], r[1], VerificationResult.SUCCESS) for r in real_results]
 
-            for permutation in [(0,1,2), (1,2,0), (2,0,1)]:
+            for permutation in [(0, 1, 2), (1, 2, 0), (2, 0, 1)]:
                 permuted_pairs = [real_results[i] for i in permutation]
                 a1, a2, a3 = [p[0] for p in permuted_pairs]
                 r1, r2, r3 = [p[1] for p in permuted_pairs]
                 if self.comparator(r1, r2) == 0:  # r1 and r2 are equal, hence r3 differs
                     return[(a1, r1, VerificationResult.SUCCESS), (a2, r2, VerificationResult.SUCCESS), (a3, r3, VerificationResult.FAIL)]
 
-            return verdict_undecided # all 3 results different
+            return verdict_undecided  # all 3 results different
 
 
 class VbrSubtask:
@@ -187,7 +188,8 @@ class VbrSubtask:
         self.params = params
 
         self.subtasks = {}
-        self.verifier = SimpleSubtaskVerifier(redundancy_factor, WasmTask._cmp_results)
+        self.verifier = SimpleSubtaskVerifier(
+            redundancy_factor, WasmTask._cmp_results)
 
     def contains(self, s_id):
         s_id in self.subtasks
@@ -210,6 +212,14 @@ class VbrSubtask:
         self.subtasks[s_id]["results"] = task_result
         # TODO pass hash of the results rather than actual results
         self.verified.add_result(self.subtasks[s_id]["actor"], task_result)
+
+    def is_finished(self):
+        # TODO implement
+        return False
+
+    def needs_computation(self):
+        # TODO implement
+        return True
 
 
 class WasmTaskOptions(Options):
@@ -277,9 +287,11 @@ class WasmTask(CoreTask):
                 'entrypoint': self.JOB_ENTRYPOINT,
                 **next_subtask_params
             }
-            subtask = VbrSubtask(self.create_subtask_id, s_name, s_params, REDUNDANCY_FACTOR)
+            subtask = VbrSubtask(self.create_subtask_id,
+                                 s_name, s_params, REDUNDANCY_FACTOR)
             self.subtasks += [subtask]
-            self.subtask_queue.extend([subtask.new_instance() for i in range(REDUNDANCY_FACTOR)])
+            self.subtask_queue.extend([subtask.new_instance()
+                                       for i in range(REDUNDANCY_FACTOR)])
 
         self.results: Dict[str, Dict[str, list]] = {}
         self.next_actor = None
@@ -321,7 +333,7 @@ class WasmTask(CoreTask):
             logger.info("Not accepting results for %s", subtask_id)
             return
 
-        self.interpret_task_results(subtask_id, task_result)
+        task_result = self.interpret_task_results(subtask_id, task_result)
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
@@ -393,14 +405,9 @@ class WasmTask(CoreTask):
         if sort:
             results.sort()
 
-        name = self.subtask_names[subtask_id]
-        self.results.setdefault(name, {})[subtask_id] = results
+        return results
 
-    # def finished_computation(self):
-    #     logger.info("Finished computaing Wasm task")
-    #     return self.num_tasks_received == self.total_tasks * 2
-
-        def should_accept_client(self, node_id: str) -> AcceptClientVerdict:
+    def should_accept_client(self, node_id: str) -> AcceptClientVerdict:
         """Deciding whether to accept particular node_id for next task computation.
 
         Arguments:
@@ -452,7 +459,7 @@ class WasmTask(CoreTask):
         # TODO Add method to check if this node_id exists in ReputationRanking
         # So we don't have to traverse entire list.
         if node_id not in list(map(lambda actor: actor.id, self.reputation_ranking.get_actors()))
-            self.reputation_ranking.add_actor(Actor(node_id))
+        self.reputation_ranking.add_actor(Actor(node_id))
 
         if len(self.reputation.get_actors()) < self.options.VERIFICATION_FACTOR:
             logger.info('Not enough providers, postponing')
@@ -482,13 +489,17 @@ class WasmTask(CoreTask):
         #     return AcceptClientVerdict.SHOULD_WAIT
 
         # return AcceptClientVerdict.ACCEPTED
-    
-    def needs_computation(self):
-        return (self.last_task != self.total_tasks) or \
-               (self.num_failed_subtasks > 0)
+
+    def needs_computation(self) -> bool:
+        """
+        Returns True if VbrSubtasks still need computation.
+        """
+        return len(filter(lambda x: x.needs_computation(), self.subtasks))
 
     def finished_computation(self):
-        return self.num_tasks_received == self.total_tasks
+        num_finished = len(filter(lambda x: x.is_finished(), self.subtasks))
+        num_total = len(self.subtasks)
+        return num_finished == num_total
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
@@ -500,10 +511,10 @@ class WasmTask(CoreTask):
         return self.total_tasks
 
     def get_active_tasks(self):
-        return self.last_task
+        return self.active_tasks
 
     def get_tasks_left(self):
-        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+        return self.tasks_left
 
     # pylint:disable=unused-argument
     @classmethod
@@ -536,13 +547,25 @@ class WasmTask(CoreTask):
     def abort(self):
         pass
 
-    def get_progress(self):
-        if self.total_tasks == 0:
+    def get_progress(self) -> float:
+        """
+        Returns current progress.
+
+        Instead of tracking some aux variables, it polls VbrSubtasks
+        directly for their current state; i.e., whether they are finished,
+        or not.
+        """
+        num_total = len(self.subtasks)
+        if num_total == 0:
             return 0.0
-        return self.num_tasks_received / self.total_tasks
+
+        num_finished = len(filter(lambda x: x.is_finished(), self.subtasks))
+        return num_finised / num_total
 
     def get_results(self, subtask_id):
-        return self.results.get(subtask_id, [])
+        subtask = self._find_vbrsubtask_by_id(subtask_id)
+        instance = subtask.get_instance(self, subtask_id)
+        return instance["results"]
 
 
 class WasmTaskBuilder(CoreTaskBuilder):
@@ -556,7 +579,8 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = 2 * len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = 2 * \
+            len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 
