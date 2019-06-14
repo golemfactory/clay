@@ -256,21 +256,6 @@ class TestIncomesKeeper(TestWithDatabase):
         task_id = str(uuid.uuid4())
         value = 123
         accepted_ts = 1337
-        income = self._create_income(
-            node=sender_node,
-            subtask=subtask_id,
-            task=task_id,
-            wallet_operation__sender_address=payer_address,
-            expected_amount=value,
-        )
-        self.assertIsNone(income.accepted_ts)
-        db_income = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id,
-            model.TaskPayment.task == task_id,
-        )
-        self.assertIsNone(db_income.accepted_ts)
-        self.assertEqual(model.TaskPayment.select().count(), 1)
         expect_kwargs = {
             'my_address': random_eth_address(),
             'sender_node': sender_node,

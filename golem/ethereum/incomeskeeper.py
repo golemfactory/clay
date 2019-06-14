@@ -92,41 +92,29 @@ class IncomesKeeper:
             payer_address,
             value / denoms.ether,
         )
-
-        try:
-            income = model.TaskPayment.incomes() \
-                .where(
-                    model.TaskPayment.node == sender_node,
-                    model.TaskPayment.task == task_id,
-                    model.TaskPayment.subtask == subtask_id,
-                ).get()
-            if not income.accepted_ts:
-                income.accepted_ts = accepted_ts
-                income.save()
-        except model.TaskPayment.DoesNotExist:
-            income = model.TaskPayment.create(
-                wallet_operation=model.WalletOperation.create(
-                    direction=model.WalletOperation.DIRECTION.incoming,
-                    operation_type=model.WalletOperation.TYPE.task_payment,
-                    status=model.WalletOperation.STATUS.awaiting,
-                    sender_address=payer_address,
-                    recipient_address=my_address,
-                    amount=0,
-                    currency=model.WalletOperation.CURRENCY.GNT,
-                    gas_cost=0,
-                ),
-                node=sender_node,
-                task=task_id,
-                subtask=subtask_id,
-                expected_amount=value,
-                accepted_ts=accepted_ts,
-            )
-            dispatcher.send(
-                signal='golem.income',
-                event='created',
-                subtask_id=subtask_id,
-                amount=value
-            )
+        income = model.TaskPayment.create(
+            wallet_operation=model.WalletOperation.create(
+                direction=model.WalletOperation.DIRECTION.incoming,
+                operation_type=model.WalletOperation.TYPE.task_payment,
+                status=model.WalletOperation.STATUS.awaiting,
+                sender_address=payer_address,
+                recipient_address=my_address,
+                amount=0,
+                currency=model.WalletOperation.CURRENCY.GNT,
+                gas_cost=0,
+            ),
+            node=sender_node,
+            task=task_id,
+            subtask=subtask_id,
+            expected_amount=value,
+            accepted_ts=accepted_ts,
+        )
+        dispatcher.send(
+            signal='golem.income',
+            event='created',
+            subtask_id=subtask_id,
+            amount=value
+        )
 
         return income
 

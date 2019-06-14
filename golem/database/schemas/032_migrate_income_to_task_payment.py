@@ -32,13 +32,13 @@ def migrate_income(database, db_row):
     cursor.execute(
         "INSERT INTO taskpayment"
         " (wallet_operation_id, node, task, subtask,"
-        "  expected_amount, created_date, modified_date, node,"
+        "  expected_amount, created_date, modified_date,"
         "  accepted_ts, settled_ts)"
-        " VALUES (?, ?, '', ?, ?, ?, datetime('now'), '',"
+        " VALUES (?, ?, '', ?, ?, ?, datetime('now'), "
         "         ?, ?)",
         (
             wallet_operation_id,
-            db_row['payer_address'],
+            f"0x{db_row['sender_node']}",
             db_row['subtask'],
             db_row['value'],
             db_row['created_date'],
@@ -53,7 +53,7 @@ def migrate(migrator, database, fake=False, **kwargs):
         'SELECT "transaction", payer_address, value, value_received, subtask,'
         '       created_date,'
         '       accepted_ts, settled_ts,'
-        '       overdue'
+        '       overdue, sender_node'
         ' FROM income'
     )
     for db_row in cursor.fetchall():
@@ -67,6 +67,7 @@ def migrate(migrator, database, fake=False, **kwargs):
             'accepted_ts': db_row[6],
             'settled_ts': db_row[7],
             'overdue': db_row[8],
+            'sender_node': db_row[9],
         }
         try:
             migrate_income(database, dict_row)
