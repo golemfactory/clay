@@ -30,6 +30,7 @@ class VbrSubtask:
         self.id_gen = id_gen
         self.name = name
         self.params = params
+        self.result = None
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
@@ -61,8 +62,21 @@ class VbrSubtask:
         self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
 
-    def is_finished(self):
+    def get_result(self):
+        return self.result
+
+    def is_finished(self) -> bool:
         return self.verifier.get_verdicts() is not None
+
+    def get_verdicts(self):
+        verdicts = []
+        for result, actor, verdict in self.subtask.verifier.get_verdicts():
+            if verdict == VerificationResult.SUCCESS and not self.result:
+                self.result = result
+
+            verdicts.append((actor, verdict))
+
+        return verdicts
 
 
 class WasmTaskOptions(Options):
@@ -123,7 +137,7 @@ class WasmTask(CoreTask):
         )
         self.options: WasmTaskOptions = task_definition.options
         self.subtasks = []
-        self.subtask_queue = collections.deque()
+        self.subtasks_given = {}
 
         for s_name, s_params in self.options.get_subtask_iterator():
             s_params = {
@@ -134,13 +148,13 @@ class WasmTask(CoreTask):
                                  s_name, s_params, REDUNDANCY_FACTOR)
             self.subtasks.append(subtask)
 
-        self.results: Dict[str, Dict[str, list]] = {}
         self.next_subtask = None
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         assert self.next_subtask
         s_id, s_params = self.next_subtask
+        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting}
         ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
         self.next_subtask = None
@@ -178,24 +192,41 @@ class WasmTask(CoreTask):
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
         subtask.add_result(task_result)
-        VbrSubtask.CALLBACKS[subtask_id] = verification_finished
+        self.subtasks_given[subtask_id] = {'status': SubtaskStatus.verifying}
+        WasmTask.CALLBACKS[subtask_id] = verification_finished
 
-        verdicts = self.subtask.verifier.get_verdicts()
-
-        if verdicts is None:
+        if not self.subtask.is_finished():
             return
 
-        # TODO the rest of the logic
+        for instance in self.subtask.get_verdicts():
+            if instance
 
-    def accept(self, subtask_ids: List[str]) -> None:
-        for sid in subtask_ids:
-            subtask = self.subtasks_given[sid]
-            subtask["status"] = SubtaskStatus.finished
-            node_id = self.subtasks_given[sid]['node_id']
-            logger.info("Accepting results for subtask %s", sid)
-            TaskClient.assert_exists(node_id, self.counting_nodes).accept()
-            self.num_tasks_received += 1
-            WasmTask.CALLBACKS[sid]()
+        verdicts = self.subtask.get_verdicts()
+
+        s_ids = [s_id for s_id in subtask.instances]
+        for s_id in subtask.instances:
+            instance = subtask.get_instance(s_id)
+            for actor, verdict in verdicts:
+                if actor is not instance['actor']:
+                    continue
+
+                if verdict == VerificationResult.SUCCESS:
+                    # pay up!
+                    logger.info("Accepting results for subtask %s", s_id)
+                    self.subtasks_given['status'] = SubtaskStatus.finished
+                    TaskClient.assert_exists(actor.uuid(), self.counting_nodes).accept()
+                else:
+                    logger.info("Rejecting results for subtask %s", s_id)
+                    self.subtasks_given['status'] = SubtaskStatus.failure
+                    TaskClient.assert_exists(actor.uuid(), self.counting_nodes).reject()
+
+        for s_id in s_ids:
+            WasmTask.CALLBACKS[s_id]
+
+        # save the results but only if verification was successful
+        result = self.subtask.get_result()
+        if result is not None:
+            self.save_results(self.subtask.name, result)
 
     def save_results(self, name: str, result_files: List[str]) -> None:
         output_dir_path = Path(self.options.output_dir, name)
@@ -313,7 +344,7 @@ class WasmTask(CoreTask):
         return all([subtask.is_finished() for subtask in self.subtasks])
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        self._mark_subtask_failed(subtask_id, ban_node)
+        pass
 
     def verify_task(self):
         return self.finished_computation()
