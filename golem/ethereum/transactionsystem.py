@@ -39,7 +39,6 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.model import TaskPayment
 from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
@@ -344,7 +343,7 @@ class TransactionSystem(LoopingCallService):
             task_id: str,
             subtask_id: str,
             value: int,
-            eth_address: str) -> TaskPayment:
+            eth_address: str) -> model.TaskPayment:
         if not self._payment_processor:
             raise Exception('Start was not called')
         return self._payment_processor.add(
