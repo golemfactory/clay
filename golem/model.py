@@ -652,6 +652,7 @@ class RequestedTask(BaseModel):
     def deadline(self) -> Optional[datetime.datetime]:
         if self.start_time is None:
             return None
+        assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
 
@@ -677,8 +678,9 @@ class RequestedSubtask(BaseModel):
     def deadline(self) -> Optional[datetime.datetime]:
         if self.start_time is None:
             return None
-        return self.start_time + \
-               datetime.timedelta(milliseconds=self.task.subtask_timeout)
+        assert isinstance(self.start_time, datetime.datetime)
+        return self.start_time + datetime.timedelta(
+            milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
 
     class Meta:
         primary_key = CompositeKey('task', 'subtask_id')
