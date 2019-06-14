@@ -35,35 +35,34 @@ class VbrSubtask:
         self.verifier = BucketVerifier(
             redundancy_factor, WasmTask._cmp_results)
 
-    def contains(self, s_id):
-        s_id in self.subtasks
+    def contains(self, s_id) -> bool:
+        return s_id in self.subtasks
 
-    def new_instance(self, node_id):
+    def new_instance(self, node_id) -> Optional[Tuple[str, dict]]:
+        actor = Actor(node_id)
+        try:
+            self.verifier.add_actor(actor)
+        except (NotAllowedError, MissingResultsError) as e:
+            return None
+
         s_id = self.id_gen()
         self.subtasks[s_id] = {
             "status": SubtaskStatus.starting,
-            "actor": Actor(node_id),
+            "actor": actor,
             "results": None
         }
-        self.verified.add_actor(self.subtasks[s_id]["actor"])
 
         return s_id, deepcopy(self.params)
 
-    def get_instance(self, s_id):
+    def get_instance(self, s_id) -> dict:
         return self.subtasks[s_id]
 
     def add_result(self, s_id, task_result):
+        self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
-        # TODO pass hash of the results rather than actual results
-        self.verified.add_result(self.subtasks[s_id]["actor"], task_result)
 
     def is_finished(self):
-        # TODO implement
-        return False
-
-    def needs_computation(self):
-        # TODO implement
-        return True
+        return self.verifier.get_verdicts() is not None
 
 
 class WasmTaskOptions(Options):
@@ -133,25 +132,22 @@ class WasmTask(CoreTask):
             }
             subtask = VbrSubtask(self.create_subtask_id,
                                  s_name, s_params, REDUNDANCY_FACTOR)
-            self.subtasks += [subtask]
-            self.subtask_queue.extend([subtask.new_instance()
-                                       for i in range(REDUNDANCY_FACTOR)])
+            self.subtasks.append(subtask)
 
         self.results: Dict[str, Dict[str, list]] = {}
-        self.next_actor = None
-        self.reputation_ranking = ReputationRanking()
-        self.reputation_view = ReputationRankingView(self.reputation_ranking)
+        self.next_subtask = None
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
-        next_subtask = self.subtask_queue.popleft()
-        # TODO should we worry about next_subtask == None?
-        s_id, s_params = next_subtask
+        assert self.next_subtask
+        s_id, s_params = self.next_subtask
         ctd = self._new_compute_task_def(s_id, s_params, perf_index)
+
+        self.next_subtask = None
 
         return Task.ExtraData(ctd=ctd)
 
-    def _find_vbrsubtask_by_id(self, subtask_id):
+    def _find_vbrsubtask_by_id(self, subtask_id) -> Optional[VbrSubtask]:
         for subtask in self.subtasks:
             if subtask.contains(subtask_id):
                 return subtask
@@ -171,7 +167,7 @@ class WasmTask(CoreTask):
         return 0
 
     def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+                             verification_finished=None) -> None:
         logger.info("Called in WasmTask")
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
@@ -296,59 +292,25 @@ class WasmTask(CoreTask):
         All of them should somehow affect choosing next provider here.
         """
 
-        """If we have already chosen the next actor, then lets wait for OfferPool to provide him.
-        """
-        if self.next_actor:
-            if self.next_actor.id == node_id:
-                return AcceptClientVerdict.ACCEPTED
-            else:
-                return AcceptClientVerdict.REJECTED
+        assert self.next_subtask = None
 
-        # Add node to ReputationRanking
-        # TODO Add method to check if this node_id exists in ReputationRanking
-        # So we don't have to traverse entire list.
-        if node_id not in list(map(lambda actor: actor.id, self.reputation_ranking.get_actors()))
-        self.reputation_ranking.add_actor(Actor(node_id))
-
-        if len(self.reputation.get_actors()) < self.options.VERIFICATION_FACTOR:
-            logger.info('Not enough providers, postponing')
-            return AcceptClientVerdict.SHOULD_WAIT
-
-        """For now I assumed that there is subtask `s` instance of some class Subtask
-        that has method "get_next_actor" implemented. Probably this is a forward call to it's
-        internal VerificationByRedundancy instance. @kubkon
-        """
         for s in self.subtasks:
-            self.next_actor = s.get_next_actor()
-            if self.next_actor:
+            self.next_subtask = s.new_instance()
+            if self.next_subtask:
                 """Since query_extra_data is called immediately after this function returns we can
                 safely save subtask that yielded next actor to retrieve ComputeTaskDef from it.
                 """
-                self.next_subtask = s
                 return AcceptClientVerdict.ACCEPTED
 
         """No subtask has yielded next actor meaning that there is no work to be done at the moment
         """
         return AcceptClientVerdict.SHOULD_WAIT
 
-        # if client.rejected():
-        #     return AcceptClientVerdict.REJECTED
-        # elif finishing >= max_finishing or \
-        #         client.started() - finishing >= max_finishing:
-        #     return AcceptClientVerdict.SHOULD_WAIT
-
-        # return AcceptClientVerdict.ACCEPTED
-
     def needs_computation(self) -> bool:
-        """
-        Returns True if VbrSubtasks still need computation.
-        """
-        return len(filter(lambda x: x.needs_computation(), self.subtasks))
+        return not self.finished_computation()
 
     def finished_computation(self):
-        num_finished = len(filter(lambda x: x.is_finished(), self.subtasks))
-        num_total = len(self.subtasks)
-        return num_finished == num_total
+        return all([subtask.is_finished() for subtask in self.subtasks])
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
