@@ -315,22 +315,15 @@ class TaskPayment(BaseModel):
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
 
-
-class DepositPayment(BaseModel):
-    tx = BlockchainTransactionField(primary_key=True)
-    value = HexIntegerField()
-    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
-    fee = HexIntegerField(null=True)
-
-    class Meta:
-        database = db
-
-    def __repr__(self):
-        return "<DepositPayment: {value} s:{status} tx:{tx}>"\
-            .format(
-                value=self.value,
-                status=self.status,
-                tx=self.tx,
+    @classmethod
+    def deposit_payments(cls):
+        return cls.select() \
+            .join(WalletOperation) \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.deposit_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.outgoing,
             )
 
 

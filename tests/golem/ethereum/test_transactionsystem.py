@@ -602,7 +602,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.DepositPayment.select().exists())
+        self.assertFalse(model.TaskPayment.deposit_payments().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -624,13 +624,16 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.DepositPayment.get()
+        dpayment = model.TaskPayment.deposit_payments().get()
         for field, value in (
-                ('status', model.PaymentStatus.confirmed),
-                ('value', deposit_value),
-                ('fee', 42000),
-                ('tx', tx_hash),):
-            self.assertEqual(getattr(dpayment, field), value)
+                ('status', model.WalletOperation.STATUS.confirmed),
+                ('amount', deposit_value),
+                ('gas_cost', 42000),
+                ('tx_hash', tx_hash),):
+            self.assertEqual(
+                getattr(dpayment.wallet_operation, field),
+                value,
+            )
 
     def test_gas_price_skyrocketing(self):
         self.sci.get_deposit_value.return_value = 0
@@ -750,12 +753,19 @@ class DepositPaymentsListTest(TransactionSystemBase):
             ts,
             tz=datetime.timezone.utc,
         )
-        model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
+        instance = model_factory.TaskPayment(
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.deposit_payment,
+            wallet_operation__amount=value,
+            wallet_operation__tx_hash=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
+        instance.wallet_operation.save(force_insert=True)
+        instance.save(force_insert=True)
+
         expected = [
             {
                 'created': ts,
