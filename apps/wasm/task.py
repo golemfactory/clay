@@ -184,6 +184,11 @@ class WasmTask(CoreTask):
         subtask.add_result(task_result)
         VbrSubtask.CALLBACKS[subtask_id] = verification_finished
 
+        verdicts = self.subtask.verifier.get_verdicts()
+
+        if verdicts is None:
+            return
+
         # TODO the rest of the logic
 
     def accept(self, subtask_ids: List[str]) -> None:
