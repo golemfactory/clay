@@ -30,6 +30,7 @@ from golem.resource.dirmanager import DirManager
 from golem.task import rpc as task_rpc
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
+from tests.factories import model as model_factory
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
@@ -116,7 +117,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
-    ets.add_payment_info.return_value = int(time.time())
+    ets.add_payment_info.return_value = model_factory.TaskPayment()
     return ets
 
 
