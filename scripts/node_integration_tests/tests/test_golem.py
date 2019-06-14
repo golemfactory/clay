@@ -10,8 +10,8 @@ class GolemNodeTest(NodeTestBase):
     def test_regular_task_run(self):
         self._run_test('golem.regular_run')
 
-    def test_no_concent(self):
-        self._run_test('golem.no_concent')
+    def test_concent(self):
+        self._run_test('golem.concent')
 
     def test_rpc(self):
         self._run_test('golem.rpc_test')
