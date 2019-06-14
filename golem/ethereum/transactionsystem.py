@@ -343,7 +343,7 @@ class TransactionSystem(LoopingCallService):
             task_id: str,
             subtask_id: str,
             value: int,
-            eth_address: str) -> int:
+            eth_address: str) -> model.TaskPayment:
         if not self._payment_processor:
             raise Exception('Start was not called')
         return self._payment_processor.add(

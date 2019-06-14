@@ -597,18 +597,20 @@ class TaskServer(
         task_id = self.task_manager.get_task_id(subtask_id)
         task = self.task_manager.tasks[task_id]
 
-        payment_processed_ts = self.client.transaction_system.add_payment_info(
+        task_payment = self.client.transaction_system.add_payment_info(
             node_id=task.header.task_owner.key,
             task_id=task.header.task_id,
             subtask_id=subtask_id,
             value=value,
             eth_address=eth_address,
         )
+        payment_created_ts = int(task_payment.created_date.timestamp())
+
         if unlock_funds:
             self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
-                     subtask_id, payment_processed_ts)
-        return payment_processed_ts
+                     subtask_id, payment_created_ts)
+        return payment_created_ts
 
     def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':
