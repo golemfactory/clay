@@ -7,6 +7,9 @@ class Actor:
     def __init__(self, uuid: str) -> None:
         self.uuid = uuid
 
+    def uuid(self):
+        return self.uuid
+
 
 class VerificationResult(IntEnum):
     SUCCESS = 0
