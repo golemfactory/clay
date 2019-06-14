@@ -832,6 +832,22 @@ class TaskServer(
     def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
         self.acl_ip.disallow(ip, timeout_seconds)
 
+    @rpc_utils.expose('net.peer.allow')
+    def allow_node(self, node_id : str, persist : bool = True) -> None:
+        self.acl.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.allow_ip')
+    def allow_ip(self, node_id : str, persist : bool = True) -> None:
+        self.acl_ip.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.acl')
+    def acl_status(self):
+        return self.acl.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl_ip')
+    def acl_ip_status(self):
+        return self.acl_ip.status().to_message()
+
     def _sync_forwarded_session_requests(self):
         now = time.time()
         for key_id, data in list(self.forwarded_session_requests.items()):

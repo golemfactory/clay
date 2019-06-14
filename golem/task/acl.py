@@ -4,7 +4,7 @@ import operator
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Set, Union, Iterable, Optional, Tuple
+from typing import Dict, Set, Union, Iterable, Optional, Tuple, TypeVar, Generic, List, cast
 from sortedcontainers import SortedList
 
 from golem.core import common
@@ -13,6 +13,25 @@ logger = logging.getLogger(__name__)
 
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
+
+class AclRule(Enum):
+    allow = "allow"
+    deny = "deny"
+
+
+class AclStatus:
+    default_rule : AclRule
+    rules : List[Tuple[str,AclRule,Optional[int]]]
+
+    def __init__(self, default_rule : AclRule, rules : List[Tuple[str,AclRule,Optional[int]]]) -> None:
+        self.default_rule = default_rule
+        self.rules = rules
+
+    def to_message(self):
+        return {
+                'defaultRule': self.default_rule.value,
+                'rules': [ (ident, rule.value, deadline) for (ident, rule, deadline) in self.rules ]
+        }
 
 
 class DenyReason(Enum):
@@ -29,6 +48,14 @@ class Acl(abc.ABC):
     @abc.abstractmethod
     def disallow(self, node_id: str, timeout_seconds: int, persist: bool) \
             -> None:
+        pass
+
+    @abc.abstractmethod
+    def allow(self, ident : str, persist: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def status(self) -> AclStatus:
         pass
 
 
@@ -100,6 +127,30 @@ class _DenyAcl(Acl):
             if node_id not in deny_set:
                 _write_set_to_file(self._list_path, deny_set | {node_id})
 
+    def allow(self, node_id : str, persist: bool) -> None:
+        logger.info(
+            'Whielist node. node_id=%s, persist=%s',
+            common.short_node_id(node_id),
+            persist,
+        )
+        del self._deny_deadlines[node_id]
+        if persist and self._list_path:
+            deny_set = _read_set_from_file(self._list_path)
+            if node_id in deny_set:
+                _write_set_to_file(self._list_path, deny_set - {node_id})
+
+
+    def status(self) -> AclStatus:
+        _always = self._always
+        def decode_deadline(deadline):
+            if deadline == _always:
+                return None
+            else:
+                return deadline
+
+        rules = [ (identity, AclRule.deny,  decode_deadline(deadline), ) for (identity, deadline) in self._deny_deadlines.items() ]
+        return AclStatus(AclRule.allow, rules)
+
     @staticmethod
     def _deadline(timeout: int) -> float:
         return time.time() + timeout
@@ -137,6 +188,25 @@ class _AllowAcl(Acl):
             allow_set = _read_set_from_file(self._list_path)
             if node_id in allow_set:
                 _write_set_to_file(self._list_path, allow_set - {node_id})
+
+    def allow(self, node_id : str, persist: bool) -> None:
+        logger.info(
+            'Whielist node. node_id=%s, persist=%s',
+            common.short_node_id(node_id),
+            persist,
+        )
+        self._allow_set.add(node_id)
+        if persist and self._list_path:
+            allow_set = _read_set_from_file(self._list_path)
+            if node_id not in allow_set:
+                _write_set_to_file(self._list_path, allow_set | {node_id})
+
+
+
+    def status(self) -> AclStatus:
+        rules = [ (identity, AclRule.allow,  cast(Optional[int], None)) for identity in self._allow_set ]
+
+        return AclStatus(AclRule.deny, rules)
 
 
 def _read_set_from_file(path: Path) -> Set[str]:
