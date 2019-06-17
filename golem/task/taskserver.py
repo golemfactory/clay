@@ -25,7 +25,7 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str, short_node_id
+from golem.core.common import short_node_id
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
@@ -548,6 +548,7 @@ class TaskServer(
     def subtask_accepted(
             self,
             sender_node_id: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
@@ -556,11 +557,12 @@ class TaskServer(
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.expect_income(
-            sender_node_id,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node_id,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def subtask_settled(self, sender_node_id, subtask_id, settled_ts):

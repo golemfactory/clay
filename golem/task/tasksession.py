@@ -18,7 +18,6 @@ from twisted.internet import defer
 import golem
 from golem.core import common
 from golem.core import golem_async
-from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -759,11 +758,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         self.task_server.subtask_accepted(
-            self.key_id,
-            msg.subtask_id,
-            msg.task_to_compute.requestor_ethereum_address,
-            msg.task_to_compute.price,
-            msg.payment_ts,
+            sender_node=self.key_id,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            payer_address=msg.task_to_compute.requestor_ethereum_address,
+            value=msg.task_to_compute.price,
+            accepted_ts=msg.payment_ts,
         )
         self.dropped()
 

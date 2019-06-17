@@ -956,11 +956,12 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
-            self.requestor_key_id,
-            sra.subtask_id,
-            sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
-            sra.task_to_compute.price,  # noqa pylint:disable=no-member
-            sra.payment_ts,
+            sender_node=self.requestor_key_id,
+            task_id=sra.task_id,
+            subtask_id=sra.subtask_id,
+            payer_address=sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
+            value=sra.task_to_compute.price,  # noqa pylint:disable=no-member
+            accepted_ts=sra.payment_ts,
         )
         cancel = self.task_session.concent_service.cancel_task_message
         cancel.assert_called_once_with(
