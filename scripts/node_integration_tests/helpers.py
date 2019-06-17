@@ -129,7 +129,7 @@ def construct_test_task(task_package_name: str, task_settings: str) \
     return settings
 
 
-def scene_file_path(task_package_name: str, file_path: str):
+def scene_file_path(task_package_name: str, file_path: str) -> str:
     cwd = pathlib.Path(__file__).resolve().parent
     full_path = cwd / 'tasks' / task_package_name / file_path
     if not full_path.is_file():
