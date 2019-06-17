@@ -392,6 +392,37 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(wo_count, 1)
             self.assertEqual(tp_count, 1)
 
+    @patch('golem.database.Database._create_tables')
+    def test_32_incomes_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 31)
+
+            database.db.execute_sql(
+                "INSERT INTO income ("
+                "    subtask, sender_node, created_date, modified_date,"
+                "    overdue,"
+                "    payer_address, value_received, value)"
+                " VALUES ('0xdead', '0xdead', datetime('now'), datetime('now'),"
+                "         1,"
+                "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C',"
+                "         '1', '2')"
+            )
+            database._migrate_schema(31, 32)
+
+            # UNIONS don't work here. Do it manually
+            cursor = database.db.execute_sql("SELECT count(*) FROM income")
+            income_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
+            tp_count = cursor.fetchone()[0]
+            # Migrated incomes shouldn't be removed
+            self.assertEqual(income_count, 1)
+            self.assertEqual(wo_count, 1)
+            self.assertEqual(tp_count, 1)
+
 
 def generate(start, stop):
     return ['{:03}_script'.format(i) for i in range(start, stop + 1)]
