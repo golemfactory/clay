@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Any, Callable
+from typing import Any, Callable, Dict, Tuple, List
 
 from twisted.internet import defer
 from twisted.internet.task import deferLater
@@ -9,7 +9,7 @@ from twisted.python.failure import Failure
 
 class DeferredSeq:
     def __init__(self) -> None:
-        self._seq = []
+        self._seq: List[Tuple[Callable, Tuple, Dict]] = []
 
     def push(self, fn: Callable, *args, **kwargs) -> 'DeferredSeq':
         self._seq.append((fn, args, kwargs))

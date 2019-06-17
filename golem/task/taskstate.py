@@ -24,7 +24,7 @@ class TaskState:
         self.package_hash = None
         self.package_path = None
         self.package_size = None
-        self.extra_data = {}
+        self.extra_data: Dict = {}
         self.last_update_time = time.time()
         self.estimated_fee = 0
 
