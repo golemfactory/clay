@@ -20,7 +20,7 @@ from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
-from .vbr import Actor, BucketVerifier, VerificationResult
+from .vbr import Actor, BucketVerifier, VerificationResult, NotAllowedError, MissingResultsError
 
 logger = logging.getLogger("apps.wasm")
 
@@ -34,7 +34,7 @@ class VbrSubtask:
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
-            redundancy_factor, WasmTask._cmp_results)
+            redundancy_factor, WasmTask._cmp_results, 0)
 
     def contains(self, s_id) -> bool:
         return s_id in self.subtasks
@@ -58,6 +58,9 @@ class VbrSubtask:
     def get_instance(self, s_id) -> dict:
         return self.subtasks[s_id]
 
+    def get_instances(self) -> List[str]:
+        return self.subtasks.keys()
+
     def add_result(self, s_id, task_result):
         self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
@@ -70,7 +73,7 @@ class VbrSubtask:
 
     def get_verdicts(self):
         verdicts = []
-        for result, actor, verdict in self.subtask.verifier.get_verdicts():
+        for actor, result, verdict in self.verifier.get_verdicts():
             if verdict == VerificationResult.SUCCESS and not self.result:
                 self.result = result
 
@@ -142,22 +145,21 @@ class WasmTask(CoreTask):
         for s_name, s_params in self.options.get_subtask_iterator():
             s_params = {
                 'entrypoint': self.JOB_ENTRYPOINT,
-                **next_subtask_params
+                **s_params
             }
             subtask = VbrSubtask(self.create_subtask_id,
-                                 s_name, s_params, REDUNDANCY_FACTOR)
+                                 s_name, s_params, self.REDUNDANCY_FACTOR)
             self.subtasks.append(subtask)
 
-        self.next_subtask = None
+        self.nodes_to_subtasks_map = {}
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
-        assert self.next_subtask
-        s_id, s_params = self.next_subtask
-        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting}
-        ctd = self._new_compute_task_def(s_id, s_params, perf_index)
+        assert node_id in self.nodes_to_subtasks_map
 
-        self.next_subtask = None
+        s_id, s_params = self.nodes_to_subtasks_map.pop(node_id)
+        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting, 'node_id': node_id}
+        ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
         return Task.ExtraData(ctd=ctd)
 
@@ -168,17 +170,18 @@ class WasmTask(CoreTask):
 
         return None
 
-    def _cmp_results(results: List[list]) -> int:
-        for r1, r2 in zip(*results):
+    def _cmp_results(result_list_a: List[Any], result_list_b: List[Any]) -> bool:
+        for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
                 b1 = f1.read()
                 b2 = f2.read()
                 if b1 != b2:
                     logger.info("Verification of task failed")
-                    return -1
+                    return False
 
+        logger.info("Comparing: %s and %s", result_list_a, result_list_b)
         logger.info("Verification of task was successful")
-        return 0
+        return True
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None) -> None:
@@ -191,17 +194,17 @@ class WasmTask(CoreTask):
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(task_result)
+        subtask.add_result(subtask_id, task_result)
         self.subtasks_given[subtask_id] = {'status': SubtaskStatus.verifying}
         WasmTask.CALLBACKS[subtask_id] = verification_finished
 
-        if not self.subtask.is_finished():
+        if not subtask.is_finished():
             return
 
-        verdicts = self.subtask.get_verdicts()
+        verdicts = subtask.get_verdicts()
 
-        s_ids = [s_id for s_id in subtask.instances]
-        for s_id in subtask.instances:
+        s_ids = [s_id for s_id in subtask.get_instances()]
+        for s_id in s_ids:
             instance = subtask.get_instance(s_id)
             for actor, verdict in verdicts:
                 if actor is not instance['actor']:
@@ -210,20 +213,20 @@ class WasmTask(CoreTask):
                 if verdict == VerificationResult.SUCCESS:
                     # pay up!
                     logger.info("Accepting results for subtask %s", s_id)
-                    self.subtasks_given['status'] = SubtaskStatus.finished
-                    TaskClient.assert_exists(actor.uuid(), self.counting_nodes).accept()
+                    self.subtasks_given[s_id]['status'] = SubtaskStatus.finished
+                    TaskClient.assert_exists(actor.uuid, self.counting_nodes).accept()
                 else:
                     logger.info("Rejecting results for subtask %s", s_id)
-                    self.subtasks_given['status'] = SubtaskStatus.failure
-                    TaskClient.assert_exists(actor.uuid(), self.counting_nodes).reject()
-
-        for s_id in s_ids:
-            WasmTask.CALLBACKS[s_id]
+                    self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
+                    TaskClient.assert_exists(actor.uuid, self.counting_nodes).reject()
 
         # save the results but only if verification was successful
-        result = self.subtask.get_result()
+        result = subtask.get_result()
         if result is not None:
-            self.save_results(self.subtask.name, result)
+            self.save_results(subtask.name, result)
+
+        for s_id in s_ids:
+            WasmTask.CALLBACKS.pop(s_id)()
 
     def save_results(self, name: str, result_files: List[str]) -> None:
         output_dir_path = Path(self.options.output_dir, name)
@@ -239,7 +242,8 @@ class WasmTask(CoreTask):
         pass
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        next_subtask_name, next_extra_data = self.get_next_subtask_extra_data()
+        # next_subtask_name, next_extra_data = self.get_next_subtask_extra_data()
+        next_subtask_name, next_extra_data = self.subtasks[0].new_instance("benchmark_node_id")
 
         # When the resources are sent through Hyperg, the input directory is
         # copied to RESOURCE_DIR inside the container. But when running the
@@ -320,11 +324,13 @@ class WasmTask(CoreTask):
         All of them should somehow affect choosing next provider here.
         """
 
-        assert self.next_subtask = None
+        if node_id in self.nodes_to_subtasks_map:
+            return AcceptClientVerdict.ACCEPTED
 
         for s in self.subtasks:
-            self.next_subtask = s.new_instance()
-            if self.next_subtask:
+            next_subtask = s.new_instance(node_id)
+            if next_subtask:
+                self.nodes_to_subtasks_map[node_id] = next_subtask
                 """Since query_extra_data is called immediately after this function returns we can
                 safely save subtask that yielded next actor to retrieve ComputeTaskDef from it.
                 """
@@ -341,22 +347,20 @@ class WasmTask(CoreTask):
         return all([subtask.is_finished() for subtask in self.subtasks])
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        pass
+        subtask = self._find_vbrsubtask_by_id(subtask_id)
+        subtask.add_result(subtask_id, None)
 
     def verify_task(self):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        # TODO
-        pass
+        return len(self.subtasks)
 
     def get_active_tasks(self):
-        # TODO
-        pass
+        return 0
 
     def get_tasks_left(self):
-        # TODO
-        pass
+        return 0
 
     # pylint:disable=unused-argument
     @classmethod
@@ -367,7 +371,6 @@ class WasmTask(CoreTask):
         for subtask_id in list(self.subtasks_given.keys()):
             self.restart_subtask(subtask_id)
 
-    @handle_key_error
     def restart_subtask(self, subtask_id):
         logger.debug('restart_subtask. subtask_id=%r', subtask_id)
 
@@ -387,7 +390,7 @@ class WasmTask(CoreTask):
             subtask_info['status'] = SubtaskStatus.restarted
 
     def abort(self):
-        pass
+        raise NotImplementedError()
 
     def get_progress(self) -> float:
         """
@@ -397,16 +400,19 @@ class WasmTask(CoreTask):
         directly for their current state; i.e., whether they are finished,
         or not.
         """
-        num_total = len(self.subtasks)
+        num_total = self.get_total_tasks()
         if num_total == 0:
             return 0.0
 
-        num_finished = len(filter(lambda x: x.is_finished(), self.subtasks))
-        return num_finised / num_total
+        num_finished = len(list(filter(lambda x: x.is_finished(), self.subtasks)))
+        logger.info("progress: %f", num_finished / num_total)
+        if num_finished == num_total:
+            import pdb; pdb.set_trace()
+        return num_finished / num_total
 
     def get_results(self, subtask_id):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        instance = subtask.get_instance(self, subtask_id)
+        instance = subtask.get_instance(subtask_id)
         return instance["results"]
 
 
@@ -421,8 +427,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = 2 * \
-            len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 

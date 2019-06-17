@@ -7,9 +7,6 @@ class Actor:
     def __init__(self, uuid: str) -> None:
         self.uuid = uuid
 
-    def uuid(self):
-        return self.uuid
-
 
 class VerificationResult(IntEnum):
     SUCCESS = 0
@@ -30,7 +27,7 @@ class UnknownActorError(Exception):
 
 
 class VerificationByRedundancy(ABC):
-    def __init__(self, redundancy_factor: int, comparator: Callable[[Any, Any], bool]) -> None:
+    def __init__(self, redundancy_factor: int, comparator: Callable[[Any, Any], bool], *args, **kwargs) -> None:
         self.redundancy_factor = redundancy_factor
         # assert comparator.func_closure is None
         self.comparator = comparator
@@ -63,7 +60,7 @@ class VerificationByRedundancy(ABC):
         """
 
     @abstractmethod
-    def get_verdicts(self) -> Optional[List[Tuple[Any, Actor, VerificationResult]]]:
+    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
         """
         Returns:
             Optional[List[Any, Actor, VerificationResult]] -- If verification is resolved a list of 3-element
@@ -76,17 +73,18 @@ class Bucket:
     """A bucket containing a key and some values. Values are comparable directly,
     keys only by the comparator supplied at bucket creation"""
 
-    def __init__(self, comparator: Callable[[Any, Any], bool], key : Any, value : Any) -> None:
+    def __init__(self, comparator: Callable[[Any, Any], bool], key: Any, value: Optional[Any]) -> None:
         self.comparator = comparator
+        self.key = key
         if value is None:
             self.values = []
         else:
             self.values = [value]
 
-    def key_equals(self, key : Any) -> bool:
+    def key_equals(self, key: Any) -> bool:
         return self.comparator(self.key, key)
 
-    def try_add(self, key : Any, value : Any) -> bool:
+    def try_add(self, key: Any, value: Any) -> bool:
         """If the keys match, add value to the bucket and return True.
         Otherwise return False"""
         if self.key_equals(key):
@@ -103,7 +101,9 @@ class BucketVerifier(VerificationByRedundancy):
 with a possible third if no decision can be reached based on the first 2."""
 
     def __init__(self,
-                 redundancy_factor: int, comparator: Callable[[Any, Any], bool]) -> None:
+                 redundancy_factor: int,
+                 comparator: Callable[[Any, Any], bool],
+                 referee_count: int) -> None:
         super().__init__(redundancy_factor, comparator)
         self.actors = []
         self.results = {}
@@ -111,8 +111,8 @@ with a possible third if no decision can be reached based on the first 2."""
         self.buckets = []
         self.verdicts = None
         self.normal_actor_count = redundancy_factor + 1
-        self.extra_actor_count = redundancy_factor % 2
-        self.majority = self.normal_actor_count + self. extra_actor_count / 2
+        self.referee_count = referee_count
+        self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
 
     def add_actor(self, actor):
         """Caller informs class that this is the next actor he wants to assign to the next subtask.
@@ -154,25 +154,28 @@ with a possible third if no decision can be reached based on the first 2."""
 
         self.results[actor] = result
 
-        found = False
-        for bucket in self.buckets:
-            if bucket.try_add(key=result, value=actor):
-                found = True
-                break
+        if result is not None:   # None represents no result, hence is not counted
+            found = False
+            for bucket in self.buckets:
+                if bucket.try_add(key=result, value=actor):
+                    found = True
+                    break
 
-        if not found:
-            self.buckets.append(Bucket(self.comparator, key=result, value=actor))
+            if not found:
+                self.buckets.append(Bucket(self.comparator, key=result, value=actor))
 
         print(f'add_actor: {len(self.actors)} actors, {len(self.results)} results, {len(self.buckets)} buckets')
-        self.compute_verdicts() # this will set self.need_more_actors
+        self.compute_verdicts() # this will set self.more_actors_needed
 
-    def get_verdicts(self) -> Optional[List[Tuple[Any, Actor, VerificationResult]]]:
+    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
         return self.verdicts
 
     def compute_verdicts(self) -> None:
+
+        self.more_actors_needed = len(self.actors) < self.normal_actor_count
+
         if len(self.results) < self.normal_actor_count:
-            self.need_more_actors = True
-            verdicts = None
+            self.verdicts = None
             return
 
         # Go through the buckets, looking for majority. If none found, maybe ask for a tie-breaker
@@ -185,16 +188,16 @@ with a possible third if no decision can be reached based on the first 2."""
                 break
 
         if winners:
-            self.need_more_actors = False
+            self.more_actors_needed = False
             success = VerificationResult.SUCCESS
             fail = VerificationResult.FAIL
             self.verdicts = [(actor, self.results[actor], success if actor in winners else fail) for actor in self.actors]
-        elif self.majority - max_popularity <= self.extra_actors:
+        elif self.majority - max_popularity <= self.referee_count:
             self.verdicts = None
-            self.need_more_actors = True
+            self.more_actors_needed = True
         else:
-            self.verdicts = [(actor, self.results[actor], VerificationResult.UNDECIDED) for actor in actors]
-            self.need_more_actors = False
+            self.verdicts = [(actor, self.results[actor], VerificationResult.UNDECIDED) for actor in self.actors]
+            self.more_actors_needed = False
 
 
 class SimpleSubtaskVerifier(VerificationByRedundancy):
@@ -248,7 +251,7 @@ with a possible third if no decision can be reached based on the first 2."""
 
         self.results[actor] = result
 
-    def get_verdicts(self) -> Optional[List[Tuple[Any, Actor, VerificationResult]]]:
+    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
         actor_cnt = len(self.actors)
         result_cnt = len(self.results.keys())
 
@@ -276,7 +279,7 @@ with a possible third if no decision can be reached based on the first 2."""
                 return None  # not enough real results, need more actors
 
         if actor_cnt > 2 and len(real_results) < 2:
-                return verdict_undecided
+            return verdict_undecided
 
         if len(real_results) == 2:
             a1, a2 = reporting_actors
@@ -306,4 +309,3 @@ with a possible third if no decision can be reached based on the first 2."""
 
             # Loop exit means there is no equal pair, hence all 3 are different
             return verdict_undecided # all 3 results different
-
