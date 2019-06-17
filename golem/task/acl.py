@@ -4,7 +4,7 @@ import operator
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Set, Union, Iterable, Optional, Tuple, TypeVar, Generic, List, cast
+from typing import Dict, Set, Union, Iterable, Optional, Tuple, List, cast
 from sortedcontainers import SortedList
 
 from golem.core import common
@@ -14,23 +14,31 @@ logger = logging.getLogger(__name__)
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
 
+
 class AclRule(Enum):
     allow = "allow"
     deny = "deny"
 
 
 class AclStatus:
-    default_rule : AclRule
-    rules : List[Tuple[str,AclRule,Optional[int]]]
+    default_rule: AclRule
+    rules: List[Tuple[str, AclRule, Optional[int]]]
 
-    def __init__(self, default_rule : AclRule, rules : List[Tuple[str,AclRule,Optional[int]]]) -> None:
+    def __init__(self,
+                 default_rule: AclRule,
+                 rules: List[Tuple[str, AclRule, Optional[int]]]) \
+            -> None:
         self.default_rule = default_rule
         self.rules = rules
 
     def to_message(self):
         return {
-                'default_rule': self.default_rule.value,
-                'rules': [ (ident, rule.value, (deadline[-1] if deadline is not None else None)) for (ident, rule, deadline) in self.rules ]
+            'default_rule': self.default_rule.value,
+            'rules': [
+                (ident, rule.value,
+                 (deadline[-1] if deadline is not None else None))
+                for (ident, rule, deadline) in self.rules
+            ]
         }
 
 
@@ -51,7 +59,7 @@ class Acl(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def allow(self, ident : str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool) -> None:
         pass
 
     @abc.abstractmethod
@@ -69,9 +77,8 @@ class _DenyAcl(Acl):
     _deny_deadlines: Dict[str, Union[_Always, SortedList]]
     _list_path: Optional[Path]
 
-
     @classmethod
-    def new_from_rules(cls, deny_coll : List[str], list_path : Path) -> Acl:
+    def new_from_rules(cls, deny_coll: List[str], list_path: Path) -> Acl:
         deny_set = set(deny_coll)
         _write_set_to_file(list_path, deny_set)
         return cls(deny_coll, list_path)
@@ -134,7 +141,7 @@ class _DenyAcl(Acl):
             if node_id not in deny_set:
                 _write_set_to_file(self._list_path, deny_set | {node_id})
 
-    def allow(self, node_id : str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -146,16 +153,20 @@ class _DenyAcl(Acl):
             if node_id in deny_set:
                 _write_set_to_file(self._list_path, deny_set - {node_id})
 
-
     def status(self) -> AclStatus:
         _always = self._always
+
         def decode_deadline(deadline):
             if deadline == _always:
                 return None
-            else:
-                return deadline
 
-        rules = [ (identity, AclRule.deny,  decode_deadline(deadline), ) for (identity, deadline) in self._deny_deadlines.items() ]
+            return deadline
+
+        rules = [
+            (identity,
+             AclRule.deny,
+             decode_deadline(deadline), )
+            for (identity, deadline) in self._deny_deadlines.items()]
         return AclStatus(AclRule.allow, rules)
 
     @staticmethod
@@ -166,7 +177,7 @@ class _DenyAcl(Acl):
 class _AllowAcl(Acl):
 
     @classmethod
-    def new_from_rules(cls, allow_coll : List[str], list_path : Path) -> Acl:
+    def new_from_rules(cls, allow_coll: List[str], list_path: Path) -> Acl:
         allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
         _write_set_to_file(list_path, allow_set)
         return cls(set(allow_coll), list_path)
@@ -203,7 +214,7 @@ class _AllowAcl(Acl):
             if node_id in allow_set:
                 _write_set_to_file(self._list_path, allow_set - {node_id})
 
-    def allow(self, node_id : str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -215,10 +226,12 @@ class _AllowAcl(Acl):
             if node_id not in allow_set:
                 _write_set_to_file(self._list_path, allow_set | {node_id})
 
-
-
     def status(self) -> AclStatus:
-        rules = [ (identity, AclRule.allow,  cast(Optional[int], None)) for identity in self._allow_set ]
+        rules = [
+            (identity,
+             AclRule.allow,
+             cast(Optional[int], None))
+            for identity in self._allow_set]
 
         return AclStatus(AclRule.deny, rules)
 
@@ -247,11 +260,13 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
 
     return _DenyAcl(nodes_ids, deny_list_path, max_times)
 
-def setup_acl(datadir: Path, default_rule : AclRule, exceptions : List[str]) -> Acl:
+
+def setup_acl(datadir: Path,
+              default_rule: AclRule,
+              exceptions: List[str]) -> Acl:
     deny_list_path = datadir / DENY_LIST_NAME
     if default_rule == AclRule.allow:
         return _AllowAcl.new_from_rules(exceptions, deny_list_path)
     if default_rule == AclRule.deny:
         return _DenyAcl.new_from_rules(exceptions, deny_list_path)
     raise ValueError('invalid acl default %r' % default_rule)
-
