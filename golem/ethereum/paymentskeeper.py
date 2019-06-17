@@ -33,7 +33,7 @@ class PaymentsDatabase(object):
             subtask_ids: Iterable[str],
     ) -> List[model.TaskPayment]:
         return list(
-            model.TaskPayment.select().join(model.WalletOperation).where(
+            model.TaskPayment.payments().where(
                 model.TaskPayment.subtask.in_(subtask_ids),
             )
         )
@@ -47,9 +47,7 @@ class PaymentsDatabase(object):
                          if None.
         :return:
         """
-        query = model.TaskPayment.select().join(
-            model.WalletOperation,
-        ).order_by(
+        query = model.TaskPayment.payments().order_by(
             model.WalletOperation.modified_date.desc(),
         )
 

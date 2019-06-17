@@ -2,7 +2,6 @@
 import random
 import time
 import uuid
-import unittest
 import unittest.mock as mock
 from os import urandom
 
@@ -20,16 +19,9 @@ from golem.ethereum.paymentprocessor import (
     PaymentProcessor,
     PAYMENT_MAX_DELAY,
 )
-from golem.model import PaymentStatus
 from golem.testutils import DatabaseFixture
 
 from tests.factories import model as model_factory
-
-
-class PaymentStatusTest(unittest.TestCase):
-    def test_status(self):
-        s = PaymentStatus(1)
-        self.assertEqual(s, PaymentStatus.awaiting)
 
 
 class PaymentProcessorBase(DatabaseFixture):
@@ -66,7 +58,12 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
     def test_load_from_db_awaiting(self):
         self.assertEqual([], self.pp._awaiting)
 
-        payment = model_factory.TaskPayment()
+        payment = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+        )
         payment.wallet_operation.save(force_insert=True)
         payment.save(force_insert=True)
 
@@ -85,18 +82,30 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
         value = 10
         payee = '0x' + 40 * '3'
         sent_payment11 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
             wallet_operation__recipient_address=payee,
             wallet_operation__amount=value,
             wallet_operation__tx_hash=tx_hash1,
             wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
         sent_payment12 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
             wallet_operation__recipient_address=payee,
             wallet_operation__amount=value,
             wallet_operation__tx_hash=tx_hash1,
             wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
         sent_payment21 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
             wallet_operation__recipient_address=payee,
             wallet_operation__amount=value,
             wallet_operation__tx_hash=tx_hash2,
@@ -470,6 +479,10 @@ class InteractionWithSmartContractInterfaceTest(PaymentProcessorBase):
 class UpdateOverdueTest(PaymentProcessorBase):
     def add_payment(self, processed_ts: int):
         payment = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
             created_date=timestamp_to_datetime(processed_ts),
         )
         payment.wallet_operation.save(force_insert=True)
@@ -516,8 +529,9 @@ class UpdateOverdueTest(PaymentProcessorBase):
 
     def test_already_overdue(self):
         payment_overdue = self.add_overdue_payment()
-        payment_overdue.status = PaymentStatus.overdue
-        payment_overdue.save()
+        payment_overdue.wallet_operation.status = \
+            model.WalletOperation.STATUS.overdue
+        payment_overdue.wallet_operation.save()
         self.pp.update_overdue()
         self.assertIs(
             payment_overdue.refresh().wallet_operation.status,
