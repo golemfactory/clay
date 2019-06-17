@@ -284,6 +284,16 @@ class WalletOperation(BaseModel):
             f" amount={self.amount/denoms.ether}{self.currency}"
         )
 
+    @classmethod
+    def deposit_payments(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.deposit_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.outgoing,
+            )
+
 
 class TaskPayment(BaseModel):
     wallet_operation = ForeignKeyField(WalletOperation, unique=True)
@@ -300,17 +310,6 @@ class TaskPayment(BaseModel):
             f" task={self.task}, subtask={self.subtask},"
             f" node={self.node}, wo={self.wallet_operation}"
         )
-
-    @classmethod
-    def deposit_payments(cls):
-        return cls.select() \
-            .join(WalletOperation) \
-            .where(
-                WalletOperation.operation_type
-                == WalletOperation.TYPE.deposit_payment,
-                WalletOperation.direction
-                == WalletOperation.DIRECTION.outgoing,
-            )
 
     @classmethod
     def incomes(cls):

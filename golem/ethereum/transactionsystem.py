@@ -373,22 +373,22 @@ class TransactionSystem(LoopingCallService):
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0)\
             -> List[Dict[str, Any]]:
-        query = model.TaskPayment.deposit_payments() \
+        query = model.WalletOperation.deposit_payments() \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
         result = []
         for dpayment in query:
             entry = {}
-            entry['value'] = common.to_unicode(dpayment.wallet_operation.amount)
+            entry['value'] = common.to_unicode(dpayment.amount)
             entry['status'] = common.to_unicode(
-                dpayment.wallet_operation.status.name,
+                dpayment.status.name,
             )
             entry['fee'] = common.to_unicode(
-                dpayment.wallet_operation.gas_cost,
+                dpayment.gas_cost,
             )
             entry['transaction'] = common.to_unicode(
-                dpayment.wallet_operation.tx_hash,
+                dpayment.tx_hash,
             )
             entry['created'] = common.datetime_to_timestamp_utc(
                 dpayment.created_date,
@@ -721,21 +721,15 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
-        dpayment = model.TaskPayment.create(
-            wallet_operation=model.WalletOperation.create(
-                tx_hash=tx_hash,
-                direction=model.WalletOperation.DIRECTION.outgoing,
-                operation_type=model.WalletOperation.TYPE.deposit_payment,
-                status=model.WalletOperation.STATUS.sent,
-                sender_address=self.get_payment_address() or '',
-                recipient_address=self.deposit_contract_address,
-                amount=max_possible_amount,
-                currency=model.WalletOperation.CURRENCY.GNT,
-            ),
-            node='',
-            task='',
-            subtask='',
-            expected_amount=max_possible_amount,
+        dpayment = model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.outgoing,
+            operation_type=model.WalletOperation.TYPE.deposit_payment,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.get_payment_address() or '',
+            recipient_address=self.deposit_contract_address,
+            amount=max_possible_amount,
+            currency=model.WalletOperation.CURRENCY.GNT,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
