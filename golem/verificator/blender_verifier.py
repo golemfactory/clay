@@ -57,6 +57,15 @@ class BlenderVerifier(FrameRenderingVerifier):
         if self.docker_task:
             self.docker_task.end_comp()
 
+    @staticmethod
+    def _copy_files_with_directory_hierarchy(file_paths, copy_to):
+        common_dir = os.path.commonpath(file_paths)
+        for path in file_paths:
+            relative_path = os.path.relpath(path, start=common_dir)
+            target_dir = os.path.join(copy_to, relative_path)
+            os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+            shutil.copy(path, target_dir)
+
     def start_rendering(self, timeout=0):
         self.timeout = timeout
 
@@ -79,19 +88,18 @@ class BlenderVerifier(FrameRenderingVerifier):
         work_dir = os.path.join(root_dir, 'work')
         os.makedirs(work_dir, exist_ok=True)
         res_dir = os.path.join(root_dir, 'resources')
+        os.makedirs(res_dir, exist_ok=True)
+
         tmp_dir = os.path.join(root_dir, "tmp")
 
-        assert self.verification_data['resources']
+        resources = self.verification_data['resources']
+        results = self.verification_data['results']
 
-        os.makedirs(res_dir, exist_ok=True)
-        if os.path.isdir(self.verification_data['resources'][0]):
-            shutil.copytree(self.verification_data['resources'][0], res_dir)
-        else:
-            for resource_file in self.verification_data['resources']:
-                shutil.copy(resource_file, res_dir)
+        assert resources
+        assert results
 
-        for result_file in self.verification_data['results']:
-            shutil.copy(result_file, work_dir)
+        self._copy_files_with_directory_hierarchy(resources, res_dir)
+        self._copy_files_with_directory_hierarchy(results, work_dir)
 
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
             resources=res_dir,
