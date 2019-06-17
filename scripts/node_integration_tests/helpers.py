@@ -14,8 +14,10 @@ from ethereum.utils import denoms
 
 from . import tasks
 
+
 class ConfigurationError(Exception):
     pass
+
 
 def get_testdir() -> str:
     env_key = 'GOLEM_INTEGRATION_TEST_DIR'
@@ -51,7 +53,6 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str) -> None:
         process.kill()
 
     print("%s shut down correctly." % node_type)
-
 
 
 def _params_from_dict(d: typing.Dict[str, typing.Any]) -> typing.List[str]:
