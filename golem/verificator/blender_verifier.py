@@ -57,7 +57,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         if self.docker_task:
             self.docker_task.end_comp()
 
-    def _copy_files_with_directory_hierarchy(self, file_paths, copy_to):
+    @staticmethod
+    def _copy_files_with_directory_hierarchy(file_paths, copy_to):
         common_dir = os.path.commonpath(file_paths)
         for path in file_paths:
             relative_path = os.path.relpath(path, start=common_dir)
