@@ -32,14 +32,12 @@ from golem_sci import (
 from twisted.internet import defer
 
 from golem import model
-from golem.core import common
 from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
 from . import exceptions
@@ -141,13 +139,6 @@ class TransactionSystem(LoopingCallService):
     def gas_price_limit(self) -> int:
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
-
-    @rpc_utils.expose('pay.gas_price')
-    def get_gas_price(self) -> Dict[str, str]:
-        return {
-            "current_gas_price": str(self.gas_price),
-            "gas_price_limit": str(self.gas_price_limit)
-        }
 
     @property
     def contract_addresses(self):
@@ -343,7 +334,7 @@ class TransactionSystem(LoopingCallService):
             task_id: str,
             subtask_id: str,
             value: int,
-            eth_address: str) -> int:
+            eth_address: str) -> model.TaskPayment:
         if not self._payment_processor:
             raise Exception('Start was not called')
         return self._payment_processor.add(
@@ -354,13 +345,11 @@ class TransactionSystem(LoopingCallService):
             value=value,
         )
 
-    @rpc_utils.expose('pay.ident')
     @sci_required()
-    def get_payment_address(self):
+    def get_payment_address(self) -> str:
         """ Human readable Ethereum address for incoming payments."""
         self._sci: SmartContractsInterface
-        address = self._sci.get_eth_address()
-        return str(address) if address else None
+        return self._sci.get_eth_address()
 
     def get_payments_list(
             self,
@@ -369,29 +358,14 @@ class TransactionSystem(LoopingCallService):
     ) -> List[Dict[str, Any]]:
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
-    @rpc_utils.expose('pay.deposit_payments')
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[Dict[str, Any]]:
+            -> List[model.DepositPayment]:
         query = model.DepositPayment.select() \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
-        result = []
-        for dpayment in query:
-            entry = {}
-            entry['value'] = common.to_unicode(dpayment.value)
-            entry['status'] = common.to_unicode(dpayment.status.name)
-            entry['fee'] = common.to_unicode(dpayment.fee)
-            entry['transaction'] = common.to_unicode(dpayment.tx)
-            entry['created'] = common.datetime_to_timestamp_utc(
-                dpayment.created_date,
-            )
-            entry['modified'] = common.datetime_to_timestamp_utc(
-                dpayment.modified_date,
-            )
-            result.append(entry)
-        return result
+        return list(query)
 
     def get_subtasks_payments(
             self,
@@ -500,19 +474,23 @@ class TransactionSystem(LoopingCallService):
         self._payments_locked -= num
 
     # pylint: disable=too-many-arguments
+    @sci_required()
     def expect_income(
             self,
             sender_node: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
             accepted_ts: int) -> None:
         self._incomes_keeper.expect(
-            sender_node,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            my_address=self._sci.get_eth_address(),  # type: ignore
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def settle_income(
@@ -744,15 +722,13 @@ class TransactionSystem(LoopingCallService):
         dpayment.save()
         return dpayment.tx
 
-    @rpc_utils.expose('pay.deposit.relock')
     @gnt_deposit_required()
     @sci_required()
-    def concent_relock(self):
+    def concent_relock(self) -> None:
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
-    @rpc_utils.expose('pay.deposit.unlock')
     @gnt_deposit_required()
     @sci_required()
     def concent_unlock(self):

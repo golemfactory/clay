@@ -86,7 +86,7 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            payment_processed_ts = self.accept_result(
+            payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
@@ -97,7 +97,7 @@ class VerificationMixin:
 
             response_msg = message.tasks.SubtaskResultsAccepted(
                 report_computed_task=report_computed_task,
-                payment_ts=payment_processed_ts,
+                payment_ts=int(payment.created_date.timestamp()),
             )
 
             signed_response_msg = msg_utils.copy_and_sign(

@@ -25,10 +25,14 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str, short_node_id
+from golem.core.common import short_node_id
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
+from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -102,10 +106,18 @@ class TaskServer(
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
+        os.makedirs(self.get_task_computer_root(), exist_ok=True)
+        docker_cpu_config = DockerCPUConfig(
+            work_dir=Path(self.get_task_computer_root()))
+        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+        new_env_manager = EnvironmentManager()
+        new_env_manager.register_env(docker_cpu_env)
+
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            environments_manager=client.environments_manager,
+            old_env_manager=client.environments_manager,
+            new_env_manager=EnvironmentManager(),
             node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
@@ -127,6 +139,7 @@ class TaskServer(
         )
         self.task_computer = TaskComputer(
             task_server=self,
+            docker_cpu_env=docker_cpu_env,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
@@ -224,7 +237,7 @@ class TaskServer(
         CoreTask.VERIFICATION_QUEUE.resume()
 
     def get_environment_by_id(self, env_id):
-        return self.task_keeper.environments_manager.get_environment_by_id(
+        return self.task_keeper.old_env_manager.get_environment_by_id(
             env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
@@ -509,12 +522,14 @@ class TaskServer(
         if wtr:
             wtr.already_sending = False
 
+    @inlineCallbacks
     def change_config(self, config_desc, run_benchmarks=False):
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
-        self.task_keeper.change_config(config_desc)
-        return self.task_computer.change_config(
+        yield self.task_keeper.change_config(config_desc)
+        result = yield self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
+        return result
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -533,6 +548,7 @@ class TaskServer(
     def subtask_accepted(
             self,
             sender_node_id: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
@@ -541,11 +557,12 @@ class TaskServer(
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.expect_income(
-            sender_node_id,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node_id,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def subtask_settled(self, sender_node_id, subtask_id, settled_ts):
@@ -574,7 +591,7 @@ class TaskServer(
         self.task_manager.task_computation_failure(subtask_id, err)
 
     def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
-                      *, unlock_funds=True):
+                      *, unlock_funds=True) -> TaskPayment:
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -583,7 +600,7 @@ class TaskServer(
         task_id = self.task_manager.get_task_id(subtask_id)
         task = self.task_manager.tasks[task_id]
 
-        payment_processed_ts = self.client.transaction_system.add_payment_info(
+        payment = self.client.transaction_system.add_payment_info(
             node_id=task.header.task_owner.key,
             task_id=task.header.task_id,
             subtask_id=subtask_id,
@@ -593,8 +610,8 @@ class TaskServer(
         if unlock_funds:
             self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
-                     subtask_id, payment_processed_ts)
-        return payment_processed_ts
+                     subtask_id, payment)
+        return payment
 
     def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':

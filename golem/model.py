@@ -8,6 +8,7 @@ import time
 from typing import Optional
 
 from eth_utils import decode_hex, encode_hex
+from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
 from golem_messages import message
@@ -125,6 +126,8 @@ class FixedLengthHexField(CharField):
 
     def db_value(self, value: str):
         value = super().db_value(value)
+        if value is None:
+            return None
         current_len = len(value)
         if len(value) != self.EXPECTED_LENGTH:
             raise ValueError(
@@ -303,7 +306,14 @@ class WalletOperation(BaseModel):
     recipient_address = CharField()
     amount = HexIntegerField()
     currency = StringEnumField(enum_type=CURRENCY)
-    gas_cost = HexIntegerField(null=True)
+    gas_cost = HexIntegerField()
+
+    def __str__(self):
+        return (
+            f"WalletOperation. tx_hash={self.tx_hash},"
+            f" direction={self.direction}, type={self.operation_type},"
+            f" amount={self.amount/denoms.ether}{self.currency}"
+        )
 
 
 class TaskPayment(BaseModel):
@@ -314,6 +324,40 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+
+    def __str__(self):
+        return (
+            f"TaskPayment. accepted_ts={self.accepted_ts},"
+            f" task={self.task}, subtask={self.subtask},"
+            f" node={self.node}, wo={self.wallet_operation}"
+        )
+
+    @classmethod
+    def incomes(cls):
+        return cls.select() \
+            .join(WalletOperation) \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.task_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.incoming,
+            )
+
+    @classmethod
+    def payments(cls):
+        return cls.select() \
+            .join(WalletOperation) \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.task_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.outgoing,
+            )
+
+    @property
+    def missing_amount(self):
+        # pylint: disable=no-member
+        return self.expected_amount - self.wallet_operation.amount
 
 
 class DepositPayment(BaseModel):
@@ -332,43 +376,6 @@ class DepositPayment(BaseModel):
                 status=self.status,
                 tx=self.tx,
             )
-
-
-class Income(BaseModel):
-    sender_node = CharField()
-    subtask = CharField()
-    payer_address = CharField()
-    value = HexIntegerField()
-    value_received = HexIntegerField(default=0)
-    accepted_ts = IntegerField(null=True)
-    transaction = CharField(null=True)
-    overdue = BooleanField(default=False)
-    settled_ts = IntegerField(null=True)  # set if settled by the Concent
-
-    class Meta:
-        database = db
-        primary_key = CompositeKey('sender_node', 'subtask')
-
-    def __repr__(self):
-        return "<Income: {!r} v:{:.3f} accepted_ts:{!r} tid:{!r}>"\
-            .format(
-                self.subtask,
-                self.value,
-                self.accepted_ts,
-                self.transaction,
-            )
-
-    @property
-    def value_expected(self):
-        return self.value - self.value_received
-
-    @property
-    def status(self) -> PaymentStatus:
-        if self.value_expected == 0:
-            return PaymentStatus.confirmed
-        if self.overdue:
-            return PaymentStatus.overdue
-        return PaymentStatus.awaiting
 
 ##################
 # RANKING MODELS #

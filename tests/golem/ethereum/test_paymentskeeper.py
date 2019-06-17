@@ -1,3 +1,4 @@
+from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
@@ -6,7 +7,13 @@ from tests.factories.model import TaskPayment as TaskPaymentFactory
 class TestPaymentsDatabase(TestWithDatabase):
     @staticmethod
     def _create_payment(**kwargs):
-        payment = TaskPaymentFactory(**kwargs)
+        payment = TaskPaymentFactory(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            **kwargs,
+        )
         payment.wallet_operation.save(force_insert=True)
         payment.save(force_insert=True)
         return payment

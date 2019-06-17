@@ -25,6 +25,11 @@ from golem.terms import ConcentTermsOfUse
 from . import soft_switch
 from .helpers import ssl_kwargs
 
+
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem import model
+
 logger = logging.getLogger(__name__)
 
 
@@ -409,8 +414,9 @@ class ConcentClientService(threading.Thread):
         from golem.network import history
         sra_l = []
         for income in kwargs['incomes']:
+            income: 'model.TaskPayment'
             sra = history.get(
-                node_id=income.sender_node,
+                node_id=income.node,
                 subtask_id=income.subtask,
                 message_class_name='SubtaskResultsAccepted',
             )
@@ -418,7 +424,7 @@ class ConcentClientService(threading.Thread):
                 logger.debug(
                     '[CONCENT] SRA missing subtask_id=%r node_id=%r',
                     income.subtask,
-                    income.sender_node,
+                    income.node,
                 )
                 continue
             sra_l.append(sra)
