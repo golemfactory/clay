@@ -14,10 +14,12 @@ if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.ethereum.transactionsystem import TransactionSystem
 
+
 def lru_node_factory():
     # Our version of peewee (2.10.2) doesn't support
     # .join(attr='XXX'). So we'll have to join manually
     lru_node = functools.lru_cache()(nodeskeeper.get)
+
     def _inner(node_id):
         if node_id is None:
             return None
@@ -26,6 +28,7 @@ def lru_node_factory():
             node = dt_p2p.Node(key=node_id)
         return node.to_dict()
     return _inner
+
 
 class ETSProvider:
     """Provides ethereum related remote procedures that require ETS"""
@@ -67,3 +70,44 @@ class ETSProvider:
             }
 
         return [item(income) for income in incomes]
+
+    @rpc_utils.expose('pay.gas_price')
+    def get_gas_price(self) -> typing.Dict[str, str]:
+        return {
+            "current_gas_price": str(self.ets.gas_price),
+            "gas_price_limit": str(self.ets.gas_price_limit)
+        }
+
+    @rpc_utils.expose('pay.ident')
+    def get_payment_address(self) -> str:
+        return self.ets.get_payment_address()
+
+    @rpc_utils.expose('pay.deposit_payments')
+    def get_deposit_payments_list(
+            self,
+            limit=1000,
+            offset=0,
+    ) -> typing.List[typing.Dict[str, typing.Any]]:
+        result = []
+        for dpayment in self.ets.get_deposit_payments_list():
+            entry = {}
+            entry['value'] = common.to_unicode(dpayment.value)
+            entry['status'] = common.to_unicode(dpayment.status.name)
+            entry['fee'] = common.to_unicode(dpayment.fee)
+            entry['transaction'] = common.to_unicode(dpayment.tx)
+            entry['created'] = common.datetime_to_timestamp_utc(
+                dpayment.created_date,
+            )
+            entry['modified'] = common.datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
+
+    @rpc_utils.expose('pay.deposit.relock')
+    def concent_relock(self) -> None:
+        self.ets.concent_relock()
+
+    @rpc_utils.expose('pay.deposit.unlock')
+    def concent_unlock(self) -> None:
+        self.ets.concent_unlock()
