@@ -180,7 +180,7 @@ class TaskManager(TaskEventListener):
         task = builder_type(self.node, definition, self.dir_manager).build()
         task_id = task.header.task_id
 
-        logger.info("Creating task %r (%s)", type(task), task_id)
+        logger.info("Creating task. type=%r, id=%s", type(task), task_id)
         self.tasks[task_id] = task
         self.tasks_states[task_id] = TaskState(task)
         return task
@@ -205,8 +205,7 @@ class TaskManager(TaskEventListener):
             self.tasks_states[task_id] = task_state
 
         if task_state.status is not TaskStatus.creating:
-            raise RuntimeError("Task {} has already been added"
-                               .format(task.header.task_id))
+            raise RuntimeError("Task {} has already been added".format(task_id))
 
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
@@ -226,6 +225,8 @@ class TaskManager(TaskEventListener):
                                  persist=False)
 
     def task_creation_failed(self, task_id: str, reason: str) -> None:
+        logger.error("Cannot create task. id=%s : %s", task_id, reason)
+
         if task_id in self.tasks_states:
             task_state = self.tasks_states[task_id]
             task_state.status = TaskStatus.errorCreating
@@ -377,7 +378,7 @@ class TaskManager(TaskEventListener):
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.notice_task_updated(task_id)
-        logger.info("Resources for task %s sent", task_id)
+        logger.info("Resources for task sent. id=%s", task_id)
 
     def got_wants_to_compute(self,
                              task_id: str):
@@ -714,7 +715,7 @@ class TaskManager(TaskEventListener):
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
 
-        logger.error("This is not my subtask %s", subtask_id)
+        logger.error("This is not my subtask. id=%s", subtask_id)
         return 0
 
     def update_task_signatures(self):

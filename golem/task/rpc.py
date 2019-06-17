@@ -403,13 +403,12 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    logger.error("Cannot create task %r: %s", task_dict, e)
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
 
     if hasattr(e, 'to_dict'):
         temp_dict = rpc_utils.int_to_string(e.to_dict())
         return None, temp_dict
 
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
     return None, str(e)
 
 
