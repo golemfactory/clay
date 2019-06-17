@@ -29,8 +29,8 @@ class AclStatus:
 
     def to_message(self):
         return {
-                'defaultRule': self.default_rule.value,
-                'rules': [ (ident, rule.value, deadline) for (ident, rule, deadline) in self.rules ]
+                'default_rule': self.default_rule.value,
+                'rules': [ (ident, rule.value, (deadline[-1] if deadline is not None else None)) for (ident, rule, deadline) in self.rules ]
         }
 
 
@@ -68,6 +68,13 @@ class _DenyAcl(Acl):
     # SortedList of floats = deadlines
     _deny_deadlines: Dict[str, Union[_Always, SortedList]]
     _list_path: Optional[Path]
+
+
+    @classmethod
+    def new_from_rules(cls, deny_coll : List[str], list_path : Path) -> Acl:
+        deny_set = set(deny_coll)
+        _write_set_to_file(list_path, deny_set)
+        return cls(deny_coll, list_path)
 
     def __init__(self, deny_coll: Optional[Iterable[str]] = None,
                  list_path: Optional[Path] = None, max_times: int = 1) -> None:
@@ -129,7 +136,7 @@ class _DenyAcl(Acl):
 
     def allow(self, node_id : str, persist: bool) -> None:
         logger.info(
-            'Whielist node. node_id=%s, persist=%s',
+            'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
             persist,
         )
@@ -157,6 +164,13 @@ class _DenyAcl(Acl):
 
 
 class _AllowAcl(Acl):
+
+    @classmethod
+    def new_from_rules(cls, allow_coll : List[str], list_path : Path) -> Acl:
+        allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
+        _write_set_to_file(list_path, allow_set)
+        return cls(set(allow_coll), list_path)
+
     def __init__(
             self,
             allow_set: Optional[Set[str]] = None,
@@ -191,7 +205,7 @@ class _AllowAcl(Acl):
 
     def allow(self, node_id : str, persist: bool) -> None:
         logger.info(
-            'Whielist node. node_id=%s, persist=%s',
+            'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
             persist,
         )
@@ -232,3 +246,12 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
         return _AllowAcl(nodes_ids, deny_list_path)
 
     return _DenyAcl(nodes_ids, deny_list_path, max_times)
+
+def setup_acl(datadir: Path, default_rule : AclRule, exceptions : List[str]) -> Acl:
+    deny_list_path = datadir / DENY_LIST_NAME
+    if default_rule == AclRule.allow:
+        return _AllowAcl.new_from_rules(exceptions, deny_list_path)
+    if default_rule == AclRule.deny:
+        return _DenyAcl.new_from_rules(exceptions, deny_list_path)
+    raise ValueError('invalid acl default %r' % default_rule)
+
