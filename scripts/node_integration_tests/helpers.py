@@ -14,6 +14,8 @@ from ethereum.utils import denoms
 
 from . import tasks
 
+class ConfigurationError(Exception):
+    pass
 
 def get_testdir() -> str:
     env_key = 'GOLEM_INTEGRATION_TEST_DIR'
@@ -125,6 +127,18 @@ def construct_test_task(task_package_name: str, task_settings: str) \
     tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
     settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     return settings
+
+
+def scene_file_path(task_package_name: str, file_path: str):
+    cwd = pathlib.Path(__file__).resolve().parent
+    full_path = cwd / 'tasks' / task_package_name / file_path
+    if not full_path.is_file():
+        raise ConfigurationError(
+            f"Could not find {file_path} "
+            f"(expanded as {full_path} "
+            f"in task {task_package_name}"
+        )
+    return str(full_path)
 
 
 def set_task_output_path(task_dict: dict, output_path: str) -> None:
