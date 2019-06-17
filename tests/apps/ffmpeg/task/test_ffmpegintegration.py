@@ -11,7 +11,8 @@ import pytest
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
-from golem.testutils import TestTaskIntegration
+from golem.testutils import TestTaskIntegration, \
+    remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
@@ -87,6 +88,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         ]
     )
     @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_codec_change(self,
                                                video_file,
                                                video_codec,
@@ -113,6 +115,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         )
     )
     @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_resolution_change(self,
                                                     video_file,
                                                     resolution):
@@ -134,6 +137,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         for frame_rate in ('25/1', '25/2')
     )
     @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self,
                                                     video_file,
                                                     frame_rate):
@@ -157,6 +161,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         for subtasks_count in (1, 6, 10)
     )
     @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video_file,
                                                            subtasks_count):
@@ -174,7 +179,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @remove_temporary_dirtree_if_test_passed
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -191,7 +196,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_output_dir(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
@@ -212,7 +217,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'test_nonexistent_video.mp4')
@@ -230,7 +235,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @remove_temporary_dirtree_if_test_passed
     def test_invalid_resource_stream(self):
         resource_stream = os.path.join(self.RESOURCES, 'invalid_test_video.mp4')
         result_file = os.path.join(self.root_dir,
@@ -248,7 +253,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
 
-    @TestTaskIntegration.dont_remove_dirs_on_failed_test
+    @remove_temporary_dirtree_if_test_passed
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')

@@ -5,6 +5,7 @@ import shutil
 import string
 import tempfile
 import unittest
+from functools import wraps
 from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
@@ -256,20 +257,21 @@ class PEP8MixIn(object):
                          "Found code style errors (and warnings).")
 
 
+def remove_temporary_dirtree_if_test_passed(fun):
+    @wraps(fun)
+    def wrapper(self, *args, **kwargs):
+        fun(self, *args, **kwargs)
+        # If test fails, we won't reach this point, but tearDown
+        # will be called and directories won't be removed.
+        self.REMOVE_TMP_DIRS = True
+    return wrapper
+
+
 class TestTaskIntegration(TempDirFixture):
 
     class MockCompTaskKeeper:
         def __init__(**kwargs):
             self.provider_stats_manager = None
-
-
-    def dont_remove_dirs_on_failed_test(fun):
-        def wrapper(self):
-            fun(self)
-            # If test fails, we won't reach this point, but tearDown
-            # will be called and directories won't be removed.
-            self.REMOVE_TMP_DIRS = True
-        return wrapper
 
     @staticmethod
     def check_file_existence(filename):

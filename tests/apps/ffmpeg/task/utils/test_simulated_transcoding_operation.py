@@ -7,6 +7,7 @@ from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 
 from golem.testutils import TestTaskIntegration
+from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, FuzzyInt
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
@@ -30,6 +31,7 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
         self.ffprobe_report_set = FfprobeReportSet()
         self.operation.attach_to_report_set(self.ffprobe_report_set)
 
+    @ci_skip
     @pytest.mark.slow
     def test_run_collects_reports_and_diff(self):
         self.operation.request_video_codec_change(VideoCodec.H_264)
