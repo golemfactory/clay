@@ -32,7 +32,6 @@ from golem_sci import (
 from twisted.internet import defer
 
 from golem import model
-from golem.core import common
 from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
@@ -489,7 +488,7 @@ class TransactionSystem(LoopingCallService):
             task_id=task_id,
             subtask_id=subtask_id,
             payer_address=payer_address,
-            my_address=self._sci.get_eth_address(),
+            my_address=self._sci.get_eth_address(),  # type: ignore
             value=value,
             accepted_ts=accepted_ts,
         )
