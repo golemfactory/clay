@@ -6,6 +6,7 @@ from ...test_config_base import TestConfigBase
 
 class TestConfig(TestConfigBase):
     def update_task_dict(self):
+        self.task_package = 'column'
         super().update_task_dict()
         self.task_dict['main_scene_file'] = helpers.scene_file_path(
             task_package_name='column',

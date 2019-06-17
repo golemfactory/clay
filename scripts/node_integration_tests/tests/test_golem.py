@@ -58,7 +58,4 @@ class GolemNodeTest(NodeTestBase):
         self._run_test('golem.restart_failed_subtasks')
 
     def test_main_scene_file(self):
-        self._run_test(
-            'golem.nested_column',
-            **{'task-package': 'column', 'task-settings': 'default'}
-        )
+        self._run_test('golem.nested_column')
