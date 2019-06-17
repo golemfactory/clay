@@ -32,7 +32,6 @@ from golem_sci import (
 from twisted.internet import defer
 
 from golem import model
-from golem.core import common
 from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
@@ -475,19 +474,23 @@ class TransactionSystem(LoopingCallService):
         self._payments_locked -= num
 
     # pylint: disable=too-many-arguments
+    @sci_required()
     def expect_income(
             self,
             sender_node: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
             accepted_ts: int) -> None:
         self._incomes_keeper.expect(
-            sender_node,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            my_address=self._sci.get_eth_address(),  # type: ignore
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def settle_income(

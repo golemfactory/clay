@@ -332,6 +332,16 @@ class TestTransactionSystem(TransactionSystemBase):
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
 
+    def test_expect_income(self):
+        self.ets.expect_income(
+            sender_node='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+            subtask_id=str(uuid.uuid4()),
+            payer_address='0x' + 40 * '1',
+            value=10,
+            accepted_ts=1,
+        )
+
 
 class WithdrawTest(TransactionSystemBase):
     def setUp(self):

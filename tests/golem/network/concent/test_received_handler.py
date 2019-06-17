@@ -412,11 +412,12 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
 
         library.interpret(msg)
         self.client.transaction_system.expect_income.assert_called_once_with(
-            msg.task_to_compute.requestor_id,
-            msg.subtask_id,
-            msg.task_to_compute.requestor_ethereum_address,
-            msg.task_to_compute.price,
-            msg.subtask_results_accepted.payment_ts,
+            sender_node=msg.task_to_compute.requestor_id,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            payer_address=msg.task_to_compute.requestor_ethereum_address,
+            value=msg.task_to_compute.price,
+            accepted_ts=msg.subtask_results_accepted.payment_ts,
         )
 
         add_mock.assert_called_once_with(
