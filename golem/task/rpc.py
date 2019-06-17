@@ -19,6 +19,7 @@ from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
+from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
@@ -402,7 +403,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    logger.error("Cannot create task %r: %s", task_dict, e)
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
 
     if hasattr(e, 'to_dict'):
         temp_dict = rpc_utils.int_to_string(e.to_dict())
@@ -416,7 +417,7 @@ def _restart_task_error(e, _self, task_id, **_kwargs):
     return None, str(e)
 
 
-def _restart_subtasks_error(e, _self, task_id, subtask_ids, *args, **_kwargs) \
+def _restart_subtasks_error(e, _self, task_id, subtask_ids, *_args, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
     logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
                  task_id, subtask_ids, e)
@@ -470,17 +471,19 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task, force=force)
-        # We want to return quickly from create_task without waiting for
-        # deferred completion.
-        deferred.addErrback(  # pylint: disable=no-member
+        DeferredSeq().push(
+            self.task_manager.initialize_task, task
+        ).push(
+            enqueue_new_task, self.client, task, force=force
+        ).execute().addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
                 force=force
-            ),
+            )
         )
+
         return task_id, None
 
     def _validate_enough_funds_to_pay_for_task(
@@ -675,7 +678,7 @@ class ClientProvider:
         if not frame_subtasks:
             logger.error('Frame restart failed, frame has no subtasks.'
                          'task_id=%r, frame=%r', task_id, frame)
-            return
+            return None
 
         return self.restart_subtasks(task_id, list(frame_subtasks))
 

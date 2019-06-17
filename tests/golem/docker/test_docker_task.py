@@ -101,6 +101,7 @@ class DockerTaskTestCase(
             dir_manager=DirManager(self.tempdir)
         )
         task = task_builder.build()
+        task.initialize(task_builder.dir_manager)
         task.__class__._update_task_preview = lambda self_: ()
         task.max_pending_client_results = 5
         return task
@@ -111,7 +112,7 @@ class DockerTaskTestCase(
             -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
         node_id = '0xdeadbeef'
-        extra_data = task.query_extra_data(1.0, 0, node_id)
+        extra_data = task.query_extra_data(1.0, node_id, 'node_name')
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
 
