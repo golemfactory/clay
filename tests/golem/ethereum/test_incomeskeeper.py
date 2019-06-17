@@ -38,6 +38,13 @@ class TestIncomesKeeper(TestWithDatabase):
         random.seed(__name__)
         self.incomes_keeper = IncomesKeeper()
 
+    def assertIncomeHash(self, sender_node, subtask_id, transaction_id):
+        income = self._get_income(
+            model.TaskPayment.node == sender_node,
+            model.TaskPayment.subtask == subtask_id,
+        )
+        self.assertEqual(income.wallet_operation.tx_hash, transaction_id)
+
     # pylint:disable=too-many-arguments
     def _test_expect_income(
             self,
@@ -118,16 +125,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             accepted_ts1 - 1,
         )
-        income1 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id1,
-        )
-        self.assertIsNone(income1.wallet_operation.tx_hash)
-        income2 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id2,
-        )
-        self.assertIsNone(income2.wallet_operation.tx_hash)
+        self.assertIncomeHash(sender_node, subtask_id1, None)
+        self.assertIncomeHash(sender_node, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
@@ -135,16 +134,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             accepted_ts1,
         )
-        income1 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id1,
-        )
-        self.assertEqual(transaction_id1, income1.wallet_operation.tx_hash)
-        income2 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id2,
-        )
-        self.assertIsNone(income2.wallet_operation.tx_hash)
+        self.assertIncomeHash(sender_node, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -152,16 +143,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value2,
             accepted_ts2,
         )
-        income1 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id1,
-        )
-        self.assertEqual(transaction_id1, income1.wallet_operation.tx_hash)
-        income2 = self._get_income(
-            model.TaskPayment.node == sender_node,
-            model.TaskPayment.subtask == subtask_id2,
-        )
-        self.assertEqual(transaction_id2, income2.wallet_operation.tx_hash)
+        self.assertIncomeHash(sender_node, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node, subtask_id2, transaction_id2)
 
     def test_received_batch_transfer_two_senders(self):
         sender_node1 = 64 * 'a'
@@ -201,16 +184,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             closure_time1,
         )
-        income1 = self._get_income(
-            model.TaskPayment.node == sender_node1,
-            model.TaskPayment.subtask == subtask_id1,
-        )
-        self.assertEqual(transaction_id1, income1.wallet_operation.tx_hash)
-        income2 = self._get_income(
-            model.TaskPayment.node == sender_node2,
-            model.TaskPayment.subtask == subtask_id2,
-        )
-        self.assertIsNone(income2.wallet_operation.tx_hash)
+        self.assertIncomeHash(sender_node1, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node2, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -218,16 +193,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value2,
             closure_time2,
         )
-        income1 = self._get_income(
-            model.TaskPayment.node == sender_node1,
-            model.TaskPayment.subtask == subtask_id1,
-        )
-        self.assertEqual(transaction_id1, income1.wallet_operation.tx_hash)
-        income2 = self._get_income(
-            model.TaskPayment.node == sender_node2,
-            model.TaskPayment.subtask == subtask_id2,
-        )
-        self.assertEqual(transaction_id2, income2.wallet_operation.tx_hash)
+        self.assertIncomeHash(sender_node1, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node2, subtask_id2, transaction_id2)
 
     @staticmethod
     def _create_income(**kwargs):
