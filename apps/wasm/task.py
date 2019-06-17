@@ -129,7 +129,7 @@ class WasmTask(CoreTask):
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
-    REDUNDANCY_FACTOR = 2
+    REDUNDANCY_FACTOR = 1
     CALLBACKS = {}
 
     def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
@@ -354,7 +354,7 @@ class WasmTask(CoreTask):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return len(self.subtasks)
+        return ( WasmTask.REDUNDANCY_FACTOR + 1 ) * len(self.subtasks)
 
     def get_active_tasks(self):
         return 0
@@ -406,9 +406,7 @@ class WasmTask(CoreTask):
 
         num_finished = len(list(filter(lambda x: x.is_finished(), self.subtasks)))
         logger.info("progress: %f", num_finished / num_total)
-        if num_finished == num_total:
-            import pdb; pdb.set_trace()
-        return num_finished / num_total
+        return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
 
     def get_results(self, subtask_id):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
@@ -427,7 +425,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1) * len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 
