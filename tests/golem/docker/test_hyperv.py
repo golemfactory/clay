@@ -341,7 +341,7 @@ class TestHyperVHypervisor(TestCase):
             start_vm.assert_called_once_with('test')
             logger.exception.assert_called_once()
 
-    def test_log_and_publish_event_error(self):
+    def test_log_and_publish_error(self):
         params = {'SMB_PORT': 443}
         expected = dict(EVENTS[Events.SMB])
         expected['data'] = MESSAGES[Events.SMB].format(**params)
