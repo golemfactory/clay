@@ -15,11 +15,16 @@ class TestDeferredSeq(unittest.TestCase):
         assert not DeferredSeq()._seq
 
     def test_init_with_functions(self):
-        fns = [
-            lambda _: 7,
-            lambda x: x,
+        def fn_1():
+            pass
+
+        def fn_2():
+            pass
+
+        assert DeferredSeq().push(fn_1).push(fn_2)._seq == [
+            (fn_1, (), {}),
+            (fn_2, (), {}),
         ]
-        assert DeferredSeq(*fns)._seq == fns
 
     @mock.patch('golem.core.deferred.DeferredSeq._execute')
     def test_execute_empty(self, execute):
@@ -31,9 +36,8 @@ class TestDeferredSeq(unittest.TestCase):
 
     def test_execute_functions(self):
         fn_1, fn_2 = mock.Mock(), mock.Mock()
-        fns = [fn_1, fn_2]
 
-        DeferredSeq(*fns).execute()
+        DeferredSeq().push(fn_1).push(fn_2).execute()
         assert fn_1.called
         assert fn_2.called
 
@@ -50,7 +54,7 @@ class TestDeferredSeq(unittest.TestCase):
                 return fail(exc)
 
         with mock.patch('golem.core.deferred.deferToThread', def2t):
-            DeferredSeq(fn_1, fn_2, fn_3, fn_4).execute()
+            DeferredSeq().push(fn_1).push(fn_2).push(fn_3).push(fn_4).execute()
 
         assert fn_1.called
         assert fn_2.called

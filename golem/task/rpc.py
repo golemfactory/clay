@@ -471,9 +471,10 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        DeferredSeq(
-            lambda _: self.task_manager.initialize_task(task),
-            lambda _: enqueue_new_task(self.client, task, force=force),
+        DeferredSeq().push(
+            self.task_manager.initialize_task, task
+        ).push(
+            enqueue_new_task, self.client, task, force=force
         ).execute().addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,

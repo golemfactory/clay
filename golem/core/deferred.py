@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Any
+from typing import Any, Callable
 
 from twisted.internet import defer
 from twisted.internet.task import deferLater
@@ -8,21 +8,23 @@ from twisted.python.failure import Failure
 
 
 class DeferredSeq:
-    def __init__(self, *fns) -> None:
-        self._seq = list(fns)
+    def __init__(self) -> None:
+        self._seq = []
+
+    def push(self, fn: Callable, *args, **kwargs) -> 'DeferredSeq':
+        self._seq.append((fn, args, kwargs))
+        return self
 
     def execute(self) -> defer.Deferred:
-        # The executed function cannot return a Deferred object
-        def wrapper():
-            self._execute()
-        return deferToThread(wrapper)
+        return deferToThread(lambda: sync_wait(self._execute()))
 
     @defer.inlineCallbacks
     def _execute(self) -> Any:
-        arg = None
-        for fn in self._seq:
-            arg = yield defer.maybeDeferred(fn, arg)
-        return arg
+        result = None
+        for entry in self._seq:
+            fn, args, kwargs = entry
+            result = yield defer.maybeDeferred(fn, *args, **kwargs)
+        return result
 
 
 def chain_function(deferred, fn, *args, **kwargs):

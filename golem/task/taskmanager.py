@@ -224,16 +224,13 @@ class TaskManager(TaskEventListener):
                                  op=TaskOp.CREATED,
                                  persist=False)
 
+    @handle_task_key_error
     def task_creation_failed(self, task_id: str, reason: str) -> None:
         logger.error("Cannot create task. id=%s : %s", task_id, reason)
 
-        if task_id in self.tasks_states:
-            task_state = self.tasks_states[task_id]
-            task_state.status = TaskStatus.errorCreating
-            task_state.status_message = reason
-        else:
-            logger.debug("task_creation_failed called on unknown Task %s",
-                         task_id)
+        task_state = self.tasks_states[task_id]
+        task_state.status = TaskStatus.errorCreating
+        task_state.status_message = reason
 
     @handle_task_key_error
     def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
