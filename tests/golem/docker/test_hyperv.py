@@ -11,7 +11,8 @@ from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
 from os_win.exceptions import OSWinException
 
 from golem.docker.config import DOCKER_VM_NAME, MIN_CONSTRAINTS, CONSTRAINT_KEYS
-from golem.docker.hypervisor.hyperv import HyperVHypervisor
+from golem.docker.hypervisor.hyperv import HyperVHypervisor, Events, MESSAGES, \
+    EVENTS
 from golem.docker.task_thread import DockerBind
 
 
@@ -339,3 +340,24 @@ class TestHyperVHypervisor(TestCase):
             ))
             start_vm.assert_called_once_with('test')
             logger.exception.assert_called_once()
+
+    def test_log_and_publish_event_error(self):
+        params = {'SMB_PORT': 443}
+        expected = dict(EVENTS[Events.SMB])
+        expected['data'] = MESSAGES[Events.SMB].format(**params)
+
+        with patch(self.PATCH_BASE + '.publish_event') as publish_event:
+            self.hyperv._log_and_publish_event(Events.SMB, **params)
+            publish_event.assert_called_with(expected)
+
+    def test_log_and_publish_warning(self):
+        params = {'mem_mb': 2048}
+        expected = dict(EVENTS[Events.MEM])
+        expected['data'] = {
+            'status': Events.MEM.value,
+            'value': 2048,
+        }
+
+        with patch(self.PATCH_BASE + '.publish_event') as publish_event:
+            self.hyperv._log_and_publish_event(Events.MEM, **params)
+            publish_event.assert_called_with(expected)
