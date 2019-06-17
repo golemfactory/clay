@@ -12,7 +12,7 @@ from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
 from golem_messages import message
-from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import p2p as dt_p2p, masking
 from peewee import (
     BlobField,
     BooleanField,
@@ -34,6 +34,7 @@ from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.ranking import ProviderEfficacy
+from golem.task import taskstate
 
 
 # TODO: migrate to golem.database. issue #2415
@@ -668,6 +669,69 @@ class CachedNode(BaseModel):
             f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
             f" {self}>"
         )
+
+####################
+# REQUESTOR MODELS #
+####################
+
+
+class RequestedTask(BaseModel):
+    task_id = CharField(primary_key=True)
+    app_id = CharField(null=False)
+    name = CharField(null=True)
+    status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
+
+    environment = CharField(null=False)
+    prerequisites = JsonField(null=False, default='{}')
+
+    task_timeout = IntegerField(null=False)  # milliseconds
+    subtask_timeout = IntegerField(null=False)  # milliseconds
+    start_time = UTCDateTimeField(null=True)
+
+    max_price_per_hour = IntegerField(null=False)
+    estimated_fee = IntegerField(null=True)
+
+    max_subtasks = IntegerField(null=False)
+    concent_enabled = BooleanField(null=False, default=False)
+    mask = BlobField(null=False, default=masking.Mask().to_bytes())
+    output_file = CharField(null=False)
+
+    @property
+    def deadline(self) -> Optional[datetime.datetime]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return self.start_time + \
+            datetime.timedelta(milliseconds=self.task_timeout)
+
+
+class ComputingNode(BaseModel):
+    node_id = CharField(primary_key=True)
+    name = CharField(null=False)
+
+
+class RequestedSubtask(BaseModel):
+    task = ForeignKeyField(RequestedTask, null=False, related_name='subtasks')
+    subtask_id = CharField(null=False)
+    status = StringEnumField(enum_type=taskstate.SubtaskStatus, null=False)
+
+    payload = JsonField(null=False, default='{}')
+    inputs = JsonField(null=False, default='[]')
+    start_time = UTCDateTimeField(null=True)
+    price = IntegerField(null=True)
+    computing_node = ForeignKeyField(
+        ComputingNode, null=True, related_name='subtasks')
+
+    @property
+    def deadline(self) -> Optional[datetime.datetime]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return self.start_time + datetime.timedelta(
+            milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
+
+    class Meta:
+        primary_key = CompositeKey('task', 'subtask_id')
 
 
 def collect_db_models(module: str = __name__):
