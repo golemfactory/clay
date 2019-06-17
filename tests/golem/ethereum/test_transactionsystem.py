@@ -591,7 +591,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.TaskPayment.deposit_payments().exists())
+        self.assertFalse(model.WalletOperation.deposit_payments().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -613,14 +613,14 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.TaskPayment.deposit_payments().get()
+        dpayment = model.WalletOperation.deposit_payments().get()
         for field, value in (
                 ('status', model.WalletOperation.STATUS.confirmed),
                 ('amount', deposit_value),
                 ('gas_cost', 42000),
                 ('tx_hash', tx_hash),):
             self.assertEqual(
-                getattr(dpayment.wallet_operation, field),
+                getattr(dpayment, field),
                 value,
             )
 
@@ -742,17 +742,18 @@ class DepositPaymentsListTest(TransactionSystemBase):
             ts,
             tz=datetime.timezone.utc,
         )
-        instance = model_factory.TaskPayment(
-            wallet_operation__direction=  # noqa
+        instance = model_factory.WalletOperation(
+            direction=  # noqa
             model.WalletOperation.DIRECTION.outgoing,
-            wallet_operation__operation_type=  # noqa
+            operation_type=  # noqa
             model.WalletOperation.TYPE.deposit_payment,
-            wallet_operation__amount=value,
-            wallet_operation__tx_hash=tx_hash,
+            status=  # noqa
+            model.WalletOperation.STATUS.sent,
+            amount=value,
+            tx_hash=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
-        instance.wallet_operation.save(force_insert=True)
         instance.save(force_insert=True)
 
         self.assertEqual(

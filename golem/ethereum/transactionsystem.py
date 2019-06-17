@@ -698,6 +698,7 @@ class TransactionSystem(LoopingCallService):
             recipient_address=self.deposit_contract_address,
             amount=max_possible_amount,
             currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
@@ -718,11 +719,11 @@ class TransactionSystem(LoopingCallService):
         tx_gas_price = self._sci.get_transaction_gas_price(
             receipt.tx_hash,
         )
-        dpayment.wallet_operation.gas_cost = receipt.gas_used * tx_gas_price
-        dpayment.wallet_operation.status = \
+        dpayment.gas_cost = receipt.gas_used * tx_gas_price
+        dpayment.status = \
             model.WalletOperation.STATUS.confirmed
-        dpayment.wallet_operation.save()  # pylint: disable=no-member
-        return dpayment.wallet_operation.tx_hash  # pylint: disable=no-member
+        dpayment.save()
+        return dpayment.tx_hash
 
     @gnt_deposit_required()
     @sci_required()

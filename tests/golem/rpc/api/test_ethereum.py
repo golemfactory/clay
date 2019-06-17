@@ -36,7 +36,7 @@ class TestEthereum(TestCase):
         deposit_payment.tx_hash = tx_hash
         deposit_payment.created_date = dt
         deposit_payment.modified_date = dt
-        deposit_payment.fee = 0
+        deposit_payment.gas_cost = 0
         deposit_payment.status = model.WalletOperation.STATUS.awaiting
         self.ets.get_deposit_payments_list.return_value = [deposit_payment]
 
@@ -44,7 +44,7 @@ class TestEthereum(TestCase):
             {
                 'created': ts,
                 'modified': ts,
-                'fee': 0,
+                'fee': '0',
                 'status': 'awaiting',
                 'transaction': tx_hash,
                 'value': str(value),

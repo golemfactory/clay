@@ -89,7 +89,7 @@ class ETSProvider:
             limit=1000,
             offset=0,
     ) -> typing.List[typing.Dict[str, typing.Any]]:
-        operations: 'List[model.WalletOperation]' = \
+        operations: 'typing.List[model.WalletOperation]' = \
             self.ets.get_deposit_payments_list(
                 limit=limit,
                 offset=offset,
