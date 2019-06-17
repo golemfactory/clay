@@ -148,17 +148,6 @@ class TestTransactionSystem(TransactionSystemBase):
 
         self.assertEqual(self.ets.gas_price, test_gas_price)
 
-    def test_get_gas_price(self, *_):
-        test_gas_price = 1234
-        test_price_limit = 12345
-        self.sci.get_current_gas_price.return_value = test_gas_price
-        self.sci.GAS_PRICE = test_price_limit
-
-        result = self.ets.get_gas_price()
-
-        self.assertEqual(result["current_gas_price"], str(test_gas_price))
-        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
-
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
 
@@ -766,18 +755,8 @@ class DepositPaymentsListTest(TransactionSystemBase):
         instance.wallet_operation.save(force_insert=True)
         instance.save(force_insert=True)
 
-        expected = [
-            {
-                'created': ts,
-                'modified': ts,
-                'fee': None,
-                'status': 'awaiting',
-                'transaction': tx_hash,
-                'value': str(value),
-            },
-        ]
         self.assertEqual(
-            expected,
+            [instance],
             self.ets.get_deposit_payments_list(),
         )
 
