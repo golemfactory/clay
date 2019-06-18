@@ -35,29 +35,28 @@ class VerificationByRedundancy(ABC):
     @abstractmethod
     def add_actor(self, actor: Actor) -> None:
         """Caller informs class that this is the next actor he wants to assign to the next subtask.
-
         Raises:
             NotAllowedError -- Actor given by caller is not allowed to compute next task.
             MissingResultsError -- Raised when caller wants to add next actor but has already
             exhausted this method. Now the caller should provide results by `add_result` method.
         """
+        pass
 
     @abstractmethod
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
         """Add a result for verification.
-
         If a task computation has failed for some reason then the caller should use this method with the
         result equal to None.
-
         When user has added a result for each actor it reported by `add_actor` a side effect might be
         the verdict being available or caller should continue adding actors and results.
-
         Arguments:
             actor {Actor} -- Actor who has computed the result
             result {Any} --  Computation result
         Raises:
             UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
+            ValueError - raised when attempting to add a result for some actor more than once
         """
+        pass
 
     @abstractmethod
     def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
@@ -115,13 +114,6 @@ with a possible third if no decision can be reached based on the first 2."""
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
 
     def add_actor(self, actor):
-        """Caller informs class that this is the next actor he wants to assign to the next subtask.
-        Raises:
-            NotAllowedError -- Actor given by caller is not allowed to compute next task.
-            MissingResultsError -- Raised when caller wants to add next actor but has already
-            exhausted this method. Now the caller should provide results by `add_result` method.
-        """
-
         if actor in self.actors:
             raise NotAllowedError
 
@@ -133,19 +125,6 @@ with a possible third if no decision can be reached based on the first 2."""
             self.more_actors_needed = False
 
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
-        """Add a result for verification.
-        If a task computation has failed for some reason then the caller should use this method with the
-        result equal to None.
-        When user has added a result for each actor it reported by `add_actor` a side effect might be
-        the verdict being available or caller should continue adding actors and results.
-        Arguments:
-            actor {Actor} -- Actor who has computed the result
-            result {Any} --  Computation result
-        Raises:
-            UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
-            ValueError - raised when attempting to add a result for some actor more than once
-        """
-
         if actor not in self.actors:
             raise UnknownActorError
 
@@ -212,13 +191,6 @@ with a possible third if no decision can be reached based on the first 2."""
         self.more_actors_needed = True
 
     def add_actor(self, actor):
-        """Caller informs class that this is the next actor he wants to assign to the next subtask.
-        Raises:
-            NotAllowedError -- Actor given by caller is not allowed to compute next task.
-            MissingResultsError -- Raised when caller wants to add next actor but has already
-            exhausted this method. Now the caller should provide results by `add_result` method.
-        """
-
         if actor in self.actors:
             raise NotAllowedError
 
@@ -230,19 +202,6 @@ with a possible third if no decision can be reached based on the first 2."""
             self.more_actors_needed = False
 
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
-        """Add a result for verification.
-        If a task computation has failed for some reason then the caller should use this method with the
-        result equal to None.
-        When user has added a result for each actor it reported by `add_actor` a side effect might be
-        the verdict being available or caller should continue adding actors and results.
-        Arguments:
-            actor {Actor} -- Actor who has computed the result
-            result {Any} --  Computation result
-        Raises:
-            UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
-            ValueError - raised when attempting to add a result for some actor more than once
-        """
-
         if actor not in self.actors:
             raise UnknownActorError
 
