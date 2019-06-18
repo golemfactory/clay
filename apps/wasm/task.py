@@ -405,7 +405,6 @@ class WasmTask(CoreTask):
             return 0.0
 
         num_finished = len(list(filter(lambda x: x.is_finished(), self.subtasks)))
-        logger.info("progress: %f", num_finished / num_total)
         return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
 
     def get_results(self, subtask_id):
