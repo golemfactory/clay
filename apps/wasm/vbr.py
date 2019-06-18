@@ -7,6 +7,12 @@ class Actor:
     def __init__(self, uuid: str) -> None:
         self.uuid = uuid
 
+    def __eq__(self, other):
+        return self.uuid == other.uuid
+
+    def __hash__(self):
+        return id(self)
+
 
 class VerificationResult(IntEnum):
     SUCCESS = 0
@@ -111,7 +117,7 @@ class BucketVerifier(VerificationByRedundancy):
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
 
     def add_actor(self, actor):
-        if any([actor.uuid == registered_actor.uuid for registered_actor in self.actors]):
+        if actor in self.actors:
             raise NotAllowedError
 
         if not self.more_actors_needed:
