@@ -123,6 +123,24 @@ _TASK_SETTINGS = {
             ]
         }
     },
+    '3k-low-samples': {
+        'type': "Blender",
+        'name': 'test task',
+        'timeout': "0:20:00",
+        "subtask_timeout": "0:19:50",
+        "subtasks_count": 1,
+        "bid": 1.0,
+        "resources": [],
+        "options": {
+            "output_path": '',
+            "format": "PNG",
+            "resolution": [
+                3072,
+                1620,
+            ],
+            'samples': 32,
+        }
+    },
 
 }
 
