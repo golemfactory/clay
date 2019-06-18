@@ -111,7 +111,7 @@ class BucketVerifier(VerificationByRedundancy):
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
 
     def add_actor(self, actor):
-        if actor in self.actors:
+        if any([actor.uuid == registered_actor.uuid for registered_actor in self.actors]):
             raise NotAllowedError
 
         if not self.more_actors_needed:
