@@ -140,7 +140,6 @@ class BucketVerifier(VerificationByRedundancy):
             if not found:
                 self.buckets.append(Bucket(self.comparator, key=result, value=actor))
 
-        print(f'add_actor: {len(self.actors)} actors, {len(self.results)} results, {len(self.buckets)} buckets')
         self.compute_verdicts() # this will set self.more_actors_needed
 
     def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
