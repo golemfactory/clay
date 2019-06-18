@@ -217,7 +217,6 @@ class TaskServer(
 
         for job in jobs:
             try:
-                #logger.debug("TServer sync running: job=%r", job)
                 job()
             except Exception:  # pylint: disable=broad-except
                 logger.exception("TaskServer.sync_network job %r failed", job)
