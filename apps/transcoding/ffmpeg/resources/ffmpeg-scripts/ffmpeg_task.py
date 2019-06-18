@@ -3,7 +3,7 @@ import re
 import os
 import sys
 
-from ffmpeg_tools import commands, meta
+from ffmpeg_tools import commands, formats, meta
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
@@ -21,7 +21,15 @@ class InvalidCommand(Exception):
 def do_extract(input_file,
                output_file,
                selected_streams,
-               container=None):
+               container=None,
+               video_metadata=None):
+
+    if video_metadata is None:
+        video_metadata = commands.get_metadata_json(input_file)
+    if container is None:
+        format_demuxer = meta.get_format(video_metadata)
+        container = formats.get_safe_intermediate_format_for_demuxer(format_demuxer)
+
     commands.extract_streams(
         input_file,
         output_file,
@@ -32,10 +40,14 @@ def do_extract(input_file,
 def do_split(path_to_stream, parts):
     video_metadata = commands.get_metadata_json(path_to_stream)
     video_length = meta.get_duration(video_metadata)
+    format_demuxer = meta.get_format(video_metadata)
+    container = formats.get_safe_intermediate_format_for_demuxer(format_demuxer)
+
     segment_list_path = commands.split_video(
         path_to_stream,
         OUTPUT_DIR,
-        video_length / parts)
+        video_length / parts,
+        container)
 
     with open(segment_list_path) as segment_list_file:
         segment_filenames = segment_list_file.read().splitlines()
@@ -59,7 +71,9 @@ def do_extract_and_split(input_file, parts, container=None):
         WORK_DIR,
         f"{input_stem}[video-only]{input_extension}")
 
-    do_extract(input_file, intermediate_file, ['v'], container)
+    video_metadata = commands.get_metadata_json(input_file)
+
+    do_extract(input_file, intermediate_file, ['v'], container, video_metadata)
     do_split(intermediate_file, parts)
 
 
