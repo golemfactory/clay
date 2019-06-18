@@ -765,23 +765,27 @@ class IncomesListTest(TransactionSystemBase):
     def test_empty(self):
         self.assertEqual(self.ets.get_incomes_list(), [])
 
-    def test_one(self):
+    def _get_income(self):
         income = model_factory.TaskPayment(
             wallet_operation__direction=  # noqa
             model.WalletOperation.DIRECTION.incoming,
             wallet_operation__operation_type=  # noqa
             model.WalletOperation.TYPE.task_payment,
         )
-        node = p2p_factory.Node(key=income.node)
-        model.CachedNode(
-            node=node.key,
-            node_field=node,
-        ).save(force_insert=True)
         income.wallet_operation.save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
         )
+        return income
+
+    def test_one(self):
+        income = self._get_income()
+        node = p2p_factory.Node(key=income.node)
+        model.CachedNode(
+            node=node.key,
+            node_field=node,
+        ).save(force_insert=True)
         self.assertEqual(
             [
                 {
@@ -799,22 +803,18 @@ class IncomesListTest(TransactionSystemBase):
         )
 
     def test_nodeskeeper_record_not_present(self):
-        income = model_factory.Income()
-        self.assertEqual(
-            income.save(force_insert=True),
-            1,
-        )
+        income = self._get_income()
         self.assertEqual(
             [
                 {
                     'created': ANY,
                     'modified': ANY,
                     'node': None,
-                    'payer': income.sender_node,
+                    'payer': income.node,
                     'status': 'awaiting',
                     'subtask': income.subtask,
                     'transaction': None,
-                    'value': str(income.value),
+                    'value': str(income.expected_amount),
                 },
             ],
             self.ets.get_incomes_list(),
