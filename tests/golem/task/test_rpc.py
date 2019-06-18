@@ -57,7 +57,8 @@ class ProviderBase(test_client.TestClientBase):
         'concent_enabled': False,
     }
 
-    def setUp(self):
+    @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -121,7 +122,11 @@ class TestCreateTask(ProviderBase, TestClientBase):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
 
-        result = self.provider.create_task(t.to_dict())
+        def execute(f, *args, **kwargs):
+            return defer.succeed(f(*args, **kwargs))
+
+        with mock.patch('golem.core.deferred.deferToThread', execute):
+            result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
@@ -747,6 +752,7 @@ class TestExceptionPropagation(ProviderBase):
                 rpc.enqueue_new_task(self.client, self.task),
             )
 
+    @mock.patch('twisted.internet.reactor', mock.Mock())
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
     def test_create_task(self, mock_method, *_):
         t = dummytaskstate.DummyTaskDefinition()

@@ -2,7 +2,7 @@
 name: New feature
 about: 'Define a new feature / change for Golem '
 title: ''
-labels: ''
+labels: P3
 assignees: ''
 
 ---
@@ -98,6 +98,13 @@ _Add test scenarios for the new feature_
 * [ ] Golem integration tests pass
 * [ ] Concent integration tests pass
 * [ ] Concent acceptance tests pass
+
+
+**Please choose the priority label for QA. It is set to the lowest by default. To setup higher priority please change the label**
+_P0 label is set for Severity-Critical/Effort-easy
+P1 label is set  for Severity-Critical/Effort-hard
+P2 label is set for Severity-Low/ Effort-easy
+P3 label is set for Severity-Low/Effort-hard_
 
 ### QA team
 * [ ] Base scenario passes

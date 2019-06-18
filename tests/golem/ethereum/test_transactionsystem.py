@@ -5,6 +5,7 @@ import sys
 import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
+import uuid
 
 from ethereum.utils import denoms
 import faker
@@ -116,7 +117,13 @@ class TestTransactionSystem(TransactionSystemBase):
         subtask_id = 'derp'
         value = 10
         payee = '0x' + 40 * '1'
-        self.ets.add_payment_info(subtask_id, value, payee)
+        self.ets.add_payment_info(
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=payee,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
         payments = self.ets.get_payments_list()
         assert len(payments) == 1
         assert payments[0]['subtask'] == subtask_id
@@ -140,17 +147,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_current_gas_price.return_value = test_gas_price
 
         self.assertEqual(self.ets.gas_price, test_gas_price)
-
-    def test_get_gas_price(self, *_):
-        test_gas_price = 1234
-        test_price_limit = 12345
-        self.sci.get_current_gas_price.return_value = test_gas_price
-        self.sci.GAS_PRICE = test_price_limit
-
-        result = self.ets.get_gas_price()
-
-        self.assertEqual(result["current_gas_price"], str(test_gas_price))
-        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
 
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
@@ -335,6 +331,16 @@ class TestTransactionSystem(TransactionSystemBase):
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
+
+    def test_expect_income(self):
+        self.ets.expect_income(
+            sender_node='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+            subtask_id=str(uuid.uuid4()),
+            payer_address='0x' + 40 * '1',
+            value=10,
+            accepted_ts=1,
+        )
 
 
 class WithdrawTest(TransactionSystemBase):
@@ -739,25 +745,18 @@ class DepositPaymentsListTest(TransactionSystemBase):
             '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         value = 31337
         ts = 1514761200.0
-        dt = datetime.datetime.fromtimestamp(ts)
-        model.DepositPayment.create(
+        dt = datetime.datetime.fromtimestamp(
+            ts,
+            tz=datetime.timezone.utc,
+        )
+        deposit_payment = model.DepositPayment.create(
             value=value,
             tx=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
-        expected = [
-            {
-                'created': ts,
-                'modified': ts,
-                'fee': None,
-                'status': 'awaiting',
-                'transaction': tx_hash,
-                'value': str(value),
-            },
-        ]
         self.assertEqual(
-            expected,
+            [deposit_payment],
             self.ets.get_deposit_payments_list(),
         )
 
@@ -767,12 +766,18 @@ class IncomesListTest(TransactionSystemBase):
         self.assertEqual(self.ets.get_incomes_list(), [])
 
     def test_one(self):
-        income = model_factory.Income()
-        node = p2p_factory.Node(key=income.sender_node)
+        income = model_factory.TaskPayment(
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.incoming,
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+        )
+        node = p2p_factory.Node(key=income.node)
         model.CachedNode(
             node=node.key,
             node_field=node,
         ).save(force_insert=True)
+        income.wallet_operation.save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
@@ -783,11 +788,11 @@ class IncomesListTest(TransactionSystemBase):
                     'created': ANY,
                     'modified': ANY,
                     'node': node.to_dict(),
-                    'payer': income.sender_node,
+                    'payer': income.node,
                     'status': 'awaiting',
                     'subtask': income.subtask,
                     'transaction': None,
-                    'value': str(income.value),
+                    'value': str(income.expected_amount),
                 },
             ],
             self.ets.get_incomes_list(),
