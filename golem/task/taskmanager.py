@@ -1094,7 +1094,6 @@ class TaskManager(TaskEventListener):
         state = self.query_task_state(task.header.task_id)
 
         dictionary = {
-            'duration': state.elapsed_time,
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)

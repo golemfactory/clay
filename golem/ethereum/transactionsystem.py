@@ -356,6 +356,17 @@ class TransactionSystem(LoopingCallService):
             num: Optional[int] = None,
             interval: Optional[datetime.timedelta] = None,
     ) -> List[Dict[str, Any]]:
+        #
+        # @todo https://github.com/golemfactory/golem/issues/3971
+        # @todo https://github.com/golemfactory/golem/issues/3970
+
+        # because of crossbar's 1MB limitation on output, we need to limit
+        # the amount of data returned from the endpoint here
+        #
+        # the real answer is pagination... until then, we're imposing
+        # an artificial limit
+
+        num = num or 1024
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
