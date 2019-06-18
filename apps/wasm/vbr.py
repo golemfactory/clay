@@ -63,7 +63,7 @@ class VerificationByRedundancy(ABC):
         """
         Returns:
             Optional[List[Any, Actor, VerificationResult]] -- If verification is resolved a list of 3-element
-            tuples (result reference, actor, verification_result) is returned. A None is returned
+            tuples (actor, result reference, verification_result) is returned. A None is returned
             when verification has not been finished yet.
         """
         pass
