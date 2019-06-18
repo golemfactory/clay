@@ -359,6 +359,17 @@ class TransactionSystem(LoopingCallService):
         interval = None
         if last_seconds is not None:
             interval = timedelta(seconds=last_seconds)
+
+        # @todo https://github.com/golemfactory/golem/issues/3971
+        # @todo https://github.com/golemfactory/golem/issues/3970
+
+        # because of crossbar's 1MB limitation on output, we need to limit
+        # the amount of data returned from the endpoint here
+        #
+        # the real answer is pagination... until then, we're imposing
+        # an artificial limit
+
+        num = num or 1024
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @rpc_utils.expose('pay.deposit_payments')
@@ -399,6 +410,7 @@ class TransactionSystem(LoopingCallService):
         lru_node = functools.lru_cache()(nodeskeeper.get)
 
         def item(o):
+            node = lru_node(o.sender_node) if o.sender_node else None
             return {
                 "subtask": common.to_unicode(o.subtask),
                 "payer": common.to_unicode(o.sender_node),
@@ -407,11 +419,8 @@ class TransactionSystem(LoopingCallService):
                 "transaction": common.to_unicode(o.transaction),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node":
-                    lru_node(o.sender_node).to_dict()
-                    if o.sender_node else None,
+                "node": node.to_dict() if node else None,
             }
-
         return [item(income) for income in incomes]
 
     def get_available_eth(self) -> int:

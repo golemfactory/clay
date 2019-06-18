@@ -30,6 +30,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -1058,7 +1059,6 @@ class TaskManager(TaskEventListener):
         state = self.query_task_state(task.header.task_id)
 
         dictionary = {
-            'duration': state.elapsed_time,
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)
@@ -1120,10 +1120,14 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r)',
                      node_id, ctd)
 
+        # we're retrieving the node_info so that we can set `node_name` on
+        # SubtaskState, which is later used e.g. to render the subtasks list
+        # in CLI and on the front-end
+        node_info = nodeskeeper.get(node_id)
         ss = SubtaskState(
             subtask_id=ctd['subtask_id'],
             node_id=node_id,
-            node_name="",
+            node_name=node_info.node_name if node_info else '',
             price=price,
             deadline=ctd['deadline'],
             extra_data=ctd['extra_data'],
