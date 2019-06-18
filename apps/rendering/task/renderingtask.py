@@ -269,10 +269,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
         return kwargs
 
-    def build(self):
-        task = super(RenderingTaskBuilder, self).build()
-        return task
-
     @classmethod
     def build_dictionary(cls, definition):
         parent = super(RenderingTaskBuilder, cls)

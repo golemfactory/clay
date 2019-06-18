@@ -111,6 +111,8 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
                 else:
                     node_configs.datadir = datadir
 
+    config.update_task_dict()
+
 
 def main():
     args = parse_args()

@@ -13,12 +13,16 @@ from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
+from twisted.internet.defer import inlineCallbacks, Deferred
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
-from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.environments.environmentsmanager import \
+    EnvironmentsManager as OldEnvManager
+from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.task import taskkeeper
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
@@ -41,62 +45,23 @@ def async_run(request, success=None, error=None):
 class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0)
         self.assertIsInstance(tk, TaskHeaderKeeper)
 
-    def test_is_supported(self):
-        em = EnvironmentsManager()
-        em.environments = {}
-        em.support_statuses = {}
-
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0)
-
-        header = get_task_header()
-        header.environment = None
-        header.max_price = None
-        header.min_version = None
-        self.assertFalse(tk.check_support(header))
-
-        header.environment = Environment.get_id()
-        header.max_price = 0
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
-
-        e = Environment()
-        e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
-
-        header.max_price = 10.0
-        self.assertTrue(tk.check_support(header))
-
-        config_desc = mock.Mock()
-        config_desc.min_price = 13.0
-        tk.change_config(config_desc)
-        self.assertFalse(tk.check_support(header))
-
-        config_desc.min_price = 10.0
-        tk.change_config(config_desc)
-        self.assertTrue(tk.check_support(header))
-
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0,
             task_archiver=tar)
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.old_env_manager.add_environment(e)
 
         task_header = get_task_header()
         task_id = task_header.task_id
@@ -137,12 +102,14 @@ class TestTaskHeaderKeeper(LogTestCase):
             task_id2, SupportStatus(True, {}))
 
     def test_get_task(self):
-        em = EnvironmentsManager()
-        em.environments = {}
-        em.support_statuses = {}
+        old_env_manager = OldEnvManager()
+        # This is necessary because OldEnvManager is a singleton
+        old_env_manager.environments = {}
+        old_env_manager.support_statuses = {}
 
         tk = TaskHeaderKeeper(
-            environments_manager=em,
+            old_env_manager=old_env_manager,
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10)
 
@@ -152,7 +119,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIsNone(tk.get_task())
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.old_env_manager.add_environment(e)
         task_header2 = get_task_header("xyz")
         self.assertTrue(tk.add_task_header(task_header2))
         th = tk.get_task()
@@ -161,12 +128,13 @@ class TestTaskHeaderKeeper(LogTestCase):
     @freeze_time(as_arg=True)
     def test_old_tasks(frozen_time, _):  # pylint: disable=no-self-argument
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10)
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.old_env_manager.add_environment(e)
         task_header = get_task_header()
         task_header.deadline = timeout_to_deadline(10)
         assert tk.add_task_header(task_header)
@@ -196,11 +164,12 @@ class TestTaskHeaderKeeper(LogTestCase):
         e = Environment()
         e.accept_tasks = True
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10,
             task_archiver=tar)
-        tk.environments_manager.add_environment(e)
+        tk.old_env_manager.add_environment(e)
         task_header = get_task_header("good")
         assert tk.add_task_header(task_header)
         tar.add_task.assert_called_with(mock.ANY)
@@ -220,7 +189,8 @@ class TestTaskHeaderKeeper(LogTestCase):
     @freeze_time(as_arg=True)
     def test_task_limit(frozen_time, self):  # pylint: disable=no-self-argument
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10)
         limit = tk.max_tasks_per_requestor
@@ -276,7 +246,8 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_check_max_tasks_per_owner(freezer, self):
 
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10,
             max_tasks_per_requestor=10)
@@ -358,12 +329,13 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_get_unsupport_reasons(self):
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10)
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.old_env_manager.add_environment(e)
 
         # Supported task
         thd = get_task_header("good")
@@ -408,7 +380,8 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     def test_get_owner(self):
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10)
         header = get_task_header()
@@ -442,8 +415,9 @@ def get_dict_task_header(key_id_seed="kkk"):
     }
 
 
-def get_task_header(key_id_seed="kkk"):
+def get_task_header(key_id_seed="kkk", **kwargs):
     th_dict_repr = get_dict_task_header(key_id_seed=key_id_seed)
+    th_dict_repr.update(kwargs)
     return dt_tasks.TaskHeader(**th_dict_repr)
 
 
@@ -695,3 +669,341 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         res = ctk.get_resources_options(subtask_id)
         assert isinstance(res, dict)
         assert res['client_id'] == HyperdriveClient.CLIENT_ID
+
+
+class TestTaskHeaderKeeperBase(TwistedTestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.old_env_manager = mock.Mock(spec=OldEnvManager)
+        self.new_env_manager = mock.Mock(spec=NewEnvManager)
+        self.keeper = TaskHeaderKeeper(
+            old_env_manager=self.old_env_manager,
+            new_env_manager=self.new_env_manager,
+            node=dt_p2p_factory.Node()
+        )
+
+    def _patch_keeper(self, method):
+        patch = mock.patch(f'golem.task.taskkeeper.TaskHeaderKeeper.{method}')
+        self.addCleanup(patch.stop)
+        return patch.start()
+
+
+class TestCheckSupport(TestTaskHeaderKeeperBase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.check_new_env = self._patch_keeper('_check_new_environment')
+        self.check_old_env = self._patch_keeper('_check_old_environment')
+        self.check_mask = self._patch_keeper('check_mask')
+        self.check_price = self._patch_keeper('check_price')
+
+    @inlineCallbacks
+    def test_new_env_unsupported(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: 'test_env'
+        })
+        self.check_new_env.return_value = Deferred()
+        self.check_new_env.return_value.callback(status)
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(
+            environment="test_env",
+            environment_prerequisites={'key': 'value'}
+        )
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_called_once_with(
+            header.environment, header.environment_prerequisites)
+        self.check_old_env.assert_not_called()
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_new_env_ok(self):
+        # Given
+        status = SupportStatus.ok()
+        self.check_new_env.return_value = Deferred()
+        self.check_new_env.return_value.callback(status)
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(
+            environment="test_env",
+            environment_prerequisites={'key': 'value'}
+        )
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_called_once_with(
+            header.environment, header.environment_prerequisites)
+        self.check_old_env.assert_not_called()
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_old_env_unsupported(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: 'test_env'
+        })
+        self.check_old_env.return_value = status
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_old_env_ok(self):
+        # Given
+        status = SupportStatus.ok()
+        self.check_old_env.return_value = status
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_mask_mismatch(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.MASK_MISMATCH: '0xdeadbeef'
+        })
+        self.check_old_env.return_value = SupportStatus.ok()
+        self.check_mask.return_value = status
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_price_too_low(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.MAX_PRICE: 10
+        })
+        self.check_old_env.return_value = SupportStatus.ok()
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = status
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_all_wrong(self):
+        # Given
+        env_status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_MISSING: "test_env"
+        })
+        mask_status = SupportStatus.err({
+            UnsupportReason.MASK_MISMATCH: '0xdeadbeef'
+        })
+        price_status = SupportStatus.err({
+            UnsupportReason.MAX_PRICE: 10
+        })
+        self.check_old_env.return_value = env_status
+        self.check_mask.return_value = mask_status
+        self.check_price.return_value = price_status
+
+        # When
+        header = get_task_header(environment="new_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(
+            result, env_status.join(mask_status).join(price_status))
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+
+class TestCheckOldEnvironment(TestTaskHeaderKeeperBase):
+
+    def test_ok(self):
+        # Given
+        self.old_env_manager.accept_tasks.return_value = True
+        self.old_env_manager.get_support_status.return_value = \
+            SupportStatus.ok()
+
+        # When
+        env_id = "test_env"
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, SupportStatus.ok())
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_not_accepting_tasks(self):
+        # Given
+        self.old_env_manager.accept_tasks.return_value = False
+        self.old_env_manager.get_support_status.return_value = \
+            SupportStatus.ok()
+
+        # When
+        env_id = "test_env"
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env_id
+        }))
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_env_unsupported(self):
+        # Given
+        env_id = "test_env"
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        })
+        self.old_env_manager.accept_tasks.return_value = True
+        self.old_env_manager.get_support_status.return_value = status
+
+        # When
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, status)
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_env_unsupported_and_not_accepting_tasks(self):
+        # Given
+        env_id = "test_env"
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        })
+        self.old_env_manager.accept_tasks.return_value = False
+        self.old_env_manager.get_support_status.return_value = status
+
+        # When
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, status.join(SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env_id
+        })))
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+
+class TestCheckNewEnvironment(TestTaskHeaderKeeperBase):
+
+    @inlineCallbacks
+    def test_env_missing(self):
+        # Given
+        self.new_env_manager.environment.side_effect = KeyError("test")
+
+        # When
+        env_id = "test_env"
+        result = yield self.keeper._check_new_environment(env_id, {})
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_MISSING: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+
+    @inlineCallbacks
+    def test_prerequisites_parsing_error(self):
+        # Given
+        env = self.new_env_manager.environment.return_value
+        env.parse_prerequisites.side_effect = ValueError("test")
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_not_called()
+
+    @inlineCallbacks
+    def test_prerequisites_installation_error(self):
+        # Given
+        install_result = Deferred()
+        install_result.callback(False)  # False means installation failed
+        env = self.new_env_manager.environment.return_value
+        env.install_prerequisites.return_value = install_result
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_called_once_with(
+            env.parse_prerequisites())
+
+    @inlineCallbacks
+    def test_ok(self):
+        # Given
+        install_result = Deferred()
+        install_result.callback(True)  # True means installation succeeded
+        env = self.new_env_manager.environment.return_value
+        env.install_prerequisites.return_value = install_result
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.ok())
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_called_once_with(
+            env.parse_prerequisites())
