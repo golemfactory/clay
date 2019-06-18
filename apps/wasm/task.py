@@ -34,7 +34,7 @@ class VbrSubtask:
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
-            redundancy_factor, WasmTask._cmp_results, 0)
+            redundancy_factor, WasmTask._cmp_results, referee_count=0)
 
     def contains(self, s_id) -> bool:
         return s_id in self.subtasks
