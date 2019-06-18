@@ -38,6 +38,7 @@ from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.task import taskserver
 from golem.task import taskstate
 from golem.task.result.resultpackage import ZipPackager
 from golem.task.taskkeeper import CompTaskKeeper
@@ -277,7 +278,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ctd = msg_factories.tasks.ComputeTaskDefFactory(task_id=wtct.task_id)
         ctd["resources"] = self.additional_dir_content([5, [2], [4]])
         ctd["deadline"] = timeout_to_deadline(120)
-        _task_state = self._set_task_state()
+        self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
         ts.task_manager.should_wait_for_node.return_value = False
@@ -917,7 +918,11 @@ class SubtaskResultsAcceptedTest(TestCase):
     def setUp(self):
         self.task_session = TaskSession(Mock())
         self.task_session.verified = True
-        self.task_server = Mock()
+        self.task_server = Mock(spec=taskserver.TaskServer)
+        self.task_server.keys_auth = Mock()
+        self.task_server.task_manager = Mock()
+        self.task_server.client = Mock()
+        self.task_server.pending_sessions = set()
         self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
@@ -956,7 +961,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
-            sender_node=self.requestor_key_id,
+            sender_node_id=self.requestor_key_id,
             task_id=sra.task_id,
             subtask_id=sra.subtask_id,
             payer_address=sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member

@@ -758,7 +758,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         self.task_server.subtask_accepted(
-            sender_node=self.key_id,
+            sender_node_id=self.key_id,
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             payer_address=msg.task_to_compute.requestor_ethereum_address,

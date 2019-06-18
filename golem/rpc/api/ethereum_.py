@@ -60,13 +60,13 @@ class ETSProvider:
         def item(o):
             return {
                 "subtask": common.to_unicode(o.subtask),
-                "payer": common.to_unicode(o.sender_node),
-                "value": common.to_unicode(o.value),
-                "status": common.to_unicode(o.status.name),
-                "transaction": common.to_unicode(o.transaction),
+                "payer": common.to_unicode(o.node),
+                "value": common.to_unicode(o.wallet_operation.amount),
+                "status": common.to_unicode(o.wallet_operation.status.name),
+                "transaction": common.to_unicode(o.wallet_operation.tx_hash),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node": lru_node(o.sender_node),
+                "node": lru_node(o.node),
             }
 
         return [item(income) for income in incomes]
