@@ -39,10 +39,9 @@ def chain_function(deferred, fn, *args, **kwargs):
     return result
 
 
-def sync_wait(
-    deferred: defer.Deferred,
-    timeout: Optional[Union[int, float]] = 10.
-) -> Any:
+def sync_wait(deferred: defer.Deferred,
+              timeout: Optional[Union[int, float]] = 10.) -> Any:
+
     if not isinstance(deferred, defer.Deferred):
         return deferred
 
