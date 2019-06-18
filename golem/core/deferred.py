@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Any, Callable, Dict, Tuple, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from twisted.internet import defer
 from twisted.internet.task import deferLater
@@ -39,7 +39,10 @@ def chain_function(deferred, fn, *args, **kwargs):
     return result
 
 
-def sync_wait(deferred: defer.Deferred, timeout: Optional[int] = 10) -> Any:
+def sync_wait(
+    deferred: defer.Deferred,
+    timeout: Optional[Union[int, float]] = 10.
+) -> Any:
     if not isinstance(deferred, defer.Deferred):
         return deferred
 
