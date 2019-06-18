@@ -100,20 +100,10 @@ class TaskComputer(object):
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd: 'ComputeTaskDef'):
-        if self.assigned_subtask is not None:
-            logger.error("Trying to assign a task, when it's already assigned")
-            return False
-
-        ProviderTimer.start()
-
+    def task_given(self, ctd: 'ComputeTaskDef') -> None:
+        assert self.assigned_subtask is None
         self.assigned_subtask = ctd
-        self.__request_resource(
-            ctd['task_id'],
-            ctd['subtask_id'],
-            ctd['resources'],
-        )
-        return True
+        ProviderTimer.start()
 
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
@@ -365,9 +355,6 @@ class TaskComputer(object):
         requested_task = self.task_server.request_task()
         if requested_task is not None:
             self.stats.increase_stat('tasks_requested')
-
-    def __request_resource(self, task_id, subtask_id, resources):
-        self.task_server.request_resource(task_id, subtask_id, resources)
 
     def __compute_task(self, subtask_id, docker_images,
                        extra_data, subtask_deadline):

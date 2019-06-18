@@ -346,10 +346,22 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
-                   price: int) -> bool:
-        if not self.task_computer.task_given(ctd):
+    def task_given(
+            self,
+            node_id: str,
+            ctd: message.ComputeTaskDef,
+            price: int
+    ) -> bool:
+        if self.task_computer.has_assigned_task():
+            logger.error("Trying to assign a task, when it's already assigned")
             return False
+
+        self.task_computer.task_given(ctd)
+        self.request_resource(
+            ctd['task_id'],
+            ctd['subtask_id'],
+            ctd['resources'],
+        )
         self.requested_tasks.clear()
         update_requestor_assigned_sum(node_id, price)
         dispatcher.send(

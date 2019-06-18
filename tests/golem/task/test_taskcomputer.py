@@ -24,15 +24,27 @@ from golem.tools.os_info import OSInfo
 
 class TestTaskComputerBase(DatabaseFixture, LogTestCase):
 
-    def setUp(self):
-        super().setUp()
+    @mock.patch('golem.task.taskcomputer.TaskComputer.change_docker_config')
+    @mock.patch('golem.task.taskcomputer.DockerManager')
+    def setUp(self, docker_manager, _):
+        super().setUp()  # pylint: disable=arguments-differ
+
         task_server = mock.MagicMock()
         task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = ClientConfigDescriptor()
-
         self.task_server = task_server
+
         self.docker_cpu_env = mock.Mock(spec=DockerCPUEnvironment)
+        self.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
+        docker_manager.install.return_value = self.docker_manager
+
+        self.task_computer = TaskComputer(
+            self.task_server,
+            self.docker_cpu_env)
+
+        self.docker_manager.reset_mock()
+        self.docker_cpu_env.reset_mock()
 
 
 @ci_skip
@@ -146,8 +158,6 @@ class TestTaskComputer(TestTaskComputerBase):
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
-        tc.task_server.request_resource.assert_called_with(
-            "xyz", "xxyyzz", ["abcd", "efgh"])
 
         assert tc.resource_collected("xyz")
         assert tc.counting_thread is None
@@ -184,8 +194,6 @@ class TestTaskComputer(TestTaskComputerBase):
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
-        tc.task_server.request_resource.assert_called_with(
-            "xyz", "aabbcc", ["abcd", "efgh"])
         self.assertTrue(tc.resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
@@ -554,19 +562,24 @@ class TestChangeConfig(TestTaskComputerBase):
         )
 
 
-class TestChangeDockerConfig(TestTaskComputerBase):
+@mock.patch('golem.task.taskcomputer.ProviderTimer')
+class TestTaskGiven(TestTaskComputerBase):
 
-    @mock.patch('golem.task.taskcomputer.TaskComputer.change_docker_config')
-    @mock.patch('golem.task.taskcomputer.DockerManager')
-    def setUp(self, docker_manager, _):
-        super().setUp()
-        self.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
-        docker_manager.install.return_value = self.docker_manager
-        self.task_computer = TaskComputer(
-            self.task_server,
-            self.docker_cpu_env)
-        self.docker_manager.reset_mock()
-        self.docker_cpu_env.reset_mock()
+    def test_ok(self, provider_timer):
+        ctd = mock.Mock()
+        self.task_computer.task_given(ctd)
+        self.assertEqual(self.task_computer.assigned_subtask, ctd)
+        provider_timer.start.assert_called_once_with()
+
+    def test_already_assigned(self, provider_timer):
+        self.task_computer.assigned_subtask = mock.Mock()
+        ctd = mock.Mock()
+        with self.assertRaises(AssertionError):
+            self.task_computer.task_given(ctd)
+        provider_timer.start.assert_not_called()
+
+
+class TestChangeDockerConfig(TestTaskComputerBase):
 
     def test_docket_cpu_env_update(self):
         # Given
