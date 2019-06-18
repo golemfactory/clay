@@ -99,6 +99,9 @@ class TestConfigBase:
         self.nodes_root: 'Optional[Path]' = None
         self.task_package = 'test_task_1'
         self.task_settings = task_settings
+        self.update_task_dict()
+
+    def update_task_dict(self):
         self.task_dict = helpers.construct_test_task(
             task_package_name=self.task_package,
             task_settings=self.task_settings,
