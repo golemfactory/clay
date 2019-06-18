@@ -336,6 +336,22 @@ class TestTransactionSystem(TransactionSystemBase):
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
 
+    def test_eth_for_batch_payment(self):
+        self.sci.get_eth_balance.return_value = 1 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 100 * denoms.ether
+        self.ets._refresh_balances()
+        payments_count = 2
+
+        initial_gas_price = self.sci.GAS_PRICE
+        self.sci.GAS_PRICE = 10 * initial_gas_price
+        self.ets.lock_funds_for_payments(1, payments_count)
+
+        self.sci.GAS_PRICE = initial_gas_price
+        eth_for_batch = self.ets.eth_for_batch_payment(payments_count)
+
+        # Should be 0, since locked ETH > ETH required for batch payment
+        self.assertEqual(0, eth_for_batch)
+
 
 class WithdrawTest(TransactionSystemBase):
     def setUp(self):
