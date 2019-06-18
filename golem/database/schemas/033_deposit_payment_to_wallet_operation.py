@@ -24,7 +24,7 @@ def migrate_dp(database, db_row):
         " (tx_hash, direction, operation_type, status, sender_address,"
         "  recipient_address, amount, currency, gas_cost,"
         "  created_date, modified_date)"
-        " VALUES (?, 'outgoing', 'deposit_payment', ?, '', '', ?, 'GNT', ?,"
+        " VALUES (?, 'outgoing', 'deposit_transfer', ?, '', '', ?, 'GNT', ?,"
         "        ?, datetime('now'))",
         (
             db_row['tx'],

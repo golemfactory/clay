@@ -361,7 +361,11 @@ class TransactionSystem(LoopingCallService):
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0)\
             -> List[model.WalletOperation]:
-        query = model.WalletOperation.deposit_payments() \
+        query = model.WalletOperation.deposit_transfers() \
+            .where(
+                model.WalletOperation.direction
+                == model.WalletOperation.DIRECTION.outgoing,
+            ) \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
@@ -696,7 +700,7 @@ class TransactionSystem(LoopingCallService):
         dpayment = model.WalletOperation.create(
             tx_hash=tx_hash,
             direction=model.WalletOperation.DIRECTION.outgoing,
-            operation_type=model.WalletOperation.TYPE.deposit_payment,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
             status=model.WalletOperation.STATUS.sent,
             sender_address=self.get_payment_address() or '',
             recipient_address=self.deposit_contract_address,

@@ -601,7 +601,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.WalletOperation.deposit_payments().exists())
+        self.assertFalse(model.WalletOperation.deposit_transfers().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -623,7 +623,7 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.WalletOperation.deposit_payments().get()
+        dpayment = model.WalletOperation.deposit_transfers().get()
         for field, value in (
                 ('status', model.WalletOperation.STATUS.confirmed),
                 ('amount', deposit_value),
@@ -756,7 +756,7 @@ class DepositPaymentsListTest(TransactionSystemBase):
             direction=  # noqa
             model.WalletOperation.DIRECTION.outgoing,
             operation_type=  # noqa
-            model.WalletOperation.TYPE.deposit_payment,
+            model.WalletOperation.TYPE.deposit_transfer,
             status=  # noqa
             model.WalletOperation.STATUS.sent,
             amount=value,

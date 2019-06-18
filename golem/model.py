@@ -258,10 +258,10 @@ class WalletOperation(BaseModel):
         outgoing = enum.auto()
 
     class TYPE(msg_dt.StringEnum):
-        transfer = enum.auto()
-        deposit_transfer = enum.auto()
+        transfer = enum.auto()  # topup & withdraw
+        deposit_transfer = enum.auto()  # deposit topup & withdraw
         task_payment = enum.auto()
-        deposit_payment = enum.auto()
+        deposit_payment = enum.auto()  # forced payments
 
     class CURRENCY(msg_dt.StringEnum):
         ETH = enum.auto()
@@ -285,13 +285,11 @@ class WalletOperation(BaseModel):
         )
 
     @classmethod
-    def deposit_payments(cls):
+    def deposit_transfers(cls):
         return cls.select() \
             .where(
                 WalletOperation.operation_type
-                == WalletOperation.TYPE.deposit_payment,
-                WalletOperation.direction
-                == WalletOperation.DIRECTION.outgoing,
+                == WalletOperation.TYPE.deposit_transfer,
             )
 
 
