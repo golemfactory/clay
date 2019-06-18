@@ -116,11 +116,11 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
 
 class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
-        tk = TaskHeaderKeeper(
+        TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
-            min_price=10.0)
-        self.assertIsInstance(tk, TaskHeaderKeeper)
+            min_price=10.0
+        )
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
