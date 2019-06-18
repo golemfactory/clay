@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class Commands(enum.Enum):
-    EXTRACT_AND_SPLIT = ('extract-and-split', 'split-results.json')
+    EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
