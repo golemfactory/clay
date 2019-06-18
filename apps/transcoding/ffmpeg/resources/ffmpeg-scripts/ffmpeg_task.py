@@ -36,6 +36,13 @@ def do_extract(input_file,
         selected_streams,
         container)
 
+    results = {
+        "metadata": video_metadata,
+    }
+    results_file = os.path.join(OUTPUT_DIR, "extract-results.json")
+    with open(results_file, 'w') as f:
+        json.dump(results, f)
+
 
 def do_split(path_to_stream, parts):
     video_metadata = commands.get_metadata_json(path_to_stream)
@@ -62,6 +69,8 @@ def do_split(path_to_stream, parts):
     with open(results_file, 'w') as f:
         json.dump(results, f)
 
+    return segment_list_path
+
 
 def do_extract_and_split(input_file, parts, container=None):
     input_basename = os.path.basename(input_file)
@@ -74,7 +83,20 @@ def do_extract_and_split(input_file, parts, container=None):
     video_metadata = commands.get_metadata_json(input_file)
 
     do_extract(input_file, intermediate_file, ['v'], container, video_metadata)
-    do_split(intermediate_file, parts)
+    segment_list_path = do_split(intermediate_file, parts)
+
+    with open(segment_list_path) as segment_list_file:
+        segment_filenames = segment_list_file.read().splitlines()
+
+    results = {
+        "main_list": segment_list_path,
+        "segments": [{"video_segment": s} for s in segment_filenames],
+        "metadata": video_metadata,
+    }
+
+    results_file = os.path.join(OUTPUT_DIR, "extract-and-split-results.json")
+    with open(results_file, 'w') as f:
+        json.dump(results, f)
 
 
 def do_transcode(track, targs, output):
