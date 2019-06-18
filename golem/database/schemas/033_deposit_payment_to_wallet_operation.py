@@ -1,5 +1,8 @@
 # pylint: disable=no-member,unused-argument
+import datetime
 import logging
+
+import peewee as pw
 
 SCHEMA_VERSION = 33
 
@@ -52,6 +55,18 @@ def migrate(migrator, database, fake=False, **kwargs):
         except Exception:  # pylint: disable=broad-except
             logger.error("Migration problem. db_row=%s", db_row, exc_info=True)
 
+    migrator.remove_model('depositpayment')
+
 
 def rollback(migrator, database, fake=False, **kwargs):
-    pass
+    @migrator.create_model  # pylint: disable=unused-variable
+    class DepositPayment(pw.Model):
+        value = pw.CharField()
+        status = pw.IntegerField()
+        fee = pw.CharField(null=True)
+        tx = pw.CharField(max_length=66, primary_key=True)
+        created_date = pw.DateTimeField(default=datetime.datetime.now)
+        modified_date = pw.DateTimeField(default=datetime.datetime.now)
+
+        class Meta:
+            db_table = "depositpayment"

@@ -448,18 +448,10 @@ class TestSavedMigrations(TempDirFixture):
             )
             database._migrate_schema(32, 33)
 
-            # UNIONS don't work here. Do it manually
-            cursor = database.db.execute_sql(
-                "SELECT count(*) FROM depositpayment",
-            )
-            income_count = cursor.fetchone()[0]
             cursor = database.db.execute_sql(
                 "SELECT count(*) FROM walletoperation",
             )
             wo_count = cursor.fetchone()[0]
-            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
-            # Migrated incomes shouldn't be removed
-            self.assertEqual(income_count, 1)
             self.assertEqual(wo_count, 1)
             cursor.execute(
                 'SELECT tx_hash, status, amount, gas_cost FROM walletoperation',
