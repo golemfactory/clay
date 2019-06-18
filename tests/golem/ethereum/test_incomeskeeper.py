@@ -1,13 +1,17 @@
-from datetime import datetime, timedelta
 from random import Random
 import time
 import unittest.mock as mock
+import uuid
 
 from freezegun import freeze_time
+from golem_messages.factories.helpers import (
+    random_eth_address,
+    random_eth_pub_key,
+)
 
+from golem import model
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.ethereum.incomeskeeper import IncomesKeeper
-from golem.model import db, Income
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories import model as model_factories
 
@@ -34,6 +38,13 @@ class TestIncomesKeeper(TestWithDatabase):
         random.seed(__name__)
         self.incomes_keeper = IncomesKeeper()
 
+    def assertIncomeHash(self, sender_node, subtask_id, transaction_id):
+        income = self._get_income(
+            model.TaskPayment.node == sender_node,
+            model.TaskPayment.subtask == subtask_id,
+        )
+        self.assertEqual(income.wallet_operation.tx_hash, transaction_id)
+
     # pylint:disable=too-many-arguments
     def _test_expect_income(
             self,
@@ -44,18 +55,23 @@ class TestIncomesKeeper(TestWithDatabase):
             accepted_ts):
         self.incomes_keeper.expect(
             sender_node=sender_node,
+            my_address=random_eth_address(),
+            task_id=str(uuid.uuid4()),
             subtask_id=subtask_id,
             payer_address=payer_addr,
             value=value,
             accepted_ts=accepted_ts,
         )
-        with db.atomic():
-            expected_income = Income.get(
-                sender_node=sender_node,
-                subtask=subtask_id,
-            )
-        assert expected_income.value == value
-        assert expected_income.transaction is None
+        with model.db.atomic():
+            expected_income = model.TaskPayment \
+                .incomes() \
+                .where(
+                    model.TaskPayment.node == sender_node,
+                    model.TaskPayment.subtask == subtask_id,
+                ) \
+                .get()
+        self.assertEqual(expected_income.expected_amount, value)
+        self.assertIsNone(expected_income.wallet_operation.tx_hash)
 
     @mock.patch("golem.ethereum.incomeskeeper.IncomesKeeper"
                 ".received_batch_transfer")
@@ -81,7 +97,7 @@ class TestIncomesKeeper(TestWithDatabase):
         value2 = MAX_INT + 100
         accepted_ts2 = 2137
 
-        assert Income.select().count() == 0
+        self.assertEqual(model.TaskPayment.select().count(), 0)
         self._test_expect_income(
             sender_node=sender_node,
             subtask_id=subtask_id1,
@@ -96,7 +112,7 @@ class TestIncomesKeeper(TestWithDatabase):
             value=value2,
             accepted_ts=accepted_ts2,
         )
-        assert Income.select().count() == 2
+        self.assertEqual(model.TaskPayment.select().count(), 2)
 
         transaction_id = '0x' + 64 * '1'
         transaction_id1 = '0x' + 64 * 'b'
@@ -109,10 +125,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             accepted_ts1 - 1,
         )
-        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
-        assert income1.transaction is None
-        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
-        assert income2.transaction is None
+        self.assertIncomeHash(sender_node, subtask_id1, None)
+        self.assertIncomeHash(sender_node, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
@@ -120,10 +134,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             accepted_ts1,
         )
-        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
-        assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
-        assert income2.transaction is None
+        self.assertIncomeHash(sender_node, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -131,10 +143,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value2,
             accepted_ts2,
         )
-        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
-        assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
-        assert transaction_id2[2:] == income2.transaction
+        self.assertIncomeHash(sender_node, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node, subtask_id2, transaction_id2)
 
     def test_received_batch_transfer_two_senders(self):
         sender_node1 = 64 * 'a'
@@ -148,7 +158,7 @@ class TestIncomesKeeper(TestWithDatabase):
         closure_time1 = 1337
         closure_time2 = 2137
 
-        assert Income.select().count() == 0
+        self.assertEqual(model.TaskPayment.incomes().count(), 0)
         self._test_expect_income(
             sender_node=sender_node1,
             subtask_id=subtask_id1,
@@ -163,7 +173,7 @@ class TestIncomesKeeper(TestWithDatabase):
             value=value2,
             accepted_ts=closure_time2,
         )
-        assert Income.select().count() == 2
+        self.assertEqual(model.TaskPayment.incomes().count(), 2)
 
         transaction_id1 = '0x' + 64 * 'b'
         transaction_id2 = '0x' + 64 * 'd'
@@ -174,10 +184,8 @@ class TestIncomesKeeper(TestWithDatabase):
             value1,
             closure_time1,
         )
-        income1 = Income.get(sender_node=sender_node1, subtask=subtask_id1)
-        assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
-        assert income2.transaction is None
+        self.assertIncomeHash(sender_node1, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node2, subtask_id2, None)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -185,72 +193,99 @@ class TestIncomesKeeper(TestWithDatabase):
             value2,
             closure_time2,
         )
-        income1 = Income.get(sender_node=sender_node1, subtask=subtask_id1)
-        assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
-        assert transaction_id2[2:] == income2.transaction
+        self.assertIncomeHash(sender_node1, subtask_id1, transaction_id1)
+        self.assertIncomeHash(sender_node2, subtask_id2, transaction_id2)
 
     @staticmethod
     def _create_income(**kwargs):
-        income = model_factories.Income(**kwargs)
+        income = model_factories.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.incoming,
+            **kwargs,
+        )
+        income.wallet_operation.save(force_insert=True)
         income.save(force_insert=True)
         return income
 
+    @staticmethod
+    def _get_income(*args):
+        return model.TaskPayment \
+            .incomes() \
+            .where(*args) \
+            .get()
+
     def test_expect_income_accepted_ts(self):
-        sender_node = 64 * 'a'
-        payer_address = '0x' + 40 * '1'
-        subtask_id = 'sample_subtask_id1'
+        sender_node = random_eth_pub_key()
+        payer_address = random_eth_address()
+        subtask_id = str(uuid.uuid4())
+        task_id = str(uuid.uuid4())
         value = 123
         accepted_ts = 1337
-        income = self._create_income(
-            sender_node=sender_node,
-            subtask=subtask_id,
-            payer_address=payer_address,
-            value=value,
+        expect_kwargs = {
+            'my_address': random_eth_address(),
+            'sender_node': sender_node,
+            'task_id': task_id,
+            'subtask_id': subtask_id,
+            'payer_address': payer_address,
+            'value': value,
+            'accepted_ts': accepted_ts,
+        }
+        income = self.incomes_keeper.expect(**expect_kwargs)
+        self.assertEqual(income.accepted_ts, accepted_ts)
+        db_income = self._get_income(
+            model.TaskPayment.node == sender_node,
+            model.TaskPayment.subtask == subtask_id,
         )
-        assert income.accepted_ts is None
-        self.incomes_keeper.expect(
-            sender_node,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+        self.assertEqual(db_income.accepted_ts, accepted_ts)
+        expect_kwargs['accepted_ts'] += 1
+        self.incomes_keeper.expect(**expect_kwargs)
+        db_income = self._get_income(
+            model.TaskPayment.node == sender_node,
+            model.TaskPayment.subtask == subtask_id,
         )
-        income = Income.get(sender_node=sender_node, subtask=subtask_id)
-        assert income.accepted_ts == accepted_ts
-        self.incomes_keeper.expect(
-            sender_node,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts + 1,
-        )
-        income = Income.get(sender_node=sender_node, subtask=subtask_id)
-        assert income.accepted_ts == accepted_ts
+        self.assertEqual(db_income.accepted_ts, accepted_ts)
 
     @freeze_time()
     def test_update_overdue_incomes_all_paid(self):
+        tx_hash = f'0x{"0"*64}'
         income1 = self._create_income(
             accepted_ts=int(time.time()),
-            transaction='transaction')
+            wallet_operation__tx_hash=tx_hash)
         income2 = self._create_income(
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
-            transaction='transaction')
+            wallet_operation__tx_hash=tx_hash)
         self.incomes_keeper.update_overdue_incomes()
-        self.assertFalse(income1.refresh().overdue)
-        self.assertFalse(income2.refresh().overdue)
+        self.assertNotEqual(
+            income1.wallet_operation.refresh().status,
+            model.WalletOperation.STATUS.overdue,
+        )
+        self.assertNotEqual(
+            income2.wallet_operation.refresh().status,
+            model.WalletOperation.STATUS.overdue,
+        )
 
     @freeze_time()
     def test_update_overdue_incomes_accepted_deadline_passed(self):
         overdue_income = self._create_income(
-            accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE)
+            accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
+        )
         self.incomes_keeper.update_overdue_incomes()
-        self.assertTrue(overdue_income.refresh().overdue)
+        self.assertEqual(
+            overdue_income.wallet_operation.refresh().status,
+            model.WalletOperation.STATUS.overdue,
+        )
 
     @freeze_time()
     def test_update_overdue_incomes_already_marked_as_overdue(self):
         income = self._create_income(
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
-            overdue=True)
+            wallet_operation__status=model.WalletOperation.STATUS.overdue,
+        )
         self.incomes_keeper.update_overdue_incomes()
-        self.assertTrue(income.refresh().overdue)
+        self.assertEqual(
+            income.wallet_operation.refresh().status,
+            model.WalletOperation.STATUS.overdue,
+        )

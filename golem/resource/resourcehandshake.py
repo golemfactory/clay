@@ -197,7 +197,6 @@ class ResourceHandshakeSessionMixin:
                     short_node_id(key_id), error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
-        self.task_server.task_computer.session_closed()
         self.dropped()
 
     # ########################

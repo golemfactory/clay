@@ -67,21 +67,10 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             return False
 
     @contextmanager
-    @report_calls(Component.hypervisor, 'vm.recover')
-    def recover_ctx(self, name: Optional[str] = None):
-        name = name or self._vm_name
-        with self.restart_ctx(name) as _name:
-            yield _name
-        self._set_env()
-
-    @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name: Optional[str] = None):
-        name = name or self._vm_name
-        if self.vm_running(name):
-            self.stop_vm(name)
-        yield name
-        self.start_vm(name)
+        with super().restart_ctx(name) as res:
+            yield res
         self._set_env()
 
     @property

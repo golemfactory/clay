@@ -30,6 +30,8 @@ from golem.task.taskstate import SubtaskStatus
 from golem.verificator.core_verifier import CoreVerifier
 from golem.verificator.verifier import SubtaskVerificationState
 
+from .coretaskstate import RunVerification
+
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -208,9 +210,18 @@ class CoreTask(Task):
         self.interpret_task_results(subtask_id, task_result)
         result_files = self.results.get(subtask_id)
 
-        def verification_finished_(subtask_id, verdict, result):
+        def verification_finished_(subtask_id,
+                                   verdict: SubtaskVerificationState, result):
             self.verification_finished(subtask_id, verdict, result)
             verification_finished()
+
+        if self.task_definition.run_verification == RunVerification.disabled:
+            logger.debug("verification disabled; calling verification_finished."
+                         " subtask_id=%s", subtask_id)
+            result = {'extra_data': {'results': result_files}}
+            verification_finished_(
+                subtask_id, SubtaskVerificationState.VERIFIED, result)
+            return
 
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
@@ -522,10 +533,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     def build(self):
         # pylint:disable=abstract-class-instantiated
-        task = self.TASK_CLASS(**self.get_task_kwargs())
-
-        task.initialize(self.dir_manager)
-        return task
+        return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
@@ -545,8 +553,12 @@ class CoreTaskBuilder(TaskBuilder):
         definition.options = task_type.options()
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
-        definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
+        definition.concent_enabled = dictionary.get('concent_enabled', False)
+
+        if 'resources' in dictionary:
+            definition.resources = set(dictionary['resources'])
+
         return definition
 
     @classmethod
@@ -580,6 +592,10 @@ class CoreTaskBuilder(TaskBuilder):
         )
         definition.output_file = cls.get_output_path(dictionary, definition)
         definition.estimated_memory = dictionary.get('estimated_memory', 0)
+
+        if 'x-run-verification' in dictionary:
+            definition.run_verification = \
+                RunVerification(dictionary['x-run-verification'])
 
         return definition
 

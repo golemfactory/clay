@@ -18,7 +18,7 @@ from twisted.internet.endpoints import (
 from golem.rpc.common import X509_COMMON_NAME
 from golem.rpc import utils as rpc_utils
 
-logger = logging.getLogger('golem.rpc')
+logger = logging.getLogger(__name__)
 
 
 OPEN_HANDSHAKE_TIMEOUT = 30.
@@ -157,16 +157,17 @@ class Session(ApplicationSession):
 
     def onConnect(self):
         if self.crsb_user and self.crsb_user_secret:
-            logger.info(f"Client connected. Starting WAMP-Ticket "
-                        f"authentication on realm {self.config.realm} "
-                        f"as crsb_user {self.crsb_user}")
+            logger.info("Client connected, starting WAMP-Ticket challenge.")
+            logger.debug("crsb_user=%r, realm=%r, ",
+                         self.crsb_user, self.config.realm)
             self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
         else:
             logger.info("Attempting to log in as anonymous")
 
     def onChallenge(self, challenge):
         if challenge.method == "wampcra":
-            logger.info(f"WAMP-Ticket challenge received: {challenge}")
+            logger.info(f"WAMP-Ticket challenge received.")
+            logger.debug("challenge=%r", challenge)
             signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
                                          challenge.extra['challenge'].encode('utf8')) # noqa # pylint: disable=line-too-long
             return signature.decode('ascii')

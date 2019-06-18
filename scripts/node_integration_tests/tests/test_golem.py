@@ -30,7 +30,6 @@ class GolemNodeTest(NodeTestBase):
     def test_exr(self):
         self._run_test('golem.exr')
 
-    @unittest.skipIf(True, "Disabled until verification is fixed #4143")
     def test_jpeg(self):
         self._run_test('golem.jpeg')
 
@@ -48,3 +47,12 @@ class GolemNodeTest(NodeTestBase):
 
     def test_task_output_directory(self):
         self._run_test('golem.task_output')
+
+    def test_large_result(self):
+        self._run_test(
+            'golem.separate_hyperg',
+            **{'task-package': 'cubes', 'task-settings': '4k'},
+        )
+
+    def test_restart_failed_subtasks(self):
+        self._run_test('golem.restart_failed_subtasks')

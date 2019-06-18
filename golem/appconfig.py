@@ -8,7 +8,6 @@ from ethereum.utils import denoms
 from golem.config.active import ENABLE_TALKBACK
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
-from golem.core.variables import KEY_DIFFICULTY
 
 from golem.ranking.helper.trust_const import \
     REQUESTING_TRUST, \
@@ -151,7 +150,6 @@ class AppConfig:
             seed_port=START_PORT,
             seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
-            key_difficulty=KEY_DIFFICULTY,
             # flags
             in_shutdown=0,
             accept_tasks=ACCEPT_TASKS,
@@ -201,6 +199,8 @@ class AppConfig:
             hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
             hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,
             hyperdrive_rpc_address=DEFAULT_HYPERDRIVE_RPC_ADDRESS,
+            # testing
+            overwrite_results=None,
         )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)

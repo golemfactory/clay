@@ -1,7 +1,6 @@
 import logging
 
-logger = logging.getLogger('talkback')
-logger.setLevel(logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def enable_sentry_logger(value):
@@ -12,7 +11,7 @@ def enable_sentry_logger(value):
                           or h.name == 'sentry-metrics']
         for handler in sentry_handler:
             msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback %r service', msg_part, handler.name)
+            logger.debug('%s talkback %r service', msg_part, handler.name)
             handler.set_enabled(talkback_value)
     except Exception as e:  # pylint: disable=broad-except
         msg_part = 'enable' if talkback_value else 'disable'

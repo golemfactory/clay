@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from ethereum.utils import denoms
 
 from golem.core.common import to_unicode, short_node_id
@@ -60,7 +61,7 @@ def filter_by_status(results, status):
 @command(arguments=(sort_incomes, status_filter, full_table),
          help="Display incomes", root=True)
 def incomes(sort, status, full=False):
-    deferred = incomes.client.get_incomes_list()
+    deferred = incomes.client._call('pay.incomes')
     result = sync_wait(deferred) or []
 
     values = []
@@ -83,7 +84,7 @@ def incomes(sort, status, full=False):
          help="Display payments", root=True)
 def payments(sort, status, full=False):
 
-    deferred = payments.client.get_payments_list()
+    deferred = payments.client._call('pay.payments')
     result = sync_wait(deferred) or []
 
     values = []
@@ -119,7 +120,7 @@ def payments(sort, status, full=False):
 )
 def deposit_payments(sort, status):
 
-    deferred = payments.client.get_deposit_payments_list()
+    deferred = payments.client._call('pay.deposit_payments')
     result = sync_wait(deferred) or []
 
     values = []

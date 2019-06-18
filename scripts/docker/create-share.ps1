@@ -56,13 +56,30 @@ if (Get-SmbShare | Where-Object -Property Name -EQ $SmbShareName) {
 
 "Sharing directory..."
 
-$Command = "New-SmbShare -Name $SmbShareName -Path '$SharedDirPath' -FullAccess '$env:COMPUTERNAME\$UserName'"
-$Output = (New-TemporaryFile).FullName
+# Creating temporary files for capturing stout & stderr
+$StdoutPath = (New-TemporaryFile).FullName
+$StderrPath = (New-TemporaryFile).FullName
+$TmpScriptPath = "$env:TEMP/tmp-script.ps1"
+
+# Generate code for a script that will capture the original script's stdout & stderr
+# This is done because powershell cannot redirect output of a process started with 'RunAs' verb
+@"
+`$ErrorActionPreference = "Stop"
+[Console]::OutputEncoding = [Text.UTF8Encoding]::UTF8
+
+try {
+    New-SmbShare -Name $SmbShareName -Path "$SharedDirPath" -FullAccess "$env:COMPUTERNAME\$UserName" >"$StdoutPath" 2>"$StderrPath"
+} catch {
+    `$_ | Out-File -FilePath "$StderrPath" -Encoding "UTF8"
+    throw
+}
+"@ | Out-File -Encoding "UTF8" -FilePath $TmpScriptPath
 
 $Process = Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-Command $Command 2>&1 | Out-File -FilePath '$Output' -Encoding UTF8" `
-    -Wait -PassThru -Verb RunAs -WindowStyle hidden
+    -ArgumentList "-NoProfile -NoLogo -ExecutionPolicy RemoteSigned `"$TmpScriptPath`"" `
+    -Wait -PassThru -Verb RunAs -WindowStyle Hidden
 
-Get-Content -Encoding "UTF8" $Output | Write-Output
+Get-Content -Encoding "UTF8" -Path $StdoutPath | Write-Output
+Get-Content -Encoding "UTF8" -Path $StderrPath | Write-Error
 
 exit $Process.ExitCode

@@ -228,7 +228,7 @@ class TaskServerMessageHandler():
     def on_force_subtask_results(self, msg, **_):
         """I'm a Requestor
 
-        Concent sends his own ForceSubtaskResults with AckReportComputedTask
+        Concent sends its own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
         sra = history.get(
@@ -305,6 +305,7 @@ class TaskServerMessageHandler():
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
+                task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address=ttc.requestor_ethereum_address,
                 value=ttc.price,

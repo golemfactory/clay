@@ -45,9 +45,14 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         self.ISession = ISession
         self.LockType = LockType
 
+    @classmethod
+    def is_available(cls) -> bool:
+        # FIXME: Implement an actual check
+        return True
+
     @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name: Optional[str] = None):
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
         name = name or self._vm_name
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:

@@ -119,7 +119,13 @@ class MessageHistoryService(IService):
         if not db_result:
             raise MessageNotFound()
         db_msg = db_result[0]
-        return db_msg.as_message()
+        try:
+            return db_msg.as_message()
+        except AttributeError:
+            # in case an incompatible message from an earlier version of
+            # golem-messages is retrieved, just treat it the same
+            # as if the message was not found
+            raise MessageNotFound()
 
     def add(self, msg_dict: dict) -> None:
         """

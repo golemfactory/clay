@@ -1,18 +1,19 @@
+# pylint: disable=protected-access
 import os
 import shutil
 import time
 from random import random, randint
 from unittest.mock import patch
 
+from eth_utils import decode_hex, encode_hex
 from golem_messages import message
 from golem_messages.cryptography import ECCx, privtopub
-from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
+from golem_messages.factories import tasks as tasks_factory
 
 from golem import testutils
 from golem.core.keysauth import (
     KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.tools.testwithreactor import TestWithReactor
-from eth_utils import decode_hex, encode_hex
 
 
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
@@ -20,7 +21,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
     def _create_keysauth(
             self,
-            difficulty=0,
             key_name=None,
             password='') -> KeysAuth:
         if key_name is None:
@@ -29,7 +29,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             datadir=self.path,
             private_key_name=key_name,
             password=password,
-            difficulty=difficulty,
         )
 
     def test_sha(self):
@@ -59,44 +58,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         ka = self._create_keysauth()
         self.assertEqual(ka.public_key, privtopub(ka._private_key))
 
-    def test_difficulty(self):
-        difficulty = 5
-        ek = self._create_keysauth(difficulty)
-        assert difficulty <= ek.difficulty
-        assert ek.difficulty == KeysAuth.get_difficulty(ek.key_id)
-
-    def test_get_difficulty(self):
-        difficulty = 8
-        ek = self._create_keysauth(difficulty)
-        # first 8 bits of digest must be 0
-        assert sha2(ek.public_key).to_bytes(256, 'big')[0] == 0
-        assert KeysAuth.get_difficulty(ek.key_id) >= difficulty
-        assert KeysAuth.is_pubkey_difficult(ek.public_key, difficulty)
-        assert KeysAuth.is_pubkey_difficult(ek.key_id, difficulty)
-
-    def test_exception_difficulty(self):
-        # given
-        lower_difficulty = 0
-        req_difficulty = 7
-        priv_key = str(random())[2:]
-        assert lower_difficulty < req_difficulty  # just in case
-
-        keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
-        # create key that has difficulty lower than req_difficulty
-        while True:
-            ka = self._create_keysauth(lower_difficulty, priv_key)
-            if not ka.is_difficult(req_difficulty):
-                break
-            shutil.rmtree(keys_dir)  # to enable keys regeneration
-
-        assert KeysAuth.get_difficulty(ka.key_id) >= lower_difficulty
-        assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
-
-        # then
-        with self.assertRaisesRegex(Exception,
-                                    "Loaded key is not difficult enough"):
-            self._create_keysauth(difficulty=req_difficulty, key_name=priv_key)
-
     def test_save_keys(self):
         # given
         keys_dir = KeysAuth._get_or_create_keys_dir(self.path)
@@ -117,9 +78,8 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         private_key = ek._private_key
         public_key = ek.public_key
         del ek
-        assert logger.info.call_count == 2
+        assert logger.info.call_count == 1
         assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
-        assert logger.info.call_args_list[1][0][0] == 'Keys generated in %.2fs'
         logger.reset_mock()  # just in case
 
         # when
@@ -180,14 +140,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         ek.key_id = encode_hex(ek.public_key)[2:]
         ek.ecc = ECCx(ek._private_key)
 
-        msg = message.tasks.WantToComputeTask(
-            node_name='node_name',
-            perf_index=2200,
-            price=5 * 10 ** 18,
-            max_resource_size=250000000,
-            max_memory_size=300000000,
-            task_header=TaskHeaderFactory(),
-        )
+        msg = tasks_factory.WantToComputeTaskFactory()
 
         dumped_l = msg.serialize(
             sign_as=ek._private_key, encrypt_func=lambda x: x)
@@ -208,27 +161,3 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
         with self.assertRaises(WrongPassword):
             self._create_keysauth(key_name=key_name, password='wrong_pw')
-
-
-class TestKeysAuthWithReactor(TestWithReactor):
-
-    @patch('golem.core.keysauth.logger')
-    def test_generate_keys_stop_when_reactor_stopped(self, logger):
-        # given
-        from twisted.internet import threads
-        reactor = self._get_reactor()
-
-        # when
-        threads.deferToThread(KeysAuth._generate_keys, difficulty=200)
-
-        time.sleep(0.01)
-        reactor.stop()
-        time.sleep(0.01)
-
-        # then
-        assert not reactor.running
-        assert logger.info.call_count == 1
-        assert logger.info.call_args_list[0][0][0] == 'Generating new key pair'
-        assert logger.warning.call_count == 1
-        assert logger.warning.call_args_list[0][0][0] == \
-            'reactor stopped, aborting key generation ..'

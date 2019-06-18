@@ -1,10 +1,11 @@
+from contextlib import contextmanager
 from enum import Enum
 import logging
 import os
 from pathlib import Path
 import subprocess
 import time
-from typing import Any, ClassVar, Dict, Iterable, List, Optional
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
@@ -42,7 +43,7 @@ MESSAGES = {
     events.DISK: 'Not enough disk space. Creating VM with min memory',
 }
 
-EVENTS = {
+EVENTS: Dict[events, Dict[str, Union[str, Optional[Dict]]]] = {
     events.SMB: {
         'component': Component.hypervisor,
         'method': 'setup',
@@ -307,6 +308,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # Ensure that working directory is shared via SMB
         smbshare.create_share(self.DOCKER_USER, work_dir)
 
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+
+        # VM running -> restart
+        if self.vm_running():
+            with self.restart_ctx(name) as res:
+                yield res
+
+        # VM suspended -> remove saved state
+        elif self._vm_utils.get_vm_state(name) == HYPERV_VM_STATE_SUSPENDED:
+            self._vm_utils.set_vm_state(name, HYPERV_VM_STATE_DISABLED)
+            yield name
+
+        # VM disabled -> do nothing
+        else:
+            yield name
+
     @classmethod
     def _get_vswitch_name(cls) -> str:
         return run_powershell(
@@ -322,10 +342,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not hostname:
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
-
-    @staticmethod
-    def uses_volumes() -> bool:
-        return True
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         hostname = self._get_hostname_for_sharing()
@@ -384,13 +400,15 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @staticmethod
     def _log_and_publish_event(name, **kwargs) -> None:
-        message = MESSAGES[name].format(**kwargs)
         event = EVENTS[name].copy()
-        event['data'] = message
+        data = next(iter(kwargs.values()))
+        message = MESSAGES[name].format(**kwargs)
 
         if event['stage'] == Stage.warning:
+            event['data'] = {"status": name, "value": data}
             logger.warning(message)
         else:
+            event['data'] = message
             logger.error(message)
 
         publish_event(event)

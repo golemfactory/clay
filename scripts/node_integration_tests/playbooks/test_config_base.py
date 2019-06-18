@@ -20,16 +20,19 @@ if TYPE_CHECKING:
 
 class NodeConfig:
     def __init__(self) -> None:
+        self.additional_args: Dict[str, Any] = {}
         self.concent = 'staging'
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
         self.log_level: Optional[str] = None
         self.mainnet = False
         self.opts: Dict[str, Any] = {}
-        self.password = 'dupa.8'
+        self.password = 'goleM.8'
         self.protocol_id = 1337
         self.rpc_port = 61000
         self.script = 'node'
+        self.hyperdrive_port: Optional[int] = None
+        self.hyperdrive_rpc_port: Optional[int] = None
 
     def make_args(self) -> Dict[str, Any]:
         args = {
@@ -45,6 +48,12 @@ class NodeConfig:
             args['--log-level'] = self.log_level
         if self.mainnet:
             args['--mainnet'] = None
+        if self.hyperdrive_port:
+            args['--hyperdrive-port'] = self.hyperdrive_port
+        if self.hyperdrive_rpc_port:
+            args['--hyperdrive-rpc-port'] = self.hyperdrive_rpc_port
+        args.update(self.additional_args)
+
         return args
 
     def __repr__(self) -> str:

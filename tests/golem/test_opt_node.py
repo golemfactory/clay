@@ -147,7 +147,8 @@ class TestNode(TestWithDatabase):
                                      ],
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.TransactionSystem')
     def test_geth_address_should_be_passed_to_transaction_system(
@@ -222,7 +223,8 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
@@ -257,20 +259,23 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
-            from golem.config.active import IS_MAINNET
-            assert IS_MAINNET is False
+            from golem.config.active import EthereumConfig
+            assert EthereumConfig().IS_MAINNET is False
 
         # then
         assert return_value.exit_code == 0
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
-                                     app_config=ANY,
-                                     config_desc=ANY,
-                                     geth_address=None,
-                                     peers=[],
-                                     concent_variant=concent_disabled,
-                                     use_monitor=None,
-                                     use_talkback=None,
-                                     password=None)
+        mock_node.assert_called_with(
+            datadir=path.join(self.path, 'rinkeby'),
+            app_config=ANY,
+            config_desc=ANY,
+            geth_address=None,
+            peers=[],
+            concent_variant=variables.CONCENT_CHOICES['test'],
+            use_monitor=None,
+            use_talkback=None,
+            password=None,
+            crossbar_serializer=None,
+        )
 
     @patch('golem.node.Node')
     def test_net_mainnet_should_be_passed_to_node(self, mock_node, *_):
@@ -284,8 +289,8 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
-            from golem.config.active import IS_MAINNET
-            assert IS_MAINNET is True
+            from golem.config.active import EthereumConfig
+            assert EthereumConfig().IS_MAINNET is True
 
         # then
         assert return_value.exit_code == 0
@@ -297,7 +302,8 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.Node')
     def test_config_change(self, *_):
@@ -305,10 +311,12 @@ class TestNode(TestWithDatabase):
         def compare_config(m):
             from golem.config import active as a
 
-            assert a.IS_MAINNET == m.IS_MAINNET
-            assert a.ACTIVE_NET == m.ACTIVE_NET
+            def objattrs(obj):
+                return [(a, getattr(obj, a))
+                        for a in dir(obj) if not a.startswith('__')]
+
             assert a.DATA_DIR == m.DATA_DIR
-            assert a.EthereumConfig == m.EthereumConfig
+            assert objattrs(a.EthereumConfig()) == objattrs(m.EthereumConfig())
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES

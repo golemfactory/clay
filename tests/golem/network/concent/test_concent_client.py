@@ -16,6 +16,9 @@ import golem_messages.cryptography
 import golem_messages.exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
+from golem_messages.factories.helpers import (
+    random_eth_address,
+)
 
 from golem import testutils
 from golem.core import keysauth
@@ -504,8 +507,10 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
             )
             self.incomes_keeper.expect(
                 sender_node='requestor_id',
+                task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address='0x1234',
+                my_address=random_eth_address(),
                 value=msg.task_to_compute.price,  # pylint: disable=no-member
                 accepted_ts=msg.payment_ts,
             )

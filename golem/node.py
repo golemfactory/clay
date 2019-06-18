@@ -10,6 +10,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    TYPE_CHECKING,
     TypeVar,
 )
 
@@ -24,7 +25,7 @@ import golem
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.config.active import IS_MAINNET, EthereumConfig
+from golem.config.active import EthereumConfig
 from golem.core.deferred import chain_function
 from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
@@ -47,6 +48,11 @@ from golem.rpc.session import (
 from golem import terms
 from golem.tools.uploadcontroller import UploadController
 from golem.tools.remotefs import RemoteFS
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import
+    from golem.rpc.router import SerializerType
+
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -87,7 +93,8 @@ class Node(HardwarePresetsMixin):
                  use_talkback: bool = False,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None
+                 password: Optional[str] = None,
+                 crossbar_serializer: 'Optional[SerializerType]' = None,
                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
@@ -114,11 +121,12 @@ class Node(HardwarePresetsMixin):
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        ethereum_config = EthereumConfig()
         if geth_address:
-            EthereumConfig.NODE_LIST = [geth_address]
+            ethereum_config.NODE_LIST = [geth_address]
         self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
-            EthereumConfig,
+            ethereum_config,
         )
         self._ets.backwards_compatibility_tx_storage(Path(datadir))
         self.concent_variant = concent_variant
@@ -158,6 +166,8 @@ class Node(HardwarePresetsMixin):
         if password is not None:
             if not self.set_password(password):
                 raise Exception("Password incorrect")
+
+        self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
 
@@ -220,7 +230,6 @@ class Node(HardwarePresetsMixin):
                 datadir=self._datadir,
                 private_key_name=PRIVATE_KEY,
                 password=password,
-                difficulty=self._config_desc.key_difficulty,
             )
             # When Golem is ready to use different Ethereum account for
             # payments and identity this should be called only when
@@ -273,13 +282,14 @@ class Node(HardwarePresetsMixin):
     @rpc_utils.expose('golem.mainnet')
     @classmethod
     def is_mainnet(cls) -> bool:
-        return IS_MAINNET
+        return EthereumConfig().IS_MAINNET
 
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(
             host=self._config_desc.rpc_address,
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
+            crossbar_serializer=self._crossbar_serializer,
         )
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 

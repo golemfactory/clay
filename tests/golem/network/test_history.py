@@ -22,7 +22,7 @@ def message_count():
     return NetworkMessage.select().count()
 
 
-class TestMessageHistoryService(DatabaseFixture):
+class MessageHistoryServiceTestBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
@@ -32,6 +32,8 @@ class TestMessageHistoryService(DatabaseFixture):
         super().tearDown()
         history.MessageHistoryService.instance = None
 
+
+class TestMessageHistoryService(MessageHistoryServiceTestBase):
     @staticmethod
     def _build_dict(task=None, subtask=None):
         return dict(
@@ -254,6 +256,44 @@ class TestMessageHistoryService(DatabaseFixture):
         self.service.remove_sync.reset_mock()
         self.service._loop()
         assert not self.service.remove_sync.called
+
+
+class TestMessageHistoryGet(MessageHistoryServiceTestBase):
+    def setUp(self):
+        super().setUp()
+        self.msg = msg_factories.tasks.TaskToComputeFactory()
+        self.msg._fake_sign()
+        self.node_id = fake.binary(length=64)
+        self.local_role = fake.random_element(Actor)
+        self.remote_role = fake.random_element(Actor)
+
+        history.add(
+            msg=self.msg,
+            node_id=self.node_id,
+            local_role=self.local_role,
+            remote_role=self.remote_role,
+            sync=True
+        )
+
+    def test_get(self):
+        msg_retrieved = history.get(
+            'TaskToCompute',
+            subtask_id=self.msg.subtask_id,
+            node_id=self.node_id,
+        )
+
+        self.assertEqual(self.msg, msg_retrieved)
+
+    def test_get_pickle_fail(self):
+        with mock.patch('golem.model.pickle.loads',
+                        mock.Mock(side_effect=AttributeError)):
+            msg_retrieved = history.get(
+                'TaskToCompute',
+                subtask_id=self.msg.subtask_id,
+                node_id=self.node_id,
+            )
+
+        self.assertIsNone(msg_retrieved)
 
 
 @mock.patch("golem.network.history.MessageHistoryService.add")

@@ -1,43 +1,10 @@
 from typing import List
 import _pytest
 
-REUSE_KEYS = True
+from .key_reuse import NodeKeyReuseConfig
+
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
-
-
-class NodeKeyReuseException(Exception):
-    pass
-
-
-class NodeKeyReuse:
-    instance = None
-    _first_test = True
-
-    @classmethod
-    def get(cls):
-        if not cls.instance:
-            cls.instance = cls()
-        return cls.instance
-
-    @property
-    def keys_ready(self):
-        return not self._first_test
-
-    def mark_keys_ready(self):
-        if not self.enabled:
-            raise NodeKeyReuseException("Key reuse disabled.")
-        self._first_test = False
-
-    @staticmethod
-    def disable():
-        global REUSE_KEYS
-        REUSE_KEYS = False
-
-    @property
-    def enabled(self):
-        return REUSE_KEYS
-
 
 class DumpOutput:
     @staticmethod
@@ -67,6 +34,10 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
              "All node_integration_tests run with new, fresh keys."
     )
     parser.addoption(
+        "--granary-hostname", action="store",
+        help="The ssh hostname for the granary server to use."
+    )
+    parser.addoption(
         "--dump-output-on-fail", action="store_true",
         help="Dump the nodes' outputs on any test failure."
     )
@@ -79,7 +50,10 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 def pytest_collection_modifyitems(config: _pytest.config.Config,
                                   items: List[_pytest.main.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
-        NodeKeyReuse.disable()
+        NodeKeyReuseConfig.disable()
+    hostname = config.getoption("--granary-hostname")
+    if hostname:
+        NodeKeyReuseConfig.set_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):

@@ -49,7 +49,12 @@ class TestAccount(unittest.TestCase):
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
-        client.get_payment_address.return_value = 'f0f0f0ababab'
+
+        def call(uri, *_args, **_kwargs):
+            if uri == 'pay.ident':
+                return 'f0f0f0ababab'
+            return None
+        client._call.side_effect = call
         client.get_balance.return_value = {
             'gnt': 3 * denoms.ether,
             'av_gnt': 2 * denoms.ether,
@@ -394,9 +399,15 @@ class TestPayments(unittest.TestCase):
         } for i in range(1, 6)]
 
         client = Mock()
-        client.get_incomes_list.return_value = incomes_list
-        client.get_payments_list.return_value = payments_list
-        client.get_deposit_payments_list.return_value = deposit_payments_list
+        def call(uri, *_args, **_kwargs):
+            if uri == 'pay.incomes':
+                return incomes_list
+            if uri == 'pay.payments':
+                return payments_list
+            if uri == 'pay.deposit_payments':
+                return deposit_payments_list
+            return None
+        client._call.side_effect = call
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)

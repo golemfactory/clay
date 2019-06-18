@@ -10,19 +10,18 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 from pydispatch import dispatcher
 import freezegun
 
-from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem_messages.utils import encode_hex as encode_key_id
+from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
 from requests import HTTPError
 
 from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str
+from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -32,6 +31,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason
+from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskserver import (
@@ -40,7 +40,7 @@ from golem.task.taskserver import (
     WaitingTaskFailure,
     WaitingTaskResult,
 )
-from golem.task.taskstate import TaskState, TaskOp
+from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -106,7 +106,9 @@ def _assert_log_msg(logger_mock, msg):
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient):
-    def setUp(self):
+
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
@@ -139,6 +141,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         '.register_handler',
     )
     @patch('golem.task.taskarchiver.TaskArchiver')
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    # pylint: disable=too-many-locals,too-many-statements
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
@@ -171,6 +175,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         handshake.remote_result = True
         self.ts.get_environment_by_id = Mock(return_value=None)
         self.ts.get_key_id = Mock(return_value='0'*128)
+        self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
@@ -251,69 +256,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 {UnsupportReason.CONCENT_REQUIRED: True},
             ),
         )
-
-    @patch("golem.task.taskserver.Trust")
-    def test_send_results(self, trust, *_):
-        self.ts.config_desc.min_price = 11
-        keys_auth = KeysAuth(self.path, 'priv_key', '')
-        task_header = get_example_task_header(keys_auth.public_key)
-        n = task_header.task_owner
-
-        ts = self.ts
-        ts._is_address_accessible = Mock(return_value=True)
-        ts.verify_header_sig = lambda x: True
-        ts.client.get_suggested_addr.return_value = "10.10.10.10"
-        ts.client.get_requesting_trust.return_value = ts.max_trust
-        task_id = task_header.task_id
-        # pylint: disable=no-member
-        task_owner_key = task_header.task_owner.key
-        self.ts.start_handshake(
-            key_id=task_owner_key,
-            task_id=task_id,
-        )
-        handshake = self.ts.resource_handshakes[task_owner_key]
-        handshake.local_result = True
-        handshake.remote_result = True
-        self.ts.get_environment_by_id = Mock(return_value=None)
-        self.ts.get_key_id = Mock(return_value='0'*128)
-
-        fd, result_file = tempfile.mkstemp()
-        os.close(fd)
-        results = {"data": [result_file]}
-        task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header.task_id
-        assert ts.add_task_header(task_header)
-        assert ts.request_task()
-        subtask_id = idgenerator.generate_new_id_from_id(task_id)
-        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
-        ts.send_results(subtask_id, task_id, results)
-        ts.send_results(subtask_id2, task_id, results)
-        wtr = ts.results_to_send[subtask_id]
-        self.assertIsInstance(wtr, WaitingTaskResult)
-        self.assertEqual(wtr.subtask_id, subtask_id)
-        self.assertEqual(wtr.result, [result_file])
-        self.assertEqual(wtr.last_sending_trial, 0)
-        self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner, n)
-        self.assertEqual(wtr.already_sending, False)
-
-        self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
-
-        ctd = ComputeTaskDef()
-        ctd['task_id'] = task_id
-        ctd['subtask_id'] = subtask_id
-        ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
-        ttc.compute_task_def = ctd
-        ts.task_manager.comp_task_keeper.receive_subtask(ttc)
-
-        prev_call_count = trust.PAYMENT.increase.call_count
-        ts.increase_trust_payment("xyz", 1)
-        self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
-        prev_call_count = trust.PAYMENT.decrease.call_count
-        ts.decrease_trust_payment("xyz")
-        self.assertGreater(trust.PAYMENT.decrease.call_count, prev_call_count)
-
-        os.remove(result_file)
 
     def test_change_config(self, *_):
         ts = self.ts
@@ -416,15 +358,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
         task_id = "tid"
 
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, 'tid', 27.18, 1, 1)
+                node_id, "127.0.0.1", 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
@@ -453,8 +394,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -467,7 +407,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id,
+                node_id, "127.0.0.1", task_id,
                 provider_perf,
                 DEFAULT_MAX_MEMORY_SIZE_KB, 1)
 
@@ -498,8 +438,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task(estimated_memory=estimated_memory)
         task_id = task.header.task_id
@@ -512,7 +451,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -541,8 +480,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -561,7 +499,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ts.config_desc.computing_trust + 0.2
         # when/then
         assert ts.should_accept_provider(
-            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
@@ -569,7 +507,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ts.config_desc.computing_trust
         # when/then
         assert ts.should_accept_provider(
-            node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
         # given
@@ -578,7 +516,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -606,8 +544,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -624,7 +561,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+                node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
                 DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
 
             # then
@@ -648,7 +585,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -663,7 +599,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(node_id, "127.0.0.1",
-                                                 node_name, task_id, 99, 3, 4)
+                                                 task_id, 99, 3, 4)
 
             # then
             assert not accepted
@@ -691,8 +627,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
-        node_name = "deadbeef"
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = common.short_node_id(node_id)
 
         task = get_mock_task()
         task_id = task.header.task_id
@@ -712,7 +647,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             assert not ts.should_accept_provider(
                 node_id=node_id,
                 address="127.0.0.1",
-                node_name=node_name,
                 task_id=task_id,
                 provider_perf=DEFAULT_PROVIDER_PERF,
                 max_resource_size=DEFAULT_MAX_RESOURCE_SIZE_KB,
@@ -736,7 +670,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.acl_ip.disallow("127.0.0.1")
         # then
         assert not ts.should_accept_provider(
-            "XYZ", "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
+            "XYZ", "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
         listener.assert_called_once_with(
             sender=ANY,
@@ -910,6 +844,8 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
+        ccd.max_memory_size = 1024 * 1024  # 1 GiB
+        ccd.num_cores = 1
         return ccd
 
 
@@ -936,23 +872,23 @@ class TestTaskServer2(TaskServerBase):
 
         ts.task_manager.keys_auth._private_key = b'a' * 32
         ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states[task_id].status = \
-            ts.task_manager.activeStatus[0]
+        ts.task_manager.tasks_states[task_id].status = TaskStatus.computing
         subtask = ts.task_manager.get_next_subtask(
-            "DEF",
             "DEF",
             task_id,
             1000, 10,
-            5, 10,
-            "10.10.10.10")
+            5, 10)
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            "xxyyzz",
-            expected_value,
-            "eth_address")
+            subtask_id="xxyyzz",
+            value=expected_value,
+            eth_address="eth_address",
+            node_id=task_mock.header.task_owner.key,  # pylint: disable=no-member
+            task_id=task_mock.header.task_id,
+        )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
@@ -965,6 +901,7 @@ class TestTaskServer2(TaskServerBase):
 
 # pylint: disable=too-many-ancestors
 class TestSubtaskWaiting(TaskServerBase):
+
     def test_requested_tasks(self, *_):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -976,7 +913,8 @@ class TestSubtaskWaiting(TaskServerBase):
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
-    def setUp(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
@@ -1124,3 +1062,59 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                                        op=TaskOp.TIMEOUT)
         assert remove_task.call_count == 2
         assert remove_task_funds_lock.call_count == 2
+
+
+class TestSendResults(TaskServerTestBase):
+
+    def test_wrong_result_format(self):
+        with self.assertRaises(AttributeError):
+            self.ts.send_results('subtask_id', 'task_id', {'foo': 'bar'})
+
+    def test_subtask_already_sent(self):
+        self.ts.results_to_send['subtask_id'] = Mock(spec=WaitingTaskResult)
+        with self.assertRaises(RuntimeError):
+            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+
+    @patch('golem.task.taskserver.Trust')
+    def test_ok(self, trust):
+        result_secret = Mock()
+        result_hash = Mock()
+        result_path = Mock()
+        package_sha1 = Mock()
+        package_size = Mock()
+        package_path = Mock()
+
+        result_manager = Mock(spec=EncryptedResultPackageManager)
+        result_manager.gen_secret.return_value = result_secret
+        result_manager.create.return_value = (
+            result_hash,
+            result_path,
+            package_sha1,
+            package_size,
+            package_path
+        )
+
+        header = MagicMock()
+        self.ts.task_keeper.task_headers['task_id'] = header
+
+        with patch.object(
+            self.ts.task_manager, 'task_result_manager', result_manager
+        ):
+            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+
+        result = self.ts.results_to_send.get('subtask_id')
+        self.assertIsInstance(result, WaitingTaskResult)
+        self.assertEqual(result.task_id, 'task_id')
+        self.assertEqual(result.subtask_id, 'subtask_id')
+        self.assertEqual(result.result, 'data')
+        self.assertEqual(result.last_sending_trial, 0)
+        self.assertEqual(result.delay_time, 0)
+        self.assertEqual(result.owner, header.task_owner)
+        self.assertEqual(result.result_secret, result_secret)
+        self.assertEqual(result.result_hash, result_hash)
+        self.assertEqual(result.result_path, result_path)
+        self.assertEqual(result.package_sha1, package_sha1)
+        self.assertEqual(result.result_size, package_size)
+        self.assertEqual(result.package_path, package_path)
+
+        trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)

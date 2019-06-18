@@ -101,6 +101,7 @@ class DockerTaskTestCase(
             dir_manager=DirManager(self.tempdir)
         )
         task = task_builder.build()
+        task.initialize(task_builder.dir_manager)
         task.__class__._update_task_preview = lambda self_: ()
         task.max_pending_client_results = 5
         return task
@@ -114,7 +115,7 @@ class DockerTaskTestCase(
         ) -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
         node_id = '0xdeadbeef'
-        extra_data = task.query_extra_data(1.0, 0, node_id)
+        extra_data = task.query_extra_data(1.0, node_id, 'node_name')
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
 
@@ -136,6 +137,8 @@ class DockerTaskTestCase(
         self.node._run()
 
         ccd = ClientConfigDescriptor()
+        ccd.max_memory_size = 1024 * 1024  # 1 GiB
+        ccd.num_cores = 1
 
         with patch("golem.network.concent.handlers_library.HandlersLibrary"
                    ".register_handler"):
@@ -147,7 +150,7 @@ class DockerTaskTestCase(
                     use_docker_manager=False
                 )
 
-        patch.object(task_server, 'create_and_set_result_package').start()
+        patch.object(task_server, '_create_and_set_result_package').start()
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 

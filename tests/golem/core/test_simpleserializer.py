@@ -1,3 +1,4 @@
+from enum import Enum
 import random
 import unittest
 
@@ -44,6 +45,11 @@ class MockSerializationSubject(object):
         return self.property_1 == other.property_1 and \
             self.property_2 == other.property_2 and \
             self.property_4 == other.property_4
+
+
+class MockEnum(Enum):
+    Name1 = "value1"
+    Name2 = 2
 
 
 def assert_properties(first, second):
@@ -98,6 +104,15 @@ class TestDictSerializer(unittest.TestCase):
             DictSerializer.load(dict_repr, as_class=MockSerializationSubject),
             MockSerializationSubject
         ))
+
+    def test_enum_serialization(self):
+        dict_repr = DictSerializer.dump(MockEnum.Name1)
+
+        assert len(dict_repr) == 1
+        assert "py/enum" in dict_repr
+        assert dict_repr["py/enum"].endswith(".MockEnum.Name1")
+
+        assert DictSerializer.load(dict_repr) == MockEnum.Name1
 
     def test_serialization_result(self):
         obj = MockSerializationSubject()

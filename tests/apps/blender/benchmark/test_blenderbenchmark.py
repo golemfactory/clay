@@ -65,6 +65,7 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
             task_definition,
             dir_manager
         ).build()
+        task.initialize(dir_manager)
 
         success = mock.MagicMock()
         error = mock.MagicMock()

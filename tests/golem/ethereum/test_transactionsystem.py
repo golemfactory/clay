@@ -1,13 +1,17 @@
 # pylint: disable=protected-access
+import datetime
 from pathlib import Path
 import sys
 import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
+import uuid
 
 from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
+from golem_messages.factories import p2p as p2p_factory
+import golem_sci
 import golem_sci.contracts
 import golem_sci.structs
 
@@ -17,6 +21,8 @@ from golem.ethereum import exceptions
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 
+from tests.factories import model as model_factory
+
 fake = faker.Faker()
 PASSWORD = 'derp'
 
@@ -24,17 +30,15 @@ PASSWORD = 'derp'
 class TransactionSystemBase(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
-        self.sci = Mock()
+        self.sci = Mock(spec=golem_sci.SmartContractsInterface)
         self.sci.GAS_PRICE = 10 ** 9
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
-        self.sci.get_block_number.return_value = 1223
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE - 1
         self.sci.get_eth_balance.return_value = 0
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
-        self.sci.REQUIRED_CONFS = 6
         self.sci.get_deposit_locked_until.return_value = 0
         self.ets = self._make_ets()
 
@@ -78,6 +82,7 @@ class TestTransactionSystem(TransactionSystemBase):
             e = self._make_ets()
 
             mock_is_service_running.return_value = True
+            self.sci.get_latest_confirmed_block_number.return_value = 1223
             e._payment_processor = Mock()  # noqa pylint: disable=no-member
             e.stop()
             e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
@@ -112,7 +117,13 @@ class TestTransactionSystem(TransactionSystemBase):
         subtask_id = 'derp'
         value = 10
         payee = '0x' + 40 * '1'
-        self.ets.add_payment_info(subtask_id, value, payee)
+        self.ets.add_payment_info(
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=payee,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
         payments = self.ets.get_payments_list()
         assert len(payments) == 1
         assert payments[0]['subtask'] == subtask_id
@@ -131,12 +142,11 @@ class TestTransactionSystem(TransactionSystemBase):
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == self.sci.GAS_WITHDRAW
 
-    def test_get_gas_price(self):
+    def test_gas_price(self):
         test_gas_price = 1234
         self.sci.get_current_gas_price.return_value = test_gas_price
-        ets = self._make_ets()
 
-        self.assertEqual(ets.gas_price, test_gas_price)
+        self.assertEqual(self.ets.gas_price, test_gas_price)
 
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
@@ -274,7 +284,7 @@ class TestTransactionSystem(TransactionSystemBase):
         )
 
         block_number = 123
-        self.sci.get_block_number.return_value = block_number
+        self.sci.get_latest_confirmed_block_number.return_value = block_number
         with patch('golem.ethereum.transactionsystem.LoopingCallService.stop'):
             self.ets.stop()
 
@@ -283,7 +293,7 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.sci.get_eth_address(),
-            block_number - self.sci.REQUIRED_CONFS - 1,
+            block_number + 1,
             ANY,
         )
 
@@ -321,6 +331,16 @@ class TestTransactionSystem(TransactionSystemBase):
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
+
+    def test_expect_income(self):
+        self.ets.expect_income(
+            sender_node='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+            subtask_id=str(uuid.uuid4()),
+            payer_address='0x' + 40 * '1',
+            value=10,
+            accepted_ts=1,
+        )
 
 
 class WithdrawTest(TransactionSystemBase):
@@ -713,3 +733,67 @@ class ConcentUnlockTest(TransactionSystemBase):
             int(time.time()) + delay
         self.sci.on_transaction_confirmed.call_args[0][1](Mock())
         call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
+
+
+class DepositPaymentsListTest(TransactionSystemBase):
+
+    def test_empty(self):
+        self.assertEqual(self.ets.get_deposit_payments_list(), [])
+
+    def test_one(self):
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        value = 31337
+        ts = 1514761200.0
+        dt = datetime.datetime.fromtimestamp(
+            ts,
+            tz=datetime.timezone.utc,
+        )
+        deposit_payment = model.DepositPayment.create(
+            value=value,
+            tx=tx_hash,
+            created_date=dt,
+            modified_date=dt,
+        )
+        self.assertEqual(
+            [deposit_payment],
+            self.ets.get_deposit_payments_list(),
+        )
+
+
+class IncomesListTest(TransactionSystemBase):
+    def test_empty(self):
+        self.assertEqual(self.ets.get_incomes_list(), [])
+
+    def test_one(self):
+        income = model_factory.TaskPayment(
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.incoming,
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+        )
+        node = p2p_factory.Node(key=income.node)
+        model.CachedNode(
+            node=node.key,
+            node_field=node,
+        ).save(force_insert=True)
+        income.wallet_operation.save(force_insert=True)
+        self.assertEqual(
+            income.save(force_insert=True),
+            1,
+        )
+        self.assertEqual(
+            [
+                {
+                    'created': ANY,
+                    'modified': ANY,
+                    'node': node.to_dict(),
+                    'payer': income.node,
+                    'status': 'awaiting',
+                    'subtask': income.subtask,
+                    'transaction': None,
+                    'value': str(income.expected_amount),
+                },
+            ],
+            self.ets.get_incomes_list(),
+        )

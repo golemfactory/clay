@@ -9,7 +9,6 @@ hiddenimports = collect_submodules('golem') + \
 datas = [
     ('loggingconfig.py', '.'),
     ('apps/*.ini', 'apps/'),
-    ('apps/entrypoint.sh', 'apps/'),
     ('apps/core/resources/images/*',
      'apps/core/resources/images/'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',

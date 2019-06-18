@@ -137,7 +137,7 @@ class Tasks:
              help="Restart given subtasks from a task")
     def restart_subtasks(self, id, subtask_ids, force: bool):
         deferred = Tasks.client._call(  # pylint: disable=protected-access
-            'comp.task.restart_subtasks',
+            'comp.task.subtasks.restart',
             id,
             subtask_ids,
             force=force,

@@ -1,6 +1,6 @@
 import json
 
-from golem.config.active import ACTIVE_NET
+from golem.config.active import EthereumConfig
 from .modelbase import BasicModel
 
 
@@ -24,7 +24,7 @@ class NodeMetadataModel(BasicModel):
             'obj': client.config_desc.__dict__,
         })
         self.version = ver
-        self.net = ACTIVE_NET
+        self.net = EthereumConfig().ACTIVE_NET
 
 
 class NodeInfoModel(BasicModel):

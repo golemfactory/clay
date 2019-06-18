@@ -52,12 +52,16 @@ def command(self, key, machine_name=None, args=None, shell=False):
 
 class MockHypervisor(DockerMachineHypervisor):
     # pylint: disable=method-hidden
-
     def __init__(self, manager=None, **_kwargs):
         super().__init__(manager or mock.Mock())
         self.recover_ctx = self.ctx
         self.restart_ctx = self.ctx
+        self.reconfig_ctx = self.ctx
         self.constrain = mock.Mock()
+
+    @classmethod
+    def is_available(cls) -> bool:
+        return True
 
     @contextmanager
     def ctx(self, name=None, *_):
@@ -71,12 +75,6 @@ class MockHypervisor(DockerMachineHypervisor):
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         pass
-
-    def restart_ctx(self, name: Optional[str] = None):
-        self.ctx(name)
-
-    def recover_ctx(self, name: Optional[str] = None):
-        self.ctx(name)
 
 
 class MockDockerManager(DockerManager):
@@ -171,23 +169,6 @@ class TestDockerMachineHypervisor(LogTestCase):
             with self.assertLogs(level='WARN'):
                 assert not hypervisor.remove('test')
 
-    def test_not_implemented(self):
-        hypervisor = Hypervisor(MockDockerManager())
-
-        with self.assertRaises(NotImplementedError):
-            hypervisor.constrain(VM_NAME, param_1=1)
-
-        with self.assertRaises(NotImplementedError):
-            hypervisor.constraints(VM_NAME)
-
-        with self.assertRaises(NotImplementedError):
-            with hypervisor.restart_ctx(VM_NAME):
-                pass
-
-        with self.assertRaises(NotImplementedError):
-            with hypervisor.recover_ctx(VM_NAME):
-                pass
-
 
 class TestVirtualBoxHypervisor(LogTestCase):
 
@@ -214,7 +195,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         session = self.hypervisor._save_state(mock.Mock())
         assert session.machine.save_state.called
 
-    def test_restart_ctx(self):
+    def test_reconfig_ctx(self):
         machine = mock.Mock()
         session = mock.Mock()
 
@@ -229,7 +210,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         self.hypervisor.vm_running = mock.Mock(return_value=True)
 
         vms = [None]
-        with self.hypervisor.restart_ctx(VM_NAME) as vm:
+        with self.hypervisor.reconfig_ctx(VM_NAME) as vm:
             assert self.hypervisor.stop_vm.called
             assert session.console.power_down.called
             assert machine.create_session.called
@@ -242,7 +223,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         session.machine.state = None
 
         vms = [None]
-        with self.hypervisor.restart_ctx(VM_NAME) as vm:
+        with self.hypervisor.reconfig_ctx(VM_NAME) as vm:
             vms[0] = vm
             raise Exception
         assert vms[0].save_settings.called
