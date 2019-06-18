@@ -1,1 +1,8 @@
+/golem/docker/ @Wiezzel
 /golem/ethereum/ @Krigpl
+/golem/envs/ @Wiezzel
+
+/scripts/docker/ @Wiezzel
+/scripts/virtualization/ @Wiezzel
+
+/Installer/Installer_Win/ @Wiezzel @maaktweluit
