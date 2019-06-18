@@ -96,9 +96,6 @@ class Bucket:
 
 
 class BucketVerifier(VerificationByRedundancy):
-    """Simple verification by redundancy: subtask is executed by 2 providers,
-with a possible third if no decision can be reached based on the first 2."""
-
     def __init__(self,
                  redundancy_factor: int,
                  comparator: Callable[[Any, Any], bool],
