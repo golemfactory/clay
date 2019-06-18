@@ -411,7 +411,8 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, **_kwargs):
+def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
+        -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
