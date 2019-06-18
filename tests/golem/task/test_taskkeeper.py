@@ -38,6 +38,82 @@ def async_run(request, success=None, error=None):
             success(result)
 
 
+class TestTaskHeaderKeeperIsSupported(LogTestCase):
+    def setUp(self) -> None:
+        em = EnvironmentsManager()
+        em.environments = {}
+        em.support_statuses = {}
+        self.tk = TaskHeaderKeeper(
+            environments_manager=EnvironmentsManager(),
+            node=dt_p2p_factory.Node(),
+            min_price=10.0)
+
+    def _add_environment(self):
+        e = Environment()
+        e.accept_tasks = True
+        self.tk.environments_manager.add_environment(e)
+
+    def test_supported(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        self.assertTrue(self.tk.check_support(header))
+
+    def test_header_uninitialized(self):
+        header = get_task_header()
+        header.environment = None
+        header.max_price = None
+        header.min_version = None
+        self.assertFalse(self.tk.check_support(header))
+
+    def test_environment_missing(self):
+        header = get_task_header()
+        header.environment = Environment.get_id()
+        supported = self.tk.check_support(header)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
+
+    def test_max_price(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 0
+        supported = self.tk.check_support(header)
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
+
+    def test_config_min_price(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+
+        config_desc = mock.Mock()
+        config_desc.min_price = 13.0
+        self.tk.change_config(config_desc)
+        with self.assertLogs('golem.task.taskkeeper', level='INFO'):
+            self.assertFalse(self.tk.check_support(header))
+
+    def test_price_equal(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        config_desc = mock.Mock()
+        config_desc.min_price = 10.0
+        self.tk.change_config(config_desc)
+        self.assertTrue(self.tk.check_support(header))
+
+    def test_mask_mismatch(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        header.mask.matches = mock.Mock(return_value=False)
+
+        with self.assertNoLogs('golem.task.taskkeeper', level='INFO'):
+            supported = self.tk.check_support(header)
+
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.MASK_MISMATCH, supported.desc)
+
+
 class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
         tk = TaskHeaderKeeper(
@@ -45,47 +121,6 @@ class TestTaskHeaderKeeper(LogTestCase):
             node=dt_p2p_factory.Node(),
             min_price=10.0)
         self.assertIsInstance(tk, TaskHeaderKeeper)
-
-    def test_is_supported(self):
-        em = EnvironmentsManager()
-        em.environments = {}
-        em.support_statuses = {}
-
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0)
-
-        header = get_task_header()
-        header.environment = None
-        header.max_price = None
-        header.min_version = None
-        self.assertFalse(tk.check_support(header))
-
-        header.environment = Environment.get_id()
-        header.max_price = 0
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
-
-        e = Environment()
-        e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
-        supported = tk.check_support(header)
-        self.assertFalse(supported)
-        self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
-
-        header.max_price = 10.0
-        self.assertTrue(tk.check_support(header))
-
-        config_desc = mock.Mock()
-        config_desc.min_price = 13.0
-        tk.change_config(config_desc)
-        self.assertFalse(tk.check_support(header))
-
-        config_desc.min_price = 10.0
-        tk.change_config(config_desc)
-        self.assertTrue(tk.check_support(header))
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
