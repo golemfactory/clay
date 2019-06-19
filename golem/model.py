@@ -432,6 +432,7 @@ class KnownHosts(BaseModel):
     last_connected = DateTimeField(default=datetime.datetime.now)
     is_seed = BooleanField(default=False)
     metadata = JsonField(default='{}')
+    performance = JsonField(default='{}')  # [env id -> performance] mapping
 
     class Meta:
         database = db
@@ -517,6 +518,12 @@ class Performance(BaseModel):
         except Performance.DoesNotExist:
             perf = Performance(environment_id=env_id, value=performance)
             perf.save()
+
+
+class EnvironmentPerformance(BaseModel):
+    """ Essentially the same as `Performance` but for new environments """
+    environment = CharField(primary_key=True)
+    performance = FloatField(null=False)
 
 
 class DockerWhitelist(BaseModel):
