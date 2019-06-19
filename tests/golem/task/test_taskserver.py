@@ -1171,3 +1171,48 @@ class TestTaskGiven(TaskServerTestBase):
         update_requestor_assigned_sum.assert_not_called()
         dispatcher_mock.send.assert_not_called()
         logger_mock.error.assert_called()
+
+
+@patch('golem.task.taskserver.logger')
+@patch('golem.task.taskcomputer.TaskComputer.start_computation')
+class TestResourceCollected(TaskServerTestBase):
+
+    def test_wrong_task_id(self, start_computation, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        result = self.ts.resource_collected('wrong_id')
+        self.assertFalse(result)
+        logger_mock.error.assert_called_once()
+        start_computation.assert_not_called()
+
+    def test_ok(self, start_computation, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        result = self.ts.resource_collected('test')
+        self.assertTrue(result)
+        logger_mock.error.assert_not_called()
+        start_computation.assert_called_once_with()
+
+
+@patch('golem.task.taskserver.logger')
+@patch('golem.task.taskserver.TaskServer.send_task_failed')
+@patch('golem.task.taskcomputer.TaskComputer.task_interrupted')
+class TestResourceFailure(TaskServerTestBase):
+
+    def test_wrong_task_id(self, interrupted, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        self.ts.resource_failure('wrong_id', 'reason')
+        logger_mock.error.assert_called_once()
+        interrupted.assert_not_called()
+        send_task_failed.assert_not_called()
+
+    def test_ok(self, interrupted, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(
+            task_id='test_task', subtask_id='test_subtask'
+        )
+        self.ts.resource_failure('test_task', 'test_reason')
+        logger_mock.error.assert_not_called()
+        interrupted.assert_called_once_with()
+        send_task_failed.assert_called_once_with(
+            'test_subtask',
+            'test_task',
+            'Error downloading resources: test_reason'
+        )

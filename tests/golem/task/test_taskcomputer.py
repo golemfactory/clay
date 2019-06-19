@@ -98,28 +98,6 @@ class TestTaskComputer(TestTaskComputerBase):
 
         tc2.run()
 
-    def test_resource_failure(self):
-        task_server = self.task_server
-
-        tc = TaskComputer(
-            task_server,
-            self.docker_cpu_env,
-            use_docker_manager=False)
-
-        task_id = 'xyz'
-        subtask_id = 'xxyyzz'
-
-        tc.resource_failure(task_id, 'reason')
-        assert not task_server.send_task_failed.called
-
-        tc.assigned_subtask = ComputeTaskDef(
-            task_id=task_id,
-            subtask_id=subtask_id,
-        )
-
-        tc.resource_failure(task_id, 'reason')
-        assert task_server.send_task_failed.called
-
     def test_computation(self):  # pylint: disable=too-many-statements
         # FIXME Refactor too single tests and remove disable too many
         ctd = ComputeTaskDef()
@@ -159,7 +137,7 @@ class TestTaskComputer(TestTaskComputerBase):
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
 
-        assert tc.resource_collected("xyz")
+        tc.start_computation()
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
@@ -167,7 +145,7 @@ class TestTaskComputer(TestTaskComputerBase):
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.resource_collected("xyz")
+        tc.start_computation()
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
@@ -194,7 +172,7 @@ class TestTaskComputer(TestTaskComputerBase):
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.__wait_for_tasks(tc)
 
         self.assertIsNone(tc.counting_thread)
@@ -208,7 +186,7 @@ class TestTaskComputer(TestTaskComputerBase):
         ctd['extra_data']['src_code'] = "print('Hello world')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with(
@@ -222,7 +200,7 @@ class TestTaskComputer(TestTaskComputerBase):
         ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.assertIsNotNone(tc.counting_thread)
         self.assertGreater(tc.counting_thread.time_to_compute, 10)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
@@ -231,7 +209,7 @@ class TestTaskComputer(TestTaskComputerBase):
         ctd['subtask_id'] = "xxyyzz2"
         ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         tt = tc.counting_thread
@@ -283,7 +261,7 @@ class TestTaskComputer(TestTaskComputerBase):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
         task_computer = mock.Mock()
-        compute_task = TaskComputer._TaskComputer__compute_task
+        compute_task = TaskComputer.start_computation
 
         dir_manager = task_computer.dir_manager
         dir_manager.get_task_resource_dir.return_value = self.tempdir + '_res'
@@ -295,25 +273,21 @@ class TestTaskComputer(TestTaskComputerBase):
         task_computer.assigned_subtask = ComputeTaskDef(
             task_id=task_id,
             subtask_id=subtask_id,
+            docker_images=[],
+            extra_data=mock.Mock(),
+            deadline=time.time() + 3600
         )
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
 
-        args = (task_computer, subtask_id)
-        kwargs = dict(
-            docker_images=[],
-            extra_data=mock.Mock(),
-            subtask_deadline=time.time() + 3600
-        )
-
-        compute_task(*args, **kwargs)
+        compute_task(task_computer)
         assert not start.called
 
         header = mock.Mock(deadline=time.time() + 3600)
         task_computer.task_server.task_keeper.task_headers[task_id] = header
 
-        compute_task(*args, **kwargs)
+        compute_task(task_computer)
         assert start.called
 
     @staticmethod
@@ -695,3 +669,16 @@ class TestChangeDockerConfig(TestTaskComputerBase):
             .assert_called_once()
         lock_config.assert_called_once_with(False)
         self.assertTrue(self.task_computer.runnable)
+
+
+class TestTaskInterrupted(TestTaskComputerBase):
+
+    def test_no_task_assigned(self):
+        with self.assertRaises(AssertionError):
+            self.task_computer.task_interrupted()
+
+    @mock.patch('golem.task.taskcomputer.TaskComputer._task_finished')
+    def test_ok(self, task_finished):
+        self.task_computer.assigned_subtask = mock.Mock()
+        self.task_computer.task_interrupted()
+        task_finished.assert_called_once_with()

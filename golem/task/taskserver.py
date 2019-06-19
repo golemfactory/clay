@@ -372,6 +372,26 @@ class TaskServer(
         )
         return True
 
+    def resource_collected(self, task_id: str) -> bool:
+        if self.task_computer.assigned_task_id != task_id:
+            logger.error("Resource collected for a wrong task, %s", task_id)
+            return False
+
+        self.task_computer.start_computation()
+        return True
+
+    def resource_failure(self, task_id: str, reason: str) -> None:
+        if self.task_computer.assigned_task_id != task_id:
+            logger.error("Resource failure for a wrong task, %s", task_id)
+            return
+
+        self.task_computer.task_interrupted()
+        self.send_task_failed(
+            self.task_computer.assigned_subtask['subtask_id'],
+            task_id,
+            f'Error downloading resources: {reason}',
+        )
+
     def send_results(self, subtask_id, task_id, result):
 
         if 'data' not in result:
