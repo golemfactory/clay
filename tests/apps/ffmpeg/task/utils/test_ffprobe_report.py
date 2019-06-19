@@ -789,7 +789,7 @@ class TestFfprobeReportBuild(TempDirFixture):
     def test_build_should_return_list_with_one_ffprobe_format_report_instance(
             self):
         reports = FfprobeFormatReport.build(
-            tmp_dir='/tmp/',
+            tmp_dir=self.tempdir,
             video_paths=[os.path.join(self.resources_dir, 'test_video.mp4')]
         )
         self.assertIsInstance(reports, List)
