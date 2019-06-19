@@ -12,4 +12,7 @@ class TestConfig(TestConfigBase):
         self.nodes[NodeId.provider].opts = {
             'overwrite_results': str(THIS_DIR / "fake_result.png"),
         }
+
+    def update_task_dict(self):
+        super().update_task_dict()
         self.task_dict['x-run-verification'] = 'disabled'
