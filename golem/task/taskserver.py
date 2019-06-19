@@ -47,7 +47,7 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
-from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -847,6 +847,11 @@ class TaskServer(
     @rpc_utils.expose('net.peer.acl_ip')
     def acl_ip_status(self):
         return self.acl_ip.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl.new')
+    def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
+        new_acl = setup_acl(Path(self.client.datadir), AclRule[default_rule], exceptions)
+        self.acl = new_acl
 
     def _sync_forwarded_session_requests(self):
         now = time.time()

@@ -35,8 +35,7 @@ class AclStatus:
         return {
             'default_rule': self.default_rule.value,
             'rules': [
-                (ident, rule.value,
-                 (deadline[-1] if deadline is not None else None))
+                (ident, rule.value, deadline)
                 for (ident, rule, deadline) in self.rules
             ]
         }
@@ -106,8 +105,8 @@ class _DenyAcl(Acl):
 
         assert isinstance(deadlines, SortedList)
         now = time.time()
-        while deadlines and deadlines[0] <= now:
-            del deadlines[0]
+        while deadlines and deadlines[-1] <= now:
+            del deadlines[-1]
         if not deadlines:
             del self._deny_deadlines[node_id]
 
@@ -155,12 +154,24 @@ class _DenyAcl(Acl):
 
     def status(self) -> AclStatus:
         _always = self._always
+        now = time.time()
 
         def decode_deadline(deadline):
-            if deadline == _always:
+            if deadline is _always:
                 return None
+            return deadline[0]
 
-            return deadline
+        rules_to_remove = []
+        for (identity, deadlines) in self._deny_deadlines.items():
+            print('deadline=', deadlines, 'decoded=', decode_deadline(deadlines))
+            if isinstance(deadlines, SortedList):
+                while deadlines and deadlines[0] < now:
+                    del deadlines[0]
+                if not deadlines:
+                    rules_to_remove.append(identity)
+
+        for identity in rules_to_remove:
+            del self._deny_deadlines[identity]
 
         rules = [
             (identity,
@@ -265,8 +276,8 @@ def setup_acl(datadir: Path,
               default_rule: AclRule,
               exceptions: List[str]) -> Acl:
     deny_list_path = datadir / DENY_LIST_NAME
-    if default_rule == AclRule.allow:
-        return _AllowAcl.new_from_rules(exceptions, deny_list_path)
     if default_rule == AclRule.deny:
+        return _AllowAcl.new_from_rules(exceptions, deny_list_path)
+    if default_rule == AclRule.allow:
         return _DenyAcl.new_from_rules(exceptions, deny_list_path)
     raise ValueError('invalid acl default %r' % default_rule)
