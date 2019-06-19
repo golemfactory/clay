@@ -400,13 +400,12 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, **_kwargs) \
+def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
     logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
-        temp_dict = rpc_utils.int_to_string(e.to_dict())
-        return None, temp_dict
+        return None, rpc_utils.int_to_string(e.to_dict())
 
     return None, str(e)
 
@@ -414,6 +413,10 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
 def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
         -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
+
+    if hasattr(e, 'to_dict'):
+        return None, rpc_utils.int_to_string(e.to_dict())
+
     return None, str(e)
 
 
@@ -423,7 +426,7 @@ def _restart_subtasks_error(e, _self, task_id, subtask_ids, *args, **_kwargs) \
                  task_id, subtask_ids, e)
 
     if hasattr(e, 'to_dict'):
-        return e.to_dict()
+        return rpc_utils.int_to_string(e.to_dict())
 
     return str(e)
 
