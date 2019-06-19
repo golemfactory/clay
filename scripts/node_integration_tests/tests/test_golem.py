@@ -59,3 +59,12 @@ class GolemNodeTest(NodeTestBase):
 
     def test_main_scene_file(self):
         self._run_test('golem.nested_column')
+
+    def test_multinode_regular_run(self):
+        self._run_test('golem.multinode_regular_run')
+
+    def test_disabled_verification(self):
+        self._run_test('golem.disabled_verification')
+
+    def test_lenient_verification(self):
+        self._run_test('golem.lenient_verification')
