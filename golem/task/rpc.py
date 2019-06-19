@@ -17,7 +17,6 @@ from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
-from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
@@ -27,7 +26,7 @@ from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
 
 if typing.TYPE_CHECKING:
-    from golem.client import Client # noqa pylint: disable=unused-import
+    from golem.client import Client  # noqa pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -158,7 +157,23 @@ def _run_test_task(client, task_dict):
     client.task_tester.run()
 
 
-@golem_async.deferred_run()
+def _create_task(client: 'Client', task_dict: dict) -> taskbase.Task:
+    validate_client(client)
+    prepare_and_validate_task_dict(client, task_dict)
+    return client.task_manager.create_task(task_dict)
+
+
+def _prepare_task(
+        client: 'Client',
+        task: taskbase.Task,
+        force: bool
+) -> defer.Deferred:
+    seq = DeferredSeq()
+    seq.push(client.task_manager.initialize_task, task)
+    seq.push(enqueue_new_task, client, task, force=force)
+    return seq.execute()
+
+
 def _restart_subtasks(
         client: 'Client',
         old_task_id: str,
@@ -166,31 +181,29 @@ def _restart_subtasks(
         subtask_ids_to_copy: typing.Iterable[str],
         ignore_gas_price: bool = False,
 ):
-    @defer.inlineCallbacks
-    @safe_run(
-        lambda e: logger.error(
-            'Restarting subtasks_failed. task_dict=%r, subtask_ids_to_copy=%r',
-            task_dict,
-            subtask_ids_to_copy,
-        ),
-    )
-    def deferred():
-        new_task = yield enqueue_new_task(
-            client=client,
-            task=client.task_manager.create_task(task_dict),
-            force=ignore_gas_price,
-        )
+    new_task = _create_task(client, task_dict)
 
+    def _copy_results(*_):
         client.task_manager.copy_results(
             old_task_id=old_task_id,
             new_task_id=new_task.header.task_id,
             subtask_ids_to_copy=subtask_ids_to_copy
         )
-    # Function passed to twisted.threads.deferToThread can't itself
-    # return a deferred, that's why I defined inner deferred function
-    # and use sync_wait below.
-    validate_client(client)
-    golem_deferred.sync_wait(deferred())
+
+    # Fire and forget the next steps after create_task
+    deferred = _prepare_task(
+        client=client,
+        task=new_task,
+        force=ignore_gas_price)
+    deferred.addErrback(
+        lambda failure: _restart_subtasks_error(
+            e=failure.value,
+            _self=None,
+            task_id=new_task.header.task_id,
+            subtask_ids=subtask_ids_to_copy
+        )
+    )
+    deferred.addCallback(_copy_results)
 
 
 @defer.inlineCallbacks
@@ -459,10 +472,8 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-        validate_client(self.client)
-        prepare_and_validate_task_dict(self.client, task_dict)
 
-        task: taskbase.Task = self.task_manager.create_task(task_dict)
+        task = _create_task(self.client, task_dict)
         self._validate_enough_funds_to_pay_for_task(
             task.subtask_price,
             task.get_total_tasks(),
@@ -471,11 +482,9 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        DeferredSeq().push(
-            self.task_manager.initialize_task, task
-        ).push(
-            enqueue_new_task, self.client, task, force=force
-        ).execute().addErrback(
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=task, force=force)
+        deferred.addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,
                 _self=self,
@@ -576,19 +585,15 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
-        prepare_and_validate_task_dict(self.client, task_dict)
-        new_task = self.task_manager.create_task(task_dict)
-        validate_client(self.client)
-        enqueue_new_task(  # pylint: disable=no-member
-            client=self.client,
-            task=new_task,
-            force=force,
-        ).addErrback(
+        new_task = _create_task(self.client, task_dict)
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=new_task, force=force)
+        deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
                 _self=self,
                 task_id=task_id,
-            ),
+            )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
@@ -734,7 +739,6 @@ class ClientProvider:
             task_dict['concent_enabled'] = False
 
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
-        prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -757,8 +761,8 @@ class ClientProvider:
             }
             return False
 
-        self.client.task_test_result = None
         prepare_and_validate_task_dict(self.client, task_dict)
+        self.client.task_test_result = None
         _run_test_task(
             client=self.client,
             task_dict=task_dict,
