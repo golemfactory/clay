@@ -79,7 +79,8 @@ class _DenyAcl(Acl):
     @classmethod
     def new_from_rules(cls, deny_coll: List[str], list_path: Path) -> Acl:
         deny_set = set(deny_coll)
-        _write_set_to_file(list_path, deny_set)
+        if list_path is not None:
+            _write_set_to_file(list_path, deny_set)
         return cls(deny_coll, list_path)
 
     def __init__(self, deny_coll: Optional[Iterable[str]] = None,
@@ -190,7 +191,8 @@ class _AllowAcl(Acl):
     @classmethod
     def new_from_rules(cls, allow_coll: List[str], list_path: Path) -> Acl:
         allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
-        _write_set_to_file(list_path, allow_set)
+        if list_path is not None:
+            _write_set_to_file(list_path, allow_set)
         return cls(set(allow_coll), list_path)
 
     def __init__(
@@ -272,10 +274,10 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
     return _DenyAcl(nodes_ids, deny_list_path, max_times)
 
 
-def setup_acl(datadir: Path,
+def setup_acl(datadir: Optional[Path],
               default_rule: AclRule,
               exceptions: List[str]) -> Acl:
-    deny_list_path = datadir / DENY_LIST_NAME
+    deny_list_path = datadir / DENY_LIST_NAME if datadir is not None else None
     if default_rule == AclRule.deny:
         return _AllowAcl.new_from_rules(exceptions, deny_list_path)
     if default_rule == AclRule.allow:

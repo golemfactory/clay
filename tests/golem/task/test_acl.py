@@ -3,7 +3,7 @@
 from freezegun import freeze_time
 
 from golem.task.acl import get_acl, DENY_LIST_NAME, ALL_EXCEPT_ALLOWED, \
-    DenyReason, AclRule
+    DenyReason, AclRule, setup_acl
 from golem.testutils import TempDirFixture
 
 
@@ -79,6 +79,39 @@ class TestAcl(TempDirFixture):
         acl.disallow('Node2', timeout_seconds=10)
         assert acl.is_allowed('Node2') == (False, DenyReason.temporarily_blocked)
         assert acl.is_allowed('Node3') == (True, None)
+        frozen_time.tick(5)
+        assert acl.is_allowed('Node2') == (False, DenyReason.temporarily_blocked)
+        frozen_time.tick(5)
+        assert acl.is_allowed('Node2') == (True, None)
+
+    def test_setup_new_all_except(self):
+        acl = setup_acl(None, AclRule.allow, ['Node1', 'Node3'])
+        assert acl.is_allowed('Node1') == (False, DenyReason.blacklisted)
+        assert acl.is_allowed('Node2') == (True, None)
+        assert acl.is_allowed('Node3') == (False, DenyReason.blacklisted)
+
+    def test_setup_new_only_allowed(self):
+        acl = setup_acl(None, AclRule.deny, ['Node1', 'Node3'])
+        assert acl.is_allowed('Node1') == (True, None)
+        assert acl.is_allowed('Node2') == (False, DenyReason.not_whitelisted)
+        assert acl.is_allowed('Node3') == (True, None)
+
+    def test_setup_new_persist(self):
+        acl = setup_acl(self.new_path, AclRule.allow, ['Node1', 'Node3'])
+        assert acl.is_allowed('Node1') == (False, DenyReason.blacklisted)
+        assert acl.is_allowed('Node2') == (True, None)
+        assert acl.is_allowed('Node3') == (False, DenyReason.blacklisted)
+
+        acl = get_acl(self.new_path)
+        assert acl.is_allowed('Node1') == (False, DenyReason.blacklisted)
+        assert acl.is_allowed('Node2') == (True, None)
+        assert acl.is_allowed('Node3') == (False, DenyReason.blacklisted)
+
+        setup_acl(self.new_path, AclRule.deny, ['Node2'])
+        acl = get_acl(self.new_path)
+        assert acl.is_allowed('Node1') == (False, DenyReason.not_whitelisted)
+        assert acl.is_allowed('Node3') == (False, DenyReason.not_whitelisted)
+        assert acl.is_allowed('Node2') == (True, None)
 
 
 
