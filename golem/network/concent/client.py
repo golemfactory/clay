@@ -427,6 +427,8 @@ class ConcentClientService(threading.Thread):
                     income.node,
                 )
                 continue
+            if not sra.report_computed_task.task_to_compute.concent_enabled:
+                continue
             sra_l.append(sra)
         if not sra_l:
             return
