@@ -21,11 +21,9 @@ class InvalidCommand(Exception):
 def do_extract(input_file,
                output_file,
                selected_streams,
-               container=None,
-               video_metadata=None):
+               container=None):
 
-    if video_metadata is None:
-        video_metadata = commands.get_metadata_json(input_file)
+    video_metadata = commands.get_metadata_json(input_file)
     if container is None:
         format_demuxer = meta.get_format(video_metadata)
         container = formats.get_safe_intermediate_format_for_demuxer(format_demuxer)
@@ -42,6 +40,8 @@ def do_extract(input_file,
     results_file = os.path.join(OUTPUT_DIR, "extract-results.json")
     with open(results_file, 'w') as f:
         json.dump(results, f)
+
+    return results
 
 
 def do_split(path_to_stream, parts):
@@ -69,7 +69,7 @@ def do_split(path_to_stream, parts):
     with open(results_file, 'w') as f:
         json.dump(results, f)
 
-    return segment_list_path
+    return results
 
 
 def do_extract_and_split(input_file, parts, container=None):
@@ -80,18 +80,13 @@ def do_extract_and_split(input_file, parts, container=None):
         WORK_DIR,
         f"{input_stem}[video-only]{input_extension}")
 
-    video_metadata = commands.get_metadata_json(input_file)
-
-    do_extract(input_file, intermediate_file, ['v'], container, video_metadata)
-    segment_list_path = do_split(intermediate_file, parts)
-
-    with open(segment_list_path) as segment_list_file:
-        segment_filenames = segment_list_file.read().splitlines()
+    extract_results = do_extract(input_file, intermediate_file, ['v'], container)
+    split_results = do_split(intermediate_file, parts)
 
     results = {
-        "main_list": segment_list_path,
-        "segments": [{"video_segment": s} for s in segment_filenames],
-        "metadata": video_metadata,
+        "main_list": split_results["main_list"],
+        "segments": split_results["segments"],
+        "metadata": extract_results["metadata"],
     }
 
     results_file = os.path.join(OUTPUT_DIR, "extract-and-split-results.json")
