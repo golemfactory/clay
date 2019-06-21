@@ -54,7 +54,8 @@ class TestffmpegTranscoding(TempDirFixture):
     def test_extract_split_merge_and_replace_video(self):
         parts = 2
         task_id = str(uuid.uuid4())
-        output_name = 'test.mp4'
+        output_extension = ".mp4"
+        output_name = f"test{output_extension}"
         output_container = Container.c_MP4
         output_dir = self.dir_manager.get_task_output_dir(task_id)
 
@@ -70,9 +71,10 @@ class TestffmpegTranscoding(TempDirFixture):
         assert len(segments) == parts
         tc_segments = list()
         for segment in segments:
-            name, ext = os.path.splitext(os.path.basename(segment))
-            transcoded_segment = os.path.join(os.path.dirname(segment),
-                                              "{}_TC{}".format(name, ext))
+            name, _ = os.path.splitext(os.path.basename(segment))
+            transcoded_segment = os.path.join(
+                os.path.dirname(segment),
+                "{}_TC{}".format(name, output_extension))
             shutil.copy2(segment, transcoded_segment)
             assert os.path.isfile(transcoded_segment)
             tc_segments.append(transcoded_segment)
