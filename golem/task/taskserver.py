@@ -850,7 +850,9 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.acl.new')
     def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
-        new_acl = setup_acl(Path(self.client.datadir), AclRule[default_rule], exceptions)
+        new_acl = setup_acl(Path(self.client.datadir),
+                            AclRule[default_rule],
+                            exceptions)
         self.acl = new_acl
 
     def _sync_forwarded_session_requests(self):

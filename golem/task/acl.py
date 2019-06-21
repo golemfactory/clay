@@ -77,7 +77,8 @@ class _DenyAcl(Acl):
     _list_path: Optional[Path]
 
     @classmethod
-    def new_from_rules(cls, deny_coll: List[str], list_path: Path) -> Acl:
+    def new_from_rules(cls, deny_coll: List[str],
+                       list_path: Optional[Path]) -> '_DenyAcl':
         deny_set = set(deny_coll)
         if list_path is not None:
             _write_set_to_file(list_path, deny_set)
@@ -164,7 +165,6 @@ class _DenyAcl(Acl):
 
         rules_to_remove = []
         for (identity, deadlines) in self._deny_deadlines.items():
-            print('deadline=', deadlines, 'decoded=', decode_deadline(deadlines))
             if isinstance(deadlines, SortedList):
                 while deadlines and deadlines[0] < now:
                     del deadlines[0]
@@ -189,7 +189,8 @@ class _DenyAcl(Acl):
 class _AllowAcl(Acl):
 
     @classmethod
-    def new_from_rules(cls, allow_coll: List[str], list_path: Path) -> Acl:
+    def new_from_rules(cls, allow_coll: List[str],
+                       list_path: Optional[Path]) -> '_AllowAcl':
         allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
         if list_path is not None:
             _write_set_to_file(list_path, allow_set)
@@ -276,7 +277,7 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
 
 def setup_acl(datadir: Optional[Path],
               default_rule: AclRule,
-              exceptions: List[str]) -> Acl:
+              exceptions: List[str]) -> Union[_DenyAcl, _AllowAcl]:
     deny_list_path = datadir / DENY_LIST_NAME if datadir is not None else None
     if default_rule == AclRule.deny:
         return _AllowAcl.new_from_rules(exceptions, deny_list_path)
