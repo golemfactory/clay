@@ -64,7 +64,7 @@ class TestffmpegTranscoding(TempDirFixture):
         self.assertEqual(len(chunks), parts)
         self.assertEqual(
             set(os.path.splitext(chunk)[1] for chunk in chunks),
-            {'.mp4'})
+            {''})
         segments = [os.path.join(output_dir, chunk) for chunk in chunks]
 
         assert len(segments) == parts
