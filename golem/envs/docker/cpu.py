@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
 from threading import Thread, Lock
@@ -7,7 +8,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
     NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
 
@@ -285,6 +286,12 @@ class DockerCPURuntime(Runtime):
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
 
+    def wait_until_stopped(self) -> Deferred:
+        def _wait_until_stopped():
+            while self.status() == RuntimeStatus.RUNNING:
+                sleep(1)
+        return deferToThread(_wait_until_stopped)
+
     def stop(self) -> Deferred:
         with self._status_lock:
             self._assert_status(self._status, RuntimeStatus.RUNNING)
@@ -404,7 +411,7 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
-    SHARED_DIR_PATH: ClassVar[str] = '/golem'
+    SHARED_DIR_PATH: ClassVar[str] = '/golem/work'
 
     NETWORK_MODE: ClassVar[str] = 'none'
     DNS_SERVERS: ClassVar[List[str]] = []
@@ -430,6 +437,8 @@ class DockerCPUEnvironment(Environment):
         'sys_time',
         'sys_tty_config'
     ]
+
+    BENCHMARK_IMAGE = 'igorgolem/cpu_benchmark:1.0'
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:
@@ -504,6 +513,28 @@ class DockerCPUEnvironment(Environment):
             self._env_disabled()
 
         return deferToThread(_clean_up)
+
+    @inlineCallbacks
+    def run_benchmark(self) -> Deferred:
+        image, tag = self.BENCHMARK_IMAGE.split(':')
+        yield self.install_prerequisites(DockerPrerequisites(
+            image=image,
+            tag=tag,
+        ))
+        payload = DockerPayload(
+            image=image,
+            tag=tag,
+            user=None if is_windows() else str(os.getuid()),
+            env={},
+        )
+        runtime = self.runtime(payload)
+        yield runtime.prepare()
+        yield runtime.start()
+        yield runtime.wait_until_stopped()
+        # Benchmark is supposed to output a single line containing a float value
+        stdout = list(runtime.stdout('utf-8'))
+        yield runtime.clean_up()
+        return float(stdout[0])
 
     @classmethod
     def metadata(cls) -> EnvMetadata:

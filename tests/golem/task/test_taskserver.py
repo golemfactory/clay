@@ -10,7 +10,6 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 from pydispatch import dispatcher
 import freezegun
 
-from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
@@ -41,7 +40,7 @@ from golem.task.taskserver import (
     WaitingTaskFailure,
     WaitingTaskResult,
 )
-from golem.task.taskstate import TaskState, TaskOp
+from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -107,7 +106,9 @@ def _assert_log_msg(logger_mock, msg):
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient):
-    def setUp(self):
+
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
@@ -140,6 +141,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         '.register_handler',
     )
     @patch('golem.task.taskarchiver.TaskArchiver')
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    # pylint: disable=too-many-locals,too-many-statements
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
@@ -841,6 +844,8 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def _get_config_desc(self):
         ccd = ClientConfigDescriptor()
         ccd.root_path = self.path
+        ccd.max_memory_size = 1024 * 1024  # 1 GiB
+        ccd.num_cores = 1
         return ccd
 
 
@@ -867,8 +872,7 @@ class TestTaskServer2(TaskServerBase):
 
         ts.task_manager.keys_auth._private_key = b'a' * 32
         ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states[task_id].status = \
-            ts.task_manager.activeStatus[0]
+        ts.task_manager.tasks_states[task_id].status = TaskStatus.computing
         subtask = ts.task_manager.get_next_subtask(
             "DEF",
             task_id,
@@ -879,9 +883,12 @@ class TestTaskServer2(TaskServerBase):
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            "xxyyzz",
-            expected_value,
-            "eth_address")
+            subtask_id="xxyyzz",
+            value=expected_value,
+            eth_address="eth_address",
+            node_id=task_mock.header.task_owner.key,  # pylint: disable=no-member
+            task_id=task_mock.header.task_id,
+        )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
@@ -894,6 +901,7 @@ class TestTaskServer2(TaskServerBase):
 
 # pylint: disable=too-many-ancestors
 class TestSubtaskWaiting(TaskServerBase):
+
     def test_requested_tasks(self, *_):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
@@ -905,7 +913,8 @@ class TestSubtaskWaiting(TaskServerBase):
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
-    def setUp(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
