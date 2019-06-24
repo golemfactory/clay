@@ -107,10 +107,10 @@ class BucketVerifier(VerificationByRedundancy):
                  comparator: Callable[[Any, Any], bool],
                  referee_count: int) -> None:
         super().__init__(redundancy_factor, comparator)
-        self.actors = []
-        self.results = {}
+        self.actors: List[Actor] = []
+        self.results: Dict[Actor, Any] = {}
         self.more_actors_needed = True
-        self.buckets = []
+        self.buckets: List[Bucket] = []
         self.verdicts = None
         self.normal_actor_count = redundancy_factor + 1
         self.referee_count = referee_count

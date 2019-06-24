@@ -134,7 +134,7 @@ class WasmTask(CoreTask):
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
     REDUNDANCY_FACTOR = 1
-    CALLBACKS = {}
+    CALLBACKS: Dict[str, Callable] = {}
 
     def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
@@ -143,7 +143,7 @@ class WasmTask(CoreTask):
             root_path=root_path, owner=owner
         )
         self.options: WasmTaskOptions = task_definition.options
-        self.subtasks = []
+        self.subtasks: List[VbrSubtask] = []
         self.subtasks_given = {}
 
         for s_name, s_params in self.options.get_subtask_iterator():
@@ -155,7 +155,7 @@ class WasmTask(CoreTask):
                                  s_name, s_params, self.REDUNDANCY_FACTOR)
             self.subtasks.append(subtask)
 
-        self.nodes_to_subtasks_map = {}
+        self.nodes_to_subtasks_map: Dict[str, Tuple[str, Dict]] = {}
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
@@ -174,6 +174,7 @@ class WasmTask(CoreTask):
 
         return None
 
+    @staticmethod
     def _cmp_results(result_list_a: List[Any], result_list_b: List[Any]) -> bool:
         for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
