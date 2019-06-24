@@ -26,6 +26,10 @@ logger = logging.getLogger("apps.wasm")
 
 
 class VbrSubtask:
+    """Encapsulating subtask handling behavior for Verification by
+    Redundancy. This class hides result handling, subtask spawning
+    and subtask related data management from the client code.
+    """
     def __init__(self, id_gen, name, params, redundancy_factor):
         self.id_gen = id_gen
         self.name = name
