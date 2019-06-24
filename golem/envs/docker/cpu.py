@@ -532,9 +532,9 @@ class DockerCPUEnvironment(Environment):
         yield runtime.start()
         yield runtime.wait_until_stopped()
         # Benchmark is supposed to output a single line containing a float value
-        score = float(list(runtime.stdout('utf-8'))[0])
+        stdout = list(runtime.stdout('utf-8'))
         yield runtime.clean_up()
-        return score
+        return float(stdout[0])
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
