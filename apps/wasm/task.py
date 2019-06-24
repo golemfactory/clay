@@ -400,7 +400,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type: 'CoreTaskTypeInfo',
-                              dictionary: Dict[str, Any]) -> WasmTaskDefinition:
+                              dictionary: Dict[str, Any]) -> TaskDefinition:
         # Resources are generated from 'input_dir' later on.
         dictionary['resources'] = []
         # Output is determined from 'output_dir' later on.
