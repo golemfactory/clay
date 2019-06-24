@@ -72,8 +72,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         self.assertEqual(test_input, test_output)
 
         # Wait for exit and delete container
-        while runtime.status() == RuntimeStatus.RUNNING:
-            time.sleep(1)
+        yield runtime.wait_until_stopped()
         self.assertEqual(runtime.status(), RuntimeStatus.STOPPED)
         yield runtime.clean_up()
         self.assertEqual(runtime.status(), RuntimeStatus.TORN_DOWN)
@@ -81,3 +80,15 @@ class TestIntegration(TestCase, DatabaseFixture):
         # Clean up the environment
         yield env.clean_up()
         self.assertEqual(env.status(), EnvStatus.DISABLED)
+
+    @inlineCallbacks
+    def test_benchmark(self):
+        config = DockerCPUConfig(work_dir=Path(tempfile.gettempdir()))
+        env = DockerCPUEnvironment(config)
+        yield env.prepare()
+
+        Whitelist.add(env.BENCHMARK_IMAGE.split('/')[0])
+        score = yield env.run_benchmark()
+        self.assertGreater(score, 0)
+
+        yield env.clean_up()
