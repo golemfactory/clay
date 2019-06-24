@@ -63,7 +63,6 @@ CONCENT_PULL_INTERVAL = (MAX_CONCENT_PING_INTERVAL / 2).total_seconds()
 
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
-KEY_DIFFICULTY = 14
 
 # Maximum acceptable difference between node time and monitor time (seconds)
 MAX_TIME_DIFF = 10

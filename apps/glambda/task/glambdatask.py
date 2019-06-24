@@ -9,7 +9,7 @@ import cloudpickle
 from golem_messages.datastructures import p2p as dt_p2p
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, \
-    CoreVerifier
+    CoreVerifier, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem.resource.dirmanager import DirManager
@@ -246,14 +246,9 @@ class GLambdaTaskBuilder(CoreTaskBuilder):
         return kwargs
 
     @classmethod
-    def build_minimal_definition(cls, task_type: TaskTypeInfo, dictionary):
-        definition = task_type.definition()
-        definition.task_type = task_type.name
-        definition.compute_on = dictionary.get('compute_on', 'cpu')
-        if 'resources' in dictionary:
-            definition.resources = set(dictionary['resources'])
+    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        definition = super().build_minimal_definition(task_type, dictionary)
         options = dictionary['options']
-        definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.options.method = options['method']
         definition.options.args = options['args']
         definition.options.verification = options['verification']

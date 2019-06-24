@@ -17,15 +17,16 @@ from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
-from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
+from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
+from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
 
 if typing.TYPE_CHECKING:
-    from golem.client import Client # noqa pylint: disable=unused-import
+    from golem.client import Client  # noqa pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -156,7 +157,23 @@ def _run_test_task(client, task_dict):
     client.task_tester.run()
 
 
-@golem_async.deferred_run()
+def _create_task(client: 'Client', task_dict: dict) -> taskbase.Task:
+    validate_client(client)
+    prepare_and_validate_task_dict(client, task_dict)
+    return client.task_manager.create_task(task_dict)
+
+
+def _prepare_task(
+        client: 'Client',
+        task: taskbase.Task,
+        force: bool
+) -> defer.Deferred:
+    seq = DeferredSeq()
+    seq.push(client.task_manager.initialize_task, task)
+    seq.push(enqueue_new_task, client, task, force=force)
+    return seq.execute()
+
+
 def _restart_subtasks(
         client: 'Client',
         old_task_id: str,
@@ -164,31 +181,29 @@ def _restart_subtasks(
         subtask_ids_to_copy: typing.Iterable[str],
         ignore_gas_price: bool = False,
 ):
-    @defer.inlineCallbacks
-    @safe_run(
-        lambda e: logger.error(
-            'Restarting subtasks_failed. task_dict=%r, subtask_ids_to_copy=%r',
-            task_dict,
-            subtask_ids_to_copy,
-        ),
-    )
-    def deferred():
-        new_task = yield enqueue_new_task(
-            client=client,
-            task=client.task_manager.create_task(task_dict),
-            force=ignore_gas_price,
-        )
+    new_task = _create_task(client, task_dict)
 
+    def _copy_results(*_):
         client.task_manager.copy_results(
             old_task_id=old_task_id,
             new_task_id=new_task.header.task_id,
             subtask_ids_to_copy=subtask_ids_to_copy
         )
-    # Function passed to twisted.threads.deferToThread can't itself
-    # return a deferred, that's why I defined inner deferred function
-    # and use sync_wait below.
-    validate_client(client)
-    golem_deferred.sync_wait(deferred())
+
+    # Fire and forget the next steps after create_task
+    deferred = _prepare_task(
+        client=client,
+        task=new_task,
+        force=ignore_gas_price)
+    deferred.addErrback(
+        lambda failure: _restart_subtasks_error(
+            e=failure.value,
+            _self=None,
+            task_id=new_task.header.task_id,
+            subtask_ids=subtask_ids_to_copy
+        )
+    )
+    deferred.addCallback(_copy_results)
 
 
 @defer.inlineCallbacks
@@ -401,7 +416,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    logger.error("Cannot create task %r: %s", task_dict, e)
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
 
     if hasattr(e, 'to_dict'):
         temp_dict = rpc_utils.int_to_string(e.to_dict())
@@ -415,7 +430,7 @@ def _restart_task_error(e, _self, task_id, **_kwargs):
     return None, str(e)
 
 
-def _restart_subtasks_error(e, _self, task_id, subtask_ids, **_kwargs) \
+def _restart_subtasks_error(e, _self, task_id, subtask_ids, *_args, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
     logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
                  task_id, subtask_ids, e)
@@ -457,10 +472,8 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-        validate_client(self.client)
-        prepare_and_validate_task_dict(self.client, task_dict)
 
-        task: taskbase.Task = self.task_manager.create_task(task_dict)
+        task = _create_task(self.client, task_dict)
         self._validate_enough_funds_to_pay_for_task(
             task.subtask_price,
             task.get_total_tasks(),
@@ -469,17 +482,17 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task, force=force)
-        # We want to return quickly from create_task without waiting for
-        # deferred completion.
-        deferred.addErrback(  # pylint: disable=no-member
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=task, force=force)
+        deferred.addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
                 force=force
-            ),
+            )
         )
+
         return task_id, None
 
     def _validate_enough_funds_to_pay_for_task(
@@ -530,8 +543,12 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
-    def restart_task(self, task_id: str, force: bool = False) \
-            -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
+    def restart_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
@@ -552,7 +569,7 @@ class ClientProvider:
             self._validate_enough_funds_to_pay_for_task(
                 task.subtask_price,
                 task.get_total_tasks(),
-                task.header.concent_enabled,
+                False if disable_concent else task.header.concent_enabled,
                 force
             )
 
@@ -564,20 +581,19 @@ class ClientProvider:
         except KeyError:
             return None, "Task not found: '{}'".format(task_id)
 
-        task_dict.pop('id', None)
-        prepare_and_validate_task_dict(self.client, task_dict)
-        new_task = self.task_manager.create_task(task_dict)
-        validate_client(self.client)
-        enqueue_new_task(  # pylint: disable=no-member
-            client=self.client,
-            task=new_task,
-            force=force,
-        ).addErrback(
+        del task_dict['id']
+        if disable_concent:
+            task_dict['concent_enabled'] = False
+
+        new_task = _create_task(self.client, task_dict)
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=new_task, force=force)
+        deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
                 _self=self,
                 task_id=task_id,
-            ),
+            )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
@@ -592,11 +608,14 @@ class ClientProvider:
             disable_concent: bool = False
     ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         """
-        Restarts a set of subtasks from the same task. If the specified task is
-        already finished it will be restarted, clearing the state of the given
-        subtasks and copying over the remaining results.
+        Restarts a set of subtasks from the given task. If the specified task is
+        already finished, all failed subtasks will be restarted along with the
+        set provided as a parameter. Finished subtasks will have their results
+        copied over to the newly created task.
         :param task_id: the ID of the task which contains the given subtasks.
         :param subtask_ids: the set of subtask IDs which should be restarted.
+        If this is empty and the task is finished, all of the task's subtasks
+        marked as failed will be restarted.
         :param ignore_gas_price: if True, this will ignore long transaction time
         errors and proceed with the restart.
         :param disable_concent: setting this flag to True will result in forcing
@@ -605,19 +624,17 @@ class ClientProvider:
         :return: In case of any errors, returns the representation of the error
         (either a string or a dict). Otherwise, returns None.
         """
-        try:
-            task = self.task_manager.tasks[task_id]
-        except KeyError:
-            err_msg = f'Task not found: {task_id!r}'
-            logger.error(err_msg)
-            return err_msg
+        task = self.task_manager.tasks.get(task_id)
+        if not task:
+            return f'Task not found: {task_id!r}'
 
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            len(subtask_ids),
-            False if disable_concent else task.header.concent_enabled,
-            ignore_gas_price
-        )
+        subtasks_to_restart = set(subtask_ids)
+
+        for sub_id in subtasks_to_restart:
+            if self.task_manager.subtask_to_task(
+                    sub_id, Actor.Requestor) != task_id:
+                return f'Subtask does not belong to the given task.' \
+                    f'task_id: {task_id}, subtask_id: {sub_id}'
 
         logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
                      'ignore_gas_price=%r, disable_concent=%r', task_id,
@@ -626,6 +643,13 @@ class ClientProvider:
         task_state = self.client.task_manager.tasks_states[task_id]
 
         if task_state.status.is_active():
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                len(subtask_ids),
+                False if disable_concent else task.header.concent_enabled,
+                ignore_gas_price
+            )
+
             for subtask_id in subtask_ids:
                 self.client.restart_subtask(subtask_id)
         else:
@@ -649,19 +673,19 @@ class ClientProvider:
             self,
             task_id: str,
             frame: int
-    ):
+    ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: typing.Dict[str, dict] =\
+        frame_subtasks: typing.FrozenSet[str] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
             logger.error('Frame restart failed, frame has no subtasks.'
                          'task_id=%r, frame=%r', task_id, frame)
-            return
+            return None
 
-        self.restart_subtasks(task_id, frame_subtasks)
+        return self.restart_subtasks(task_id, list(frame_subtasks))
 
     @safe_run(_restart_subtasks_error)
     def _restart_finished_task_subtasks(
@@ -676,11 +700,6 @@ class ClientProvider:
                      subtask_ids, ignore_gas_price)
 
         try:
-            self.task_manager.put_task_in_restarted_state(
-                task_id,
-                clear_tmp=False,
-            )
-
             old_task = self.task_manager.tasks[task_id]
 
             finished_subtask_ids = set(
@@ -688,6 +707,18 @@ class ClientProvider:
                 if sub['status'] == taskstate.SubtaskStatus.finished
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+
+            self._validate_enough_funds_to_pay_for_task(
+                old_task.subtask_price,
+                old_task.get_total_tasks() - len(subtask_ids_to_copy),
+                False if disable_concent else old_task.header.concent_enabled,
+                ignore_gas_price
+            )
+
+            self.task_manager.put_task_in_restarted_state(
+                task_id,
+                clear_tmp=False,
+            )
 
             logger.debug('_restart_finished_task_subtasks. '
                          'subtask_ids_to_copy=%r', subtask_ids_to_copy)
@@ -708,7 +739,6 @@ class ClientProvider:
             task_dict['concent_enabled'] = False
 
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
-        prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -731,14 +761,57 @@ class ClientProvider:
             }
             return False
 
-        self.client.task_test_result = None
         prepare_and_validate_task_dict(self.client, task_dict)
+        self.client.task_test_result = None
         _run_test_task(
             client=self.client,
             task_dict=task_dict,
         )
         # Don't wait for _deferred
         return True
+
+    @rpc_utils.expose('comp.task.subtasks.estimated.cost')
+    def get_estimated_subtasks_cost(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str]
+    ) -> typing.Tuple[typing.Optional[dict], typing.Optional[str]]:
+        """
+        Estimates the cost of restarting an array of subtasks from a given task.
+        If the specified task is finished, all of the failed subtasks from that
+        task will be added to the estimation.
+        :param task_id: ID of the task containing the subtasks to be restarted.
+        :param subtask_ids: a list of subtask IDs which should be restarted. If
+        one of the subtasks does not belong to the given task, an error will be
+        returned.
+        :return: a result, error tuple. When the result is present the error
+        should be None (and vice-versa).
+        """
+        task = self.task_manager.tasks.get(task_id)
+        if not task:
+            return None, f'Task not found: {task_id}'
+
+        subtasks_to_restart = set(subtask_ids)
+
+        for sub_id in subtasks_to_restart:
+            if self.task_manager.subtask_to_task(
+                    sub_id, Actor.Requestor) != task_id:
+                return None, f'Subtask does not belong to the given task.' \
+                    f'task_id: {task_id}, subtask_id: {sub_id}'
+
+        if self.task_manager.task_finished(task_id):
+            failed_subtask_ids = set(
+                sub_id for sub_id, subtask in task.subtasks_given.items()
+                if subtask['status'] == taskstate.SubtaskStatus.failure
+            )
+            subtasks_to_restart |= failed_subtask_ids
+
+        result = self._get_cost_estimation(
+            len(subtasks_to_restart),
+            task.subtask_price
+        )
+
+        return result, None
 
     @rpc_utils.expose('comp.tasks.estimated.cost')
     def get_estimated_cost(
@@ -792,6 +865,12 @@ class ClientProvider:
                 computation_time=subtask_timeout
             )
 
+        result = self._get_cost_estimation(subtask_count, subtask_price)
+
+        logger.info('Estimated task cost. result=%r', result)
+        return result, None
+
+    def _get_cost_estimation(self, subtask_count: int, subtask_price: int):
         estimated_gnt: int = subtask_count * subtask_price
         estimated_eth: int = self.client \
             .transaction_system.eth_for_batch_payment(subtask_count)
@@ -800,7 +879,7 @@ class ClientProvider:
         estimated_deposit_eth: int = self.client.transaction_system \
             .eth_for_deposit()
 
-        result = {
+        return {
             'GNT': str(estimated_gnt),
             'ETH': str(estimated_eth),
             'deposit': {
@@ -809,9 +888,6 @@ class ClientProvider:
                 'ETH': str(estimated_deposit_eth),
             },
         }
-
-        logger.info('Estimated task cost. result=%r', result)
-        return result, None
 
     @rpc_utils.expose('comp.task.rendering.task_fragments')
     def get_fragments(self, task_id: str) -> \

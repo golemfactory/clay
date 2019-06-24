@@ -305,6 +305,7 @@ class TaskServerMessageHandler():
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
+                task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address=ttc.requestor_ethereum_address,
                 value=ttc.price,

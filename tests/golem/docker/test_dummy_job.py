@@ -15,7 +15,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
         return "golemfactory/dummy"
 
     def _get_test_tag(self):
-        return "1.1"
+        return "1.2"
 
     def test_dummytask_job(self):
         os.mkdir(os.path.join(self.resources_dir, "data"))

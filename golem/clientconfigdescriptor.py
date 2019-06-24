@@ -1,8 +1,6 @@
 import logging
 import typing
 
-from golem.core.variables import KEY_DIFFICULTY
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,7 +19,6 @@ class ClientConfigDescriptor(object):
         self.send_pings = 0
         self.pings_interval = 0.0
         self.use_ipv6 = 0
-        self.key_difficulty = 0
         self.use_upnp = 0
         self.enable_talkback = 0
         self.enable_monitor = 0
@@ -108,7 +105,6 @@ class ConfigApprover(object):
     to_int_opt = {
         'seed_port', 'num_cores', 'opt_peer_num', 'p2p_session_timeout',
         'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
-        'key_difficulty',
     }
     to_big_int_opt = {
         'min_price', 'max_price',
@@ -117,7 +113,6 @@ class ConfigApprover(object):
         'getting_peers_interval', 'getting_tasks_interval', 'computing_trust',
         'requesting_trust'
     }
-    max_opt = {'key_difficulty': KEY_DIFFICULTY}
 
     def __init__(self, config_desc):
         """ Create config approver class that keeps old config descriptor
@@ -129,7 +124,6 @@ class ConfigApprover(object):
             (self.to_int_opt, self._to_int),
             (self.to_big_int_opt, self._to_int),
             (self.to_float_opt, self._to_float),
-            (self.max_opt, self._max_value)
         ]
         self.config_desc = config_desc
 
@@ -187,17 +181,4 @@ class ConfigApprover(object):
             return float(val)
         except ValueError:
             logger.warning("{} value '{}' is not a number".format(name, val))
-        return val
-
-    @classmethod
-    def _max_value(cls, val, name):
-        """Try to set a maximum numeric value of val or the default value.
-        :param val: value that should be changed to float
-        :param str name: name of a config description option for logs
-        :return: max(val, min_value) or unchanged value if it's not possible
-        """
-        try:
-            return max(val, cls.max_opt[name])
-        except (KeyError, ValueError):
-            logger.warning('Cannot apply a minimum value to %r', name)
         return val

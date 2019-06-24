@@ -753,10 +753,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def get_key_id(self):
         return self.keys_auth.key_id
 
-    @rpc_utils.expose('crypto.difficulty')
-    def get_difficulty(self):
-        return self.keys_auth.get_difficulty()
-
     @rpc_utils.expose('net.ident.key')
     def get_node_key(self):
         key = self.node.key
