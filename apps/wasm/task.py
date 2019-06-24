@@ -167,12 +167,11 @@ class WasmTask(CoreTask):
 
         return Task.ExtraData(ctd=ctd)
 
-    def _find_vbrsubtask_by_id(self, subtask_id) -> Optional[VbrSubtask]:
+    def _find_vbrsubtask_by_id(self, subtask_id) -> VbrSubtask:
         for subtask in self.subtasks:
             if subtask.contains(subtask_id):
                 return subtask
-
-        return None
+        raise KeyError()
 
     @staticmethod
     def _cmp_results(result_list_a: List[Any], result_list_b: List[Any]) -> bool:
