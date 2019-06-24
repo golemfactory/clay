@@ -1,5 +1,10 @@
+from golem_messages.factories.helpers import (
+    random_eth_address,
+)
+
 from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
 
@@ -42,3 +47,22 @@ class TestPaymentsDatabase(TestWithDatabase):
 
         payments = pd.get_subtasks_payments(['id1', 'id4', 'id2'])
         assert self._get_ids(payments) == ['id1', 'id2']
+
+
+class TestPaymentsKeeper(TestWithDatabase):
+    def setUp(self):
+        super().setUp()
+        self.payments_keeper = PaymentsKeeper()
+
+    def test_sent_transfer(self):
+        self.payments_keeper.sent_transfer(
+            tx_hash=f"0x{'0'*64}",
+            sender_address=random_eth_address(),
+            recipient_address=random_eth_address(),
+            amount=1,
+            currency=model.WalletOperation.CURRENCY.GNT,
+        )
+        self.assertEqual(
+            model.WalletOperation.select().count(),
+            1,
+        )

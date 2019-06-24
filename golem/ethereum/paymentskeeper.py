@@ -9,12 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class PaymentsDatabase(object):
-    """ Save and retrieve from database information about payments that this node has to make / made
+    """Save and retrieve from database information
+       about payments that this node has to make / made
     """
 
     @staticmethod
     def get_payment_value(subtask_id: str):
-        """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
+        """Returns value of a payment
+           that was done to the same node and for the same
+           task as payment for payment_info
         """
         return PaymentsDatabase.get_payment_for_subtask(subtask_id)
 
@@ -64,11 +67,46 @@ class PaymentsDatabase(object):
 
 
 class PaymentsKeeper:
-    """ Keeps information about payments for tasks that should be processed and send or received. """
+    """Keeps information about payments for tasks
+       that should be processed and send or received.
+    """
 
     def __init__(self) -> None:
         """ Create new payments keeper instance"""
         self.db = PaymentsDatabase()
+
+    @staticmethod
+    def sent_transfer(
+            tx_hash: str,
+            sender_address: str,
+            recipient_address: str,
+            amount: int,
+            currency: model.WalletOperation.CURRENCY,
+    ):
+        try:
+            operation = model.WalletOperation.select() \
+                .where(
+                    model.WalletOperation.tx_hash == tx_hash,
+                    model.WalletOperation.operation_type  # noqa
+                    == model.WalletOperation.TYPE.transfer,
+                    model.WalletOperation.direction  # noqa
+                    == model.WalletOperation.DIRECTION.outgoing,
+                    model.WalletOperation.currency == currency
+                ).get()
+            operation.status = model.WalletOperation.STATUS.confirmed
+            operation.save()
+        except model.WalletOperation.DoesNotExist:
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.confirmed,
+                sender_address=sender_address,
+                recipient_address=recipient_address,
+                amount=amount,
+                currency=currency,
+                gas_cost=0,
+            )
 
     def get_list_of_all_payments(self, num: Optional[int] = None,
                                  interval: Optional[datetime.timedelta] = None):

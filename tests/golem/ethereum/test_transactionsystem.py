@@ -40,6 +40,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.get_deposit_locked_until.return_value = 0
+        self.sci.GAS_GNT_TRANSFER = 2
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -209,7 +210,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
         self.sci.GAS_OPEN_GATE = 10
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -240,7 +240,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_gnt_balance.return_value = amount1
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -356,8 +355,8 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.estimate_transfer_eth_gas.return_value = self.gas_cost
         self.dest = '0x' + 40 * 'd'
 
-        self.eth_tx = '0xee'
-        self.gntb_tx = '0xfad'
+        self.eth_tx = f'0x{"e"*64}'
+        self.gntb_tx = f'0x{"f"*64}'
         self.sci.transfer_eth.return_value = self.eth_tx
         self.sci.convert_gntb_to_gnt.return_value = self.gntb_tx
 
