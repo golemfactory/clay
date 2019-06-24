@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from threading import Lock
-from typing import Callable, Any, List, Tuple, Optional
+from typing import Callable, Any, List, Tuple, Optional, Dict
 
 class Actor:
     def __init__(self, uuid: str) -> None:
@@ -82,7 +82,7 @@ class Bucket:
         self.comparator = comparator
         self.key = key
         if value is None:
-            self.values = []
+            self.values: List[Any] = []
         else:
             self.values = [value]
 
