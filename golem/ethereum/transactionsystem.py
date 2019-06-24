@@ -522,7 +522,7 @@ class TransactionSystem(LoopingCallService):
             self._payment_processor.recipients_count
         required = self._current_eth_per_payment() * num_payments + \
             self._eth_base_for_batch_payment()
-        return required - self.get_locked_eth()
+        return max(0, required - self.get_locked_eth())
 
     @sci_required()
     def _eth_base_for_batch_payment(self) -> int:

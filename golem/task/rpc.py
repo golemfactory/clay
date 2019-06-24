@@ -414,19 +414,23 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, **_kwargs) \
+def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
     _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
 
     if hasattr(e, 'to_dict'):
-        temp_dict = rpc_utils.int_to_string(e.to_dict())
-        return None, temp_dict
+        return None, rpc_utils.int_to_string(e.to_dict())
 
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, **_kwargs):
+def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
+        -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
+
+    if hasattr(e, 'to_dict'):
+        return None, rpc_utils.int_to_string(e.to_dict())
+
     return None, str(e)
 
 
@@ -436,7 +440,7 @@ def _restart_subtasks_error(e, _self, task_id, subtask_ids, *_args, **_kwargs) \
                  task_id, subtask_ids, e)
 
     if hasattr(e, 'to_dict'):
-        return e.to_dict()
+        return rpc_utils.int_to_string(e.to_dict())
 
     return str(e)
 
@@ -472,6 +476,7 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
+        logger.info('Creating task "%r" ...', task_dict)
 
         task = _create_task(self.client, task_dict)
         self._validate_enough_funds_to_pay_for_task(
@@ -481,6 +486,8 @@ class ClientProvider:
             force
         )
         task_id = task.header.task_id
+
+        logger.debug('Enqueue task "%r" ...', task.task_definition.to_dict())
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)

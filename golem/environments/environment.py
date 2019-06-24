@@ -36,6 +36,13 @@ class SupportStatus(object):
     def err(cls, desc) -> 'SupportStatus':
         return cls(False, desc)
 
+    @property
+    def err_reason(self):
+        try:
+            return list(self.desc.keys())[0]
+        except (IndexError, AttributeError):
+            return None
+
     def __repr__(self) -> str:
         return '<SupportStatus %s (%r)>' % \
             ('ok' if self._ok else 'err', self.desc)
