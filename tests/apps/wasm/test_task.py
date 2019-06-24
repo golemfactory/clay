@@ -14,8 +14,7 @@ from apps.wasm.task import (
     WasmTaskBuilder,
     WasmTaskDefinition,
     WasmTaskOptions,
-    WasmTaskTypeInfo,
-    WasmTaskVerifier,
+    WasmTaskTypeInfo
 )
 
 
@@ -71,22 +70,6 @@ class WasmTaskDefinitionTestCase(TestCase):
         task_def.add_to_resources()
 
         self.assertCountEqual(task_def.resources, ['/input/dir'])
-
-
-class WasmTaskVerifierTestCase(TestCase):
-    def test_verifier(self):
-        verification_data = {
-            'subtask_info': {'some': 'info'},
-            'results': ['result1', 'result2'],
-        }
-        verifier = WasmTaskVerifier(verification_data)
-
-        # Important check, without this the results are not available
-        # in WasmTask's accept_results.
-        self.assertEqual(verifier.results, ['result1', 'result2'])
-
-        self.assertEqual(verifier.subtask_info, {'some': 'info'})
-        self.assertTrue(verifier._verify_result({'some': 'result'}))
 
 
 TEST_TASK_DEFINITION_DICT = {
