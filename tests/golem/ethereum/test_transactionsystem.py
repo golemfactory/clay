@@ -601,7 +601,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.DepositPayment.select().exists())
+        self.assertFalse(model.WalletOperation.deposit_transfers().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -623,13 +623,16 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.DepositPayment.get()
+        dpayment = model.WalletOperation.deposit_transfers().get()
         for field, value in (
-                ('status', model.PaymentStatus.confirmed),
-                ('value', deposit_value),
-                ('fee', 42000),
-                ('tx', tx_hash),):
-            self.assertEqual(getattr(dpayment, field), value)
+                ('status', model.WalletOperation.STATUS.confirmed),
+                ('amount', deposit_value),
+                ('gas_cost', 42000),
+                ('tx_hash', tx_hash),):
+            self.assertEqual(
+                getattr(dpayment, field),
+                value,
+            )
 
     def test_gas_price_skyrocketing(self):
         self.sci.get_deposit_value.return_value = 0
@@ -749,14 +752,22 @@ class DepositPaymentsListTest(TransactionSystemBase):
             ts,
             tz=datetime.timezone.utc,
         )
-        deposit_payment = model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
+        instance = model_factory.WalletOperation(
+            direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            operation_type=  # noqa
+            model.WalletOperation.TYPE.deposit_transfer,
+            status=  # noqa
+            model.WalletOperation.STATUS.sent,
+            amount=value,
+            tx_hash=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
+        instance.save(force_insert=True)
+
         self.assertEqual(
-            [deposit_payment],
+            [instance],
             self.ets.get_deposit_payments_list(),
         )
 

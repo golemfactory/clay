@@ -423,6 +423,49 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(wo_count, 1)
             self.assertEqual(tp_count, 1)
 
+    @patch('golem.database.Database._create_tables')
+    def test_33_deposit_payments_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 32)
+
+            tx_hash = (
+                '0xc9d936c0c1a10f19ab2952ccb4901a1118ea9a'
+                '4f78379ee2ebaa7f9e7beb1eb5'
+            )
+            value = 'af7a173aa545c72'
+            status = 2  # sent
+            fee = 'af7a173aa545c71'
+
+            database.db.execute_sql(
+                "INSERT INTO depositpayment ("
+                "    tx, value, status, fee,"
+                "    created_date, modified_date)"
+                " VALUES (?, ?, ?, ?,"
+                "    datetime('now'), datetime('now'))",
+                (
+                    tx_hash, value, status, fee,
+                )
+            )
+            database._migrate_schema(32, 33)
+
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            self.assertEqual(wo_count, 1)
+            cursor.execute(
+                'SELECT tx_hash, status, amount, gas_cost FROM walletoperation',
+            )
+            self.assertCountEqual(
+                cursor.fetchone(),
+                [
+                    tx_hash,
+                    'sent',
+                    value,
+                    fee,
+                ],
+            )
+
 
 def generate(start, stop):
     return ['{:03}_script'.format(i) for i in range(start, stop + 1)]

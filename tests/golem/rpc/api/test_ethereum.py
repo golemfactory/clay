@@ -36,20 +36,20 @@ class TestEthereum(TestCase):
             ts,
             tz=datetime.timezone.utc,
         )
-        deposit_payment = mock.Mock(spec_set=model.DepositPayment)
-        deposit_payment.value = value
-        deposit_payment.tx = tx_hash
+        deposit_payment = mock.Mock(spec_set=model.WalletOperation)
+        deposit_payment.amount = value
+        deposit_payment.tx_hash = tx_hash
         deposit_payment.created_date = dt
         deposit_payment.modified_date = dt
-        deposit_payment.fee = None
-        deposit_payment.status = model.PaymentStatus.awaiting
+        deposit_payment.gas_cost = 0
+        deposit_payment.status = model.WalletOperation.STATUS.awaiting
         self.ets.get_deposit_payments_list.return_value = [deposit_payment]
 
         expected = [
             {
                 'created': ts,
                 'modified': ts,
-                'fee': None,
+                'fee': '0',
                 'status': 'awaiting',
                 'transaction': tx_hash,
                 'value': str(value),
