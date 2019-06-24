@@ -111,7 +111,7 @@ class BucketVerifier(VerificationByRedundancy):
         self.results: Dict[Actor, Any] = {}
         self.more_actors_needed = True
         self.buckets: List[Bucket] = []
-        self.verdicts = None
+        self.verdicts: Optional[List[Tuple[Actor, Any, VerificationResult]]] = None
         self.normal_actor_count = redundancy_factor + 1
         self.referee_count = referee_count
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
