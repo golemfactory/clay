@@ -11,7 +11,7 @@ class Actor:
         return self.uuid == other.uuid
 
     def __hash__(self):
-        return id(self)
+        return hash(self.uuid)
 
 
 class VerificationResult(IntEnum):
