@@ -438,7 +438,7 @@ class DockerCPUEnvironment(Environment):
         'sys_tty_config'
     ]
 
-    BENCHMARK_IMAGE = 'igorgolem/cpu_benchmark:1.0'
+    BENCHMARK_IMAGE = 'golemfactory/cpu_benchmark:1.0'
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:
