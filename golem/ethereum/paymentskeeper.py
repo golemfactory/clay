@@ -67,7 +67,7 @@ class PaymentsDatabase(object):
 
 
 class PaymentsKeeper:
-    """Keeps information about payments for tasks
+    """Keeps information about outgoing payments
        that should be processed and send or received.
     """
 
