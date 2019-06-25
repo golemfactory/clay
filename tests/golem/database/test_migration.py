@@ -363,6 +363,50 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(value, '10')
 
     @patch('golem.database.Database._create_tables')
+    def test_30_wallet_operation_alter(self, _create_tables_mock):
+        tx_hash = (
+            '0x8f30cb104c188f612f3492f53c069f65a4c4e2a8d4432a4878b1fd33f36787d3'
+        )
+        with self.database_context() as database:
+            database._migrate_schema(6, 29)
+            cursor = database.db.execute_sql(
+                "INSERT INTO walletoperation"
+                " (tx_hash, direction, operation_type, status,"
+                "  sender_address, recipient_address, gas_cost,"
+                "  amount, currency, created_date, modified_date)"
+                " VALUES"
+                " (?, 'outgoing', 'task_payment', 'awaiting',"
+                "  '', '', 0,"
+                "  1, 'GNT', datetime('now'), datetime('now'))",
+                (
+                    tx_hash,
+                )
+            )
+            wallet_operation_id = cursor.lastrowid
+            # Migration used to fail because of foreign key and
+            # sqlite inability to DROP NOT NULL
+            cursor.execute(
+                "INSERT INTO taskpayment"
+                " (wallet_operation_id, node, task, subtask,"
+                "  accepted_ts, settled_ts,"
+                "  expected_amount, created_date, modified_date)"
+                " VALUES"
+                " (?, '', '', '',"
+                "  datetime('now'), datetime('now'),"
+                "  1, datetime('now'), datetime('now'))",
+                (
+                    wallet_operation_id,
+                )
+            )
+            database._migrate_schema(29, 30)
+            cursor = database.db.execute_sql(
+                "SELECT tx_hash FROM walletoperation"
+                " LIMIT 1"
+            )
+            value = cursor.fetchone()[0]
+            self.assertEqual(value, tx_hash)
+
+    @patch('golem.database.Database._create_tables')
     def test_31_payments_migration(self, *_args):
         with self.database_context() as database:
             database._migrate_schema(6, 30)
@@ -422,6 +466,49 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(income_count, 1)
             self.assertEqual(wo_count, 1)
             self.assertEqual(tp_count, 1)
+
+    @patch('golem.database.Database._create_tables')
+    def test_33_deposit_payments_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 32)
+
+            tx_hash = (
+                '0xc9d936c0c1a10f19ab2952ccb4901a1118ea9a'
+                '4f78379ee2ebaa7f9e7beb1eb5'
+            )
+            value = 'af7a173aa545c72'
+            status = 2  # sent
+            fee = 'af7a173aa545c71'
+
+            database.db.execute_sql(
+                "INSERT INTO depositpayment ("
+                "    tx, value, status, fee,"
+                "    created_date, modified_date)"
+                " VALUES (?, ?, ?, ?,"
+                "    datetime('now'), datetime('now'))",
+                (
+                    tx_hash, value, status, fee,
+                )
+            )
+            database._migrate_schema(32, 33)
+
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            self.assertEqual(wo_count, 1)
+            cursor.execute(
+                'SELECT tx_hash, status, amount, gas_cost FROM walletoperation',
+            )
+            self.assertCountEqual(
+                cursor.fetchone(),
+                [
+                    tx_hash,
+                    'sent',
+                    value,
+                    fee,
+                ],
+            )
 
 
 def generate(start, stop):

@@ -371,8 +371,12 @@ class TransactionSystem(LoopingCallService):
 
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[model.DepositPayment]:
-        query = model.DepositPayment.select() \
+            -> List[model.WalletOperation]:
+        query = model.WalletOperation.deposit_transfers() \
+            .where(
+                model.WalletOperation.direction
+                == model.WalletOperation.DIRECTION.outgoing,
+            ) \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
@@ -518,7 +522,7 @@ class TransactionSystem(LoopingCallService):
             self._payment_processor.recipients_count
         required = self._current_eth_per_payment() * num_payments + \
             self._eth_base_for_batch_payment()
-        return required - self.get_locked_eth()
+        return max(0, required - self.get_locked_eth())
 
     @sci_required()
     def _eth_base_for_batch_payment(self) -> int:
@@ -704,10 +708,16 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
-        dpayment = model.DepositPayment.create(
-            status=model.PaymentStatus.sent,
-            value=max_possible_amount,
-            tx=tx_hash,
+        dpayment = model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.outgoing,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.get_payment_address() or '',
+            recipient_address=self.deposit_contract_address,
+            amount=max_possible_amount,
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
@@ -728,10 +738,11 @@ class TransactionSystem(LoopingCallService):
         tx_gas_price = self._sci.get_transaction_gas_price(
             receipt.tx_hash,
         )
-        dpayment.fee = receipt.gas_used * tx_gas_price
-        dpayment.status = model.PaymentStatus.confirmed
+        dpayment.gas_cost = receipt.gas_used * tx_gas_price
+        dpayment.status = \
+            model.WalletOperation.STATUS.confirmed
         dpayment.save()
-        return dpayment.tx
+        return dpayment.tx_hash
 
     @gnt_deposit_required()
     @sci_required()

@@ -262,9 +262,9 @@ class TestRestartTask(ProviderBase):
 
         task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
-        with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
+        with mock.patch('golem.task.rpc._prepare_task') as prep_mock:
             new_task_id, error = self.provider.restart_task(task.header.task_id)
-            enq_mock.assert_called_once()
+            prep_mock.assert_called_once()
 
         mock_validate_funds.assert_called_once_with(
             task.subtask_price,
@@ -463,7 +463,8 @@ class TestRuntTestTask(ProviderBase):
             _self.success_callback(result, estimated_memory, time_spent, **more)
 
         with mock.patch('golem.task.tasktester.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -484,7 +485,8 @@ class TestRuntTestTask(ProviderBase):
             _self.error_callback(*error, **more)
 
         with mock.patch('golem.client.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -505,6 +507,7 @@ class TestRuntTestTask(ProviderBase):
                     'type': 'blender',
                     'resources': ['_.blend'],
                     'subtasks_count': 1,
+                    'name': 'test task',
                 }))
 
 
@@ -1013,6 +1016,7 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
                 },
             },
         )
+
 
 @mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
             return_value=Mock())

@@ -490,13 +490,19 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
     def test_submit(self, submit_mock):
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             payment_ts=int(time.time()) - 3600*26,
+            report_computed_task__task_to_compute__concent_enabled=True,
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             payment_ts=int(time.time()) - 3600*25,
+            report_computed_task__task_to_compute__concent_enabled=True,
         )
+        sra3 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            payment_ts=int(time.time()) - 3600*25,
+        )
+
         local_role = history.Actor.Provider
         remote_role = history.Actor.Requestor
-        for msg in (sra1, sra2):
+        for msg in (sra1, sra2, sra3):
             msg._fake_sign()
             history.add(
                 msg=msg,
