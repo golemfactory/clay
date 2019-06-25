@@ -29,7 +29,7 @@ Some examples (model - class or model name)::
 import datetime as dt
 import peewee as pw
 
-from golem.model import Actor, PaymentStatus
+from golem.model import Actor
 
 
 SCHEMA_VERSION = 7
@@ -166,7 +166,7 @@ def migrate(migrator, _database, **_kwargs):
         subtask = pw.CharField(max_length=255, primary_key=True)
         created_date = pw.DateTimeField(default=dt.datetime.now)
         modified_date = pw.DateTimeField(default=dt.datetime.now)
-        status = pw.EnumField(PaymentStatus, default=PaymentStatus.awaiting,
+        status = pw.IntegerField(default=1,
                               index=True)
         payee = pw.RawCharField()
         value = pw.HexIntegerField()

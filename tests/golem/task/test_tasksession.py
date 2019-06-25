@@ -38,6 +38,7 @@ from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.task import taskserver
 from golem.task import taskstate
 from golem.task.result.resultpackage import ZipPackager
 from golem.task.taskkeeper import CompTaskKeeper
@@ -277,7 +278,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ctd = msg_factories.tasks.ComputeTaskDefFactory(task_id=wtct.task_id)
         ctd["resources"] = self.additional_dir_content([5, [2], [4]])
         ctd["deadline"] = timeout_to_deadline(120)
-        _task_state = self._set_task_state()
+        self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
         ts.task_manager.should_wait_for_node.return_value = False
@@ -360,7 +361,6 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
         self.keys = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -805,7 +805,6 @@ class WaitingForResultsTestCase(
         self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
         requestor_keys = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -816,7 +815,6 @@ class WaitingForResultsTestCase(
 
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -866,7 +864,6 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -921,7 +918,11 @@ class SubtaskResultsAcceptedTest(TestCase):
     def setUp(self):
         self.task_session = TaskSession(Mock())
         self.task_session.verified = True
-        self.task_server = Mock()
+        self.task_server = Mock(spec=taskserver.TaskServer)
+        self.task_server.keys_auth = Mock()
+        self.task_server.task_manager = Mock()
+        self.task_server.client = Mock()
+        self.task_server.pending_sessions = set()
         self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
@@ -960,11 +961,12 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
-            self.requestor_key_id,
-            sra.subtask_id,
-            sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
-            sra.task_to_compute.price,  # noqa pylint:disable=no-member
-            sra.payment_ts,
+            sender_node_id=self.requestor_key_id,
+            task_id=sra.task_id,
+            subtask_id=sra.subtask_id,
+            payer_address=sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
+            value=sra.task_to_compute.price,  # noqa pylint:disable=no-member
+            accepted_ts=sra.payment_ts,
         )
         cancel = self.task_session.concent_service.cancel_task_message
         cancel.assert_called_once_with(
@@ -1019,7 +1021,6 @@ class ReportComputedTaskTest(
         super().setUp()
         keys_auth = KeysAuth(
             datadir=self.path,
-            difficulty=4,
             private_key_name='prv',
             password='',
         )
@@ -1139,7 +1140,6 @@ class HelloTest(testutils.TempDirFixture):
             ),
         )
         self.task_session = TaskSession(conn)
-        self.task_session.task_server.config_desc.key_difficulty = 1
         self.task_session.task_server.sessions = {}
 
     @patch('golem.task.tasksession.TaskSession.send_hello')
@@ -1186,30 +1186,10 @@ class HelloTest(testutils.TempDirFixture):
         mock_disconnect.assert_called_once_with(
             message.base.Disconnect.REASON.ProtocolVersion)
 
-    def test_react_to_hello_key_not_difficult(
-            self,
-            _mock_store,
-            mock_disconnect,
-            *_,
-    ):
-        # given
-        self.task_session.task_server.config_desc.key_difficulty = 80
-
-        # when
-        with self.assertLogs(logger, level='INFO'):
-            self.task_session._react_to_hello(self.msg)
-
-        # then
-        mock_disconnect.assert_called_with(
-            message.base.Disconnect.REASON.KeyNotDifficult,
-        )
-
     @patch('golem.task.tasksession.TaskSession.send_hello')
-    def test_react_to_hello_key_difficult(self, mock_hello, *_):
+    def test_react_to_hello(self, mock_hello, *_):
         # given
-        difficulty = 4
-        self.task_session.task_server.config_desc.key_difficulty = difficulty
-        ka = KeysAuth(datadir=self.path, difficulty=difficulty,
+        ka = KeysAuth(datadir=self.path,
                       private_key_name='prv', password='')
         self.msg.node_info.key = ka.key_id
 

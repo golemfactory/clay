@@ -654,6 +654,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
             dir_manager=DirManager(
                 self.tempdir))
         blender_task = builder.build()
+        blender_task.initialize(builder.dir_manager)
         self.assertIsInstance(blender_task, BlenderRenderTask)
 
     def test_build_dictionary_samples(self):

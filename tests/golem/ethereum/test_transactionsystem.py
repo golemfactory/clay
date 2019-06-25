@@ -148,17 +148,6 @@ class TestTransactionSystem(TransactionSystemBase):
 
         self.assertEqual(self.ets.gas_price, test_gas_price)
 
-    def test_get_gas_price(self, *_):
-        test_gas_price = 1234
-        test_price_limit = 12345
-        self.sci.get_current_gas_price.return_value = test_gas_price
-        self.sci.GAS_PRICE = test_price_limit
-
-        result = self.ets.get_gas_price()
-
-        self.assertEqual(result["current_gas_price"], str(test_gas_price))
-        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
-
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
 
@@ -342,6 +331,32 @@ class TestTransactionSystem(TransactionSystemBase):
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
+
+    def test_eth_for_batch_payment(self):
+        self.sci.get_eth_balance.return_value = 1 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 100 * denoms.ether
+        self.ets._refresh_balances()
+        payments_count = 2
+
+        initial_gas_price = self.sci.GAS_PRICE
+        self.sci.GAS_PRICE = 10 * initial_gas_price
+        self.ets.lock_funds_for_payments(1, payments_count)
+
+        self.sci.GAS_PRICE = initial_gas_price
+        eth_for_batch = self.ets.eth_for_batch_payment(payments_count)
+
+        # Should be 0, since locked ETH > ETH required for batch payment
+        self.assertEqual(0, eth_for_batch)
+
+    def test_expect_income(self):
+        self.ets.expect_income(
+            sender_node='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+            subtask_id=str(uuid.uuid4()),
+            payer_address='0x' + 40 * '1',
+            value=10,
+            accepted_ts=1,
+        )
 
 
 class WithdrawTest(TransactionSystemBase):
@@ -602,7 +617,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.DepositPayment.select().exists())
+        self.assertFalse(model.WalletOperation.deposit_transfers().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -624,13 +639,16 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.DepositPayment.get()
+        dpayment = model.WalletOperation.deposit_transfers().get()
         for field, value in (
-                ('status', model.PaymentStatus.confirmed),
-                ('value', deposit_value),
-                ('fee', 42000),
-                ('tx', tx_hash),):
-            self.assertEqual(getattr(dpayment, field), value)
+                ('status', model.WalletOperation.STATUS.confirmed),
+                ('amount', deposit_value),
+                ('gas_cost', 42000),
+                ('tx_hash', tx_hash),):
+            self.assertEqual(
+                getattr(dpayment, field),
+                value,
+            )
 
     def test_gas_price_skyrocketing(self):
         self.sci.get_deposit_value.return_value = 0
@@ -750,24 +768,22 @@ class DepositPaymentsListTest(TransactionSystemBase):
             ts,
             tz=datetime.timezone.utc,
         )
-        model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
+        instance = model_factory.WalletOperation(
+            direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            operation_type=  # noqa
+            model.WalletOperation.TYPE.deposit_transfer,
+            status=  # noqa
+            model.WalletOperation.STATUS.sent,
+            amount=value,
+            tx_hash=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
-        expected = [
-            {
-                'created': ts,
-                'modified': ts,
-                'fee': None,
-                'status': 'awaiting',
-                'transaction': tx_hash,
-                'value': str(value),
-            },
-        ]
+        instance.save(force_insert=True)
+
         self.assertEqual(
-            expected,
+            [instance],
             self.ets.get_deposit_payments_list(),
         )
 
@@ -776,28 +792,56 @@ class IncomesListTest(TransactionSystemBase):
     def test_empty(self):
         self.assertEqual(self.ets.get_incomes_list(), [])
 
-    def test_one(self):
-        income = model_factory.Income()
-        node = p2p_factory.Node(key=income.sender_node)
-        model.CachedNode(
-            node=node.key,
-            node_field=node,
-        ).save(force_insert=True)
+    def _get_income(self):
+        income = model_factory.TaskPayment(
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.incoming,
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+        )
+        income.wallet_operation.save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
         )
+        return income
+
+    def test_one(self):
+        income = self._get_income()
+        node = p2p_factory.Node(key=income.node)
+        model.CachedNode(
+            node=node.key,
+            node_field=node,
+        ).save(force_insert=True)
         self.assertEqual(
             [
                 {
                     'created': ANY,
                     'modified': ANY,
                     'node': node.to_dict(),
-                    'payer': income.sender_node,
+                    'payer': income.node,
                     'status': 'awaiting',
                     'subtask': income.subtask,
                     'transaction': None,
-                    'value': str(income.value),
+                    'value': str(income.expected_amount),
+                },
+            ],
+            self.ets.get_incomes_list(),
+        )
+
+    def test_nodeskeeper_record_not_present(self):
+        income = self._get_income()
+        self.assertEqual(
+            [
+                {
+                    'created': ANY,
+                    'modified': ANY,
+                    'node': None,
+                    'payer': income.node,
+                    'status': 'awaiting',
+                    'subtask': income.subtask,
+                    'transaction': None,
+                    'value': str(income.expected_amount),
                 },
             ],
             self.ets.get_incomes_list(),

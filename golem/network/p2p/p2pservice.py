@@ -105,7 +105,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.last_challenge = ""
         self.base_difficulty = BASE_DIFFICULTY
         self.connect_to_known_hosts = connect_to_known_hosts
-        self.key_difficulty = config_desc.key_difficulty
 
         # Peers options
         self.peers = {}  # active peers
@@ -335,10 +334,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer.key_id
         logger.info(
-            "Adding peer. node=%s, address=%s:%s, key_difficulty=%r",
+            "Adding peer. node=%s, address=%s:%s",
             node_info_str(peer.node_name, key_id),
             peer.address, peer.port,
-            self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:
             self.peers[key_id] = peer

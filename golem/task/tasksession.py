@@ -18,7 +18,6 @@ from twisted.internet import defer
 import golem
 from golem.core import common
 from golem.core import golem_async
-from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -759,11 +758,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         self.task_server.subtask_accepted(
-            self.key_id,
-            msg.subtask_id,
-            msg.task_to_compute.requestor_ethereum_address,
-            msg.task_to_compute.price,
-            msg.payment_ts,
+            sender_node_id=self.key_id,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            payer_address=msg.task_to_compute.requestor_ethereum_address,
+            value=msg.task_to_compute.price,
+            accepted_ts=msg.payment_ts,
         )
         self.dropped()
 
@@ -871,21 +871,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     self.dropped()
                     return
             send_hello = True
-
-        if not KeysAuth.is_pubkey_difficult(
-                self.key_id,
-                self.task_server.config_desc.key_difficulty):
-            logger.info(
-                "Key from %s (%s:%d) is not difficult enough (%d < %d).",
-                common.node_info_str(
-                    msg.node_info.node_name,
-                    msg.node_info.key,
-                ),
-                self.address, self.port,
-                KeysAuth.get_difficulty(self.key_id),
-                self.task_server.config_desc.key_difficulty)
-            self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
-            return
 
         nodeskeeper.store(msg.node_info)
 
