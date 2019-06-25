@@ -317,7 +317,7 @@ class TransactionSystem(LoopingCallService):
         self._sci.subscribe_to_gnt_transfers(
             from_address=self._sci.get_eth_address(),
             to_address=None,
-            from_blokc=from_block,
+            from_block=from_block,
             cb=lambda event: self._payments_keeper.sent_transfer(
                 tx_hash=event.tx_hash,
                 sender_address=event.from_address,
@@ -618,9 +618,11 @@ class TransactionSystem(LoopingCallService):
             currency,
             destination,
         )
+
+        if gas_price is None:
+            gas_price = self.gas_price
+
         if currency == 'ETH':
-            if gas_price is None:
-                gas_price = self.gas_price
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
@@ -672,8 +674,6 @@ class TransactionSystem(LoopingCallService):
                 amount,
                 gas_price,
             )
-            if gas_price is None:
-                gas_price = self.gas_price
             model.WalletOperation.create(
                 tx_hash=tx_hash,
                 direction=model.WalletOperation.DIRECTION.outgoing,
