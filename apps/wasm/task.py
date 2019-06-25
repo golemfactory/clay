@@ -1,6 +1,6 @@
 from copy import deepcopy
 from pathlib import Path, PurePath
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Type, Callable
+from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Type, Callable, Set
 import logging
 from abc import ABC, abstractmethod
 from enum import IntEnum
@@ -24,17 +24,18 @@ from .vbr import Actor, BucketVerifier, VerificationResult, NotAllowedError, Mis
 
 logger = logging.getLogger("apps.wasm")
 
-
 class VbrSubtask:
     """Encapsulating subtask handling behavior for Verification by
     Redundancy. This class hides result handling, subtask spawning
     and subtask related data management from the client code.
     """
+    # __DEBUG_COUNTER: int = 0
     def __init__(self, id_gen, name, params, redundancy_factor):
         self.id_gen = id_gen
         self.name = name
         self.params = params
         self.result = None
+        self.redundancy_factor = redundancy_factor
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
@@ -66,8 +67,14 @@ class VbrSubtask:
         return self.subtasks.keys()
 
     def add_result(self, s_id, task_result):
+        # if VbrSubtask.__DEBUG_COUNTER == 1:
+        #     self.verifier.add_result(self.subtasks[s_id]["actor"], ['/home/mplebanski/somefile'])
+        # else:
+        #     self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
+        # VbrSubtask.__DEBUG_COUNTER += 1
+        # logger.info("Debug counter: %d", VbrSubtask.__DEBUG_COUNTER)
 
     def get_result(self):
         return self.result
@@ -156,6 +163,7 @@ class WasmTask(CoreTask):
             self.subtasks.append(subtask)
 
         self.nodes_to_subtasks_map: Dict[str, Tuple[str, Dict]] = {}
+        self.nodes_blacklist: Set[str] = set()
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
@@ -223,11 +231,17 @@ class WasmTask(CoreTask):
                     logger.info("Rejecting results for subtask %s", s_id)
                     self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
                     TaskClient.assert_exists(actor.uuid, self.counting_nodes).reject()
+                    logger.info("Blacklisting node: %s", actor.uuid)
+                    self.nodes_blacklist.add(actor.uuid)
 
         # save the results but only if verification was successful
         result = subtask.get_result()
         if result is not None:
             self.save_results(subtask.name, result)
+        else:
+            new_subtask = VbrSubtask(self.create_subtask_id, subtask.name,
+                                     subtask.params, subtask.redundancy_factor)
+            self.subtasks.append(new_subtask)
 
         for s_id in s_ids:
             WasmTask.CALLBACKS.pop(s_id)()
@@ -305,22 +319,37 @@ class WasmTask(CoreTask):
             in subsequent `should_accept_client` invocation. The only difference between REJECTED
             and SHOULD_WAIT is the log message.
         """
+        if node_id in self.nodes_blacklist:
+            logger.info("Node %s has been blacklisted for this task", node_id)
+            return AcceptClientVerdict.REJECTED
 
         if node_id in self.nodes_to_subtasks_map:
+            logger.info("Nodes listed for a task")
             return AcceptClientVerdict.ACCEPTED
 
+        for assigned_node_id in self.nodes_to_subtasks_map.keys():
+            if assigned_node_id in self.nodes_blacklist:
+                orphaned_subtask = self.nodes_to_subtasks_map.pop(assigned_node_id)
+                self.nodes_to_subtasks_map[node_id] = orphaned_subtask
+                return AcceptClientVerdict.ACCEPTED
+
         for s in self.subtasks:
+            if s.is_finished():
+                continue
             next_subtask = s.new_instance(node_id)
             if next_subtask:
                 self.nodes_to_subtasks_map[node_id] = next_subtask
-                """Since query_extra_data is called immediately after this function returns we can
-                safely save subtask that yielded next actor to retrieve ComputeTaskDef from it.
-                """
+                client = TaskClient.assert_exists(node_id, self.counting_nodes)
+                client.start()
+
                 return AcceptClientVerdict.ACCEPTED
 
         """No subtask has yielded next actor meaning that there is no work to be done at the moment
         """
         return AcceptClientVerdict.SHOULD_WAIT
+
+    def accept_client(self, node_id) -> None:
+        pass
 
     def needs_computation(self) -> bool:
         return not self.finished_computation()
@@ -387,6 +416,10 @@ class WasmTask(CoreTask):
             return 0.0
 
         num_finished = len(list(filter(lambda x: x.is_finished(), self.subtasks)))
+
+        # logger.info("num_finished: %s", num_finished * (WasmTask.REDUNDANCY_FACTOR  + 1))
+        # logger.info("num_total: %s", num_total)
+
         return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
 
     def get_results(self, subtask_id):
