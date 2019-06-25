@@ -159,7 +159,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
@@ -176,7 +176,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.get_key_id = Mock(return_value='0'*128)
         self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
-        self.assertEqual(ts.request_task(), task_id)
+        self.assertEqual(ts._request_random_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
         self.assertNotIn(task_id, ts.requested_tasks)
@@ -196,7 +196,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id3 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id3,
             SupportStatus(
@@ -211,7 +211,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id4 = task_header.task_id
         task_header.max_price = 1
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id4,
             SupportStatus(
@@ -225,7 +225,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id5 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id5,
             SupportStatus(
@@ -241,13 +241,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.config_desc.min_price = 0
         self.ts.client.concent_service.enabled = True
         self.ts.task_archiver = Mock()
+        self.ts._last_task_request_time = 0.0
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.concent_enabled = False
         task_header.sign(private_key=keys_auth._private_key)
         self.ts.add_task_header(task_header)
 
-        self.assertIsNone(self.ts.request_task())
+        self.assertIsNone(self.ts._request_random_task())
         self.ts.task_archiver.add_support_status.assert_called_once_with(
             task_header.task_id,
             SupportStatus(
@@ -263,12 +264,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
         ccd2.task_request_interval = 31
-        # ccd2.use_waiting_ttl = False
         ts.change_config(ccd2)
         self.assertEqual(ts.config_desc, ccd2)
         self.assertEqual(ts.task_keeper.min_price, 0.0057)
-        self.assertEqual(ts.task_computer.task_request_frequency, 31)
-        # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
