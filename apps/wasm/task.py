@@ -1,10 +1,18 @@
 from copy import deepcopy
 from pathlib import Path, PurePath
-from typing import Any, Dict, Generator, Iterator, List, Optional, Tuple, Type, Callable, Set
+from typing import (
+    Any,
+    Dict,
+    Generator,
+    Iterator,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    Callable,
+    Set
+)
 import logging
-from abc import ABC, abstractmethod
-from enum import IntEnum
-from threading import Lock
 
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
@@ -20,9 +28,16 @@ from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
-from .vbr import Actor, BucketVerifier, VerificationResult, NotAllowedError, MissingResultsError
+from .vbr import (
+    Actor,
+    BucketVerifier,
+    VerificationResult,
+    NotAllowedError,
+    MissingResultsError
+)
 
 logger = logging.getLogger("apps.wasm")
+
 
 class VbrSubtask:
     """Encapsulating subtask handling behavior for Verification by
@@ -48,7 +63,7 @@ class VbrSubtask:
         actor = Actor(node_id)
         try:
             self.verifier.add_actor(actor)
-        except (NotAllowedError, MissingResultsError) as e:
+        except (NotAllowedError, MissingResultsError):
             return None
 
         s_id = self.id_gen()
@@ -68,9 +83,11 @@ class VbrSubtask:
 
     def add_result(self, s_id, task_result):
         # if VbrSubtask.__DEBUG_COUNTER == 1:
-        #     self.verifier.add_result(self.subtasks[s_id]["actor"], ['/home/mplebanski/somefile'])
+        #     self.verifier.add_result(self.subtasks[s_id]["actor"],\
+        #  ['/home/mplebanski/somefile'])
         # else:
-        #     self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
+        #     self.verifier.add_result(self.subtasks[s_id]["actor"],\
+        #  task_result)
         self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
         # VbrSubtask.__DEBUG_COUNTER += 1
@@ -165,12 +182,14 @@ class WasmTask(CoreTask):
         self.nodes_to_subtasks_map: Dict[str, Tuple[str, Dict]] = {}
         self.nodes_blacklist: Set[str] = set()
 
-    def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
+    def query_extra_data(self, perf_index: float,
+                         node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         assert node_id in self.nodes_to_subtasks_map
 
         s_id, s_params = self.nodes_to_subtasks_map.pop(node_id)
-        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting, 'node_id': node_id}
+        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting, 
+                                     'node_id': node_id}
         ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
         return Task.ExtraData(ctd=ctd)
@@ -182,7 +201,8 @@ class WasmTask(CoreTask):
         raise KeyError()
 
     @staticmethod
-    def _cmp_results(result_list_a: List[Any], result_list_b: List[Any]) -> bool:
+    def _cmp_results(result_list_a: List[Any],
+                     result_list_b: List[Any]) -> bool:
         for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
                 b1 = f1.read()
@@ -225,12 +245,15 @@ class WasmTask(CoreTask):
                 if verdict == VerificationResult.SUCCESS:
                     # pay up!
                     logger.info("Accepting results for subtask %s", s_id)
-                    self.subtasks_given[s_id]['status'] = SubtaskStatus.finished
-                    TaskClient.assert_exists(actor.uuid, self.counting_nodes).accept()
+                    self.subtasks_given[s_id]['status'] =\
+                        SubtaskStatus.finished
+                    TaskClient.assert_exists(actor.uuid, self.counting_nodes)\
+                        .accept()
                 else:
                     logger.info("Rejecting results for subtask %s", s_id)
                     self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
-                    TaskClient.assert_exists(actor.uuid, self.counting_nodes).reject()
+                    TaskClient.assert_exists(actor.uuid, self.counting_nodes)\
+                        .reject()
                     logger.info("Blacklisting node: %s", actor.uuid)
                     self.nodes_blacklist.add(actor.uuid)
 
@@ -260,7 +283,8 @@ class WasmTask(CoreTask):
         pass
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        next_subtask_instance = self.subtasks[0].new_instance("benchmark_node_id")
+        next_subtask_instance = self.subtasks[0]\
+            .new_instance("benchmark_node_id")
 
         if not next_subtask_instance:
             raise ValueError()
@@ -313,11 +337,13 @@ class WasmTask(CoreTask):
             node_id {str} -- Node offered to compute next task
 
         Returns:
-            AcceptClientVerdict -- When AcceptClientVerdict.ACCEPTED value is returned the task will get a call to
-            `query_extra_data` with corresponding `node_id`. On AcceptClientVerdict.REJECTED and
-            AcceptClientVerdict.SHOULD_WAIT the node offer will be turned down, but might appear
-            in subsequent `should_accept_client` invocation. The only difference between REJECTED
-            and SHOULD_WAIT is the log message.
+            AcceptClientVerdict -- When AcceptClientVerdict.ACCEPTED value is
+            returned the task will get a call to `query_extra_data` with
+            corresponding `node_id`. On AcceptClientVerdict.REJECTED and
+            AcceptClientVerdict.SHOULD_WAIT the node offer will be turned down,
+            but might appear in subsequent `should_accept_client` invocation.
+            The only difference between REJECTED and SHOULD_WAIT is the logj
+            message.
         """
         if node_id in self.nodes_blacklist:
             logger.info("Node %s has been blacklisted for this task", node_id)
@@ -329,7 +355,8 @@ class WasmTask(CoreTask):
 
         for assigned_node_id in self.nodes_to_subtasks_map.keys():
             if assigned_node_id in self.nodes_blacklist:
-                orphaned_subtask = self.nodes_to_subtasks_map.pop(assigned_node_id)
+                orphaned_subtask = self.nodes_to_subtasks_map\
+                    .pop(assigned_node_id)
                 self.nodes_to_subtasks_map[node_id] = orphaned_subtask
                 return AcceptClientVerdict.ACCEPTED
 
@@ -344,7 +371,8 @@ class WasmTask(CoreTask):
 
                 return AcceptClientVerdict.ACCEPTED
 
-        """No subtask has yielded next actor meaning that there is no work to be done at the moment
+        """No subtask has yielded next actor meaning that there is no work
+        to be done at the moment
         """
         return AcceptClientVerdict.SHOULD_WAIT
 
@@ -365,7 +393,7 @@ class WasmTask(CoreTask):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return ( WasmTask.REDUNDANCY_FACTOR + 1 ) * len(self.subtasks)
+        return (WasmTask.REDUNDANCY_FACTOR + 1) * len(self.subtasks)
 
     def get_active_tasks(self):
         return 0
@@ -415,9 +443,11 @@ class WasmTask(CoreTask):
         if num_total == 0:
             return 0.0
 
-        num_finished = len(list(filter(lambda x: x.is_finished(), self.subtasks)))
+        num_finished = len(list(filter(lambda x: x.is_finished(),
+                                self.subtasks)))
 
-        # logger.info("num_finished: %s", num_finished * (WasmTask.REDUNDANCY_FACTOR  + 1))
+        # logger.info("num_finished: %s", num_finished * \
+        # (WasmTask.REDUNDANCY_FACTOR  + 1))
         # logger.info("num_total: %s", num_total)
 
         return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
@@ -439,7 +469,8 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1) * len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1)\
+            * len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 
@@ -461,7 +492,8 @@ class WasmTaskBuilder(CoreTaskBuilder):
 
 
 class WasmBenchmarkTask(WasmTask):
-    def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
+    def query_extra_data(self, perf_index: float,
+                         node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         ctd = self.query_extra_data_for_test_task()
         return self.ExtraData(ctd)
