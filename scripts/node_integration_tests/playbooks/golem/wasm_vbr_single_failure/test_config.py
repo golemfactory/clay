@@ -1,5 +1,9 @@
 from aenum import extend_enum
-from ...test_config_base import TestConfigBase, make_node_config_from_env, NodeId
+from ...test_config_base import (
+    TestConfigBase,
+    make_node_config_from_env,
+    NodeId
+)
 
 import tasks
 from pathlib import Path

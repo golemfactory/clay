@@ -151,7 +151,7 @@ class BucketVerifier(VerificationByRedundancy):
         self.results[actor] = result
 
         # None represents no result, hence is not counted
-        if result is not None:  
+        if result is not None:
             found = False
             for bucket in self.buckets:
                 if bucket.try_add(key=result, value=actor):
