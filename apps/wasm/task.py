@@ -188,7 +188,7 @@ class WasmTask(CoreTask):
         assert node_id in self.nodes_to_subtasks_map
 
         s_id, s_params = self.nodes_to_subtasks_map.pop(node_id)
-        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting, 
+        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting,
                                      'node_id': node_id}
         ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 

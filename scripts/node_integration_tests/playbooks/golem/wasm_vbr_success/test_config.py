@@ -1,5 +1,9 @@
 from aenum import extend_enum
-from ...test_config_base import TestConfigBase, make_node_config_from_env, NodeId
+from ...test_config_base import (
+    TestConfigBase,
+    make_node_config_from_env,
+    NodeId
+)
 
 import tasks
 import pathlib
@@ -14,7 +18,13 @@ class TestConfig(TestConfigBase):
         self.task_settings = 'WASM_g_flite'
         settings = tasks.get_settings(task_settings)
         cwd = pathlib.Path(__file__).resolve().parent
-        settings['options']['input_dir'] = str((cwd / '..' / '..' / '..' / 'tasks' / self.task_package / 'in').resolve())
-        settings['options']['output_dir'] = str((cwd / '..' / '..' / '..' / 'tasks' / self.task_package / 'out').resolve())
-        self.nodes[NodeId.provider2] = make_node_config_from_env(NodeId.provider2.value, 2)
+        settings['options']['input_dir'] = str((cwd / '..' / '..' / '..' /
+                                                'tasks' / self.task_package /
+                                                'in').resolve())
+        settings['options']['output_dir'] = str((cwd / '..' / '..' / '..' /
+                                                 'tasks' / self.task_package /
+                                                 'out').resolve())
+        self.nodes[NodeId.provider2] = make_node_config_from_env(
+            NodeId.provider2.value, 2
+        )
         self.task_dict = settings
