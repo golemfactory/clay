@@ -309,10 +309,6 @@ class TransactionSystem(LoopingCallService):
                 amount=event.amount,
             ),
         )
-        # Overcome mypy limitations
-        gnt: model.WalletOperation.CURRENCY
-        gnt = model.WalletOperation.CURRENCY.GNT  # type: ignore
-        # EO mypy limitations
 
         self._sci.subscribe_to_gnt_transfers(
             from_address=self._sci.get_eth_address(),
@@ -320,10 +316,6 @@ class TransactionSystem(LoopingCallService):
             from_block=from_block,
             cb=lambda event: self._payments_keeper.sent_transfer(
                 tx_hash=event.tx_hash,
-                sender_address=event.from_address,
-                recipient_address=event.to_address,
-                amount=event.amount,
-                currency=gnt,
             ),
         )
 
@@ -654,10 +646,6 @@ class TransactionSystem(LoopingCallService):
                     return
                 self._payments_keeper.sent_transfer(
                     tx_hash=receipt.tx_hash,
-                    sender_address=receipt.from_address,
-                    recipient_address=receipt.to_address,
-                    amount=receipt.amount,
-                    currency=model.WalletOperation.CURRENCY.ETH
                 )
             self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
             return tx_hash

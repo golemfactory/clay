@@ -76,36 +76,18 @@ class PaymentsKeeper:
         self.db = PaymentsDatabase()
 
     @staticmethod
-    def sent_transfer(
-            tx_hash: str,
-            sender_address: str,
-            recipient_address: str,
-            amount: int,
-            currency: model.WalletOperation.CURRENCY,
-    ):
+    def sent_transfer(tx_hash: str):
         try:
             operation = model.WalletOperation.select() \
                 .where(
                     model.WalletOperation.tx_hash == tx_hash,
-                    model.WalletOperation.operation_type  # noqa
-                    == model.WalletOperation.TYPE.transfer,
-                    model.WalletOperation.direction  # noqa
-                    == model.WalletOperation.DIRECTION.outgoing,
-                    model.WalletOperation.currency == currency
                 ).get()
             operation.status = model.WalletOperation.STATUS.confirmed
             operation.save()
         except model.WalletOperation.DoesNotExist:
-            model.WalletOperation.create(
-                tx_hash=tx_hash,
-                direction=model.WalletOperation.DIRECTION.outgoing,
-                operation_type=model.WalletOperation.TYPE.transfer,
-                status=model.WalletOperation.STATUS.confirmed,
-                sender_address=sender_address,
-                recipient_address=recipient_address,
-                amount=amount,
-                currency=currency,
-                gas_cost=0,
+            logger.warning(
+                "Got confirmation of unknown transfer. tx_hash=%s",
+                tx_hash,
             )
 
     def get_list_of_all_payments(self, num: Optional[int] = None,
