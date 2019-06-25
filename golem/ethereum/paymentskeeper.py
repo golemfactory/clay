@@ -76,13 +76,15 @@ class PaymentsKeeper:
         self.db = PaymentsDatabase()
 
     @staticmethod
-    def sent_transfer(tx_hash: str):
+    def sent_transfer(tx_hash: str, gas_amount: int, gas_price: Optional[int]):
         try:
             operation = model.WalletOperation.select() \
                 .where(
                     model.WalletOperation.tx_hash == tx_hash,
                 ).get()
             operation.status = model.WalletOperation.STATUS.confirmed
+            if gas_price is not None:
+                operation.gas_cost = gas_amount * gas_price
             operation.save()
         except model.WalletOperation.DoesNotExist:
             logger.warning(

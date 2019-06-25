@@ -1,12 +1,9 @@
-from golem_messages.factories.helpers import (
-    random_eth_address,
-)
-
 from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
 from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
+from tests.factories.model import WalletOperation as WalletOperationFactory
 
 
 class TestPaymentsDatabase(TestWithDatabase):
@@ -55,12 +52,25 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.payments_keeper = PaymentsKeeper()
 
     def test_sent_transfer(self):
+        operation = WalletOperationFactory()
+        operation.save(force_insert=True)
         self.payments_keeper.sent_transfer(
-            tx_hash=f"0x{'0'*64}",
-            sender_address=random_eth_address(),
-            recipient_address=random_eth_address(),
-            amount=1,
-            currency=model.WalletOperation.CURRENCY.GNT,
+            tx_hash=operation.tx_hash,
+            gas_price=1,
+            gas_amount=1,
+        )
+        self.assertEqual(
+            model.WalletOperation.select().count(),
+            1,
+        )
+
+    def test_sent_transfer_no_price(self):
+        operation = WalletOperationFactory()
+        operation.save(force_insert=True)
+        self.payments_keeper.sent_transfer(
+            tx_hash=operation.tx_hash,
+            gas_price=None,
+            gas_amount=1,
         )
         self.assertEqual(
             model.WalletOperation.select().count(),

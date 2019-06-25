@@ -385,7 +385,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             amount,
-            None,
+            self.ets.gas_price,
         )
 
     def test_custom_gas_price_gnt(self):
@@ -448,7 +448,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             self.gnt_balance - locked_gnt,
-            None,
+            self.ets.gas_price,
         )
 
     def test_not_enough_gnt_with_lock(self):
