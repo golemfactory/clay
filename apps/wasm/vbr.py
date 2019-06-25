@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from enum import IntEnum
-from threading import Lock
 from typing import Callable, Any, List, Tuple, Optional, Dict
+
 
 class Actor:
     def __init__(self, uuid: str) -> None:
@@ -33,52 +33,65 @@ class UnknownActorError(Exception):
 
 
 class VerificationByRedundancy(ABC):
-    def __init__(self, redundancy_factor: int, comparator: Callable[[Any, Any], bool], *args, **kwargs) -> None:
+    def __init__(self, redundancy_factor: int,
+                 comparator: Callable[[Any, Any], bool],
+                 *args, **kwargs) -> None:
         self.redundancy_factor = redundancy_factor
         # assert comparator.func_closure is None
         self.comparator = comparator
 
     @abstractmethod
     def add_actor(self, actor: Actor) -> None:
-        """Caller informs class that this is the next actor he wants to assign to the next subtask.
+        """Caller informs class that this is the next actor he wants to assign
+        to the next subtask.
         Raises:
-            NotAllowedError -- Actor given by caller is not allowed to compute next task.
-            MissingResultsError -- Raised when caller wants to add next actor but has already
-            exhausted this method. Now the caller should provide results by `add_result` method.
+            NotAllowedError -- Actor given by caller is not allowed to compute
+            next task.
+            MissingResultsError -- Raised when caller wants to add next actor
+            but has already.
+            exhausted this method. Now the caller should provide results
+            by `add_result` method.
         """
         pass
 
     @abstractmethod
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
         """Add a result for verification.
-        If a task computation has failed for some reason then the caller should use this method with the
-        result equal to None.
-        When user has added a result for each actor it reported by `add_actor` a side effect might be
-        the verdict being available or caller should continue adding actors and results.
+        If a task computation has failed for some reason then the caller
+        should use this method with the result equal to None.
+        When user has added a result for each actor it reported by `add_actor`
+        a side effect might be the verdict being available or caller should
+        continue adding actors and results.
         Arguments:
             actor {Actor} -- Actor who has computed the result
             result {Any} --  Computation result
         Raises:
-            UnknownActorError - raised when caller deliver an actor that was not previously reported by `add_actor` call.
-            ValueError - raised when attempting to add a result for some actor more than once
+            UnknownActorError - raised when caller deliver an actor that was
+            not previously reported by `add_actor` call.
+            ValueError - raised when attempting to add a result for some actor
+            more than once.
         """
         pass
 
     @abstractmethod
-    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
+    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any,
+                                                  VerificationResult]]]:
         """
         Returns:
-            Optional[List[Any, Actor, VerificationResult]] -- If verification is resolved a list of 3-element
-            tuples (actor, result reference, verification_result) is returned. A None is returned
-            when verification has not been finished yet.
+            Optional[List[Any, Actor, VerificationResult]] -- If verification
+            is resolved a list of 3-element tuples (actor, result reference,
+            verification_result) is returned. A None is returned when
+            verification has not been finished yet.
         """
         pass
+
 
 class Bucket:
     """A bucket containing a key and some values. Values are comparable directly,
     keys only by the comparator supplied at bucket creation"""
 
-    def __init__(self, comparator: Callable[[Any, Any], bool], key: Any, value: Optional[Any]) -> None:
+    def __init__(self, comparator: Callable[[Any, Any], bool], key: Any,
+                 value: Optional[Any]) -> None:
         self.comparator = comparator
         self.key = key
         if value is None:
@@ -111,7 +124,8 @@ class BucketVerifier(VerificationByRedundancy):
         self.results: Dict[Actor, Any] = {}
         self.more_actors_needed = True
         self.buckets: List[Bucket] = []
-        self.verdicts: Optional[List[Tuple[Actor, Any, VerificationResult]]] = None
+        self.verdicts: Optional[List[Tuple[Actor, Any, VerificationResult]]]\
+            = None
         self.normal_actor_count = redundancy_factor + 1
         self.referee_count = referee_count
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
@@ -136,7 +150,8 @@ class BucketVerifier(VerificationByRedundancy):
 
         self.results[actor] = result
 
-        if result is not None:   # None represents no result, hence is not counted
+        # None represents no result, hence is not counted
+        if result is not None:  
             found = False
             for bucket in self.buckets:
                 if bucket.try_add(key=result, value=actor):
@@ -144,11 +159,14 @@ class BucketVerifier(VerificationByRedundancy):
                     break
 
             if not found:
-                self.buckets.append(Bucket(self.comparator, key=result, value=actor))
+                self.buckets.append(
+                    Bucket(self.comparator, key=result, value=actor)
+                )
+        # this will set self.more_actors_needed
+        self.compute_verdicts()
 
-        self.compute_verdicts() # this will set self.more_actors_needed
-
-    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any, VerificationResult]]]:
+    def get_verdicts(self) -> Optional[List[Tuple[Actor, Any,
+                                                  VerificationResult]]]:
         return self.verdicts
 
     def compute_verdicts(self) -> None:
@@ -159,7 +177,8 @@ class BucketVerifier(VerificationByRedundancy):
             self.verdicts = None
             return
 
-        # Go through the buckets, looking for majority. If none found, maybe ask for a tie-breaker
+        # Go through the buckets, looking for majority. If none found,
+        # maybe ask for a tie-breaker.
         max_popularity = 0
         winners = None
         for bucket in self.buckets:
@@ -172,10 +191,16 @@ class BucketVerifier(VerificationByRedundancy):
             self.more_actors_needed = False
             success = VerificationResult.SUCCESS
             fail = VerificationResult.FAIL
-            self.verdicts = [(actor, self.results[actor], success if actor in winners else fail) for actor in self.actors]
+            self.verdicts = [
+                (actor, self.results[actor], success
+                    if actor in winners else fail)
+                for actor in self.actors
+            ]
         elif self.majority - max_popularity <= self.referee_count:
             self.verdicts = None
             self.more_actors_needed = True
         else:
-            self.verdicts = [(actor, self.results[actor], VerificationResult.UNDECIDED) for actor in self.actors]
+            self.verdicts = [
+                (actor, self.results[actor], VerificationResult.UNDECIDED)
+                for actor in self.actors]
             self.more_actors_needed = False
