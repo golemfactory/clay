@@ -144,8 +144,8 @@ _TASK_SETTINGS = {
     'WASM_g_flite': {
         'type': "wasm",
         'name': 'my_wasm_g_flite_task',
-        'timeout': "0:10:00",
-        "subtask_timeout": "0:10:00",
+        'timeout': "0:04:00",
+        "subtask_timeout": "0:04:00",
         "bid": 1,
         "resources": [],
         'options': {
