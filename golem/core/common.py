@@ -317,13 +317,8 @@ def config_logging(
 
 
 def install_reactor():
-
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
-    elif is_osx():
-        from twisted.internet import kqreactor
-        kqreactor.install()
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install()
 
     from twisted.internet import reactor
     from golem.core.variables import REACTOR_THREAD_POOL_SIZE
