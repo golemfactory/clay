@@ -389,6 +389,7 @@ class TaskComputer(object):
 
     def _task_finished(self) -> None:
         ctd = self.assigned_subtask
+        assert ctd is not None
         self.assigned_subtask = None
 
         ProviderTimer.finish()

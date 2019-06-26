@@ -640,3 +640,36 @@ class TestTaskInterrupted(TestTaskComputerBase):
         self.task_computer.assigned_subtask = mock.Mock()
         self.task_computer.task_interrupted()
         task_finished.assert_called_once_with()
+
+
+class TestTaskFinished(TestTaskComputerBase):
+
+    def test_no_assigned_subtask(self):
+        with self.assertRaises(AssertionError):
+            self.task_computer._task_finished()
+
+    @mock.patch('golem.task.taskcomputer.dispatcher')
+    @mock.patch('golem.task.taskcomputer.ProviderTimer')
+    def test_ok(self, provider_timer, dispatcher):
+        ctd = ComputeTaskDef(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            performance=123
+        )
+        self.task_computer.assigned_subtask = ctd
+        self.task_computer.counting_thread = mock.Mock()
+        self.task_computer.finished_cb = mock.Mock()
+
+        self.task_computer._task_finished()
+        self.assertIsNone(self.task_computer.assigned_subtask)
+        self.assertIsNone(self.task_computer.counting_thread)
+        provider_timer.finish.assert_called_once_with()
+        dispatcher.send.assert_called_once_with(
+            signal='golem.taskcomputer',
+            event='subtask_finished',
+            subtask_id=ctd['subtask_id'],
+            min_performance=ctd['performance']
+        )
+        self.task_server.task_keeper.task_ended.assert_called_once_with(
+            ctd['task_id'])
+        self.task_computer.finished_cb.assert_called_once_with()
