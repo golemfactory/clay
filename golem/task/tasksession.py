@@ -489,12 +489,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 private_key=self.my_private_key
             )
 
+        signed_ttc = msg_utils.copy_and_sign(
+            msg=ttc,
+            private_key=self.my_private_key,
+        )
+
         self.send(ttc)
+
         history.add(
-            msg=msg_utils.copy_and_sign(
-                msg=ttc,
-                private_key=self.my_private_key,
-            ),
+            msg=signed_ttc,
             node_id=self.key_id,
             local_role=Actor.Requestor,
             remote_role=Actor.Provider,

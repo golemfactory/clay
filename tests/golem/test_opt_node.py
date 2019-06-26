@@ -138,7 +138,8 @@ class TestNode(TestWithDatabase):
                                      ],
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.TransactionSystem')
     def test_geth_address_should_be_passed_to_transaction_system(
@@ -213,7 +214,8 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
@@ -262,7 +264,8 @@ class TestNode(TestWithDatabase):
             concent_variant=variables.CONCENT_CHOICES['test'],
             use_monitor=None,
             use_talkback=None,
-            password=None
+            password=None,
+            crossbar_serializer=None,
         )
 
     @patch('golem.node.Node')
@@ -290,7 +293,8 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None)
+                                     password=None,
+                                     crossbar_serializer=None)
 
     @patch('golem.node.Node')
     def test_config_change(self, *_):

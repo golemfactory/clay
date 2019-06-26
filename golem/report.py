@@ -3,9 +3,8 @@ from functools import wraps
 
 from typing import Any, ClassVar, Dict, Optional, Tuple
 
-from twisted.internet.defer import Deferred, succeed
+from twisted.internet.defer import Deferred, maybeDeferred
 
-from golem.core.common import to_unicode
 from golem.rpc.session import Publisher
 from golem.rpc.mapping.rpceventnames import Golem
 
@@ -54,23 +53,18 @@ class StatusPublisher(object):
                  autobahn.wamp.request.Publication on success or None if
                  session is closing or there was an error
         """
-        cls._last_status[to_unicode(component)] = (
-            to_unicode(method),
-            to_unicode(stage),
-            data)
+        cls._update_status(component, method, stage, data)
+
         if cls._rpc_publisher:
             from twisted.internet import reactor
-
             deferred = Deferred()
 
             def _publish():
-                publish_deferred: Optional[Deferred] = \
-                    cls._rpc_publisher.publish(
-                        Golem.evt_golem_status,
-                        cls._last_status)
-                if publish_deferred is None:
-                    publish_deferred = succeed(None)
-                publish_deferred.chainDeferred(deferred)
+                maybeDeferred(
+                    cls._rpc_publisher.publish,
+                    Golem.evt_golem_status,
+                    cls._last_status
+                ).chainDeferred(deferred)
 
             reactor.callFromThread(_publish)
             return deferred
@@ -101,6 +95,12 @@ class StatusPublisher(object):
                     kwargs['method'],
                     kwargs['stage'],
                     kwargs.get('data'))
+
+    @classmethod
+    def _update_status(cls, component, method, stage, data) -> None:
+        if data and not isinstance(data, dict):
+            data = {"status": "message", "value": data}
+        cls._last_status[component] = (method, stage, data)
 
 
 @contextmanager

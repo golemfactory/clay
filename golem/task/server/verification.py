@@ -99,12 +99,16 @@ class VerificationMixin:
                 report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
+
+            signed_response_msg = msg_utils.copy_and_sign(
+                msg=response_msg,
+                private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+            )
+
             msg_queue.put(node.key, response_msg)
+
             history.add(
-                msg_utils.copy_and_sign(
-                    msg=response_msg,
-                    private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
-                ),
+                signed_response_msg,
                 node_id=task_to_compute.provider_id,
                 local_role=model.Actor.Requestor,
                 remote_role=model.Actor.Provider,
@@ -147,14 +151,16 @@ class VerificationMixin:
             report_computed_task=report_computed_task,
             reason=reason,
         )
-        msg_queue.put(node.key, response_msg)
 
-        response_msg = msg_utils.copy_and_sign(
+        signed_response_msg = msg_utils.copy_and_sign(
             msg=response_msg,
             private_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
         )
+
+        msg_queue.put(node.key, response_msg)
+
         history.add(
-            response_msg,
+            signed_response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
             local_role=model.Actor.Requestor,
             remote_role=model.Actor.Provider,

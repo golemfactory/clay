@@ -1,7 +1,6 @@
 import json
 import logging
 from flask import Flask, request, send_file
-from pathlib import Path
 from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
@@ -67,6 +66,7 @@ def _start(port: int) -> None:
 
     reactor.listenTCP(
         port, Site(WSGIResource(reactor, reactor.getThreadPool(), japp)))
+
 
 def _create_dav_app(port):
     global golem_client

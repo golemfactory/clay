@@ -25,8 +25,8 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
 from golem.network.transport import msg_queue
@@ -53,7 +53,6 @@ from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
-
 from .server import concent
 from .server import helpers
 from .server import queue_ as srv_queue
@@ -63,7 +62,6 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-
 
 logger = logging.getLogger(__name__)
 
@@ -329,7 +327,7 @@ class TaskServer(
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
                 provider_public_key=self.get_key_id(),
-                provider_ethereum_public_key=wtct_kwargs.get('eth_pub_key'),
+                provider_ethereum_address=wtct_kwargs.get('eth_addr'),
                 task_header=theader,
             )
             if num_subtasks > 1:

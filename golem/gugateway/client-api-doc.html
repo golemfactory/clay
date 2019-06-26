@@ -779,10 +779,10 @@ margin-bottom: 20px;
       "type" : "integer",
       "description" : "max available disk in KiB"
     },
-    "ethPubKey" : {
+    "ethAddr" : {
       "type" : "string",
-      "description" : "ethereum public key which will be used to obtain eth address for payments (as hex wo `0x` prefix)\n",
-      "pattern" : "[0-9a-fA-F]{128}"
+      "description" : "eth address for payments (as hex with `0x` prefix)",
+      "pattern" : "0x[0-9a-fA-F]{40}"
     }
   }
 };

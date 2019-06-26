@@ -228,7 +228,7 @@ class TaskServerMessageHandler():
     def on_force_subtask_results(self, msg, **_):
         """I'm a Requestor
 
-        Concent sends his own ForceSubtaskResults with AckReportComputedTask
+        Concent sends its own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
         sra = history.get(

@@ -220,14 +220,23 @@ class TaskComputer(object):
             return None
 
         c: TaskThread = self.counting_thread
+        try:
+            outfilebasename = c.extra_data.get(  # type: ignore
+                'crops'
+            )[0].get(
+                'outfilebasename'
+            )
+        except (IndexError, KeyError):
+            outfilebasename = ''
+
         tcss = ComputingSubtaskStateSnapshot(
             subtask_id=self.assigned_subtask['subtask_id'],
             progress=c.get_progress(),
             seconds_to_timeout=c.task_timeout,
             running_time_seconds=(time.time() - c.start_time),
+            outfilebasename=outfilebasename,
             **c.extra_data,
         )
-
         return tcss
 
     def is_computing(self) -> bool:

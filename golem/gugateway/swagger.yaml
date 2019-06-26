@@ -55,12 +55,10 @@ definitions:
       maxDiskSize:
         type: integer
         description: max available disk in KiB
-      ethPubKey:
+      ethAddr:
         type: string
-        pattern: '[0-9a-fA-F]{128}'
-        description: >
-          ethereum public key which will be used to
-          obtain eth address for payments (as hex wo `0x` prefix)
+        pattern: '0x[0-9a-fA-F]{40}'
+        description: eth address for payments (as hex with `0x` prefix)
   SubscriptionStatus:
     required:
       - nodeId

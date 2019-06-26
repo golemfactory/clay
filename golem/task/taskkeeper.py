@@ -369,9 +369,19 @@ class TaskHeaderKeeper:
         supported = self.check_environment(header.environment)
         supported = supported.join(self.check_mask(header))
         supported = supported.join(self.check_price(header))
+
         if not supported.is_ok():
-            logger.info("Unsupported task %s, reason: %r",
-                        header.task_id, supported.desc)
+            if supported.err_reason == UnsupportReason.MASK_MISMATCH:
+                # as this is a condition where a particular provider's
+                # configuration is not at fault, it doesn't make sense to
+                # alert users to this task support "failure" ...
+                loglevel = logging.DEBUG
+            else:
+                loglevel = logging.INFO
+
+            logger.log(loglevel, "Unsupported task %s, reason: %r",
+                       header.task_id, supported.desc)
+
         return supported
 
     def check_environment(self, env: str) -> SupportStatus:

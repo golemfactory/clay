@@ -208,12 +208,9 @@ class Subscription(object):
         self.max_cpu_cores: int = int(request_json['maxCpuCores'])
         self.max_memory_size: int = int(request_json['maxMemorySize'])
         self.max_disk_size: int = int(request_json['maxDiskSize'])
-        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
+        self.eth_addr: Optional[str] = request_json.get('ethAddr')
 
         self.node_id: str = node_id
-        # TODO: By default node_id should be used as address for payments. It
-        #      can by overwritten by `ethPubKey` field. But GM needs pub key :/
-        # self.eth_pub_key = self.eth_pub_key or self.node_id[2:]
         self.task_type: TaskType = task_type
         self.stats: Counter = Counter()
         self.event_counter: int = 0
@@ -240,7 +237,7 @@ class Subscription(object):
         self.max_cpu_cores = int(request_json['maxCpuCores'])
         self.max_memory_size = int(request_json['maxMemorySize'])
         self.max_disk_size = int(request_json['maxDiskSize'])
-        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
+        self.eth_addr: Optional[str] = request_json.get('ethAddr')
 
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
@@ -280,7 +277,7 @@ class Subscription(object):
             task_id=task_id,
             wtct_kwargs={
                 'performance': self.performance,
-                'eth_pub_key': self.eth_pub_key,
+                'eth_addr': self.eth_addr,
                 'num_subtasks': num_subtasks
             })
         dispatcher.connect(self._handle_add_subtask,
@@ -399,7 +396,7 @@ class Subscription(object):
                 'maxCpuCores': self.max_cpu_cores,
                 'maxMemorySize': self.max_memory_size,
                 'maxDiskSize': self.max_disk_size,
-                'ethPubKey': self.eth_pub_key,
+                'ethAddr': self.eth_addr,
             },
             'subtaskStats': dict(self.stats)
         }

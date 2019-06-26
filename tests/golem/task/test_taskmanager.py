@@ -47,6 +47,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.task import taskstate as taskstate_factory
+from tests.factories.model import CachedNode as CachedNodeFactory
 
 
 fake = Faker()
@@ -310,14 +311,25 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         (handler, checker) = self._connect_signal_handler()
         wrong_task = not self.tm.is_my_task("xyz")
+
+        cached_node = CachedNodeFactory()
+        cached_node.save()
+
         subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, 5, 10)
+            cached_node.node, "xyz", 1000, 10, 5, 10)
         assert subtask is not None
         assert not wrong_task
         checker([("xyz", subtask['subtask_id'], SubtaskOp.ASSIGNED)])
         del handler
 
-        self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
+        task_state = self.tm.tasks_states["xyz"]
+        self.assertEqual(
+            task_state.subtask_states[subtask['subtask_id']].node_name,
+            cached_node.node_field.node_name
+        )
+
+        task_state.status = self.tm.activeStatus[0]
+
         wrong_task = not self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "xyz", 1000, 10, 1, 10)

@@ -10,6 +10,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    TYPE_CHECKING,
     TypeVar,
 )
 
@@ -47,6 +48,11 @@ from golem.rpc.session import (
 from golem import terms
 from golem.tools.uploadcontroller import UploadController
 from golem.tools.remotefs import RemoteFS
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import
+    from golem.rpc.router import SerializerType
+
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -87,7 +93,8 @@ class Node(HardwarePresetsMixin):
                  use_talkback: bool = False,
                  use_docker_manager: bool = False,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None
+                 password: Optional[str] = None,
+                 crossbar_serializer: 'Optional[SerializerType]' = None,
                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
@@ -153,6 +160,8 @@ class Node(HardwarePresetsMixin):
         if password is not None:
             if not self.set_password(password):
                 raise Exception("Password incorrect")
+
+        self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
 
@@ -275,6 +284,7 @@ class Node(HardwarePresetsMixin):
             host=self._config_desc.rpc_address,
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
+            crossbar_serializer=self._crossbar_serializer,
         )
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 

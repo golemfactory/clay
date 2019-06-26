@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 
 class NodeConfig:
     def __init__(self) -> None:
+        self.additional_args: Dict[str, Any] = {}
         self.concent = 'staging'
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
@@ -51,6 +52,7 @@ class NodeConfig:
             args['--hyperdrive-port'] = self.hyperdrive_port
         if self.hyperdrive_rpc_port:
             args['--hyperdrive-rpc-port'] = self.hyperdrive_rpc_port
+        args.update(self.additional_args)
 
         return args
 
@@ -97,6 +99,9 @@ class TestConfigBase:
         self.nodes_root: 'Optional[Path]' = None
         self.task_package = 'test_task_1'
         self.task_settings = task_settings
+        self.update_task_dict()
+
+    def update_task_dict(self):
         self.task_dict = helpers.construct_test_task(
             task_package_name=self.task_package,
             task_settings=self.task_settings,

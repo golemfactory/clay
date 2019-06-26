@@ -16,7 +16,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem_messages.utils import encode_hex as encode_key_id
+from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
 from requests import HTTPError
 
 from golem import testutils
@@ -172,6 +172,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         handshake.remote_result = True
         self.ts.get_environment_by_id = Mock(return_value=None)
         self.ts.get_key_id = Mock(return_value='0'*128)
+        self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
