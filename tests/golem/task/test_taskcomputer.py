@@ -57,46 +57,10 @@ class TestTaskComputer(TestTaskComputerBase):
             use_docker_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
-    def test_run(self):
-        task_server = self.task_server
-        task_server.config_desc.task_request_interval = 0.5
-        task_server.config_desc.accept_tasks = True
-        task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer(
-            task_server,
-            self.docker_cpu_env,
-            use_docker_manager=False)
-        self.assertIsNone(tc.counting_thread)
-        tc.last_task_request = 0
-        tc.run()
-        task_server.request_task.assert_called_with()
-        task_server.request_task = mock.MagicMock()
-        task_server.config_desc.accept_tasks = False
-        tc2 = TaskComputer(
-            task_server,
-            self.docker_cpu_env,
-            use_docker_manager=False)
-        tc2.counting_thread = None
-        tc2.last_task_request = 0
-
-        tc2.run()
-        task_server.request_task.assert_not_called()
-
-        tc2.runnable = True
-        tc2.compute_tasks = True
-
-        tc2.last_task_request = 0
-        tc2.counting_thread = None
-
-        tc2.run()
-
-        assert task_server.request_task.called
-
-        task_server.request_task.called = False
-
-        tc2.last_checking = 10 ** 10
-
-        tc2.run()
+    def test_check_timeout(self):
+        self.task_computer.counting_thread = mock.Mock()
+        self.task_computer.check_timeout()
+        self.task_computer.counting_thread.check_timeout.assert_called_once()
 
     def test_computation(self):  # pylint: disable=too-many-statements
         # FIXME Refactor too single tests and remove disable too many
@@ -479,12 +443,6 @@ class TestChangeConfig(TestTaskComputerBase):
             run_benchmarks=False,
             in_background=True
         )
-
-    def test_task_request_frequency(self, _):
-        config_desc = ClientConfigDescriptor()
-        config_desc.task_request_interval = 100
-        self.task_computer.change_config(config_desc)
-        self.assertEqual(self.task_computer.task_request_frequency, 100)
 
     def _test_compute_tasks(self, accept_tasks, in_shutdown, expected):
         config_desc = ClientConfigDescriptor()

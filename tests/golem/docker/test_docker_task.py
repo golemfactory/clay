@@ -183,7 +183,7 @@ class DockerTaskTestCase(
 
         if task_thread:
             task_thread.join(timeout)
-            task_computer.run()
+            task_computer.check_timeout()
 
         return task_thread
 

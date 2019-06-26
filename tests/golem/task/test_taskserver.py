@@ -1,5 +1,6 @@
 # pylint: disable=protected-access, too-many-lines
 import os
+import time
 from datetime import datetime, timedelta
 import random
 import tempfile
@@ -159,7 +160,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
@@ -176,7 +177,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.get_key_id = Mock(return_value='0'*128)
         self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
-        self.assertEqual(ts.request_task(), task_id)
+        self.assertEqual(ts._request_random_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
         self.assertNotIn(task_id, ts.requested_tasks)
@@ -196,7 +197,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id3 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id3,
             SupportStatus(
@@ -211,7 +212,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id4 = task_header.task_id
         task_header.max_price = 1
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id4,
             SupportStatus(
@@ -225,7 +226,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id5 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts.request_task())
+        self.assertIsNone(ts._request_random_task())
         tar.add_support_status.assert_called_with(
             task_id5,
             SupportStatus(
@@ -241,13 +242,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.config_desc.min_price = 0
         self.ts.client.concent_service.enabled = True
         self.ts.task_archiver = Mock()
+        self.ts._last_task_request_time = 0.0
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.concent_enabled = False
         task_header.sign(private_key=keys_auth._private_key)
         self.ts.add_task_header(task_header)
 
-        self.assertIsNone(self.ts.request_task())
+        self.assertIsNone(self.ts._request_random_task())
         self.ts.task_archiver.add_support_status.assert_called_once_with(
             task_header.task_id,
             SupportStatus(
@@ -263,12 +265,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd2.task_session_timeout = 124
         ccd2.min_price = 0.0057
         ccd2.task_request_interval = 31
-        # ccd2.use_waiting_ttl = False
         ts.change_config(ccd2)
         self.assertEqual(ts.config_desc, ccd2)
         self.assertEqual(ts.task_keeper.min_price, 0.0057)
-        self.assertEqual(ts.task_computer.task_request_frequency, 31)
-        # self.assertEqual(ts.task_computer.use_waiting_ttl, False)
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
@@ -1216,3 +1215,71 @@ class TestResourceFailure(TaskServerTestBase):
             'test_task',
             'Error downloading resources: test_reason'
         )
+
+
+class TestRequestRandomTask(TaskServerTestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.ts.task_computer = MagicMock()
+        self.ts.task_keeper = MagicMock()
+
+    def test_task_already_assigned(self):
+        self.ts.task_computer.has_assigned_task.return_value = True
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = True
+
+        self.assertIsNone(self.ts._request_random_task())
+
+    def test_task_computer_not_accepting_tasks(self):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = False
+        self.ts.task_computer.runnable = True
+
+        self.assertIsNone(self.ts._request_random_task())
+
+    def test_task_computer_not_runnable(self):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = False
+
+        self.assertIsNone(self.ts._request_random_task())
+
+    @freezegun.freeze_time()
+    def test_request_interval(self):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = True
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time()
+
+        self.assertIsNone(self.ts._request_random_task())
+
+    @freezegun.freeze_time()
+    def test_no_supported_tasks_in_task_keeper(self):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = True
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
+        self.ts.task_keeper.get_task.return_value = None
+
+        self.assertIsNone(self.ts._request_random_task())
+
+    @freezegun.freeze_time()
+    @patch('golem.task.taskserver.TaskServer._request_task')
+    def test_ok(self, request_task):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = True
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
+        task_header = Mock()
+        self.ts.task_keeper.get_task.return_value = task_header
+
+        result = self.ts._request_random_task()
+        self.assertEqual(result, request_task.return_value)
+        self.assertEqual(self.ts._last_task_request_time, time.time())
+        self.ts.task_computer.stats.increase_stat.assert_called_once_with(
+            'tasks_requested')
+        request_task.assert_called_once_with(task_header)
