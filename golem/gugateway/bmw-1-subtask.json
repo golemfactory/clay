@@ -2,8 +2,8 @@
     "type": "Blender",
     "compute_on": "cpu",
     "name": "BMW 1s",
-    "timeout": "00:04:00",
-    "subtask_timeout": "00:03:00",
+    "timeout": "00:14:00",
+    "subtask_timeout": "00:13:00",
     "subtasks_count": 1,
     "bid": 2.1,
     "resources": [
@@ -11,7 +11,7 @@
     ],
     "options": {
         "frame_count": 1,
-        "output_path": "/home/any/blender/benchmark/test_task/",
+        "output_path": "/Users/tworec/Documents/",
         
         "format": "PNG",
         "resolution": [
