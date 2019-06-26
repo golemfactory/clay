@@ -168,6 +168,7 @@ def _prepare_task(
         task: taskbase.Task,
         force: bool
 ) -> defer.Deferred:
+    logger.debug('_prepare_task(). dict=%r', task.task_definition.to_dict())
     seq = DeferredSeq()
     seq.push(client.task_manager.initialize_task, task)
     seq.push(enqueue_new_task, client, task, force=force)
@@ -375,14 +376,14 @@ def enqueue_new_task(client, task, force=False) \
         task.get_total_tasks(),
         task.header.deadline,
     )
-    logger.info('Enqueue new task %r', task)
+    logger.debug('Enqueue new task. task_id=%r', task)
 
     resource_server_result = yield _setup_task_resources(
         client=client,
         task=task,
     )
 
-    logger.info("Task created. task_id=%r", task_id)
+    logger.debug("Task resources created. task_id=%r", task_id)
 
     try:
         yield _ensure_task_deposit(
@@ -397,7 +398,7 @@ def enqueue_new_task(client, task, force=False) \
             resource_server_result=resource_server_result,
         )
 
-        logger.info("Task enqueued. task_id=%r", task_id)
+        logger.info("Task started. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
         logger.error(
             "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
@@ -476,7 +477,8 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-        logger.info('Creating task "%r" ...', task_dict)
+        logger.info('Creating task. task_dict=%r', task_dict)
+        logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
         self._validate_enough_funds_to_pay_for_task(
@@ -486,8 +488,6 @@ class ClientProvider:
             force
         )
         task_id = task.header.task_id
-
-        logger.debug('Enqueue task "%r" ...', task.task_definition.to_dict())
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
@@ -561,6 +561,7 @@ class ClientProvider:
                  on failure
         """
         logger.info('Restarting task. task_id=%r', task_id)
+        logger.debug('force=%r, disable_concent=%r', force, disable_concent)
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
@@ -643,8 +644,8 @@ class ClientProvider:
                 return f'Subtask does not belong to the given task.' \
                     f'task_id: {task_id}, subtask_id: {sub_id}'
 
-        logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
-                     'ignore_gas_price=%r, disable_concent=%r', task_id,
+        logger.info('Restarting subtasks. task_id=%r', task_id)
+        logger.debug('subtask_ids=%r, ignore_gas_price=%r, disable_concent=%r',
                      subtask_ids, ignore_gas_price, disable_concent)
 
         task_state = self.client.task_manager.tasks_states[task_id]
