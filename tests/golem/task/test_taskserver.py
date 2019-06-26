@@ -108,22 +108,21 @@ class TaskServerTestBase(LogTestCase,
                          testutils.TestWithClient):
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):
-        super().setUp()
+    @patch('golem.network.concent.handlers_library.HandlersLibrary'
+           '.register_handler')
+    def setUp(self, *_):
+        super().setUp()  # pylint: disable=arguments-differ
         random.seed()
         self.ccd = ClientConfigDescriptor()
         self.ccd.init_from_app_config(
             AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
         self.client.concent_service.enabled = False
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
-            self.ts = TaskServer(
-                node=dt_p2p_factory.Node(),
-                config_desc=self.ccd,
-                client=self.client,
-                use_docker_manager=False,
-            )
+        self.ts = TaskServer(
+            node=dt_p2p_factory.Node(),
+            config_desc=self.ccd,
+            client=self.client,
+            use_docker_manager=False,
+        )
         self.ts.resource_manager.storage.get_dir.return_value = self.tempdir
 
     def tearDown(self):
@@ -1118,3 +1117,102 @@ class TestSendResults(TaskServerTestBase):
         self.assertEqual(result.package_path, package_path)
 
         trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)
+
+
+@patch('golem.task.taskcomputer.TaskComputer.has_assigned_task')
+@patch('golem.task.taskcomputer.TaskComputer.task_given')
+@patch('golem.task.taskserver.TaskServer.request_resource')
+@patch('golem.task.taskserver.update_requestor_assigned_sum')
+@patch('golem.task.taskserver.dispatcher')
+@patch('golem.task.taskserver.logger')
+class TestTaskGiven(TaskServerTestBase):
+    # pylint: disable=too-many-arguments
+
+    def test_ok(
+            self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
+            request_resource, task_given, has_assigned_task):
+
+        has_assigned_task.return_value = False
+        node_id = 'test_node'
+        task_id = 'test_task'
+        subtask_id = 'test_subtask'
+        resources = ['test_resource']
+        ctd = ComputeTaskDef(
+            task_id=task_id,
+            subtask_id=subtask_id,
+            resources=resources
+        )
+        price = 123
+
+        result = self.ts.task_given(node_id, ctd, price)
+        self.assertEqual(result, True)
+
+        task_given.assert_called_once_with(ctd)
+        request_resource.assert_called_once_with(task_id, subtask_id, resources)
+        update_requestor_assigned_sum.assert_called_once_with(node_id, price)
+        dispatcher_mock.send.assert_called_once_with(
+            signal='golem.subtask',
+            event='started',
+            subtask_id=subtask_id,
+            price=price
+        )
+        logger_mock.error.assert_not_called()
+
+    def test_already_assigned(
+            self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
+            request_resource, task_given, has_assigned_task):
+
+        has_assigned_task.return_value = True
+        result = self.ts.task_given('', Mock(), 0)
+        self.assertEqual(result, False)
+
+        task_given.assert_not_called()
+        request_resource.assert_not_called()
+        update_requestor_assigned_sum.assert_not_called()
+        dispatcher_mock.send.assert_not_called()
+        logger_mock.error.assert_called()
+
+
+@patch('golem.task.taskserver.logger')
+@patch('golem.task.taskcomputer.TaskComputer.start_computation')
+class TestResourceCollected(TaskServerTestBase):
+
+    def test_wrong_task_id(self, start_computation, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        result = self.ts.resource_collected('wrong_id')
+        self.assertFalse(result)
+        logger_mock.error.assert_called_once()
+        start_computation.assert_not_called()
+
+    def test_ok(self, start_computation, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        result = self.ts.resource_collected('test')
+        self.assertTrue(result)
+        logger_mock.error.assert_not_called()
+        start_computation.assert_called_once_with()
+
+
+@patch('golem.task.taskserver.logger')
+@patch('golem.task.taskserver.TaskServer.send_task_failed')
+@patch('golem.task.taskcomputer.TaskComputer.task_interrupted')
+class TestResourceFailure(TaskServerTestBase):
+
+    def test_wrong_task_id(self, interrupted, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+        self.ts.resource_failure('wrong_id', 'reason')
+        logger_mock.error.assert_called_once()
+        interrupted.assert_not_called()
+        send_task_failed.assert_not_called()
+
+    def test_ok(self, interrupted, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_subtask = ComputeTaskDef(
+            task_id='test_task', subtask_id='test_subtask'
+        )
+        self.ts.resource_failure('test_task', 'test_reason')
+        logger_mock.error.assert_not_called()
+        interrupted.assert_called_once_with()
+        send_task_failed.assert_called_once_with(
+            'test_subtask',
+            'test_task',
+            'Error downloading resources: test_reason'
+        )

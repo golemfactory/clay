@@ -91,58 +91,35 @@ class TaskComputer(object):
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtask: Optional['ComputeTaskDef'] = None
+        # So apparently it is perfectly fine for mypy to assign None to a
+        # non-optional variable. And if I tried Optional['ComputeTaskDef']
+        # then I would get "Optional[Any] is not indexable" error.
+        # Get your sh*t together, mypy!
+        self.assigned_subtask: 'ComputeTaskDef' = None
 
-        self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd: 'ComputeTaskDef'):
-        if self.assigned_subtask is not None:
-            logger.error("Trying to assign a task, when it's already assigned")
-            return False
-
-        ProviderTimer.start()
-
+    def task_given(self, ctd: 'ComputeTaskDef') -> None:
+        assert self.assigned_subtask is None
         self.assigned_subtask = ctd
-        self.__request_resource(
-            ctd['task_id'],
-            ctd['subtask_id'],
-            ctd['resources'],
-        )
-        return True
+        ProviderTimer.start()
 
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
 
-    def resource_collected(self, res_id):
-        subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != res_id:
-            logger.error("Resource collected for a wrong task, %s", res_id)
-            return False
-        self.last_task_timeout_checking = time.time()
-        self.__compute_task(
-            subtask['subtask_id'],
-            subtask['docker_images'],
-            subtask['extra_data'],
-            subtask['deadline'])
-        return True
+    @property
+    def assigned_task_id(self) -> Optional[str]:
+        if self.assigned_subtask is None:
+            return None
+        return self.assigned_subtask.get('task_id')
 
-    def resource_failure(self, res_id, reason):
-        subtask = self.assigned_subtask
-        self.assigned_subtask = None
-        if not subtask or subtask['task_id'] != res_id:
-            logger.error("Resource failure for a wrong task, %s", res_id)
-            return
-        self.task_server.send_task_failed(
-            subtask['subtask_id'],
-            subtask['task_id'],
-            'Error downloading resources: {}'.format(reason),
-        )
-        self.__task_finished(subtask)
+    def task_interrupted(self) -> None:
+        assert self.assigned_subtask is not None
+        self._task_finished()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
@@ -152,7 +129,6 @@ class TaskComputer(object):
         try:
             subtask = self.assigned_subtask
             assert subtask is not None
-            self.assigned_subtask = None
             subtask_id = subtask['subtask_id']
             task_id = subtask['task_id']
             task_header = self.task_server.task_keeper.task_headers[task_id]
@@ -164,7 +140,7 @@ class TaskComputer(object):
             logger.error("Task header not found in task keeper. "
                          "task_id=%r, subtask_id=%r",
                          task_id, subtask_id)
-            self.__task_finished(subtask)
+            self._task_finished()
             return
 
         was_success = False
@@ -209,7 +185,7 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-        self.__task_finished(subtask)
+        self._task_finished()
 
     def run(self):
         """ Main loop of task computer """
@@ -366,12 +342,16 @@ class TaskComputer(object):
         if requested_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, subtask_id, resources):
-        self.task_server.request_resource(task_id, subtask_id, resources)
+    def start_computation(self) -> None:  # pylint: disable=too-many-locals
+        subtask = self.assigned_subtask
+        assert subtask is not None
 
-    def __compute_task(self, subtask_id, docker_images,
-                       extra_data, subtask_deadline):
-        task_id = self.assigned_subtask['task_id']
+        task_id = subtask['task_id']
+        subtask_id = subtask['subtask_id']
+        docker_images = subtask['docker_images']
+        extra_data = subtask['extra_data']
+        subtask_deadline = subtask['deadline']
+
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
         if not task_header:
@@ -409,15 +389,13 @@ class TaskComputer(object):
                               task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
-            subtask = self.assigned_subtask
-            self.assigned_subtask = None
             self.task_server.send_task_failed(
                 subtask_id,
-                subtask['task_id'],
+                self.assigned_subtask['task_id'],
                 "Host direct task not supported",
             )
 
-            self.__task_finished(subtask)
+            self._task_finished()
             return
 
         with self.lock:
@@ -426,7 +404,9 @@ class TaskComputer(object):
         self.task_server.task_keeper.task_started(task_id)
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
+    def _task_finished(self) -> None:
+        ctd = self.assigned_subtask
+        self.assigned_subtask = None
 
         ProviderTimer.finish()
         dispatcher.send(
