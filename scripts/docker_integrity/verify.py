@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import argparse
 import json
 import pathlib
 import re
@@ -9,7 +10,8 @@ import typing
 
 DOCKERHUB_URI = 'https://registry.hub.docker.com/v2/'
 REPOSITORY_ROOT = 'golemfactory'
-IMAGES_FILE = pathlib.Path(__file__).parents[2] / 'apps/image_integrity.ini'
+IMAGES_FILE = pathlib.Path(__file__).parents[0] / 'image_integrity.ini'
+GOLEM_IMAGES_FILE = pathlib.Path(__file__).parents[2] / 'apps/images.ini'
 
 
 class COLORS(object):
@@ -28,6 +30,30 @@ class ConfigurationError(Exception):
 
 class CommunicationError(Exception):
     pass
+
+
+class CoverageError(Exception):
+    pass
+
+
+def get_golem_images() -> dict:
+    images: dict = {}
+
+    with open(GOLEM_IMAGES_FILE) as f:
+        for l in f:
+            m = re.match(
+                r"(?P<repo>[\w._/]+)\s+\S+\s+(?P<tag>[\w.]+)", l)
+            if not m:
+                continue
+
+            images[m.group('repo')] = m.group('tag')
+
+    if not images:
+        raise ConfigurationError(
+            "Could not parse Golem `images.ini`. Format has changed?"
+        )
+
+    return images
 
 
 def get_images() -> dict:
@@ -164,6 +190,14 @@ def verify_images() -> typing.Tuple[int, int]:
     return cnt_images, cnt_failures
 
 
+def verify_coverage():
+    integrity_images = get_images()
+    for repository, tag in get_golem_images().items():
+        if tag not in integrity_images.get(repository):
+            raise CoverageError(
+                f'{repository}:{tag} is not present in {IMAGES_FILE}')
+
+
 def run_verification():
 
     cnt_images, cnt_failures = verify_images()
@@ -182,5 +216,25 @@ def run_verification():
     sys.exit(0)
 
 
-print("Verifying Golem Docker image integrity...")
-run_verification()
+def run():
+
+    parser = argparse.ArgumentParser(
+        description="Verify integrity of Golem Docker hub images")
+    parser.add_argument(
+        '--verify-coverage',
+        help=f"Ensure all Golem images defined in {GOLEM_IMAGES_FILE} "
+             f"are checked for integrity.",
+        action='store_true',
+    )
+    args = parser.parse_args()
+
+    if args.verify_coverage:
+        print("Verifying coverage... ")
+        verify_coverage()
+        print(f"{COLORS.GREEN}All images protected :){COLORS.RESET}")
+
+    print("Verifying Golem Docker image integrity...")
+    run_verification()
+
+
+run()
