@@ -260,7 +260,7 @@ class Subscription(object):
     def want_subtask(self,
                      task_server: TaskServer,
                      task_id: str,
-                     num_subtasks: int = 3) -> bool:
+                     num_subtasks: int = 1) -> bool:
         if task_id not in self.tasks:
             return False
 

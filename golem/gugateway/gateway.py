@@ -62,10 +62,10 @@ def _start(port: int) -> None:
 
     dav_app = _create_dav_app(port)
 
-    japp = DirectDispatcherMiddleware(app, {'/dav': dav_app })
+    dav_app_mid = DirectDispatcherMiddleware(app, {'/dav': dav_app})
 
     reactor.listenTCP(
-        port, Site(WSGIResource(reactor, reactor.getThreadPool(), japp)))
+        port, Site(WSGIResource(reactor, reactor.getThreadPool(), dav_app_mid)))
 
 
 def _create_dav_app(port):
@@ -76,12 +76,12 @@ def _create_dav_app(port):
         "provider_mapping": {
             "/dav": root_path,
         },
-        # TODO: dir browser is not secure
         'middleware_stack': [
             HTTPAuthenticator,
             WsgiDavDirBrowser,
             RequestResolver
         ],
+        # TODO: dir browser is not secure - disable it
         "dir_browser": {
             "enable": True,
         },
