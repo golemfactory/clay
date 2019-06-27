@@ -5,7 +5,7 @@ from .test_config import NodeId
 
 
 class Playbook(NodeTestPlaybook):
-    def __init__(self, config: 'TestConfigBase') -> None:
+    def __init__(self, config) -> None:
         super().__init__(config)
         self.retry_limit = self.retry_limit / 2
 
