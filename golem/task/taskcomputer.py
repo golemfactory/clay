@@ -66,11 +66,9 @@ class TaskComputer(object):
         # Is task computer currently able to run computation?
         self.runnable = True
         self.listeners = []
-        self.last_task_request = time.time()
 
         self.dir_manager: DirManager = DirManager(
             task_server.get_task_computer_root())
-        self.task_request_frequency = None
 
         self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
@@ -187,14 +185,9 @@ class TaskComputer(object):
                         success=was_success, value=work_time_to_be_paid)
         self._task_finished()
 
-    def run(self):
-        """ Main loop of task computer """
+    def check_timeout(self):
         if self.counting_thread is not None:
             self.counting_thread.check_timeout()
-        elif self.compute_tasks and self.runnable:
-            last_request = time.time() - self.last_task_request
-            if last_request > self.task_request_frequency:
-                self.__request_task()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if not self.is_computing() or self.assigned_subtask is None:
@@ -250,7 +243,6 @@ class TaskComputer(object):
     ) -> Deferred:
         self.dir_manager = DirManager(
             self.task_server.get_task_computer_root())
-        self.task_request_frequency = config_desc.task_request_interval
         self.compute_tasks = config_desc.accept_tasks \
             and not config_desc.in_shutdown
         return self.change_docker_config(
@@ -333,15 +325,6 @@ class TaskComputer(object):
         for l in self.listeners:
             l.lock_config(on)
 
-    def __request_task(self):
-        if self.has_assigned_task():
-            return
-
-        self.last_task_request = time.time()
-        requested_task = self.task_server.request_task()
-        if requested_task is not None:
-            self.stats.increase_stat('tasks_requested')
-
     def start_computation(self) -> None:  # pylint: disable=too-many-locals
         subtask = self.assigned_subtask
         assert subtask is not None
@@ -406,6 +389,7 @@ class TaskComputer(object):
 
     def _task_finished(self) -> None:
         ctd = self.assigned_subtask
+        assert ctd is not None
         self.assigned_subtask = None
 
         ProviderTimer.finish()

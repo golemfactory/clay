@@ -167,6 +167,7 @@ class TaskServer(
         self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
+        self._last_task_request_time: float = time.time()
 
         network = TCPNetwork(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
@@ -203,7 +204,8 @@ class TaskServer(
             ),
             self._sync_pending,
             self._send_waiting_results,
-            self.task_computer.run,
+            self._request_random_task,
+            self.task_computer.check_timeout,
             self.task_connections_helper.sync,
             self._sync_forwarded_session_requests,
             self.__remove_old_tasks,
@@ -240,23 +242,34 @@ class TaskServer(
             env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
-        """Requests task possibly after successful resource handshake.
-        """
+        """ Requests task possibly after successful resource handshake. """
         try:
-            task_header: dt_tasks.TaskHeader = self.task_keeper.task_headers[
-                task_id
-            ]
+            task_header = self.task_keeper.task_headers[task_id]
         except KeyError:
             logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
             return
         self._request_task(task_header)
 
-    def request_task(self) -> Optional[str]:
-        """Chooses random task from network to compute on our machine"""
-        task_header: dt_tasks.TaskHeader = \
-            self.task_keeper.get_task(self.requested_tasks)
+    def _request_random_task(self) -> Optional[str]:
+        """ If there is no task currently computing and time elapsed from last
+            request exceeds the configured request interval, choose a random
+            task from the network to compute on our machine. """
+
+        if time.time() - self._last_task_request_time \
+                < self.config_desc.task_request_interval:
+            return None
+
+        if self.task_computer.has_assigned_task() \
+                or (not self.task_computer.compute_tasks) \
+                or (not self.task_computer.runnable):
+            return None
+
+        task_header = self.task_keeper.get_task(self.requested_tasks)
         if task_header is None:
             return None
+
+        self._last_task_request_time = time.time()
+        self.task_computer.stats.increase_stat('tasks_requested')
         return self._request_task(task_header)
 
     def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
