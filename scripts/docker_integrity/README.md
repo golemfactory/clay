@@ -7,10 +7,10 @@ In order to do that, a registry of docker images required by Golem is defined in
 golemfactory/image_name        1.0             sha256-hash-of-the-image
 ```
 
-The registry holds entries that are valid for the last stable releases plus
-those used currently in develop. All entries must be consistent (the script 
-verifies if there are no duplicates with differing sha256 hashes and will
-raise a `ConfigurationError` if it encounters a conflict).
+The registry holds entries that are valid for the latest stable releases
+plus those used currently in develop. All entries must be consistent (the
+script verifies if there are no duplicates with differing sha256 hashes and
+will raise a `ConfigurationError` if it encounters a conflict).
 
 To run verification, just launch the script:
 
