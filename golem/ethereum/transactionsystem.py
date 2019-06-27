@@ -316,7 +316,7 @@ class TransactionSystem(LoopingCallService):
             from_address=self._sci.get_eth_address(),
             to_address=None,
             from_block=from_block,
-            cb=lambda event: self._payments_keeper.sent_transfer(
+            cb=lambda event: self._payments_keeper.confirmed_transfer(
                 tx_hash=event.tx_hash,
                 gas_amount=self._sci.get_transaction_receipt(
                     event.tx_hash,
@@ -652,7 +652,7 @@ class TransactionSystem(LoopingCallService):
                 if not receipt.status:
                     log.error("Failed ETH withdrawal: %r", receipt)
                     return
-                self._payments_keeper.sent_transfer(
+                self._payments_keeper.confirmed_transfer(
                     tx_hash=receipt.tx_hash,
                     gas_amount=receipt.gas_cost,
                     gas_price=gas_price,

@@ -51,10 +51,10 @@ class TestPaymentsKeeper(TestWithDatabase):
         super().setUp()
         self.payments_keeper = PaymentsKeeper()
 
-    def test_sent_transfer(self):
+    def test_confirmed_transfer(self):
         operation = WalletOperationFactory()
         operation.save(force_insert=True)
-        self.payments_keeper.sent_transfer(
+        self.payments_keeper.confirmed_transfer(
             tx_hash=operation.tx_hash,
             gas_price=1,
             gas_amount=1,
@@ -64,10 +64,10 @@ class TestPaymentsKeeper(TestWithDatabase):
             1,
         )
 
-    def test_sent_transfer_no_price(self):
+    def test_confirmed_transfer_no_price(self):
         operation = WalletOperationFactory()
         operation.save(force_insert=True)
-        self.payments_keeper.sent_transfer(
+        self.payments_keeper.confirmed_transfer(
             tx_hash=operation.tx_hash,
             gas_price=None,
             gas_amount=1,
