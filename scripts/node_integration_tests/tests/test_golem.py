@@ -16,6 +16,9 @@ class GolemNodeTest(NodeTestBase):
     def test_rpc(self):
         self._run_test('golem.rpc_test')
 
+    def test_rpc_concent(self):
+        self._run_test('golem.rpc_test.concent')
+
     @disable_key_reuse
     def test_rpc_mainnet(self):
         self._run_test('golem.rpc_test.mainnet', '--mainnet')
