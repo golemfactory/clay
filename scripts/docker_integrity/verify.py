@@ -205,7 +205,9 @@ def run_verification():
     if cnt_failures:
         print(
             f'{COLORS.RED}{cnt_failures} out of {cnt_images} images '
-            f'had modified hashes!{COLORS.RESET}'
+            f'{"have" if cnt_failures > 1 else "has a"} modified '
+            f'hash{"es" if cnt_failures > 1 else ""}'
+            f'!{COLORS.RESET}'
         )
         sys.exit(1)
 
