@@ -290,23 +290,25 @@ class TransactionSystem(LoopingCallService):
         self._sci.subscribe_to_direct_incoming_eth_transfers(
             address=self._sci.get_eth_address(),
             from_block=from_block,
-            cb=lambda event: ik.received_eth_transfer(
+            cb=lambda event: ik.received_transfer(
                 tx_hash=event.tx_hash,
                 sender_address=event.from_address,
                 recipient_address=event.to_address,
                 amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
             ),
         )
 
         self._sci.subscribe_to_gnt_transfers(
             from_address=None,
             to_address=self._sci.get_eth_address(),
-            from_blokc=from_block,
-            cb=lambda event: ik.received_gnt_transfer(
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
                 tx_hash=event.tx_hash,
                 sender_address=event.from_address,
                 recipient_address=event.to_address,
                 amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
             ),
         )
 

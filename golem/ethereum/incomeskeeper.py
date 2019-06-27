@@ -16,11 +16,12 @@ class IncomesKeeper:
     """
 
     @staticmethod
-    def received_eth_transfer(
+    def received_transfer(
             tx_hash: str,
             sender_address: str,
             recipient_address: str,
             amount: int,
+            currency,
     ):
         model.WalletOperation.create(
             tx_hash=tx_hash,
@@ -30,26 +31,7 @@ class IncomesKeeper:
             sender_address=sender_address,
             recipient_address=recipient_address,
             amount=amount,
-            currency=model.WalletOperation.CURRENCY.ETH,
-            gas_cost=0,
-        )
-
-    @staticmethod
-    def received_gnt_transfer(
-            tx_hash: str,
-            sender_address: str,
-            recipient_address: str,
-            amount: int,
-    ):
-        model.WalletOperation.create(
-            tx_hash=tx_hash,
-            direction=model.WalletOperation.DIRECTION.incoming,
-            operation_type=model.WalletOperation.TYPE.transfer,
-            status=model.WalletOperation.STATUS.confirmed,
-            sender_address=sender_address,
-            recipient_address=recipient_address,
-            amount=amount,
-            currency=model.WalletOperation.CURRENCY.GNT,
+            currency=currency,
             gas_cost=0,
         )
 

@@ -291,11 +291,12 @@ class TestIncomesKeeper(TestWithDatabase):
         )
 
     def test_received_eth_transfer(self):
-        self.incomes_keeper.received_eth_transfer(
+        self.incomes_keeper.received_transfer(
             tx_hash=f"0x{'0'*64}",
             sender_address=random_eth_address(),
             recipient_address=random_eth_address(),
             amount=1,
+            currency=model.WalletOperation.CURRENCY.ETH,
         )
         self.assertEqual(
             model.WalletOperation.select().count(),
@@ -303,11 +304,12 @@ class TestIncomesKeeper(TestWithDatabase):
         )
 
     def test_received_gnt_transfer(self):
-        self.incomes_keeper.received_gnt_transfer(
+        self.incomes_keeper.received_transfer(
             tx_hash=f"0x{'0'*64}",
             sender_address=random_eth_address(),
             recipient_address=random_eth_address(),
             amount=1,
+            currency=model.WalletOperation.CURRENCY.GNT,
         )
         self.assertEqual(
             model.WalletOperation.select().count(),
