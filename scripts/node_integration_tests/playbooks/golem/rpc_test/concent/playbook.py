@@ -1,5 +1,5 @@
 from ..playbook import Playbook as NodeTestPlaybook
-from ....test_config_base import NodeId
+from scripts.node_integration_tests.playbooks.test_config_base import NodeId
 
 
 class Playbook(NodeTestPlaybook):

@@ -1,4 +1,5 @@
-from ....test_config_base import TestConfigBase
+from scripts.node_integration_tests.playbooks.test_config_base import \
+    TestConfigBase
 
 
 class TestConfig(TestConfigBase):
