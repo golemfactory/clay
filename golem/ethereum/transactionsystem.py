@@ -318,7 +318,9 @@ class TransactionSystem(LoopingCallService):
             from_block=from_block,
             cb=lambda event: self._payments_keeper.sent_transfer(
                 tx_hash=event.tx_hash,
-                gas_amount=self._sci.GAS_GNT_TRANSFER,
+                gas_amount=self._sci.get_transaction_receipt(
+                    event.tx_hash,
+                ).gas_used,
                 gas_price=self._sci.get_transaction_gas_price(
                     tx_hash=event.tx_hash,
                 ),
@@ -652,14 +654,8 @@ class TransactionSystem(LoopingCallService):
                     return
                 self._payments_keeper.sent_transfer(
                     tx_hash=receipt.tx_hash,
-                    gas_amount=self.get_withdraw_gas_cost(
-                        amount,
-                        destination,
-                        currency,
-                    ),
-                    gas_price=self._sci.get_transaction_gas_price(
-                        tx_hash=receipt.tx_hash,
-                    ),
+                    gas_amount=receipt.gas_cost,
+                    gas_price=gas_price,
                 )
             self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
             return tx_hash
