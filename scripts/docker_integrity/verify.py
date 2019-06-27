@@ -5,6 +5,7 @@ import re
 import requests
 from requests.status_codes import codes as http_codes
 import sys
+import typing
 
 DOCKERHUB_URI = 'https://registry.hub.docker.com/v2/'
 REPOSITORY_ROOT = 'golemfactory'
@@ -30,7 +31,7 @@ class CommunicationError(Exception):
 
 
 def get_images() -> dict:
-    images = {}
+    images: dict = {}
     with open(IMAGES_FILE) as f:
         for l in f:
             m = re.match(
@@ -74,7 +75,7 @@ def authenticate(repository: str):
         raise AuthenticationError(
             f"Could not find expected auth header in: {r.headers}"
         )
-    auth_r = requests.get(
+    auth_r = requests.get(  # type:ignore
         realm,
         params={
             'service': auth_properties.get('service'),
@@ -136,7 +137,7 @@ def get_info(repository: str, tag: str):
     return info
 
 
-def verify_images() -> (int, int):
+def verify_images() -> typing.Tuple[int, int]:
     cnt_images = 0
     cnt_failures = 0
     for repository, tags in get_images().items():
