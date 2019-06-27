@@ -20,8 +20,8 @@ from golem.model import Performance
 logger = logging.getLogger(__name__)
 
 
-def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id, success=None,
-                    error=None):
+def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
+                                      success=None, error=None):
     logger.info('Running benchmark for %s', env_id)
 
     from golem_messages.datastructures.p2p import Node
@@ -34,7 +34,7 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id, suc
 
     def error_callback(err: Union[str, Exception]):
         logger.error("Unable to run %s benchmark: %s", env_id, str(err))
-        Performance.update_or_create(env_id, performance)
+        Performance.update_or_create(env_id, 0)
         if error:
             error(err)
 
@@ -43,8 +43,8 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id, suc
     task_state.definition = benchmark.task_definition
     self._validate_task_state(task_state)
     builder = task_builder(Node(node_name=self.node_name),
-                            task_state.definition,
-                            self.dir_manager)
+                           task_state.definition,
+                           self.dir_manager)
     task = builder.build()
     task.initialize(builder.dir_manager)
 
@@ -61,6 +61,9 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id, suc
 def wait_failure(self, timeout):
     return -1
 
+
 with mock.patch("golem.docker.job.DockerJob.wait",
-                wait_failure), mock.patch('golem.task.benchmarkmanager.BenchmarkManager.run_benchmark', run_benchmark_error_performance_0):
+                wait_failure), mock.patch('golem.task.benchmarkmanager.\
+                    BenchmarkManager.run_benchmark',
+                                          run_benchmark_error_performance_0):
     start()

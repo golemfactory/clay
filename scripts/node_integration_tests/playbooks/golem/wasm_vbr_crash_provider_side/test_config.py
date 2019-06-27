@@ -33,7 +33,8 @@ class TestConfig(TestConfigBase):
             NodeId.provider2.value, 2
         )
 
-        self.nodes[NodeId.provider2].script = 'provider/exception_on_computation_attempt'
+        self.nodes[NodeId.provider2].script =\
+            'provider/exception_on_computation_attempt'
 
         self.nodes[NodeId.provider3] = make_node_config_from_env(
             NodeId.provider3.value, 3
