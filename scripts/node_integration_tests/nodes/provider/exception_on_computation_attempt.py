@@ -58,12 +58,12 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
     br.run()
 
 
-def wait_failure(self, timeout):
+def wait_failure(self, timeout=None):
     return -1
 
 
 with mock.patch("golem.docker.job.DockerJob.wait",
-                wait_failure), mock.patch('golem.task.benchmarkmanager.\
-                    BenchmarkManager.run_benchmark',
+                wait_failure), mock.patch('golem.task.benchmarkmanager.'
+                                          'BenchmarkManager.run_benchmark',
                                           run_benchmark_error_performance_0):
     start()
