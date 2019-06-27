@@ -28,13 +28,9 @@ class Playbook(NodeTestPlaybook):
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider2),
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider3),
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider4),
 
         partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider2),
-        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider3),
-        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider4),
 
         partial(NodeTestPlaybook.step_get_network_info,
                 node_id=NodeId.requestor),
@@ -42,10 +38,6 @@ class Playbook(NodeTestPlaybook):
                 node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_get_network_info,
                 node_id=NodeId.provider2),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.provider3),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.provider4),
 
         partial(NodeTestPlaybook.step_wait_for_gnt, node_id=NodeId.requestor),
 
@@ -66,14 +58,35 @@ class Playbook(NodeTestPlaybook):
 
         step_wait_for_subtask_failed,
 
+        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider3),
+        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider4),
+        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider5),
+
+        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider3),
+        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider4),
+        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider5),
+
+        partial(NodeTestPlaybook.step_get_network_info,
+                node_id=NodeId.provider3),
+        partial(NodeTestPlaybook.step_get_network_info,
+                node_id=NodeId.provider4),
+        partial(NodeTestPlaybook.step_get_network_info,
+                node_id=NodeId.provider5),
+
         partial(NodeTestPlaybook.step_connect, node_id=NodeId.provider3,
                 target_node=NodeId.requestor),
         partial(NodeTestPlaybook.step_verify_connection,
                 node_id=NodeId.requestor, target_node=NodeId.provider3),
+
         partial(NodeTestPlaybook.step_connect, node_id=NodeId.provider4,
                 target_node=NodeId.requestor),
         partial(NodeTestPlaybook.step_verify_connection,
                 node_id=NodeId.requestor, target_node=NodeId.provider4),
+
+        partial(NodeTestPlaybook.step_connect, node_id=NodeId.provider5,
+                target_node=NodeId.requestor),
+        partial(NodeTestPlaybook.step_verify_connection,
+                node_id=NodeId.requestor, target_node=NodeId.provider5),
 
         NodeTestPlaybook.step_wait_task_finished,
     )
