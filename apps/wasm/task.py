@@ -215,24 +215,7 @@ class WasmTask(CoreTask):
         logger.info("Verification of task was successful")
         return True
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None) -> None:
-        logger.info("Called in WasmTask")
-        if not self.should_accept(subtask_id):
-            logger.info("Not accepting results for %s", subtask_id)
-            return
-
-        task_result = self.interpret_task_results(subtask_id, task_result)
-
-        # find the VbrSubtask that contains subtask_id
-        subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, task_result)
-        self.subtasks_given[subtask_id] = {'status': SubtaskStatus.verifying}
-        WasmTask.CALLBACKS[subtask_id] = verification_finished
-
-        if not subtask.is_finished():
-            return
-
+    def __resolve_payments(self, subtask: VbrSubtask):
         verdicts = subtask.get_verdicts()
 
         s_ids = [s_id for s_id in subtask.get_instances()]
@@ -268,6 +251,24 @@ class WasmTask(CoreTask):
 
         for s_id in s_ids:
             WasmTask.CALLBACKS.pop(s_id)()
+
+    def computation_finished(self, subtask_id, task_result,
+                             verification_finished=None) -> None:
+        logger.info("Called in WasmTask")
+        if not self.should_accept(subtask_id):
+            logger.info("Not accepting results for %s", subtask_id)
+            return
+
+        task_result = self.interpret_task_results(subtask_id, task_result)
+
+        # find the VbrSubtask that contains subtask_id
+        subtask = self._find_vbrsubtask_by_id(subtask_id)
+        subtask.add_result(subtask_id, task_result)
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
+        WasmTask.CALLBACKS[subtask_id] = verification_finished
+
+        if subtask.is_finished():
+            self.__resolve_payments(subtask)
 
     def save_results(self, name: str, result_files: List[str]) -> None:
         output_dir_path = Path(self.options.output_dir, name)
@@ -383,11 +384,15 @@ class WasmTask(CoreTask):
         return not self.finished_computation()
 
     def finished_computation(self):
-        return all([subtask.is_finished() for subtask in self.subtasks])
+        finished = all([subtask.is_finished() for subtask in self.subtasks])
+        logger.info("Finished computation: %d", finished)
+        return finished
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
         subtask.add_result(subtask_id, None)
+        if subtask.is_finished():
+            self.__resolve_payments(subtask)
 
     def verify_task(self):
         return self.finished_computation()
