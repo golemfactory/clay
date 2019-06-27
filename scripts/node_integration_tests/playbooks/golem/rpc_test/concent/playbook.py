@@ -10,6 +10,7 @@ class Playbook(NodeTestPlaybook):
                 self.next()
             else:
                 print("Unexpected result: %s" % result)
+                self.fail()
 
         def on_error(error):
             self.fail(error)
