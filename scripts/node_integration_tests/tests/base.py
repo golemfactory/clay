@@ -49,7 +49,10 @@ class NodeTestBase(unittest.TestCase):
         self.test_dir = get_testdir() / self._relative_id()
 
     def _relative_id(self):
-        return self.id().replace(__name__ + '.', '')
+        id = self.id()
+        id = id.replace(__name__ + '.', '')
+        id = id.replace('scripts.node_integration_tests.tests.', '')
+        return id
 
     @staticmethod
     def _get_nodes_ids(test_path: str) -> 'List[NodeId]':
