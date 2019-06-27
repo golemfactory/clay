@@ -359,6 +359,8 @@ class WasmTask(CoreTask):
                 orphaned_subtask = self.nodes_to_subtasks_map\
                     .pop(assigned_node_id)
                 self.nodes_to_subtasks_map[node_id] = orphaned_subtask
+                client = TaskClient.assert_exists(node_id, self.counting_nodes)
+                client.start()
                 return AcceptClientVerdict.ACCEPTED
 
         for s in self.subtasks:
@@ -369,7 +371,6 @@ class WasmTask(CoreTask):
                 self.nodes_to_subtasks_map[node_id] = next_subtask
                 client = TaskClient.assert_exists(node_id, self.counting_nodes)
                 client.start()
-
                 return AcceptClientVerdict.ACCEPTED
 
         """No subtask has yielded next actor meaning that there is no work
