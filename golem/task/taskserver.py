@@ -255,13 +255,13 @@ class TaskServer(
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
 
+        if time.time() - self._last_task_request_time \
+                < self.config_desc.task_request_interval:
+            return None
+
         if self.task_computer.has_assigned_task() \
                 or (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
-            return None
-
-        if time.time() - self._last_task_request_time \
-                < self.config_desc.task_request_interval:
             return None
 
         task_header = self.task_keeper.get_task(self.requested_tasks)

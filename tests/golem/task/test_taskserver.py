@@ -1217,6 +1217,7 @@ class TestResourceFailure(TaskServerTestBase):
         )
 
 
+@freezegun.freeze_time()
 class TestRequestRandomTask(TaskServerTestBase):
 
     def setUp(self):
@@ -1224,7 +1225,15 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer = MagicMock()
         self.ts.task_keeper = MagicMock()
 
+    def test_request_interval(self):
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time()
+
+        self.assertIsNone(self.ts._request_random_task())
+
     def test_task_already_assigned(self):
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
         self.ts.task_computer.has_assigned_task.return_value = True
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = True
@@ -1232,6 +1241,8 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.assertIsNone(self.ts._request_random_task())
 
     def test_task_computer_not_accepting_tasks(self):
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
         self.ts.task_computer.has_assigned_task.return_value = False
         self.ts.task_computer.compute_tasks = False
         self.ts.task_computer.runnable = True
@@ -1239,41 +1250,31 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.assertIsNone(self.ts._request_random_task())
 
     def test_task_computer_not_runnable(self):
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
         self.ts.task_computer.has_assigned_task.return_value = False
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = False
 
         self.assertIsNone(self.ts._request_random_task())
 
-    @freezegun.freeze_time()
-    def test_request_interval(self):
-        self.ts.task_computer.has_assigned_task.return_value = False
-        self.ts.task_computer.compute_tasks = True
-        self.ts.task_computer.runnable = True
-        self.ts.config_desc.task_request_interval = 1.0
-        self.ts._last_task_request_time = time.time()
-
-        self.assertIsNone(self.ts._request_random_task())
-
-    @freezegun.freeze_time()
     def test_no_supported_tasks_in_task_keeper(self):
-        self.ts.task_computer.has_assigned_task.return_value = False
-        self.ts.task_computer.compute_tasks = True
-        self.ts.task_computer.runnable = True
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
+        self.ts.task_computer.has_assigned_task.return_value = False
+        self.ts.task_computer.compute_tasks = True
+        self.ts.task_computer.runnable = True
         self.ts.task_keeper.get_task.return_value = None
 
         self.assertIsNone(self.ts._request_random_task())
 
-    @freezegun.freeze_time()
     @patch('golem.task.taskserver.TaskServer._request_task')
     def test_ok(self, request_task):
+        self.ts.config_desc.task_request_interval = 1.0
+        self.ts._last_task_request_time = time.time() - 1.0
         self.ts.task_computer.has_assigned_task.return_value = False
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = True
-        self.ts.config_desc.task_request_interval = 1.0
-        self.ts._last_task_request_time = time.time() - 1.0
         task_header = Mock()
         self.ts.task_keeper.get_task.return_value = task_header
 
