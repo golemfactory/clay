@@ -439,7 +439,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def should_accept_client(self, node_id, wtct_hash=None):
                 return AcceptClientVerdict.ACCEPTED
 
-            def accept_client(self, node_id, wtct_hash=None, num_subtasks=1):
+            def accept_client(self, node_id, wtct_hash=None, num_subtasks: int=1):
                 return AcceptClientVerdict.ACCEPTED
 
         t = TestTask(th, ["xxyyzz"],
@@ -525,7 +525,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
         assert self.tm.is_my_task("task4")
-        assert not qself.tm.should_wait_for_node("task4", "DEF", None, )
+        assert not self.tm.should_wait_for_node("task4", "DEF", None, )
         ctd = self.tm.get_next_subtask("DEF", "task4", 1000, 10, None, )
         assert ctd['subtask_id'] == "ttt4"
         (handler, checker) = self._connect_signal_handler()
