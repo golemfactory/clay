@@ -96,11 +96,11 @@ class Message(PeerEvent):
     def __init__(
         self,
         peer_id: str,
-        connected_point: Tuple,
+        endpoint: Tuple,
         user_message: Tuple[bytes, bytes],
     ) -> None:
         super().__init__(peer_id)
-        self.endpoint = Endpoint(connected_point)
+        self.endpoint = Endpoint(endpoint)
         self.protocol_id, self.blob = user_message
 
 

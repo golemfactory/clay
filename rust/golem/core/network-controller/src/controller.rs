@@ -7,12 +7,8 @@ use futures::{stream, Future, Stream};
 use log::{debug, info, trace, warn};
 use parking_lot::Mutex;
 
-use network_libp2p::behaviour::Behaviour;
-use network_libp2p::{multiaddr, NetworkBehaviour};
-use network_libp2p::{start_service, CustomProto, LOG_TARGET};
-use network_libp2p::{
-    ConnectedPoint, NetworkConfiguration, PeerId, ProtocolId, PublicKey, StreamMuxerBox, Substream,
-};
+use network_libp2p::{multiaddr, start_service, LOG_TARGET};
+use network_libp2p::{ConnectedPoint, NetworkConfiguration, PeerId, PublicKey};
 use network_libp2p::{Service as InternalService, ServiceEvent as InternalServiceEvent};
 
 use crate::error::Error;

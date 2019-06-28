@@ -1,9 +1,3 @@
-extern crate crossbeam_channel;
-#[macro_use]
-extern crate lazy_static;
-#[macro_use]
-extern crate serde_derive;
-
 mod codec;
 mod controller;
 pub mod error;
@@ -22,6 +16,3 @@ pub enum ClientRequest {
     SendMessage(PeerId, UserMessage),
     Stop,
 }
-
-unsafe impl Send for ClientRequest {}
-unsafe impl Sync for ClientRequest {}

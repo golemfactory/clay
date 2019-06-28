@@ -2,8 +2,8 @@
 name = "network-controller"
 version = "0.1.0"
 license = "GPL-3.0"
-edition = "2018"
 authors = ["Golem Tech <tech@golem.network>"]
+edition = "2018"
 
 [lib]
 
@@ -30,3 +30,4 @@ tokio-codec = "0.1.1"
 [dependencies.network_libp2p]
 package = "network-libp2p"
 path = "../network-libp2p"
+version = "0.1.0"

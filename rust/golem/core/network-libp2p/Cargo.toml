@@ -1,7 +1,7 @@
 [package]
-license = "GPL-3.0"
 name = "network-libp2p"
 version = "0.1.0"
+license = "GPL-3.0"
 authors = [
     "Parity Technologies <admin@parity.io>",
     "Golem Tech <tech@golem.network>",

@@ -1,6 +1,6 @@
 use crate::message::UserMessage;
 use crate::PeerId;
-use network_libp2p::{ConnectedPoint, Multiaddr, ProtocolId, PublicKey};
+use network_libp2p::{ConnectedPoint, Multiaddr, PublicKey};
 
 #[derive(Clone, Debug)]
 pub enum NetworkEvent {
