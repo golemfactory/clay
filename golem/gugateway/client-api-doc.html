@@ -954,6 +954,14 @@ margin-bottom: 20px;
   "pattern" : "[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}",
   "format" : "uuid"
 };
+        defs["WantToCompute"] = {
+  "required" : [ "numSubtasks" ],
+  "properties" : {
+    "numSubtasks" : {
+      "type" : "integer"
+    }
+  }
+};
   </script>
 
   <div class="container-fluid">
@@ -2452,7 +2460,7 @@ except ApiException as e:
                             </table>
 
                           <h2>Responses</h2>
-                            <h3> Status: 200 - list of events from &#x60;lastEventId&#x60; </h3>
+                            <h3> Status: 200 - list of events since &#x60;lastEventId&#x60; </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
                                 <li class="active">
@@ -2467,7 +2475,7 @@ except ApiException as e:
                                     <script>
                                       $(document).ready(function() {
                                         var schemaWrapper = {
-  "description" : "list of events from `lastEventId`",
+  "description" : "list of events since `lastEventId`",
   "schema" : {
     "$ref" : "#/definitions/Events"
   }
@@ -4315,7 +4323,7 @@ var callback = function(error, data, response) {
     console.log('API called successfully. Returned data: ' + data);
   }
 };
-api.taskInfo(nodeId, taskId, callback);
+api.taskInfo(nodeId, taskId, , callback);
 </code></pre>
                             </div>
 
@@ -4992,8 +5000,9 @@ public class DefaultApiExample {
         String nodeId = nodeId_example; // String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
         UUID taskId = ; // UUID | 
+        WantToCompute body = ; // WantToCompute | 
         try {
-            Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+            Message result = apiInstance.wantToComputeTask(nodeId, taskId, body);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#wantToComputeTask");
@@ -5013,8 +5022,9 @@ public class DefaultApiExample {
         String nodeId = nodeId_example; // String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
         UUID taskId = ; // UUID | 
+        WantToCompute body = ; // WantToCompute | 
         try {
-            Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+            Message result = apiInstance.wantToComputeTask(nodeId, taskId, body);
             System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#wantToComputeTask");
@@ -5031,12 +5041,14 @@ public class DefaultApiExample {
                               <pre class="prettyprint"><code class="language-cpp">String *nodeId = nodeId_example; // ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
 UUID *taskId = ; // 
+WantToCompute *body = ; // 
 
 DefaultApi *apiInstance = [[DefaultApi alloc] init];
 
 // Sends task computation willingness
 [apiInstance wantToComputeTaskWith:nodeId
     taskId:taskId
+    body:body
               completionHandler: ^(Message output, NSError* error) {
                             if (output) {
                                 NSLog(@"%@", output);
@@ -5058,6 +5070,8 @@ var nodeId = nodeId_example; // {String} ethereum address identifying node e.g.,
 
 var taskId = ; // {UUID} 
 
+var body = ; // {WantToCompute} 
+
 
 var callback = function(error, data, response) {
   if (error) {
@@ -5066,7 +5080,7 @@ var callback = function(error, data, response) {
     console.log('API called successfully. Returned data: ' + data);
   }
 };
-api.wantToComputeTask(nodeId, taskId, callback);
+api.wantToComputeTask(nodeId, taskId, body, callback);
 </code></pre>
                             </div>
 
@@ -5091,11 +5105,12 @@ namespace Example
             var nodeId = nodeId_example;  // String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
             var taskId = new UUID(); // UUID | 
+            var body = new WantToCompute(); // WantToCompute | 
 
             try
             {
                 // Sends task computation willingness
-                Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+                Message result = apiInstance.wantToComputeTask(nodeId, taskId, body);
                 Debug.WriteLine(result);
             }
             catch (Exception e)
@@ -5116,9 +5131,10 @@ $api_instance = new Swagger\Client\Api\DefaultApi();
 $nodeId = nodeId_example; // String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
 $taskId = ; // UUID | 
+$body = ; // WantToCompute | 
 
 try {
-    $result = $api_instance->wantToComputeTask($nodeId, $taskId);
+    $result = $api_instance->wantToComputeTask($nodeId, $taskId, $body);
     print_r($result);
 } catch (Exception $e) {
     echo 'Exception when calling DefaultApi->wantToComputeTask: ', $e->getMessage(), PHP_EOL;
@@ -5135,9 +5151,10 @@ my $api_instance = WWW::SwaggerClient::DefaultApi->new();
 my $nodeId = nodeId_example; # String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
 my $taskId = ; # UUID | 
+my $body = WWW::SwaggerClient::Object::WantToCompute->new(); # WantToCompute | 
 
 eval { 
-    my $result = $api_instance->wantToComputeTask(nodeId => $nodeId, taskId => $taskId);
+    my $result = $api_instance->wantToComputeTask(nodeId => $nodeId, taskId => $taskId, body => $body);
     print Dumper($result);
 };
 if ($@) {
@@ -5157,10 +5174,11 @@ api_instance = swagger_client.DefaultApi()
 nodeId = nodeId_example # String | ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
 
 taskId =  # UUID | 
+body =  # WantToCompute | 
 
 try: 
     # Sends task computation willingness
-    api_response = api_instance.want_to_compute_task(nodeId, taskId)
+    api_response = api_instance.want_to_compute_task(nodeId, taskId, body)
     pprint(api_response)
 except ApiException as e:
     print("Exception when calling DefaultApi->wantToComputeTask: %s\n" % e)</code></pre>
@@ -5225,6 +5243,47 @@ except ApiException as e:
                             </table>
 
 
+                            <div class="methodsubtabletitle">Body parameters</div>
+                            <table id="methodsubtable">
+                              <tr>
+                                <th width="150px">Name</th>
+                                <th>Description</th>
+                              </tr>
+                                <tr><td style="width:150px;">body <span style="color:red;">*</span></td>
+<td>
+
+
+<script>
+$(document).ready(function() {
+  var schemaWrapper = {
+  "in" : "body",
+  "name" : "body",
+  "required" : true,
+  "schema" : {
+    "$ref" : "#/definitions/WantToCompute"
+  }
+};
+  var schema = schemaWrapper.schema;
+  if (schema.$ref != null) {
+    schema = defsParser.$refs.get(schema.$ref);
+  } else {
+    schemaWrapper.definitions = Object.assign({}, defs);
+    $RefParser.dereference(schemaWrapper).catch(function(err) {
+      console.log(err);
+    });
+  }
+
+  var view = new JSONSchemaView(schema,2,{isBodyParam: true});
+  var result = $('#d2e199_wantToComputeTask_body');
+  result.empty();
+  result.append(view.render());
+});
+</script>
+<div id="d2e199_wantToComputeTask_body"></div>
+</td>
+</tr>
+
+                            </table>
 
 
 

@@ -260,18 +260,13 @@ class Subscription(object):
     def want_subtask(self,
                      task_server: TaskServer,
                      task_id: str,
-                     num_subtasks: int = 1) -> bool:
+                     request_json) -> bool:
         if task_id not in self.tasks:
             return False
 
-        self.set_config_to(task_server.config_desc)
+        num_subtasks = int(request_json.get('numSubtasks', 1))
 
-        # new_keys_auth = KeysAuth(
-        #     datadir=task_server.client.datadir,
-        #     private_key_name=task_id + PRIVATE_KEY,
-        #     password="gu-gw",
-        #     difficulty=task_server.client.config_desc.key_difficulty,
-        # )
+        self.set_config_to(task_server.config_desc)
 
         task_server.request_task_by_id(
             task_id=task_id,
@@ -280,8 +275,7 @@ class Subscription(object):
                 'eth_addr': self.eth_addr,
                 'num_subtasks': num_subtasks
             })
-        dispatcher.connect(self._handle_add_subtask,
-                           signal='golem.subtask')
+        dispatcher.connect(self._handle_add_subtask, signal='golem.subtask')
         self.increment(SubtaskStatus.requested)
         return True
 
@@ -349,6 +343,7 @@ class Subscription(object):
         dispatcher.connect(self._handle_add_result_verification,
                            signal='golem.message')
         self.increment(status)
+        logger.info('%s subtask %s for %s', status, subtask_id, self)
         return True
 
     def _handle_add_result_verification(self, **kwargs) -> None:

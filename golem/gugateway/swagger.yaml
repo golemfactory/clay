@@ -84,6 +84,12 @@ definitions:
             type: integer
           timedout:
             type: integer
+  WantToCompute:
+    required:
+      - numSubtasks
+    properties:
+      numSubtasks:
+        type: integer
   Task:
     description: >
       A basic unit of work requested in Golem Network.
@@ -326,6 +332,12 @@ paths:
     post:
       summary: Sends task computation willingness
       operationId: wantToComputeTask
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/WantToCompute'
       responses:
         '200':
           description: OK
@@ -428,6 +440,6 @@ paths:
       operationId: fetchEvents
       responses:
         '200':
-          description: list of events from `lastEventId`
+          description: list of events since `lastEventId`
           schema:
             $ref: '#/definitions/Events'
