@@ -1,0 +1,23 @@
+[package]
+name = "network-protocol-derive"
+version = "0.1.0"
+license = "GPL-3.0"
+authors = [
+    "Golem Tech <tech@golem.network>",
+]
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies.proc-macro2]
+version = "0.4.21"
+default-features = false
+
+[dependencies.quote]
+version = "0.6"
+
+[dependencies.syn]
+version = "0.15.22"
+features = ["clone-impls", "derive", "parsing", "printing", "proc-macro"]
+default-features = false

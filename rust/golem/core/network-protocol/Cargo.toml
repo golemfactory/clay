@@ -2,11 +2,11 @@
 name = "network-protocol"
 version = "0.1.0"
 license = "GPL-3.0"
-edition = "2018"
 authors = [
     "Parity Technologies <admin@parity.io>",
     "Golem Tech <tech@golem.network>",
 ]
+edition = "2018"
 
 [lib]
 
@@ -24,6 +24,11 @@ tokio-io = "0.1"
 tokio-timer = "0.2"
 unsigned-varint = { version = "0.2.1", features = ["codec"] }
 void = "1.0"
+
+[dependencies.network-protocol-derive]
+package = "network-protocol-derive"
+path = "../network-protocol-derive"
+version = "0.1.0"
 
 [dependencies.libp2p]
 version = "0.9.1"
