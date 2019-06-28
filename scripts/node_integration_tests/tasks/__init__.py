@@ -149,9 +149,7 @@ _TASK_SETTINGS = {
         "bid": 1,
         "resources": [],
         'options': {
-            'input_dir': '/tmp/g_flite_1560862810/in',
             'js_name': 'flite.js',
-            'output_dir': '/tmp/g_flite_1560862810/out',
             'subtasks': {
                 'subtask0': {
                     'exec_args': ['in.txt', 'in.wav'],
