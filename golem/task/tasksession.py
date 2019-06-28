@@ -225,7 +225,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """ Send first hello message, that should begin the communication """
         self.send(
             message.base.Hello(
-                client_key_id=self.task_server.get_key_id(),
                 client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
@@ -433,6 +432,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # overwrite resources so they are serialized by resource_manager
             resources = self.task_server.get_resources(ctd['subtask_id'])
             ctd["resources"] = resources
+            logger.info("resources_result: %r", resources_result)
 
         logger.info(
             "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
@@ -834,10 +834,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.conn.opened:
             logger.info("Hello received after connection closed. msg=%s", msg)
             return
+
+        if (msg.proto_id != variables.PROTOCOL_CONST.ID)\
+                or (msg.node_info is None):
+            logger.info(
+                "Task protocol version mismatch %r (msg) vs %r (local)",
+                msg.proto_id,
+                variables.PROTOCOL_CONST.ID
+            )
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
+            return
+
         send_hello = False
 
         if self.key_id is None:
-            self.key_id = msg.client_key_id
+            self.key_id = msg.node_info.key
             try:
                 existing_session = self.task_server.sessions[self.key_id]
             except KeyError:
@@ -854,16 +865,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     return
             send_hello = True
 
-        if (msg.proto_id != variables.PROTOCOL_CONST.ID)\
-                or (msg.node_info is None):
-            logger.info(
-                "Task protocol version mismatch %r (msg) vs %r (local)",
-                msg.proto_id,
-                variables.PROTOCOL_CONST.ID
-            )
-            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
-            return
-
         if not KeysAuth.is_pubkey_difficult(
                 self.key_id,
                 self.task_server.config_desc.key_difficulty):
@@ -871,7 +872,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 "Key from %s (%s:%d) is not difficult enough (%d < %d).",
                 common.node_info_str(
                     msg.node_info.node_name,
-                    msg.client_key_id,
+                    msg.node_info.key,
                 ),
                 self.address, self.port,
                 KeysAuth.get_difficulty(self.key_id),
