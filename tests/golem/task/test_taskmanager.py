@@ -294,7 +294,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
 
-        wrong_task = not self.tm.is_my_task("xyz")
+        assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "xyz", 1000, 10, None)
 
@@ -439,7 +439,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def should_accept_client(self, node_id, wtct_hash=None):
                 return AcceptClientVerdict.ACCEPTED
 
-            def accept_client(self, node_id, wtct_hash=None, num_subtasks: int=1):
+            def accept_client(self, node_id, wtct_hash=None,
+                              num_subtasks: int = 1):
                 return AcceptClientVerdict.ACCEPTED
 
         t = TestTask(th, ["xxyyzz"],
