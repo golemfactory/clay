@@ -9,12 +9,13 @@
 import os
 import pprint
 import time
-from threading import Thread
+from multiprocessing import Process
 import typing
-from unittest import mock
+from unittest import mock, skip
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
+import psutil
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
@@ -29,6 +30,7 @@ from golem.rpc.session import (
     Session,
 )
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testchildprocesses import KillLeftoverChildrenTestMixin
 
 setDebugging(True)
 
@@ -82,7 +84,7 @@ class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
     )
 
 
-class _TestRouter(TestDirFixtureWithReactor):
+class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
     TIMEOUT = 20
     CSRB_FRONTEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
     CSRB_BACKEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
@@ -107,6 +109,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.subscribe = False
 
             self.method = None
+            self.process = None
 
         def add_errors(self, *errors):
             print('Errors: {}'.format(pprint.pformat(errors)))
@@ -164,7 +167,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         yield txdefer
         yield self._frontend_session_started()
 
-    def _wait_for_thread(self, expect_error=False):
+    def _wait_for_process(self, expect_error=False):
         deadline = time.time() + self.TIMEOUT
 
         while True:
@@ -189,14 +192,19 @@ class _TestRouter(TestDirFixtureWithReactor):
             raise Exception("Expected error")
         self.reactor_thread.reactor.stop()
 
+        if self.process.is_alive():
+            self.process.terminate()
+
     def _run_test(self, expect_error, *args, **kwargs):
-        thread = Thread(target=self.in_thread, args=args, kwargs=kwargs)
-        thread.daemon = True
-        thread.run()
+        self.process = Process(
+            target=self.in_subprocess, args=args, kwargs=kwargs
+        )
+        self.process.daemon = True
+        self.process.run()
 
-        self._wait_for_thread(expect_error=expect_error)
+        self._wait_for_process(expect_error=expect_error)
 
-    def in_thread(self, *args, **kwargs):
+    def in_subprocess(self, *args, **kwargs):
         deferred = self._start_router(*args, **kwargs)
         deferred.addCallback(lambda *args: print('Router finished', args))
         deferred.addErrback(self.state.add_errors)

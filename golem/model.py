@@ -11,7 +11,6 @@ from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
-from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
@@ -22,6 +21,7 @@ from peewee import (
     DateTimeField,
     Field,
     FloatField,
+    ForeignKeyField,
     IntegerField,
     Model,
     SmallIntegerField,
@@ -44,12 +44,35 @@ db = GolemSqliteDatabase(None, threadlocals=True,
                              ('journal_mode', 'WAL')))
 
 
+# Use proxy function to always use current .utcnow() (allows mocking)
+def default_now():
+    return datetime.datetime.now(tz=datetime.timezone.utc)
+
+
+# Bug in peewee_migrate 0.14.0 induces setting __self__
+# noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
+default_now.__self__ = datetime.datetime  # type: ignore
+
+
+class UTCDateTimeField(DateTimeField):
+    formats = DateTimeField.formats + [
+        '%Y-%m-%d %H:%M:%S+00:00',
+        '%Y-%m-%d %H:%M:%S.%f+00:00',
+    ]
+
+    def python_value(self, value):
+        value = super().python_value(value)
+        if value is None:
+            return None
+        return value.replace(tzinfo=datetime.timezone.utc)
+
+
 class BaseModel(Model):
     class Meta:
         database = db
 
-    created_date = DateTimeField(default=datetime.datetime.now)
-    modified_date = DateTimeField(default=datetime.datetime.now)
+    created_date = UTCDateTimeField(default=default_now)
+    modified_date = UTCDateTimeField(default=default_now)
 
     def refresh(self):
         """
@@ -103,6 +126,8 @@ class FixedLengthHexField(CharField):
 
     def db_value(self, value: str):
         value = super().db_value(value)
+        if value is None:
+            return None
         current_len = len(value)
         if len(value) != self.EXPECTED_LENGTH:
             raise ValueError(
@@ -166,8 +191,13 @@ class EnumField(EnumFieldBase, IntegerField):
 class StringEnumField(EnumFieldBase, CharField):
     """ Database field that maps enum types to strings."""
 
-    def __init__(self, enum_type, *args, max_length=255, **kwargs):
-        super().__init__(max_length, *args, **kwargs)
+    def __init__(self, *args, max_length=255, enum_type=None, **kwargs):
+        # Because of peewee_migrate limitations
+        # we have to provide default enum_type
+        # (peewee_migrate only understands max_length in CharField
+        #  subclasses)
+        # noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L41  pylint: disable=line-too-long
+        super().__init__(*args, max_length=max_length, **kwargs)
         self.enum_type = enum_type
 
 
@@ -197,85 +227,9 @@ class DictSerializableJSONField(TextField):
         return self.objtype.from_dict(json.loads(value))
 
 
-class PaymentStatus(enum.Enum):
-    """ The status of a payment. """
-    awaiting = 1  # Created but not introduced to the payment network.
-    sent = 2  # Sent to the payment network.
-    confirmed = 3  # Confirmed on the payment network.
-    # overdue - As a Provider try to use Concent
-    # reasons may include:
-    #  * Requestor made a transaction that didn’t cover this payment
-    #    (can be detected earlier)
-    #  * Requestor didn’t make a transaction at all (actual overdue payment)
-    # As a Requestor reasons may include:
-    #  * insufficient ETH/GNT
-    #  * Golem bug
-    overdue = 4
-
-    # Workarounds for peewee_migration
-
-    def __repr__(self):
-        return '{}.{}'.format(self.__class__.__name__, self.name)
-
-    @property
-    def __self__(self):
-        return self
-
-
-class PaymentDetails(DictSerializable):
-    def __init__(self,
-                 node_info: Optional[dt_p2p.Node] = None,
-                 fee: Optional[int] = None,
-                 block_hash: Optional[str] = None,
-                 block_number: Optional[int] = None,
-                 check: Optional[bool] = None,
-                 tx: Optional[str] = None) -> None:
-        self.node_info = node_info
-        self.fee = fee
-        self.block_hash = block_hash
-        self.block_number = block_number
-        self.check = check
-        self.tx = tx
-
-    def to_dict(self) -> dict:
-        d = self.__dict__.copy()
-        if self.node_info:
-            d['node_info'] = self.node_info.to_dict()
-        return d
-
-    @staticmethod
-    def from_dict(data: dict) -> 'PaymentDetails':
-        det = PaymentDetails()
-        det.__dict__.update(data)
-        if data['node_info']:
-            try:
-                det.node_info = dt_p2p.Node(**data['node_info'])
-            except msg_exceptions.FieldError:
-                det.node_info = None
-        return det
-
-    def __eq__(self, other: object) -> bool:
-        if not isinstance(other, PaymentDetails):
-            raise TypeError(
-                "Mismatched types: expected PaymentDetails, got {}".format(
-                    type(other)))
-        return self.__dict__ == other.__dict__
-
-
 class NodeField(DictSerializableJSONField):
     """ Database field that stores a Node in JSON format. """
     objtype = dt_p2p.Node
-
-
-class PaymentDetailsField(DictSerializableJSONField):
-    """ Database field that stores a PaymentDetails in JSON format. """
-    objtype = PaymentDetails
-
-
-class PaymentStatusField(EnumField):
-    """ Database field that stores PaymentStatusField objects as integers. """
-    def __init__(self, *args, **kwargs):
-        super().__init__(PaymentStatus, *args, **kwargs)
 
 
 class VersionField(CharField):
@@ -292,89 +246,95 @@ class VersionField(CharField):
         return None
 
 
-class Payment(BaseModel):
-    """ Represents payments that nodes on this machine make to other nodes
-    """
-    subtask = CharField(primary_key=True)
-    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
-    payee = RawCharField()
-    value = HexIntegerField()
-    details = PaymentDetailsField()
-    processed_ts = IntegerField(null=True)
+class WalletOperation(BaseModel):
+    class STATUS(msg_dt.StringEnum):
+        awaiting = enum.auto()
+        sent = enum.auto()
+        confirmed = enum.auto()
+        overdue = enum.auto()
 
-    def __init__(self, *args, **kwargs):
-        super(Payment, self).__init__(*args, **kwargs)
-        # For convenience always have .details as a dictionary
-        if self.details is None:
-            self.details = PaymentDetails()
+    class DIRECTION(msg_dt.StringEnum):
+        incoming = enum.auto()
+        outgoing = enum.auto()
 
-    def __repr__(self) -> str:
-        tx = self.details.tx
-        bn = self.details.block_number
-        return "<Payment sbid:{!r} v:{:.3f} s:{!r} tx:{!r} bn:{!r} ts:{!r}>"\
-            .format(
-                self.subtask,
-                float(self.value) / denoms.ether,
-                self.status,
-                tx,
-                bn,
-                self.processed_ts
+    class TYPE(msg_dt.StringEnum):
+        transfer = enum.auto()  # topup & withdraw
+        deposit_transfer = enum.auto()  # deposit topup & withdraw
+        task_payment = enum.auto()
+        deposit_payment = enum.auto()  # forced payments
+
+    class CURRENCY(msg_dt.StringEnum):
+        ETH = enum.auto()
+        GNT = enum.auto()
+
+    tx_hash = BlockchainTransactionField(null=True)
+    direction = StringEnumField(enum_type=DIRECTION)
+    operation_type = StringEnumField(enum_type=TYPE)
+    status = StringEnumField(enum_type=STATUS)
+    sender_address = CharField()
+    recipient_address = CharField()
+    amount = HexIntegerField()
+    currency = StringEnumField(enum_type=CURRENCY)
+    gas_cost = HexIntegerField()
+
+    def __str__(self):
+        return (
+            f"WalletOperation. tx_hash={self.tx_hash},"
+            f" direction={self.direction}, type={self.operation_type},"
+            f" amount={self.amount/denoms.ether}{self.currency}"
+        )
+
+    @classmethod
+    def deposit_transfers(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.deposit_transfer,
             )
 
 
-class DepositPayment(BaseModel):
-    tx = BlockchainTransactionField(primary_key=True)
-    value = HexIntegerField()
-    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
-    fee = HexIntegerField(null=True)
-
-    class Meta:
-        database = db
-
-    def __repr__(self):
-        return "<DepositPayment: {value} s:{status} tx:{tx}>"\
-            .format(
-                value=self.value,
-                status=self.status,
-                tx=self.tx,
-            )
-
-
-class Income(BaseModel):
-    sender_node = CharField()
+class TaskPayment(BaseModel):
+    wallet_operation = ForeignKeyField(WalletOperation, unique=True)
+    node = CharField()
+    task = CharField()
     subtask = CharField()
-    payer_address = CharField()
-    value = HexIntegerField()
-    value_received = HexIntegerField(default=0)
+    expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
-    transaction = CharField(null=True)
-    overdue = BooleanField(default=False)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
 
-    class Meta:
-        database = db
-        primary_key = CompositeKey('sender_node', 'subtask')
+    def __str__(self):
+        return (
+            f"TaskPayment. accepted_ts={self.accepted_ts},"
+            f" task={self.task}, subtask={self.subtask},"
+            f" node={self.node}, wo={self.wallet_operation}"
+        )
 
-    def __repr__(self):
-        return "<Income: {!r} v:{:.3f} accepted_ts:{!r} tid:{!r}>"\
-            .format(
-                self.subtask,
-                self.value,
-                self.accepted_ts,
-                self.transaction,
+    @classmethod
+    def incomes(cls):
+        return cls.select() \
+            .join(WalletOperation) \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.task_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.incoming,
+            )
+
+    @classmethod
+    def payments(cls):
+        return cls.select() \
+            .join(WalletOperation) \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.task_payment,
+                WalletOperation.direction
+                == WalletOperation.DIRECTION.outgoing,
             )
 
     @property
-    def value_expected(self):
-        return self.value - self.value_received
-
-    @property
-    def status(self) -> PaymentStatus:
-        if self.value_expected == 0:
-            return PaymentStatus.confirmed
-        if self.overdue:
-            return PaymentStatus.overdue
-        return PaymentStatus.awaiting
+    def missing_amount(self):
+        # pylint: disable=no-member
+        return self.expected_amount - self.wallet_operation.amount
 
 ##################
 # RANKING MODELS #
@@ -524,6 +484,10 @@ class Performance(BaseModel):
             perf.save()
 
 
+class DockerWhitelist(BaseModel):
+    repository = CharField(primary_key=True)
+
+
 ##################
 # MESSAGE MODELS #
 ##################
@@ -538,7 +502,7 @@ class Actor(enum.Enum):
 class ActorField(StringEnumField):
     """ Database field that stores Actor objects as strings. """
     def __init__(self, *args, **kwargs):
-        super().__init__(Actor, *args, **kwargs)
+        super().__init__(*args, enum_type=Actor, **kwargs)
 
 
 class NetworkMessage(BaseModel):

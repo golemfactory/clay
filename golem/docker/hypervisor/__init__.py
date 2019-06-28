@@ -1,6 +1,6 @@
 import logging
 import subprocess
-from abc import ABCMeta
+from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Dict, Optional, Iterable
@@ -14,7 +14,7 @@ from golem.report import Component, report_calls
 logger = logging.getLogger(__name__)
 
 
-class Hypervisor(metaclass=ABCMeta):
+class Hypervisor(ABC):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
     SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
@@ -31,8 +31,9 @@ class Hypervisor(metaclass=ABCMeta):
         self._work_dir: Optional[Path] = None
 
     @classmethod
+    @abstractmethod
     def is_available(cls) -> bool:
-        return True
+        raise NotImplementedError
 
     def setup(self) -> None:
         if not self.vm_running():
@@ -118,32 +119,56 @@ class Hypervisor(metaclass=ABCMeta):
         logger.info("Docker: restoring machine state not implemented")
         self.start_vm(vm_name)
 
+    @abstractmethod
     def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
-    def _failed_to_create(self, vm_name: Optional[str] = None):
-        raise NotImplementedError
-
+    @abstractmethod
     def constrain(self, name: Optional[str] = None, **params) -> None:
         raise NotImplementedError
 
+    @abstractmethod
     def constraints(self, name: Optional[str] = None) -> Dict:
         raise NotImplementedError
 
     @contextmanager
-    def restart_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
+    @report_calls(Component.hypervisor, 'vm.reconfig')
+    def reconfig_ctx(self, name: Optional[str] = None):
+        """ Put machine in appropriate state for configuration change """
+        name = name or self._vm_name
+        if self.vm_running():
+            with self.restart_ctx(name) as res:
+                yield res
+        else:
+            yield name
 
     @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
+    def restart_ctx(self, name: Optional[str] = None):
+        """ Force machine restart """
+        name = name or self._vm_name
+        if self.vm_running():
+            self.stop_vm()
+        yield name
+        self.start_vm()
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
+        """ Attempt to recover from invalid machine state
+            By default just restarts the machine """
+        name = name or self._vm_name
+        with self.restart_ctx(name) as res:
+            yield res
 
     def update_work_dir(self, work_dir: Path) -> None:
         self._work_dir = work_dir
 
-    @staticmethod
-    def uses_volumes() -> bool:
-        return False
-
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
-        raise NotImplementedError
+        return {
+            bind.source_as_posix: {
+                'bind': bind.target,
+                'mode': bind.mode
+            }
+            for bind in binds
+        }

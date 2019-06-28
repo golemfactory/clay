@@ -65,6 +65,8 @@ class BenchmarkManager(object):
                                self.dir_manager)
         logger.info(builder)
         task = builder.build()
+        task.initialize(builder.dir_manager)
+
         br = BenchmarkRunner(
             task=task,
             root_path=self.dir_manager.root_path,

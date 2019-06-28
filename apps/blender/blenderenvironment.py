@@ -9,7 +9,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 
 class BlenderEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/blender"
-    DOCKER_TAG = "1.9"
+    DOCKER_TAG = "1.10"
     ENV_ID = "BLENDER"
     SHORT_DESCRIPTION = "Blender (www.blender.org)"
 
@@ -17,7 +17,7 @@ class BlenderEnvironment(DockerEnvironment):
 class BlenderNVGPUEnvironment(BlenderEnvironment):
 
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
-    DOCKER_TAG = "1.3"
+    DOCKER_TAG = "1.4"
     ENV_ID = "BLENDER_NVGPU"
     SHORT_DESCRIPTION = "Blender + NVIDIA GPU (www.blender.org)"
 

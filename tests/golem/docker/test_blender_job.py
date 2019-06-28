@@ -14,7 +14,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.9"
+        return "1.10"
 
     def test_blender_job(self):
         # copy the scene file to the resources dir

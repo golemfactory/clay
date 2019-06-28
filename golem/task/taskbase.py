@@ -255,7 +255,7 @@ class Task(abc.ABC):
         pass  # Implement in derived class
 
     def get_resources(self) -> list:
-        """ Return list of files that are need to compute this task."""
+        """ Return list of files that are needed to compute this task."""
         return []
 
     @abc.abstractmethod

@@ -10,4 +10,7 @@ class TestConfig(TestConfigBase):
         self.nodes[NodeId.requestor].opts = {
             'max_price': 0,
         }
+
+    def update_task_dict(self):
+        super().update_task_dict()
         self.task_dict['bid'] = 0

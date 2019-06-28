@@ -103,6 +103,8 @@ class Playbook(ConcentTestPlaybook):
                 self.next()
                 return
 
+        time.sleep(10)
+
         if datetime.datetime.now() > self.concent_verification_timeout:
             self.fail("Concent verification timed out... ")
 

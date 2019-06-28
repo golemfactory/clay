@@ -1,8 +1,8 @@
-from ...test_config_base import \
-    TestConfigBase, make_node_config_from_env, NodeId
+from ..concent_config_base import ConcentTestConfigBase
+from ...test_config_base import make_node_config_from_env, NodeId
 
 
-class TestConfig(TestConfigBase):
+class TestConfig(ConcentTestConfigBase):
     def __init__(self):
         super().__init__()
         requestor_config = make_node_config_from_env(NodeId.requestor.value, 0)
