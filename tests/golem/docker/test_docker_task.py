@@ -142,7 +142,7 @@ class DockerTaskTestCase(
                     use_docker_manager=False
                 )
 
-        patch.object(task_server, 'create_and_set_result_package').start()
+        patch.object(task_server, '_create_and_set_result_package').start()
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 

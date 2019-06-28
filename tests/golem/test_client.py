@@ -88,7 +88,6 @@ def make_mock_ets(eth=100, gnt=100):
     )
     ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
-    ets.get_payment_address.return_value = '0x' + 40 * 'a'
     return ets
 
 
@@ -144,29 +143,6 @@ class TestClient(TestClientBase):
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
-    def test_get_gas_price(self, *_):
-        test_gas_price = 1234
-        test_price_limit = 12345
-        ets = self.client.transaction_system
-        ets.gas_price = test_gas_price
-        ets.gas_price_limit = test_price_limit
-
-        result = self.client.get_gas_price()
-
-        self.assertEqual(result["current_gas_price"], str(test_gas_price))
-        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
-
-    def test_get_payments(self, *_):
-        ets = self.client.transaction_system
-        assert self.client.get_payments_list() == \
-            ets.get_payments_list.return_value
-
-    def test_get_incomes(self, *_):
-        ets = self.client.transaction_system
-        ets.get_incomes_list.return_value = []
-        self.client.get_incomes_list()
-        ets.get_incomes_list.assert_called_once_with()
-
     def test_withdraw(self, *_):
         ets = self.client.transaction_system
         ets.return_value = ets
@@ -180,11 +156,6 @@ class TestClient(TestClientBase):
         ets = self.client.transaction_system
         self.client.get_withdraw_gas_cost('123', dest, 'ETH')
         ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
-
-    def test_payment_address(self, *_):
-        payment_address = self.client.get_payment_address()
-        self.assertIsInstance(payment_address, str)
-        self.assertTrue(len(payment_address) > 0)
 
     def test_remove_resources(self, *_):
         def unique_dir():
@@ -1228,39 +1199,6 @@ class TestDepositBalance(TestClientBase):
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())
         self.assertEqual(result['status'], 'locked')
-
-
-class DepositPaymentsListTest(TestClientBase):
-
-    def test_empty(self):
-        self.assertEqual(self.client.get_deposit_payments_list(), [])
-
-    def test_one(self):
-        tx_hash = \
-            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
-        value = 31337
-        ts = 1514761200.0
-        dt = datetime.datetime.fromtimestamp(ts)
-        model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
-            created_date=dt,
-            modified_date=dt,
-        )
-        expected = [
-            {
-                'created': ts,
-                'modified': ts,
-                'fee': None,
-                'status': 'awaiting',
-                'transaction': tx_hash,
-                'value': str(value),
-            },
-        ]
-        self.assertEqual(
-            expected,
-            self.client.get_deposit_payments_list(),
-        )
 
 
 @patch(

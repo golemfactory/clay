@@ -32,6 +32,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason
+from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskserver import (
@@ -252,69 +253,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 {UnsupportReason.CONCENT_REQUIRED: True},
             ),
         )
-
-    @patch("golem.task.taskserver.Trust")
-    def test_send_results(self, trust, *_):
-        self.ts.config_desc.min_price = 11
-        keys_auth = KeysAuth(self.path, 'priv_key', '')
-        task_header = get_example_task_header(keys_auth.public_key)
-        n = task_header.task_owner
-
-        ts = self.ts
-        ts._is_address_accessible = Mock(return_value=True)
-        ts.verify_header_sig = lambda x: True
-        ts.client.get_suggested_addr.return_value = "10.10.10.10"
-        ts.client.get_requesting_trust.return_value = ts.max_trust
-        task_id = task_header.task_id
-        # pylint: disable=no-member
-        task_owner_key = task_header.task_owner.key
-        self.ts.start_handshake(
-            key_id=task_owner_key,
-            task_id=task_id,
-        )
-        handshake = self.ts.resource_handshakes[task_owner_key]
-        handshake.local_result = True
-        handshake.remote_result = True
-        self.ts.get_environment_by_id = Mock(return_value=None)
-        self.ts.get_key_id = Mock(return_value='0'*128)
-
-        fd, result_file = tempfile.mkstemp()
-        os.close(fd)
-        results = {"data": [result_file]}
-        task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header.task_id
-        assert ts.add_task_header(task_header)
-        assert ts.request_task()
-        subtask_id = idgenerator.generate_new_id_from_id(task_id)
-        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
-        ts.send_results(subtask_id, task_id, results)
-        ts.send_results(subtask_id2, task_id, results)
-        wtr = ts.results_to_send[subtask_id]
-        self.assertIsInstance(wtr, WaitingTaskResult)
-        self.assertEqual(wtr.subtask_id, subtask_id)
-        self.assertEqual(wtr.result, [result_file])
-        self.assertEqual(wtr.last_sending_trial, 0)
-        self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner, n)
-        self.assertEqual(wtr.already_sending, False)
-
-        self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
-
-        ctd = ComputeTaskDef()
-        ctd['task_id'] = task_id
-        ctd['subtask_id'] = subtask_id
-        ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
-        ttc.compute_task_def = ctd
-        ts.task_manager.comp_task_keeper.receive_subtask(ttc)
-
-        prev_call_count = trust.PAYMENT.increase.call_count
-        ts.increase_trust_payment("xyz", 1)
-        self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
-        prev_call_count = trust.PAYMENT.decrease.call_count
-        ts.decrease_trust_payment("xyz")
-        self.assertGreater(trust.PAYMENT.decrease.call_count, prev_call_count)
-
-        os.remove(result_file)
 
     def test_change_config(self, *_):
         ts = self.ts
@@ -1125,3 +1063,59 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                                        op=TaskOp.TIMEOUT)
         assert remove_task.call_count == 2
         assert remove_task_funds_lock.call_count == 2
+
+
+class TestSendResults(TaskServerTestBase):
+
+    def test_wrong_result_format(self):
+        with self.assertRaises(AttributeError):
+            self.ts.send_results('subtask_id', 'task_id', {'foo': 'bar'})
+
+    def test_subtask_already_sent(self):
+        self.ts.results_to_send['subtask_id'] = Mock(spec=WaitingTaskResult)
+        with self.assertRaises(RuntimeError):
+            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+
+    @patch('golem.task.taskserver.Trust')
+    def test_ok(self, trust):
+        result_secret = Mock()
+        result_hash = Mock()
+        result_path = Mock()
+        package_sha1 = Mock()
+        package_size = Mock()
+        package_path = Mock()
+
+        result_manager = Mock(spec=EncryptedResultPackageManager)
+        result_manager.gen_secret.return_value = result_secret
+        result_manager.create.return_value = (
+            result_hash,
+            result_path,
+            package_sha1,
+            package_size,
+            package_path
+        )
+
+        header = MagicMock()
+        self.ts.task_keeper.task_headers['task_id'] = header
+
+        with patch.object(
+            self.ts.task_manager, 'task_result_manager', result_manager
+        ):
+            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+
+        result = self.ts.results_to_send.get('subtask_id')
+        self.assertIsInstance(result, WaitingTaskResult)
+        self.assertEqual(result.task_id, 'task_id')
+        self.assertEqual(result.subtask_id, 'subtask_id')
+        self.assertEqual(result.result, 'data')
+        self.assertEqual(result.last_sending_trial, 0)
+        self.assertEqual(result.delay_time, 0)
+        self.assertEqual(result.owner, header.task_owner)
+        self.assertEqual(result.result_secret, result_secret)
+        self.assertEqual(result.result_hash, result_hash)
+        self.assertEqual(result.result_path, result_path)
+        self.assertEqual(result.package_sha1, package_sha1)
+        self.assertEqual(result.result_size, package_size)
+        self.assertEqual(result.package_path, package_path)
+
+        trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)

@@ -202,6 +202,15 @@ class PaymentStatus(enum.Enum):
     awaiting = 1  # Created but not introduced to the payment network.
     sent = 2  # Sent to the payment network.
     confirmed = 3  # Confirmed on the payment network.
+    # overdue - As a Provider try to use Concent
+    # reasons may include:
+    #  * Requestor made a transaction that didn’t cover this payment
+    #    (can be detected earlier)
+    #  * Requestor didn’t make a transaction at all (actual overdue payment)
+    # As a Requestor reasons may include:
+    #  * insufficient ETH/GNT
+    #  * Golem bug
+    overdue = 4
 
     # Workarounds for peewee_migration
 
@@ -358,6 +367,14 @@ class Income(BaseModel):
     @property
     def value_expected(self):
         return self.value - self.value_received
+
+    @property
+    def status(self) -> PaymentStatus:
+        if self.value_expected == 0:
+            return PaymentStatus.confirmed
+        if self.overdue:
+            return PaymentStatus.overdue
+        return PaymentStatus.awaiting
 
 ##################
 # RANKING MODELS #

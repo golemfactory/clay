@@ -394,9 +394,15 @@ class TestPayments(unittest.TestCase):
         } for i in range(1, 6)]
 
         client = Mock()
-        client.get_incomes_list.return_value = incomes_list
-        client.get_payments_list.return_value = payments_list
-        client.get_deposit_payments_list.return_value = deposit_payments_list
+        def call(uri, *_args, **_kwargs):
+            if uri == 'pay.incomes':
+                return incomes_list
+            if uri == 'pay.payments':
+                return payments_list
+            if uri == 'pay.deposit_payments':
+                return deposit_payments_list
+            return None
+        client._call.side_effect = call
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)

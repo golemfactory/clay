@@ -371,12 +371,12 @@ class TaskServer(
             delay_time=delay_time,
             owner=header.task_owner)
 
-        self.create_and_set_result_package(wtr)
+        self._create_and_set_result_package(wtr)
         self.results_to_send[subtask_id] = wtr
 
         Trust.REQUESTED.increase(header.task_owner.key)
 
-    def create_and_set_result_package(self, wtr):
+    def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
