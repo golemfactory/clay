@@ -531,10 +531,21 @@ class DockerCPUEnvironment(Environment):
         yield runtime.prepare()
         yield runtime.start()
         yield runtime.wait_until_stopped()
-        # Benchmark is supposed to output a single line containing a float value
-        stdout = list(runtime.stdout('utf-8'))
-        yield runtime.clean_up()
-        return float(stdout[0])
+        _, exit_code = runtime._inspect_container()
+        try:
+            if exit_code:
+                raise Exception(
+                    f'Benchmark run failed with exit code {exit_code}')
+            # Benchmark is supposed to output a single line containing
+            # a float value, but sometimes stdout is empty for a while after
+            # stopping the container
+            stdout = list(runtime.stdout('utf-8'))
+            while not stdout:
+                sleep(0.5)
+                stdout = list(runtime.stdout('utf-8'))
+            return float(stdout[0])
+        finally:
+            yield runtime.clean_up()
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
