@@ -218,8 +218,7 @@ class WasmTask(CoreTask):
     def __resolve_payments(self, subtask: VbrSubtask):
         verdicts = subtask.get_verdicts()
 
-        s_ids = [s_id for s_id in subtask.get_instances()]
-        for s_id in s_ids:
+        for s_id in subtask.get_instances():
             instance = subtask.get_instance(s_id)
             for actor, verdict in verdicts:
                 if actor is not instance['actor']:
@@ -249,9 +248,6 @@ class WasmTask(CoreTask):
                                      subtask.params, subtask.redundancy_factor)
             self.subtasks.append(new_subtask)
 
-        for s_id in s_ids:
-            WasmTask.CALLBACKS.pop(s_id)()
-
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None) -> None:
         logger.info("Called in WasmTask")
@@ -269,6 +265,8 @@ class WasmTask(CoreTask):
 
         if subtask.is_finished():
             self.__resolve_payments(subtask)
+            for s_id in subtask.get_instances():
+                WasmTask.CALLBACKS.pop(s_id)()
 
     def save_results(self, name: str, result_files: List[str]) -> None:
         output_dir_path = Path(self.options.output_dir, name)
