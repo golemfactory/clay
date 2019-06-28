@@ -258,7 +258,7 @@ class CoreTask(Task):
 
         subtask["status"] = SubtaskStatus.finished
         node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
+        TaskClient.get_or_initialize(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -469,8 +469,9 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def should_accept_client(self, node_id, wtct_hash=None):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+    def should_accept_client(self, node_id: str, wtct_hash: bytes = None
+                             ) -> AcceptClientVerdict:
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
         elif client.should_wait(wtct_hash):
@@ -478,10 +479,11 @@ class CoreTask(Task):
 
         return AcceptClientVerdict.ACCEPTED
 
-    def accept_client(self, node_id, wtct_hash=None, num_subtasks=1):
+    def accept_client(self, node_id: str, wtct_hash: bytes = None,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
         verdict = self.should_accept_client(node_id, wtct_hash)
 
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         client.start(wtct_hash, num_subtasks)
 
         return verdict

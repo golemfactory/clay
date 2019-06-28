@@ -390,12 +390,10 @@ class TaskManager(TaskEventListener):
 
     # noqa pylint: disable=too-many-arguments,too-many-return-statements
     def get_next_subtask(self,
-                         node_id,
-                         task_id,
-                         estimated_performance,
-                         price,
-                         max_resource_size,
-                         max_memory_size,
+                         node_id: str,
+                         task_id: str,
+                         estimated_performance: float,
+                         price: int,
                          wtct_hash,) -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
         id <node_id>.
@@ -404,9 +402,8 @@ class TaskManager(TaskEventListener):
         before this to find the reason why the task is not able to be picked up
         """
         logger.debug(
-            'get_next_subtask(%r, %r, %r, %r, %r, %r)',
+            'get_next_subtask(%r, %r, %r, %r)',
             node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size,
         )
 
         if node_id == self.keys_auth.key_id:
@@ -433,11 +430,7 @@ class TaskManager(TaskEventListener):
                          task_id, node_id)
             return None
 
-        extra_data = task.query_extra_data(
-            estimated_performance,
-            node_id,
-            "",
-        )
+        extra_data = task.query_extra_data(estimated_performance, node_id, "")
         ctd = extra_data.ctd
 
         def check_compute_task_def():
@@ -462,9 +455,7 @@ class TaskManager(TaskEventListener):
             return None
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
-        self.__add_subtask_to_tasks_states(
-            node_id, ctd, price,
-        )
+        self.__add_subtask_to_tasks_states(node_id, ctd, price)
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
@@ -482,7 +473,10 @@ class TaskManager(TaskEventListener):
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
-    def should_wait_for_node(self, task_id, node_id, wtct_hash) -> bool:
+    def should_wait_for_node(self,
+                             task_id: str,
+                             node_id: str,
+                             wtct_hash: bytes) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(

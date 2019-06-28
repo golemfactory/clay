@@ -24,8 +24,12 @@ class TaskClient(object):
         return state
 
     @staticmethod
-    def assert_exists(node_id: str,
-                      node_dict: Dict[str, 'TaskClient']) -> 'TaskClient':
+    def get_or_initialize(node_id: str,
+                          node_dict: Dict[str, 'TaskClient']) -> 'TaskClient':
+        """ If given `node_id` is already in `node_dict` it's corresponding
+        `TaskClient` instance is returned; otherwise an empty `TaskClient` is
+        inserted into `node_dict` and returned
+        """
         if node_id not in node_dict:
             node_dict[node_id] = TaskClient()
         return node_dict[node_id]
@@ -38,9 +42,6 @@ class TaskClient(object):
 
     def start(self, wtct_hash: bytes, num_subtasks: int) -> bool:
         if self.should_wait(wtct_hash) or self.rejected():
-            logger.warning('already processing another WTCT (%s vs %s)'
-                           'or has rejected subtask',
-                           self._wtct_hash, wtct_hash)
             return False
 
         with self._lock:
@@ -67,14 +68,23 @@ class TaskClient(object):
 
     def rejected(self):
         with self._lock:
-            return self._rejected
+            if self._rejected:
+                logger.warning('%s has rejected subtask', self._wtct_hash)
+                return True
+
+            return False
 
     def should_wait(self, wtct_hash: Optional[bytes] = None):
         with self._lock:
             if self._wtct_hash is not None:
                 if self._wtct_hash != wtct_hash:
+                    logger.warning('already processing another WTCT (%s vs %s)',
+                                   self._wtct_hash, wtct_hash)
                     return True
 
-                return self._started == self._wtct_num_subtasks
+                if self._started == self._wtct_num_subtasks:
+                    logger.warning('all subtasks for %s have been started',
+                                   self._wtct_hash)
+                    return True
 
             return False
