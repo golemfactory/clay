@@ -316,9 +316,23 @@ def config_logging(
     txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
 
 
+# FIXME: Python 3.7+
 def install_reactor():
+    if is_windows():
+        import asyncio
+        # For Python 3.7+, set the event loop policy to
+        # WindowsProactorEventLoopPolicy instead. See:
+        # https://bugs.python.org/issue33792
+        # https://github.com/python/cpython/pull/7487
+
+        # Use the proactor event loop (Windows I/O Completion Ports)
+        eventloop = asyncio.ProactorEventLoop()
+    else:
+        # Use the selector event loop (default)
+        eventloop = None
+
     from twisted.internet import asyncioreactor
-    asyncioreactor.install()
+    asyncioreactor.install(eventloop)
 
     from twisted.internet import reactor
     from golem.core.variables import REACTOR_THREAD_POOL_SIZE
