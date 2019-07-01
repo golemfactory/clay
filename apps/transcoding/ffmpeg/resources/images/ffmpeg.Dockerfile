@@ -5,10 +5,15 @@ FROM jrottenberg/ffmpeg:4.1-alpine AS ffmpeg-build
 
 
 # Base image with alpine and python.
-FROM golemfactory/dev/cgi/base-alpine:1.0
-
+FROM python:3.6-alpine3.8
 
 MAINTAINER Golem Tech <tech@golem.network>
+
+# Create Golem standard directories.
+RUN mkdir /golem \
+ && mkdir /golem/work \
+ && mkdir /golem/resources \
+ && mkdir /golem/output
 
 
 COPY ffmpeg-scripts/requirements.txt /golem/scripts/requirements.txt
