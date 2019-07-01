@@ -44,66 +44,6 @@ class DockerTestJobFailure(Exception):
     pass
 
 
-class TestTaskManager(TaskManager):
-    def __init__(self, node, keys_auth, root_path, config_desc: ClientConfigDescriptor, tasks_dir="tasks",
-                 task_persistence=False, apps_manager=AppsManager(), finished_cb=None):
-
-        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
-            super().__init__(node, keys_auth, root_path, config_desc, tasks_dir, task_persistence, apps_manager,
-                             finished_cb)
-        self.apps_manager = apps_manager
-        apps = list(apps_manager.apps.values())
-        task_types = [app.task_type_info() for app in apps]
-        self.task_types = {t.name.lower(): t for t in task_types}
-
-        self.node = node
-        self.keys_auth = keys_auth
-
-        self.tasks: Dict[str, Task] = {}
-        self.tasks_states: Dict[str, TaskState] = {}
-        self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.task_persistence = task_persistence
-
-        tasks_dir = Path(tasks_dir)
-        self.tasks_dir = tasks_dir / "tmanager"
-        if not self.tasks_dir.is_dir():
-            self.tasks_dir.mkdir(parents=True)
-        self.root_path = root_path
-        self.dir_manager = DirManager(self.get_task_manager_root())
-
-        resource_manager = HyperdriveResourceManager(
-            self.dir_manager,
-            resource_dir_method=self.dir_manager.get_task_temporary_dir,
-            client_kwargs={
-                'host': config_desc.hyperdrive_rpc_address,
-                'port': config_desc.hyperdrive_rpc_port,
-            },
-        )
-        self.task_result_manager = EncryptedResultPackageManager(
-            resource_manager
-        )
-
-        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting]
-
-        # These lines were commented, because tests hang on initialization here.
-
-        # self.comp_task_keeper = CompTaskKeeper(
-        #     tasks_dir,
-        #     persist=self.task_persistence,
-        # )
-
-        # self.requestor_stats_manager = RequestorTaskStatsManager()
-        # self.provider_stats_manager = \
-        #     self.comp_task_keeper.provider_stats_manager
-
-        self.finished_cb = finished_cb
-
-        if self.task_persistence:
-            self.restore_tasks()
-
-
 class TempDirFixture(unittest.TestCase):
     root_dir = None
 
@@ -256,12 +196,7 @@ class PEP8MixIn(object):
                          "Found code style errors (and warnings).")
 
 
-class TestTaskIntegration(TempDirFixture):
-
-    class MockCompTaskKeeper:
-        def __init__(**kwargs):
-            self.provider_stats_manager = None
-
+class TestTaskIntegration(DatabaseFixture):
 
     def dont_remove_dirs_on_failed_test(fun):
         def wrapper(self):
@@ -309,7 +244,8 @@ class TestTaskIntegration(TempDirFixture):
         ccd = ClientConfigDescriptor()
         tasks_dir = os.path.join(self.tempdir, 'tasks')
 
-        self.task_manager = TestTaskManager(self.node,
+        with patch('golem.core.statskeeper.StatsKeeper._get_or_create'):
+            self.task_manager = TaskManager(self.node,
                                             self.keys_auth,
                                             self.tempdir,
                                             tasks_dir=tasks_dir,
@@ -322,6 +258,7 @@ class TestTaskIntegration(TempDirFixture):
 
         task = self.task_manager.create_task(task_dict)
         self.task_manager.add_new_task(task)
+        self.task_manager.initialize_task(task)
         return task
 
     def _get_provider_dir(self, subtask_id):
@@ -353,22 +290,20 @@ class TestTaskIntegration(TempDirFixture):
         task: Task = self._add_task(task_def)
         task_id = task.task_definition.task_id
 
-        logger.info("Executing test task [task_id = {}]"
+        logger.info("Executing test task [task_id = {}] "
                     "on mocked provider.".format(task_id))
 
         self.task_manager.start_task(task_id)
         for i in range(task.task_definition.subtasks_count):
             ctd: ComputeTaskDef = self.task_manager. \
                 get_next_subtask(node_id=self.node_id,
-                                 node_name=self.node_name,
                                  task_id=task.task_definition.task_id,
                                  estimated_performance=1000,
                                  price=int(
                                      task.price /
                                      task.task_definition.subtasks_count),
                                  max_resource_size=10000000000,
-                                 max_memory_size=10000000000,
-                                 address='127.0.0.1')
+                                 max_memory_size=10000000000)
 
             subtask_id = ctd["subtask_id"]
 
