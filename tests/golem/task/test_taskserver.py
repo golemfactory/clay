@@ -10,6 +10,8 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 
 from pydispatch import dispatcher
 import freezegun
+from twisted.internet import defer
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -257,17 +259,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 {UnsupportReason.CONCENT_REQUIRED: True},
             ),
         )
-
-    def test_change_config(self, *_):
-        ts = self.ts
-
-        ccd2 = ClientConfigDescriptor()
-        ccd2.task_session_timeout = 124
-        ccd2.min_price = 0.0057
-        ccd2.task_request_interval = 31
-        ts.change_config(ccd2)
-        self.assertEqual(ts.config_desc, ccd2)
-        self.assertEqual(ts.task_keeper.min_price, 0.0057)
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
@@ -1284,3 +1275,91 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.stats.increase_stat.assert_called_once_with(
             'tasks_requested')
         request_task.assert_called_once_with(task_header)
+
+
+class TaskServerAsyncTestBase(TaskServerTestBase, TwistedTestCase):
+
+    def _patch_async(self, *args, **kwargs):
+        patcher = patch(*args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_ts_async(self, *args, **kwargs):
+        patcher = patch.object(self.ts, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+
+class TestChangeConfig(TaskServerAsyncTestBase):
+
+    @defer.inlineCallbacks
+    def test(self):
+        change_tc_config = self._patch_ts_async('_change_task_computer_config')
+        change_tk_config = self._patch_ts_async('task_keeper').change_config
+        change_pcs_config = \
+            self._patch_async('golem.task.taskserver.PendingConnectionsServer')\
+                .change_config
+
+        change_tc_config.return_value = defer.succeed(None)
+        change_tk_config.return_value = defer.succeed(None)
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts.change_config(config_desc, run_benchmarks=True)
+        change_tc_config.assert_called_once_with(config_desc, True)
+        change_tk_config.assert_called_once_with(config_desc)
+        change_pcs_config.assert_called_once_with(self.ts, config_desc)
+
+
+class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
+
+    @defer.inlineCallbacks
+    def test_config_unchanged_no_benchmarks(self):
+        change_tc_config = self._patch_ts_async('task_computer').change_config
+        change_tc_config.return_value = defer.succeed(False)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, False)
+        change_tc_config.assert_called_once_with(config_desc)
+        run_benchmarks.assert_not_called()
+
+    @defer.inlineCallbacks
+    def test_config_changed_no_benchmarks(self):
+        task_computer = self._patch_ts_async('task_computer')
+        task_computer.change_config.return_value = defer.succeed(True)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+
+        def _check(callback, _):
+            task_computer.lock_config.assert_called_once_with(True)
+            task_computer.lock_config.reset_mock()
+            callback(None)
+
+        run_benchmarks.side_effect = _check
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, False)
+        task_computer.change_config.assert_called_once_with(config_desc)
+        task_computer.lock_config.assert_called_once_with(False)
+        run_benchmarks.assert_called_once()
+
+    @defer.inlineCallbacks
+    def test_config_unchanged_run_benchmarks(self):
+        task_computer = self._patch_ts_async('task_computer')
+        task_computer.change_config.return_value = defer.succeed(False)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+
+        def _check(callback, _):
+            task_computer.lock_config.assert_called_once_with(True)
+            task_computer.lock_config.reset_mock()
+            callback(None)
+
+        run_benchmarks.side_effect = _check
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, True)
+        task_computer.change_config.assert_called_once_with(config_desc)
+        task_computer.lock_config.assert_called_once_with(False)
+        run_benchmarks.assert_called_once()
