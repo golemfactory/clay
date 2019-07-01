@@ -1,4 +1,4 @@
-from ..no_concent.test_config import TestConfig as TestConfigBase
+from ....test_config_base import TestConfigBase
 
 
 class TestConfig(TestConfigBase):

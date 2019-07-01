@@ -3,6 +3,7 @@ import functools
 import itertools
 import logging
 import os
+import shutil
 import time
 import weakref
 from enum import Enum
@@ -24,10 +25,14 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import short_node_id
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
+from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -52,7 +57,6 @@ from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
-
 from .server import concent
 from .server import helpers
 from .server import queue_ as srv_queue
@@ -62,7 +66,6 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-
 
 logger = logging.getLogger(__name__)
 
@@ -103,10 +106,18 @@ class TaskServer(
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
+        os.makedirs(self.get_task_computer_root(), exist_ok=True)
+        docker_cpu_config = DockerCPUConfig(
+            work_dir=Path(self.get_task_computer_root()))
+        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+        new_env_manager = EnvironmentManager()
+        new_env_manager.register_env(docker_cpu_env)
+
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            environments_manager=client.environments_manager,
+            old_env_manager=client.environments_manager,
+            new_env_manager=EnvironmentManager(),
             node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
@@ -128,6 +139,7 @@ class TaskServer(
         )
         self.task_computer = TaskComputer(
             task_server=self,
+            docker_cpu_env=docker_cpu_env,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
@@ -155,6 +167,7 @@ class TaskServer(
         self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
+        self._last_task_request_time: float = time.time()
 
         network = TCPNetwork(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
@@ -191,7 +204,8 @@ class TaskServer(
             ),
             self._sync_pending,
             self._send_waiting_results,
-            self.task_computer.run,
+            self._request_random_task,
+            self.task_computer.check_timeout,
             self.task_connections_helper.sync,
             self._sync_forwarded_session_requests,
             self.__remove_old_tasks,
@@ -205,7 +219,6 @@ class TaskServer(
 
         for job in jobs:
             try:
-                #logger.debug("TServer sync running: job=%r", job)
                 job()
             except Exception:  # pylint: disable=broad-except
                 logger.exception("TaskServer.sync_network job %r failed", job)
@@ -225,27 +238,38 @@ class TaskServer(
         CoreTask.VERIFICATION_QUEUE.resume()
 
     def get_environment_by_id(self, env_id):
-        return self.task_keeper.environments_manager.get_environment_by_id(
+        return self.task_keeper.old_env_manager.get_environment_by_id(
             env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
-        """Requests task possibly after successful resource handshake.
-        """
+        """ Requests task possibly after successful resource handshake. """
         try:
-            task_header: dt_tasks.TaskHeader = self.task_keeper.task_headers[
-                task_id
-            ]
+            task_header = self.task_keeper.task_headers[task_id]
         except KeyError:
             logger.debug("Task missing in TaskKeeper. task_id=%s", task_id)
             return
         self._request_task(task_header)
 
-    def request_task(self) -> Optional[str]:
-        """Chooses random task from network to compute on our machine"""
-        task_header: dt_tasks.TaskHeader = \
-            self.task_keeper.get_task(self.requested_tasks)
+    def _request_random_task(self) -> Optional[str]:
+        """ If there is no task currently computing and time elapsed from last
+            request exceeds the configured request interval, choose a random
+            task from the network to compute on our machine. """
+
+        if time.time() - self._last_task_request_time \
+                < self.config_desc.task_request_interval:
+            return None
+
+        if self.task_computer.has_assigned_task() \
+                or (not self.task_computer.compute_tasks) \
+                or (not self.task_computer.runnable):
+            return None
+
+        task_header = self.task_keeper.get_task(self.requested_tasks)
         if task_header is None:
             return None
+
+        self._last_task_request_time = time.time()
+        self.task_computer.stats.increase_stat('tasks_requested')
         return self._request_task(task_header)
 
     def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
@@ -312,14 +336,13 @@ class TaskServer(
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price)
             wtct = message.tasks.WantToComputeTask(
-                node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
                 provider_public_key=self.get_key_id(),
-                provider_ethereum_public_key=self.get_key_id(),
+                provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
             msg_queue.put(
@@ -336,10 +359,22 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
-                   price: int) -> bool:
-        if not self.task_computer.task_given(ctd):
+    def task_given(
+            self,
+            node_id: str,
+            ctd: message.ComputeTaskDef,
+            price: int
+    ) -> bool:
+        if self.task_computer.has_assigned_task():
+            logger.error("Trying to assign a task, when it's already assigned")
             return False
+
+        self.task_computer.task_given(ctd)
+        self.request_resource(
+            ctd['task_id'],
+            ctd['subtask_id'],
+            ctd['resources'],
+        )
         self.requested_tasks.clear()
         update_requestor_assigned_sum(node_id, price)
         dispatcher.send(
@@ -350,6 +385,26 @@ class TaskServer(
         )
         return True
 
+    def resource_collected(self, task_id: str) -> bool:
+        if self.task_computer.assigned_task_id != task_id:
+            logger.error("Resource collected for a wrong task, %s", task_id)
+            return False
+
+        self.task_computer.start_computation()
+        return True
+
+    def resource_failure(self, task_id: str, reason: str) -> None:
+        if self.task_computer.assigned_task_id != task_id:
+            logger.error("Resource failure for a wrong task, %s", task_id)
+            return
+
+        self.task_computer.task_interrupted()
+        self.send_task_failed(
+            self.task_computer.assigned_subtask['subtask_id'],
+            task_id,
+            f'Error downloading resources: {reason}',
+        )
+
     def send_results(self, subtask_id, task_id, result):
 
         if 'data' not in result:
@@ -357,6 +412,13 @@ class TaskServer(
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
+
+        # this is purely for tests
+        if self.config_desc.overwrite_results:
+            for file_path in result['data']:
+                shutil.copyfile(
+                    src=self.config_desc.overwrite_results,
+                    dst=file_path)
 
         header = self.task_keeper.task_headers[task_id]
 
@@ -371,12 +433,12 @@ class TaskServer(
             delay_time=delay_time,
             owner=header.task_owner)
 
-        self.create_and_set_result_package(wtr)
+        self._create_and_set_result_package(wtr)
         self.results_to_send[subtask_id] = wtr
 
         Trust.REQUESTED.increase(header.task_owner.key)
 
-    def create_and_set_result_package(self, wtr):
+    def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
@@ -504,12 +566,14 @@ class TaskServer(
         if wtr:
             wtr.already_sending = False
 
+    @inlineCallbacks
     def change_config(self, config_desc, run_benchmarks=False):
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
-        self.task_keeper.change_config(config_desc)
-        return self.task_computer.change_config(
+        yield self.task_keeper.change_config(config_desc)
+        result = yield self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
+        return result
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -528,6 +592,7 @@ class TaskServer(
     def subtask_accepted(
             self,
             sender_node_id: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
@@ -536,11 +601,12 @@ class TaskServer(
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.expect_income(
-            sender_node_id,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node_id,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def subtask_settled(self, sender_node_id, subtask_id, settled_ts):
@@ -568,23 +634,28 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
+                      *, unlock_funds=True) -> TaskPayment:
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
+        task = self.task_manager.tasks[task_id]
 
-        payment_processed_ts = self.client.transaction_system.add_payment_info(
-            subtask_id,
-            value,
-            eth_address,
+        payment = self.client.transaction_system.add_payment_info(
+            node_id=task.header.task_owner.key,
+            task_id=task.header.task_id,
+            subtask_id=subtask_id,
+            value=value,
+            eth_address=eth_address,
         )
-        self.client.funds_locker.remove_subtask(task_id)
+        if unlock_funds:
+            self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
-                     subtask_id, payment_processed_ts)
-        return payment_processed_ts
+                     subtask_id, payment)
+        return payment
 
     def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':
@@ -701,13 +772,12 @@ class TaskServer(
             self,
             node_id,
             address,
-            node_name,
             task_id,
             provider_perf,
             max_resource_size,
             max_memory_size):
 
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id not in self.task_manager.tasks:

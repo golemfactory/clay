@@ -16,10 +16,6 @@ def find_free_net_port():
     return s.getsockname()[1]  # Return the port assigned.
 
 
-def pubkeytoaddr(pubkey: str) -> str:
-    return to_checksum_address(encode_hex(sha3(decode_hex(pubkey))[12:]))
-
-
 def privkeytoaddr(privkey: bytes) -> str:
     """
     Converts a private key bytes sequence to a string, representing the

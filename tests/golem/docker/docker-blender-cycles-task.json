@@ -11,8 +11,8 @@
         {
           "py/object": "golem.docker.image.DockerImage",
           "repository": "golemfactory/blender",
-          "tag": "1.9",
-          "name": "golemfactory/blender:1.9",
+          "tag": "1.10",
+          "name": "golemfactory/blender:1.10",
           "id": null
         }
       ],
@@ -55,10 +55,11 @@
     {
       "py/object": "golem.docker.image.DockerImage",
       "repository": "golemfactory/blender",
-      "tag": "1.9",
-      "name": "golemfactory/blender:1.9",
+      "tag": "1.10",
+      "name": "golemfactory/blender:1.10",
       "id": null
     }
   ],
-  "concent_enabled": false
+  "concent_enabled": false,
+  "run_verification":{"py/enum":"apps.core.task.coretaskstate.RunVerification.enabled"}
 }

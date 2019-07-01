@@ -1,4 +1,4 @@
-from golem.config.active import ACTIVE_NET
+from golem.config.active import EthereumConfig
 from golem.monitor.serialization import defaultserializer
 from .modelbase import BasicModel
 
@@ -16,7 +16,7 @@ class NodeMetadataModel(BasicModel):
             "ClientConfigDescriptor",
             client.config_desc)
         self.version = ver
-        self.net = ACTIVE_NET
+        self.net = EthereumConfig().ACTIVE_NET
 
 
 class NodeInfoModel(BasicModel):

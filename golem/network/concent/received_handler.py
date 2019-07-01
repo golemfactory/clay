@@ -228,7 +228,7 @@ class TaskServerMessageHandler():
     def on_force_subtask_results(self, msg, **_):
         """I'm a Requestor
 
-        Concent sends his own ForceSubtaskResults with AckReportComputedTask
+        Concent sends its own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
         sra = history.get(
@@ -244,13 +244,28 @@ class TaskServerMessageHandler():
             task_id=msg.task_id
         )
         if not (sra or srr):
-            #  I can't remember verification results,
-            #  so try again and hope for the best
-            self._after_ack_report_computed_task(
-                report_computed_task=msg.ack_report_computed_task
-                .report_computed_task,
+            fgtrf = history.get(
+                message_class_name='ForceGetTaskResultFailed',
+                node_id=msg.provider_id,
+                subtask_id=msg.subtask_id,
+                task_id=msg.task_id
             )
-            return
+            if fgtrf:
+                srr = message.tasks.SubtaskResultsRejected(
+                    report_computed_task=(
+                        msg.ack_report_computed_task.report_computed_task),
+                    force_get_task_result_failed=fgtrf,
+                    reason=(message.tasks.SubtaskResultsRejected.REASON
+                            .ForcedResourcesFailure),
+                )
+            else:
+                #  I can't remember verification results and I have no proof of
+                #  failure from Concent, so try again and hope for the best
+                self._after_ack_report_computed_task(
+                    report_computed_task=msg.ack_report_computed_task
+                    .report_computed_task,
+                )
+                return
 
         response_msg = message.concents.ForceSubtaskResultsResponse(
             subtask_results_accepted=sra,
@@ -305,6 +320,7 @@ class TaskServerMessageHandler():
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
+                task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address=ttc.requestor_ethereum_address,
                 value=ttc.price,

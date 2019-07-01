@@ -80,8 +80,9 @@ setup(
             path.normpath('apps/registered_test.ini'),
             path.normpath('apps/images.ini')
         ]),
-        (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
-            path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
+        (path.normpath('../../golem/golem/envs/docker/benchmark/minilight'), [
+            path.normpath(
+                'golem/envs/docker/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath(
             '../../golem/apps/blender/resources/images/entrypoints/scripts/'

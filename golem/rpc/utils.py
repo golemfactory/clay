@@ -40,3 +40,17 @@ def object_method_map(instance):
             continue
         mapping[uri] = method
     return mapping
+
+
+def int_to_string(item):
+    # Deeply convert all integer elements of collections to string
+    if isinstance(item, list):
+        for k, v in enumerate(item):
+            item[k] = int_to_string(v)
+    elif isinstance(item, dict):
+        for k, v in item.items():
+            item[k] = int_to_string(v)
+    elif isinstance(item, int):
+        item = str(item)
+
+    return item

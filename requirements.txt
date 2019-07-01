@@ -1,4 +1,4 @@
-#git+https://github.com/golemfactory/golem-messages@<branchname>
+#git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2
@@ -8,6 +8,7 @@ autobahn==17.10.1
 Automat==0.6.0
 Babel==2.6.0
 base58==0.2.5
+bidict==0.18.0
 bitcoin==1.1.42
 bitstring==3.1.5
 cached-property==1.4.2
@@ -20,7 +21,7 @@ cloudpickle==0.6.1
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==17.12.1
-cryptography==2.2.2
+cryptography==2.3.1
 cytoolz==0.9.0.1
 distro==1.3.0
 dnspython==1.15.0
@@ -35,9 +36,10 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 ffmpeg-tools==0.13.0
+eventlet==0.24.1
 fs==2.4.4
-Golem-Messages==3.4.0
-Golem-Smart-Contracts-Interface==1.7.0
+Golem-Messages==3.9.0
+Golem-Smart-Contracts-Interface==1.10.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -48,7 +50,7 @@ hyperlink==18.0.0
 idna==2.5
 incremental==17.5.0
 ipaddress==1.0.19
-Jinja2==2.10
+Jinja2==2.10.1
 lmdb==0.94
 MarkupSafe==1.0
 miniupnpc==2.0.2
@@ -59,7 +61,7 @@ Naked==0.1.31
 ndg-httpsclient==0.4.4
 netaddr==0.7.19
 netifaces==0.10.4
-numpy==1.13.1
+numpy==1.15.4
 olefile==0.45.1
 opencv-contrib-python-headless==3.4.3.18
 OpenEXR==1.3.0
@@ -83,8 +85,8 @@ priority==1.3.0
 psutil==5.2.2
 py-cpuinfo==4.0.0
 py-ubjson==0.11.0
-pyasn1-modules==0.2.1
-pyasn1==0.4.1
+pyasn1-modules==0.2.4
+pyasn1==0.4.5
 pycparser==2.17
 pycryptodome==3.6.6
 PyDispatcher==2.0.5
@@ -92,8 +94,8 @@ pyelliptic==1.5.10
 pyethash==0.1.27
 Pygments==2.2.0
 pylru==1.0.9
-PyNaCl==1.2.1
-pyOpenSSL==17.1.0
+PyNaCl==1.3.0
+pyOpenSSL==17.5.0
 pyparsing==2.2.0
 PyQRCode==1.2.1
 pysha3==1.0.2
@@ -122,10 +124,10 @@ token-bucket==0.2.0
 toolz==0.9.0
 treq==17.8.0
 Twisted==17.9.0
-txaio==2.8.2
+txaio==18.8.1
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
-urllib3==1.23
+urllib3==1.24.3
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0

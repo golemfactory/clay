@@ -91,6 +91,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
             dir_manager,
         )
         task = builder.build()
+        task.initialize(builder.dir_manager)
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
         assert not task.use_frames
@@ -109,7 +110,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
         assert task.docker_images[0].repository == 'golemfactory/blender'
-        assert task.docker_images[0].tag == '1.9'
+        assert task.docker_images[0].tag == '1.10'
         assert task.header.max_price == 12
         assert not task.header.signature
         assert task.listeners == []
