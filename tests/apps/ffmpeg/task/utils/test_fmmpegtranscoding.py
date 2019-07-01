@@ -38,9 +38,10 @@ class TestffmpegTranscoding(TempDirFixture):
     def test_extract_and_split_video(self):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
-                chunks, _ = self.stream_operator.extract_video_streams_and_split(
-                    self.RESOURCE_STREAM, parts, self.dir_manager,
-                    str(uuid.uuid4()))
+                chunks, _ = self.stream_operator.\
+                    extract_video_streams_and_split(
+                        self.RESOURCE_STREAM, parts, self.dir_manager,
+                        str(uuid.uuid4()))
                 self.assertEqual(len(chunks), parts)
 
     def test_extract_and_split_invalid_video(self):

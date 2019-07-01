@@ -16,7 +16,8 @@ class SimulatedTranscodingOperation:
                  experiment_name: str,
                  resource_dir: str,
                  tmp_dir: str,
-                 dont_include_in_option_description: Optional[list] = None) -> None:
+                 dont_include_in_option_description: Optional[list] = None)\
+            -> None:
         # task_executor is an object with execute_task(task_def) method
         assert hasattr(task_executor, 'execute_task')
         assert os.path.isdir(resource_dir)
@@ -122,7 +123,8 @@ class SimulatedTranscodingOperation:
         return "/".join(
             value
             for name, value in components.items()
-            if value is not None and name not in self._dont_include_in_option_description
+            if value is not None and name not in
+                self._dont_include_in_option_description
         )
 
     @classmethod
@@ -149,7 +151,8 @@ class SimulatedTranscodingOperation:
 
     def _build_file_names(self, relative_input_file: str):
         if self._task_options['output_container'] is not None:
-            output_extension = "." + self._task_options['output_container'].value
+            output_extension = "." +\
+                               self._task_options['output_container'].value
         else:
             output_extension = os.path.splitext(relative_input_file)[1]
 
