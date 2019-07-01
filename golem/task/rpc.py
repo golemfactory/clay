@@ -918,9 +918,7 @@ class ClientProvider:
         for subtask_index in range(1, task.total_tasks + 1):
             fragments[subtask_index] = []
 
-        subtask_dicts = self.task_manager.get_subtasks_dict(task_id)
-        if subtask_dicts:
-            for subtask in subtask_dicts:
-                fragments[subtask['extra_data']['start_task']].append(subtask)
+        for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
+            fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None
