@@ -96,11 +96,13 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         input_file = self.task_resources[0]
 
         stream_operator = StreamOperator()
-        chunks, video_metadata = stream_operator.extract_video_streams_and_split(
-            input_file,
-            self.task_definition.subtasks_count,
-            dir_manager,
-            task_id)
+        chunks, video_metadata = stream_operator.\
+            extract_video_streams_and_split(
+                input_file,
+                self.task_definition.subtasks_count,
+                dir_manager,
+                task_id)
+
         if len(chunks) < self.total_tasks:
             logger.warning('%d subtasks was requested but video splitting '
                            'process resulted in %d chunks.',
