@@ -1,9 +1,6 @@
 import logging
 import os
 
-from ffmpeg_tools.codecs import VideoCodec, AudioCodec
-from ffmpeg_tools.formats import Container
-
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefaults
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment

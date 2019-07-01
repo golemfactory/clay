@@ -56,7 +56,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         self.tt = ffmpegTaskTypeInfo()
 
     @classmethod
-    def _create_task_def_for_transcoding( # pylint: disable=too-many-arguments
+    def _create_task_def_for_transcoding(  # pylint: disable=too-many-arguments
             cls,
             resource_stream,
             result_file,
