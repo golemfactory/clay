@@ -46,13 +46,12 @@ class TranscodingTaskOptions(Options):
             self.frame_rate = frame_rate
             self.resolution = resolution
 
-    def __init__(self, use_playlist=True):
+    def __init__(self):
         super().__init__()
         self.video_params = TranscodingTaskOptions.VideoParams()
         self.audio_params = TranscodingTaskOptions.AudioParams()
         self.input_stream_path = None
         self.output_container = None
-        self.use_playlist = use_playlist
 
 
 class TranscodingTaskDefinition(TaskDefinition):
@@ -97,9 +96,12 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         input_file = self.task_resources[0]
 
         stream_operator = StreamOperator()
-        chunks, video_metadata = stream_operator.split_video(
-            input_file, self.task_definition.subtasks_count,
-            dir_manager, task_id)
+        chunks, video_metadata = stream_operator.\
+            extract_video_streams_and_split(
+                input_file,
+                self.task_definition.subtasks_count,
+                dir_manager,
+                task_id)
 
         if len(chunks) < self.total_tasks:
             logger.warning('%d subtasks was requested but video splitting '
@@ -107,13 +109,11 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                            self.total_tasks,
                            len(chunks))
 
-        streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
-                           .join(task_output_dir, x[0]), chunks))
-        playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
-                             .join(task_output_dir, x[1]), chunks))
+        streams = list(map(lambda x: x if os.path.isabs(x) else os.path
+                           .join(task_output_dir, x), chunks))
 
-        self.task_resources = streams + playlists
-        self.chunks = list(zip(streams, playlists))
+        self.task_resources = streams
+        self.chunks = streams
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
@@ -161,15 +161,25 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         logger.info('Merging video [task_id = %s]',
                     self.task_definition.task_id)
 
+        output_basename = os.path.basename(self.task_definition.output_file)
+
+        assert len(self.task_definition.resources) == 1, \
+            "Assumption: input file is the only resource in a transcoding task"
+        input_file = next(iter(self.task_definition.resources))
+
         stream_operator = StreamOperator()
-        path = stream_operator.merge_video(
-            os.path.basename(self.task_definition.output_file),
-            self.task_dir, self.collected_files)
+        output_file = stream_operator.merge_and_replace_video_streams(
+            input_file,
+            self.collected_files,
+            output_basename,
+            self.task_dir,
+            self.task_definition.options.output_container,
+        )
 
         # Move result to desired location.
         os.makedirs(os.path.dirname(self.task_definition.output_file),
                     exist_ok=True)
-        move(path, self.task_definition.output_file)
+        move(output_file, self.task_definition.output_file)
 
         logger.info("Video merged successfully [task_id = %s]",
                     self.task_definition.task_id)
@@ -217,7 +227,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 sid,
                 transcoding_params,
                 perf_index,
-                resources=list(self.chunks[subtask_num])))
+                resources=[self.chunks[subtask_num]]))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:

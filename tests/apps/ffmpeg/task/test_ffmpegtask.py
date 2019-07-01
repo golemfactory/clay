@@ -32,7 +32,7 @@ class TestffmpegTask(TempDirFixture):
     RESOURCES = os.path.join(os.path.dirname(
         os.path.dirname(os.path.realpath(__file__))), 'resources')
     RESOURCE_STREAM = os.path.join(RESOURCES, 'test_video.mp4')
-    RESOURCE_STREAM2 = os.path.join(RESOURCES, 'test_video2.mp4')
+    RESOURCE_STREAM2 = os.path.join(RESOURCES, 'test_video2')
 
     def setUp(self):
         super(TestffmpegTask, self).setUp()
@@ -189,12 +189,12 @@ class TestffmpegTask(TempDirFixture):
                 extra_data['track'],
                 os.path.join(
                     DockerJob.RESOURCES_DIR,
-                    'test.video[num=0].m3u8'))
+                    'test.video[video-only]_0.mp4'))
             self.assertEqual(
                 extra_data['output_stream'],
                 os.path.join(
                     DockerJob.OUTPUT_DIR,
-                    'test.video[num=0]_TC.m3u8'))
+                    'test.video[video-only]_0_TC.mp4'))
 
     def test_extra_data(self):
         ffmpeg_task = self._build_ffmpeg_task()
@@ -205,7 +205,7 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(extra_data['entrypoint'],
                          'python3 /golem/scripts/ffmpeg_task.py')
         self.assertEqual(extra_data['track'],
-                         '/golem/resources/test_video[num=0].m3u8')
+                         '/golem/resources/test_video[video-only]_0.mp4')
         vargs = extra_data['targs']['video']
         aargs = extra_data['targs']['audio']
         self.assertEqual(vargs['codec'], d['options']['video']['codec'])
@@ -216,7 +216,8 @@ class TestffmpegTask(TempDirFixture):
                          d['options']['video']['frame_rate'])
         self.assertEqual(aargs['codec'], d['options']['audio']['codec'])
         self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
-        self.assertIn('m3u8', extra_data['output_stream'])
+        self.assertEqual(extra_data['output_stream'],
+                         '/golem/output/test_video[video-only]_0_TC.mp4')
 
     def test_less_subtasks_than_requested(self):
         d = self._task_dictionary()
@@ -266,6 +267,6 @@ class TestffmpegTask(TempDirFixture):
         ffmpeg_task.header.task_id = str(uuid.uuid4())
         resources1 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
         resources2 = ffmpeg_task.query_extra_data(0.5, node_id).ctd['resources']
-        self.assertEqual(len(resources1), 2)
-        self.assertEqual(len(resources2), 2)
-        self.assertEqual(len(set(resources1 + resources2)), 4)
+        self.assertEqual(len(resources1), 1)
+        self.assertEqual(len(resources2), 1)
+        self.assertEqual(len(set(resources1 + resources2)), 2)

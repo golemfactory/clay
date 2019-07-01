@@ -3,6 +3,7 @@ import uuid
 from unittest import mock
 
 from coverage.annotate import os
+from ffmpeg_tools.formats import Container
 
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.common import ffmpegException
@@ -24,7 +25,7 @@ class TestffmpegTranscoding(TempDirFixture):
         super(TestffmpegTranscoding, self).setUp()
         self.RESOURCES = os.path.join(os.path.dirname(os.path.dirname(
             os.path.dirname(os.path.realpath(__file__)))), 'resources')
-        self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video2')
         self.stream_operator = StreamOperator()
         self.dir_manager = DirManager(self.tempdir)
         dm = DockerTaskThread.docker_manager = DockerManager.install()
@@ -34,63 +35,75 @@ class TestffmpegTranscoding(TempDirFixture):
             work_dir=self.new_path,
             in_background=True)
 
-    def test_split_video(self):
+    def test_extract_and_split_video(self):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
-                chunks, _ = self.stream_operator.split_video(
-                    self.RESOURCE_STREAM, parts, self.dir_manager,
-                    str(uuid.uuid4()))
+                chunks, _ = self.stream_operator.\
+                    extract_video_streams_and_split(
+                        self.RESOURCE_STREAM, parts, self.dir_manager,
+                        str(uuid.uuid4()))
                 self.assertEqual(len(chunks), parts)
 
-    def test_split_invalid_video(self):
+    def test_extract_and_split_invalid_video(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator.split_video(
+            self.stream_operator.extract_video_streams_and_split(
                 os.path.join(self.RESOURCES,
                              'invalid_test_video2.mp4'),
                 1, self.dir_manager,
                 str(uuid.uuid4()))
 
-    def test_split_and_merge_video(self):
+    def test_extract_split_merge_and_replace_video(self):
         parts = 2
         task_id = str(uuid.uuid4())
-        output_name = 'test.mp4'
-        playlist_dir = self.dir_manager.get_task_output_dir(task_id)
+        output_extension = ".mp4"
+        output_name = f"test{output_extension}"
+        output_container = Container.c_MP4
+        output_dir = self.dir_manager.get_task_output_dir(task_id)
 
-        chunks, _ = self.stream_operator.split_video(
+        chunks, _ = self.stream_operator.extract_video_streams_and_split(
             self.RESOURCE_STREAM, parts,
             self.dir_manager, task_id)
         self.assertEqual(len(chunks), parts)
-        playlists = [os.path.join(playlist_dir, file)
-                     for chunk in chunks for file in chunk
-                     if file.endswith('m3u8')]
+        self.assertEqual(
+            set(os.path.splitext(chunk)[1] for chunk in chunks),
+            {''})
+        segments = [os.path.join(output_dir, chunk) for chunk in chunks]
 
-        assert len(playlists) == parts
-        tc_playlists = list()
-        for playlist in playlists:
-            name, ext = os.path.splitext(os.path.basename(playlist))
-            transcoded = os.path.join(os.path.dirname(playlist),
-                                      "{}_TC{}".format(name, ext))
-            shutil.copy2(playlist, transcoded)
-            assert os.path.isfile(transcoded)
-            tc_playlists.append(transcoded)
+        assert len(segments) == parts
+        tc_segments = list()
+        for segment in segments:
+            name, _ = os.path.splitext(os.path.basename(segment))
+            transcoded_segment = os.path.join(
+                os.path.dirname(segment),
+                "{}_TC{}".format(name, output_extension))
+            shutil.copy2(segment, transcoded_segment)
+            assert os.path.isfile(transcoded_segment)
+            tc_segments.append(transcoded_segment)
 
-        playlist_dir_content = [os.path.join(playlist_dir, file)
-                                for file in os.listdir(playlist_dir)]
-
-        self.stream_operator.merge_video(output_name, playlist_dir,
-                                         playlist_dir_content)
-        assert os.path.isfile(os.path.join(playlist_dir, 'merge',
+        self.stream_operator.merge_and_replace_video_streams(
+            self.RESOURCE_STREAM,
+            tc_segments,
+            output_name,
+            output_dir,
+            output_container,
+        )
+        assert os.path.isfile(os.path.join(output_dir, 'merge',
                                            'output', output_name))
 
-    def test_merge_video_empty_dir(self):
+    def test_merge_and_replace_video_empty_dir(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator.merge_video('output.mp4', self.tempdir, [])
+            self.stream_operator.merge_and_replace_video_streams(
+                self.RESOURCE_STREAM,
+                [],
+                'output.mp4',
+                self.tempdir,
+                Container.c_MP4)
 
     def test_collect_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
             self.stream_operator._collect_files(
                 self.tempdir,
-                ['/tmp/testtest_TC.m3u8', '/tmp/testtest_TC.ts'],
+                ['/tmp/testtest_TC.ts'],
                 os.path.join(self.tempdir, "merge/resources"))
 
     def test_collect_files_second_result_nonexistent(self):
@@ -121,36 +134,41 @@ class TestffmpegTranscoding(TempDirFixture):
                                               self.RESOURCE_STREAM))
 
     def test_prepare_merge_job(self):
-        resource_dir, output_dir, work_dir, chunks = \
-            self.stream_operator._prepare_merge_job(self.tempdir, [])
+        merge_job_info = self.stream_operator._prepare_merge_job(
+            self.tempdir,
+            [])
+        (host_dirs, chunks_in_container) = merge_job_info
 
-        self.assertEqual(len(chunks), 0)
+        self.assertEqual(len(chunks_in_container), 0)
         self.assertEqual(
-            resource_dir,
+            host_dirs['resources'],
             os.path.join(self.tempdir, 'merge', 'resources')
         )
-        self.assertTrue(os.path.isdir(output_dir))
+        self.assertTrue(os.path.isdir(host_dirs['output']))
         self.assertEqual(
-            output_dir,
+            host_dirs['output'],
             os.path.join(self.tempdir, 'merge', 'output'))
-        self.assertTrue(os.path.isdir(output_dir))
+        self.assertTrue(os.path.isdir(host_dirs['output']))
         self.assertEqual(
-            work_dir,
+            host_dirs['work'],
             os.path.join(self.tempdir, 'merge', 'work'))
-        self.assertTrue(os.path.isdir(work_dir))
+        self.assertTrue(os.path.isdir(host_dirs['work']))
 
     def test_prepare_merge_job_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator._prepare_merge_job(self.tempdir,
-                                                    ['/tmp/testtest_TC.m3u8',
-                                                     '/tmp/testtest_TC.ts'])
+            self.stream_operator._prepare_merge_job(
+                self.tempdir,
+                ['/tmp/testtest_TC.ts'])
 
-    def test_merge_nonexistent_files(self):
+    def test_merge_and_replace_nonexistent_files(self):
         with self.assertRaises(ffmpegException):
-            self.stream_operator.merge_video('output.mp4',
-                                             self.tempdir,
-                                             ['test_TC.m3u8', 'test_TC.ts'])
-
+            self.stream_operator.merge_and_replace_video_streams(
+                self.RESOURCE_STREAM,
+                ['test_TC.ts'],
+                'output.mp4',
+                self.tempdir,
+                Container.c_MP4,
+            )
 
 class TestffmpegDockerJob(TestDockerJob):
     def _get_test_repository(self):
@@ -178,7 +196,6 @@ class TestffmpegDockerJob(TestDockerJob):
             },
             'output_stream': out_stream_path,
             'command': Commands.TRANSCODE.value[0],
-            'use_playlist': 0,
             'script_filepath': FFMPEG_BASE_SCRIPT
         }
 

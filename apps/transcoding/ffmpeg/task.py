@@ -1,9 +1,6 @@
 import logging
 import os
 
-from ffmpeg_tools.codecs import VideoCodec, AudioCodec
-from ffmpeg_tools.formats import Container
-
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefaults
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
@@ -34,24 +31,27 @@ class ffmpegTask(TranscodingTask):
             raise AssertionError('Requested number subtask {} is greater than '
                                  'number of resources [size={}]'
                                  .format(subtask_num, len(self.chunks)))
-        chunk = os.path.relpath(self.chunks[subtask_num][1],
+        chunk = os.path.relpath(self.chunks[subtask_num],
                                 self._get_resources_root_dir())
         chunk = DockerJob.get_absolute_resource_path(chunk)
 
         filename = os.path.splitext(os.path.basename(  # TODO: we trust foreign filename
-            self.chunks[subtask_num][1]))[0]
+            self.chunks[subtask_num]))[0]
+        output_extension = os.path.splitext(self.task_definition.output_file)[1]
 
         output_stream = os.path.join(
             DockerJob.OUTPUT_DIR,
-            filename + '_TC.m3u8')
+            filename + '_TC' + output_extension)
 
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
         vc = video_params.codec.value if video_params.codec else None
         ac = audio_params.codec.value if audio_params.codec else None
+        container = transcoding_options.output_container
         extra_data = {
             'track': chunk,
             'targs': {
+                'container': container.value if container is not None else None,
                 'video': {
                     'codec': vc,
                     'bitrate': video_params.bitrate
@@ -65,7 +65,6 @@ class ffmpegTask(TranscodingTask):
                 'format': transcoding_options.output_container.value
             },
             'output_stream': output_stream,
-            'use_playlist': transcoding_options.use_playlist,
             'command': Commands.TRANSCODE.value[0],
             'entrypoint': FFMPEG_ENTRYPOINT
         }
@@ -81,13 +80,6 @@ class ffmpegDefaults(TaskDefaults):
 
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):
-    SUPPORTED_FILE_TYPES = [Container.c_MKV, Container.c_AVI,
-                            Container.c_MP4, Container.c_MOV, Container.c_MPEG,
-                            Container.c_3GP, Container.c_3G2, Container.c_F4V]
-    SUPPORTED_VIDEO_CODECS = [VideoCodec.MPEG_1, VideoCodec.MPEG_2,
-                              VideoCodec.H_264, VideoCodec.H_265,
-                              VideoCodec.HEVC, VideoCodec.H_264]
-    SUPPORTED_AUDIO_CODECS = [AudioCodec.MP3, AudioCodec.AAC]
     TASK_CLASS = ffmpegTask
     DEFAULTS = ffmpegDefaults
 

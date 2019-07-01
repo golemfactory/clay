@@ -26,7 +26,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     VIDEO_FILES = [
         "test_video.mp4",
-        "test_video2.mp4",
+        "test_video2",
     ]
 
     @classmethod
@@ -56,10 +56,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         self.tt = ffmpegTaskTypeInfo()
 
     @classmethod
-    def _create_task_def_for_transcoding(
+    def _create_task_def_for_transcoding(  # pylint: disable=too-many-arguments
             cls,
             resource_stream,
             result_file,
+            container,
             video_options=None,
             subtasks_count=2,
     ):
@@ -74,7 +75,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
-                'container': os.path.splitext(result_file)[1][1:]
+                'container': container,
             }
         }
 
@@ -127,6 +128,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_resolution_change(resolution)
         operation.request_video_codec_change(VideoCodec.H_264)
+        operation.request_container_change(Container.c_MP4)
         operation.exclude_from_diff({'video': {'bitrate'}})
         (_input_report, _output_report, diff) = operation.run(video_file)
         self.assertEqual(diff, [])
@@ -134,7 +136,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (video_file, frame_rate)
         for video_file in VIDEO_FILES
-        for frame_rate in ('25/1', '25/2')
+        for frame_rate in ('25/1',)
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -150,6 +152,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_frame_rate_change(frame_rate)
         operation.request_video_codec_change(VideoCodec.H_264)
+        operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change((320, 240))
         operation.exclude_from_diff({'video': {'bitrate', 'frame_count'}})
         (_input_report, _output_report, diff) = operation.run(video_file)
@@ -174,6 +177,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.attach_to_report_set(self._ffprobe_report_set)
         operation.request_subtasks_count(subtasks_count)
         operation.request_video_codec_change(VideoCodec.H_264)
+        operation.request_container_change(Container.c_MP4)
         operation.request_resolution_change((320, 240))
         operation.exclude_from_diff({'video': {'bitrate'}})
         (_input_report, _output_report, diff) = operation.run(video_file)
@@ -181,11 +185,12 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_simple_case(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -198,12 +203,13 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_output_dir(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
                                    'test_invalid_task_definition.mp4')
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -226,6 +232,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -244,6 +251,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'h265',
                 'resolution': [320, 240],
@@ -255,11 +263,12 @@ class TestFfmpegIntegration(TestTaskIntegration):
 
     @remove_temporary_dirtree_if_test_passed
     def test_task_invalid_params(self):
-        resource_stream = os.path.join(self.RESOURCES, 'test_video2.mp4')
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
         task_def = self._create_task_def_for_transcoding(
             resource_stream,
             result_file,
+            container=Container.c_MP4.value,
             video_options={
                 'codec': 'abcd',
                 'resolution': [320, 240],

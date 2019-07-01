@@ -10,29 +10,14 @@ from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 
 
-CONTAINER_TO_FFMPEG_MUXER = {
-    Container.c_F4V: "mov,mp4,m4a,3gp,3g2,mj2",
-    Container.c_3GP: 'mov,mp4,m4a,3gp,3g2,mj2',
-    Container.c_3G2: "mov,mp4,m4a,3gp,3g2,mj2",
-    Container.c_AVI: 'avi',
-    Container.c_M4A: 'mov,mp4,m4a,3gp,3g2,mj2',
-    Container.c_MJ2: 'mov,mp4,m4a,3gp,3g2,mj2',
-    Container.c_MKV: 'matroska,webm',
-    Container.c_MOV: 'mov,mp4,m4a,3gp,3g2,mj2',
-    Container.c_MP4: 'mov,mp4,m4a,3gp,3g2,mj2',
-    Container.c_MPEG: 'mpeg',
-    Container.c_QUICK_TIME: 'mov,mp4,m4a,3gp,3g2,mj2',
-}
-assert set(CONTAINER_TO_FFMPEG_MUXER) == set(Container)
-
-
 class SimulatedTranscodingOperation:
     def __init__(self,
                  task_executor,
                  experiment_name: str,
                  resource_dir: str,
                  tmp_dir: str,
-                 dont_include_in_option_description: Optional[list] = None) -> None:
+                 dont_include_in_option_description: Optional[list] = None)\
+            -> None:
         # task_executor is an object with execute_task(task_def) method
         assert hasattr(task_executor, 'execute_task')
         assert os.path.isdir(resource_dir)
@@ -70,7 +55,7 @@ class SimulatedTranscodingOperation:
     def request_container_change(self, new_container: Container):
         self._task_options['output_container'] = new_container
 
-        format_name = CONTAINER_TO_FFMPEG_MUXER[new_container]
+        format_name = new_container.get_demuxer()
         self.set_override('format', 'format_name', format_name)
 
     def request_video_codec_change(self, new_codec: VideoCodec):
@@ -138,13 +123,15 @@ class SimulatedTranscodingOperation:
         return "/".join(
             value
             for name, value in components.items()
-            if value is not None and name not in self._dont_include_in_option_description
+            if value is not None and name not in
+            self._dont_include_in_option_description
         )
 
     @classmethod
     def _build_task_def(cls,
                         video_file: str,
                         result_file: str,
+                        container: Container,
                         video_options: Dict[str, str],
                         subtasks_count: int) -> dict:
         return {
@@ -158,13 +145,14 @@ class SimulatedTranscodingOperation:
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
-                'container': os.path.splitext(result_file)[1][1:]
+                'container': container.value if container is not None else None,
             }
         }
 
     def _build_file_names(self, relative_input_file: str):
         if self._task_options['output_container'] is not None:
-            output_extension = "." + self._task_options['output_container'].value
+            output_extension = "." +\
+                               self._task_options['output_container'].value
         else:
             output_extension = os.path.splitext(relative_input_file)[1]
 
@@ -214,6 +202,7 @@ class SimulatedTranscodingOperation:
             task_def = self._build_task_def(
                 input_file,
                 output_file,
+                self._task_options['output_container'],
                 self._video_options,
                 self._task_options['subtasks_count'],
             )

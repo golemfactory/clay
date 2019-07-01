@@ -1,25 +1,33 @@
-# Dockerfile for tasks requiring ffmpeg.
+# Dockerfile with ffmpeg and python3.6
 
-FROM golemfactory/base:1.5
+# From this image we will copy ffmpeg binaries.
+FROM jrottenberg/ffmpeg:4.1-alpine AS ffmpeg-build
 
-MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
-# Build ffmpeg
-RUN set -x \
-    # get dependencies
-    && apt-get update  \
-    && apt-get -y install ffmpeg \
-    && apt-get clean \
-    && apt-get -y autoremove \
-    && rm -rf /var/lib/apt/lists/*
+# Base image with alpine and python.
+FROM python:3.6-alpine3.8
+
+MAINTAINER Golem Tech <tech@golem.network>
+
+# Create Golem standard directories.
+RUN mkdir /golem \
+ && mkdir /golem/work \
+ && mkdir /golem/resources \
+ && mkdir /golem/output
+
 
 COPY ffmpeg-scripts/requirements.txt /golem/scripts/requirements.txt
-RUN /golem/install_py_libs.sh -r /golem/scripts/requirements.txt
+RUN pip install -r /golem/scripts/requirements.txt
 
 COPY ffmpeg-scripts/ /golem/scripts/
 
 ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH
 
-RUN ln -s /usr/bin/python3.6 /usr/bin/python3
-
 WORKDIR /golem/work/
+
+# Copy ffmpeg bianries from jrottenberg/ffmpeg:4.1-alpine image.
+COPY --from=ffmpeg-build /usr/local /usr/local
+COPY --from=ffmpeg-build /usr/lib /usr/lib
+COPY --from=ffmpeg-build /lib /lib
+
+#ENTRYPOINT []
