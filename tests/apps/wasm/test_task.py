@@ -158,7 +158,7 @@ class WasmTaskTestCase(TempDirFixture):
 
         subt_name, subt_extra_data =\
             self.task.subtasks[1].new_instance('node_id')
-        expected_dict =  {
+        expected_dict = {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
             'entrypoint': WasmTask.JOB_ENTRYPOINT,
