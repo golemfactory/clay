@@ -5,7 +5,6 @@ from ...test_config_base import (
     NodeId
 )
 
-import tasks
 import pathlib
 from scripts.node_integration_tests import helpers
 
@@ -27,9 +26,9 @@ class TestConfig(TestConfigBase):
             task_settings=self.task_settings,
         )
         cwd = pathlib.Path(__file__).resolve().parent
-        self.task_dict['options']['input_dir'] = str((cwd / '..' / '..' / '..' /
-                                                       'tasks' / self.task_package /
-                                                       'in').resolve())
-        self.task_dict['options']['output_dir'] = str((cwd / '..' / '..' / '..' /
-                                                       'tasks' / self.task_package /
-                                                       'out').resolve())
+        self.task_dict['options']['input_dir'] =\
+            str((cwd / '..' / '..' / '..' / 'tasks' / self.task_package /
+                'in').resolve())
+        self.task_dict['options']['output_dir'] =\
+            str((cwd / '..' / '..' / '..' / 'tasks' / self.task_package /
+                'out').resolve())
