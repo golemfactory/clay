@@ -140,7 +140,7 @@ class WasmTaskTestCase(TempDirFixture):
         )
 
     def test_get_next_subtask_extra_data(self):
-        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
+        subt_name, subt_extra_data = self.task.subtasks[0].new_instance()
         self.assertEqual(subt_name, 'subtask1')
         self.assertEqual(subt_extra_data, {
             'name': 'subtask1',
@@ -152,7 +152,7 @@ class WasmTaskTestCase(TempDirFixture):
             'output_file_paths': ['file1', 'file2'],
         })
 
-        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
+        subt_name, subt_extra_data = self.task.subtasks[1].new_instance()
         self.assertEqual(subt_name, 'subtask2')
         self.assertEqual(subt_extra_data, {
             'name': 'subtask2',
@@ -163,37 +163,6 @@ class WasmTaskTestCase(TempDirFixture):
             'input_dir_name': 'dir',
             'output_file_paths': ['file3', 'file4'],
         })
-
-        with self.assertRaises(StopIteration):
-            self.task.get_next_subtask_extra_data()
-
-    def test_query_extra_data(self):
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = self.task.query_extra_data(0.1337, 'test_id', 'test_name')
-
-        self.assertEqual(data.ctd['extra_data'], {'extra': 'data'})
-        self.assertEqual(self.task.subtasks_given[data.ctd['subtask_id']], {
-            'extra': 'data',
-            'status': SubtaskStatus.starting,
-            'node_id': 'test_id',
-            'subtask_id': data.ctd['subtask_id'],
-        })
-        self.assertEqual(
-            self.task.subtask_names[data.ctd['subtask_id']], 'test_subtask',
-        )
-
-    def test_query_extra_data_for_test_task(self):
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = self.task.query_extra_data(0.1337, 'test_id', 'test_name')
-        self.assertEqual(data.ctd['extra_data'], {'extra': 'data'})
 
     def test_accept_results(self):
         res_f = [
@@ -223,26 +192,3 @@ class WasmTaskTestCase(TempDirFixture):
         for output_file_path, expected_output in zip(exp_out_f, res_f_contents):
             with open(output_file_path, 'rb') as output_file:
                 self.assertEqual(output_file.read(), expected_output)
-
-
-class WasmBenchmarkTaskTestCase(TestCase):
-    def test_query_extra_data(self):
-        task_def = WasmBenchmarkTaskBuilder.build_full_definition(
-            WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
-        )
-        task_def.task_id = str(uuid4())
-        task = WasmBenchmarkTask(
-            total_tasks=2, task_definition=task_def,
-            root_path='/', owner=p2p.Node(),
-        )
-
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmBenchmarkTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = task.query_extra_data(0.1337, 'test_id', 'test_name')
-
-        self.assertEqual(
-            data.ctd['extra_data'], {'extra': 'data', 'input_dir_name': ''},
-        )
