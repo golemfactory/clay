@@ -8,7 +8,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 
 class GLambdaTaskEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/glambda"
-    DOCKER_TAG = "1.3"
+    DOCKER_TAG = "1.4"
     ENV_ID = "glambda"
     SHORT_DESCRIPTION = "GLambda PoC"
 
@@ -26,5 +26,8 @@ class GLambdaTaskEnvironment(DockerEnvironment):
             volumes=[],
             binds={},
             devices=[],
-            environment={}
+            # gVisor uses HOME variable before starting the image.
+            # Starting docker as a particular user (docker --user parameter)
+            # does not set HOME and that's why we define it here.
+            environment={'HOME': '/home/user'} if is_linux() else {}
         )

@@ -66,6 +66,7 @@ yacctab.py
 data/
 
 # Install and build
+apps/rendering/resources/taskcollector/x64/Release/*
 apps/rendering/resources/taskcollector/Release/*
 apps/rendering/resources/taskcollector/taskcollector.vcxproj
 Installer/Installer_Win/deps/*
@@ -81,3 +82,10 @@ apps/dummy/test_tmp
 .python-version
 luxrender-output.png
 .testmondata
+
+# video extended test set
+tests/apps/ffmpeg/resources/videos/
+
+# developer tools
+.vscode/
+

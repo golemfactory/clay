@@ -1,3 +1,4 @@
+import datetime
 import functools
 import json
 import logging
@@ -5,7 +6,6 @@ import os
 import random
 import time
 from enum import Enum
-from datetime import datetime, timedelta
 from pathlib import Path
 from typing import (
     Any,
@@ -38,7 +38,6 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
 from . import exceptions
@@ -79,6 +78,11 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
+class FaucetRequests(Enum):
+    ETH = 0
+    GNT = 1
+
+
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
@@ -108,7 +112,7 @@ class TransactionSystem(LoopingCallService):
         self._incomes_keeper = IncomesKeeper()
         self._payment_processor: Optional[PaymentProcessor] = None
 
-        self._gnt_faucet_requested = False
+        self._faucet_requested: Optional[FaucetRequests] = None
         self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
             (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
@@ -137,8 +141,16 @@ class TransactionSystem(LoopingCallService):
         return self._sci.GAS_PRICE
 
     @property
+    def contract_addresses(self):
+        return self._config.CONTRACT_ADDRESSES
+
+    @property
     def deposit_contract_available(self) -> bool:
-        return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
+        return contracts.GNTDeposit in self.contract_addresses
+
+    @property
+    def deposit_contract_address(self) -> Optional[str]:
+        return self.contract_addresses.get(contracts.GNTDeposit, None)
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -303,11 +315,11 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _save_subscription_block_number(self) -> None:
         self._sci: SmartContractsInterface
-        block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
+        block_number = self._sci.get_latest_confirmed_block_number()
         kv, _ = model.GenericKeyValue.get_or_create(
             key=self.BLOCK_NUMBER_DB_KEY,
         )
-        kv.value = block_number - 1
+        kv.value = block_number + 1
         kv.save()
 
     def stop(self):
@@ -316,32 +328,55 @@ class TransactionSystem(LoopingCallService):
         self._sci.stop()
         super().stop()
 
-    def add_payment_info(
+    def add_payment_info(  # pylint: disable=too-many-arguments
             self,
+            node_id: str,
+            task_id: str,
             subtask_id: str,
             value: int,
-            eth_address: str) -> int:
+            eth_address: str) -> model.TaskPayment:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._payment_processor.add(subtask_id, eth_address, value)
+        return self._payment_processor.add(
+            node_id=node_id,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            eth_addr=eth_address,
+            value=value,
+        )
 
     @sci_required()
-    def get_payment_address(self):
+    def get_payment_address(self) -> str:
         """ Human readable Ethereum address for incoming payments."""
         self._sci: SmartContractsInterface
         return self._sci.get_eth_address()
 
-    def get_payments_list(self, num: Optional[int] = None,
-                          interval: Optional[timedelta] = None):
-        """ Return list of all planned and made payments
-        :return list: list of dictionaries describing payments
-        """
+    def get_payments_list(
+            self,
+            num: Optional[int] = None,
+            interval: Optional[datetime.timedelta] = None,
+    ) -> List[Dict[str, Any]]:
+        #
+        # @todo https://github.com/golemfactory/golem/issues/3971
+        # @todo https://github.com/golemfactory/golem/issues/3970
+
+        # because of crossbar's 1MB limitation on output, we need to limit
+        # the amount of data returned from the endpoint here
+        #
+        # the real answer is pagination... until then, we're imposing
+        # an artificial limit
+
+        num = num or 1024
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
-    def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \
-            -> List[model.DepositPayment]:
-        query = model.DepositPayment.select() \
+    def get_deposit_payments_list(cls, limit=1000, offset=0)\
+            -> List[model.WalletOperation]:
+        query = model.WalletOperation.deposit_transfers() \
+            .where(
+                model.WalletOperation.direction
+                == model.WalletOperation.DIRECTION.outgoing,
+            ) \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
@@ -349,13 +384,10 @@ class TransactionSystem(LoopingCallService):
 
     def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> List[model.Payment]:
+            subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
-        """ Return list of all expected and received incomes
-        :return list: list of dictionaries describing incomes
-        """
         return self._incomes_keeper.get_list_of_all_incomes()
 
     def get_available_eth(self) -> int:
@@ -393,7 +425,7 @@ class TransactionSystem(LoopingCallService):
             'gnt_nonconverted': self._gnt_balance,
             'eth_available': self.get_available_eth(),
             'eth_locked': self.get_locked_eth(),
-            'block_number': self._sci.get_block_number(),
+            'block_number': self._sci.get_latest_confirmed_block_number(),
             'gnt_update_time': self._last_gnt_update,
             'eth_update_time': self._last_eth_update,
         }
@@ -457,19 +489,23 @@ class TransactionSystem(LoopingCallService):
         self._payments_locked -= num
 
     # pylint: disable=too-many-arguments
+    @sci_required()
     def expect_income(
             self,
             sender_node: str,
+            task_id: str,
             subtask_id: str,
             payer_address: str,
             value: int,
             accepted_ts: int) -> None:
         self._incomes_keeper.expect(
-            sender_node,
-            subtask_id,
-            payer_address,
-            value,
-            accepted_ts,
+            sender_node=sender_node,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            payer_address=payer_address,
+            my_address=self._sci.get_eth_address(),  # type: ignore
+            value=value,
+            accepted_ts=accepted_ts,
         )
 
     def settle_income(
@@ -486,7 +522,7 @@ class TransactionSystem(LoopingCallService):
             self._payment_processor.recipients_count
         required = self._current_eth_per_payment() * num_payments + \
             self._eth_base_for_batch_payment()
-        return required - self.get_locked_eth()
+        return max(0, required - self.get_locked_eth())
 
     @sci_required()
     def _eth_base_for_batch_payment(self) -> int:
@@ -553,6 +589,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             return self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
@@ -566,6 +603,7 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
+            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
@@ -576,6 +614,7 @@ class TransactionSystem(LoopingCallService):
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
+                # TODO Update WalletOperation #4172
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
@@ -669,10 +708,16 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
-        dpayment = model.DepositPayment.create(
-            status=model.PaymentStatus.sent,
-            value=max_possible_amount,
-            tx=tx_hash,
+        dpayment = model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.outgoing,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.get_payment_address() or '',
+            recipient_address=self.deposit_contract_address,
+            amount=max_possible_amount,
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
@@ -693,20 +738,19 @@ class TransactionSystem(LoopingCallService):
         tx_gas_price = self._sci.get_transaction_gas_price(
             receipt.tx_hash,
         )
-        dpayment.fee = receipt.gas_used * tx_gas_price
-        dpayment.status = model.PaymentStatus.confirmed
+        dpayment.gas_cost = receipt.gas_used * tx_gas_price
+        dpayment.status = \
+            model.WalletOperation.STATUS.confirmed
         dpayment.save()
-        return dpayment.tx
+        return dpayment.tx_hash
 
-    @rpc_utils.expose('pay.deposit.relock')
     @gnt_deposit_required()
     @sci_required()
-    def concent_relock(self):
+    def concent_relock(self) -> None:
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
-    @rpc_utils.expose('pay.deposit.unlock')
     @gnt_deposit_required()
     @sci_required()
     def concent_unlock(self):
@@ -752,22 +796,26 @@ class TransactionSystem(LoopingCallService):
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.005 * denoms.ether:
-            log.info("Requesting tETH from faucet")
-            tETH_faucet_donate(self._sci.get_eth_address())
+            if self._faucet_requested != FaucetRequests.ETH:
+                log.info("Requesting tETH from faucet")
+                if tETH_faucet_donate(self._sci.get_eth_address()):
+                    self._faucet_requested = FaucetRequests.ETH
             return
+        if self._faucet_requested == FaucetRequests.ETH:
+            self._faucet_requested = None
 
         if self._gnt_balance + self._gntb_balance < 100 * denoms.ether:
-            if not self._gnt_faucet_requested:
+            if self._faucet_requested != FaucetRequests.GNT:
                 log.info("Requesting GNT from faucet")
                 self._sci.request_gnt_from_faucet()
-                self._gnt_faucet_requested = True
-        else:
-            self._gnt_faucet_requested = False
+                self._faucet_requested = FaucetRequests.GNT
+            return
+        self._faucet_requested = None
 
     @sci_required()
     def _refresh_balances(self) -> None:
         self._sci: SmartContractsInterface
-        now = time.mktime(datetime.today().timetuple())
+        now = time.mktime(datetime.datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
         # Sometimes web3 may throw but it's fine here, we'll just update the
@@ -875,4 +923,5 @@ class TransactionSystem(LoopingCallService):
         self._get_funds_from_faucet()
         self._try_convert_gnt()
         self._payment_processor.sendout()
+        self._payment_processor.update_overdue()
         self._incomes_keeper.update_overdue_incomes()

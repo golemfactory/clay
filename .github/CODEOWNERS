@@ -1,0 +1,11 @@
+/golem/docker/ @Wiezzel
+/golem/ethereum/ @Krigpl
+/golem/envs/ @Wiezzel
+/golem/network/concent/ @shadeofblue @jiivan
+
+/scripts/concent_acceptance_tests/ @shadeofblue
+/scripts/docker/ @Wiezzel
+/scripts/node_integration_tests/ @shadeofblue
+/scripts/virtualization/ @Wiezzel
+
+/Installer/Installer_Win/ @Wiezzel @maaktweluit

@@ -45,6 +45,8 @@ class DockerManager(DockerConfigManager):
         try:
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
+                logger.info("Docker-hypervisor selected. type=%r",
+                            type(self.hypervisor))
                 self.hypervisor.setup()
         except Exception as e:  # pylint: disable=broad-except
             logger.error(
@@ -141,7 +143,7 @@ class DockerManager(DockerConfigManager):
 
     def get_host_config_for_task(self, binds: Iterable[DockerBind]) -> dict:
         host_config = dict(self._container_host_config)
-        if self.hypervisor and self.hypervisor.uses_volumes():
+        if self.hypervisor:
             host_config['binds'] = self.hypervisor.create_volumes(binds)
         else:
             host_config['binds'] = {
@@ -177,7 +179,7 @@ class DockerManager(DockerConfigManager):
             if restart_vm:
                 logger.info("Docker: applying configuration: %r", diff)
                 try:
-                    with self.hypervisor.restart_ctx() as vm:
+                    with self.hypervisor.reconfig_ctx() as vm:
                         self.hypervisor.constrain(vm, **diff)
                 except Exception as e:
                     logger.error("Docker: error updating configuration: %r", e)

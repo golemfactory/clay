@@ -1,4 +1,6 @@
+import shutil
 from datetime import datetime
+from pathlib import Path
 from typing import Type
 
 import logging
@@ -18,7 +20,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/blender_verifier"
-    DOCKER_TAG = '1.1'
+    DOCKER_TAG = '1.5'
 
     def __init__(self, verification_data,
                  docker_task_cls: Type) -> None:
@@ -55,6 +57,15 @@ class BlenderVerifier(FrameRenderingVerifier):
         if self.docker_task:
             self.docker_task.end_comp()
 
+    @staticmethod
+    def _copy_files_with_directory_hierarchy(file_paths, copy_to):
+        common_dir = os.path.commonpath(file_paths)
+        for path in file_paths:
+            relative_path = os.path.relpath(path, start=common_dir)
+            target_dir = os.path.join(copy_to, relative_path)
+            os.makedirs(os.path.dirname(target_dir), exist_ok=True)
+            shutil.copy(path, target_dir)
+
     def start_rendering(self, timeout=0):
         self.timeout = timeout
 
@@ -72,13 +83,30 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addErrback(failure)
 
         subtask_info = self.verification_data['subtask_info']
-        work_dir = os.path.dirname(self.verification_data['results'][0])
+        root_dir = Path(os.path.dirname(
+            self.verification_data['results'][0])).parent
+        work_dir = os.path.join(root_dir, 'work')
+        os.makedirs(work_dir, exist_ok=True)
+        res_dir = os.path.join(root_dir, 'resources')
+        os.makedirs(res_dir, exist_ok=True)
+
+        tmp_dir = os.path.join(root_dir, "tmp")
+
+        resources = self.verification_data['resources']
+        results = self.verification_data['results']
+
+        assert resources
+        assert results
+
+        self._copy_files_with_directory_hierarchy(resources, res_dir)
+        self._copy_files_with_directory_hierarchy(results, work_dir)
+
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
-            resources=subtask_info['path_root'],
-            temporary=os.path.dirname(work_dir),
+            resources=res_dir,
+            temporary=tmp_dir,
             work=work_dir,
-            output=os.path.join(work_dir, "output"),
-            logs=os.path.join(work_dir, "logs"),
+            output=os.path.join(root_dir, "output"),
+            logs=os.path.join(root_dir, "logs"),
         )
 
         extra_data = dict(

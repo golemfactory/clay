@@ -37,7 +37,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
-    def setUp(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
@@ -60,21 +61,18 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     def __setup_handshake_server_test(self, send_mock) -> message.base.Hello:
         self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
-        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
-        self.peer_session.conn.server.key_difficulty = 2
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_SERVER
         self.peer_session.start()
         self.assertEqual(1, send_mock.call_count)
         expected = message.base.Hello(
             challenge=None,
-            client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
             node_info=node,
-            node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
@@ -95,9 +93,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         client_peer_info = dt_p2p_factory.Node()
         client_hello = message.base.Hello(
             port=1,
-            node_name='client',
             rand_val=random.random(),
-            client_key_id=client_peer_info.key,
             node_info=client_peer_info,
             proto_id=PROTOCOL_CONST.ID)
         fill_slots(client_hello)
@@ -142,19 +138,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 reason=message.base.Disconnect.REASON.ProtocolVersion).slots())
 
     @patch('golem.network.transport.session.BasicSession.send')
-    @patch('golem.core.keysauth.KeysAuth.is_pubkey_difficult',
-           return_value=False)
-    def test_react_to_hello_key_not_difficult(self, is_difficult_fn, send_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-
-        self.peer_session._react_to_hello(client_hello)
-        assert self.peer_session.key_id is None
-
-        # should not throw
-        self.peer_session._react_to_rand_val(
-            message.base.RandVal(rand_val=self.peer_session.rand_val))
-
-    @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_randval(self, send_mock):
         client_hello = self.__setup_handshake_server_test(send_mock)
         self.peer_session._react_to_hello(client_hello)
@@ -169,20 +152,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             message.base.Disconnect(
                 reason=message.base.Disconnect.REASON.Unverified).slots())
 
-    @patch('golem.network.transport.session.BasicSession.send')
-    def test_handshake_server_key_not_difficult(self, send_mock):
-        client_hello = self.__setup_handshake_server_test(send_mock)
-        client_hello.node_info.key = 'deadbeef' * 16
-        self.peer_session._react_to_hello(client_hello)
-
-        self.assertEqual(
-            send_mock.call_args_list[1][0][1].slots(),
-            message.base.Disconnect(
-                reason=message.base.Disconnect.REASON.KeyNotDifficult).slots())
-
     def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
-        self.peer_session.conn.server.node_name = node_name = node.node_name
+        self.peer_session.conn.server.node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = node.key
         self.peer_session.conn.server.cur_port = port = random.randint(1, 50000)
@@ -201,9 +173,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.enough_peers = lambda: False
         server_hello = message.base.Hello(
             port=1,
-            node_name='server',
             rand_val=random.random(),
-            client_key_id=server_peer_info.key,
             node_info=server_peer_info,
             proto_id=PROTOCOL_CONST.ID,
             metadata={},
@@ -211,11 +181,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         fill_slots(server_hello)
         expected = message.base.Hello(
             challenge=None,
-            client_key_id=key_id,
             client_ver=golem.__version__,
             difficulty=None,
             node_info=node,
-            node_name=node_name,
             port=port,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
@@ -286,9 +254,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         )
         msg_kwargs = {
             'port': random.randint(0, 65535),
-            'node_name': 'How could youths better learn to live than by at'
-                         'once trying the experiment of living? --HDT',
-            'client_key_id': peer_info.key,
             'client_ver': None,
             'node_info': peer_info,
             'proto_id': random.randint(0, sys.maxsize),
@@ -495,7 +460,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         send_mock.assert_called()
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
-    def _gen_data_for_test_react_to_remove_task(self):
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def _gen_data_for_test_react_to_remove_task(self, _):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth

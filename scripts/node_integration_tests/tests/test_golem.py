@@ -10,8 +10,8 @@ class GolemNodeTest(NodeTestBase):
     def test_regular_task_run(self):
         self._run_test('golem.regular_run')
 
-    def test_no_concent(self):
-        self._run_test('golem.no_concent')
+    def test_concent(self):
+        self._run_test('golem.concent')
 
     def test_rpc(self):
         self._run_test('golem.rpc_test')
@@ -48,3 +48,24 @@ class GolemNodeTest(NodeTestBase):
 
     def test_task_output_directory(self):
         self._run_test('golem.task_output')
+
+    def test_large_result(self):
+        self._run_test(
+            'golem.separate_hyperg',
+            **{'task-package': 'cubes', 'task-settings': '3k-low-samples'},
+        )
+
+    def test_restart_failed_subtasks(self):
+        self._run_test('golem.restart_failed_subtasks')
+
+    def test_main_scene_file(self):
+        self._run_test('golem.nested_column')
+
+    def test_multinode_regular_run(self):
+        self._run_test('golem.multinode_regular_run')
+
+    def test_disabled_verification(self):
+        self._run_test('golem.disabled_verification')
+
+    def test_lenient_verification(self):
+        self._run_test('golem.lenient_verification')

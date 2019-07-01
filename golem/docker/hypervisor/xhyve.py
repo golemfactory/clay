@@ -19,6 +19,11 @@ class XhyveHypervisor(DockerMachineHypervisor):
         storage='--xhyve-virtio-9p'
     )
 
+    @classmethod
+    def is_available(cls) -> bool:
+        # FIXME: Implement an actual check
+        return True
+
     # pylint: disable=arguments-differ
     def _parse_create_params(
             self,
