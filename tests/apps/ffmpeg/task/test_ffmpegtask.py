@@ -48,9 +48,12 @@ class TestffmpegTask(TempDirFixture):
     def _build_ffmpeg_task(self, subtasks_count=1, stream=RESOURCE_STREAM):
         td = self.tt.task_builder_type.build_definition(
             self.tt, self._task_dictionary(subtasks_count, stream))
-        return self.tt.task_builder_type(dt_p2p_factory.Node(), td,
-                                         DirManager(
-                                             self.tempdir)).build()
+        
+        dir_manager = DirManager(self.tempdir)
+        task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
+                                         dir_manager).build()
+        task.initialize(dir_manager)
+        return task
 
     def _task_dictionary(self, subtasks_count=1, stream=RESOURCE_STREAM):
         return {
@@ -224,6 +227,7 @@ class TestffmpegTask(TempDirFixture):
         from apps.transcoding.task import logger
         with self.assertLogs(logger, level="WARNING") as log:
             task = builder.build()
+            task.initialize(DirManager(self.tempdir))
             assert any("subtasks was requested but video splitting process"
                        in log for log in log.output)
 
