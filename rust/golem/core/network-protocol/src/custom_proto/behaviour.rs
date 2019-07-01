@@ -1158,7 +1158,7 @@ where
 
     fn poll(
         &mut self,
-        _params: &mut PollParameters,
+        _params: &mut impl PollParameters,
     ) -> Async<NetworkBehaviourAction<CustomProtoHandlerIn, Self::OutEvent>> {
         for (peer_id, peer_state) in self.peers.iter_mut() {
             match mem::replace(peer_state, PeerState::Poisoned) {

@@ -34,7 +34,7 @@ features = ["extension-module"]
 path = "core/network-controller"
 
 [dependencies.libp2p]
-version = "0.9.1"
+version = "0.10.0"
 default-features = false
 features = ["secp256k1", "libp2p-websocket"]
 
