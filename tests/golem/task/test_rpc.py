@@ -1031,8 +1031,6 @@ class TestGetFragments(ProviderBase):
         subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
         self.assertEqual(len(subtasks), subtasks_given)
 
-    @mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
-                return_value=Mock())
     def test_task_not_found(self, *_):
         task_id = str(uuid.uuid4())
 
@@ -1041,8 +1039,6 @@ class TestGetFragments(ProviderBase):
         self.assertIsNone(task_fragments)
         self.assertTrue('Task not found' in error)
 
-    @mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
-                return_value=Mock())
     def test_wrong_task_type(self, *_):
         task_id = str(uuid.uuid4())
         mock_task = Mock(spec=DummyTask)
@@ -1057,3 +1053,20 @@ class TestGetFragments(ProviderBase):
         task = self.client.task_manager.create_task(self.t_dict)
         deferred = rpc.enqueue_new_task(self.client, task)
         return golem_deferred.sync_wait(deferred)
+
+    def test_no_subtasks(self, *_):
+        task_id = str(uuid.uuid4())
+        subtask_count = 5
+        mock_task = Mock(spec=RenderingTask)
+        mock_task.total_tasks = subtask_count
+        mock_task_state = Mock()
+        mock_task_state.subtask_states = None
+        tm = self.provider.task_manager
+        tm.tasks[task_id] = mock_task
+        tm.tasks_states[task_id] = mock_task_state
+
+        task_fragments, error = self.provider.get_fragments(task_id)
+
+        self.assertEqual(len(task_fragments), subtask_count)
+        subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
+        self.assertFalse(subtasks)
