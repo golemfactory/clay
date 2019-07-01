@@ -54,7 +54,7 @@ class VbrSubtask:
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
-            redundancy_factor, WasmTask._cmp_results, referee_count=0)
+            redundancy_factor, WasmTask.cmp_results, referee_count=0)
 
     def contains(self, s_id) -> bool:
         return s_id in self.subtasks
@@ -201,7 +201,7 @@ class WasmTask(CoreTask):
         raise KeyError()
 
     @staticmethod
-    def _cmp_results(result_list_a: List[Any],
+    def cmp_results(result_list_a: List[Any],
                      result_list_b: List[Any]) -> bool:
         for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
@@ -330,7 +330,8 @@ class WasmTask(CoreTask):
         return results
 
     def should_accept_client(self, node_id: str) -> AcceptClientVerdict:
-        """Deciding whether to accept particular node_id for next task computation.
+        """Deciding whether to accept particular node_id for next task
+        computation.
 
         Arguments:
             node_id {str} -- Node offered to compute next task
@@ -352,7 +353,7 @@ class WasmTask(CoreTask):
             logger.info("Nodes listed for a task")
             return AcceptClientVerdict.ACCEPTED
 
-        for assigned_node_id in self.nodes_to_subtasks_map.keys():
+        for assigned_node_id in self.nodes_to_subtasks_map:
             if assigned_node_id in self.nodes_blacklist:
                 orphaned_subtask = self.nodes_to_subtasks_map\
                     .pop(assigned_node_id)
@@ -372,8 +373,7 @@ class WasmTask(CoreTask):
                 return AcceptClientVerdict.ACCEPTED
 
         """No subtask has yielded next actor meaning that there is no work
-        to be done at the moment
-        """
+        to be done at the moment"""
         return AcceptClientVerdict.SHOULD_WAIT
 
     def accept_client(self, node_id) -> None:
@@ -448,7 +448,7 @@ class WasmTask(CoreTask):
             return 0.0
 
         num_finished = len(list(filter(lambda x: x.is_finished(),
-                                self.subtasks)))
+                                       self.subtasks)))
 
         # logger.info("num_finished: %s", num_finished * \
         # (WasmTask.REDUNDANCY_FACTOR  + 1))
