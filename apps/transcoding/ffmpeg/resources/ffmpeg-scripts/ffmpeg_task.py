@@ -26,7 +26,8 @@ def do_extract(input_file,
     video_metadata = commands.get_metadata_json(input_file)
     if container is None:
         format_demuxer = meta.get_format(video_metadata)
-        container = formats.get_safe_intermediate_format_for_demuxer(format_demuxer)
+        container = formats.\
+            get_safe_intermediate_format_for_demuxer(format_demuxer)
 
     commands.extract_streams(
         input_file,
@@ -80,7 +81,11 @@ def do_extract_and_split(input_file, parts, container=None):
         WORK_DIR,
         f"{input_stem}[video-only]{input_extension}")
 
-    extract_results = do_extract(input_file, intermediate_file, ['v'], container)
+    extract_results = do_extract(input_file,
+                                 intermediate_file,
+                                 ['v'],
+                                 container)
+
     split_results = do_split(intermediate_file, parts)
 
     results = {
@@ -106,7 +111,7 @@ def select_transcoded_video_paths(output_file_paths, output_extension):
 
 def sorted_transcoded_video_paths(transcoded_video_paths):
     path_index = {int(re.findall(TRANSCODED_VIDEO_REGEX, path)[0]): path
-                    for path in transcoded_video_paths}
+                  for path in transcoded_video_paths}
     return [value for key, value in sorted(path_index.items())]
 
 

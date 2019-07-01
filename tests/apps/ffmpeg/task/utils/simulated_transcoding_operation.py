@@ -124,7 +124,7 @@ class SimulatedTranscodingOperation:
             value
             for name, value in components.items()
             if value is not None and name not in
-                self._dont_include_in_option_description
+            self._dont_include_in_option_description
         )
 
     @classmethod
