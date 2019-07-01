@@ -82,16 +82,8 @@ class VbrSubtask:
         return self.subtasks.keys()
 
     def add_result(self, s_id, task_result):
-        # if VbrSubtask.__DEBUG_COUNTER == 1:
-        #     self.verifier.add_result(self.subtasks[s_id]["actor"],\
-        #  ['/home/mplebanski/somefile'])
-        # else:
-        #     self.verifier.add_result(self.subtasks[s_id]["actor"],\
-        #  task_result)
         self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
         self.subtasks[s_id]["results"] = task_result
-        # VbrSubtask.__DEBUG_COUNTER += 1
-        # logger.info("Debug counter: %d", VbrSubtask.__DEBUG_COUNTER)
 
     def get_result(self):
         return self.result
@@ -373,6 +365,8 @@ class WasmTask(CoreTask):
         return AcceptClientVerdict.SHOULD_WAIT
 
     def accept_client(self, node_id) -> None:
+        """Overriding CoreTask behavior with a stub. This is now handled
+        entirely in `should_accept_client` method."""
         pass
 
     def needs_computation(self) -> bool:
@@ -396,15 +390,15 @@ class WasmTask(CoreTask):
         return (WasmTask.REDUNDANCY_FACTOR + 1) * len(self.subtasks)
 
     def get_active_tasks(self):
-        return 0
+        return sum(
+            [0 if subtask.is_finished() else (WasmTask.REDUNDANCY_FACTOR + 1)
+             for subtask in self.subtasks]
+        )
 
     def get_tasks_left(self):
-        return 0
-
-    # pylint:disable=unused-argument
-    @classmethod
-    def get_subtasks(cls, part):
-        return dict()
+        num_finished = len(list(filter(lambda x: x.is_finished(),
+                                       self.subtasks)))
+        return self.get_total_tasks() - num_finished
 
     def restart(self):
         for subtask_id in list(self.subtasks_given.keys()):
@@ -445,10 +439,6 @@ class WasmTask(CoreTask):
 
         num_finished = len(list(filter(lambda x: x.is_finished(),
                                        self.subtasks)))
-
-        # logger.info("num_finished: %s", num_finished * \
-        # (WasmTask.REDUNDANCY_FACTOR  + 1))
-        # logger.info("num_total: %s", num_total)
 
         return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
 
