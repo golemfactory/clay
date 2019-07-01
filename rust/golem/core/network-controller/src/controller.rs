@@ -7,7 +7,7 @@ use futures::{stream, Future, Stream};
 use log::{debug, info, trace, warn};
 use parking_lot::Mutex;
 
-use network_libp2p::{multiaddr, start_service, LOG_TARGET};
+use network_libp2p::{multiaddr, start_service, LOG_TARGET, ProtocolId};
 use network_libp2p::{ConnectedPoint, NetworkConfiguration, PeerId, PublicKey};
 use network_libp2p::{Service as InternalService, ServiceEvent as InternalServiceEvent};
 
@@ -66,8 +66,8 @@ impl NetworkController {
     }
 
     #[inline]
-    pub fn disconnect_peer(&self, peer_id: PeerId) {
-        self.network_service.lock().disconnect_from_peer(&peer_id);
+    pub fn disconnect_peer(&self, peer_id: PeerId, protocol_id: ProtocolId) {
+        self.network_service.lock().disconnect_from_peer(&peer_id, &protocol_id);
     }
 
     #[inline]
@@ -78,7 +78,7 @@ impl NetworkController {
 
         self.network_service
             .lock()
-            .send_message(&protocol_id, &peer_id, message.into());
+            .send_message(&peer_id, &protocol_id, message.into());
     }
 
     #[inline]
@@ -163,7 +163,7 @@ impl NetworkController {
                 match event {
                     ClientRequest::Connect(multiaddr) => inner.lock().connect(multiaddr),
                     ClientRequest::ConnectToPeer(peer_id) => inner.lock().connect_to_peer(peer_id),
-                    ClientRequest::DisconnectPeer(peer_id) => inner.lock().disconnect_peer(peer_id),
+                    ClientRequest::DisconnectPeer(peer_id, protocol_id) => inner.lock().disconnect_peer(peer_id, protocol_id),
                     ClientRequest::SendMessage(peer_id, message) => {
                         inner.lock().send_message(peer_id, message)
                     }

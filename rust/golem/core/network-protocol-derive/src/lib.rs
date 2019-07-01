@@ -110,7 +110,16 @@ fn peer_macro_build(input: &DeriveInput, data_struct: &DataStruct) -> TokenStrea
 
     let statement_disconnect_peer = enumerate_fields(data_struct, move |(n, field)| {
         let field_name = field_name(n, field);
-        Some(quote! {self.#field_name.disconnect_peer(peer_id);})
+        let mut stream = proc_macro2::TokenStream::new();
+
+        stream.extend(quote! {
+            if *protocol_id == self.#field_name.id() {
+                self.#field_name.disconnect_peer(peer_id, protocol_id);
+                return;
+            }
+        });
+
+        Some(stream)
     });
 
     let statement_send_message = enumerate_fields(data_struct, move |(n, field)| {
@@ -119,7 +128,7 @@ fn peer_macro_build(input: &DeriveInput, data_struct: &DataStruct) -> TokenStrea
 
         stream.extend(quote! {
             if *protocol_id == self.#field_name.id() {
-                self.#field_name.send_message(protocol_id, peer_id, message);
+                self.#field_name.send_message(peer_id, protocol_id, message);
                 return;
             }
         });
@@ -163,14 +172,14 @@ fn peer_macro_build(input: &DeriveInput, data_struct: &DataStruct) -> TokenStrea
                 #(#statement_connect_to_peer);*
             }
 
-            fn disconnect_peer(&mut self, peer_id: &PeerId) {
+            fn disconnect_peer(&mut self, peer_id: &PeerId, protocol_id: &ProtocolId) {
                 #(#statement_disconnect_peer);*
             }
 
             fn send_message(
                 &mut self,
-                protocol_id: &ProtocolId,
                 peer_id: &PeerId,
+                protocol_id: &ProtocolId,
                 message: ProtocolMessage,
             ) {
                 #(#statement_send_message);*

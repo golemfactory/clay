@@ -70,9 +70,10 @@ py_class!(pub class PyNetworkService |py| {
 
     def disconnect(
         &self,
-        peer_id: PyString
+        peer_id: PyString,
+        protocol_id: PyBytes
     ) -> PyResult<bool> {
-        match net().disconnect(py, peer_id) {
+        match net().disconnect(py, peer_id, protocol_id) {
             Ok(_) => Ok(true),
             Err(e) => Err(e.into()),
         }

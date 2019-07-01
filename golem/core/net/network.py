@@ -39,7 +39,7 @@ class TCPConnectInfoWrapper:
     #################
 
     @property
-    def protocol_id(self) -> int:
+    def protocol_id(self):
         return self._inner.protocol_id
 
     def established_callback(self, *args, **kwargs):
@@ -207,15 +207,15 @@ class LibP2PNetwork(Network):
     # Class interface #
     ###################
 
-    def disconnect(self, peer_id: str) -> None:
+    def disconnect(self, peer_id: str, protocol_id) -> None:
         try:
-            if not self._network.disconnect(peer_id):
+            if not self._network.disconnect(peer_id, protocol_id):
                 raise NetworkServiceError(f'Cannot disconnect from {peer_id}: '
                                           'network is not running')
         except NetworkServiceError as exc:
             logger.warning(f'Network: {exc}')
 
-    def send(self, peer_id: str, protocol_id: int, blob: bytes):
+    def send(self, peer_id: str, protocol_id, blob: bytes):
         if not self._network.send(peer_id, protocol_id, blob):
             logger.error(f"Cannot send a message to {peer_id}")
 
@@ -334,6 +334,10 @@ class LibP2PNetwork(Network):
 
     def _handle_connected(self, event: events.Connected) -> None:
         address = event.endpoint.address
+        # FIXME: better multi-protocol open managemenet
+        if address in self._connections:
+            return
+
         connect_info = self._outgoing.pop(address, None)
 
         if connect_info:
@@ -375,7 +379,7 @@ class LibP2PNetwork(Network):
         for conn in conns.values():
             conn.session.dropped()
 
-        logger.info("%s disconnected from %r (%s)", *event.endpoint.address,
+        logger.info("%s:%r disconnected (%s)", *event.endpoint.address,
                     event.peer_id)
 
     def _handle_message(self, event: events.Message) -> None:

@@ -12,7 +12,7 @@ pub use network_libp2p::*;
 pub enum ClientRequest {
     Connect(Multiaddr),
     ConnectToPeer(PeerId),
-    DisconnectPeer(PeerId),
+    DisconnectPeer(PeerId, ProtocolId),
     SendMessage(PeerId, UserMessage),
     Stop,
 }

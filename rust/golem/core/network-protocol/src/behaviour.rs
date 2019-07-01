@@ -29,13 +29,13 @@ pub trait PeerNetBehaviour {
     /// Connects to peer.
     fn connect_to_peer(&mut self, peer_id: &PeerId);
     /// Connects from a peer.
-    fn disconnect_peer(&mut self, peer_id: &PeerId);
+    fn disconnect_peer(&mut self, peer_id: &PeerId, protocol_id: &ProtocolId);
 
     /// Sends a message to a peer.
     fn send_message(
         &mut self,
-        protocol_id: &ProtocolId,
         peer_id: &PeerId,
+        protocol_id: &ProtocolId,
         message: ProtocolMessage,
     );
 }

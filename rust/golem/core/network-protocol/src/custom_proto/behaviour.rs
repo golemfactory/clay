@@ -65,9 +65,7 @@ impl From<u64> for IncomingIndex {
 /// reach it), Enabled+Open, Enabled+Closed, Disabled+open, Disabled+Closed.
 ///
 /// Additionally, there also exists a "banning" system. If we fail to dial a node, we "ban" it for
-/// a few seconds. If the PSM requests a node that is in the "banned" state, then we delay the
-/// actual dialing attempt until after the ban expires, but the PSM will still consider the link
-/// to be established.
+/// a few seconds.
 /// Note that this "banning" system is not an actual ban. If a "banned" node tries to connect to
 /// us, we accept the connection. The "banning" system is only about delaying dialing attempts.
 ///
@@ -100,8 +98,7 @@ enum PeerState {
     /// the state machine code.
     Poisoned,
 
-    /// The peer misbehaved. If the PSM wants us to connect to this node, we will add an artificial
-    /// delay to the connection.
+    /// The peer misbehaved.
     Banned {
         /// Until when the node is banned.
         until: Instant,
@@ -307,7 +304,7 @@ impl<TSubstream> CustomProto<TSubstream> {
                 // If there's no entry in `self.peers`, start dialing.
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Starting to connect",
+                    "User => Connect({:?}): Starting to connect",
                     entry.key()
                 );
                 debug!(
@@ -327,7 +324,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             PeerState::Banned { ref until, .. } if *until > self.clock.now() => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Will start to connect at \
+                    "User => Connect({:?}): Will start to connect at \
                      until {:?}",
                     occ_entry.key(),
                     until
@@ -340,7 +337,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             PeerState::Banned { .. } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Starting to connect",
+                    "User => Connect({:?}): Starting to connect",
                     occ_entry.key()
                 );
                 debug!(
@@ -361,7 +358,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             } if *banned > self.clock.now() => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Has idle connection through \
+                    "User => Connect({:?}): Has idle connection through \
                      {:?} but node is banned until {:?}",
                     occ_entry.key(),
                     connected_point,
@@ -381,7 +378,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Enabling previously-idle \
+                    "User => Connect({:?}): Enabling previously-idle \
                      connection through {:?}",
                     occ_entry.key(),
                     connected_point
@@ -404,7 +401,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             st @ PeerState::Enabled { .. } => {
                 warn!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Already connected to this \
+                    "User => Connect({:?}): Already connected to this \
                      peer",
                     occ_entry.key()
                 );
@@ -413,7 +410,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             st @ PeerState::DisabledPendingEnable { .. } => {
                 warn!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Already have an idle \
+                    "User => Connect({:?}): Already have an idle \
                      connection to this peer and waiting to enable it",
                     occ_entry.key()
                 );
@@ -422,7 +419,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             st @ PeerState::Requested { .. } | st @ PeerState::PendingRequest { .. } => {
                 warn!(
                     target: crate::LOG_TARGET,
-                    "PSM => Connect({:?}): Received a previous \
+                    "User => Connect({:?}): Received a previous \
                      request for that peer",
                     occ_entry.key()
                 );
@@ -444,7 +441,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             Entry::Vacant(entry) => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Node already disabled",
+                    "User => Drop({:?}): Node already disabled",
                     entry.key()
                 );
                 return;
@@ -455,7 +452,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             st @ PeerState::Disabled { .. } | st @ PeerState::Banned { .. } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Node already disabled",
+                    "User => Drop({:?}): Node already disabled",
                     entry.key()
                 );
                 *entry.into_mut() = st;
@@ -468,7 +465,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Interrupting pending \
+                    "User => Drop({:?}): Interrupting pending \
                      enable",
                     entry.key()
                 );
@@ -485,7 +482,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Disabling connection",
+                    "User => Drop({:?}): Disabling connection",
                     entry.key()
                 );
                 debug!(
@@ -509,7 +506,7 @@ impl<TSubstream> CustomProto<TSubstream> {
                 // well at the same time.
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Was not yet connected",
+                    "User => Drop({:?}): Was not yet connected",
                     entry.key()
                 );
                 entry.remove();
@@ -517,7 +514,7 @@ impl<TSubstream> CustomProto<TSubstream> {
             PeerState::PendingRequest { timer } => {
                 debug!(
                     target: crate::LOG_TARGET,
-                    "PSM => Drop({:?}): Was not yet connected",
+                    "User => Drop({:?}): Was not yet connected",
                     entry.key()
                 );
                 *entry.into_mut() = PeerState::Banned {
@@ -611,7 +608,7 @@ impl<TSubstream> PeerNetBehaviour for CustomProto<TSubstream> {
     }
 
     #[inline]
-    fn disconnect_peer(&mut self, peer_id: &PeerId) {
+    fn disconnect_peer(&mut self, peer_id: &PeerId, _: &ProtocolId) {
         debug!(
             target: crate::LOG_TARGET,
             "External API => Disconnect {:?}", peer_id
@@ -619,7 +616,7 @@ impl<TSubstream> PeerNetBehaviour for CustomProto<TSubstream> {
         self.requested_disconnect(peer_id.clone());
     }
 
-    fn send_message(&mut self, _: &ProtocolId, peer_id: &PeerId, message: ProtocolMessage) {
+    fn send_message(&mut self, peer_id: &PeerId, _: &ProtocolId, message: ProtocolMessage) {
         if !self.is_open(peer_id) {
             warn!(
                 target: crate::LOG_TARGET,
@@ -672,7 +669,7 @@ where
                 debug!(
                     target: crate::LOG_TARGET,
                     "Libp2p => Connected({:?}): Connection \
-                     requested by PSM (through {:?})",
+                     requested by User (through {:?})",
                     peer_id,
                     connected_point
                 );
@@ -722,29 +719,18 @@ where
 
             (st @ &mut PeerState::Poisoned, connected_point)
             | (st @ &mut PeerState::Banned { .. }, connected_point) => {
-                let banned_until = if let PeerState::Banned { until, .. } = st {
-                    Some(*until)
-                } else {
-                    None
-                };
                 debug!(
                     target: crate::LOG_TARGET,
-                    "Libp2p => Connected({:?}): Requested by something \
-                     else than PSM, disabling",
-                    peer_id
+                    "Libp2p => Connected({:?})", peer_id
                 );
-                debug!(
-                    target: crate::LOG_TARGET,
-                    "Handler({:?}) <= Disable", peer_id
-                );
+
                 self.events.push(NetworkBehaviourAction::SendEvent {
                     peer_id: peer_id.clone(),
-                    event: CustomProtoHandlerIn::Disable,
+                    event: CustomProtoHandlerIn::Enable(connected_point.clone().into()),
                 });
-                *st = PeerState::Disabled {
+                *st = PeerState::Enabled {
                     open: false,
                     connected_point,
-                    banned_until,
                 };
             }
 

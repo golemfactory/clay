@@ -30,7 +30,7 @@ class LibP2PTransport:
         if self._disconnecting:
             return
         self._disconnecting = True
-        self.network.disconnect(self.peer_id)
+        self.network.disconnect(self.peer_id, self.protocol_id)
 
     def abortConnection(self):  # noqa
         self.loseConnection()

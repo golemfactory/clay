@@ -171,12 +171,12 @@ where
         self.protocol.connect_to_peer(peer_id);
     }
 
-    fn disconnect_peer(&mut self, peer_id: &PeerId) {
-        self.protocol.disconnect_peer(peer_id);
+    fn disconnect_peer(&mut self, peer_id: &PeerId, protocol_id: &ProtocolId) {
+        self.protocol.disconnect_peer(peer_id, protocol_id);
     }
 
-    fn send_message(&mut self, protocol_id: &[u8; 3], peer_id: &PeerId, message: ProtocolMessage) {
-        self.protocol.send_message(protocol_id, peer_id, message);
+    fn send_message(&mut self, peer_id: &PeerId, protocol_id: &ProtocolId, message: ProtocolMessage) {
+        self.protocol.send_message(peer_id, protocol_id, message);
     }
 }
 

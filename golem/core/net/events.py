@@ -56,7 +56,7 @@ class PeerEvent(Event, metaclass=ABCMeta):
 
 class PeerEndpointEvent(PeerEvent, metaclass=ABCMeta):
 
-    def __init__(self, peer_id: str, endpoint: Tuple) -> None:
+    def __init__(self, peer_id: str, endpoint: Tuple[str, int]) -> None:
         super().__init__(peer_id)
         self.endpoint = Endpoint(endpoint)
 

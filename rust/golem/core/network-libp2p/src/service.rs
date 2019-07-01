@@ -182,8 +182,8 @@ impl Service {
 	/// This is asynchronous and will not immediately close the peer.
 	/// Corresponding closing events will be generated once the closing actually happens.
 	#[inline]
-	pub fn disconnect_from_peer(&mut self, peer_id: &PeerId) {
-		self.swarm.disconnect_peer(peer_id);
+	pub fn disconnect_from_peer(&mut self, peer_id: &PeerId, protocol_id: &ProtocolId) {
+		self.swarm.disconnect_peer(peer_id, protocol_id);
 	}
 
 	/// Sends a message to a peer using the custom protocol.
@@ -193,11 +193,11 @@ impl Service {
 	#[inline]
 	pub fn send_message(
 		&mut self,
-		protocol_id: &ProtocolId,
 		peer_id: &PeerId,
+		protocol_id: &ProtocolId,
 		message: ProtocolMessage
 	) {
-		self.swarm.send_message(protocol_id, peer_id, message);
+		self.swarm.send_message(peer_id, protocol_id, message);
 	}
 }
 

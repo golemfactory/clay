@@ -74,8 +74,8 @@ impl ToPyObject for EventWrapper {
                         (
                             EventId::Connected,
                             peer_id.to_string(),
-                            py_pubkey,
                             connected_point_to_tuple(connected_point),
+                            py_pubkey,
                         )
                     )
                 }

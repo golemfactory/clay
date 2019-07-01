@@ -182,13 +182,16 @@ impl NetworkService {
         Ok(())
     }
 
-    pub fn disconnect(&mut self, py: Python, py_peer_id: PyString) -> Result<(), Error> {
+    pub fn disconnect(&mut self, py: Python, py_peer_id: PyString, py_protocol_id: PyBytes) -> Result<(), Error> {
         self.assert_running()?;
 
         let peer_id_string = py_extract!(py, py_peer_id)?;
         let peer_id = PeerId::from_string(&peer_id_string)?;
 
-        self.request(ClientRequest::DisconnectPeer(peer_id));
+        let mut protocol_id: [u8; 3] = [0, 0, 0];
+        protocol_id.copy_from_slice(&py_protocol_id.data(py).to_vec()[0..3]);
+
+        self.request(ClientRequest::DisconnectPeer(peer_id, protocol_id));
         Ok(())
     }
 
