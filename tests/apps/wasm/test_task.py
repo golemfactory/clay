@@ -139,6 +139,34 @@ class WasmTaskTestCase(TempDirFixture):
             root_path='/', owner=p2p.Node(),
         )
 
+    def test_get_next_subtask_extra_data(self):
+        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
+        self.assertEqual(subt_name, 'subtask1')
+        self.assertEqual(subt_extra_data, {
+            'name': 'subtask1',
+            'js_name': 'test.js',
+            'wasm_name': 'test.wasm',
+            'entrypoint': WasmTask.JOB_ENTRYPOINT,
+            'exec_args': ['arg1', 'arg2'],
+            'input_dir_name': 'dir',
+            'output_file_paths': ['file1', 'file2'],
+        })
+
+        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
+        self.assertEqual(subt_name, 'subtask2')
+        self.assertEqual(subt_extra_data, {
+            'name': 'subtask2',
+            'js_name': 'test.js',
+            'wasm_name': 'test.wasm',
+            'entrypoint': WasmTask.JOB_ENTRYPOINT,
+            'exec_args': ['arg3', 'arg4'],
+            'input_dir_name': 'dir',
+            'output_file_paths': ['file3', 'file4'],
+        })
+
+        with self.assertRaises(StopIteration):
+            self.task.get_next_subtask_extra_data()
+
     def test_query_extra_data(self):
         next_subtask_data = ('test_subtask', {'extra': 'data'})
         with patch(
