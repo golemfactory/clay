@@ -247,7 +247,6 @@ class WasmTask(CoreTask):
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None) -> None:
-        logger.info("Called in WasmTask")
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
