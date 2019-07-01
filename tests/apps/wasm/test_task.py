@@ -102,7 +102,7 @@ class WasmTaskBuilderTestCase(TestCase):
         task_def = WasmTaskBuilder.build_full_definition(
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
         )
-        self.assertEqual(task_def.subtasks_count, 2)
+        self.assertEqual(task_def.subtasks_count, 4)
 
         opts: WasmTaskOptions = task_def.options
         self.assertEqual(opts.input_dir, '/input/dir')
@@ -140,55 +140,34 @@ class WasmTaskTestCase(TempDirFixture):
         )
 
     def test_get_next_subtask_extra_data(self):
-        subt_name, subt_extra_data = self.task.subtasks[0].new_instance()
-        self.assertEqual(subt_name, 'subtask1')
-        self.assertEqual(subt_extra_data, {
-            'name': 'subtask1',
+        subt_name, subt_extra_data =\
+            self.task.subtasks[0].new_instance('node_id')
+        expected_dict = {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
             'entrypoint': WasmTask.JOB_ENTRYPOINT,
             'exec_args': ['arg1', 'arg2'],
             'input_dir_name': 'dir',
             'output_file_paths': ['file1', 'file2'],
-        })
+        }
 
-        subt_name, subt_extra_data = self.task.subtasks[1].new_instance()
-        self.assertEqual(subt_name, 'subtask2')
-        self.assertEqual(subt_extra_data, {
-            'name': 'subtask2',
+        self.assertTrue(
+            all([item in subt_extra_data.items()
+                 for item in expected_dict.items()])
+        )
+
+        subt_name, subt_extra_data =\
+            self.task.subtasks[1].new_instance('node_id')
+        expected_dict =  {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
             'entrypoint': WasmTask.JOB_ENTRYPOINT,
             'exec_args': ['arg3', 'arg4'],
             'input_dir_name': 'dir',
             'output_file_paths': ['file3', 'file4'],
-        })
+        }
 
-    def test_accept_results(self):
-        res_f = [
-            os.path.join(self.tempdir, 'file1'),
-            os.path.join(self.tempdir, 'file2'),
-        ]
-        res_f_contents = [
-            bytes([0, 1, 2, 3, 4, 5]),
-            bytes([0, 11, 12, 13, 14, 15]),
-        ]
-        exp_out_f = [
-            os.path.join(self.tempdir, 'test_subtask_name', 'file1'),
-            os.path.join(self.tempdir, 'test_subtask_name', 'file2'),
-        ]
-
-        for result_file_path, result_content in zip(res_f, res_f_contents):
-            with open(result_file_path, 'wb') as f:
-                f.write(result_content)
-
-        self.task.subtask_names['test_subtask_id'] = 'test_subtask_name'
-        self.task.options.output_dir = self.tempdir
-        with patch('apps.wasm.task.CoreTask.accept_results') as super_acc_mock:
-            self.task.accept_results('test_subtask_id', res_f)
-
-        super_acc_mock.assert_called_once_with('test_subtask_id', res_f)
-
-        for output_file_path, expected_output in zip(exp_out_f, res_f_contents):
-            with open(output_file_path, 'rb') as output_file:
-                self.assertEqual(output_file.read(), expected_output)
+        self.assertTrue(
+            all([item in subt_extra_data.items()
+                 for item in expected_dict.items()])
+        )
