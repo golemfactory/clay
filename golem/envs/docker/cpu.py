@@ -21,7 +21,6 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
     Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus, \
@@ -460,8 +459,6 @@ class DockerCPUEnvironment(Environment):
         if is_osx():
             if DockerForMac.is_available():
                 return DockerForMac
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor
         return None
 
     def __init__(self, config: DockerCPUConfig) -> None:
