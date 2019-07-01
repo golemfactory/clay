@@ -1,4 +1,4 @@
-from ....base import NodeTestPlaybook
+from ..playbook import Playbook as NodeTestPlaybook
 
 
 class Playbook(NodeTestPlaybook):
