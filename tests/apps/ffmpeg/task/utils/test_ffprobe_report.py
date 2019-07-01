@@ -7,6 +7,7 @@ import pytest
 from parameterized import parameterized
 
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
+from golem.tools.ci import ci_skip
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.testutils import TempDirFixture
@@ -713,6 +714,7 @@ class TestFuzzyInt(TestCase):
         )
 
 
+@ci_skip
 class TestFfprobeReportBuild(TempDirFixture):
     def setUp(self):
         super().setUp()
