@@ -202,17 +202,14 @@ class WasmTask(CoreTask):
 
     @staticmethod
     def cmp_results(result_list_a: List[Any],
-                     result_list_b: List[Any]) -> bool:
+                    result_list_b: List[Any]) -> bool:
+        logger.debug("Comparing: %s and %s", result_list_a, result_list_b)
         for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
                 b1 = f1.read()
                 b2 = f2.read()
                 if b1 != b2:
-                    logger.info("Verification of task failed")
                     return False
-
-        logger.info("Comparing: %s and %s", result_list_a, result_list_b)
-        logger.info("Verification of task was successful")
         return True
 
     def __resolve_payments(self, subtask: VbrSubtask):
