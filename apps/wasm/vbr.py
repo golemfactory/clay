@@ -35,7 +35,7 @@ class UnknownActorError(Exception):
 class VerificationByRedundancy(ABC):
     def __init__(self, redundancy_factor: int,
                  comparator: Callable[[Any, Any], bool],
-                 *args, **kwargs) -> None:
+                 *_args, **_kwargs) -> None:
         self.redundancy_factor = redundancy_factor
         # assert comparator.func_closure is None
         self.comparator = comparator
@@ -87,8 +87,8 @@ class VerificationByRedundancy(ABC):
 
 
 class Bucket:
-    """A bucket containing a key and some values. Values are comparable directly,
-    keys only by the comparator supplied at bucket creation"""
+    """A bucket containing a key and some values. Values are comparable
+    directly, keys only by the comparator supplied at bucket creation"""
 
     def __init__(self, comparator: Callable[[Any, Any], bool], key: Any,
                  value: Optional[Any]) -> None:
@@ -114,6 +114,7 @@ class Bucket:
         return len(self.values)
 
 
+# pylint:disable=too-many-instance-attributes
 class BucketVerifier(VerificationByRedundancy):
     def __init__(self,
                  redundancy_factor: int,
@@ -193,7 +194,7 @@ class BucketVerifier(VerificationByRedundancy):
             fail = VerificationResult.FAIL
             self.verdicts = [
                 (actor, self.results[actor], success
-                    if actor in winners else fail)
+                 if actor in winners else fail)
                 for actor in self.actors
             ]
         elif self.majority - max_popularity <= self.referee_count:
