@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import os.path
@@ -168,3 +169,10 @@ class PEP8MixIn(object):
         result = style.check_files(absolute_files)
         self.assertEqual(result.total_errors, 0,
                          "Found code style errors (and warnings).")
+
+
+def async_test(coro):
+    def wrapper(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        return loop.run_until_complete(coro(*args, **kwargs))
+    return wrapper
