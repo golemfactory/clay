@@ -1,6 +1,6 @@
 from logging import Logger
 from pathlib import Path
-from unittest.mock import patch as _patch, Mock, MagicMock, ANY
+from unittest.mock import patch, Mock, MagicMock, ANY
 
 from twisted.trial.unittest import TestCase
 
@@ -19,16 +19,16 @@ cpu = CONSTRAINT_KEYS['cpu']
 mem = CONSTRAINT_KEYS['mem']
 
 
-def patch(name: str, *args, **kwargs):
-    return _patch(f'golem.envs.docker.cpu.{name}', *args, **kwargs)
+def patch_cpu(name: str, *args, **kwargs):
+    return patch(f'golem.envs.docker.cpu.{name}', *args, **kwargs)
 
 
 def patch_handler(name: str, *args, **kwargs):
-    return patch(f'DockerCommandHandler.{name}', *args, **kwargs)
+    return patch_cpu(f'DockerCommandHandler.{name}', *args, **kwargs)
 
 
 def patch_env(name: str, *args, **kwargs):
-    return patch(f'DockerCPUEnvironment.{name}', *args, **kwargs)
+    return patch_cpu(f'DockerCPUEnvironment.{name}', *args, **kwargs)
 
 
 # pylint: disable=too-many-arguments
@@ -44,7 +44,7 @@ def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
             'DockerForMac.is_available': docker_for_mac,
         }
         for k, v in return_values.items():
-            func = patch(k, return_value=v)(func)
+            func = patch_cpu(k, return_value=v)(func)
         return func
     return _wrapper
 
@@ -114,9 +114,16 @@ class TestInit(TestCase):
         with self.assertRaises(EnvironmentError):
             DockerCPUEnvironment(Mock(spec=DockerCPUConfig))
 
+    @patch_env('_constrain_hypervisor')
+    @patch_env('_update_work_dirs')
     @patch_env('_validate_config')
     @patch_env('_get_hypervisor_class')
-    def test_ok(self, get_hypervisor, *_):
+    def test_ok(
+            self,
+            get_hypervisor,
+            validate_config,
+            update_work_dirs,
+            constrain_hypervisor):
         config = DockerCPUConfig(
             work_dirs=[Mock(spec=Path)],
             memory_mb=2137,
@@ -132,21 +139,28 @@ class TestInit(TestCase):
 
         DockerCPUEnvironment(config)
 
+        get_hypervisor.assert_called_once()
+        validate_config.assert_called_once_with(config)
+        update_work_dirs.assert_called_once_with(config.work_dirs)
+        constrain_hypervisor.assert_called_once_with(config)
+
 
 class TestDockerCPUEnv(TestCase):
 
+    @patch_env('_constrain_hypervisor')
+    @patch_env('_update_work_dirs')
     @patch_env('_validate_config')
     @patch_env('_get_hypervisor_class')
-    def setUp(self, get_hypervisor, _):  # pylint: disable=arguments-differ
+    def setUp(self, get_hypervisor, *_):  # pylint: disable=arguments-differ
         self.hypervisor = Mock(spec=Hypervisor)
         self.config = DockerCPUConfig(work_dirs=[Mock()])
         get_hypervisor.return_value.instance.return_value = self.hypervisor
         self.logger = Mock(spec=Logger)
-        with patch('logger', self.logger):
+        with patch_cpu('logger', self.logger):
             self.env = DockerCPUEnvironment(self.config)
 
     def _patch_async(self, name, *args, **kwargs):
-        patcher = patch(name, *args, **kwargs)
+        patcher = patch_cpu(name, *args, **kwargs)
         self.addCleanup(patcher.stop)
         return patcher.start()
 
@@ -370,30 +384,55 @@ class TestUpdateConfig(TestDockerCPUEnv):
 
 class TestValidateConfig(TestCase):
 
-    @staticmethod
-    def _get_config(work_dir_exists=True, **kwargs):
-        work_dir = Mock(spec=Path)
-        work_dir.is_dir.return_value = work_dir_exists
-        return DockerCPUConfig(work_dirs=[work_dir], **kwargs)
-
-    def test_invalid_work_dir(self):
-        config = self._get_config(work_dir_exists=False)
+    @patch('pathlib.Path.is_dir', return_value=False)
+    def test_invalid_work_dir(self, *_):
+        config = DockerCPUConfig(work_dirs=[Path('/a')])
         with self.assertRaises(ValueError):
             DockerCPUEnvironment._validate_config(config)
 
-    def test_too_low_memory(self):
-        config = self._get_config(memory_mb=0)
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_too_low_memory(self, *_):
+        config = DockerCPUConfig(work_dirs=[Path('/a')], memory_mb=0)
         with self.assertRaises(ValueError):
             DockerCPUEnvironment._validate_config(config)
 
-    def test_too_few_memory(self):
-        config = self._get_config(cpu_count=0)
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_too_few_memory(self, *_):
+        config = DockerCPUConfig(work_dirs=[Path('/a')], cpu_count=0)
         with self.assertRaises(ValueError):
             DockerCPUEnvironment._validate_config(config)
 
-    def test_valid_config(self):
-        config = self._get_config()
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_valid_config(self, *_):
+        config = DockerCPUConfig(work_dirs=[Path('/a')])
         DockerCPUEnvironment._validate_config(config)
+
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_valid_multi_work_dir(self, *_):
+        work_dirs = [Path('/a'), Path('/b')]
+        config = DockerCPUConfig(work_dirs=work_dirs)
+        DockerCPUEnvironment._validate_config(config)
+
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_multi_work_dir_same_error(self, *_):
+        work_dirs = [Path('/a'), Path('/a')]
+        config = DockerCPUConfig(work_dirs=work_dirs)
+        with self.assertRaises(ValueError):
+            DockerCPUEnvironment._validate_config(config)
+
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_multi_work_dir_child_error(self, *_):
+        work_dirs = [Path('/a/b'), Path('/a')]
+        config = DockerCPUConfig(work_dirs=work_dirs)
+        with self.assertRaises(ValueError):
+            DockerCPUEnvironment._validate_config(config)
+
+    @patch('pathlib.Path.is_dir', return_value=True)
+    def test_multi_work_dir_parent_error(self, *_):
+        work_dirs = [Path('/a'), Path('/a/b')]
+        config = DockerCPUConfig(work_dirs=work_dirs)
+        with self.assertRaises(ValueError):
+            DockerCPUEnvironment._validate_config(config)
 
 
 class TestUpdateWorkDir(TestDockerCPUEnv):
@@ -476,20 +515,20 @@ class TestRuntime(TestDockerCPUEnv):
         with self.assertRaises(AssertionError):
             self.env.runtime(object())
 
-    @patch('Whitelist.is_whitelisted', return_value=True)
+    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
     def test_invalid_config_class(self, _):
         with self.assertRaises(AssertionError):
             self.env.runtime(mock_docker_runtime_payload(), config=object())
 
-    @patch('Whitelist.is_whitelisted', return_value=False)
+    @patch_cpu('Whitelist.is_whitelisted', return_value=False)
     def test_image_not_whitelisted(self, is_whitelisted):
         payload = mock_docker_runtime_payload()
         with self.assertRaises(RuntimeError):
             self.env.runtime(payload)
         is_whitelisted.assert_called_once_with(payload.image)
 
-    @patch('Whitelist.is_whitelisted', return_value=True)
-    @patch('DockerCPURuntime')
+    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
+    @patch_cpu('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_default_config(self, create_host_config, runtime_mock, _):
         payload = mock_docker_runtime_payload()
@@ -500,8 +539,8 @@ class TestRuntime(TestDockerCPUEnv):
             payload, create_host_config(), None, ANY)
         self.assertEqual(runtime, runtime_mock())
 
-    @patch('Whitelist.is_whitelisted', return_value=True)
-    @patch('DockerCPURuntime')
+    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
+    @patch_cpu('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_custom_config(self, create_host_config, runtime_mock, _):
         payload = mock_docker_runtime_payload()
@@ -513,8 +552,8 @@ class TestRuntime(TestDockerCPUEnv):
             payload, create_host_config(), None, ANY)
         self.assertEqual(runtime, runtime_mock())
 
-    @patch('Whitelist.is_whitelisted', return_value=True)
-    @patch('DockerCPURuntime')
+    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
+    @patch_cpu('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_shared_dir(self, create_host_config, runtime_mock, _):
         target_dir = '/foo'
@@ -530,8 +569,8 @@ class TestRuntime(TestDockerCPUEnv):
             ANY)
         self.assertEqual(runtime, runtime_mock())
 
-    @patch('Whitelist.is_whitelisted', return_value=True)
-    @patch('DockerCPURuntime')
+    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
+    @patch_cpu('DockerCPURuntime')
     def test_port_mapping(self, runtime_mock, _):
         port = 4444
         payload = mock_docker_runtime_payload(ports=[port])
@@ -547,8 +586,8 @@ class TestRuntime(TestDockerCPUEnv):
 
 class TestCreateHostConfig(TestDockerCPUEnv):
 
-    @patch('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
-    @patch('local_client')
+    @patch_cpu('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
+    @patch_cpu('local_client')
     def test_no_shared_dir(self, local_client, _):
         config = DockerCPUConfig(
             work_dirs=[Mock(spec=Path)],
@@ -572,8 +611,8 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         )
         self.assertEqual(host_config, local_client().create_host_config())
 
-    @patch('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
-    @patch('local_client')
+    @patch_cpu('hardware.cpus', return_value=[1, 2, 3, 4, 5, 6])
+    @patch_cpu('local_client')
     def test_shared_dir(self, local_client, _):
         config = DockerCPUConfig(
             work_dirs=[Mock(spec=Path)],
@@ -599,7 +638,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         )
         self.assertEqual(host_config, local_client().create_host_config())
 
-    @patch('local_client')
+    @patch_cpu('local_client')
     def test_published_ports(self, local_client):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
@@ -620,7 +659,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         )
         self.assertEqual(host_config, local_client().create_host_config())
 
-    @patch('local_client')
+    @patch_cpu('local_client')
     def test_nonpublished_ports(self, local_client):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
