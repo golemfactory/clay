@@ -487,6 +487,8 @@ class DockerCPUEnvironment(Environment):
             raise EnvironmentError("No supported hypervisor found")
         self._hypervisor = hypervisor_cls.instance(self._get_hypervisor_config)
         self._port_mapper = ContainerPortMapper(self._hypervisor)
+        self._update_work_dirs(config.work_dirs)
+        self._constrain_hypervisor(config)
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
