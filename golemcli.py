@@ -15,18 +15,13 @@ from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
-
-# Export pbr version for peewee_migrate user
-os.environ["PBR_VERSION"] = '3.1.1'
-
-# pylint: disable=wrong-import-position, unused-import
-from golem.core.common import config_logging, install_reactor  # noqa
+from golem.core.common import config_logging, install_reactor
 
 # Initialize magic CommandHelper (process decorators)
-import golem.interface.client  # noqa
+import golem.interface.client
 
-from golem.interface.cli import CLI  # noqa
-from golem.interface.websockets import WebSocketCLI  # noqa
+from golem.interface.cli import CLI
+from golem.interface.websockets import WebSocketCLI
 
 logger = logging.getLogger('golemcli')
 

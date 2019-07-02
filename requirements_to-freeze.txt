@@ -22,6 +22,7 @@ html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
 miniupnpc<2.1,>=2.0
+mock==3.0.5
 ndg-httpsclient
 netifaces==0.10.4
 numpy==1.15.4

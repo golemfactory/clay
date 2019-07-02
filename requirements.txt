@@ -54,7 +54,7 @@ lmdb==0.94
 MarkupSafe==1.0
 miniupnpc==2.0.2
 mistune==0.8.3
-mock==2.0.0
+mock==3.0.5
 monotonic==1.5
 Naked==0.1.31
 ndg-httpsclient==0.4.4

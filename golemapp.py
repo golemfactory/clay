@@ -13,21 +13,14 @@ from cpuinfo import get_cpu_info
 from ethereum import slogging
 from portalocker import Lock, LockException
 
-# Export pbr version for peewee_migrate user
-
-os.environ["PBR_VERSION"] = '3.1.1'
-
-# pylint: disable=wrong-import-position
-
-import golem  # noqa
-import golem.argsparser as argsparser  # noqa
-from golem.clientconfigdescriptor import ClientConfigDescriptor, \
-    ConfigApprover  # noqa
-from golem.config.environments import set_environment  # noqa
-from golem.core import variables  # noqa
-from golem.core.common import install_reactor  # noqa
-from golem.core.simpleenv import get_local_datadir  # noqa
-from golem.rpc.router import SerializerType  # noqa
+import golem
+import golem.argsparser as argsparser
+from golem.clientconfigdescriptor import ClientConfigDescriptor, ConfigApprover
+from golem.config.environments import set_environment
+from golem.core import variables
+from golem.core.common import install_reactor
+from golem.core.simpleenv import get_local_datadir
+from golem.rpc.router import SerializerType
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
