@@ -4,13 +4,16 @@ import unittest.mock as mock
 from click.testing import CliRunner
 from portalocker import LockException
 
+from golem.rpc import WORKER_PROCESS_STANDALONE_ARGS
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
-from golemapp import start
+from golemapp import start, main, start_crossbar_worker
 from tests.golem.config.utils import mock_config
 
 
 @ci_skip
+@mock.patch('twisted.internet.asyncioreactor', mock.Mock(), create=True)
+@mock.patch('twisted.internet.reactor', mock.Mock(), create=True)
 class TestGolemApp(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
         "golemapp.py",
@@ -23,24 +26,25 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         assert node_class.called
 
     def test_start_crossbar_worker(self):
+        args = ['--datadir', self.path, 'standalone', '_exec_worker']
+
+        with mock.patch('golemapp.start') as run_start:
+            with mock.patch('golemapp.start_crossbar_worker') as run_start_cbar:
+                with mock.patch.object(sys, 'argv', args):
+                    main()
+                    assert not run_start.called
+                    assert run_start_cbar.called
+
+    def test_start_crossbar_worker_remove_options(self):
         runner = CliRunner()
-        args = ['--datadir', self.path, '-m', 'crossbar.worker.process']
+        args = ['--datadir', self.path, '-u'] + WORKER_PROCESS_STANDALONE_ARGS
 
-        with mock.patch('crossbar.worker.process.run') as _run:
+        with mock.patch('runpy.run_module'):
             with mock.patch.object(sys, 'argv', list(args)):
-                runner.invoke(start, sys.argv, catch_exceptions=False)
-                assert _run.called
-                assert '-m' not in sys.argv
-
-    def test_start_crossbar_worker_u(self):
-        runner = CliRunner()
-        args = ['--datadir', self.path, '-m', 'crossbar.worker.process', '-u']
-
-        with mock.patch('crossbar.worker.process.run') as _run:
-            with mock.patch.object(sys, 'argv', list(args)):
-                runner.invoke(start, sys.argv, catch_exceptions=False)
-                assert _run.called
-                assert '-m' not in sys.argv
+                runner.invoke(start_crossbar_worker, args,
+                              catch_exceptions=False)
+                assert all(a not in sys.argv for a in
+                           WORKER_PROCESS_STANDALONE_ARGS)
                 assert '-u' not in sys.argv
 
     @mock.patch('golem.core.common.config_logging')
