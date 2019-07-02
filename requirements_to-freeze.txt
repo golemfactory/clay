@@ -2,15 +2,15 @@
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
-autobahn==17.10.1
+autobahn==19.6.2
 Automat==0.6.0
 base58
 bidict
 cbor==1.0.0
 certifi
-cffi==1.10.0
-click>=4.0
-crossbar==17.12.1
+cffi==1.12.3
+click==7.0
+crossbar==19.6.2
 distro
 docker==3.5.0
 enforce==0.3.4
@@ -46,12 +46,13 @@ raven
 requests==2.21.0
 scrypt
 semantic_version
+service-identity==18.1.0
 setuptools-rust==0.10.2
 setuptools>=36.0.1,<39.0.0
-six==1.11.0
+six==1.12.0
 tabulate
 token_bucket==0.2.0
-Twisted==17.9.0
+Twisted==19.2.1
 txaio==18.8.1
 urllib3==1.24.3
 web3==4.2.1
