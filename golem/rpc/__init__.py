@@ -13,3 +13,4 @@ def generate_rpc_certificate(data_dir: str):
 
 
 WORKER_PROCESS_MODULE = 'crossbar.worker.main'
+WORKER_PROCESS_STANDALONE_ARGS = ['standalone', '_exec_worker']

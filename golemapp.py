@@ -28,7 +28,11 @@ from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.rpc.router import SerializerType  # noqa
-from golem.rpc import generate_rpc_certificate, WORKER_PROCESS_MODULE  # noqa
+from golem.rpc import (  # noqa
+    generate_rpc_certificate,
+    WORKER_PROCESS_MODULE,
+    WORKER_PROCESS_STANDALONE_ARGS,
+)
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -211,15 +215,32 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
     ignore_unknown_options=True,
 ))
 def start_crossbar_worker():
-    sys.argv.pop(sys.argv.index('standalone'))
-    sys.argv.pop(sys.argv.index('_exec_worker'))
+    # Remove extra arguments used for spawning a frozen version of Crossbar
+    for arg in WORKER_PROCESS_STANDALONE_ARGS:
+        sys.argv.pop(sys.argv.index(arg))
 
+    # Drop the "unbuffered mode" flag which causes issues on Windows
     if '-u' in sys.argv:
-        # ignore; unbuffered mode causes issues on Windows
         sys.argv.remove('-u')
 
+    # Run the worker process module
     import runpy
     runpy.run_module(WORKER_PROCESS_MODULE, run_name="__main__")
+
+
+def main():
+    freeze_support()
+
+    # When the pyinstaller binary forks, the reactor might already be imported
+    # by the parent process and copied to child's memory.
+    if 'twisted.internet.reactor' in sys.modules:
+        del sys.modules['twisted.internet.reactor']
+
+    # Crossbar (standalone) is invoked with extra positional arguments
+    if all(a in sys.argv for a in WORKER_PROCESS_STANDALONE_ARGS):
+        start_crossbar_worker()
+    else:
+        start()  # pylint: disable=no-value-for-parameter
 
 
 def log_golem_version():
@@ -271,15 +292,4 @@ def log_concent_choice(value: dict):
 
 
 if __name__ == '__main__':
-    freeze_support()
-
-    # When the pyinstaller binary forks, the reactor might already be imported
-    # by the parent process and copied to child's memory.
-    if 'twisted.internet.reactor' in sys.modules:
-        del sys.modules['twisted.internet.reactor']
-
-    # Crossbar is invoked with '_exec_worker' when frozen
-    if '_exec_worker' in sys.argv:
-        start_crossbar_worker()
-    else:
-        start()  # pylint: disable=no-value-for-parameter
+    main()
