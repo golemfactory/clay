@@ -118,7 +118,7 @@ class TestInit(TestCase):
     @patch_env('_get_hypervisor_class')
     def test_ok(self, get_hypervisor, *_):
         config = DockerCPUConfig(
-            work_dir=Mock(spec=Path),
+            work_dirs=[Mock(spec=Path)],
             memory_mb=2137,
             cpu_count=12
         )
@@ -139,7 +139,7 @@ class TestDockerCPUEnv(TestCase):
     @patch_env('_get_hypervisor_class')
     def setUp(self, get_hypervisor, _):  # pylint: disable=arguments-differ
         self.hypervisor = Mock(spec=Hypervisor)
-        self.config = DockerCPUConfig(work_dir=Mock())
+        self.config = DockerCPUConfig(work_dirs=[Mock()])
         get_hypervisor.return_value.instance.return_value = self.hypervisor
         self.logger = Mock(spec=Logger)
         with patch('logger', self.logger):
@@ -334,28 +334,28 @@ class TestUpdateConfig(TestDockerCPUEnv):
 
         validate.assert_called_once_with(config)
 
-    @patch_env('_update_work_dir')
+    @patch_env('_update_work_dirs')
     @patch_env('_config_updated')
     @patch_env('_validate_config')
     @patch_env('_constrain_hypervisor')
-    def test_work_dir_unchanged(
-            self, constrain, validate, config_updated, update_work_dir):
-        config = DockerCPUConfig(work_dir=self.config.work_dir)
+    def test_work_dirs_unchanged(
+            self, constrain, validate, config_updated, update_work_dirs):
+        config = DockerCPUConfig(work_dirs=self.config.work_dirs)
         self.env.update_config(config)
 
         validate.assert_called_once_with(config)
         constrain.assert_called_once_with(config)
-        update_work_dir.assert_not_called()
+        update_work_dirs.assert_not_called()
         config_updated.assert_called_once_with(config)
 
-    @patch_env('_update_work_dir')
+    @patch_env('_update_work_dirs')
     @patch_env('_config_updated')
     @patch_env('_validate_config')
     @patch_env('_constrain_hypervisor')
     def test_config_changed(
-            self, constrain, validate, config_updated, update_work_dir):
+            self, constrain, validate, config_updated, update_work_dirs):
         config = DockerCPUConfig(
-            work_dir=Mock(),
+            work_dirs=[Mock()],
             memory_mb=2137,
             cpu_count=12
         )
@@ -363,7 +363,7 @@ class TestUpdateConfig(TestDockerCPUEnv):
 
         validate.assert_called_once_with(config)
         constrain.assert_called_once_with(config)
-        update_work_dir.assert_called_once_with(config.work_dir)
+        update_work_dirs.assert_called_once_with(config.work_dirs)
         config_updated.assert_called_once_with(config)
         self.assertEqual(self.env.config(), config)
 
@@ -374,7 +374,7 @@ class TestValidateConfig(TestCase):
     def _get_config(work_dir_exists=True, **kwargs):
         work_dir = Mock(spec=Path)
         work_dir.is_dir.return_value = work_dir_exists
-        return DockerCPUConfig(work_dir=work_dir, **kwargs)
+        return DockerCPUConfig(work_dirs=[work_dir], **kwargs)
 
     def test_invalid_work_dir(self):
         config = self._get_config(work_dir_exists=False)
@@ -402,22 +402,22 @@ class TestUpdateWorkDir(TestDockerCPUEnv):
     def test_hypervisor_error(self, error_occurred):
         work_dir = Mock(spec=Path)
         error = OSError("test")
-        self.hypervisor.update_work_dir.side_effect = error
+        self.hypervisor.update_work_dirs.side_effect = error
 
         with self.assertRaises(OSError):
-            self.env._update_work_dir(work_dir)
+            self.env._update_work_dirs([work_dir])
         error_occurred.assert_called_once_with(error, ANY)
 
     def test_ok(self):
-        work_dir = Mock(spec=Path)
-        self.env._update_work_dir(work_dir)
-        self.hypervisor.update_work_dir.assert_called_once_with(work_dir)
+        work_dirs = [Mock(spec=Path)]
+        self.env._update_work_dirs(work_dirs)
+        self.hypervisor.update_work_dirs.assert_called_once_with(work_dirs)
 
 
 class TestConstrainHypervisor(TestDockerCPUEnv):
 
     def test_config_unchanged(self):
-        config = DockerCPUConfig(work_dir=Mock())
+        config = DockerCPUConfig(work_dirs=[Mock()])
         self.hypervisor.constraints.return_value = {
             mem: config.memory_mb,
             cpu: config.cpu_count
@@ -430,7 +430,7 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
     @patch_env('_error_occurred')
     def test_constrain_error(self, error_occurred):
         config = DockerCPUConfig(
-            work_dir=Mock(),
+            work_dirs=[Mock()],
             memory_mb=1000,
             cpu_count=1
         )
@@ -448,7 +448,7 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
 
     def test_config_changed(self):
         config = DockerCPUConfig(
-            work_dir=Mock(),
+            work_dirs=[Mock()],
             memory_mb=1000,
             cpu_count=1
         )
@@ -551,7 +551,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
     @patch('local_client')
     def test_no_shared_dir(self, local_client, _):
         config = DockerCPUConfig(
-            work_dir=Mock(spec=Path),
+            work_dirs=[Mock(spec=Path)],
             cpu_count=4,
             memory_mb=2137
         )
@@ -576,7 +576,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
     @patch('local_client')
     def test_shared_dir(self, local_client, _):
         config = DockerCPUConfig(
-            work_dir=Mock(spec=Path),
+            work_dirs=[Mock(spec=Path)],
             cpu_count=4,
             memory_mb=2137
         )

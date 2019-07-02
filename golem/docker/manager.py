@@ -4,7 +4,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Callable, Any, Iterable
+from typing import Any, Callable, Iterable, List, Optional
 
 from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
@@ -102,13 +102,13 @@ class DockerManager(DockerConfigManager):
             self,
             status_callback: Callable[[], Any],
             done_callback: Callable[[bool], Any],
-            work_dir: Path,
+            work_dirs: List[Path],
             in_background: bool = True
     ) -> None:
         self.check_environment()
 
         if self.hypervisor:
-            self.hypervisor.update_work_dir(work_dir)
+            self.hypervisor.update_work_dirs(work_dirs)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,
