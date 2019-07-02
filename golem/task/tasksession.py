@@ -976,7 +976,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not (self.verified and self.key_id):
             self.dropped()
             return
-        self._remove_handshake(self.key_id)
         super().disconnect(reason)
 
     def send(self, msg, send_unverified=False):
