@@ -68,11 +68,8 @@ class Prerequisites(DictSerializable, ABC):
     """
 
 
-class Payload(DictSerializable, ABC):
-    """
-    A definition for Runtime. Environment-specific description of computation to
-    be run. Received when provider is assigned a subtask.
-    """
+class RuntimePayload(ABC):
+    """ A set of necessary data required to create a Runtime. """
 
 
 class EnvSupportStatus(NamedTuple):
@@ -504,18 +501,10 @@ class Environment(ABC):
         """ Register a listener for a given type of Environment events. """
         self._event_listeners.setdefault(event_type, set()).add(listener)
 
-    @classmethod
-    @abstractmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) -> Payload:
-        """ Build Payload struct from supplied dictionary. Returned value
-            is of appropriate type for calling runtime(). """
-        raise NotImplementedError
-
     @abstractmethod
     def runtime(
             self,
-            payload: Payload,
-            shared_dir: Optional[Path] = None,
+            payload: RuntimePayload,
             config: Optional[EnvConfig] = None
     ) -> Runtime:
         """ Create a Runtime from the given Payload. Optionally, share the
