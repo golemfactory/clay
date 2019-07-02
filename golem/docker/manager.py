@@ -15,7 +15,6 @@ from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.report import report_calls, Component
 
@@ -94,8 +93,6 @@ class DockerManager(DockerConfigManager):
         elif is_osx():
             if DockerForMac.is_available():
                 return DockerForMac.instance(self.get_config)
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor.instance(self.get_config)
         return None
 
     def get_config(self) -> dict:

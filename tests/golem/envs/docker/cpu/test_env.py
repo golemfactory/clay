@@ -10,7 +10,6 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.envs import EnvStatus
 from golem.envs.docker import DockerPrerequisites, DockerRuntimePayload
@@ -34,7 +33,7 @@ def patch_env(name: str, *args, **kwargs):
 
 # pylint: disable=too-many-arguments
 def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
-                      vbox=False, docker_for_mac=False, xhyve=False):
+                      vbox=False, docker_for_mac=False):
     def _wrapper(func):
         return_values = {
             'is_linux': linux,
@@ -43,7 +42,6 @@ def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
             'HyperVHypervisor.is_available': hyperv,
             'VirtualBoxHypervisor.is_available': vbox,
             'DockerForMac.is_available': docker_for_mac,
-            'XhyveHypervisor.is_available': xhyve
         }
         for k, v in return_values.items():
             func = patch(k, return_value=v)(func)
@@ -99,16 +97,6 @@ class TestGetHypervisorClass(TestCase):
 
     @patch_hypervisors(mac_os=True, docker_for_mac=True)
     def test_macos_only_docker_for_mac(self, *_):
-        self.assertEqual(
-            DockerCPUEnvironment._get_hypervisor_class(), DockerForMac)
-
-    @patch_hypervisors(mac_os=True, xhyve=True)
-    def test_macos_only_xhyve(self, *_):
-        self.assertEqual(
-            DockerCPUEnvironment._get_hypervisor_class(), XhyveHypervisor)
-
-    @patch_hypervisors(mac_os=True, docker_for_mac=True, xhyve=True)
-    def test_macos_docker_for_mac_and_xhyve(self, *_):
         self.assertEqual(
             DockerCPUEnvironment._get_hypervisor_class(), DockerForMac)
 
