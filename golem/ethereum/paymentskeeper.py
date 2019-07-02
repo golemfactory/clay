@@ -78,8 +78,7 @@ class PaymentsKeeper:
     @staticmethod
     def confirmed_transfer(
             tx_hash: str,
-            gas_amount: int,
-            gas_price: Optional[int],
+            gas_cost: int,
     ):
         try:
             operation = model.WalletOperation.select() \
@@ -87,8 +86,7 @@ class PaymentsKeeper:
                     model.WalletOperation.tx_hash == tx_hash,
                 ).get()
             operation.status = model.WalletOperation.STATUS.confirmed
-            if gas_price is not None:
-                operation.gas_cost = gas_amount * gas_price
+            operation.gas_cost = gas_cost
             operation.save()
         except model.WalletOperation.DoesNotExist:
             logger.warning(

@@ -16,6 +16,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -42,6 +43,11 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
+
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from golem_sci import events as sci_events
 
 
 log = logging.getLogger(__name__)
@@ -312,19 +318,28 @@ class TransactionSystem(LoopingCallService):
             ),
         )
 
+        def _outgoing_gnt_transfer_confirmed(
+                event: 'sci_events.GntTransferEvent',
+        ):
+            assert self._sci is not None  # mypy :(
+            receipt: TransactionReceipt = self._sci.get_transaction_receipt(
+                event.tx_hash,
+            )
+            gas_price = self._sci.get_transaction_gas_price(
+                tx_hash=event.tx_hash,
+            )
+            # Mined transaction won't return None
+            assert isinstance(gas_price, int)
+            self._payments_keeper.confirmed_transfer(
+                tx_hash=event.tx_hash,
+                gas_cost=receipt.gas_used * gas_price,
+            )
+
         self._sci.subscribe_to_gnt_transfers(
             from_address=self._sci.get_eth_address(),
             to_address=None,
             from_block=from_block,
-            cb=lambda event: self._payments_keeper.confirmed_transfer(
-                tx_hash=event.tx_hash,
-                gas_amount=self._sci.get_transaction_receipt(
-                    event.tx_hash,
-                ).gas_used,
-                gas_price=self._sci.get_transaction_gas_price(
-                    tx_hash=event.tx_hash,
-                ),
-            ),
+            cb=_outgoing_gnt_transfer_confirmed,
         )
 
         if self.deposit_contract_available:
@@ -654,8 +669,7 @@ class TransactionSystem(LoopingCallService):
                     return
                 self._payments_keeper.confirmed_transfer(
                     tx_hash=receipt.tx_hash,
-                    gas_amount=receipt.gas_cost,
-                    gas_price=gas_price,
+                    gas_cost=receipt.gas_cost * gas_price,
                 )
             self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
             return tx_hash
