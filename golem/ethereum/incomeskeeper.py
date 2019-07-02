@@ -16,6 +16,26 @@ class IncomesKeeper:
     """
 
     @staticmethod
+    def received_transfer(
+            tx_hash: str,
+            sender_address: str,
+            recipient_address: str,
+            amount: int,
+            currency,
+    ):
+        model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.incoming,
+            operation_type=model.WalletOperation.TYPE.transfer,
+            status=model.WalletOperation.STATUS.confirmed,
+            sender_address=sender_address,
+            recipient_address=recipient_address,
+            amount=amount,
+            currency=currency,
+            gas_cost=0,
+        )
+
+    @staticmethod
     def received_batch_transfer(
             tx_hash: str,
             sender: str,

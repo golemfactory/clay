@@ -16,6 +16,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -42,6 +43,11 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
+
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from golem_sci import events as sci_events
 
 
 log = logging.getLogger(__name__)
@@ -285,6 +291,55 @@ class TransactionSystem(LoopingCallService):
                 event.amount,
                 event.closure_time,
             )
+        )
+
+        self._sci.subscribe_to_direct_incoming_eth_transfers(
+            address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+            ),
+        )
+
+        self._sci.subscribe_to_gnt_transfers(
+            from_address=None,
+            to_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+            ),
+        )
+
+        def _outgoing_gnt_transfer_confirmed(
+                event: 'sci_events.GntTransferEvent',
+        ):
+            assert self._sci is not None  # mypy :(
+            receipt: TransactionReceipt = self._sci.get_transaction_receipt(
+                event.tx_hash,
+            )
+            gas_price = self._sci.get_transaction_gas_price(
+                tx_hash=event.tx_hash,
+            )
+            # Mined transaction won't return None
+            assert isinstance(gas_price, int)
+            self._payments_keeper.confirmed_transfer(
+                tx_hash=event.tx_hash,
+                gas_cost=receipt.gas_used * gas_price,
+            )
+
+        self._sci.subscribe_to_gnt_transfers(
+            from_address=self._sci.get_eth_address(),
+            to_address=None,
+            from_block=from_block,
+            cb=_outgoing_gnt_transfer_confirmed,
         )
 
         if self.deposit_contract_available:
@@ -578,9 +633,11 @@ class TransactionSystem(LoopingCallService):
             currency,
             destination,
         )
+
+        if gas_price is None:
+            gas_price = self.gas_price
+
         if currency == 'ETH':
-            if gas_price is None:
-                gas_price = self.gas_price
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
@@ -589,12 +646,33 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
-            return self._sci.transfer_eth(
+            tx_hash = self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
                 gas_price,
             )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+                gas_cost=gas_eth,
+            )
+
+            def on_eth_receipt(receipt):
+                if not receipt.status:
+                    log.error("Failed ETH withdrawal: %r", receipt)
+                    return
+                self._payments_keeper.confirmed_transfer(
+                    tx_hash=receipt.tx_hash,
+                    gas_cost=receipt.gas_cost * gas_price,
+                )
+            self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
+            return tx_hash
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -603,18 +681,27 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
                 gas_price,
+            )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+                gas_cost=gas_price * self._sci.GAS_GNT_TRANSFER,
             )
 
             def on_receipt(receipt) -> None:
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
-                # TODO Update WalletOperation #4172
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
