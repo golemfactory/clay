@@ -2,7 +2,7 @@ import unittest
 
 from golem.core.variables import PROTOCOL_CONST
 
-from .base import NodeTestBase
+from .base import NodeTestBase, disable_key_reuse
 
 
 class GolemNodeTest(NodeTestBase):
@@ -16,9 +16,12 @@ class GolemNodeTest(NodeTestBase):
     def test_rpc(self):
         self._run_test('golem.rpc_test')
 
+    def test_rpc_concent(self):
+        self._run_test('golem.rpc_test.concent')
+
+    @disable_key_reuse
     def test_rpc_mainnet(self):
-        self._run_test(
-            'golem.rpc_test.mainnet', '--mainnet')
+        self._run_test('golem.rpc_test.mainnet', '--mainnet')
 
     def test_task_timeout(self):
         self._run_test('golem.task_timeout')
