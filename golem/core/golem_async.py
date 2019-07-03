@@ -110,7 +110,7 @@ def deferred_run():
 
 _ASYNCIO_RUN = threading.Event()
 _ASYNCIO_ID = 'Thread-aio'
-_ASYNCIO_THREAD_QUEUE = queue.Queue()
+_ASYNCIO_THREAD_QUEUE: queue.Queue = queue.Queue()
 _ASYNCIO_TASKS: Optional[asyncio.Queue] = None
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
