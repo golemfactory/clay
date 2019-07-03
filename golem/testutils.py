@@ -196,10 +196,11 @@ class PEP8MixIn(object):
 def keep_temporary_dirtree_if_test_failed(fun):
     @wraps(fun)
     def wrapper(self, *args, **kwargs):
-        fun(self, *args, **kwargs)
-        # If test fails, we won't reach this point, but tearDown
-        # will be called and directories won't be removed.
-        self.REMOVE_TMP_DIRS = True
+        try:
+            fun(self, *args, **kwargs)
+        except BaseException:
+            self.REMOVE_TMP_DIRS = False
+            raise
     return wrapper
 
 
