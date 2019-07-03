@@ -193,7 +193,7 @@ class PEP8MixIn(object):
                          "Found code style errors (and warnings).")
 
 
-def remove_temporary_dirtree_if_test_passed(fun):
+def keep_temporary_dirtree_if_test_failed(fun):
     @wraps(fun)
     def wrapper(self, *args, **kwargs):
         fun(self, *args, **kwargs)
