@@ -10,7 +10,6 @@ from unittest import mock
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
 from golem.docker.config import DOCKER_VM_NAME as VM_NAME, DEFAULTS
-from golem.docker.hypervisor import Hypervisor
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor

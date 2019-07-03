@@ -544,8 +544,7 @@ class TestRuntime(TestDockerCPUEnv):
 
     @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
-    @patch_env('_create_host_config')
-    def test_port_mapping(self, create_host_config, runtime_mock, _):
+    def test_port_mapping(self, runtime_mock, _):
         port = 4444
         payload = mock_docker_runtime_payload(ports=[port])
         runtime = self.env.runtime(payload)

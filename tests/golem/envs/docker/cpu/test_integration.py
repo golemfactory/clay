@@ -1,4 +1,3 @@
-import contextlib
 import socket
 import tempfile
 from pathlib import Path
@@ -119,9 +118,11 @@ class TestIntegration(TestCase, DatabaseFixture):
 
         try:
             mhost, mport = runtime.get_port_mapping(port)
-            with contextlib.closing(
-                    socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
                 self.assertEqual(0, sock.connect_ex((mhost, mport)))
+            finally:
+                sock.close()
         finally:
             yield runtime.stop()
             yield runtime.clean_up()
