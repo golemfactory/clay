@@ -408,7 +408,8 @@ class DockerCPURuntime(Runtime):
     def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
         return self._get_output(stderr=True, encoding=encoding)
 
-    def get_port_mapping(self, port) -> Tuple[str, int]:
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        assert self._container_id is not None
         return self._port_mapper.get_port_mapping(self._container_id, port)
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
@@ -698,15 +699,13 @@ class DockerCPUEnvironment(Environment):
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
 
+        binds = None
         if payload.binds is not None:
             binds = self._hypervisor.create_volumes(payload.binds)
-        else:
-            binds = None
 
+        port_bindings = None
         if self._hypervisor.requires_ports_publishing() and payload.ports:
             port_bindings = {port: None for port in payload.ports}
-        else:
-            port_bindings = None
 
         client = local_client()
         return client.create_host_config(
