@@ -81,7 +81,7 @@ class TestEthereum(EthereumBase):
                 'subtask': instance.subtask,
                 'payer': instance.node,
                 'value': str(instance.wallet_operation.amount),
-                'status': 'awaiting',
+                'status': str(instance.wallet_operation.status.value),
                 'transaction': instance.wallet_operation.tx_hash,
                 'created': ts,
                 'modified': ts,

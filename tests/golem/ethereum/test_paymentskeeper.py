@@ -1,7 +1,9 @@
 from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
+from tests.factories.model import WalletOperation as WalletOperationFactory
 
 
 class TestPaymentsDatabase(TestWithDatabase):
@@ -42,3 +44,21 @@ class TestPaymentsDatabase(TestWithDatabase):
 
         payments = pd.get_subtasks_payments(['id1', 'id4', 'id2'])
         assert self._get_ids(payments) == ['id1', 'id2']
+
+
+class TestPaymentsKeeper(TestWithDatabase):
+    def setUp(self):
+        super().setUp()
+        self.payments_keeper = PaymentsKeeper()
+
+    def test_confirmed_transfer(self):
+        operation = WalletOperationFactory()
+        operation.save(force_insert=True)
+        self.payments_keeper.confirmed_transfer(
+            tx_hash=operation.tx_hash,
+            gas_cost=1,
+        )
+        self.assertEqual(
+            model.WalletOperation.select().count(),
+            1,
+        )

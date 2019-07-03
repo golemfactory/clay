@@ -6,7 +6,7 @@ from docker.errors import APIError
 from twisted.trial.unittest import TestCase
 
 from golem.envs import RuntimeStatus
-from golem.envs.docker import DockerPayload
+from golem.envs.docker import DockerRuntimePayload
 from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput, DockerInput, \
     InputSocket
 
@@ -23,7 +23,7 @@ class TestInit(TestCase):
 
     @patch('local_client')
     def test_init(self, local_client):
-        payload = DockerPayload(
+        payload = DockerRuntimePayload(
             image='repo/img',
             tag='1.0',
             command='cmd',
@@ -62,7 +62,7 @@ class TestDockerCPURuntime(TestCase):
         self.client = self._patch_async('local_client').return_value
         self.container_config = self.client.create_container_config()
 
-        payload = DockerPayload(
+        payload = DockerRuntimePayload(
             image='repo/img',
             tag='1.0',
             env={}
