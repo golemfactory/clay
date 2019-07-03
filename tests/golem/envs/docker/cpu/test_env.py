@@ -478,6 +478,10 @@ class TestConstrainHypervisor(TestDockerCPUEnv):
         })
 
 
+def mock_docker_runtime_payload(binds=None, ports=None):
+    return Mock(spec=DockerRuntimePayload, binds=binds, ports=ports)
+
+
 class TestRuntime(TestDockerCPUEnv):
 
     def test_invalid_payload_class(self):
@@ -487,11 +491,11 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('Whitelist.is_whitelisted', return_value=True)
     def test_invalid_config_class(self, _):
         with self.assertRaises(AssertionError):
-            self.env.runtime(Mock(spec=DockerRuntimePayload), config=object())
+            self.env.runtime(mock_docker_runtime_payload(), config=object())
 
     @patch('Whitelist.is_whitelisted', return_value=False)
     def test_image_not_whitelisted(self, is_whitelisted):
-        payload = Mock(spec=DockerRuntimePayload)
+        payload = mock_docker_runtime_payload()
         with self.assertRaises(RuntimeError):
             self.env.runtime(payload)
         is_whitelisted.assert_called_once_with(payload.image)
@@ -500,25 +504,25 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_default_config(self, create_host_config, runtime_mock, _):
-        payload = Mock(spec=DockerRuntimePayload, binds=None)
+        payload = mock_docker_runtime_payload()
         runtime = self.env.runtime(payload)
 
         create_host_config.assert_called_once_with(self.config, payload)
         runtime_mock.assert_called_once_with(
-            payload, create_host_config(), None)
+            payload, create_host_config(), None, ANY)
         self.assertEqual(runtime, runtime_mock())
 
     @patch('Whitelist.is_whitelisted', return_value=True)
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_custom_config(self, create_host_config, runtime_mock, _):
-        payload = Mock(spec=DockerRuntimePayload, binds=None)
+        payload = mock_docker_runtime_payload()
         config = Mock(spec=DockerCPUConfig)
         runtime = self.env.runtime(payload, config=config)
 
         create_host_config.assert_called_once_with(config, payload)
         runtime_mock.assert_called_once_with(
-            payload, create_host_config(), None)
+            payload, create_host_config(), None, ANY)
         self.assertEqual(runtime, runtime_mock())
 
     @patch('Whitelist.is_whitelisted', return_value=True)
@@ -527,14 +531,15 @@ class TestRuntime(TestDockerCPUEnv):
     def test_shared_dir(self, create_host_config, runtime_mock, _):
         target_dir = '/foo'
         docker_bind = Mock(spec=DockerBind, target=target_dir)
-        payload = Mock(spec=DockerRuntimePayload, binds=[docker_bind])
+        payload = mock_docker_runtime_payload(binds=[docker_bind])
         runtime = self.env.runtime(payload)
 
         create_host_config.assert_called_once_with(self.config, payload)
         runtime_mock.assert_called_once_with(
             payload,
             create_host_config(),
-            [target_dir])
+            [target_dir],
+            ANY)
         self.assertEqual(runtime, runtime_mock())
 
 
@@ -548,7 +553,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpu_count=4,
             memory_mb=2137
         )
-        payload = Mock(spec=DockerRuntimePayload, binds=None)
+        payload = mock_docker_runtime_payload()
         host_config = self.env._create_host_config(config, payload)
 
         self.hypervisor.create_volumes.assert_not_called()
@@ -556,6 +561,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpuset_cpus='1,2,3,4',
             mem_limit='2137m',
             binds=None,
+            port_bindings=None,
             privileged=False,
             network_mode=DockerCPUEnvironment.NETWORK_MODE,
             dns=DockerCPUEnvironment.DNS_SERVERS,
@@ -574,7 +580,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         )
         target_dir = '/foo'
         docker_bind = Mock(spec=DockerBind, target=target_dir)
-        payload = Mock(spec=DockerRuntimePayload, binds=[docker_bind])
+        payload = mock_docker_runtime_payload(binds=[docker_bind])
         host_config = self.env._create_host_config(config, payload)
 
         self.hypervisor.create_volumes.assert_called_once_with([docker_bind])
@@ -582,6 +588,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpuset_cpus='1,2,3,4',
             mem_limit='2137m',
             binds=self.hypervisor.create_volumes(),
+            port_bindings=None,
             privileged=False,
             network_mode=DockerCPUEnvironment.NETWORK_MODE,
             dns=DockerCPUEnvironment.DNS_SERVERS,

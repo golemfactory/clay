@@ -703,7 +703,7 @@ class DockerCPUEnvironment(Environment):
         else:
             binds = None
 
-        if self._hypervisor.requires_ports_publishing():
+        if self._hypervisor.requires_ports_publishing() and payload.ports:
             port_bindings = {port: None for port in payload.ports}
         else:
             port_bindings = None
