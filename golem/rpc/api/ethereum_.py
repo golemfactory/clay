@@ -2,6 +2,7 @@
 
 import datetime
 import functools
+import logging
 import typing
 
 from golem_messages.datastructures import p2p as dt_p2p
@@ -14,6 +15,7 @@ from golem.rpc import utils as rpc_utils
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.ethereum.transactionsystem import TransactionSystem
+logger = logging.getLogger(__name__)
 
 
 def lru_node_factory():
@@ -75,7 +77,7 @@ class ETSProvider:
     @rpc_utils.expose('pay.operations')
     @staticmethod
     def get_operations(
-            operation_type: typing.Optional[model.WalletOperation.TYPE],
+            operation_type: typing.Optional[str],
             page_num: int = 1,
             per_page: int = 20,
     ):
@@ -88,6 +90,11 @@ class ETSProvider:
         query = model.WalletOperation.select() \
             .order_by(model.WalletOperation.id.desc())
         if operation_type:
+            try:
+                operation_type = model.WalletOperation.TYPE(operation_type)
+            except ValueError:
+                logger.error('Invalid operation type: %r', operation_type)
+                return []
             query = query.where(
                 model.WalletOperation.operation_type == operation_type,
             )
