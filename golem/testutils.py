@@ -218,7 +218,7 @@ class TestTaskIntegration(DatabaseFixture):
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
         # will set this variable to True on the end of test.
-        self.REMOVE_TMP_DIRS = False
+        self.REMOVE_TMP_DIRS = True
 
         # build mock node
         self.node = dt_p2p_factory.Node()
