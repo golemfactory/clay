@@ -110,8 +110,8 @@ def deferred_run():
 
 _ASYNCIO_RUN = threading.Event()
 _ASYNCIO_ID = 'Thread-aio'
-_ASYNCIO_THREAD_QUEUE: queue.Queue = queue.Queue()
-_ASYNCIO_TASKS = None
+_ASYNCIO_THREAD_QUEUE = queue.Queue()
+_ASYNCIO_TASKS: Optional[asyncio.Queue] = None
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
 
@@ -147,20 +147,8 @@ def run_at_most_every(delta: datetime.timedelta):
         async def curry(*args, **kwargs):
             nonlocal last_run
             current_delta = datetime.datetime.now() - last_run
-            while current_delta < delta:
-                sleep_for = delta - current_delta
-                logger.debug(
-                    'Will wait for %(delta)s until next run of'
-                    ' %(func)s(*%(args)r, **%(kwargs)r)',
-                    {
-                        'delta': sleep_for,
-                        'func': f.__name__,
-                        'args': args,
-                        'kwargs': kwargs,
-                    },
-                )
-                await asyncio.sleep(sleep_for.total_seconds())
-                current_delta = datetime.datetime.now() - last_run
+            if current_delta < delta:
+                return
             last_run = datetime.datetime.now()
             result = f(*args, **kwargs)
             if asyncio.iscoroutine(result):
