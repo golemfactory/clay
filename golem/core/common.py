@@ -316,7 +316,6 @@ def config_logging(
     txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
 
 
-# FIXME: Python 3.7+
 def install_reactor():
     from twisted.internet import asyncioreactor
     asyncioreactor.install()

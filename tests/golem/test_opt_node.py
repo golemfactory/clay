@@ -54,7 +54,6 @@ class TestNode(TestWithDatabase):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'],
                                      catch_exceptions=False)
-        print(return_value.output)
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue(return_value.output.startswith('Usage'))
 

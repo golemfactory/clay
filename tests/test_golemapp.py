@@ -26,7 +26,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         assert node_class.called
 
     def test_start_crossbar_worker(self):
-        args = ['--datadir', self.path, 'standalone', '_exec_worker']
+        args = ['--datadir', self.path] + WORKER_PROCESS_STANDALONE_ARGS
 
         with mock.patch('golemapp.start') as run_start:
             with mock.patch('golemapp.start_crossbar_worker') as run_start_cbar:
