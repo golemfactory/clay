@@ -21,6 +21,7 @@ class WalletOperation(factory.Factory):
     class Meta:
         model = model.WalletOperation
 
+    status = factory.fuzzy.FuzzyChoice(model.WalletOperation.STATUS)
     direction = factory.fuzzy.FuzzyChoice(model.WalletOperation.DIRECTION)
     operation_type = factory.fuzzy.FuzzyChoice(model.WalletOperation.TYPE)
     sender_address = factory.LazyFunction(random_eth_address)

@@ -16,6 +16,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -42,6 +43,11 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
+
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from golem_sci import events as sci_events
 
 
 log = logging.getLogger(__name__)
@@ -287,6 +293,55 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
+        self._sci.subscribe_to_direct_incoming_eth_transfers(
+            address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+            ),
+        )
+
+        self._sci.subscribe_to_gnt_transfers(
+            from_address=None,
+            to_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+            ),
+        )
+
+        def _outgoing_gnt_transfer_confirmed(
+                event: 'sci_events.GntTransferEvent',
+        ):
+            assert self._sci is not None  # mypy :(
+            receipt: TransactionReceipt = self._sci.get_transaction_receipt(
+                event.tx_hash,
+            )
+            gas_price = self._sci.get_transaction_gas_price(
+                tx_hash=event.tx_hash,
+            )
+            # Mined transaction won't return None
+            assert isinstance(gas_price, int)
+            self._payments_keeper.confirmed_transfer(
+                tx_hash=event.tx_hash,
+                gas_cost=receipt.gas_used * gas_price,
+            )
+
+        self._sci.subscribe_to_gnt_transfers(
+            from_address=self._sci.get_eth_address(),
+            to_address=None,
+            from_block=from_block,
+            cb=_outgoing_gnt_transfer_confirmed,
+        )
+
         if self.deposit_contract_available:
             self._sci.subscribe_to_forced_subtask_payments(
                 None,
@@ -356,12 +411,27 @@ class TransactionSystem(LoopingCallService):
             num: Optional[int] = None,
             interval: Optional[datetime.timedelta] = None,
     ) -> List[Dict[str, Any]]:
+        #
+        # @todo https://github.com/golemfactory/golem/issues/3971
+        # @todo https://github.com/golemfactory/golem/issues/3970
+
+        # because of crossbar's 1MB limitation on output, we need to limit
+        # the amount of data returned from the endpoint here
+        #
+        # the real answer is pagination... until then, we're imposing
+        # an artificial limit
+
+        num = num or 1024
         return self._payments_keeper.get_list_of_all_payments(num, interval)
 
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0)\
-            -> List[model.DepositPayment]:
-        query = model.DepositPayment.select() \
+            -> List[model.WalletOperation]:
+        query = model.WalletOperation.deposit_transfers() \
+            .where(
+                model.WalletOperation.direction
+                == model.WalletOperation.DIRECTION.outgoing,
+            ) \
             .order_by('id') \
             .limit(limit) \
             .offset(offset)
@@ -507,7 +577,7 @@ class TransactionSystem(LoopingCallService):
             self._payment_processor.recipients_count
         required = self._current_eth_per_payment() * num_payments + \
             self._eth_base_for_batch_payment()
-        return required - self.get_locked_eth()
+        return max(0, required - self.get_locked_eth())
 
     @sci_required()
     def _eth_base_for_batch_payment(self) -> int:
@@ -563,9 +633,11 @@ class TransactionSystem(LoopingCallService):
             currency,
             destination,
         )
+
+        if gas_price is None:
+            gas_price = self.gas_price
+
         if currency == 'ETH':
-            if gas_price is None:
-                gas_price = self.gas_price
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
@@ -574,12 +646,33 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
-            return self._sci.transfer_eth(
+            tx_hash = self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
                 gas_price,
             )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+                gas_cost=gas_eth,
+            )
+
+            def on_eth_receipt(receipt):
+                if not receipt.status:
+                    log.error("Failed ETH withdrawal: %r", receipt)
+                    return
+                self._payments_keeper.confirmed_transfer(
+                    tx_hash=receipt.tx_hash,
+                    gas_cost=receipt.gas_cost * gas_price,
+                )
+            self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
+            return tx_hash
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -588,18 +681,27 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
                 gas_price,
+            )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+                gas_cost=gas_price * self._sci.GAS_GNT_TRANSFER,
             )
 
             def on_receipt(receipt) -> None:
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
-                # TODO Update WalletOperation #4172
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
@@ -693,10 +795,16 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
-        dpayment = model.DepositPayment.create(
-            status=model.PaymentStatus.sent,
-            value=max_possible_amount,
-            tx=tx_hash,
+        dpayment = model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.outgoing,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.get_payment_address() or '',
+            recipient_address=self.deposit_contract_address,
+            amount=max_possible_amount,
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
@@ -717,10 +825,11 @@ class TransactionSystem(LoopingCallService):
         tx_gas_price = self._sci.get_transaction_gas_price(
             receipt.tx_hash,
         )
-        dpayment.fee = receipt.gas_used * tx_gas_price
-        dpayment.status = model.PaymentStatus.confirmed
+        dpayment.gas_cost = receipt.gas_used * tx_gas_price
+        dpayment.status = \
+            model.WalletOperation.STATUS.confirmed
         dpayment.save()
-        return dpayment.tx
+        return dpayment.tx_hash
 
     @gnt_deposit_required()
     @sci_required()

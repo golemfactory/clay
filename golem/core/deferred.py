@@ -1,5 +1,5 @@
 from queue import Queue, Empty
-from typing import Any, Callable, Dict, Tuple, List
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from twisted.internet import defer
 from twisted.internet.task import deferLater
@@ -16,7 +16,7 @@ class DeferredSeq:
         return self
 
     def execute(self) -> defer.Deferred:
-        return deferToThread(lambda: sync_wait(self._execute()))
+        return deferToThread(lambda: sync_wait(self._execute(), timeout=None))
 
     @defer.inlineCallbacks
     def _execute(self) -> Any:
@@ -39,7 +39,9 @@ def chain_function(deferred, fn, *args, **kwargs):
     return result
 
 
-def sync_wait(deferred, timeout=10):
+def sync_wait(deferred: defer.Deferred,
+              timeout: Optional[Union[int, float]] = 10.) -> Any:
+
     if not isinstance(deferred, defer.Deferred):
         return deferred
 

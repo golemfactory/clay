@@ -174,8 +174,7 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_collected(ctd['task_id'])
-        self.assertTrue(result)
+        task_computer.start_computation()
 
         task_thread = None
         started = time.time()
@@ -187,7 +186,7 @@ class DockerTaskTestCase(
 
         if task_thread:
             task_thread.join(timeout)
-            task_computer.run()
+            task_computer.check_timeout()
 
         return task_thread
 

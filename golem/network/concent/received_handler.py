@@ -244,13 +244,28 @@ class TaskServerMessageHandler():
             task_id=msg.task_id
         )
         if not (sra or srr):
-            #  I can't remember verification results,
-            #  so try again and hope for the best
-            self._after_ack_report_computed_task(
-                report_computed_task=msg.ack_report_computed_task
-                .report_computed_task,
+            fgtrf = history.get(
+                message_class_name='ForceGetTaskResultFailed',
+                node_id=msg.provider_id,
+                subtask_id=msg.subtask_id,
+                task_id=msg.task_id
             )
-            return
+            if fgtrf:
+                srr = message.tasks.SubtaskResultsRejected(
+                    report_computed_task=(
+                        msg.ack_report_computed_task.report_computed_task),
+                    force_get_task_result_failed=fgtrf,
+                    reason=(message.tasks.SubtaskResultsRejected.REASON
+                            .ForcedResourcesFailure),
+                )
+            else:
+                #  I can't remember verification results and I have no proof of
+                #  failure from Concent, so try again and hope for the best
+                self._after_ack_report_computed_task(
+                    report_computed_task=msg.ack_report_computed_task
+                    .report_computed_task,
+                )
+                return
 
         response_msg = message.concents.ForceSubtaskResultsResponse(
             subtask_results_accepted=sra,

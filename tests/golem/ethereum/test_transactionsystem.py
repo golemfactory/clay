@@ -40,6 +40,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.get_deposit_locked_until.return_value = 0
+        self.sci.GAS_GNT_TRANSFER = 2
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -209,7 +210,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
         self.sci.GAS_OPEN_GATE = 10
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -240,7 +240,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_gnt_balance.return_value = amount1
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -332,6 +331,22 @@ class TestTransactionSystem(TransactionSystemBase):
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
 
+    def test_eth_for_batch_payment(self):
+        self.sci.get_eth_balance.return_value = 1 * denoms.ether
+        self.sci.get_gntb_balance.return_value = 100 * denoms.ether
+        self.ets._refresh_balances()
+        payments_count = 2
+
+        initial_gas_price = self.sci.GAS_PRICE
+        self.sci.GAS_PRICE = 10 * initial_gas_price
+        self.ets.lock_funds_for_payments(1, payments_count)
+
+        self.sci.GAS_PRICE = initial_gas_price
+        eth_for_batch = self.ets.eth_for_batch_payment(payments_count)
+
+        # Should be 0, since locked ETH > ETH required for batch payment
+        self.assertEqual(0, eth_for_batch)
+
     def test_expect_income(self):
         self.ets.expect_income(
             sender_node='0xadbeef' + 'deadbeef' * 15,
@@ -356,8 +371,8 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.estimate_transfer_eth_gas.return_value = self.gas_cost
         self.dest = '0x' + 40 * 'd'
 
-        self.eth_tx = '0xee'
-        self.gntb_tx = '0xfad'
+        self.eth_tx = f'0x{"e"*64}'
+        self.gntb_tx = f'0x{"f"*64}'
         self.sci.transfer_eth.return_value = self.eth_tx
         self.sci.convert_gntb_to_gnt.return_value = self.gntb_tx
 
@@ -386,7 +401,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             amount,
-            None,
+            self.ets.gas_price,
         )
 
     def test_custom_gas_price_gnt(self):
@@ -449,7 +464,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             self.gnt_balance - locked_gnt,
-            None,
+            self.ets.gas_price,
         )
 
     def test_not_enough_gnt_with_lock(self):
@@ -601,7 +616,7 @@ class ConcentDepositTest(TransactionSystemBase):
             )
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertFalse(model.DepositPayment.select().exists())
+        self.assertFalse(model.WalletOperation.deposit_transfers().exists())
 
     def test_done(self):
         gntb_balance = 20
@@ -623,13 +638,16 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = gntb_balance - (subtask_price * subtask_count)
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.DepositPayment.get()
+        dpayment = model.WalletOperation.deposit_transfers().get()
         for field, value in (
-                ('status', model.PaymentStatus.confirmed),
-                ('value', deposit_value),
-                ('fee', 42000),
-                ('tx', tx_hash),):
-            self.assertEqual(getattr(dpayment, field), value)
+                ('status', model.WalletOperation.STATUS.confirmed),
+                ('amount', deposit_value),
+                ('gas_cost', 42000),
+                ('tx_hash', tx_hash),):
+            self.assertEqual(
+                getattr(dpayment, field),
+                value,
+            )
 
     def test_gas_price_skyrocketing(self):
         self.sci.get_deposit_value.return_value = 0
@@ -749,14 +767,22 @@ class DepositPaymentsListTest(TransactionSystemBase):
             ts,
             tz=datetime.timezone.utc,
         )
-        deposit_payment = model.DepositPayment.create(
-            value=value,
-            tx=tx_hash,
+        instance = model_factory.WalletOperation(
+            direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            operation_type=  # noqa
+            model.WalletOperation.TYPE.deposit_transfer,
+            status=  # noqa
+            model.WalletOperation.STATUS.sent,
+            amount=value,
+            tx_hash=tx_hash,
             created_date=dt,
             modified_date=dt,
         )
+        instance.save(force_insert=True)
+
         self.assertEqual(
-            [deposit_payment],
+            [instance],
             self.ets.get_deposit_payments_list(),
         )
 
@@ -765,29 +791,51 @@ class IncomesListTest(TransactionSystemBase):
     def test_empty(self):
         self.assertEqual(self.ets.get_incomes_list(), [])
 
-    def test_one(self):
+    def _get_income(self):
         income = model_factory.TaskPayment(
             wallet_operation__direction=  # noqa
             model.WalletOperation.DIRECTION.incoming,
             wallet_operation__operation_type=  # noqa
             model.WalletOperation.TYPE.task_payment,
         )
-        node = p2p_factory.Node(key=income.node)
-        model.CachedNode(
-            node=node.key,
-            node_field=node,
-        ).save(force_insert=True)
         income.wallet_operation.save(force_insert=True)
         self.assertEqual(
             income.save(force_insert=True),
             1,
         )
+        return income
+
+    def test_one(self):
+        income = self._get_income()
+        node = p2p_factory.Node(key=income.node)
+        model.CachedNode(
+            node=node.key,
+            node_field=node,
+        ).save(force_insert=True)
         self.assertEqual(
             [
                 {
                     'created': ANY,
                     'modified': ANY,
                     'node': node.to_dict(),
+                    'payer': income.node,
+                    'status': 'awaiting',
+                    'subtask': income.subtask,
+                    'transaction': None,
+                    'value': str(income.expected_amount),
+                },
+            ],
+            self.ets.get_incomes_list(),
+        )
+
+    def test_nodeskeeper_record_not_present(self):
+        income = self._get_income()
+        self.assertEqual(
+            [
+                {
+                    'created': ANY,
+                    'modified': ANY,
+                    'node': None,
                     'payer': income.node,
                     'status': 'awaiting',
                     'subtask': income.subtask,

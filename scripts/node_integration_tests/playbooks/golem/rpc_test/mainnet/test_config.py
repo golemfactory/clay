@@ -1,4 +1,5 @@
-from ..no_concent.test_config import TestConfig as TestConfigBase
+from scripts.node_integration_tests.playbooks.test_config_base import \
+    TestConfigBase
 
 
 class TestConfig(TestConfigBase):

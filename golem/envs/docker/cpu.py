@@ -1,4 +1,5 @@
 import logging
+import os
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
 from threading import Thread, Lock
@@ -7,7 +8,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
     NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
 
@@ -20,12 +21,12 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
-from golem.docker.task_thread import DockerBind
-from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
-    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus, \
-    EnvId, Prerequisites, RuntimeOutput, RuntimeInput
-from golem.envs.docker import DockerPayload, DockerPrerequisites
+from golem.envs import (
+    Environment, EnvSupportStatus, RuntimePayload, EnvConfig,
+    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
+    EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
+)
+from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
 logger = logging.getLogger(__name__)
@@ -138,7 +139,7 @@ class DockerCPURuntime(Runtime):
 
     def __init__(
             self,
-            payload: DockerPayload,
+            payload: DockerRuntimePayload,
             host_config: Dict[str, Any],
             volumes: Optional[List[str]]
     ) -> None:
@@ -285,6 +286,12 @@ class DockerCPURuntime(Runtime):
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
 
+    def wait_until_stopped(self) -> Deferred:
+        def _wait_until_stopped():
+            while self.status() == RuntimeStatus.RUNNING:
+                sleep(1)
+        return deferToThread(_wait_until_stopped)
+
     def stop(self) -> Deferred:
         with self._status_lock:
             self._assert_status(self._status, RuntimeStatus.RUNNING)
@@ -404,8 +411,6 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
-    SHARED_DIR_PATH: ClassVar[str] = '/golem'
-
     NETWORK_MODE: ClassVar[str] = 'none'
     DNS_SERVERS: ClassVar[List[str]] = []
     DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
@@ -431,6 +436,8 @@ class DockerCPUEnvironment(Environment):
         'sys_tty_config'
     ]
 
+    BENCHMARK_IMAGE = 'golemfactory/cpu_benchmark:1.0'
+
     @classmethod
     def supported(cls) -> EnvSupportStatus:
         logger.info('Checking environment support status...')
@@ -451,8 +458,6 @@ class DockerCPUEnvironment(Environment):
         if is_osx():
             if DockerForMac.is_available():
                 return DockerForMac
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor
         return None
 
     def __init__(self, config: DockerCPUConfig) -> None:
@@ -504,6 +509,39 @@ class DockerCPUEnvironment(Environment):
             self._env_disabled()
 
         return deferToThread(_clean_up)
+
+    @inlineCallbacks
+    def run_benchmark(self) -> Deferred:
+        image, tag = self.BENCHMARK_IMAGE.split(':')
+        yield self.install_prerequisites(DockerPrerequisites(
+            image=image,
+            tag=tag,
+        ))
+        payload = DockerRuntimePayload(
+            image=image,
+            tag=tag,
+            user=None if is_windows() else str(os.getuid()),
+            env={},
+        )
+        runtime = self.runtime(payload)
+        yield runtime.prepare()
+        yield runtime.start()
+        yield runtime.wait_until_stopped()
+        _, exit_code = runtime._inspect_container()
+        try:
+            if exit_code:
+                raise Exception(
+                    f'Benchmark run failed with exit code {exit_code}')
+            # Benchmark is supposed to output a single line containing
+            # a float value, but sometimes stdout is empty for a while after
+            # stopping the container
+            stdout = list(runtime.stdout('utf-8'))
+            while not stdout:
+                sleep(0.5)
+                stdout = list(runtime.stdout('utf-8'))
+            return float(stdout[0])
+        finally:
+            yield runtime.clean_up()
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
@@ -610,17 +648,12 @@ class DockerCPUEnvironment(Environment):
             raise
         logger.info("Hypervisor successfully reconfigured.")
 
-    @classmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) -> DockerPayload:
-        return DockerPayload.from_dict(payload_dict)
-
     def runtime(
             self,
-            payload: Payload,
-            shared_dir: Optional[Path] = None,
+            payload: RuntimePayload,
             config: Optional[EnvConfig] = None
     ) -> DockerCPURuntime:
-        assert isinstance(payload, DockerPayload)
+        assert isinstance(payload, DockerRuntimePayload)
         if not Whitelist.is_whitelisted(payload.image):
             raise RuntimeError(f"Image '{payload.image}' is not whitelisted.")
 
@@ -629,24 +662,21 @@ class DockerCPUEnvironment(Environment):
         else:
             config = self.config()
 
-        host_config = self._create_host_config(config, shared_dir)
-        volumes = [self.SHARED_DIR_PATH] if shared_dir else None
+        host_config = self._create_host_config(config, payload)
+        volumes = [b.target for b in payload.binds] if payload.binds else None
         return DockerCPURuntime(payload, host_config, volumes)
 
     def _create_host_config(
-            self, config: DockerCPUConfig, shared_dir: Optional[Path]) \
-            -> Dict[str, Any]:
-
+            self,
+            config: DockerCPUConfig,
+            payload: DockerRuntimePayload,
+    ) -> Dict[str, Any]:
         cpus = hardware.cpus()[:config.cpu_count]
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
 
-        if shared_dir is not None:
-            binds = self._hypervisor.create_volumes([DockerBind(
-                source=shared_dir,
-                target=self.SHARED_DIR_PATH,
-                mode='rw'
-            )])
+        if payload.binds is not None:
+            binds = self._hypervisor.create_volumes(payload.binds)
         else:
             binds = None
 

@@ -661,10 +661,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.db.close()
 
     def resource_collected(self, res_id):
-        self.task_server.task_computer.resource_collected(res_id)
+        self.task_server.resource_collected(res_id)
 
     def resource_failure(self, res_id, reason):
-        self.task_server.task_computer.resource_failure(res_id, reason)
+        self.task_server.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:

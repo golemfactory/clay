@@ -1,6 +1,5 @@
 from logging import Logger
 from pathlib import Path
-from subprocess import SubprocessError
 from unittest.mock import patch as _patch, Mock, MagicMock, ANY
 
 from twisted.trial.unittest import TestCase
@@ -11,10 +10,9 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.envs import EnvStatus
-from golem.envs.docker import DockerPrerequisites, DockerPayload
+from golem.envs.docker import DockerPrerequisites, DockerRuntimePayload
 from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
 
 cpu = CONSTRAINT_KEYS['cpu']
@@ -35,7 +33,7 @@ def patch_env(name: str, *args, **kwargs):
 
 # pylint: disable=too-many-arguments
 def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
-                      vbox=False, docker_for_mac=False, xhyve=False):
+                      vbox=False, docker_for_mac=False):
     def _wrapper(func):
         return_values = {
             'is_linux': linux,
@@ -44,7 +42,6 @@ def patch_hypervisors(linux=False, windows=False, mac_os=False, hyperv=False,
             'HyperVHypervisor.is_available': hyperv,
             'VirtualBoxHypervisor.is_available': vbox,
             'DockerForMac.is_available': docker_for_mac,
-            'XhyveHypervisor.is_available': xhyve
         }
         for k, v in return_values.items():
             func = patch(k, return_value=v)(func)
@@ -100,16 +97,6 @@ class TestGetHypervisorClass(TestCase):
 
     @patch_hypervisors(mac_os=True, docker_for_mac=True)
     def test_macos_only_docker_for_mac(self, *_):
-        self.assertEqual(
-            DockerCPUEnvironment._get_hypervisor_class(), DockerForMac)
-
-    @patch_hypervisors(mac_os=True, xhyve=True)
-    def test_macos_only_xhyve(self, *_):
-        self.assertEqual(
-            DockerCPUEnvironment._get_hypervisor_class(), XhyveHypervisor)
-
-    @patch_hypervisors(mac_os=True, docker_for_mac=True, xhyve=True)
-    def test_macos_docker_for_mac_and_xhyve(self, *_):
         self.assertEqual(
             DockerCPUEnvironment._get_hypervisor_class(), DockerForMac)
 
@@ -488,11 +475,11 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('Whitelist.is_whitelisted', return_value=True)
     def test_invalid_config_class(self, _):
         with self.assertRaises(AssertionError):
-            self.env.runtime(Mock(spec=DockerPayload), config=object())
+            self.env.runtime(Mock(spec=DockerRuntimePayload), config=object())
 
     @patch('Whitelist.is_whitelisted', return_value=False)
     def test_image_not_whitelisted(self, is_whitelisted):
-        payload = Mock(spec=DockerPayload)
+        payload = Mock(spec=DockerRuntimePayload)
         with self.assertRaises(RuntimeError):
             self.env.runtime(payload)
         is_whitelisted.assert_called_once_with(payload.image)
@@ -501,10 +488,10 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_default_config(self, create_host_config, runtime_mock, _):
-        payload = Mock(spec=DockerPayload)
+        payload = Mock(spec=DockerRuntimePayload, binds=None)
         runtime = self.env.runtime(payload)
 
-        create_host_config.assert_called_once_with(self.config, None)
+        create_host_config.assert_called_once_with(self.config, payload)
         runtime_mock.assert_called_once_with(
             payload, create_host_config(), None)
         self.assertEqual(runtime, runtime_mock())
@@ -513,11 +500,11 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_custom_config(self, create_host_config, runtime_mock, _):
-        payload = Mock(spec=DockerPayload)
+        payload = Mock(spec=DockerRuntimePayload, binds=None)
         config = Mock(spec=DockerCPUConfig)
         runtime = self.env.runtime(payload, config=config)
 
-        create_host_config.assert_called_once_with(config, None)
+        create_host_config.assert_called_once_with(config, payload)
         runtime_mock.assert_called_once_with(
             payload, create_host_config(), None)
         self.assertEqual(runtime, runtime_mock())
@@ -526,15 +513,16 @@ class TestRuntime(TestDockerCPUEnv):
     @patch('DockerCPURuntime')
     @patch_env('_create_host_config')
     def test_shared_dir(self, create_host_config, runtime_mock, _):
-        payload = Mock(spec=DockerPayload)
-        shared_dir = Mock(spec=Path)
-        runtime = self.env.runtime(payload, shared_dir=shared_dir)
+        target_dir = '/foo'
+        docker_bind = Mock(spec=DockerBind, target=target_dir)
+        payload = Mock(spec=DockerRuntimePayload, binds=[docker_bind])
+        runtime = self.env.runtime(payload)
 
-        create_host_config.assert_called_once_with(self.config, shared_dir)
+        create_host_config.assert_called_once_with(self.config, payload)
         runtime_mock.assert_called_once_with(
             payload,
             create_host_config(),
-            [DockerCPUEnvironment.SHARED_DIR_PATH])
+            [target_dir])
         self.assertEqual(runtime, runtime_mock())
 
 
@@ -548,7 +536,8 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpu_count=4,
             memory_mb=2137
         )
-        host_config = self.env._create_host_config(config, None)
+        payload = Mock(spec=DockerRuntimePayload, binds=None)
+        host_config = self.env._create_host_config(config, payload)
 
         self.hypervisor.create_volumes.assert_not_called()
         local_client().create_host_config.assert_called_once_with(
@@ -571,14 +560,12 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpu_count=4,
             memory_mb=2137
         )
-        shared_dir = Mock(spec=Path)
-        host_config = self.env._create_host_config(config, shared_dir)
+        target_dir = '/foo'
+        docker_bind = Mock(spec=DockerBind, target=target_dir)
+        payload = Mock(spec=DockerRuntimePayload, binds=[docker_bind])
+        host_config = self.env._create_host_config(config, payload)
 
-        self.hypervisor.create_volumes.assert_called_once_with([DockerBind(
-            source=shared_dir,
-            target=DockerCPUEnvironment.SHARED_DIR_PATH,
-            mode='rw'
-        )])
+        self.hypervisor.create_volumes.assert_called_once_with([docker_bind])
         local_client().create_host_config.assert_called_once_with(
             cpuset_cpus='1,2,3,4',
             mem_limit='2137m',

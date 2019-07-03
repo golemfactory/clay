@@ -17,7 +17,7 @@ import pytz
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
 MAX_CPU_WINDOWS = 32
-MAX_CPU_MACOS = 16
+MAX_CPU_MACOS = 32
 
 
 def get_local_datadir(name: str, root_dir=None) -> str:
@@ -178,13 +178,13 @@ def get_cpu_count():
     """
     Get number of cores with system limitations:
     - max 32 on Windows due to VBox limitation
-    - max 16 on MacOS dut to xhyve limitation
+    - max 32 on MacOS dut to HyperKit limitation
     :return: number of cores
     """
     if is_windows():
         return min(cpu_count(), MAX_CPU_WINDOWS)  # VBox limitation
     if is_osx():
-        return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
+        return min(cpu_count(), MAX_CPU_MACOS)    # HyperKit limitation
     return cpu_count()  # No limitatons on Linux
 
 def sync_wait(deferred, timeout=10):

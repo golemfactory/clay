@@ -12,6 +12,7 @@ from golem.rpc import utils as rpc_utils
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
+    from golem import model
     from golem.ethereum.transactionsystem import TransactionSystem
 
 
@@ -60,13 +61,13 @@ class ETSProvider:
         def item(o):
             return {
                 "subtask": common.to_unicode(o.subtask),
-                "payer": common.to_unicode(o.sender_node),
-                "value": common.to_unicode(o.value),
-                "status": common.to_unicode(o.status.name),
-                "transaction": common.to_unicode(o.transaction),
+                "payer": common.to_unicode(o.node),
+                "value": common.to_unicode(o.wallet_operation.amount),
+                "status": common.to_unicode(o.wallet_operation.status.name),
+                "transaction": common.to_unicode(o.wallet_operation.tx_hash),
                 "created": common.datetime_to_timestamp_utc(o.created_date),
                 "modified": common.datetime_to_timestamp_utc(o.modified_date),
-                "node": lru_node(o.sender_node),
+                "node": lru_node(o.node),
             }
 
         return [item(income) for income in incomes]
@@ -88,13 +89,24 @@ class ETSProvider:
             limit=1000,
             offset=0,
     ) -> typing.List[typing.Dict[str, typing.Any]]:
+        operations: 'typing.List[model.WalletOperation]' = \
+            self.ets.get_deposit_payments_list(
+                limit=limit,
+                offset=offset,
+            )
         result = []
-        for dpayment in self.ets.get_deposit_payments_list():
+        for dpayment in operations:
             entry = {}
-            entry['value'] = common.to_unicode(dpayment.value)
-            entry['status'] = common.to_unicode(dpayment.status.name)
-            entry['fee'] = common.to_unicode(dpayment.fee)
-            entry['transaction'] = common.to_unicode(dpayment.tx)
+            entry['value'] = common.to_unicode(dpayment.amount)
+            entry['status'] = common.to_unicode(
+                dpayment.status.name,
+            )
+            entry['fee'] = common.to_unicode(
+                dpayment.gas_cost,
+            )
+            entry['transaction'] = common.to_unicode(
+                dpayment.tx_hash,
+            )
             entry['created'] = common.datetime_to_timestamp_utc(
                 dpayment.created_date,
             )

@@ -227,40 +227,9 @@ class DictSerializableJSONField(TextField):
         return self.objtype.from_dict(json.loads(value))
 
 
-class PaymentStatus(enum.Enum):
-    """ The status of a payment. """
-    awaiting = 1  # Created but not introduced to the payment network.
-    sent = 2  # Sent to the payment network.
-    confirmed = 3  # Confirmed on the payment network.
-    # overdue - As a Provider try to use Concent
-    # reasons may include:
-    #  * Requestor made a transaction that didn’t cover this payment
-    #    (can be detected earlier)
-    #  * Requestor didn’t make a transaction at all (actual overdue payment)
-    # As a Requestor reasons may include:
-    #  * insufficient ETH/GNT
-    #  * Golem bug
-    overdue = 4
-
-    # Workarounds for peewee_migration
-
-    def __repr__(self):
-        return '{}.{}'.format(self.__class__.__name__, self.name)
-
-    @property
-    def __self__(self):
-        return self
-
-
 class NodeField(DictSerializableJSONField):
     """ Database field that stores a Node in JSON format. """
     objtype = dt_p2p.Node
-
-
-class PaymentStatusField(EnumField):
-    """ Database field that stores PaymentStatusField objects as integers. """
-    def __init__(self, *args, **kwargs):
-        super().__init__(PaymentStatus, *args, **kwargs)
 
 
 class VersionField(CharField):
@@ -289,10 +258,10 @@ class WalletOperation(BaseModel):
         outgoing = enum.auto()
 
     class TYPE(msg_dt.StringEnum):
-        transfer = enum.auto()
-        deposit_transfer = enum.auto()
+        transfer = enum.auto()  # topup & withdraw
+        deposit_transfer = enum.auto()  # deposit topup & withdraw
         task_payment = enum.auto()
-        deposit_payment = enum.auto()
+        deposit_payment = enum.auto()  # forced payments
 
     class CURRENCY(msg_dt.StringEnum):
         ETH = enum.auto()
@@ -314,6 +283,14 @@ class WalletOperation(BaseModel):
             f" direction={self.direction}, type={self.operation_type},"
             f" amount={self.amount/denoms.ether}{self.currency}"
         )
+
+    @classmethod
+    def deposit_transfers(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.deposit_transfer,
+            )
 
 
 class TaskPayment(BaseModel):
@@ -358,24 +335,6 @@ class TaskPayment(BaseModel):
     def missing_amount(self):
         # pylint: disable=no-member
         return self.expected_amount - self.wallet_operation.amount
-
-
-class DepositPayment(BaseModel):
-    tx = BlockchainTransactionField(primary_key=True)
-    value = HexIntegerField()
-    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
-    fee = HexIntegerField(null=True)
-
-    class Meta:
-        database = db
-
-    def __repr__(self):
-        return "<DepositPayment: {value} s:{status} tx:{tx}>"\
-            .format(
-                value=self.value,
-                status=self.status,
-                tx=self.tx,
-            )
 
 ##################
 # RANKING MODELS #

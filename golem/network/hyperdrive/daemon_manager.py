@@ -18,7 +18,7 @@ from golem.report import report_calls, Component
 logger = logging.getLogger('golem.resources')
 
 
-GOLEM_HYPERDRIVE_VERSION = '0.3.1'
+GOLEM_HYPERDRIVE_VERSION = '0.3.2'
 GOLEM_HYPERDRIVE_LOGFILE = 'hyperg.log'
 
 
@@ -144,8 +144,8 @@ class HyperdriveDaemonManager(object):
     def _check_version(self):
         version = self.version()
         if version < self._min_version:
-            raise RuntimeError('HyperG version {} is required'
-                               .format(self._min_version))
+            raise RuntimeError('HyperG version >={} is required, you have {}.'
+                               .format(self._min_version, version))
         return version
 
     @report_calls(Component.hyperdrive, 'instance.check')
