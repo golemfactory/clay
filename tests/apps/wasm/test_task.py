@@ -1,15 +1,10 @@
-import os
 from unittest import TestCase
 from uuid import uuid4
-from mock import patch
 
 from golem_messages.factories.datastructures import p2p
-from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 
 from apps.wasm.task import (
-    WasmBenchmarkTask,
-    WasmBenchmarkTaskBuilder,
     WasmTask,
     WasmTaskBuilder,
     WasmTaskDefinition,
@@ -140,8 +135,9 @@ class WasmTaskTestCase(TempDirFixture):
         )
 
     def test_get_next_subtask_extra_data(self):
-        subt_name, subt_extra_data =\
+        _, subt_extra_data =\
             self.task.subtasks[0].new_instance('node_id')
+
         expected_dict = {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
@@ -156,7 +152,7 @@ class WasmTaskTestCase(TempDirFixture):
                  for item in expected_dict.items()])
         )
 
-        subt_name, subt_extra_data =\
+        _, subt_extra_data =\
             self.task.subtasks[1].new_instance('node_id')
         expected_dict = {
             'js_name': 'test.js',
