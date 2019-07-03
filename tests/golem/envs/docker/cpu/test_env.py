@@ -542,6 +542,21 @@ class TestRuntime(TestDockerCPUEnv):
             ANY)
         self.assertEqual(runtime, runtime_mock())
 
+    @patch('Whitelist.is_whitelisted', return_value=True)
+    @patch('DockerCPURuntime')
+    @patch_env('_create_host_config')
+    def test_port_mapping(self, create_host_config, runtime_mock, _):
+        port = 4444
+        payload = mock_docker_runtime_payload(ports=[port])
+        runtime = self.env.runtime(payload)
+        runtime_mock.assert_called_once_with(
+            payload,
+            ANY,
+            ANY,
+            self.env._port_mapper,
+        )
+        self.assertEqual(runtime, runtime_mock())
+
 
 class TestCreateHostConfig(TestDockerCPUEnv):
 
@@ -594,5 +609,47 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             dns=DockerCPUEnvironment.DNS_SERVERS,
             dns_search=DockerCPUEnvironment.DNS_SEARCH_DOMAINS,
             cap_drop=DockerCPUEnvironment.DROPPED_KERNEL_CAPABILITIES
+        )
+        self.assertEqual(host_config, local_client().create_host_config())
+
+    @patch('local_client')
+    def test_published_ports(self, local_client):
+        config = Mock(spec=DockerCPUConfig, cpu_count=2)
+        port = 4444
+        payload = mock_docker_runtime_payload(ports=[port])
+        self.hypervisor.requires_ports_publishing.return_value = True
+        host_config = self.env._create_host_config(config, payload)
+
+        local_client().create_host_config.assert_called_once_with(
+            cpuset_cpus=ANY,
+            mem_limit=ANY,
+            binds=ANY,
+            port_bindings={port: None},
+            privileged=ANY,
+            network_mode=ANY,
+            dns=ANY,
+            dns_search=ANY,
+            cap_drop=ANY,
+        )
+        self.assertEqual(host_config, local_client().create_host_config())
+
+    @patch('local_client')
+    def test_nonpublished_ports(self, local_client):
+        config = Mock(spec=DockerCPUConfig, cpu_count=2)
+        port = 4444
+        payload = mock_docker_runtime_payload(ports=[port])
+        self.hypervisor.requires_ports_publishing.return_value = False
+        host_config = self.env._create_host_config(config, payload)
+
+        local_client().create_host_config.assert_called_once_with(
+            cpuset_cpus=ANY,
+            mem_limit=ANY,
+            binds=ANY,
+            port_bindings=None,
+            privileged=ANY,
+            network_mode=ANY,
+            dns=ANY,
+            dns_search=ANY,
+            cap_drop=ANY,
         )
         self.assertEqual(host_config, local_client().create_host_config())
