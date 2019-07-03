@@ -124,15 +124,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             assert not dmm.command('deadbeef')
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
-                return_value=False)
+                return_value=True)
     @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
                 return_value=True)
     @mock.patch('golem.docker.manager.HyperVHypervisor.instance')
-    @mock.patch('golem.docker.manager.XhyveHypervisor.instance')
-    def test_get_hypervisor(self, xhyve_instance, hyperv_instance, *_):
+    def test_get_hypervisor(self, hyperv_instance, *_):
 
         def reset():
-            xhyve_instance.called = False
             hyperv_instance.called = False
 
         dmm = MockDockerManager()
@@ -142,7 +140,6 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
             assert dmm._select_hypervisor()
             assert hyperv_instance.called
-            assert not xhyve_instance.called
 
         reset()
 
@@ -153,7 +150,6 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
                 assert dmm._select_hypervisor()
                 assert not hyperv_instance.called
-                assert xhyve_instance.called
 
         reset()
 
@@ -164,7 +160,6 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
                 assert not dmm._select_hypervisor()
                 assert not hyperv_instance.called
-                assert not xhyve_instance.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=True)
     @mock.patch('golem.docker.manager.is_linux', return_value=False)
@@ -226,7 +221,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             assert dmm._env_checked
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
-                return_value=False)
+                return_value=True)
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=False)
     @mock.patch('golem.docker.manager.is_osx', return_value=True)
@@ -241,7 +236,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
-        with mock.patch('golem.docker.manager.XhyveHypervisor.instance',
+        with mock.patch('golem.docker.manager.DockerForMac.instance',
                         hypervisor):
             # pylint: disable=no-member
 

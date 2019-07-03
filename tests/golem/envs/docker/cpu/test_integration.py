@@ -1,5 +1,4 @@
 import tempfile
-import time
 from pathlib import Path
 
 import pytest
@@ -7,7 +6,7 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.trial.unittest import TestCase
 
 from golem.envs import EnvStatus, RuntimeStatus
-from golem.envs.docker import DockerPrerequisites, DockerPayload
+from golem.envs.docker import DockerPrerequisites, DockerRuntimePayload
 from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
 from golem.envs.docker.whitelist import Whitelist
 from golem.testutils import DatabaseFixture
@@ -41,7 +40,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         self.assertTrue(installed)
 
         # Create runtime
-        runtime = env.runtime(DockerPayload(
+        runtime = env.runtime(DockerRuntimePayload(
             image="busybox",
             tag="latest",
             env={},

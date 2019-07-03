@@ -289,3 +289,16 @@ class TestIncomesKeeper(TestWithDatabase):
             income.wallet_operation.refresh().status,
             model.WalletOperation.STATUS.overdue,
         )
+
+    def test_received_transfer(self):
+        self.incomes_keeper.received_transfer(
+            tx_hash=f"0x{'0'*64}",
+            sender_address=random_eth_address(),
+            recipient_address=random_eth_address(),
+            amount=1,
+            currency=model.WalletOperation.CURRENCY.ETH,
+        )
+        self.assertEqual(
+            model.WalletOperation.select().count(),
+            1,
+        )

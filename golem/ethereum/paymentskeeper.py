@@ -9,12 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class PaymentsDatabase(object):
-    """ Save and retrieve from database information about payments that this node has to make / made
+    """Save and retrieve from database information
+       about payments that this node has to make / made
     """
 
     @staticmethod
     def get_payment_value(subtask_id: str):
-        """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
+        """Returns value of a payment
+           that was done to the same node and for the same
+           task as payment for payment_info
         """
         return PaymentsDatabase.get_payment_for_subtask(subtask_id)
 
@@ -64,11 +67,32 @@ class PaymentsDatabase(object):
 
 
 class PaymentsKeeper:
-    """ Keeps information about payments for tasks that should be processed and send or received. """
+    """Keeps information about outgoing payments
+       that should be processed and send or received.
+    """
 
     def __init__(self) -> None:
         """ Create new payments keeper instance"""
         self.db = PaymentsDatabase()
+
+    @staticmethod
+    def confirmed_transfer(
+            tx_hash: str,
+            gas_cost: int,
+    ):
+        try:
+            operation = model.WalletOperation.select() \
+                .where(
+                    model.WalletOperation.tx_hash == tx_hash,
+                ).get()
+            operation.status = model.WalletOperation.STATUS.confirmed
+            operation.gas_cost = gas_cost
+            operation.save()
+        except model.WalletOperation.DoesNotExist:
+            logger.warning(
+                "Got confirmation of unknown transfer. tx_hash=%s",
+                tx_hash,
+            )
 
     def get_list_of_all_payments(self, num: Optional[int] = None,
                                  interval: Optional[datetime.timedelta] = None):

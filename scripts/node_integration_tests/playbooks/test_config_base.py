@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 class NodeConfig:
     def __init__(self) -> None:
         self.additional_args: Dict[str, Any] = {}
-        self.concent = 'staging'
+        self.concent = 'disabled'
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
         self.log_level: Optional[str] = None
