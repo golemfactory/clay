@@ -668,13 +668,6 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.datadir == self.path
         assert self.node.client.config_desc == self.node_kwargs['config_desc']
         self.assertAddSystemEvent(reactor)
-        reactor.addSystemEventTrigger.assert_has_calls(
-            [
-                call('before', 'shutdown', golem_async.asyncio_stop),
-                call('before', 'shutdown', self.node.rpc_router.stop),
-                call('before', 'shutdown', self.node.client.quit),
-            ],
-        )
 
     @patch('golem.node.gatherResults')
     @patch('golem.node.TransactionSystem')
