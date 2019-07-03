@@ -100,6 +100,7 @@ pyparsing==2.2.0
 PyQRCode==1.2.1
 pysha3==1.0.2
 pyssim==0.4
+python-snappy==0.5.4
 PyTrie==0.3
 pytz==2018.4
 PyYAML==5.1
@@ -127,6 +128,7 @@ Twisted==19.2.1
 txaio==18.8.1
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
+ujson==1.35
 urllib3==1.24.3
 watchdog==0.8.3
 web3==4.2.1

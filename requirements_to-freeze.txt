@@ -40,6 +40,7 @@ pycparser==2.17
 pydispatcher
 pyOpenSSL==17.5.0
 pysha3>=1.0.2
+python-snappy==0.5.4
 pytz
 PyYAML>=5.1
 raven
@@ -54,6 +55,7 @@ tabulate
 token_bucket==0.2.0
 Twisted==19.2.1
 txaio==18.8.1
+ujson==1.35
 urllib3==1.24.3
 web3==4.2.1
 zope.interface==4.4.2
