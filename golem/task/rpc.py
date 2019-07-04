@@ -411,7 +411,8 @@ def _create_task_error(e, _self, task_dict, **_kwargs) \
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, **_kwargs):
+def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
+        -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
@@ -458,6 +459,8 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
+        logger.info('Creating task "%r" ...', task_dict)
+
         validate_client(self.client)
         prepare_and_validate_task_dict(self.client, task_dict)
 
@@ -469,6 +472,8 @@ class ClientProvider:
             force
         )
         task_id = task.header.task_id
+
+        logger.debug('Enqueue task "%r" ...', task.task_definition.to_dict())
 
         deferred = enqueue_new_task(self.client, task, force=force)
         # We want to return quickly from create_task without waiting for
