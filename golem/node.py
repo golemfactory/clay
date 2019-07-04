@@ -14,6 +14,7 @@ from typing import (
     TypeVar,
 )
 
+from autobahn.wamp import ApplicationError
 from fs.tempfs import TempFS
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
@@ -164,8 +165,6 @@ class Node(HardwarePresetsMixin):
         self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
-        from autobahn.wamp import ApplicationError
-
         HardwarePresets.initialize(self._datadir)
         HardwarePresets.update_config(self._config_desc.hardware_preset_name,
                                       self._config_desc)
@@ -191,10 +190,10 @@ class Node(HardwarePresetsMixin):
 
                 logger.error(
                     """
-                    There was a problem setting up the environment: {}
+                    There was a problem setting up the environment: %s
                     Golem will run with limited functionality to support
                     communication with local clients.
-                    """.format(error_message)
+                    """, error_message
                 )
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
