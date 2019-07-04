@@ -278,7 +278,8 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
             model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
-        from_block = int(values.get().value) if values.count() == 1 else 0
+        from_block = int(values.get().value) if values.count() == 1 else \
+            self._sci.get_latest_confirmed_block_number()
 
         ik = self._incomes_keeper
         self._sci.subscribe_to_batch_transfers(

@@ -3,7 +3,7 @@ import os
 import subprocess
 from abc import ABCMeta
 from contextlib import contextmanager
-from typing import Optional, ClassVar, Any, List
+from typing import Optional, ClassVar, Any, List, Tuple
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
@@ -87,6 +87,12 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
                 # Get the first word of each line
                 return [l.strip().split()[0] for l in lines]
         return []
+
+    def requires_ports_publishing(self) -> bool:
+        return True
+
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        pass
 
     @property
     def config_dir(self):

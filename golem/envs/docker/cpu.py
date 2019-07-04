@@ -130,6 +130,14 @@ class DockerInput(RuntimeInput):
         self._sock.close()
 
 
+class ContainerPortMapper:
+    def __init__(self, hypervisor: Hypervisor) -> None:
+        self._hypervisor = hypervisor
+
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        return self._hypervisor.get_port_mapping(container_id, port)
+
+
 class DockerCPURuntime(Runtime):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
@@ -141,7 +149,8 @@ class DockerCPURuntime(Runtime):
             self,
             payload: DockerRuntimePayload,
             host_config: Dict[str, Any],
-            volumes: Optional[List[str]]
+            volumes: Optional[List[str]],
+            port_mapper: ContainerPortMapper,
     ) -> None:
         super().__init__(logger=logger)
 
@@ -158,9 +167,11 @@ class DockerCPURuntime(Runtime):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
+            ports=payload.ports,
             host_config=host_config,
             stdin_open=True
         )
+        self._port_mapper = port_mapper
 
     def _inspect_container(self) -> Tuple[str, int]:
         """ Inspect Docker container associated with this runtime. Returns
@@ -396,6 +407,10 @@ class DockerCPURuntime(Runtime):
     def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
         return self._get_output(stderr=True, encoding=encoding)
 
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        assert self._container_id is not None
+        return self._port_mapper.get_port_mapping(self._container_id, port)
+
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
 
@@ -411,7 +426,7 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
-    NETWORK_MODE: ClassVar[str] = 'none'
+    NETWORK_MODE: ClassVar[str] = 'bridge'
     DNS_SERVERS: ClassVar[List[str]] = []
     DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
     DROPPED_KERNEL_CAPABILITIES: ClassVar[List[str]] = [
@@ -469,6 +484,7 @@ class DockerCPUEnvironment(Environment):
         if hypervisor_cls is None:
             raise EnvironmentError("No supported hypervisor found")
         self._hypervisor = hypervisor_cls.instance(self._get_hypervisor_config)
+        self._port_mapper = ContainerPortMapper(self._hypervisor)
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
@@ -664,7 +680,12 @@ class DockerCPUEnvironment(Environment):
 
         host_config = self._create_host_config(config, payload)
         volumes = [b.target for b in payload.binds] if payload.binds else None
-        return DockerCPURuntime(payload, host_config, volumes)
+        return DockerCPURuntime(
+            payload,
+            host_config,
+            volumes,
+            self._port_mapper,
+        )
 
     def _create_host_config(
             self,
@@ -675,16 +696,20 @@ class DockerCPUEnvironment(Environment):
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
 
+        binds = None
         if payload.binds is not None:
             binds = self._hypervisor.create_volumes(payload.binds)
-        else:
-            binds = None
+
+        port_bindings = None
+        if self._hypervisor.requires_ports_publishing() and payload.ports:
+            port_bindings = {port: None for port in payload.ports}
 
         client = local_client()
         return client.create_host_config(
             cpuset_cpus=cpuset_cpus,
             mem_limit=mem_limit,
             binds=binds,
+            port_bindings=port_bindings,
             privileged=False,
             network_mode=self.NETWORK_MODE,
             dns=self.DNS_SERVERS,

@@ -252,9 +252,11 @@ class TestIncomesKeeper(TestWithDatabase):
         tx_hash = f'0x{"0"*64}'
         income1 = self._create_income(
             accepted_ts=int(time.time()),
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
             wallet_operation__tx_hash=tx_hash)
         income2 = self._create_income(
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
             wallet_operation__tx_hash=tx_hash)
         self.incomes_keeper.update_overdue_incomes()
         self.assertNotEqual(

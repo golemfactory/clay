@@ -3,7 +3,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Optional, Iterable
+from typing import Dict, Optional, Iterable, Tuple
 
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
@@ -129,6 +129,22 @@ class Hypervisor(ABC):
 
     @abstractmethod
     def constraints(self, name: Optional[str] = None) -> Dict:
+        raise NotImplementedError
+
+    @abstractmethod
+    def requires_ports_publishing(self) -> bool:
+        """
+        Should indicate whether ports have to be published while running
+        the container to make them accessible.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        """
+        Returns a socket address under which the given port on provided
+        container is accessible.
+        """
         raise NotImplementedError
 
     @contextmanager
