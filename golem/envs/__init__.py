@@ -6,7 +6,7 @@ from threading import RLock
 from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager, Set
+    Sequence, Iterable, ContextManager, Set, Tuple
 
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -317,6 +317,14 @@ class Runtime(ABC):
             stream will be raw (bytes), otherwise it will be decoded (str).
             Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
             (however, in the last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        """
+        After a runtime is created with exposed ports this function should
+        return a valid socket address where the initial port is accessible from.
+        """
         raise NotImplementedError
 
     @abstractmethod

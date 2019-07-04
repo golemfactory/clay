@@ -1,3 +1,4 @@
+import socket
 import tempfile
 from pathlib import Path
 
@@ -91,3 +92,39 @@ class TestIntegration(TestCase, DatabaseFixture):
         self.assertGreater(score, 0)
 
         yield env.clean_up()
+
+    @inlineCallbacks
+    def test_ports(self):
+        config = DockerCPUConfig(work_dir=Path(tempfile.gettempdir()))
+        env = DockerCPUEnvironment(config)
+        yield env.prepare()
+
+        Whitelist.add("busybox")
+        installed = yield env.install_prerequisites(DockerPrerequisites(
+            image="busybox",
+            tag="latest"
+        ))
+        self.assertTrue(installed)
+
+        port = 4444
+        runtime = env.runtime(DockerRuntimePayload(
+            image="busybox",
+            tag="latest",
+            command=f"nc -l -k -p {port}",
+            ports=[port],
+        ))
+        yield runtime.prepare()
+        yield runtime.start()
+
+        try:
+            mhost, mport = runtime.get_port_mapping(port)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.assertEqual(0, sock.connect_ex((mhost, mport)))
+            finally:
+                sock.close()
+        finally:
+            yield runtime.stop()
+            yield runtime.clean_up()
+
+            yield env.clean_up()
