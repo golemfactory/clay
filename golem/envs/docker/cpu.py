@@ -37,7 +37,8 @@ cpu = CONSTRAINT_KEYS['cpu']
 
 
 class DockerCPUConfigData(NamedTuple):
-    work_dir: Path
+    # The directories this environment is allowed to work in
+    work_dirs: List[Path] = []
     memory_mb: int = 1024
     cpu_count: int = 1
 
@@ -47,13 +48,14 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
 
     def to_dict(self) -> Dict[str, Any]:
         dict_ = self._asdict()
-        dict_['work_dir'] = str(dict_['work_dir'])
+        dict_['work_dirs'] = [str(work_dir) for work_dir in dict_['work_dirs']]
         return dict_
 
     @staticmethod
     def from_dict(dict_: Dict[str, Any]) -> 'DockerCPUConfig':
-        work_dir = Path(dict_.pop('work_dir'))
-        return DockerCPUConfig(work_dir=work_dir, **dict_)
+        _work_dirs = dict_.pop('work_dirs')
+        work_dirs = [Path(work_dir) for work_dir in _work_dirs]
+        return DockerCPUConfig(work_dirs=work_dirs, **dict_)
 
 
 class DockerOutput(RuntimeOutput):
@@ -485,6 +487,8 @@ class DockerCPUEnvironment(Environment):
             raise EnvironmentError("No supported hypervisor found")
         self._hypervisor = hypervisor_cls.instance(self._get_hypervisor_config)
         self._port_mapper = ContainerPortMapper(self._hypervisor)
+        self._update_work_dirs(config.work_dirs)
+        self._constrain_hypervisor(config)
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
@@ -617,8 +621,8 @@ class DockerCPUEnvironment(Environment):
         logger.info("Updating environment configuration...")
 
         self._validate_config(config)
-        if config.work_dir != self._config.work_dir:
-            self._update_work_dir(config.work_dir)
+        if config.work_dirs != self._config.work_dirs:
+            self._update_work_dirs(config.work_dirs)
         self._constrain_hypervisor(config)
         self._config = DockerCPUConfig(*config)
         self._config_updated(config)
@@ -626,18 +630,32 @@ class DockerCPUEnvironment(Environment):
     @classmethod
     def _validate_config(cls, config: DockerCPUConfig) -> None:
         logger.info("Validating configuration...")
-        if not config.work_dir.is_dir():
-            raise ValueError(f"Invalid working directory: '{config.work_dir}'")
+        for work_dir in config.work_dirs:
+            if not work_dir.is_dir():
+                raise ValueError(f"Invalid working directory: '{work_dir}'")
+            # Check for duplicates, not allowed
+            if config.work_dirs.count(work_dir) > 1:
+                raise ValueError(f"Duplicate working directory: '{work_dir}'")
+            # Check for parents, not allowed
+            for check_dir in config.work_dirs:
+                if check_dir == work_dir:
+                    continue
+                if work_dir in check_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{work_dir}', child='{check_dir}'")
+                if check_dir in work_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{check_dir}', child='{work_dir}'")
         if config.memory_mb < cls.MIN_MEMORY_MB:
             raise ValueError(f"Not enough memory: {config.memory_mb} MB")
         if config.cpu_count < cls.MIN_CPU_COUNT:
             raise ValueError(f"Not enough CPUs: {config.cpu_count}")
         logger.info("Configuration positively validated.")
 
-    def _update_work_dir(self, work_dir: Path) -> None:
+    def _update_work_dirs(self, work_dirs: List[Path]) -> None:
         logger.info("Updating hypervisor's working directory...")
         try:
-            self._hypervisor.update_work_dir(work_dir)
+            self._hypervisor.update_work_dirs(work_dirs)
         except Exception as e:
             self._error_occurred(e, "Updating working directory failed.")
             raise

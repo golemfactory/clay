@@ -439,7 +439,7 @@ class TestChangeConfig(TestTaskComputerBase):
         self.assertEqual(self.task_computer.dir_manager.root_path, '/test')
         change_docker_config.assert_called_once_with(
             config_desc=config_desc,
-            work_dir=Path('/test'),
+            work_dirs=[Path('/test')],
             run_benchmarks=False,
             in_background=True
         )
@@ -478,7 +478,7 @@ class TestChangeConfig(TestTaskComputerBase):
         self.task_computer.change_config(config_desc, in_background=False)
         change_docker_config.assert_called_once_with(
             config_desc=config_desc,
-            work_dir=mock.ANY,
+            work_dirs=mock.ANY,
             run_benchmarks=False,
             in_background=False
         )
@@ -488,7 +488,7 @@ class TestChangeConfig(TestTaskComputerBase):
         self.task_computer.change_config(config_desc, run_benchmarks=True)
         change_docker_config.assert_called_once_with(
             config_desc=config_desc,
-            work_dir=mock.ANY,
+            work_dirs=mock.ANY,
             run_benchmarks=True,
             in_background=True
         )
@@ -518,12 +518,12 @@ class TestChangeDockerConfig(TestTaskComputerBase):
         config_desc = ClientConfigDescriptor()
         config_desc.num_cores = 3
         config_desc.max_memory_size = 3000 * 1024
-        work_dir = Path('/test')
+        work_dirs = [Path('/test')]
 
         # When
         self.task_computer.change_docker_config(
             config_desc=config_desc,
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             run_benchmarks=False
         )
 
@@ -531,7 +531,7 @@ class TestChangeDockerConfig(TestTaskComputerBase):
         self.docker_cpu_env.clean_up.assert_called_once_with()
         self.docker_cpu_env.update_config.assert_called_once_with(
             DockerCPUConfig(
-                work_dir=work_dir,
+                work_dirs=work_dirs,
                 cpu_count=3,
                 memory_mb=3000
             ))
@@ -540,12 +540,12 @@ class TestChangeDockerConfig(TestTaskComputerBase):
     def test_no_hypervisor_no_benchmark(self):
         # Given
         config_desc = ClientConfigDescriptor()
-        work_dir = Path('/test')
+        work_dirs = [Path('/test')]
 
         # When
         result = self.task_computer.change_docker_config(
             config_desc=config_desc,
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             run_benchmarks=False
         )
 
@@ -559,12 +559,12 @@ class TestChangeDockerConfig(TestTaskComputerBase):
     def test_no_hypervisor_run_benchmark(self):
         # Given
         config_desc = ClientConfigDescriptor()
-        work_dir = Path('/test')
+        work_dirs = [Path('/test')]
 
         # When
         result = self.task_computer.change_docker_config(
             config_desc=config_desc,
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             run_benchmarks=True
         )
 
@@ -580,12 +580,12 @@ class TestChangeDockerConfig(TestTaskComputerBase):
         # Given
         self.docker_manager.hypervisor = mock.Mock()
         config_desc = ClientConfigDescriptor()
-        work_dir = Path('/test')
+        work_dirs = [Path('/test')]
 
         # When
         result = self.task_computer.change_docker_config(
             config_desc=config_desc,
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             run_benchmarks=False
         )
 
@@ -597,7 +597,7 @@ class TestChangeDockerConfig(TestTaskComputerBase):
 
         self.docker_manager.update_config.assert_called_once()
         _, kwargs = self.docker_manager.update_config.call_args
-        self.assertEqual(kwargs.get('work_dir'), work_dir)
+        self.assertEqual(kwargs.get('work_dirs'), work_dirs)
         self.assertEqual(kwargs.get('in_background'), True)
 
         # Check status callback
