@@ -6,6 +6,14 @@ logger = logging.getLogger(__name__)
 
 
 class TaskClient(object):
+    """
+    Class for tracking single Provider (ie. task client). We allow single
+    WantToComputeTask to be processed at once. Till it is not fully accepted
+    no other WTCT can be started for the same Provider. It tracks how many
+    subtasks with same WTCT hash has already been started not allowing more
+    than declared. Upon subtask rejection it will get rejecting all subsequent
+    starts (with any WTCT hash).
+    """
     def __init__(self):
         self._lock: Lock = Lock()
         self._started: int = 0
@@ -26,7 +34,7 @@ class TaskClient(object):
     @staticmethod
     def get_or_initialize(node_id: str,
                           node_dict: Dict[str, 'TaskClient']) -> 'TaskClient':
-        """ If given `node_id` is already in `node_dict` it's corresponding
+        """ If given `node_id` is already in `node_dict` its corresponding
         `TaskClient` instance is returned; otherwise an empty `TaskClient` is
         inserted into `node_dict` and returned
         """
@@ -40,7 +48,7 @@ class TaskClient(object):
         self._wtct_hash = None
         self._wtct_num_subtasks = 0
 
-    def start(self, wtct_hash: bytes, num_subtasks: int) -> bool:
+    def start(self, wtct_hash: Optional[bytes], num_subtasks: int) -> bool:
         if self.should_wait(wtct_hash) or self.rejected():
             return False
 

@@ -24,8 +24,6 @@ class TestTaskClient(unittest.TestCase):
         # then
         assert not tc.should_wait(b'the hash')
         assert not tc.rejected()
-        assert tc._started == 0
-        assert tc._accepted == 0
 
     def test_state_after_start(self):
         # given

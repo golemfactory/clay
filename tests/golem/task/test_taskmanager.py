@@ -331,12 +331,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.is_my_task("xyz")
         assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None) is None
 
-        assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None) is None
-
-        assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None) is None
-
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz"
         assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None)

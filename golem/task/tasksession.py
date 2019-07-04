@@ -277,9 +277,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
-        node_name_id = common.short_node_id(
-            self.key_id,
-        )
+        node_name_id = common.short_node_id(self.key_id)
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
@@ -289,6 +287,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id,
             node_name_id,
         )
+
         self.task_manager.got_wants_to_compute(msg.task_id)
 
         logger.debug(
@@ -303,7 +302,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id,
             msg.perf_index,
             msg.max_resource_size,
-            msg.max_memory_size)
+            msg.max_memory_size
+        )
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -387,7 +387,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
     ):
-        node_name_id = common.short_node_id(self.key_id)
+        if self.key_id is None:
+            logger.warning("Provider handshake required")
+            return
+        node_id: str = str(self.key_id)
+        node_name_id = common.short_node_id(node_id)
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
             logger.info(
@@ -409,7 +413,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         wtct_hash = msg.get_short_hash()
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
-                self.key_id, msg.task_id, msg.perf_index, msg.price, wtct_hash)
+                node_id, msg.task_id, msg.perf_index, msg.price, wtct_hash)
 
             logger.debug(
                 "CTD generated. task_id=%s, node=%s ctd=%s",
@@ -422,7 +426,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
-            task.accept_client(self.key_id, wtct_hash, msg.num_subtasks)
+            task.accept_client(node_id, wtct_hash, msg.num_subtasks)
 
             resources_result = None
             if ctd["resources"]:
@@ -455,7 +459,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
                 requestor_ethereum_public_key=task.header.task_owner.key,
-                provider_id=self.key_id,
+                provider_id=node_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
@@ -484,7 +488,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             history.add(
                 msg=signed_ttc,
-                node_id=self.key_id,
+                node_id=node_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )

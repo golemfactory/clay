@@ -7,9 +7,9 @@ from typing import (
     Any,
     Dict,
     List,
+    Optional,
     Type,
-    TYPE_CHECKING,
-    Union)
+    TYPE_CHECKING)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
@@ -471,8 +471,8 @@ class CoreTask(Task):
 
     def should_accept_client(self,
                              node_id: str,
-                             wtct_hash: Union[None, bytes] = None
-                            ) -> AcceptClientVerdict:
+                             wtct_hash: Optional[bytes] = None) \
+            -> AcceptClientVerdict:
         client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
@@ -483,13 +483,14 @@ class CoreTask(Task):
 
     def accept_client(self,
                       node_id: str,
-                      wtct_hash: Union[None, bytes] = None,
-                      num_subtasks: int = 1
-                     ) -> AcceptClientVerdict:
+                      wtct_hash: Optional[bytes] = None,
+                      num_subtasks: int = 1) \
+            -> AcceptClientVerdict:
         verdict = self.should_accept_client(node_id, wtct_hash)
 
-        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
-        client.start(wtct_hash, num_subtasks)
+        if verdict == AcceptClientVerdict.ACCEPTED:
+            client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
+            client.start(wtct_hash, num_subtasks)
 
         return verdict
 
