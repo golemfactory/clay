@@ -102,7 +102,6 @@ class ProviderBase(test_client.TestClientBase):
             instance = self.client.task_manager
             instance.tasks_states[task.header.task_id] = taskstate.TaskState()
             instance.tasks[task.header.task_id] = task
-        self.client.task_server.task_manager.start_task = lambda tid: tid
         self.client.task_server.task_manager.add_new_task = add_new_task
 
 
@@ -1020,7 +1019,13 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
 
 
 class TestGetFragments(ProviderBase):
+    def _create_task(self) -> taskbase.Task:
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc._prepare_task(self.client, task, force=False)
+        return golem_deferred.sync_wait(deferred)
+
     @mock.patch('os.path.getsize')
+    @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
     def test_get_fragments(self, *_):
         tm = self.client.task_manager
         task = self._create_task()
@@ -1057,11 +1062,6 @@ class TestGetFragments(ProviderBase):
 
         self.assertIsNone(task_fragments)
         self.assertTrue('Incorrect task type' in error)
-
-    def _create_task(self) -> taskbase.Task:
-        task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc.enqueue_new_task(self.client, task)
-        return golem_deferred.sync_wait(deferred)
 
     def test_no_subtasks(self, *_):
         task_id = str(uuid.uuid4())
