@@ -495,7 +495,7 @@ class TestChangeConfig(TestTaskComputerBase):
         yield self.task_computer.change_config(config_desc)
         self.docker_cpu_env.update_config.assert_called_once_with(
             DockerCPUConfig(
-                work_dir=Path('/test'),
+                work_dirs=[Path('/test')],
                 cpu_count=13,
                 memory_mb=1024,
             )

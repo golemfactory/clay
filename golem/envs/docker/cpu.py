@@ -21,12 +21,12 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
-from golem.docker.task_thread import DockerBind
-from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
-    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus, \
-    EnvId, Prerequisites, RuntimeOutput, RuntimeInput
-from golem.envs.docker import DockerPayload, DockerPrerequisites
+from golem.envs import (
+    Environment, EnvSupportStatus, RuntimePayload, EnvConfig,
+    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
+    EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
+)
+from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
 logger = logging.getLogger(__name__)
@@ -37,7 +37,8 @@ cpu = CONSTRAINT_KEYS['cpu']
 
 
 class DockerCPUConfigData(NamedTuple):
-    work_dir: Path
+    # The directories this environment is allowed to work in
+    work_dirs: List[Path] = []
     memory_mb: int = 1024
     cpu_count: int = 1
 
@@ -47,13 +48,14 @@ class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
 
     def to_dict(self) -> Dict[str, Any]:
         dict_ = self._asdict()
-        dict_['work_dir'] = str(dict_['work_dir'])
+        dict_['work_dirs'] = [str(work_dir) for work_dir in dict_['work_dirs']]
         return dict_
 
     @staticmethod
     def from_dict(dict_: Dict[str, Any]) -> 'DockerCPUConfig':
-        work_dir = Path(dict_.pop('work_dir'))
-        return DockerCPUConfig(work_dir=work_dir, **dict_)
+        _work_dirs = dict_.pop('work_dirs')
+        work_dirs = [Path(work_dir) for work_dir in _work_dirs]
+        return DockerCPUConfig(work_dirs=work_dirs, **dict_)
 
 
 class DockerOutput(RuntimeOutput):
@@ -130,6 +132,14 @@ class DockerInput(RuntimeInput):
         self._sock.close()
 
 
+class ContainerPortMapper:
+    def __init__(self, hypervisor: Hypervisor) -> None:
+        self._hypervisor = hypervisor
+
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        return self._hypervisor.get_port_mapping(container_id, port)
+
+
 class DockerCPURuntime(Runtime):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
@@ -139,9 +149,10 @@ class DockerCPURuntime(Runtime):
 
     def __init__(
             self,
-            payload: DockerPayload,
+            payload: DockerRuntimePayload,
             host_config: Dict[str, Any],
-            volumes: Optional[List[str]]
+            volumes: Optional[List[str]],
+            port_mapper: ContainerPortMapper,
     ) -> None:
         super().__init__(logger=logger)
 
@@ -158,9 +169,11 @@ class DockerCPURuntime(Runtime):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
+            ports=payload.ports,
             host_config=host_config,
             stdin_open=True
         )
+        self._port_mapper = port_mapper
 
     def _inspect_container(self) -> Tuple[str, int]:
         """ Inspect Docker container associated with this runtime. Returns
@@ -396,6 +409,10 @@ class DockerCPURuntime(Runtime):
     def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
         return self._get_output(stderr=True, encoding=encoding)
 
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        assert self._container_id is not None
+        return self._port_mapper.get_port_mapping(self._container_id, port)
+
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
 
@@ -411,9 +428,7 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
-    SHARED_DIR_PATH: ClassVar[str] = '/golem/work'
-
-    NETWORK_MODE: ClassVar[str] = 'none'
+    NETWORK_MODE: ClassVar[str] = 'bridge'
     DNS_SERVERS: ClassVar[List[str]] = []
     DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
     DROPPED_KERNEL_CAPABILITIES: ClassVar[List[str]] = [
@@ -460,8 +475,6 @@ class DockerCPUEnvironment(Environment):
         if is_osx():
             if DockerForMac.is_available():
                 return DockerForMac
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor
         return None
 
     def __init__(self, config: DockerCPUConfig) -> None:
@@ -473,6 +486,9 @@ class DockerCPUEnvironment(Environment):
         if hypervisor_cls is None:
             raise EnvironmentError("No supported hypervisor found")
         self._hypervisor = hypervisor_cls.instance(self._get_hypervisor_config)
+        self._port_mapper = ContainerPortMapper(self._hypervisor)
+        self._update_work_dirs(config.work_dirs)
+        self._constrain_hypervisor(config)
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
@@ -521,7 +537,7 @@ class DockerCPUEnvironment(Environment):
             image=image,
             tag=tag,
         ))
-        payload = DockerPayload(
+        payload = DockerRuntimePayload(
             image=image,
             tag=tag,
             user=None if is_windows() else str(os.getuid()),
@@ -531,10 +547,21 @@ class DockerCPUEnvironment(Environment):
         yield runtime.prepare()
         yield runtime.start()
         yield runtime.wait_until_stopped()
-        # Benchmark is supposed to output a single line containing a float value
-        stdout = list(runtime.stdout('utf-8'))
-        yield runtime.clean_up()
-        return float(stdout[0])
+        _, exit_code = runtime._inspect_container()
+        try:
+            if exit_code:
+                raise Exception(
+                    f'Benchmark run failed with exit code {exit_code}')
+            # Benchmark is supposed to output a single line containing
+            # a float value, but sometimes stdout is empty for a while after
+            # stopping the container
+            stdout = list(runtime.stdout('utf-8'))
+            while not stdout:
+                sleep(0.5)
+                stdout = list(runtime.stdout('utf-8'))
+            return float(stdout[0])
+        finally:
+            yield runtime.clean_up()
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
@@ -594,8 +621,8 @@ class DockerCPUEnvironment(Environment):
         logger.info("Updating environment configuration...")
 
         self._validate_config(config)
-        if config.work_dir != self._config.work_dir:
-            self._update_work_dir(config.work_dir)
+        if config.work_dirs != self._config.work_dirs:
+            self._update_work_dirs(config.work_dirs)
         self._constrain_hypervisor(config)
         self._config = DockerCPUConfig(*config)
         self._config_updated(config)
@@ -603,18 +630,32 @@ class DockerCPUEnvironment(Environment):
     @classmethod
     def _validate_config(cls, config: DockerCPUConfig) -> None:
         logger.info("Validating configuration...")
-        if not config.work_dir.is_dir():
-            raise ValueError(f"Invalid working directory: '{config.work_dir}'")
+        for work_dir in config.work_dirs:
+            if not work_dir.is_dir():
+                raise ValueError(f"Invalid working directory: '{work_dir}'")
+            # Check for duplicates, not allowed
+            if config.work_dirs.count(work_dir) > 1:
+                raise ValueError(f"Duplicate working directory: '{work_dir}'")
+            # Check for parents, not allowed
+            for check_dir in config.work_dirs:
+                if check_dir == work_dir:
+                    continue
+                if work_dir in check_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{work_dir}', child='{check_dir}'")
+                if check_dir in work_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{check_dir}', child='{work_dir}'")
         if config.memory_mb < cls.MIN_MEMORY_MB:
             raise ValueError(f"Not enough memory: {config.memory_mb} MB")
         if config.cpu_count < cls.MIN_CPU_COUNT:
             raise ValueError(f"Not enough CPUs: {config.cpu_count}")
         logger.info("Configuration positively validated.")
 
-    def _update_work_dir(self, work_dir: Path) -> None:
+    def _update_work_dirs(self, work_dirs: List[Path]) -> None:
         logger.info("Updating hypervisor's working directory...")
         try:
-            self._hypervisor.update_work_dir(work_dir)
+            self._hypervisor.update_work_dirs(work_dirs)
         except Exception as e:
             self._error_occurred(e, "Updating working directory failed.")
             raise
@@ -641,17 +682,12 @@ class DockerCPUEnvironment(Environment):
             raise
         logger.info("Hypervisor successfully reconfigured.")
 
-    @classmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) -> DockerPayload:
-        return DockerPayload.from_dict(payload_dict)
-
     def runtime(
             self,
-            payload: Payload,
-            shared_dir: Optional[Path] = None,
+            payload: RuntimePayload,
             config: Optional[EnvConfig] = None
     ) -> DockerCPURuntime:
-        assert isinstance(payload, DockerPayload)
+        assert isinstance(payload, DockerRuntimePayload)
         if not Whitelist.is_whitelisted(payload.image):
             raise RuntimeError(f"Image '{payload.image}' is not whitelisted.")
 
@@ -660,32 +696,38 @@ class DockerCPUEnvironment(Environment):
         else:
             config = self.config()
 
-        host_config = self._create_host_config(config, shared_dir)
-        volumes = [self.SHARED_DIR_PATH] if shared_dir else None
-        return DockerCPURuntime(payload, host_config, volumes)
+        host_config = self._create_host_config(config, payload)
+        volumes = [b.target for b in payload.binds] if payload.binds else None
+        return DockerCPURuntime(
+            payload,
+            host_config,
+            volumes,
+            self._port_mapper,
+        )
 
     def _create_host_config(
-            self, config: DockerCPUConfig, shared_dir: Optional[Path]) \
-            -> Dict[str, Any]:
-
+            self,
+            config: DockerCPUConfig,
+            payload: DockerRuntimePayload,
+    ) -> Dict[str, Any]:
         cpus = hardware.cpus()[:config.cpu_count]
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
 
-        if shared_dir is not None:
-            binds = self._hypervisor.create_volumes([DockerBind(
-                source=shared_dir,
-                target=self.SHARED_DIR_PATH,
-                mode='rw'
-            )])
-        else:
-            binds = None
+        binds = None
+        if payload.binds is not None:
+            binds = self._hypervisor.create_volumes(payload.binds)
+
+        port_bindings = None
+        if self._hypervisor.requires_ports_publishing() and payload.ports:
+            port_bindings = {port: None for port in payload.ports}
 
         client = local_client()
         return client.create_host_config(
             cpuset_cpus=cpuset_cpus,
             mem_limit=mem_limit,
             binds=binds,
+            port_bindings=port_bindings,
             privileged=False,
             network_mode=self.NETWORK_MODE,
             dns=self.DNS_SERVERS,

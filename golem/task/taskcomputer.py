@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -243,11 +243,11 @@ class TaskComputer(object):
         dm = self.docker_manager
         assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
-        work_dir = Path(self.dir_manager.root_path)
+        work_dirs = [Path(self.dir_manager.root_path)]
 
         yield self.docker_cpu_env.clean_up()
         self.docker_cpu_env.update_config(DockerCPUConfig(
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             cpu_count=config_desc.num_cores,
             memory_mb=scale_memory(
                 config_desc.max_memory_size,
@@ -264,7 +264,7 @@ class TaskComputer(object):
             dm.update_config(
                 status_callback=self.is_computing,
                 done_callback=deferred.callback,
-                work_dir=work_dir,
+                work_dirs=work_dirs,
                 in_background=in_background
             )
             return (yield deferred)

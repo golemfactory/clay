@@ -35,7 +35,7 @@ class TestLocalComputer(TestDirFixture):
         dm.update_config(
             status_callback=mock.Mock(),
             done_callback=mock.Mock(),
-            work_dir=self.new_path,
+            work_dirs=[self.new_path],
             in_background=True)
         files = self.additional_dir_content([1])
         lc = LocalComputer(root_path=self.path,

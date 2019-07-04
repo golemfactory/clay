@@ -112,7 +112,7 @@ class TaskServer(
 
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
         docker_cpu_config = DockerCPUConfig(
-            work_dir=Path(self.get_task_computer_root()))
+            work_dirs=[Path(self.get_task_computer_root())])
         docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(docker_cpu_env)
