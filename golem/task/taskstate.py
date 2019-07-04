@@ -171,6 +171,7 @@ class TaskStatus(Enum):
 
     def is_preparing(self) -> bool:
         return self in (
+            self.creating,
             self.notStarted,
             self.creatingDeposit,
         )
