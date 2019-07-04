@@ -278,7 +278,7 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.sci.get_eth_address(),
-            0,
+            self.sci.get_latest_confirmed_block_number(),
             ANY,
         )
 
