@@ -80,7 +80,7 @@ class CrossbarRouter(object):
                          reactor=reactor)
 
         self.node.load_keys(self.working_dir)
-        self.node._config = self.config  # noqa # pylint: disable=protected-access
+        self.node.load_config(None, self.config)
 
         return self.node.start()
 
