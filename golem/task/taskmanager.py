@@ -394,7 +394,8 @@ class TaskManager(TaskEventListener):
                          task_id: str,
                          estimated_performance: float,
                          price: int,
-                         wtct_hash: bytes) -> Optional[ComputeTaskDef]:
+                         wtct_hash: Optional[bytes]) \
+            -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
         id <node_id>.
         :return ComputeTaskDef that describe assigned subtask
@@ -476,7 +477,7 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self,
                              task_id: str,
                              node_id: str,
-                             wtct_hash: bytes) -> bool:
+                             wtct_hash: Optional[bytes]) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(
