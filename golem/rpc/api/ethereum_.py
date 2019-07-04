@@ -103,9 +103,7 @@ class ETSProvider:
             .where(
                 model.TaskPayment.wallet_operation.in_(query),
             )
-        task_payments_map = dict(
-            (tp.id, tp) for tp in tp_query
-        )
+        task_payments_map = {tp.id: tp for tp in tp_query}
 
         def payment(wallet_operation_id: int) -> typing.Optional[dict]:
             if wallet_operation_id not in task_payments_map:
