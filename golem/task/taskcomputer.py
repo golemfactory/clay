@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -248,7 +248,7 @@ class TaskComputer(object):
         return self.change_docker_config(
             config_desc=config_desc,
             run_benchmarks=run_benchmarks,
-            work_dir=Path(self.dir_manager.root_path),
+            work_dirs=[Path(self.dir_manager.root_path)],
             in_background=in_background)
 
     def config_changed(self):
@@ -260,7 +260,7 @@ class TaskComputer(object):
             self,
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
-            work_dir: Path,
+            work_dirs: List[Path],
             in_background: bool = True
     ) -> Deferred:
 
@@ -270,7 +270,7 @@ class TaskComputer(object):
 
         yield self.docker_cpu_env.clean_up()
         self.docker_cpu_env.update_config(DockerCPUConfig(
-            work_dir=work_dir,
+            work_dirs=work_dirs,
             cpu_count=config_desc.num_cores,
             memory_mb=scale_memory(
                 config_desc.max_memory_size,
@@ -311,7 +311,7 @@ class TaskComputer(object):
             dm.update_config(
                 status_callback=status_callback,
                 done_callback=done_callback,
-                work_dir=work_dir,
+                work_dirs=work_dirs,
                 in_background=in_background)
 
             return (yield deferred)

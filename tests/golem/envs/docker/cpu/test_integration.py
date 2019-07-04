@@ -21,7 +21,7 @@ class TestIntegration(TestCase, DatabaseFixture):
     @inlineCallbacks
     def test_io(self):
         # Set up environment
-        config = DockerCPUConfig(work_dir=Path(tempfile.gettempdir()))
+        config = DockerCPUConfig(work_dirs=[Path(tempfile.gettempdir())])
         env = DockerCPUEnvironment(config)
         yield env.prepare()
         self.assertEqual(env.status(), EnvStatus.ENABLED)
@@ -83,7 +83,7 @@ class TestIntegration(TestCase, DatabaseFixture):
 
     @inlineCallbacks
     def test_benchmark(self):
-        config = DockerCPUConfig(work_dir=Path(tempfile.gettempdir()))
+        config = DockerCPUConfig(work_dirs=[Path(tempfile.gettempdir())])
         env = DockerCPUEnvironment(config)
         yield env.prepare()
 
@@ -95,7 +95,7 @@ class TestIntegration(TestCase, DatabaseFixture):
 
     @inlineCallbacks
     def test_ports(self):
-        config = DockerCPUConfig(work_dir=Path(tempfile.gettempdir()))
+        config = DockerCPUConfig(work_dirs=[Path(tempfile.gettempdir())])
         env = DockerCPUEnvironment(config)
         yield env.prepare()
 

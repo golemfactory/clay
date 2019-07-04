@@ -3,7 +3,7 @@ import subprocess
 from abc import ABC, abstractmethod
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Optional, Iterable, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
@@ -28,7 +28,7 @@ class Hypervisor(ABC):
 
         self._get_config = get_config
         self._vm_name = vm_name
-        self._work_dir: Optional[Path] = None
+        self._work_dirs: List[Path] = []
 
     @classmethod
     @abstractmethod
@@ -177,8 +177,8 @@ class Hypervisor(ABC):
         with self.restart_ctx(name) as res:
             yield res
 
-    def update_work_dir(self, work_dir: Path) -> None:
-        self._work_dir = work_dir
+    def update_work_dirs(self, work_dirs: List[Path]) -> None:
+        self._work_dirs = work_dirs
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         return {

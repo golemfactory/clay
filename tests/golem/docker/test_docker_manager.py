@@ -64,9 +64,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm.check_environment()
 
         dmm.update_config(
-            status_cb, done_cb, in_background=False, work_dir=None)
+            status_cb, done_cb, in_background=False, work_dirs=[])
         dmm.update_config(
-            status_cb, done_cb, in_background=True, work_dir=None)
+            status_cb, done_cb, in_background=True, work_dirs=[])
 
     def test_constrain_not_called(self):
         dmm = MockDockerManager()
