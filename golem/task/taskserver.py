@@ -319,6 +319,7 @@ class TaskServer(
                     task_id=theader.task_id,
                 )
                 return None
+            handshake.task_id = theader.task_id
             if not handshake.success():
                 logger.debug(
                     "Handshake still in progress. key_id=%r, task_id=%r",
