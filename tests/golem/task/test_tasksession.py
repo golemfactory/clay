@@ -1241,7 +1241,6 @@ class TestDisconnect(TestCase):
         )
 
 
-@patch('golem.task.tasksession.TaskSession._cannot_assign_task')
 class TestOfferChosen(TestCase):
     def setUp(self):
         addr = twisted.internet.address.IPv4Address(
@@ -1254,17 +1253,31 @@ class TestOfferChosen(TestCase):
                 getPeer=MagicMock(return_value=addr),
             ),
         )
-        self.task_session = TaskSession(conn)
+        self.ts = TaskSession(conn)
+        self.ts.key_id = 'deadbeef'
         self.msg = msg_factories.tasks.WantToComputeTaskFactory()
 
+    @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
     def test_ctd_is_none(self, mock_cat, *_):
-        self.task_session.task_manager.get_next_subtask.return_value = None
-        self.task_session._offer_chosen(
-            msg=self.msg,
-            node_id='deadbeef',
-            is_chosen=True,
-        )
+        self.ts.task_manager.get_next_subtask.return_value = None
+        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         mock_cat.assert_called_once_with(
             self.msg.task_id,
             message.tasks.CannotAssignTask.REASON.NoMoreSubtasks,
         )
+
+    @patch('golem_messages.message.tasks.TaskToCompute.generate_ethsig')
+    @patch('golem_messages.utils.copy_and_sign')
+    @patch('golem.task.tasksession.TaskSession.send')
+    @patch('golem.network.history.add')
+    def test_multi_wtct(self, *_):
+        # given
+        self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(resources=None)
+        self.ts.task_manager.get_next_subtask.return_value = ctd
+
+        # when
+        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
+
+        # then
+        self.assertEqual(self.ts.task_manager.get_next_subtask.call_count, 3)

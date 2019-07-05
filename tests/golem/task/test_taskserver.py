@@ -870,10 +870,7 @@ class TestTaskServer2(TaskServerBase):
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
         subtask = ts.task_manager.get_next_subtask(
-            "DEF",
-            task_id,
-            1000, 10,
-            5, 10)
+            "DEF", task_id, 1000, 10, None)
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count

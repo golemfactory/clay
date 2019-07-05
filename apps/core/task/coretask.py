@@ -7,9 +7,9 @@ from typing import (
     Any,
     Dict,
     List,
+    Optional,
     Type,
-    TYPE_CHECKING,
-)
+    TYPE_CHECKING)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
@@ -46,9 +46,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class CoreTaskTypeInfo(TaskTypeInfo):
@@ -106,7 +103,6 @@ class CoreTask(Task):
     def __init__(self,
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
                  total_tasks=1):
@@ -174,7 +170,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.max_pending_client_results = max_pending_client_results
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -263,7 +258,7 @@ class CoreTask(Task):
 
         subtask["status"] = SubtaskStatus.finished
         node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
+        TaskClient.get_or_initialize(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -384,8 +379,6 @@ class CoreTask(Task):
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log",
@@ -476,25 +469,28 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def should_accept_client(self, node_id):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
+    def should_accept_client(self,
+                             node_id: str,
+                             wtct_hash: Optional[bytes] = None) \
+            -> AcceptClientVerdict:
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or \
-                client.started() - finishing >= max_finishing:
+        elif client.should_wait(wtct_hash):
             return AcceptClientVerdict.SHOULD_WAIT
 
         return AcceptClientVerdict.ACCEPTED
 
-    def accept_client(self, node_id):
-        verdict = self.should_accept_client(node_id)
+    def accept_client(self,
+                      node_id: str,
+                      wtct_hash: Optional[bytes] = None,
+                      num_subtasks: int = 1) \
+            -> AcceptClientVerdict:
+        verdict = self.should_accept_client(node_id, wtct_hash)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
-            client = TaskClient.assert_exists(node_id, self.counting_nodes)
-            client.start()
+            client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
+            client.start(wtct_hash, num_subtasks)
 
         return verdict
 
