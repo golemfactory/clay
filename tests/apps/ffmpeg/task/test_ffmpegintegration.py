@@ -114,6 +114,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
             'sample_rate',
             'sample_format',
             'bitrate',
+
+            # It's the total number of samples that is preserved. The number
+            # of samples per frame and the number of frames often both change
+            # without affecting the total.
+            'frame_count',
         },
         'subtitle': {
             'codec_name',
