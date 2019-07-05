@@ -13,7 +13,7 @@ import mock
 
 from golem_messages.message.concents import ForceReportComputedTask
 
-from golemapp import start
+from golemapp import main
 
 with mock.patch(
         "golem.network.concent.client.MSG_DELAYS",
@@ -23,4 +23,4 @@ with mock.patch(
                 ForceReportComputedTask: datetime.timedelta(seconds=10),
             },
         )):
-    start()
+    main()

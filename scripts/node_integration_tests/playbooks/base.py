@@ -9,7 +9,7 @@ import typing
 
 from bidict import bidict
 
-from twisted.internet import reactor, task
+from twisted.internet import task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
@@ -536,6 +536,8 @@ class NodeTestPlaybook:
             return
 
     def start(self) -> None:
+        from twisted.internet import reactor
+
         self.start_time = time.time()
         d = self._loop.start(self.INTERVAL, False)
         d.addErrback(lambda x: print(x))
@@ -545,6 +547,8 @@ class NodeTestPlaybook:
         reactor.run()
 
     def stop(self, exit_code):
+        from twisted.internet import reactor
+
         if not self.started:
             return
 
