@@ -8,7 +8,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
     NamedTuple, Tuple, Iterator, Union, Iterable
 
 from docker.errors import APIError
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
 
@@ -584,13 +584,14 @@ class DockerCPUEnvironment(Environment):
                              f"is in invalid state: '{self._status}'")
         logger.info("Preparing prerequisites...")
 
+        if not Whitelist.is_whitelisted(prerequisites.image):
+            logger.info(
+                "Docker image '%s' is not whitelisted.",
+                prerequisites.image,
+            )
+            return succeed(False)
+
         def _prepare():
-            if not Whitelist.is_whitelisted(prerequisites.image):
-                logger.info(
-                    "Docker image '%s' is not whitelisted.",
-                    prerequisites.image,
-                )
-                return False
             try:
                 client = local_client()
                 client.pull(
