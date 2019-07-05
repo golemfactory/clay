@@ -104,6 +104,22 @@ class TestFfmpegIntegration(TestTaskIntegration):
     ]
     # pylint: enable=line-too-long,bad-whitespace
 
+    ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS = {
+        'video': {
+            'bitrate',
+            'pixel_format',
+        },
+        'audio': {
+            'codec_name',
+            'sample_rate',
+            'sample_format',
+            'bitrate',
+        },
+        'subtitle': {
+            'codec_name',
+        },
+    }
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -207,11 +223,9 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.set_override('video', 'codec_name', VideoCodec.HEVC.value)
         operation.request_container_change(container)
         operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff({
-            'video': {'bitrate', 'frame_count', 'pixel_format'},
-            'audio': {'codec_name', 'sample_rate', 'sample_format', 'bitrate'},
-            'subtitle': {'codec_name'},
-        })
+        operation.exclude_from_diff(
+            TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+        operation.exclude_from_diff({'video': {'frame_count'}})
         operation.enable_treating_missing_attributes_as_unchanged()
 
         if not Container.is_supported(video['container'].value):
@@ -270,11 +284,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_resolution_change(resolution)
         operation.request_video_codec_change(video['video_codec'])
         operation.request_container_change(video['container'])
-        operation.exclude_from_diff({
-            'video': {'bitrate', 'pixel_format'},
-            'audio': {'codec_name', 'sample_rate', 'sample_format', 'bitrate'},
-            'subtitle': {'codec_name'},
-        })
+        operation.exclude_from_diff(
+            TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
 
         if not Container.is_supported(video['container'].value):
@@ -327,11 +338,9 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_video_codec_change(video['video_codec'])
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff({
-            'video': {'bitrate', 'frame_count', 'pixel_format'},
-            'audio': {'codec_name', 'sample_rate', 'sample_format', 'bitrate'},
-            'subtitle': {'codec_name'},
-        })
+        operation.exclude_from_diff(
+            TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+        operation.exclude_from_diff({'video': {'frame_count'}})
         fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
@@ -388,11 +397,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.request_video_codec_change(video['video_codec'])
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff({
-            'video': {'bitrate', 'pixel_format'},
-            'audio': {'codec_name', 'sample_rate', 'sample_format', 'bitrate'},
-            'subtitle': {'codec_name'},
-        })
+        operation.exclude_from_diff(
+            TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
 
         if not Container.is_supported(video['container'].value):
