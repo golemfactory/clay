@@ -25,7 +25,7 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str, short_node_id
+from golem.core.common import short_node_id
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
@@ -704,14 +704,13 @@ class TaskServer(
         netmask = 'netmask'
         not_accepted = 'not accepted'
 
-    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
+    def should_accept_provider(  # pylint: too-many-return-statements
             self,
-            node_id,
-            address,
-            task_id,
-            provider_perf,
-            max_resource_size,
-            max_memory_size):
+            node_id: str,
+            ip_addr: str,
+            task_id: str,
+            provider_perf: float,
+            max_memory_size: int) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -753,7 +752,7 @@ class TaskServer(
 
         allowed, reason = self.acl.is_allowed(node_id)
         if allowed:
-            allowed, reason = self.acl_ip.is_allowed(address)
+            allowed, reason = self.acl_ip.is_allowed(ip_addr)
         if not allowed:
             logger.info(f'provider is {reason.value}; {ids}')
             self.notify_provider_rejected(
