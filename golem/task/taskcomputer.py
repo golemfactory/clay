@@ -221,7 +221,7 @@ class TaskComputer(object):
             )[0].get(
                 'outfilebasename'
             )
-        except (IndexError, KeyError):
+        except (IndexError, KeyError, TypeError):
             outfilebasename = ''
 
         tcss = ComputingSubtaskStateSnapshot(
