@@ -17,6 +17,7 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class TaskMessagesQueueMixin:
     """Message Queue functionality for TaskServer"""
 
