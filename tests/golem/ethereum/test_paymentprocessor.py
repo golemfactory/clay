@@ -63,6 +63,7 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             model.WalletOperation.TYPE.task_payment,
             wallet_operation__direction=  # noqa
             model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
         )
         payment.wallet_operation.save(force_insert=True)
         payment.save(force_insert=True)
@@ -484,6 +485,8 @@ class UpdateOverdueTest(PaymentProcessorBase):
             wallet_operation__direction=  # noqa
             model.WalletOperation.DIRECTION.outgoing,
             created_date=timestamp_to_datetime(processed_ts),
+            wallet_operation__status=  # noqa
+            model.WalletOperation.STATUS.awaiting,
         )
         payment.wallet_operation.save(force_insert=True)
         payment.save(force_insert=True)

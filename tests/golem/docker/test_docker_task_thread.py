@@ -65,7 +65,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         ct = task_computer.counting_thread
 
         while ct and ct.is_alive():
-            task_computer.run()
+            task_computer.check_timeout()
 
             if time.time() - started > 15:
                 self.fail("Job timed out")

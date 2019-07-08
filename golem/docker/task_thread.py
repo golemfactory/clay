@@ -5,10 +5,10 @@ from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
 
 import requests
 
-from golem.core.common import posix_path
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.envs.docker import DockerBind
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
@@ -55,16 +55,6 @@ class DockerDirMapping:
         self.work.mkdir(exist_ok=exist_ok)
         self.output.mkdir(exist_ok=exist_ok)
         self.logs.mkdir(exist_ok=exist_ok)
-
-
-class DockerBind(NamedTuple):  # pylint: disable=too-few-public-methods
-    source: Path
-    target: str
-    mode: str = 'rw'
-
-    @property
-    def source_as_posix(self) -> str:
-        return posix_path(str(self.source))
 
 
 class DockerTaskThread(TaskThread):

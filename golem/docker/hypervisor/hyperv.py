@@ -303,10 +303,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         logger.info('Hyper-V: reconfiguration of VM "%s" finished', name)
 
-    def update_work_dir(self, work_dir: Path) -> None:
-        super().update_work_dir(work_dir)
+    def update_work_dirs(self, work_dirs: List[Path]) -> None:
+        super().update_work_dirs(work_dirs)
         # Ensure that working directory is shared via SMB
-        smbshare.create_share(self.DOCKER_USER, work_dir)
+        for work_dir in work_dirs:
+            smbshare.create_share(self.DOCKER_USER, work_dir)
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.reconfig')
@@ -414,15 +415,23 @@ class HyperVHypervisor(DockerMachineHypervisor):
         publish_event(event)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
-        assert self._work_dir is not None
-        try:
-            relpath = shared_dir.relative_to(self._work_dir)
-        except ValueError:
+        assert self._work_dirs, "Can not make volumes witout work_dirs"
+        work_dir = None
+        relpath = None
+        for check_dir in self._work_dirs:
+            try:
+                relpath = shared_dir.relative_to(check_dir)
+                work_dir = check_dir
+                break
+            except ValueError:
+                continue
+
+        if work_dir is None or relpath is None:
             raise ValueError(
                 f'Cannot create docker volume: "{shared_dir}" is not a '
-                f'subdirectory of docker work dir ("{self._work_dir}")')
+                f'subdirectory of docker work dirs ("{self._work_dirs}")')
 
-        share_name = smbshare.get_share_name(self._work_dir)
+        share_name = smbshare.get_share_name(work_dir)
         volume_name = f'{hostname}/{share_name}/{relpath.as_posix()}'
 
         # Client must be created here, do it in __init__() will not work since
