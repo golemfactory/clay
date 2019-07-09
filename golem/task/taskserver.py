@@ -704,7 +704,7 @@ class TaskServer(
         netmask = 'netmask'
         not_accepted = 'not accepted'
 
-    def should_accept_provider(  # pylint: too-many-return-statements
+    def should_accept_provider(  # pylint: disable=too-many-return-statements
             self,
             node_id: str,
             ip_addr: str,
