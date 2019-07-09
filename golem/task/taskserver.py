@@ -147,8 +147,6 @@ class TaskServer(
         self.sessions: Dict[str, TaskSession] = {}
         self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
 
-        OfferPool.change_interval(self.config_desc.offer_pooling_interval)
-
         self.max_trust = 1.0
         self.min_trust = 0.0
 

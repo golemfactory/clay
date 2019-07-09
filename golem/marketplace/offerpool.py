@@ -1,9 +1,12 @@
 import sys
 import logging
-from typing import List, Dict, ClassVar, Tuple
+from typing import List, Dict, ClassVar, Tuple, Optional
 
-from twisted.internet import task
-from twisted.internet.defer import Deferred
+from golem.ranking.manager.database_manager import (
+    get_provider_efficacy,
+    get_provider_efficiency,
+)
+from golem.task.taskbase import Task
 
 from .rust import order_providers
 
@@ -30,46 +33,32 @@ class Offer:
 
 class OfferPool:
 
-    _INTERVAL: ClassVar[float] = 15.0  # s
-    _pools: ClassVar[Dict[str, List[Tuple[Offer, Deferred]]]] = dict()
+    _pools: ClassVar[Dict[str, List[Offer]]] = dict()
 
     @classmethod
-    def change_interval(cls, interval: float) -> None:
-        logger.info("Offer pooling interval set to %.1f", interval)
-        cls._INTERVAL = interval
+    def add(cls, task: Task, provider_id: str, price: float) -> None:
+        if task.header.task_id not in cls._pools:
+            cls._pools[task.header.task_id] = []
+        offer = Offer(
+            scaled_price=scale_price(task.header.max_price, price),
+            reputation=get_provider_efficiency(provider_id),
+            quality=get_provider_efficacy(provider_id).vector,
+        )
+        cls._pools[task.header.task_id].append(offer)
+
+        logger.debug(
+            "Offer accepted & added to pool. offer=%s",
+            offer,
+        )
 
     @classmethod
-    def add(cls, task_id: str, offer: Offer) -> Deferred:
-        if task_id not in cls._pools:
-            logger.info(
-                "Will select providers for task %s in %.1f seconds",
-                task_id,
-                cls._INTERVAL,
-            )
-            cls._pools[task_id] = []
-
-            def _on_error(e):
-                logger.error(
-                    "Error while choosing providers for task %s: %r",
-                    task_id,
-                    e,
-                )
-            from twisted.internet import reactor
-            task.deferLater(
-                reactor,
-                cls._INTERVAL,
-                cls._choose_offers,
-                task_id,
-            ).addErrback(_on_error)
-
-        deferred = Deferred()
-        cls._pools[task_id].append((offer, deferred))
-        return deferred
+    def resolve_task_offers(cls, task: Task) -> Optional[List[Offer]]:
+        logger.info("Ordering providers for task: %s", task.header.task_id)
+        if task.header.task_id not in cls._pools:
+            return None
+        offers = cls._pools.pop(task.header.task_id)
+        return order_providers(offers)
 
     @classmethod
-    def _choose_offers(cls, task_id: str) -> None:
-        logger.info("Ordering providers for task: %s", task_id)
-        offers = cls._pools.pop(task_id)
-        order = order_providers(list(map(lambda x: x[0], offers)))
-        for i in order:
-            offers[i][1].callback(True)
+    def get_task_offer_count(cls, task) -> int:
+        return len(cls._pools[task.header.task_id]) if task.header.task_id in cls._pools else 0

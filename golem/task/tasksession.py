@@ -13,7 +13,10 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
-from twisted.internet import defer
+
+import twisted
+from twisted.internet import defer, reactor
+from twisted.internet.defer import Deferred
 
 import golem
 from golem.core import common
@@ -21,7 +24,7 @@ from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import scale_price, Offer, OfferPool
+from golem.marketplace import Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -29,10 +32,6 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
@@ -368,26 +367,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         task = self.task_manager.tasks[msg.task_id]
-        offer = Offer(
-            scaled_price=scale_price(task.header.max_price, msg.price),
-            reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector,
-        )
 
-        d = OfferPool.add(msg.task_id, offer)
-        logger.debug(
-            "Offer accepted & added to pool. offer=%s",
-            offer,
-        )
-        d.addCallback(
-            functools.partial(
-                self._offer_chosen,
-                msg=msg,
-                node_id=self.key_id,
-            ),
-        )
-        # Adding errback won't be needed in asyncio
-        d.addErrback(golem_async.default_errback)
+        def resolution():
+            for offer in OfferPool.resolve_task_offers(task):
+                self._offer_chosen(is_chosen=True, msg=msg, node_id=self.key_id)
+
+        if OfferPool.get_task_offer_count(task) == 0:
+            # This is a first offer for given task_id, schedule resolution.
+            d = Deferred()
+            d.addCallback(resolution)
+            d.addErrback(golem_async.default_errback)
+            twisted.internet.task.deferLater(
+                reactor,
+                self.task_server.config_desc.offer_pooling_interval,
+                resolution
+            )
+            logger.info(
+                "Will select providers for task %s in %.1f seconds",
+                msg.task_id,
+                self.task_server.config_desc.offer_pooling_interval
+            )
+
+        OfferPool.add(task, self.key_id, msg.price)
 
     @defer.inlineCallbacks
     def _offer_chosen(
