@@ -1,13 +1,15 @@
-import math
+import logging
+import os
 import random
 import shutil
 import time
 from contextlib import suppress
-from os import path
+from time import sleep
 from typing import Iterable, Collection, Tuple, Any, Dict
 from unittest import mock
 
 import cv2
+import math
 import numpy as np
 import pytest
 from PIL import Image
@@ -25,6 +27,7 @@ from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
     are_pixels_equal, find_fragments_in_path
 
+logger = logging.getLogger(__name__)
 
 @pytest.mark.slow
 @pytest.mark.skipif(
@@ -43,12 +46,39 @@ class TestBlenderVerifier(TempDirFixture):
             work_dir=self.new_path,
             in_background=True)
         self.resources = [
-            path.join(
+            os.path.join(
                 get_golem_path(),
                 'tests/apps/blender/verification/test_data/bmw.blend'),
         ]
         self.computer = ComputerAdapter()
         self.subtask_info = self._create_subtask_info()
+
+    def tearDown(self):
+        try:
+            self.remove_files()
+        except OSError as e:
+            logger.debug("%r", e, exc_info=True)
+            tree = ''
+            for path, _dirs, files in os.walk(self.path):
+                tree += path + '\n'
+                for f in files:
+                    tree += f + '\n'
+            logger.error("Failed to remove files %r", tree)
+            # Tie up loose ends.
+            import gc
+            gc.collect()
+            # On windows there's sometimes a problem with syncing all threads.
+            # Try again after 3 seconds
+            sleep(3)
+            self.remove_files()
+
+    def remove_files(self):
+        above_tmp_dir = os.path.dirname(self.tempdir)
+        for root, dirs, files in os.walk(above_tmp_dir, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     def test_bad_image(self):
         self._test_image(['very_bad_image.png'], 'Verification result negative')
@@ -77,7 +107,7 @@ class TestBlenderVerifier(TempDirFixture):
         )
 
     def test_multiple_subtasks_in_task(self):
-        result_image = cv2.imread(path.join(
+        result_image = cv2.imread(os.path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
             'GolemTask_10001.png',
@@ -91,7 +121,7 @@ class TestBlenderVerifier(TempDirFixture):
             ]
 
             # Store images in temporary directory to load them to verification
-            temp_path = path.join(self.tempdir, f'GolemTask_1000{i}.png')
+            temp_path = os.path.join(self.tempdir, f'GolemTask_1000{i}.png')
             cv2.imwrite(temp_path, split_image)
 
             # Create clear verification_data for every crop image
@@ -105,7 +135,7 @@ class TestBlenderVerifier(TempDirFixture):
                 ),
                 results=[temp_path],
                 resources=self.resources,
-                paths=path.dirname(self.resources[0]),
+                paths=os.path.dirname(self.resources[0]),
             )
             verifier = BlenderVerifier(verification_data, DockerTaskThread)
             d = verifier.start_verification()
@@ -124,7 +154,6 @@ class TestBlenderVerifier(TempDirFixture):
         """
         scene_y_min = 0.0
         scene_y_max = 0.53
-
         self._run_cropping_test(scene_y_min, scene_y_max)
 
     def test_random_crop_window(self):
@@ -158,7 +187,7 @@ class TestBlenderVerifier(TempDirFixture):
                 borders_y=list(borders_y),
             )],
             entrypoint='python3 /golem/entrypoints/verifier_entrypoint.py',
-            path_root=path.dirname(self.resources[0]),
+            path_root=os.path.dirname(self.resources[0]),
             subtask_id=str(random.randint(1 * 10 ** 36, 9 * 10 ** 36)),
         )
 
@@ -195,9 +224,9 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
         for result in results:
-            result_path = path.join(self.tempdir, result)
+            result_path = os.path.join(self.tempdir, result)
             shutil.copyfile(
-                path.join(
+                os.path.join(
                     get_golem_path(),
                     'tests/apps/blender/verification/test_data',
                     result,
@@ -207,7 +236,7 @@ class TestBlenderVerifier(TempDirFixture):
             verification_data['results'].append(result_path)
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data['paths'] = path.dirname(self.resources[0])
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
         d = verifier.start_verification()
@@ -229,7 +258,7 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['scene_file'] = \
             '/golem/resources/chessboard_400x400_5x5.blend'
         self.resources = [
-            path.join(
+            os.path.join(
                 get_golem_path(),
                 'tests/apps/blender/verification/test_data/'
                 'chessboard_400x400_5x5.blend'
@@ -261,7 +290,7 @@ class TestBlenderVerifier(TempDirFixture):
             'results': [result_path],
             'reference_data': [],
             'resources': self.resources,
-            'paths': path.dirname(self.resources[0])
+            'paths': os.path.dirname(self.resources[0])
         }
         return verification_data
 
@@ -274,7 +303,7 @@ class TestBlenderVerifier(TempDirFixture):
             x_max: float = 1.0,
     ) -> str:
         result = 'chessboard_fragment.png'
-        result_path = path.join(self.tempdir, result)
+        result_path = os.path.join(self.tempdir, result)
 
         image = Image.open(image_path)
         image_fragment = image.crop(
@@ -297,7 +326,7 @@ class TestBlenderVerifier(TempDirFixture):
             scene_x_min: float = 0.0,
             scene_x_max: float = 1.0,
     ) -> None:
-        full_image_path = path.join(
+        full_image_path = os.path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
             'chessboard_400x400_full.png'
@@ -323,8 +352,9 @@ class TestBlenderVerifier(TempDirFixture):
         self._assert_crops_match()
 
     def _assert_crops_match(self) -> None:
-        crops_paths = find_crop_files_in_path(path.join(self.tempdir, 'output'))
-        fragments_paths = find_fragments_in_path(self.tempdir)
+        above_tmp_dir = os.path.dirname(self.tempdir)
+        crops_paths = find_crop_files_in_path(os.path.join(above_tmp_dir, 'output'))
+        fragments_paths = find_fragments_in_path(os.path.join(above_tmp_dir, "work"))
 
         assert len(crops_paths) > 0, "There were no crops produced!"
         assert len(crops_paths) == len(
