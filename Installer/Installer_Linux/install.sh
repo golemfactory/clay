@@ -314,6 +314,7 @@ function install_dependencies()
         hyperg_version=0.0.0
     fi
     if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "$hyperg_release" > "$hyperg_version" ]]; then
+        killall -9 hyperg-worker hyperg &> /dev/null
         info_msg "Downloading: HyperG=${hyperg_release}"
         wget --show-progress -qO- ${hyperg} > ${HYPERG_PACKAGE}
         info_msg "Installing HyperG into $HOME/hyperg"
