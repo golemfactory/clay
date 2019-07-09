@@ -394,7 +394,7 @@ class TaskManager(TaskEventListener):
                          task_id: str,
                          estimated_performance: float,
                          price: int,
-                         wtct_hash: Optional[bytes]) \
+                         wtct_hash: bytes) \
             -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
         id <node_id>.

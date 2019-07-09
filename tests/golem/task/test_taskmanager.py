@@ -267,7 +267,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         wrong_task = not self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, None)
+            "DEF", "xyz", 1000, 10, b'')
         assert subtask is None
         assert wrong_task
 
@@ -281,7 +281,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, None)
+            "DEF", "xyz", 1000, 10, b'')
 
         assert subtask is None
 
@@ -296,7 +296,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         assert self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, None)
+            "DEF", "xyz", 1000, 10, b'')
 
         assert subtask is None
 
@@ -315,7 +315,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         cached_node.save()
 
         subtask = self.tm.get_next_subtask(
-            cached_node.node, "xyz", 1000, 10, None)
+            cached_node.node, "xyz", 1000, 10, b'')
         assert subtask is not None
         checker([("xyz", subtask['subtask_id'], SubtaskOp.ASSIGNED)])
         del handler
@@ -329,28 +329,28 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         task_state.status = self.tm.activeStatus[0]
 
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None) is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'') is None
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz"
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None)
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
         assert isinstance(subtask, ComputeTaskDef)
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 20000, None) is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 20000, b'') is None
 
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None)
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
         assert isinstance(subtask, ComputeTaskDef)
 
         del self.tm.subtask2task_mapping["xyzxyz2"]
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None) is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'') is None
 
         del self.tm.tasks_states["xyz"].subtask_states["xyzxyz2"]
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, None)
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
         assert isinstance(subtask, ComputeTaskDef)
 
         self.tm.delete_task("xyz")
@@ -442,8 +442,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(t)
         self.tm.start_task(t.header.task_id)
         assert self.tm.is_my_task("xyz")
-        should_wait = self.tm.should_wait_for_node("xyz", "DEF", None, )
-        ctd = self.tm.get_next_subtask("DEF", "xyz", 1030, 10, None, )
+        should_wait = self.tm.should_wait_for_node("xyz", "DEF", None)
+        ctd = self.tm.get_next_subtask("DEF", "xyz", 1030, 10, b'')
         assert ctd['subtask_id'] == "xxyyzz"
         assert not should_wait
         task_id = self.tm.subtask2task_mapping["xxyyzz"]
@@ -472,7 +472,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert progress != {}
         assert self.tm.is_my_task("abc")
         should_wait = self.tm.should_wait_for_node("abc", "DEF", None, )
-        ctd = self.tm.get_next_subtask("DEF", "abc", 1030, 10, None, )
+        ctd = self.tm.get_next_subtask("DEF", "abc", 1030, 10, b'')
         assert ctd['subtask_id'] == "aabbcc"
         assert not should_wait
         (handler, checker) = self._connect_signal_handler()
@@ -496,7 +496,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.start_task(t3.header.task_id)
         assert self.tm.is_my_task("qwe")
         assert not self.tm.should_wait_for_node("qwe", "DEF", None, )
-        ctd = self.tm.get_next_subtask("DEF", "qwe", 1030, 10, None, )
+        ctd = self.tm.get_next_subtask("DEF", "qwe", 1030, 10, b'')
         assert ctd['subtask_id'] == "qqwwee"
         (handler, checker) = self._connect_signal_handler()
         self.tm.task_computation_failure("qqwwee", "something went wrong")
@@ -521,7 +521,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.start_task(t2.header.task_id)
         assert self.tm.is_my_task("task4")
         assert not self.tm.should_wait_for_node("task4", "DEF", None, )
-        ctd = self.tm.get_next_subtask("DEF", "task4", 1000, 10, None, )
+        ctd = self.tm.get_next_subtask("DEF", "task4", 1000, 10, b'')
         assert ctd['subtask_id'] == "ttt4"
         (handler, checker) = self._connect_signal_handler()
         self.tm.computed_task_received("ttt4", [],
@@ -534,7 +534,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.verification_finished.call_count == 5
         assert self.tm.is_my_task("task4")
         should_wait = self.tm.should_wait_for_node("task4", "DEF", None)
-        ctd = self.tm.get_next_subtask("DEF", "task4", 1000, 10, None, )
+        ctd = self.tm.get_next_subtask("DEF", "task4", 1000, 10, b'')
         assert ctd['subtask_id'] == "sss4"
         self.tm.computed_task_received("sss4", [],
                                        self.tm.verification_finished)
@@ -635,7 +635,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
-        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, b'')
         (handler, checker) = self._connect_signal_handler()
         assert self.tm.task_computation_failure("aabbcc",
                                                 "something went wrong")
@@ -658,7 +658,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
-        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, b'')
         (handler, checker) = self._connect_signal_handler()
         reason = message.tasks.CannotComputeTask.REASON.WrongCTD
         assert self.tm.task_computation_cancelled("aabbcc",
@@ -685,7 +685,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
-        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, b'')
         (handler, checker) = self._connect_signal_handler()
         reason = message.tasks.CannotComputeTask.REASON.WrongCTD
         assert self.tm.task_computation_cancelled("aabbcc",
@@ -711,7 +711,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = subtask_id
-        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, b'')
         self.tm.task_computation_cancelled(
             subtask_id,
             reason,
@@ -741,12 +741,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.get_subtasks("xyz") == []
         assert self.tm.get_subtasks("TASK 1") == []
 
-        self.tm.get_next_subtask("NODEID", "xyz", 1000, 100, None,)
-        self.tm.get_next_subtask("NODEID", "TASK 1", 1000, 100, None,)
+        self.tm.get_next_subtask("NODEID", "xyz", 1000, 100, b'')
+        self.tm.get_next_subtask("NODEID", "TASK 1", 1000, 100, b'')
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
-        self.tm.get_next_subtask("NODEID2", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODEID2", "xyz", 1000, 100, b'')
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "ddeeff"
-        self.tm.get_next_subtask("NODEID3", "xyz", 1000, 100, None,)
+        self.tm.get_next_subtask("NODEID3", "xyz", 1000, 100, b'')
         self.assertEqual(set(self.tm.get_subtasks("xyz")),
                          {"xxyyzz", "aabbcc", "ddeeff"})
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
@@ -816,7 +816,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                          timeout=10, subtask_timeout=1)
                 self.tm.add_new_task(t2)
                 self.tm.start_task(t2.header.task_id)
-                self.tm.get_next_subtask("ABC", "abc", 1000, 10, None,)
+                self.tm.get_next_subtask("ABC", "abc", 1000, 10, b'')
             with freeze_time(
                 start_time + datetime.timedelta(
                     seconds=t2.header.subtask_timeout + 1,
@@ -845,7 +845,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 )
                 self.tm.add_new_task(t3)
                 self.tm.start_task(t3.header.task_id)
-                self.tm.get_next_subtask("ABC", "qwe", 1000, 10, None,)
+                self.tm.get_next_subtask("ABC", "qwe", 1000, 10, b'')
             with freeze_time(
                 start_time + datetime.timedelta(
                     seconds=t3.header.subtask_timeout + 1,

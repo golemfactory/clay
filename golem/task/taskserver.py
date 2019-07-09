@@ -710,7 +710,8 @@ class TaskServer(
             ip_addr: str,
             task_id: str,
             provider_perf: float,
-            max_memory_size: int) -> bool:
+            max_memory_size: int,
+            wtct_hash: bytes) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -782,7 +783,7 @@ class TaskServer(
             return False
 
         accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id)
+            = task.should_accept_client(node_id, wtct_hash)
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '

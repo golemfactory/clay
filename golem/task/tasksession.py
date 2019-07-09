@@ -285,7 +285,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.task_server.should_accept_provider(
                 self.key_id, self.address, msg.task_id, msg.perf_index,
-                msg.max_memory_size):
+                msg.max_memory_size, msg.get_short_hash()):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
