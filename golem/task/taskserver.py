@@ -20,7 +20,8 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
-from twisted.internet.defer import inlineCallbacks, Deferred
+from twisted.internet.defer import inlineCallbacks, Deferred, \
+    TimeoutError as DeferredTimeoutError
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -152,7 +153,7 @@ class TaskServer(
         )
         try:
             sync_wait(deferred, self.BENCHMARK_TIMEOUT)
-        except TimeoutError:
+        except DeferredTimeoutError:
             logger.warning('Benchmark computation timed out')
 
         self.task_connections_helper = TaskConnectionsHelper()
