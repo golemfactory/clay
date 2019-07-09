@@ -27,7 +27,7 @@ DEFAULT_HOST_CONFIG = dict(
               'net_admin', 'net_bind_service', 'net_raw',
               'mknod', 'audit_control', 'audit_write',
               'mac_admin', 'mac_override',
-              'sys_chroot', 'sys_admin', 'sys_boot',
+              'sys_admin', 'sys_boot',
               'sys_module', 'sys_nice', 'sys_pacct',
               'sys_resource', 'sys_time', 'sys_tty_config']
 )
