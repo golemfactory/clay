@@ -81,10 +81,7 @@ class ResourceHandshakeSessionMixin:
         if not handshake:
             self.task_server.start_handshake(key_id)
         elif handshake.success():  # handle inconsistent state between peers
-            options = self.task_server.get_share_options(handshake.nonce,
-                                                         self.address)
-            self.send(message.resources.ResourceHandshakeStart(
-                resource=handshake.hash, options=options.__dict__))
+            self.task_server.start_handshake(key_id, handshake.task_id)
 
         self._download_handshake_nonce(key_id, msg.resource, msg.options)
 
