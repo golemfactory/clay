@@ -1,10 +1,12 @@
 from typing import List
 import _pytest
+import pytest
 
 from .key_reuse import NodeKeyReuseConfig
 
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
+
 
 class DumpOutput:
     @staticmethod
@@ -26,7 +28,7 @@ class DumpOutput:
         DUMP_OUTPUT_ON_FAIL = True
 
 
-def pytest_addoption(parser: _pytest.config.Parser) -> None:
+def pytest_addoption(parser: _pytest.config.argparsing.Parser) -> None:
 
     parser.addoption(
         "--disable-key-reuse", action="store_true",
@@ -48,7 +50,7 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: _pytest.config.Config,
-                                  items: List[_pytest.main.Item]) -> None:
+                                  items: List[pytest.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
         NodeKeyReuseConfig.disable()
     hostname = config.getoption("--granary-hostname")
