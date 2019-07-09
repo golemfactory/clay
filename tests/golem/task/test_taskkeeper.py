@@ -22,9 +22,9 @@ from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
-from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.network.hyperdrive.client import HyperdriveClient
 from golem.task import taskkeeper
+from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture

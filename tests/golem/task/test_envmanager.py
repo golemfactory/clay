@@ -2,7 +2,8 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 from golem.envs import Environment
-from golem.envs.manager import EnvironmentManager
+from golem.task.appcallbacks.appcallbacks import TaskApiPayloadBuilder
+from golem.task.envmanager import EnvironmentManager
 
 
 class TestEnvironmentManager(TestCase):
@@ -10,11 +11,12 @@ class TestEnvironmentManager(TestCase):
     def setUp(self):
         self.manager = EnvironmentManager()
 
-    @staticmethod
-    def new_env(env_id):
+    def register_env(self, env_id):
         env = MagicMock(spec=Environment)
         env.metadata().id = env_id
-        return env
+        payload_builder = MagicMock(sepc_set=TaskApiPayloadBuilder)
+        self.manager.register_env(env, payload_builder)
+        return env, payload_builder
 
     def test_register_env(self):
         # Given
@@ -22,8 +24,7 @@ class TestEnvironmentManager(TestCase):
         self.assertEqual(self.manager.state(), {})
 
         # When
-        env = self.new_env("env1")
-        self.manager.register_env(env)
+        env, _ = self.register_env("env1")
 
         # Then
         self.assertEqual(self.manager.environments(), [env])
@@ -31,14 +32,13 @@ class TestEnvironmentManager(TestCase):
 
     def test_re_register_env(self):
         # Given
-        env = self.new_env("env1")
-        self.manager.register_env(env)
+        env, _ = self.register_env("env1")
         self.manager.set_enabled("env1", True)
         self.assertEqual(self.manager.environments(), [env])
         self.assertTrue(self.manager.enabled("env1"))
 
         # When
-        self.manager.register_env(env)
+        self.manager.register_env(env, MagicMock(spec=TaskApiPayloadBuilder))
 
         # Then
         self.assertEqual(self.manager.environments(), [env])
@@ -46,8 +46,7 @@ class TestEnvironmentManager(TestCase):
 
     def test_set_enabled(self):
         # Given
-        env = self.new_env("env1")
-        self.manager.register_env(env)
+        self.register_env("env1")
         self.assertFalse(self.manager.enabled("env1"))
 
         # When
@@ -62,10 +61,8 @@ class TestEnvironmentManager(TestCase):
 
     def test_set_state(self):
         # Given
-        env1 = self.new_env("env1")
-        env2 = self.new_env("env2")
-        self.manager.register_env(env1)
-        self.manager.register_env(env2)
+        self.register_env("env1")
+        self.register_env("env2")
         self.assertFalse(self.manager.enabled("env1"))
         self.assertFalse(self.manager.enabled("env2"))
 
@@ -79,3 +76,7 @@ class TestEnvironmentManager(TestCase):
         self.assertFalse(self.manager.enabled("env1"))
         self.assertTrue(self.manager.enabled("env2"))
         self.assertRaises(KeyError, self.manager.enabled, "bogus_env")
+
+    def test_payload_builder(self):
+        _, pb = self.register_env("env1")
+        self.assertEqual(pb, self.manager.payload_builder("env1"))

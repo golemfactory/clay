@@ -26,8 +26,8 @@ from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
-from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.network.hyperdrive.client import HyperdriveClientOptions
+from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger(__name__)
