@@ -32,7 +32,6 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.marketplace import OfferPool
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -164,8 +163,6 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.sessions: Dict[str, TaskSession] = {}
         self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
-
-        OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
         self.max_trust = 1.0
         self.min_trust = 0.0

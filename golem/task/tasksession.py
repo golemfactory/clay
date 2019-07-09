@@ -2,7 +2,6 @@
 import binascii
 import datetime
 import enum
-import functools
 import logging
 import time
 from typing import TYPE_CHECKING, Optional
@@ -13,7 +12,8 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
-from twisted.internet import defer
+
+from twisted.internet import defer, task
 
 import golem
 from golem.core import common
@@ -21,7 +21,10 @@ from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import scale_price, Offer, OfferPool
+from golem.marketplace import (
+    Offer, RequestorBrassMarketStrategy,
+    scale_price, ProviderStats
+)
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -29,13 +32,10 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.taskbase import Task
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -311,17 +311,48 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        task = self.task_manager.tasks[msg.task_id]
-        offer = Offer(
-            scaled_price=scale_price(task.header.max_price, msg.price),
-            reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector,
-        )
+        current_task = self.task_manager.tasks[msg.task_id]
 
-        d = OfferPool.add(msg.task_id, offer)
-        logger.debug("Offer accepted & added to pool. offer=%s", offer)
-        d.addCallback(functools.partial(self._offer_chosen, msg=msg))
-        d.addErrback(golem_async.default_errback)
+        def resolution(market_strategy, task_id):
+            for offer in market_strategy.resolve_task_offers(task_id):
+                try:
+                    offer_session = self.task_server.sessions[
+                        offer.offer_msg.provider_public_key
+                    ]
+                except KeyError:
+                    continue
+                offer_session._offer_chosen(True, offer.offer_msg)
+
+        def _on_error(e):
+            logger.error("%s", str(e))
+
+        def get_task_market_strategy(task: Task):
+            return self.task_manager.task_types[
+                task.task_definition.task_type.lower()].MARKET_STRATEGY
+
+        market_strategy = get_task_market_strategy(current_task)
+
+        if market_strategy\
+                .get_task_offer_count(msg.task_id) == 0:
+            # This is a first offer for given task_id, schedule resolution.
+            from twisted.internet import reactor
+            task.deferLater(
+                reactor,
+                self.task_server.config_desc.offer_pooling_interval,
+                resolution,
+                market_strategy,
+                msg.task_id
+            ).addErrback(_on_error)
+            logger.info(
+                "Will select providers for task %s in %.1f seconds",
+                msg.task_id,
+                self.task_server.config_desc.offer_pooling_interval
+            )
+
+        market_strategy.add(
+            Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
+                  current_task.header.max_price, msg.price)
+        )
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals

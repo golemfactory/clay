@@ -5,6 +5,7 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
+import time
 import unittest.mock as mock
 
 from freezegun import freeze_time
@@ -14,7 +15,6 @@ from golem_messages import factories
 from golem_messages import message
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
-from twisted.internet.defer import Deferred
 
 from golem import testutils
 from golem.config.active import EthereumConfig
@@ -30,6 +30,13 @@ reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
 
 # pylint: disable=protected-access
+
+
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
 
 
 @mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
@@ -226,6 +233,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             reason=cannot_reasons.PromissoryNoteMissing,
         )
 
+
 @mock.patch(
     'golem.task.tasksession.TaskSession.verify_owners',
     return_value=True,
@@ -382,15 +390,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
-@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
-@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+            mock.Mock(return_value=0.0))
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+            mock.Mock(return_value=_fake_get_efficacy()))
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
@@ -470,6 +473,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
         task.header.max_price = 0
+        task.header.subtask_timeout = 3600
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
 
@@ -478,12 +482,19 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
 
         task_session.task_server.get_share_options.return_value = X()
         task_session.task_server.get_resources.return_value = []
+        task_session.task_server.config_desc.offer_pooling_interval = 1
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',
             mock.Mock(return_value=667),
         ):
             task_session._react_to_want_to_compute_task(self.msg)
+
+        started = time.time()
+        while send_mock.call_args is None:
+            if time.time() - started > 5:
+                self.fail("Test timed out")
+            time.sleep(0.1)
 
         send_mock.assert_called()
         ttc = send_mock.call_args_list[0][0][0]
