@@ -7,7 +7,7 @@ from golem.envs.docker import DockerPrerequisites, DockerBind
 from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
 
 
-class TestDockerPayloadMaker(TestCase):
+class TestDockerPayloadBuilder(TestCase):
     def test_create_task_api_payload(self):
         prereq = DockerPrerequisites(image='image', tag='tag')
         shared_dir = Path('shared_dir')
