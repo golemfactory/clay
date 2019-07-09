@@ -83,16 +83,9 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@patch('golem.task.tasksession.get_provider_efficiency', Mock())
-@patch('golem.task.tasksession.get_provider_efficacy', Mock())
+@patch('golem.ranking.manager.databasemanager.get_provider_efficiency', mock.Mock())
+@patch('golem.ranking.manager.databasemanager.get_provider_efficacy', mock.Mock())
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
