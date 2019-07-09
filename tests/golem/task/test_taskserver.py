@@ -404,7 +404,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", task_id, provider_perf, 1, b'')
+                node_id, "127.0.0.1", task_id, provider_perf,
+                DEFAULT_MAX_MEMORY_SIZE_KB, b'')
 
             # then
             assert not accepted
