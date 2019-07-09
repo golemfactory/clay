@@ -52,6 +52,13 @@ from tests.factories import hyperdrive
 fake = faker.Faker()
 
 
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
 def fill_slots(msg):
     for slot in msg.__slots__:
         if hasattr(msg, slot):
@@ -83,16 +90,10 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@patch('golem.task.tasksession.get_provider_efficiency', Mock())
-@patch('golem.task.tasksession.get_provider_efficacy', Mock())
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency', 0.0)
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       _fake_get_efficacy())
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
@@ -126,7 +127,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
 
-    def _get_task_session(self):
+   def _get_task_session(self):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
@@ -271,6 +272,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
+        ts.task_server.config_desc.offer_pooling_interval = 1
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -302,7 +304,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         return ttc, wtct, ctd, hash_, ts
 
     @patch('golem.network.history.MessageHistoryService.instance')
-    def test_request_task(self, *_):
+    def test_request_task(self, _):
         ttc, wtct, ctd, hash_, ts = self._fake_send_ttc()
         new_path = os.path.join(self.path, "tempzip")
         expected = [

@@ -382,15 +382,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
-@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
-@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency', mock.Mock())
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy', mock.Mock())
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
