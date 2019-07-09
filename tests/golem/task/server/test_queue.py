@@ -6,9 +6,9 @@ from freezegun import freeze_time
 from golem_messages.factories import tasks as tasks_factories
 
 from golem import testutils
-from golem.envs.manager import EnvironmentManager as NewEnvManager
 from golem.network.transport import tcpserver
 from golem.task import taskkeeper
+from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.server import queue_ as srv_queue
 
 

@@ -30,7 +30,6 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
@@ -52,7 +51,9 @@ from golem.ranking.manager.database_manager import (
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task.envmanager import EnvironmentManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -111,7 +112,10 @@ class TaskServer(
             work_dirs=[Path(self.get_task_computer_root())])
         docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
         new_env_manager = EnvironmentManager()
-        new_env_manager.register_env(docker_cpu_env)
+        new_env_manager.register_env(
+            docker_cpu_env,
+            DockerTaskApiPayloadBuilder,
+        )
 
         self.node = node
         self.task_archiver = task_archiver
