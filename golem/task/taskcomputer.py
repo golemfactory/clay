@@ -33,8 +33,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-BENCHMARK_TIMEOUT = 60  # s
-
 
 class CompStats(object):
     def __init__(self):
@@ -77,15 +75,6 @@ class TaskComputer(object):
 
         self.docker_cpu_env = docker_cpu_env
         sync_wait(self.docker_cpu_env.prepare())
-
-        run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
-        deferred = self.change_config(
-            task_server.config_desc, in_background=False,
-            run_benchmarks=run_benchmarks)
-        try:
-            sync_wait(deferred, BENCHMARK_TIMEOUT)
-        except TimeoutError:
-            logger.warning('Benchmark computation timed out')
 
         self.stats = IntStatsKeeper(CompStats)
 
@@ -237,38 +226,26 @@ class TaskComputer(object):
 
         return task_header.environment
 
-    def change_config(
-            self,
-            config_desc: ClientConfigDescriptor,
-            in_background: bool = True,
-            run_benchmarks: bool = False
-    ) -> Deferred:
-        self.dir_manager = DirManager(
-            self.task_server.get_task_computer_root())
-        self.compute_tasks = config_desc.accept_tasks \
-            and not config_desc.in_shutdown
-        return self.change_docker_config(
-            config_desc=config_desc,
-            run_benchmarks=run_benchmarks,
-            work_dirs=[Path(self.dir_manager.root_path)],
-            in_background=in_background)
-
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
 
     @inlineCallbacks
-    def change_docker_config(
+    def change_config(
             self,
             config_desc: ClientConfigDescriptor,
-            run_benchmarks: bool,
-            work_dirs: List[Path],
             in_background: bool = True
     ) -> Deferred:
+
+        self.dir_manager = DirManager(
+            self.task_server.get_task_computer_root())
+        self.compute_tasks = config_desc.accept_tasks \
+            and not config_desc.in_shutdown
 
         dm = self.docker_manager
         assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
+        work_dirs = [Path(self.dir_manager.root_path)]
 
         yield self.docker_cpu_env.clean_up()
         self.docker_cpu_env.update_config(DockerCPUConfig(
@@ -282,48 +259,25 @@ class TaskComputer(object):
         ))
         yield self.docker_cpu_env.prepare()
 
-        if not dm.hypervisor and run_benchmarks:
-            deferred = Deferred()
-            self.task_server.benchmark_manager.run_all_benchmarks(
-                deferred.callback, deferred.errback
-            )
-            return (yield deferred)
-
         if dm.hypervisor and self.use_docker_manager:  # noqa pylint: disable=no-member
-            self.lock_config(True)
             deferred = Deferred()
-
-            def status_callback():
-                return self.is_computing()
-
-            def done_callback(config_differs):
-                if run_benchmarks or config_differs:
-                    self.task_server.benchmark_manager.run_all_benchmarks(
-                        deferred.callback, deferred.errback
-                    )
-                else:
-                    deferred.callback('Benchmarks not executed')
-                logger.debug("Resuming new task computation")
-                self.lock_config(False)
-                self.runnable = True
-
-            self.runnable = False
             # PyLint thinks dm is of type DockerConfigManager not DockerManager
             # pylint: disable=no-member
             dm.update_config(
-                status_callback=status_callback,
-                done_callback=done_callback,
+                status_callback=self.is_computing,
+                done_callback=deferred.callback,
                 work_dirs=work_dirs,
-                in_background=in_background)
-
+                in_background=in_background
+            )
             return (yield deferred)
 
-        return None
+        return False
 
     def register_listener(self, listener):
         self.listeners.append(listener)
 
-    def lock_config(self, on=True):
+    def lock_config(self, on: bool = True) -> None:
+        self.runnable = not on
         for l in self.listeners:
             l.lock_config(on)
 
