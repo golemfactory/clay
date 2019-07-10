@@ -77,7 +77,7 @@ class TaskClient(object):
     def rejected(self):
         with self._lock:
             if self._rejected:
-                logger.warning('%s has rejected subtask', self._wtct_hash)
+                logger.info('%s has rejected subtask', self._offer_hash)
                 return True
 
             return False
@@ -86,13 +86,13 @@ class TaskClient(object):
         with self._lock:
             if self._wtct_hash is not None:
                 if self._wtct_hash != wtct_hash:
-                    logger.warning('already processing another WTCT (%s vs %s)',
-                                   self._wtct_hash, wtct_hash)
+                    logger.debug('already processing another WTCT (%s vs %s)',
+                                 self._wtct_hash, wtct_hash)
                     return True
 
                 if self._started == self._wtct_num_subtasks:
-                    logger.warning('all subtasks for %s have been started',
-                                   self._wtct_hash)
+                    logger.info('all subtasks for %s have been started',
+                                self._wtct_hash)
                     return True
 
             return False
