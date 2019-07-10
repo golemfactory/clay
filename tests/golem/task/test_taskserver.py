@@ -646,7 +646,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 task_id=task_id,
                 provider_perf=DEFAULT_PROVIDER_PERF,
                 max_memory_size=DEFAULT_MAX_MEMORY_SIZE_KB,
-                wtct_hash=b''
+                offer_hash=b''
             )
             _assert_log_msg(
                 cm,

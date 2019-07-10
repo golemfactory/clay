@@ -352,10 +352,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             task.header.subtask_timeout,
         )
-        wtct_hash = msg.get_short_hash()
+        offer_hash = msg.get_short_hash()
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
-                node_id, msg.task_id, msg.perf_index, msg.price, wtct_hash)
+                node_id, msg.task_id, msg.perf_index, msg.price, offer_hash)
 
             logger.debug(
                 "CTD generated. task_id=%s, node=%s ctd=%s",
@@ -368,7 +368,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
-            task.accept_client(node_id, wtct_hash, msg.num_subtasks)
+            task.accept_client(node_id, offer_hash, msg.num_subtasks)
 
             resources_result = None
             if ctd["resources"]:

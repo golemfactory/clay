@@ -471,26 +471,26 @@ class CoreTask(Task):
 
     def should_accept_client(self,
                              node_id: str,
-                             wtct_hash: Optional[bytes] = None) \
+                             offer_hash: Optional[bytes] = None) \
             -> AcceptClientVerdict:
         client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif client.should_wait(wtct_hash):
+        elif client.should_wait(offer_hash):
             return AcceptClientVerdict.SHOULD_WAIT
 
         return AcceptClientVerdict.ACCEPTED
 
     def accept_client(self,
                       node_id: str,
-                      wtct_hash: Optional[bytes] = None,
+                      offer_hash: Optional[bytes] = None,
                       num_subtasks: int = 1) \
             -> AcceptClientVerdict:
-        verdict = self.should_accept_client(node_id, wtct_hash)
+        verdict = self.should_accept_client(node_id, offer_hash)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
             client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
-            client.start(wtct_hash, num_subtasks)
+            client.start(offer_hash, num_subtasks)
 
         return verdict
 

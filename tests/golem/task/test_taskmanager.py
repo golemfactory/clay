@@ -430,10 +430,10 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def restart_subtask(self, subtask_id):
                 self.restarted[subtask_id] = True
 
-            def should_accept_client(self, node_id, wtct_hash=None):
+            def should_accept_client(self, node_id, offer_hash=None):
                 return AcceptClientVerdict.ACCEPTED
 
-            def accept_client(self, node_id, wtct_hash=None,
+            def accept_client(self, node_id, offer_hash=None,
                               num_subtasks: int = 1):
                 return AcceptClientVerdict.ACCEPTED
 

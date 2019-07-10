@@ -68,13 +68,13 @@ class DummyTask(Task):
     def query_extra_data_for_test_task(self):
         pass
 
-    def should_accept_client(self, node_id, wtct_hash=None):
+    def should_accept_client(self, node_id, offer_hash=None):
         pass
 
     def to_dictionary(self):
         pass
 
-    def accept_client(self, node_id, wtct_hash=None, num_subtasks=1):
+    def accept_client(self, node_id, offer_hash=None, num_subtasks=1):
         pass
 
 

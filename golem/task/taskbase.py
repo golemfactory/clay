@@ -338,14 +338,14 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def should_accept_client(self,
                              node_id: str,
-                             wtct_hash: Optional[bytes] = None) \
+                             offer_hash: Optional[bytes] = None) \
             -> AcceptClientVerdict:
         pass
 
     @abc.abstractmethod
     def accept_client(self,
                       node_id: str,
-                      wtct_hash: Optional[bytes] = None,
+                      offer_hash: Optional[bytes] = None,
                       num_subtasks: int = 1) \
             -> AcceptClientVerdict:
         pass

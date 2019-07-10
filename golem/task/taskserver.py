@@ -480,11 +480,11 @@ class TaskServer(
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
-    def set_last_message(self, type_, t, msg, address, port):
+    def set_last_message(self, type_, t, msg, ip_addr, port):
         if len(self.last_messages) >= 5:
             self.last_messages = self.last_messages[-4:]
 
-        self.last_messages.append([type_, t, address, port, msg])
+        self.last_messages.append([type_, t, ip_addr, port, msg])
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -711,7 +711,7 @@ class TaskServer(
             task_id: str,
             provider_perf: float,
             max_memory_size: int,
-            wtct_hash: bytes) -> bool:
+            offer_hash: bytes) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -783,7 +783,7 @@ class TaskServer(
             return False
 
         accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id, wtct_hash)
+            = task.should_accept_client(node_id, offer_hash)
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '
