@@ -23,17 +23,19 @@ class GLambdaTaskEnvironment(DockerEnvironment):
                 return SupportStatus.err({
                     UnsupportReason.ENVIRONMENT_NOT_SECURE: self.ENV_ID
                 })
-            if not self._is_cgroup_cpuset_cfg_correct():
-                logger.warn('Unable to start GLambda app. Setting '
-                '`cgroup.cpuset.cpus` does not match `docker.cpuset.cpus`.'
-                'Potential fix: `cat /sys/fs/cgroup/cpuset/cpuset.cpus '
-                '> /sys/fs/cgroup/cpuset/docker/cpuset.cpus`.')
+            if not GLambdaTaskEnvironment._is_cgroup_cpuset_cfg_correct():
+                logger.warning('Unable to start GLambda app. Setting '
+                               '`cgroup.cpuset.cpus` does not match `docker.'
+                               'cpuset.cpus`. Potential fix: `cat /sys/fs/'
+                               'cgroup/cpuset/cpuset.cpus > /sys/fs/cgroup/'
+                               'cpuset/docker/cpuset.cpus`.')
                 return SupportStatus.err({
                     UnsupportReason.ENVIRONMENT_MISCONFIGURED: self.ENV_ID
                 })
         return super().check_support()
 
-    def _is_cgroup_cpuset_cfg_correct(self):
+    @staticmethod
+    def _is_cgroup_cpuset_cfg_correct():
         try:
             res = filecmp.cmp('/sys/fs/cgroup/cpuset/cpuset.cpus',
                               '/sys/fs/cgroup/cpuset/docker/cpuset.cpus')
