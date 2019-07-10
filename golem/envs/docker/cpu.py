@@ -545,21 +545,16 @@ class DockerCPUEnvironment(Environment):
         )
         runtime = self.runtime(payload)
         yield runtime.prepare()
+        # Connect to stdout before starting the runtime because getting if after
+        # the container stops sometimes fails for unclear reasons
+        stdout = runtime.stdout('utf-8')
         yield runtime.start()
         yield runtime.wait_until_stopped()
-        _, exit_code = runtime._inspect_container()
         try:
-            if exit_code:
-                raise Exception(
-                    f'Benchmark run failed with exit code {exit_code}')
-            # Benchmark is supposed to output a single line containing
-            # a float value, but sometimes stdout is empty for a while after
-            # stopping the container
-            stdout = list(runtime.stdout('utf-8'))
-            while not stdout:
-                sleep(0.5)
-                stdout = list(runtime.stdout('utf-8'))
-            return float(stdout[0])
+            if runtime.status() == RuntimeStatus.FAILURE:
+                raise RuntimeError('Benchmark run failed.')
+            # Benchmark is supposed to output a single line containing a float
+            return float(list(stdout)[0])
         finally:
             yield runtime.clean_up()
 
