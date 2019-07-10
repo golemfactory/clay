@@ -75,9 +75,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             self.client
         )
 
-    def testStartAccepting(self):
-        self.resource_server.start_accepting()
-
     def testGetDistributedResourceRoot(self):
         resource_dir = self.dir_manager.get_node_dir()
 
