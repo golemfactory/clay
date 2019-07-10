@@ -164,12 +164,3 @@ class BaseResourceServer:
             lambda _: self.client.resource_collected(res_id),
             lambda e: self._download_error(e, resource, res_id)
         )
-
-    def start_accepting(self):
-        pass
-
-    def add_files_to_send(self, *args):
-        pass
-
-    def change_config(self, config_desc):
-        pass
