@@ -2,10 +2,7 @@ import sys
 import logging
 from typing import List, Dict, ClassVar, Tuple, Optional
 
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
+import golem.ranking.manager.database_manager as dbm
 from golem.task.taskbase import Task
 
 from .rust import order_providers
@@ -41,8 +38,8 @@ class OfferPool:
             cls._pools[task.header.task_id] = []
         offer = Offer(
             scaled_price=scale_price(task.header.max_price, price),
-            reputation=get_provider_efficiency(provider_id),
-            quality=get_provider_efficacy(provider_id).vector,
+            reputation=dbm.get_provider_efficiency(provider_id),
+            quality=dbm.get_provider_efficacy(provider_id).vector,
         )
         cls._pools[task.header.task_id].append(offer)
 
@@ -62,3 +59,12 @@ class OfferPool:
     @classmethod
     def get_task_offer_count(cls, task) -> int:
         return len(cls._pools[task.header.task_id]) if task.header.task_id in cls._pools else 0
+
+    @classmethod
+    def clear_offers_for_task(cls, task) -> None:
+        if task.header.task_id in cls._pools:
+            _ = cls._pools.pop(task.header.task_id)
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._pools = dict()
