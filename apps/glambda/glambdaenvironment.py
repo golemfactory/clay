@@ -1,9 +1,13 @@
+import filecmp
+import logging
 import shutil
 from typing import Dict
 
 from golem.core.common import is_linux
 from golem.docker.environment import DockerEnvironment
 from golem.environments.environment import SupportStatus, UnsupportReason
+
+logger = logging.getLogger(__name__)
 
 
 class GLambdaTaskEnvironment(DockerEnvironment):
@@ -14,10 +18,20 @@ class GLambdaTaskEnvironment(DockerEnvironment):
 
     def check_support(self) -> SupportStatus:
         GVISOR_SECURE_RUNTIME = 'runsc'
-        if is_linux() and not shutil.which(GVISOR_SECURE_RUNTIME):
-            return SupportStatus.err({
-                UnsupportReason.ENVIRONMENT_NOT_SECURE: self.ENV_ID
-            })
+        if is_linux():
+            if not shutil.which(GVISOR_SECURE_RUNTIME):
+                return SupportStatus.err({
+                    UnsupportReason.ENVIRONMENT_NOT_SECURE: self.ENV_ID
+                })
+            if not filecmp.cmp('/sys/fs/cgroup/cpuset/cpuset.cpus',
+                       '/sys/fs/cgroup/cpuset/docker/cpuset.cpus'):
+                logger.info('Unable to start GLambda app. Setting '
+                '`cgroup.cpuset.cpus` does not match `docker.cpuset.cpus`.
+                'Potential fix: `cat /sys/fs/cgroup/cpuset/cpuset.cpus '
+                '> /sys/fs/cgroup/cpuset/docker/cpuset.cpus`.')
+                return SupportStatus.err({
+                    UnsupportReason.ENVIRONMENT_MISCONFIGURED: self.ENV_ID
+                })
         return super().check_support()
 
     def get_container_config(self) -> Dict:
