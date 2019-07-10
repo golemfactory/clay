@@ -51,8 +51,9 @@ class BenchmarkManager(object):
         def error_callback(err: Union[str, Exception]):
             logger.error("Unable to run %s benchmark: %s", env_id, str(err))
             if error:
-                logger.info('%s performance is %.2f', env_id, 0)
-                success(0)
+                if isinstance(err, str):
+                    err = Exception(err)
+                error(err)
 
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
