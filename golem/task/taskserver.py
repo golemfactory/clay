@@ -711,7 +711,7 @@ class TaskServer(
             task_id: str,
             provider_perf: float,
             max_memory_size: int,
-            offer_hash: bytes) -> bool:
+            offer_hash: str) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'

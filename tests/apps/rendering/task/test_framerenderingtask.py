@@ -67,7 +67,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test_accept_results(self):
         task = self._get_frame_task(use_frames=False)
-        task.accept_client("NODE 1")
+        task.accept_client("NODE 1", 'oh')
         task.tmp_dir = self.path
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1",
                                            "parts": 1, "frames": [1],
@@ -99,7 +99,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
         task = self._get_frame_task()
         task.tmp_dir = self.path
-        task.accept_client("NODE 1")
+        task.accept_client("NODE 1", 'oh')
         task.subtasks_given["SUBTASK1"] = {"start_task": 3,
                                            "node_id": "NODE 1",
                                            "parts": 1,

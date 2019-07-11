@@ -705,6 +705,7 @@ class TestTaskSession(TaskSessionTestBase):
     def test_react_to_want_to_compute_no_handshake(self, *_):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
+        mock_msg.get_short_hash.return_value = b'wtct hash'
 
         self._prepare_handshake_test()
 
@@ -721,6 +722,7 @@ class TestTaskSession(TaskSessionTestBase):
     def test_react_to_want_to_compute_handshake_busy(self, *_):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
+        mock_msg.get_short_hash.return_value = b'wtct hash'
 
         self._prepare_handshake_test()
 

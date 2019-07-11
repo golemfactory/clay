@@ -19,7 +19,7 @@ class TaskClient(object):
         self._started: int = 0
         self._accepted: int = 0
         self._rejected: int = 0
-        self._offer_hash: Optional[bytes] = None
+        self._offer_hash: Optional[str] = None
         self._wtct_num_subtasks: int = 0
 
     def __setstate__(self, state):
@@ -48,7 +48,7 @@ class TaskClient(object):
         self._offer_hash = None
         self._wtct_num_subtasks = 0
 
-    def start(self, offer_hash: Optional[bytes], num_subtasks: int) -> bool:
+    def start(self, offer_hash: str, num_subtasks: int) -> bool:
         if self.should_wait(offer_hash) or self.rejected():
             return False
 
@@ -77,12 +77,12 @@ class TaskClient(object):
     def rejected(self):
         with self._lock:
             if self._rejected:
-                logger.info('%s has rejected subtask', self._offer_hash)
+                logger.info('`%s` has rejected subtask', self._offer_hash)
                 return True
 
             return False
 
-    def should_wait(self, offer_hash: Optional[bytes] = None):
+    def should_wait(self, offer_hash: str):
         with self._lock:
             if self._offer_hash is not None:
                 if self._offer_hash != offer_hash:
@@ -91,7 +91,7 @@ class TaskClient(object):
                     return True
 
                 if self._started == self._wtct_num_subtasks:
-                    logger.info('all subtasks for %s have been started',
+                    logger.info('all subtasks for `%s` have been started',
                                 self._offer_hash)
                     return True
 

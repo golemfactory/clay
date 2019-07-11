@@ -303,7 +303,7 @@ class DummyTask(Task):
     def query_extra_data_for_test_task(self):
         pass
 
-    def should_accept_client(self, node_id, offer_hash=None):
+    def should_accept_client(self, node_id, offer_hash):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
@@ -314,7 +314,7 @@ class DummyTask(Task):
         except KeyError:
             return []
 
-    def accept_client(self, node_id, offer_hash=None, num_subtasks=1):
+    def accept_client(self, node_id, offer_hash, num_subtasks=1):
         print(
             "DummyTask.accept_client called"
             f" node_id={common.short_node_id(node_id)}"

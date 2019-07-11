@@ -414,22 +414,21 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_result_incoming_rejected(self):
         c = self._get_core_task()
-        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
-        c.subtasks_given["subtask1"] = {"node_id": "Node 1"}
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.ACCEPTED
+        c.subtasks_given["subtask1"] = {"node_id": "nod1"}
         c.result_incoming("subtask1")
-        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.SHOULD_WAIT
         c._mark_subtask_failed("subtask1")
-        assert c.accept_client("Node 1") == AcceptClientVerdict.REJECTED
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.REJECTED
 
     def test_result_incoming_accepted(self):
         c = self._get_core_task()
-        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
-        c.subtasks_given["subtask1"] = {"node_id": "Node 1"}
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.ACCEPTED
+        c.subtasks_given["subtask1"] = {"node_id": "nod1"}
         c.result_incoming("subtask1")
-        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.SHOULD_WAIT
         c.accept_results("subtask1", None)
-        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
-
+        assert c.accept_client("nod1", 'oh') == AcceptClientVerdict.ACCEPTED
 
     def test_accept_results(self):
         c = self._get_core_task()

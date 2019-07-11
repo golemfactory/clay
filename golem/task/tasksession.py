@@ -1,5 +1,5 @@
 # pylint: disable=too-many-lines
-
+import binascii
 import datetime
 import enum
 import functools
@@ -283,9 +283,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.got_wants_to_compute(msg.task_id)
 
+        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         if not self.task_server.should_accept_provider(
                 self.key_id, self.address, msg.task_id, msg.perf_index,
-                msg.max_memory_size, msg.get_short_hash()):
+                msg.max_memory_size, offer_hash):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -352,7 +353,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             task.header.subtask_timeout,
         )
-        offer_hash = msg.get_short_hash()
+        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
                 node_id, msg.task_id, msg.perf_index, msg.price, offer_hash)

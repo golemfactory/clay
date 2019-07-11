@@ -471,8 +471,7 @@ class CoreTask(Task):
 
     def should_accept_client(self,
                              node_id: str,
-                             offer_hash: Optional[bytes] = None) \
-            -> AcceptClientVerdict:
+                             offer_hash: str) -> AcceptClientVerdict:
         client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
@@ -483,9 +482,8 @@ class CoreTask(Task):
 
     def accept_client(self,
                       node_id: str,
-                      offer_hash: Optional[bytes] = None,
-                      num_subtasks: int = 1) \
-            -> AcceptClientVerdict:
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
         verdict = self.should_accept_client(node_id, offer_hash)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
@@ -501,7 +499,7 @@ class CoreTask(Task):
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
-        self.accept_client(new_subtask['node_id'])
+        self.accept_client(new_subtask['node_id'], '')
         self.result_incoming(subtask_id)
         self.interpret_task_results(
             subtask_id=subtask_id,

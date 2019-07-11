@@ -338,16 +338,14 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def should_accept_client(self,
                              node_id: str,
-                             offer_hash: Optional[bytes] = None) \
-            -> AcceptClientVerdict:
+                             offer_hash: str) -> AcceptClientVerdict:
         pass
 
     @abc.abstractmethod
     def accept_client(self,
                       node_id: str,
-                      offer_hash: Optional[bytes] = None,
-                      num_subtasks: int = 1) \
-            -> AcceptClientVerdict:
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
         pass
 
     # pylint: disable=unused-argument, no-self-use
