@@ -18,7 +18,7 @@ class TaskApiPayloadBuilder(abc.ABC):
             command: str,
             port: int,
     ) -> RuntimePayload:
-        raise NotImplementedError()
+        raise NotImplementedError
 
 
 class EnvironmentCallbacks(AppCallbacks):
