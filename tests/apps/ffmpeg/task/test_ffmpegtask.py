@@ -209,15 +209,12 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(extra_data['track'],
                          '/golem/resources/test_video[video-only]_0.mp4')
         vargs = extra_data['targs']['video']
-        aargs = extra_data['targs']['audio']
         self.assertEqual(vargs['codec'], d['options']['video']['codec'])
         self.assertEqual(vargs['bitrate'], d['options']['video']['bit_rate'])
         self.assertEqual(extra_data['targs']['resolution'],
                          d['options']['video']['resolution'])
         self.assertEqual(extra_data['targs']['frame_rate'],
                          d['options']['video']['frame_rate'])
-        self.assertEqual(aargs['codec'], d['options']['audio']['codec'])
-        self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
         self.assertEqual(extra_data['output_stream'],
                          '/golem/output/test_video[video-only]_0_TC.mp4')
 

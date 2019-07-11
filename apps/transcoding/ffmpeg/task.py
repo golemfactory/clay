@@ -26,7 +26,6 @@ class ffmpegTask(TranscodingTask):
     def _get_extra_data(self, subtask_num: int):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
-        audio_params = transcoding_options.audio_params
         if subtask_num >= len(self.chunks):
             raise AssertionError('Requested number subtask {} is greater than '
                                  'number of resources [size={}]'
@@ -47,7 +46,6 @@ class ffmpegTask(TranscodingTask):
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
         vc = video_params.codec.value if video_params.codec else None
-        ac = audio_params.codec.value if audio_params.codec else None
         container = transcoding_options.output_container
         extra_data = {
             'track': chunk,
@@ -56,10 +54,6 @@ class ffmpegTask(TranscodingTask):
                 'video': {
                     'codec': vc,
                     'bitrate': video_params.bitrate
-                },
-                'audio': {
-                    'codec': ac,
-                    'bitrate': audio_params.bitrate
                 },
                 'resolution': resolution,
                 'frame_rate': video_params.frame_rate,
@@ -74,7 +68,6 @@ class ffmpegTask(TranscodingTask):
     def _clear_none_values(self, d: dict):
         return {k: v if not isinstance(v, dict) else self._clear_none_values(v)
                 for k, v in d.items() if v is not None}
-
 
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):

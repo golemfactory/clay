@@ -121,6 +121,7 @@ class StreamOperator:
             output_file_basename,
             task_dir,
             container,
+            audio_params,
             strip_unsupported_data_streams=False,
             strip_unsupported_subtitle_streams=False):
 
@@ -147,6 +148,7 @@ class StreamOperator:
             chunks_in_container,
             output_file_basename,
             container,
+            audio_params,
             strip_unsupported_data_streams,
             strip_unsupported_subtitle_streams
         )

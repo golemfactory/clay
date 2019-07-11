@@ -186,6 +186,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             output_basename,
             self.task_dir,
             self.task_definition.options.output_container,
+            self.task_definition.options.audio_params,
             self.task_definition.options.strip_unsupported_data_streams,
             self.task_definition.options.strip_unsupported_subtitle_streams,
         )

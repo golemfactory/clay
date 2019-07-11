@@ -10,6 +10,7 @@ from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.utils import StreamOperator
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import \
      Commands, FFMPEG_BASE_SCRIPT
+from apps.transcoding.task import TranscodingTaskOptions
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -93,6 +94,7 @@ class TestffmpegTranscoding(TempDirFixture):
             output_name,
             task_dir,
             output_container,
+            TranscodingTaskOptions.AudioParams(),
         )
         assert os.path.isfile(os.path.join(task_dir, 'merge',
                                            'output', output_name))
@@ -104,7 +106,9 @@ class TestffmpegTranscoding(TempDirFixture):
                 [],
                 'output.mp4',
                 self.tempdir,
-                Container.c_MP4)
+                Container.c_MP4,
+                TranscodingTaskOptions.AudioParams(),
+            )
 
     def test_collect_nonexistent_results(self):
         with self.assertRaises(ffmpegException):
@@ -175,6 +179,7 @@ class TestffmpegTranscoding(TempDirFixture):
                 'output.mp4',
                 self.tempdir,
                 Container.c_MP4,
+                TranscodingTaskOptions.AudioParams(),
             )
 
 class TestffmpegDockerJob(TestDockerJob):
