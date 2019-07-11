@@ -1,5 +1,5 @@
 # pylint: disable=too-many-lines
-
+import binascii
 import datetime
 import enum
 import functools
@@ -277,96 +277,39 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
-        node_name_id = common.short_node_id(self.key_id)
-        logger.info("Received offer to compute. task_id=%r, node=%r",
-                    msg.task_id, node_name_id)
-
-        logger.debug(
-            "Calling `task_manager.got_wants_to_compute`,"
-            "task_id=%s, node=%s",
-            msg.task_id,
-            node_name_id,
-        )
+        task_node_info = "task_id=%r, node=%r" % (
+            msg.task_id, common.short_node_id(self.key_id))
+        logger.info("Received offer to compute. %s", task_node_info)
 
         self.task_manager.got_wants_to_compute(msg.task_id)
 
-        logger.debug(
-            "WTCT processing... task_id=%s, node=%s",
-            msg.task_id,
-            node_name_id,
-        )
-
-        task_server_ok = self.task_server.should_accept_provider(
-            self.key_id,
-            self.address,
-            msg.task_id,
-            msg.perf_index,
-            msg.max_resource_size,
-            msg.max_memory_size
-        )
-
-        logger.debug(
-            "Task server ok? should_accept_provider=%s task_id=%s node=%s",
-            task_server_ok,
-            msg.task_id,
-            node_name_id,
-        )
-
-        if not task_server_ok:
+        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
+        if not self.task_server.should_accept_provider(
+                self.key_id, self.address, msg.task_id, msg.perf_index,
+                msg.max_memory_size, offer_hash):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
         if not self.task_manager.check_next_subtask(
                 msg.task_id, msg.price):
-            logger.debug(
-                "check_next_subtask False. task_id=%s, node=%s",
-                msg.task_id,
-                node_name_id,
-            )
+            logger.debug("check_next_subtask False. %s", task_node_info)
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
         if self.task_manager.task_finished(msg.task_id):
-            logger.debug(
-                "TaskFinished. task_id=%s, provider=%s",
-                msg.task_id,
-                node_name_id,
-            )
+            logger.debug("TaskFinished. %s", task_node_info)
             self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
-            return
-
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id,
-                                                  msg.get_short_hash()):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            task = self.task_manager.tasks[msg.task_id]
-            subtasks = task.get_finishing_subtasks(
-                node_id=self.key_id,
-            )
-            previous_ttc = get_task_message(
-                message_class_name='TaskToCompute',
-                node_id=self.key_id,
-                task_id=msg.task_id,
-                subtask_id=subtasks[0]['subtask_id'],
-            )
-            self.send(
-                message.tasks.WaitingForResults(
-                    task_to_compute=previous_ttc,
-                ),
-            )
             return
 
         if self._handshake_required(self.key_id):
             logger.warning('Can not accept offer: Resource handshake is'
-                           ' required. task_id=%r, node=%r',
-                           msg.task_id, node_name_id)
+                           ' required. %s', task_node_info)
             self.task_server.start_handshake(self.key_id)
             return
 
         elif self._handshake_in_progress(self.key_id):
             logger.warning('Can not accept offer: Resource handshake is in'
-                           ' progress. task_id=%r, node=%r',
-                           msg.task_id, node_name_id)
+                           ' progress. %s', task_node_info)
             return
 
         task = self.task_manager.tasks[msg.task_id]
@@ -382,23 +325,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         d.addErrback(golem_async.default_errback)
 
     @defer.inlineCallbacks
-    def _offer_chosen(
+    def _offer_chosen(  # pylint: disable=too-many-locals
             self,
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
     ):
-        if self.key_id is None:
-            logger.warning("Provider handshake required")
-            return
-        node_id: str = str(self.key_id)
-        node_name_id = common.short_node_id(node_id)
+        assert self.key_id is not None
+
+        task_node_info = "task_id=%r, node=%r" % (
+            msg.task_id, common.short_node_id(self.key_id))
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
-            logger.info(
-                "Provider not chosen by marketplace. task_id=%r, node=%r",
-                msg.task_id,
-                node_name_id,
-            )
+            logger.info("Provider not chosen by marketplace:%s", task_node_info)
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -410,23 +348,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             task.header.subtask_timeout,
         )
-        wtct_hash = msg.get_short_hash()
+        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
-                node_id, msg.task_id, msg.perf_index, msg.price, wtct_hash)
+                self.key_id, msg.task_id, msg.perf_index, msg.price, offer_hash)
 
-            logger.debug(
-                "CTD generated. task_id=%s, node=%s ctd=%s",
-                msg.task_id,
-                node_name_id,
-                ctd,
-            )
-
+            logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
             if ctd is None:
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
-            task.accept_client(node_id, wtct_hash, msg.num_subtasks)
+            task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
 
             resources_result = None
             if ctd["resources"]:
@@ -442,10 +374,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 logger.info("resources_result: %r", resources_result)
 
             logger.info(
-                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-                msg.task_id,
-                node_name_id,
-                ctd["subtask_id"],
+                "Subtask assigned. %s, subtask_id=%r",
+                task_node_info, ctd["subtask_id"]
             )
             if resources_result:
                 _, _, package_hash, package_size = resources_result
@@ -459,7 +389,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
                 requestor_ethereum_public_key=task.header.task_owner.key,
-                provider_id=node_id,
+                provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
@@ -488,7 +418,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             history.add(
                 msg=signed_ttc,
-                node_id=node_id,
+                node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
@@ -626,17 +556,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                         f'{resource_size}, only {max_resource_size} available')
             return False
         return True
-
-    def _react_to_waiting_for_results(
-            self,
-            msg: message.tasks.WaitingForResults,
-    ):
-        if not self.verify_owners(msg, my_role=Actor.Provider):
-            return
-        self.task_server.subtask_waiting(
-            task_id=msg.task_id,
-            subtask_id=msg.subtask_id,
-        )
 
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.subtask_id):
@@ -1081,8 +1000,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_rand_val,
             message.tasks.StartSessionResponse:
                 self._react_to_start_session_response,
-            message.tasks.WaitingForResults:
-                self._react_to_waiting_for_results,
 
             # Concent messages
             message.tasks.AckReportComputedTask:

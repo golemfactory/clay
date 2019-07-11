@@ -19,7 +19,7 @@ class TaskClient(object):
         self._started: int = 0
         self._accepted: int = 0
         self._rejected: int = 0
-        self._wtct_hash: Optional[bytes] = None
+        self._offer_hash: Optional[str] = None
         self._wtct_num_subtasks: int = 0
 
     def __setstate__(self, state):
@@ -45,15 +45,15 @@ class TaskClient(object):
     def _reset(self):
         self._started = 0
         self._accepted = 0
-        self._wtct_hash = None
+        self._offer_hash = None
         self._wtct_num_subtasks = 0
 
-    def start(self, wtct_hash: Optional[bytes], num_subtasks: int) -> bool:
-        if self.should_wait(wtct_hash) or self.rejected():
+    def start(self, offer_hash: str, num_subtasks: int) -> bool:
+        if self.should_wait(offer_hash) or self.rejected():
             return False
 
         with self._lock:
-            self._wtct_hash = wtct_hash
+            self._offer_hash = offer_hash
             self._wtct_num_subtasks = num_subtasks
             self._started += 1
 
@@ -77,22 +77,22 @@ class TaskClient(object):
     def rejected(self):
         with self._lock:
             if self._rejected:
-                logger.warning('%s has rejected subtask', self._wtct_hash)
+                logger.info('`%s` has rejected subtask', self._offer_hash)
                 return True
 
             return False
 
-    def should_wait(self, wtct_hash: Optional[bytes] = None):
+    def should_wait(self, offer_hash: str):
         with self._lock:
-            if self._wtct_hash is not None:
-                if self._wtct_hash != wtct_hash:
-                    logger.warning('already processing another WTCT (%s vs %s)',
-                                   self._wtct_hash, wtct_hash)
+            if self._offer_hash is not None:
+                if self._offer_hash != offer_hash:
+                    logger.debug('already processing another offer (%s vs %s)',
+                                 self._offer_hash, offer_hash)
                     return True
 
                 if self._started == self._wtct_num_subtasks:
-                    logger.warning('all subtasks for %s have been started',
-                                   self._wtct_hash)
+                    logger.info('all subtasks for `%s` have been started',
+                                self._offer_hash)
                     return True
 
             return False

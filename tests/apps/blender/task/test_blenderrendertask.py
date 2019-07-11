@@ -346,12 +346,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
-        self.bt.accept_client("ABC", b'wtct hash')
+        self.bt.accept_client("ABC", 'offer hash')
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.should_accept_client("ABC", b'wtct hash') != \
+        assert self.bt.should_accept_client("ABC", 'offer hash') != \
             AcceptClientVerdict.ACCEPTED
 
     def test_get_min_max_y(self):

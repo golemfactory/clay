@@ -25,7 +25,7 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import node_info_str, short_node_id
+from golem.core.common import short_node_id
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
@@ -480,11 +480,11 @@ class TaskServer(
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
-    def set_last_message(self, type_, t, msg, address, port):
+    def set_last_message(self, type_, t, msg, ip_addr, port):
         if len(self.last_messages) >= 5:
             self.last_messages = self.last_messages[-4:]
 
-        self.last_messages.append([type_, t, address, port, msg])
+        self.last_messages.append([type_, t, ip_addr, port, msg])
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -704,14 +704,14 @@ class TaskServer(
         netmask = 'netmask'
         not_accepted = 'not accepted'
 
-    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
+    def should_accept_provider(  # pylint: disable=too-many-return-statements
             self,
-            node_id,
-            address,
-            task_id,
-            provider_perf,
-            max_resource_size,
-            max_memory_size):
+            node_id: str,
+            ip_addr: str,
+            task_id: str,
+            provider_perf: float,
+            max_memory_size: int,
+            offer_hash: str) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -753,7 +753,7 @@ class TaskServer(
 
         allowed, reason = self.acl.is_allowed(node_id)
         if allowed:
-            allowed, reason = self.acl_ip.is_allowed(address)
+            allowed, reason = self.acl_ip.is_allowed(ip_addr)
         if not allowed:
             logger.info(f'provider is {reason.value}; {ids}')
             self.notify_provider_rejected(
@@ -783,7 +783,7 @@ class TaskServer(
             return False
 
         accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id)
+            = task.should_accept_client(node_id, offer_hash)
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '

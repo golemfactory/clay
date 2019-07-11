@@ -394,7 +394,7 @@ class TaskManager(TaskEventListener):
                          task_id: str,
                          estimated_performance: float,
                          price: int,
-                         wtct_hash: Optional[bytes]) \
+                         offer_hash: str) \
             -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
         id <node_id>.
@@ -420,7 +420,7 @@ class TaskManager(TaskEventListener):
         if not self.task_needs_computation(task_id):
             return None
 
-        if self.should_wait_for_node(task_id, node_id, wtct_hash):
+        if self.should_wait_for_node(task_id, node_id, offer_hash):
             return None
 
         task = self.tasks[task_id]
@@ -477,7 +477,7 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self,
                              task_id: str,
                              node_id: str,
-                             wtct_hash: Optional[bytes]) -> bool:
+                             offer_hash: str) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(
@@ -489,7 +489,7 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
-        verdict = task.should_accept_client(node_id, wtct_hash)
+        verdict = task.should_accept_client(node_id, offer_hash)
         logger.debug(
             "Should accept client verdict. verdict=%s, task=%s, node=%s",
             verdict,
