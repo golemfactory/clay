@@ -48,7 +48,7 @@ class TestBlenderVerifier(TempDirFixture):
         self.resources = [
             os.path.join(
                 get_golem_path(),
-                'tests/apps/blender/verification/test_data/bmw.blend'),
+                'tests/apps/blender/verification/test_data/chessboard_400x400.blend'),
         ]
         self.computer = ComputerAdapter()
         self.subtask_info = self._create_subtask_info()
@@ -84,9 +84,9 @@ class TestBlenderVerifier(TempDirFixture):
         self._test_image(['very_bad_image.png'], 'Verification result negative')
 
     def test_good_image(self):
-        self._test_image(['GolemTask_10001.png'])
+        self._test_image(['chessboard_400x400_1.png'])
 
-    def test_subsampled_image(self):
+    def test_blurred_image(self):
         self._test_image(
             ['almost_good_image.png'],
             'Verification result negative',
@@ -96,27 +96,21 @@ class TestBlenderVerifier(TempDirFixture):
         self.subtask_info['all_frames'] = [1, 2]
         self.subtask_info['frames'] = [1, 2]
         self.subtask_info['ctd']['extra_data']['frames'] = [1, 2]
-        self._test_image(['GolemTask_10001.png', 'GolemTask_10002.png'])
+        self._test_image(['chessboard_400x400_1.png', 'chessboard_400x400_2.png'])
 
     def test_docker_error(self):
         # Set na invalid param so that Docker computation fails inside
         self.subtask_info['frames'] = None
         self._test_image(
-            ['GolemTask_10001.png'],
+            ['chessboard_400x400_1.png'],
             'Subtask computation failed with exit code 1',
         )
 
-    @pytest.mark.skip(reason="Due to the probabilistic nature of the"
-                             "classifier, this test sometimes fails even if"
-                             "everything is working as intended. In case of"
-                             "fail, crop files need to be examined to"
-                             "determine whether the fail was legitimate"
-                             "or accidental")
     def test_multiple_subtasks_in_task(self):
         result_image = cv2.imread(os.path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
-            'GolemTask_10001.png',
+            'chessboard_400x400_1.png',
         ))
         y_crop_coordinate_step = 0
         y_crop_float_coordinate_step = 0.0
@@ -124,7 +118,7 @@ class TestBlenderVerifier(TempDirFixture):
             with self.subTest(i=i):
                 # Split image to cropped parts
                 split_image = result_image[
-                    y_crop_coordinate_step:y_crop_coordinate_step + 30, 0:150
+                    y_crop_coordinate_step:y_crop_coordinate_step + 80, 0:400
                 ]
 
                 # Store images in temporary directory to load them to verification
@@ -149,7 +143,7 @@ class TestBlenderVerifier(TempDirFixture):
                 sync_wait(d, self.TIMEOUT)
 
                 # Change crop coordinates for next image verification
-                y_crop_coordinate_step += 30
+                y_crop_coordinate_step += 80
                 y_crop_float_coordinate_step = round(
                     y_crop_float_coordinate_step + 0.2, 2
                 )
@@ -179,10 +173,10 @@ class TestBlenderVerifier(TempDirFixture):
             outfilebasename: str = "GolemTask_1",
     ) -> Dict[str, Any]:
         return dict(
-            scene_file='/golem/resources/bmw.blend',
-            resolution=[150, 150],
+            scene_file='/golem/resources/chessboard_400x400.blend',
+            resolution=[400, 400],
             use_compositing=False,
-            samples=35,
+            samples=30,
             frames=[1],
             output_format='PNG',
             use_frames=False,
@@ -263,12 +257,12 @@ class TestBlenderVerifier(TempDirFixture):
     ) -> None:
         self.subtask_info['samples'] = 30
         self.subtask_info['scene_file'] = \
-            '/golem/resources/chessboard_400x400_5x5.blend'
+            '/golem/resources/chessboard_400x400.blend'
         self.resources = [
             os.path.join(
                 get_golem_path(),
                 'tests/apps/blender/verification/test_data/'
-                'chessboard_400x400_5x5.blend'
+                'chessboard_400x400.blend'
             ),
         ]
         self.subtask_info['resolution'] = [400, 400]
@@ -336,7 +330,7 @@ class TestBlenderVerifier(TempDirFixture):
         full_image_path = os.path.join(
             get_golem_path(),
             'tests/apps/blender/verification/test_data',
-            'chessboard_400x400_full.png'
+            'chessboard_400x400_1.png'
         )
         result_path = self._prepare_image_fragment(
             full_image_path,
@@ -436,10 +430,10 @@ class TestUnitBlenderVerifier:
             'subtask_info': {
                 'path_root': 'some/path/',
                 'crop_window': [0.1, 0.2, 0.3, 0.4],
-                'scene_file': '/golem/resources/bmw.blend',
-                'resolution': [600, 400],
+                'scene_file': '/golem/resources/chessboard_400x400.blend',
+                'resolution': [400, 400],
                 'frames': [1],
-                'samples': 35,
+                'samples': 30,
                 'output_format': 'PNG',
                 'subtask_id': 'qwerty1234',
                 'entrypoint': 'python3 /golem/entrypoints/'
