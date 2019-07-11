@@ -325,23 +325,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         d.addErrback(golem_async.default_errback)
 
     @defer.inlineCallbacks
-    def _offer_chosen(
+    def _offer_chosen(  # pylint: disable=too-many-locals
             self,
             is_chosen: bool,
             msg: message.tasks.WantToComputeTask,
     ):
-        if self.key_id is None:
-            logger.warning("Provider handshake required")
-            return
-        node_id: str = str(self.key_id)
-        node_name_id = common.short_node_id(node_id)
+        assert self.key_id is not None
+
+        task_node_info = "task_id=%r, node=%r" % (
+            msg.task_id, common.short_node_id(self.key_id))
         reasons = message.tasks.CannotAssignTask.REASON
         if not is_chosen:
-            logger.info(
-                "Provider not chosen by marketplace. task_id=%r, node=%r",
-                msg.task_id,
-                node_name_id,
-            )
+            logger.info("Provider not chosen by marketplace:%s", task_node_info)
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -356,20 +351,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
-                node_id, msg.task_id, msg.perf_index, msg.price, offer_hash)
+                self.key_id, msg.task_id, msg.perf_index, msg.price, offer_hash)
 
-            logger.debug(
-                "CTD generated. task_id=%s, node=%s ctd=%s",
-                msg.task_id,
-                node_name_id,
-                ctd,
-            )
-
+            logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
             if ctd is None:
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
-            task.accept_client(node_id, offer_hash, msg.num_subtasks)
+            task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
 
             resources_result = None
             if ctd["resources"]:
@@ -385,10 +374,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 logger.info("resources_result: %r", resources_result)
 
             logger.info(
-                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-                msg.task_id,
-                node_name_id,
-                ctd["subtask_id"],
+                "Subtask assigned. %s, subtask_id=%r",
+                task_node_info, ctd["subtask_id"]
             )
             if resources_result:
                 _, _, package_hash, package_size = resources_result
@@ -402,7 +389,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
                 requestor_ethereum_public_key=task.header.task_owner.key,
-                provider_id=node_id,
+                provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
@@ -431,7 +418,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             history.add(
                 msg=signed_ttc,
-                node_id=node_id,
+                node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
