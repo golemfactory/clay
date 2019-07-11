@@ -354,7 +354,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, "127.0.0.1", 'tid', 27.18, 1, b'')
+                node_id, "127.0.0.1", 'tid', 27.18, 1, 'oh')
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
@@ -397,7 +397,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, provider_perf,
-                DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -440,7 +440,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -488,7 +488,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
         # given
         self.client.get_computing_trust.return_value = \
@@ -496,7 +496,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
         # given
         trust = ts.config_desc.computing_trust - 0.2
@@ -505,7 +505,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -550,7 +550,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -587,7 +587,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(node_id, "127.0.0.1",
-                                                 task_id, 99, 4, b'')
+                                                 task_id, 99, 4, 'oh')
 
             # then
             assert not accepted
@@ -638,7 +638,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 task_id=task_id,
                 provider_perf=DEFAULT_PROVIDER_PERF,
                 max_memory_size=DEFAULT_MAX_MEMORY_SIZE_KB,
-                offer_hash=b''
+                offer_hash='oh'
             )
             _assert_log_msg(
                 cm,
@@ -659,7 +659,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         assert not ts.should_accept_provider(
             "XYZ", "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_MEMORY_SIZE_KB, b'')
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
         listener.assert_called_once_with(
             sender=ANY,
             signal='golem.taskserver',
@@ -862,7 +862,7 @@ class TestTaskServer2(TaskServerBase):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = TaskStatus.computing
         subtask = ts.task_manager.get_next_subtask(
-            "DEF", task_id, 1000, 10, b'')
+            "DEF", task_id, 1000, 10, 'oh')
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
