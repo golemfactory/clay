@@ -27,8 +27,10 @@ from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.core_verifier import CoreVerifier
+
+from .coretaskstate import RunVerification
 
 from .coretaskstate import RunVerification
 

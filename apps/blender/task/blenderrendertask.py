@@ -28,7 +28,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem.verificator.blender_verifier import BlenderVerifier
+from golem.verifier.blender_verifier import BlenderVerifier
 
 logger = logging.getLogger(__name__)
 
