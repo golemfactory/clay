@@ -791,64 +791,6 @@ class TestTaskSession(TaskSessionTestBase):
         tm.check_next_subtask.return_value = True
 
 
-class WaitingForResultsTestCase(
-        testutils.DatabaseFixture,
-        testutils.TempDirFixture,
-):
-    def setUp(self):
-        testutils.DatabaseFixture.setUp(self)
-        testutils.TempDirFixture.setUp(self)
-        history.MessageHistoryService()
-        self.ts = TaskSession(Mock())
-        self.ts.conn.send_message.side_effect = \
-            lambda msg: msg._fake_sign()
-        self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
-        requestor_keys = KeysAuth(
-            datadir=self.path,
-            difficulty=4,
-            private_key_name='prv',
-            password='',
-        )
-        self.ts.task_server.get_key_id.return_value = "key_id"
-        self.ts.key_id = requestor_keys.key_id
-        self.ts.task_server.get_share_options.return_value = \
-            hyperdrive_client.HyperdriveClientOptions('1', 1.0)
-
-        keys_auth = KeysAuth(
-            datadir=self.path,
-            difficulty=4,
-            private_key_name='prv',
-            password='',
-        )
-        self.ts.task_server.keys_auth = keys_auth
-        self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
-        ttc_prefix = 'task_to_compute'
-        hdr_prefix = f'{ttc_prefix}__want_to_compute_task__task_header'
-        self.msg = msg_factories.tasks.WaitingForResultsFactory(
-            sign__privkey=requestor_keys.ecc.raw_privkey,
-            **{
-                f'{ttc_prefix}__sign__privkey': requestor_keys.ecc.raw_privkey,
-                f'{ttc_prefix}__requestor_public_key':
-                    encode_hex(requestor_keys.ecc.raw_pubkey),
-                f'{ttc_prefix}__want_to_compute_task__sign__privkey':
-                    keys_auth.ecc.raw_privkey,
-                f'{ttc_prefix}__want_to_compute_task__provider_public_key':
-                    encode_hex(keys_auth.ecc.raw_pubkey),
-                f'{hdr_prefix}__sign__privkey':
-                    requestor_keys.ecc.raw_privkey,
-                f'{hdr_prefix}__requestor_public_key':
-                    encode_hex(requestor_keys.ecc.raw_pubkey),
-            },
-        )
-
-    def test_task_server_notification(self, *_):
-        self.ts._react_to_waiting_for_results(self.msg)
-        self.ts.task_server.subtask_waiting.assert_called_once_with(
-            task_id=self.msg.task_id,
-            subtask_id=self.msg.subtask_id,
-        )
-
-
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
     def setUp(self):

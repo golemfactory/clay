@@ -569,17 +569,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _react_to_waiting_for_results(
-            self,
-            msg: message.tasks.WaitingForResults,
-    ):
-        if not self.verify_owners(msg, my_role=Actor.Provider):
-            return
-        self.task_server.subtask_waiting(
-            task_id=msg.task_id,
-            subtask_id=msg.subtask_id,
-        )
-
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.subtask_id):
             self.dropped()
@@ -1023,8 +1012,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_rand_val,
             message.tasks.StartSessionResponse:
                 self._react_to_start_session_response,
-            message.tasks.WaitingForResults:
-                self._react_to_waiting_for_results,
 
             # Concent messages
             message.tasks.AckReportComputedTask:
