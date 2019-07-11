@@ -2,10 +2,9 @@ import os
 import logging
 
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
-from ffmpeg_tools.formats import Container, list_matching_resolutions, \
-    list_supported_frame_rates
+from ffmpeg_tools.formats import Container, list_supported_frame_rates
 from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
-    UnsupportedVideoCodecConversion, InvalidFrameRate, \
+    UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, UnsupportedAudioCodec
 
 from parameterized import parameterized
@@ -296,9 +295,9 @@ class TestFfmpegIntegration(TestTaskIntegration):
             (video, resolution)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for resolution in (
-                [320, 240],
-                [640, 260],
+                [400, 300],
                 [640, 480],
+                [720, 480],
             )
         ),
         testcase_func_name=lambda testcase_func, param_num, param: (
@@ -350,11 +349,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
             pytest.skip("Transcoding is not possible for this file without"
                         "also changing the video codec.")
 
-        if resolution in list_matching_resolutions(video["resolution"]):
-            (_input_report, _output_report, diff) = operation.run(
-                video["path"])
+        try:
+            validate_resolution(video["resolution"], resolution)
+            (_input_report, _output_report, diff) = operation.run(video["path"])
             self.assertEqual(diff, [])
-        else:
+        except InvalidResolution:
             with self.assertRaises(InvalidResolution):
                 operation.run(video["path"])
             pytest.skip("Target resolution not supported")
