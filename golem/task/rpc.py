@@ -308,14 +308,12 @@ def add_resources(client, resources, res_id, timeout):
     client_options.timeout = timeout
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
-        package_sha1,
         res_id,
-        resource_size,
         client_options=client_options,
     )
 
     logger.info("Resource package created. res_id=%r", res_id)
-    return resource_server_result
+    return resource_server_result + (package_sha1, resource_size)
 
 
 @defer.inlineCallbacks
