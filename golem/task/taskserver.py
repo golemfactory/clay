@@ -20,17 +20,18 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, Deferred, \
+    TimeoutError as DeferredTimeoutError
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
+from golem.core.deferred import sync_wait
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
@@ -52,7 +53,9 @@ from golem.ranking.manager.database_manager import (
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task.envmanager import EnvironmentManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -93,6 +96,9 @@ class TaskServer(
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
 ):
+
+    BENCHMARK_TIMEOUT = 60  # s
+
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
@@ -111,7 +117,10 @@ class TaskServer(
             work_dirs=[Path(self.get_task_computer_root())])
         docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
         new_env_manager = EnvironmentManager()
-        new_env_manager.register_env(docker_cpu_env)
+        new_env_manager.register_env(
+            docker_cpu_env,
+            DockerTaskApiPayloadBuilder,
+        )
 
         self.node = node
         self.task_archiver = task_archiver
@@ -142,6 +151,15 @@ class TaskServer(
             docker_cpu_env=docker_cpu_env,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
+        deferred = self._change_task_computer_config(
+            config_desc=config_desc,
+            run_benchmarks=self.benchmark_manager.benchmarks_needed()
+        )
+        try:
+            sync_wait(deferred, self.BENCHMARK_TIMEOUT)
+        except DeferredTimeoutError:
+            logger.warning('Benchmark computation timed out')
+
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.sessions: Dict[str, TaskSession] = {}
@@ -568,13 +586,32 @@ class TaskServer(
             wtr.already_sending = False
 
     @inlineCallbacks
-    def change_config(self, config_desc, run_benchmarks=False):
+    def change_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            run_benchmarks: bool = False
+    ) -> Deferred:  # pylint: disable=arguments-differ
+
         PendingConnectionsServer.change_config(self, config_desc)
-        self.config_desc = config_desc
         yield self.task_keeper.change_config(config_desc)
-        result = yield self.task_computer.change_config(
-            config_desc, run_benchmarks=run_benchmarks)
-        return result
+        yield self._change_task_computer_config(config_desc, run_benchmarks)
+
+    @inlineCallbacks
+    def _change_task_computer_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            run_benchmarks: bool,
+    ) -> Deferred:
+
+        config_changed = yield self.task_computer.change_config(config_desc)
+        if config_changed or run_benchmarks:
+            self.task_computer.lock_config(True)
+            deferred = Deferred()
+            self.benchmark_manager.run_all_benchmarks(
+                deferred.callback, deferred.errback
+            )
+            yield deferred
+            self.task_computer.lock_config(False)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")

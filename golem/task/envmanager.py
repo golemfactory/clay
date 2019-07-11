@@ -1,20 +1,33 @@
-from typing import Dict, List
+from typing import Dict, List, NamedTuple, Type
 
 from golem.envs import EnvId, Environment
+from golem.task.appcallbacks.appcallbacks import TaskApiPayloadBuilder
+
+
+class EnvEntry(NamedTuple):
+    instance: Environment
+    payload_builder: Type[TaskApiPayloadBuilder]
 
 
 class EnvironmentManager:
     """ Manager class for all Environments. """
 
     def __init__(self):
-        self._envs: Dict[EnvId, Environment] = {}
+        self._envs: Dict[EnvId, EnvEntry] = {}
         self._state: Dict[EnvId, bool] = {}
 
-    def register_env(self, env: Environment) -> None:
+    def register_env(
+            self,
+            env: Environment,
+            payload_builder: Type[TaskApiPayloadBuilder],
+    ) -> None:
         """ Register an Environment (i.e. make it visible to manager). """
         env_id = env.metadata().id
         if env_id not in self._envs:
-            self._envs[env_id] = env
+            self._envs[env_id] = EnvEntry(
+                instance=env,
+                payload_builder=payload_builder,
+            )
             self._state[env_id] = False
 
     def state(self) -> Dict[EnvId, bool]:
@@ -38,9 +51,12 @@ class EnvironmentManager:
 
     def environments(self) -> List[Environment]:
         """ Get all registered Environments. """
-        return list(self._envs.values())
+        return [entry.instance for entry in self._envs.values()]
 
     def environment(self, env_id: EnvId) -> Environment:
         """ Get Environment with the given ID. Assumes such Environment is
             registered. """
-        return self._envs[env_id]
+        return self._envs[env_id].instance
+
+    def payload_builder(self, env_id: EnvId) -> Type[TaskApiPayloadBuilder]:
+        return self._envs[env_id].payload_builder

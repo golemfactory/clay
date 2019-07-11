@@ -85,7 +85,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.keys_auth = keys_auth
         self.peer_keeper = PeerKeeper(keys_auth.key_id)
         self.task_server = None
-        self.resource_server = None
         self.metadata_manager = None
         self.resource_port = 0
         self.suggested_address = {}
@@ -499,9 +498,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             except ipaddress.AddressValueError as err:
                 logger.error('Invalid seed address: ' + str(err))
 
-        if self.resource_server:
-            self.resource_server.change_config(config_desc)
-
     def change_address(self, th_dict_repr):
         """ Change peer address in task header dictionary representation
         :param dict th_dict_repr: task header dictionary representation
@@ -674,14 +670,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         return [_mapper(peer) for peer in node_neighbours if
                 self._is_address_valid(peer.prv_addr, peer.prv_port)]
-
-    # Resource functions
-    #############################
-    def set_resource_server(self, resource_server):
-        """ Set resource server
-        :param BaseResourceServer resource_server: resource server instance
-        """
-        self.resource_server = resource_server
 
     # TASK FUNCTIONS
     ############################
