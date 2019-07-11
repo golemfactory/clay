@@ -75,6 +75,21 @@ class TaskMock(Task):
     def __reduce__(self):
         return (Mock, ())
 
+    def abort(self):
+        pass
+
+    def computation_failed(self, *_, **__):
+        pass
+
+    def get_active_tasks(self) -> int:
+        return 0
+
+    def needs_computation(self) -> bool:
+        return True
+
+    def update_task_state(self, task_state: TaskState):
+        pass
+
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
@@ -436,6 +451,12 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
             def get_total_tasks(self):
                 return 0
+
+            def get_active_tasks(self) -> int:
+                return 0
+
+            def computation_failed(self, *_, **__):
+                pass
 
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)

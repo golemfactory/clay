@@ -3,7 +3,6 @@ from copy import deepcopy
 from enum import Enum
 from logging import Logger, getLogger
 from threading import RLock
-from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set, Tuple
@@ -123,6 +122,7 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
             a closed input won't do anything.
             NOTE: If there are many open input handles for a single Runtime
             then closing one of them will effectively close all the other. """
+        raise NotImplementedError
 
     def __enter__(self) -> 'RuntimeInput':
         return self

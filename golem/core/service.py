@@ -14,15 +14,15 @@ class IService(ABC):
 
     @abstractmethod
     def start(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def stop(self) -> None:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def running(self) -> bool:
-        pass
+        raise NotImplementedError
 
 
 class LoopingCallService(IService):
