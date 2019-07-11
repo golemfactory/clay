@@ -266,8 +266,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def test_get_next_subtask_not_my_task(self, *_):
 
         wrong_task = not self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
         assert subtask is None
         assert wrong_task
 
@@ -280,8 +279,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.start_task(task_mock.header.task_id)
 
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
 
         assert subtask is None
 
@@ -295,8 +293,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.start_task(task_mock.header.task_id)
 
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask(
-            "DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
 
         assert subtask is None
 
@@ -315,7 +312,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         cached_node.save()
 
         subtask = self.tm.get_next_subtask(
-            cached_node.node, "xyz", 1000, 10, b'')
+            cached_node.node, "xyz", 1000, 10, 'oh')
         assert subtask is not None
         checker([("xyz", subtask['subtask_id'], SubtaskOp.ASSIGNED)])
         del handler
@@ -329,28 +326,28 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         task_state.status = self.tm.activeStatus[0]
 
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'') is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh') is None
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz"
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
         assert isinstance(subtask, ComputeTaskDef)
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 20000, b'') is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 20000, 'oh') is None
 
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
         assert isinstance(subtask, ComputeTaskDef)
 
         del self.tm.subtask2task_mapping["xyzxyz2"]
         assert self.tm.is_my_task("xyz")
-        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'') is None
+        assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh') is None
 
         del self.tm.tasks_states["xyz"].subtask_states["xyzxyz2"]
         assert self.tm.is_my_task("xyz")
-        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, b'')
+        subtask = self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh')
         assert isinstance(subtask, ComputeTaskDef)
 
         self.tm.delete_task("xyz")
