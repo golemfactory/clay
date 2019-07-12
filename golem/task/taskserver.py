@@ -56,6 +56,7 @@ from golem.task.acl import get_acl, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
+from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -139,6 +140,7 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
+        self.requested_task_manager = RequestedTaskManager()
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(
             node_name=config_desc.node_name,
