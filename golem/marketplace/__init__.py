@@ -1,1 +1,3 @@
-from .offerpool import scale_price, Offer, OfferPool  # noqa pylint: disable=unused-import
+from .brass_marketplace import (
+    scale_price, Offer, ProviderStats, RequestorBrassMarketStrategy
+)# noqa pylint: disable=unused-import

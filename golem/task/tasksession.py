@@ -24,7 +24,10 @@ from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer, OfferPool
+from golem.marketplace import (
+    Offer, RequestorBrassMarketStrategy, 
+    scale_price, ProviderStats
+)
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -369,10 +372,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task = self.task_manager.tasks[msg.task_id]
 
         def resolution():
-            for offer in OfferPool.resolve_task_offers(task):
-                self._offer_chosen(is_chosen=True, msg=msg, node_id=self.key_id)
+            for offer in RequestorBrassMarketStrategy\
+                .resolve_task_offers(msg.task_id):
+                self._offer_chosen(is_chosen=True,
+                                   msg=offer.offer_msg,
+                                   node_id=offer.provider_id)
 
-        if OfferPool.get_task_offer_count(task) == 0:
+        if RequestorBrassMarketStrategy\
+            .get_task_offer_count(msg.task_id) == 0:
             # This is a first offer for given task_id, schedule resolution.
             d = Deferred()
             d.addCallback(resolution)
@@ -388,7 +395,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.task_server.config_desc.offer_pooling_interval
             )
 
-        OfferPool.add(task, self.key_id, msg.price)
+        RequestorBrassMarketStrategy.add(
+            Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
+                  scale_price(task.header.max_price, msg.price))
+        )
 
     @defer.inlineCallbacks
     def _offer_chosen(

@@ -31,7 +31,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.envs.manager import EnvironmentManager
-from golem.marketplace import OfferPool
+from golem.marketplace import RequestorBrassMarketStrategy
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
