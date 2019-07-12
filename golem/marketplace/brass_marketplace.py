@@ -66,7 +66,9 @@ class RequestorMarketStrategy(ABC):
 
 
     @abstractclassmethod
-    def report_subtask_usages(cls, subtask_id: str, usages: List[Tuple[str, float]]) -> None:
+    def report_subtask_usages(cls,
+                              subtask_id: str,
+                              usages: List[Tuple[str, float]]) -> None:
         """
         Report resource usages for a subtask
         :param subtask_id: id of the reported subtask
@@ -75,7 +77,9 @@ class RequestorMarketStrategy(ABC):
         pass
 
     @abstractclassmethod
-    def report_task_usages(cls, task_id: str, usages: List[Tuple[str, float]]) -> None:
+    def report_task_usages(cls,
+                           task_id: str,
+                           usages: List[Tuple[str, float]]) -> None:
         """
         Report resource usages for a task
         :param task_id: id of the reported task
