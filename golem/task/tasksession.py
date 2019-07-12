@@ -2,7 +2,6 @@
 
 import datetime
 import enum
-import functools
 import logging
 import time
 from typing import TYPE_CHECKING, Optional
