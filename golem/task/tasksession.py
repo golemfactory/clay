@@ -25,7 +25,7 @@ from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import (
-    Offer, RequestorBrassMarketStrategy, 
+    Offer, RequestorBrassMarketStrategy,
     scale_price, ProviderStats
 )
 from golem.model import Actor
@@ -374,21 +374,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         def resolution():
             for offer in RequestorBrassMarketStrategy\
                 .resolve_task_offers(msg.task_id):
-                self._offer_chosen(is_chosen=True,
-                                   msg=offer.offer_msg,
-                                   node_id=offer.provider_id)
+                self._offer_chosen(True,
+                                   offer.offer_msg,
+                                   offer.provider_id)
+
+        def _on_error(e):
+            logger.error("%s", str(e))
 
         if RequestorBrassMarketStrategy\
             .get_task_offer_count(msg.task_id) == 0:
             # This is a first offer for given task_id, schedule resolution.
-            d = Deferred()
-            d.addCallback(resolution)
-            d.addErrback(golem_async.default_errback)
+            from twisted.internet import reactor
             twisted.internet.task.deferLater(
                 reactor,
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution
-            )
+            ).addErrback(_on_error)
             logger.info(
                 "Will select providers for task %s in %.1f seconds",
                 msg.task_id,

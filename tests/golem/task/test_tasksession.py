@@ -84,8 +84,6 @@ class ConcentMessageMixin():
 
 
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.ranking.manager.databasemanager.get_provider_efficiency', Mock())
-@patch('golem.ranking.manager.databasemanager.get_provider_efficacy', Mock())
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
@@ -264,6 +262,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
+        ts.task_server.config_desc.offer_pooling_interval = 1
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -295,7 +294,16 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         return ttc, wtct, ctd, hash_, ts
 
     @patch('golem.network.history.MessageHistoryService.instance')
-    def test_request_task(self, *_):
+    @patch('golem.ranking.manager.database_manager.get_provider_efficiency')
+    @patch('golem.ranking.manager.database_manager.get_provider_efficacy')
+    def test_request_task(self, efficacy, efficiency, _):
+        class A:
+            def __init__(self):
+                self.vector = (.0, .0, .0, .0)
+
+        efficiency.return_value = .0
+        efficacy.return_value = A()
+
         ttc, wtct, ctd, hash_, ts = self._fake_send_ttc()
         new_path = os.path.join(self.path, "tempzip")
         expected = [
