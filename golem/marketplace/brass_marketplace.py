@@ -110,8 +110,6 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
                 self.reputation = reputation
                 self.quality = quality
 
-        import pdb; pdb.set_trace()
-
         order = order_providers(
             [RustOffer(offer.price, offer.reputation, offer.quality)
              for offer in cls._pools[task_id]]
@@ -137,4 +135,3 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
     @classmethod
     def reset(cls) -> None:
         cls._pools = dict()
-
