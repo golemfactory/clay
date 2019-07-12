@@ -30,7 +30,6 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
-from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
@@ -846,8 +845,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 sum(p.details.fee or 0 for p in subtasks_payments)
 
         # Convert to string because RPC serializer fails on big numbers
-        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
-            if task_dict[k] is not None:
+        # and enums
+        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee',
+                  'x-run-verification'):
+            if k in task_dict and task_dict[k] is not None:
                 task_dict[k] = str(task_dict[k])
 
         return task_dict
@@ -946,7 +947,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'contract_addresses': {
                 contract.name: address
                 for contract, address in
-                EthereumConfig.CONTRACT_ADDRESSES.items()
+                self.transaction_system.contract_addresses.items()
             }
         }
 

@@ -11,10 +11,10 @@
       "docker_images":[
         {
           "py/object":"golem.docker.image.DockerImage",
-          "tag":"1.9",
+          "tag":"1.10",
           "id":null,
           "repository":"golemfactory/blender",
-          "name":"golemfactory/blender:1.9"
+          "name":"golemfactory/blender:1.10"
         }
       ],
       "caps":[],
@@ -44,10 +44,10 @@
   "docker_images":[
     {
       "py/object":"golem.docker.image.DockerImage",
-      "tag":"1.9",
+      "tag":"1.10",
       "id":null,
       "repository":"golemfactory/blender",
-      "name":"golemfactory/blender:1.9"
+      "name":"golemfactory/blender:1.10"
     }
   ],
   "resolution":[
@@ -64,5 +64,6 @@
   "task_type":"Blender",
   "subtask_timeout":1200,
   "subtasks_count":6,
-  "concent_enabled": false
+  "concent_enabled": false,
+  "run_verification":{"py/enum":"apps.core.task.coretaskstate.RunVerification.enabled"}
 }

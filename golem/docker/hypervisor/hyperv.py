@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 import subprocess
 import time
-from typing import Any, ClassVar, Dict, Iterable, List, Optional
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
@@ -30,33 +30,33 @@ from golem.rpc.mapping.rpceventnames import Golem
 logger = logging.getLogger(__name__)
 
 
-class events(Enum):
+class Events(Enum):
     SMB = 'smb_blocked'
     MEM = 'lowered_memory'
     DISK = 'low_diskspace'
 
 
 MESSAGES = {
-    events.SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
-    events.MEM: 'Not enough free RAM to start the VM, '
+    Events.SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
+    Events.MEM: 'Not enough free RAM to start the VM, '
                 'lowering memory to {mem_mb} MB',
-    events.DISK: 'Not enough disk space. Creating VM with min memory',
+    Events.DISK: 'Not enough disk space. Creating VM with min memory',
 }
 
-EVENTS = {
-    events.SMB: {
+EVENTS: Dict[Events, Dict[str, Union[str, Optional[Dict]]]] = {
+    Events.SMB: {
         'component': Component.hypervisor,
         'method': 'setup',
         'stage': Stage.exception,
         'data': None,
     },
-    events.MEM: {
+    Events.MEM: {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
         'data': None,
     },
-    events.DISK: {
+    Events.DISK: {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
@@ -119,7 +119,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # We use splitlines() because output may contain multiple lines with
         # debug information
         if output is None or ok_str not in output.splitlines():
-            self._log_and_publish_event(events.SMB, SMB_PORT=self.SMB_PORT)
+            self._log_and_publish_event(Events.SMB, SMB_PORT=self.SMB_PORT)
 
     @report_calls(Component.hypervisor, 'vm.save')
     def save_vm(self, vm_name: Optional[str] = None) -> None:
@@ -173,7 +173,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            self._log_and_publish_event(events.MEM, mem_mb=constr[mem_key])
+            self._log_and_publish_event(Events.MEM, mem_mb=constr[mem_key])
 
         # Always constrain to set the appropriate shutdown action
         self.constrain(name, **constr)
@@ -399,14 +399,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         return hardware.pad_memory(int(0.9 * max_mem_in_mb))
 
     @staticmethod
-    def _log_and_publish_event(name, **kwargs) -> None:
-        message = MESSAGES[name].format(**kwargs)
-        event = EVENTS[name].copy()
-        event['data'] = message
+    def _log_and_publish_event(event_type: Events, **kwargs) -> None:
+        event = EVENTS[event_type].copy()
+        data = next(iter(kwargs.values()))
+        message = MESSAGES[event_type].format(**kwargs)
 
         if event['stage'] == Stage.warning:
+            event['data'] = {"status": event_type.value, "value": data}
             logger.warning(message)
         else:
+            event['data'] = message
             logger.error(message)
 
         publish_event(event)

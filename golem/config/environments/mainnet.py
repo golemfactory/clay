@@ -3,51 +3,54 @@ import os
 from golem_sci import contracts
 from golem_sci.chains import MAINNET
 
-from golem.core.variables import PROTOCOL_CONST
+from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
 from . import CONCENT_ENVIRONMENT_VARIABLE
 
-IS_MAINNET = True
-ACTIVE_NET = MAINNET
 
 # CORE
 
 DATA_DIR = 'mainnet'
 ENABLE_TALKBACK = 0
 
-# CONCENT
-
-os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
-    CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
-)
-
-
 # ETH
 
+
 class EthereumConfig:
-    NODE_LIST = [
-        'https://geth.golem.network:55555',
-        'https://0.geth.golem.network:55555',
-        'https://1.geth.golem.network:55555',
-        'https://2.geth.golem.network:55555',
-        'https://geth.golem.network:2137',
-        'https://0.geth.golem.network:2137',
-        'https://1.geth.golem.network:2137',
-        'https://2.geth.golem.network:2137',
-    ]
+    def __init__(self):
+        self.IS_MAINNET = True
+        self.ACTIVE_NET = MAINNET
+        self.NODE_LIST = [
+            'https://geth.golem.network:55555',
+            'https://0.geth.golem.network:55555',
+            'https://1.geth.golem.network:55555',
+            'https://2.geth.golem.network:55555',
+            'https://geth.golem.network:2137',
+            'https://0.geth.golem.network:2137',
+            'https://1.geth.golem.network:2137',
+            'https://2.geth.golem.network:2137',
+        ]
 
-    FALLBACK_NODE_LIST = [
-        'https://proxy.geth.golem.network:2137',
-    ]
+        self.FALLBACK_NODE_LIST = [
+            'https://proxy.geth.golem.network:2137',
+        ]
 
-    CHAIN = MAINNET
-    FAUCET_ENABLED = False
+        self.CHAIN = MAINNET
+        self.FAUCET_ENABLED = False
 
-    CONTRACT_ADDRESSES = {
-        contracts.GNT: '0xa74476443119A942dE498590Fe1f2454d7D4aC0d',
-        contracts.GNTB: '0xA7dfb33234098c66FdE44907e918DAD70a3f211c',
-    }
+        self.CONTRACT_ADDRESSES = {
+            contracts.GNT: '0xa74476443119A942dE498590Fe1f2454d7D4aC0d',
+            contracts.GNTB: '0xA7dfb33234098c66FdE44907e918DAD70a3f211c',
+        }
 
-    WITHDRAWALS_ENABLED = True
+        os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
+            CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
+        )
+
+        self.CONCENT_VARIANT = CONCENT_CHOICES[
+            os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
+        ]
+
+        self.WITHDRAWALS_ENABLED = True
 
 
 # P2P

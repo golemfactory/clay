@@ -38,54 +38,89 @@ def async_run(request, success=None, error=None):
             success(result)
 
 
-class TestTaskHeaderKeeper(LogTestCase):
-    def test_init(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0)
-        self.assertIsInstance(tk, TaskHeaderKeeper)
-
-    def test_is_supported(self):
+class TestTaskHeaderKeeperIsSupported(LogTestCase):
+    def setUp(self) -> None:
         em = EnvironmentsManager()
         em.environments = {}
         em.support_statuses = {}
-
-        tk = TaskHeaderKeeper(
+        self.tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0)
 
+    def _add_environment(self):
+        e = Environment()
+        e.accept_tasks = True
+        self.tk.environments_manager.add_environment(e)
+
+    def test_supported(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        self.assertTrue(self.tk.check_support(header))
+
+    def test_header_uninitialized(self):
         header = get_task_header()
         header.environment = None
         header.max_price = None
         header.min_version = None
-        self.assertFalse(tk.check_support(header))
+        self.assertFalse(self.tk.check_support(header))
 
+    def test_environment_missing(self):
+        header = get_task_header()
         header.environment = Environment.get_id()
-        header.max_price = 0
-        supported = tk.check_support(header)
+        supported = self.tk.check_support(header)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
 
-        e = Environment()
-        e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
-        supported = tk.check_support(header)
+    def test_max_price(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 0
+        supported = self.tk.check_support(header)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
 
+    def test_config_min_price(self):
+        self._add_environment()
+        header = get_task_header()
         header.max_price = 10.0
-        self.assertTrue(tk.check_support(header))
 
         config_desc = mock.Mock()
         config_desc.min_price = 13.0
-        tk.change_config(config_desc)
-        self.assertFalse(tk.check_support(header))
+        self.tk.change_config(config_desc)
+        with self.assertLogs('golem.task.taskkeeper', level='INFO'):
+            self.assertFalse(self.tk.check_support(header))
 
+    def test_price_equal(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        config_desc = mock.Mock()
         config_desc.min_price = 10.0
-        tk.change_config(config_desc)
-        self.assertTrue(tk.check_support(header))
+        self.tk.change_config(config_desc)
+        self.assertTrue(self.tk.check_support(header))
+
+    def test_mask_mismatch(self):
+        self._add_environment()
+        header = get_task_header()
+        header.max_price = 10.0
+        header.mask.matches = mock.Mock(return_value=False)
+
+        with self.assertNoLogs('golem.task.taskkeeper', level='INFO'):
+            supported = self.tk.check_support(header)
+
+        self.assertFalse(supported)
+        self.assertIn(UnsupportReason.MASK_MISMATCH, supported.desc)
+
+
+class TestTaskHeaderKeeper(LogTestCase):
+    def test_init(self):
+        TaskHeaderKeeper(
+            environments_manager=EnvironmentsManager(),
+            node=dt_p2p_factory.Node(),
+            min_price=10.0
+        )
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
@@ -234,7 +269,6 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
 
         for id_ in ids:
             self.assertIn(id_, tk.task_headers)
@@ -248,9 +282,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         self.assertIn(tb_id, tk.task_headers)
 
-        while time.time() == last_add_time:
-            frozen_time.tick(  # pylint: disable=no-member
-                delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
@@ -261,8 +293,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(id_, tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-        frozen_time.tick(  # pylint: disable=no-member
-            delta=timedelta(milliseconds=100))
+        frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
         tk.remove_old_tasks()
 
         thd = get_task_header("ta")
@@ -275,7 +306,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             self.assertIn(ids[i], tk.task_headers)
         self.assertIn(tb_id, tk.task_headers)
 
-    def test_check_max_tasks_per_owner(self):
+    @freeze_time(as_arg=True)
+    # pylint: disable=no-self-argument
+    def test_check_max_tasks_per_owner(freezer, self):
 
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
@@ -290,11 +323,14 @@ class TestTaskHeaderKeeper(LogTestCase):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
-        last_add_time = time.time()
+
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("tb0")
         tb0_id = thd.task_id
         tk.add_task_header(thd)
+
+        freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         def _assert_headers(ids_, len_):
             ids_.append(tb0_id)
@@ -304,15 +340,13 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         _assert_headers(ids, len(ids) + 1)
 
-        while time.time() == last_add_time:
-            time.sleep(0.1)
-
         new_ids = []
         for _ in range(new_limit, limit):
             thd = get_task_header("ta")
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
 
+            freezer.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         _assert_headers(ids + new_ids, limit + 1)
 
@@ -463,7 +497,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         test_headers = []
         test_subtasks_ids = []
-        for x in range(10):
+        for _ in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 3

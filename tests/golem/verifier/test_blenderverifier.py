@@ -353,9 +353,8 @@ class TestBlenderVerifier(TempDirFixture):
         self._assert_crops_match()
 
     def _assert_crops_match(self) -> None:
-        above_tmp_dir = os.path.dirname(self.tempdir)
-        crops_paths = find_crop_files_in_path(os.path.join(above_tmp_dir, 'output'))
-        fragments_paths = find_fragments_in_path(os.path.join(above_tmp_dir, "work"))
+        crops_paths = find_crop_files_in_path(os.path.join(self.tempdir, 'output'))
+        fragments_paths = find_fragments_in_path(self.tempdir)
 
         assert len(crops_paths) > 0, "There were no crops produced!"
         assert len(crops_paths) == len(

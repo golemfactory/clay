@@ -3,6 +3,7 @@ import functools
 import itertools
 import logging
 import os
+import shutil
 import time
 import weakref
 from enum import Enum
@@ -24,8 +25,8 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
 from golem.network.transport import msg_queue
@@ -52,7 +53,6 @@ from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
-
 from .server import concent
 from .server import helpers
 from .server import queue_ as srv_queue
@@ -62,7 +62,6 @@ from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
-
 
 logger = logging.getLogger(__name__)
 
@@ -295,6 +294,7 @@ class TaskServer(
                     task_id=theader.task_id,
                 )
                 return None
+            handshake.task_id = theader.task_id
             if not handshake.success():
                 logger.debug(
                     "Handshake still in progress. key_id=%r, task_id=%r",
@@ -312,14 +312,13 @@ class TaskServer(
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price)
             wtct = message.tasks.WantToComputeTask(
-                node_name=self.config_desc.node_name,
                 perf_index=performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
                 provider_public_key=self.get_key_id(),
-                provider_ethereum_public_key=self.get_key_id(),
+                provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
             msg_queue.put(
@@ -357,6 +356,13 @@ class TaskServer(
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
+
+        # this is purely for tests
+        if self.config_desc.overwrite_results:
+            for file_path in result['data']:
+                shutil.copyfile(
+                    src=self.config_desc.overwrite_results,
+                    dst=file_path)
 
         header = self.task_keeper.task_headers[task_id]
 
@@ -568,7 +574,8 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
+                      *, unlock_funds=True):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
@@ -581,7 +588,8 @@ class TaskServer(
             value,
             eth_address,
         )
-        self.client.funds_locker.remove_subtask(task_id)
+        if unlock_funds:
+            self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
@@ -701,13 +709,12 @@ class TaskServer(
             self,
             node_id,
             address,
-            node_name,
             task_id,
             provider_perf,
             max_resource_size,
             max_memory_size):
 
-        node_name_id = node_info_str(node_name, node_id)
+        node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id not in self.task_manager.tasks:

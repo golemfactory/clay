@@ -190,6 +190,9 @@ class RenderingTask(CoreTask):
         exec_cmd(cmd)
 
     def _get_next_task(self):
+        logger.debug(f"_get_next_task. last_task={self.last_task}, "
+                     f"total_tasks={self.total_tasks}, "
+                     f"num_failed_subtasks={self.num_failed_subtasks}")
         if self.last_task != self.total_tasks:
             self.last_task += 1
             start_task = self.last_task

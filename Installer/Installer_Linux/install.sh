@@ -3,8 +3,8 @@
 #description    :This script will install Golem and required dependencies
 #author         :Golem Team
 #email          :contact@golem.network
-#date           :20190111
-#version        :0.5
+#date           :20190606
+#version        :0.6
 #usage          :sh install.sh
 #notes          :Only for Ubuntu and Mint
 #==============================================================================
@@ -14,7 +14,7 @@ declare -r PYTHON=python3
 declare -r HOME=$(readlink -f ~)
 declare -r GOLEM_DIR="$HOME/golem"
 declare -r PACKAGE="golem-linux.tar.gz"
-declare -r HYPERG_PACKAGE=/tmp/hyperg.tar.gz
+declare -r HYPERG_PACKAGE="hyperg.tar.gz"
 declare -r ELECTRON_PACKAGE="electron.tar.gz"
 
 # Questions
@@ -68,6 +68,21 @@ function ask_user()
             * ) warning_msg "Please answer yes or no.";;
         esac
     done
+}
+
+function compare_versions()
+{
+    [[ "${1}" = "${2}" ]] && echo "0" && return
+
+    local first=$([[ -z "$1" ]] && echo "0.0.0" || echo $1)
+    local second=$([[ -z "$2" ]] && echo "0.0.0" || echo $2)
+    local greater=$(printf "${first}\n${second}" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | tail -n 1)
+
+    case ${greater} in
+        ${first}) echo "1" ;;
+        ${second}) echo "-1" ;;
+        *) echo "2" ;;
+    esac
 }
 
 # @brief parse the JSON file and find the latest release binary URL
@@ -302,26 +317,25 @@ function install_dependencies()
         ! sudo apt-mark hold nvidia-docker2 docker-ce
     fi
 
-    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/golem-hyperdrive/releases")
-    hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
-    # Older version of HyperG doesn't have `--version`, so need to kill
-    ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
-    ( sleep 5s && kill -HUP ${pid} ) 2>/dev/null & watcher=$!
-    if wait ${pid} 2>/dev/null; then
-        pkill -HUP -P ${watcher}
-        wait ${watcher}
-    else
-        hyperg_version=0.0.0
-    fi
-    if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "$hyperg_release" > "$hyperg_version" ]]; then
-        info_msg "Downloading: HyperG=${hyperg_release}"
+    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/simple-transfer/releases")
+    hyperg_remote=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
+    hyperg_local=$( hyperg --version 2>/dev/null )
+    do_upgrade=$(compare_versions ${hyperg_remote} ${hyperg_local})
+
+    if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "${do_upgrade}" == "1" ]]; then
+        killall -9 hyperg-worker hyperg &> /dev/null
+
+        info_msg "Downloading: HyperG=${hyperg_remote}"
         wget --show-progress -qO- ${hyperg} > ${HYPERG_PACKAGE}
+
         info_msg "Installing HyperG into $HOME/hyperg"
-        [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
-        tar -xvf ${HYPERG_PACKAGE} >/dev/null
-        [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
+        rm -rf $HOME/hyperg &>/dev/null
+
+        archive_dir=$(tar -tzf ${HYPERG_PACKAGE} | head -1 | cut -f1 -d"/")
+        tar -xf ${HYPERG_PACKAGE} &>/dev/null
+        mv ${archive_dir} $HOME/hyperg
+
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
-        [[ ! -f /usr/local/bin/hyperg-worker ]] && sudo ln -s $HOME/hyperg/hyperg-worker /usr/local/bin/hyperg-worker
         rm -f ${HYPERG_PACKAGE} &>/dev/null
     fi
 
@@ -332,17 +346,6 @@ function install_dependencies()
         else
             sudo usermod -aG docker ${SUDO_USER}
         fi
-        sudo docker run hello-world &>/dev/null
-        if [[ ${?} -eq 0 ]]; then
-            info_msg "Docker installed successfully"
-        else
-            warning_msg "Error occurred during installation"
-            sleep 5s
-        fi
-    fi
-
-    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
-        sudo pkill -SIGHUP dockerd
     fi
 
     if [[ ${INSTALL_GVISOR_RUNTIME} -eq 1 ]]; then
@@ -353,7 +356,7 @@ function install_dependencies()
 
         # Add runtime configuration
         sudo mkdir -p /etc/docker
-        sudo python << EOF
+        sudo ${PYTHON} << EOF
 import json
 
 runtime_config = {
@@ -374,9 +377,22 @@ with open('/etc/docker/daemon.json', 'w+') as f:
 EOF
         chmod a+x runsc
         sudo mv runsc /usr/local/bin
-        sudo service docker restart || true
     fi
 
+    sudo service docker restart || true
+
+    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+        output=$(sudo docker run hello-world)
+        exit_code=${?}
+
+        if [[ ${exit_code} -eq 0 ]]; then
+            info_msg "Docker installed successfully"
+        else
+            warning_msg "Docker installation error: 'docker run hello-world' failed with exit code ${exit_code}"
+            warning_msg "${output}"
+            sleep 5s
+        fi
+    fi
 }
 
 # @brief Download latest Golem package (if package wasn't passed)
@@ -462,14 +478,15 @@ function install_golem()
     fi
 
     if [[ -f ${GOLEM_DIR}/golemapp ]]; then
-        CURRENT_VERSION=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        PACKAGE_VERSION=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
-        NEWER_VERSION=$(printf "$CURRENT_VERSION\n$PACKAGE_VERSION" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | tail -n 1)
-        if [[ "$CURRENT_VERSION" == "$PACKAGE_VERSION" ]]; then
-            ask_user "Same version of Golem ($CURRENT_VERSION) detected. Do you want to reinstall Golem? (y/n)"
+        local_version=$( ${GOLEM_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        remote_version=$( ${PACKAGE_DIR}/golemapp -v 2>/dev/null  | cut -d ' ' -f 3 )
+        do_upgrade=$(compare_versions "${remote_version}" "${local_version}")
+
+        if [[ "${do_upgrade}" == "0" ]]; then
+            ask_user "Same version of Golem (${local_version}) detected. Do you want to reinstall Golem? (y/n)"
             [[ $? -eq 0 ]] && return 0
-        elif [[ "$CURRENT_VERSION" == "$NEWER_VERSION" ]]; then
-            ask_user "Newer version ($CURRENT_VERSION) of Golem detected. Downgrade to version $PACKAGE_VERSION? (y/n)"
+        elif [[ "${do_upgrade}" == "-1" ]]; then
+            ask_user "Newer version (${local_version}) of Golem detected. Downgrade to version ${remote_version}? (y/n)"
             [[ $? -eq 0 ]] && return 0
         fi
     fi

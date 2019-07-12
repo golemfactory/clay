@@ -12,12 +12,23 @@ class ComputingSubtaskStateSnapshot:
             seconds_to_timeout: float,
             running_time_seconds: float,
             # extra_data:
-            outfilebasename: str,
-            output_format: str,
-            scene_file: str,
-            frames: List[int],
-            start_task: int,
-            total_tasks: int,
+
+            # TODO before release 0.21
+            #
+            # refactor this state snapshot so that it's independent from
+            # any particular application type
+            #
+            # + ensure that Electron front-end doesn't depend on this data
+            # being present here and/or having specific format
+            #
+            # https://github.com/golemfactory/golem/issues/4318
+
+            outfilebasename: str = None,
+            output_format: str = None,
+            scene_file: str = None,
+            frames: List[int] = None,
+            start_task: int = None,
+            total_tasks: int = None,
             # if there's something more in extra_data, just ignore it
             **_kwargs
     ) -> None:

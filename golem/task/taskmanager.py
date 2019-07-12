@@ -27,8 +27,9 @@ from apps.core.task.coretaskstate import TaskDefinition
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
-    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
+    HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -349,9 +350,7 @@ class TaskManager(TaskEventListener):
         logger.info("Resources for task {} sent".format(task_id))
 
     def got_wants_to_compute(self,
-                             task_id: str,
-                             key_id: str,  # pylint: disable=unused-argument
-                             node_name: str):  # pylint: disable=unused-argument
+                             task_id: str):
         """
         Updates number of offers to compute task.
 
@@ -359,8 +358,6 @@ class TaskManager(TaskEventListener):
         elsewhere. Silently ignores wrong task ids.
 
         :param str task_id: id of the task in the offer
-        :param key_id: id of the node offering computations
-        :param node_name: name of the node offering computations
         :return: Nothing
         :rtype: None
         """
@@ -391,13 +388,12 @@ class TaskManager(TaskEventListener):
         return True
 
     def get_next_subtask(
-            self, node_id, node_name, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size, address=""):
+            self, node_id, task_id, estimated_performance, price,
+            max_resource_size, max_memory_size):
         """ Assign next subtask from task <task_id> to node with given
         id <node_id> and name. If subtask is assigned the function
         is returning a tuple
         :param node_id:
-        :param node_name:
         :param task_id:
         :param estimated_performance:
         :param price:
@@ -409,8 +405,8 @@ class TaskManager(TaskEventListener):
         before this to find the reason why the task is not able to be picked up
         """
         logger.debug(
-            'get_next_subtask(%r, %r, %r, %r, %r, %r, %r)',
-            node_id, node_name, task_id, estimated_performance, price,
+            'get_next_subtask(%r, %r, %r, %r, %r, %r)',
+            node_id, task_id, estimated_performance, price,
             max_resource_size, max_memory_size,
         )
 
@@ -434,14 +430,14 @@ class TaskManager(TaskEventListener):
 
         if task.get_progress() == 1.0:
             logger.error("Task already computed. "
-                         "task_id=%r, node_name=%r, node_id=%r",
-                         task_id, node_name, node_id)
+                         "task_id=%r, node_id=%r",
+                         task_id, node_id)
             return None
 
         extra_data = task.query_extra_data(
             estimated_performance,
             node_id,
-            node_name
+            "",
         )
         ctd = extra_data.ctd
 
@@ -470,7 +466,7 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, ctd, price,
+            node_id, ctd, price,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
@@ -478,7 +474,7 @@ class TaskManager(TaskEventListener):
         logger.debug(
             "Subtask generated. task=%s, node=%s, ctd=%s",
             task_id,
-            node_info_str(node_name, node_id),
+            short_node_id(node_id),
             ctd,
         )
 
@@ -583,7 +579,6 @@ class TaskManager(TaskEventListener):
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
-                node_name='',
                 node_id='',
                 price=0,
                 ctd=extra_data.ctd)
@@ -598,7 +593,9 @@ class TaskManager(TaskEventListener):
                 .status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
-            new_task.num_failed_subtasks += 1
+
+        new_task.num_failed_subtasks = \
+            new_task.total_tasks - len(subtasks_to_copy)
 
         def handle_copy_error(subtask_id, error):
             logger.error(
@@ -659,10 +656,7 @@ class TaskManager(TaskEventListener):
             new_task.copy_subtask_results(
                 new_subtask_id, old_subtask, results)
 
-            new_subtask_state = \
-                self.__set_subtask_state_finished(new_subtask_id)
-            old_subtask_state = self.tasks_states[old_task_id] \
-                .subtask_states[old_subtask_id]
+            self.__set_subtask_state_finished(new_subtask_id)
 
             self.notice_task_updated(
                 task_id=new_task_id,
@@ -1070,7 +1064,6 @@ class TaskManager(TaskEventListener):
         state = self.query_task_state(task.header.task_id)
 
         dictionary = {
-            'duration': state.elapsed_time,
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)
@@ -1126,16 +1119,20 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id,
+    def __add_subtask_to_tasks_states(self, node_id,
                                       ctd, price: int):
 
-        logger.debug('add_subtask_to_tasks_states(%r, %r, %r)',
-                     node_name, node_id, ctd)
+        logger.debug('add_subtask_to_tasks_states(%r, %r)',
+                     node_id, ctd)
 
+        # we're retrieving the node_info so that we can set `node_name` on
+        # SubtaskState, which is later used e.g. to render the subtasks list
+        # in CLI and on the front-end
+        node_info = nodeskeeper.get(node_id)
         ss = SubtaskState(
             subtask_id=ctd['subtask_id'],
             node_id=node_id,
-            node_name=node_name,
+            node_name=node_info.node_name if node_info else '',
             price=price,
             deadline=ctd['deadline'],
             extra_data=ctd['extra_data'],

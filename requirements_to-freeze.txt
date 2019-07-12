@@ -1,10 +1,11 @@
-#git+https://github.com/golemfactory/golem-messages@<branchname>
+#git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
 autobahn==17.10.1
 Automat==0.6.0
 base58
+bidict
 cbor==1.0.0
 certifi
 cffi==1.10.0
@@ -15,7 +16,7 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==3.4.0
+Golem-Messages==3.7.0
 Golem-Smart-Contracts-Interface==1.10.0
 html2text==2018.1.9
 humanize==0.5.1
@@ -23,7 +24,7 @@ incremental==17.5.0
 miniupnpc<2.1,>=2.0
 ndg-httpsclient
 netifaces==0.10.4
-numpy==1.13.1
+numpy==1.15.4
 OpenEXR
 os-win
 packaging
@@ -33,10 +34,10 @@ pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
 py-cpuinfo==4.0.0
-pyasn1==0.4.1
+pyasn1==0.4.5
 pycparser==2.17
 pydispatcher
-pyOpenSSL==17.1.0
+pyOpenSSL==17.5.0
 pysha3>=1.0.2
 pytz
 PyYAML>=5.1
@@ -50,7 +51,8 @@ six==1.11.0
 tabulate
 token_bucket==0.2.0
 Twisted==17.9.0
-txaio==2.8.2
+txaio==18.8.1
+urllib3==1.24.3
 web3==4.2.1
 zope.interface==4.4.2
 zxcvbn-python

@@ -27,6 +27,7 @@ from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
+from golem.rpc.router import SerializerType  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -104,6 +105,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--enable-talkback', is_flag=True, default=None)
 @click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
 @click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
+@click.option('--crossbar-serializer', default=None,
+              type=click.Choice([
+                  SerializerType.msgpack.value,
+                  SerializerType.json.value,
+              ]),
+              help="Crossbar serializer (default: msgpack)")
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
 @click.option('--node', expose_value=False)
@@ -122,7 +129,7 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback, m,
-        hyperdrive_port, hyperdrive_rpc_port,
+        hyperdrive_port, hyperdrive_rpc_port, crossbar_serializer
 ):
 
     freeze_support()
@@ -138,10 +145,13 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         return 0
 
     set_environment('mainnet' if mainnet else net, concent)
+
     # These are done locally since they rely on golem.config.active to be set
-    from golem.config.active import CONCENT_VARIANT
+    from golem.config.active import EthereumConfig
     from golem.appconfig import AppConfig
     from golem.node import Node
+
+    ethereum_config = EthereumConfig()
 
     # We should use different directories for different chains
     datadir = get_local_datadir('default', root_dir=datadir)
@@ -181,8 +191,8 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
 
         log_golem_version()
         log_platform_info()
-        log_ethereum_chain()
-        log_concent_choice(CONCENT_VARIANT)
+        log_ethereum_config(ethereum_config)
+        log_concent_choice(ethereum_config.CONCENT_VARIANT)
 
         node = Node(
             datadir=datadir,
@@ -191,9 +201,11 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             peers=peer,
             use_monitor=monitor,
             use_talkback=enable_talkback,
-            concent_variant=CONCENT_VARIANT,
+            concent_variant=ethereum_config.CONCENT_VARIANT,
             geth_address=geth_address,
             password=password,
+            crossbar_serializer=(SerializerType(crossbar_serializer)
+                                 if crossbar_serializer else None),
         )
 
         if accept_terms:
@@ -267,9 +279,12 @@ def log_platform_info():
                 humanize.naturalsize(swapinfo.total, binary=True))
 
 
-def log_ethereum_chain():
-    from golem.config.active import EthereumConfig
-    logger.info("Ethereum chain: %s", EthereumConfig.CHAIN)
+def log_ethereum_config(ethereum_config):
+    logger.info("Ethereum chain: %s", ethereum_config.CHAIN)
+    logger.debug("Ethereum config: %s", [
+        (attr, getattr(ethereum_config, attr))
+        for attr in dir(ethereum_config) if not attr.startswith('__')
+    ])
 
 
 def log_concent_choice(value: dict):
