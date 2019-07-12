@@ -359,7 +359,6 @@ class CoreTask(Task):
             int(timeout_to_deadline(self.header.subtask_timeout)),
             self.header.deadline,
         )
-        ctd['resources'] = self.get_resources()
 
         return ctd
 
