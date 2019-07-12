@@ -3,10 +3,7 @@ import sys
 import logging
 from typing import List, Dict, ClassVar, Tuple, Optional
 
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
+import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
 
@@ -38,8 +35,8 @@ class Offer:
         self.provider_id = provider_id
         self.provider_stats = provider_stats
         self.price = price
-        self.reputation = get_provider_efficiency(provider_id)
-        self.quality = get_provider_efficacy(provider_id).vector
+        self.reputation = dbm.get_provider_efficiency(provider_id)
+        self.quality = dbm.get_provider_efficacy(provider_id).vector
 
 
 class RequestorMarketStrategy(ABC):
@@ -138,4 +135,3 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
     @classmethod
     def reset(cls) -> None:
         cls._pools = dict()
-
