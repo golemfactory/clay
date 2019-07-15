@@ -383,9 +383,9 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
 
 
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
-       Mock(return_value=0.0))
+            mock.Mock(return_value=0.0))
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
-       Mock(return_value=_fake_get_efficacy()))
+            mock.Mock(return_value=_fake_get_efficacy()))
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
