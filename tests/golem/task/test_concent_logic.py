@@ -5,6 +5,7 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
+import time
 import unittest.mock as mock
 
 from freezegun import freeze_time
@@ -486,6 +487,12 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
             mock.Mock(return_value=667),
         ):
             task_session._react_to_want_to_compute_task(self.msg)
+
+        started = time.time()
+        while send_mock.call_args is None:
+            if time.time() - started > 10:
+                self.fail("Test timed out")
+            time.sleep(0.1)
 
         send_mock.assert_called()
         ttc = send_mock.call_args_list[0][0][0]
