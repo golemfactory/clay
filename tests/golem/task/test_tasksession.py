@@ -52,6 +52,13 @@ from tests.factories import hyperdrive
 fake = faker.Faker()
 
 
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
 def fill_slots(msg):
     for slot in msg.__slots__:
         if hasattr(msg, slot):
@@ -84,8 +91,9 @@ class ConcentMessageMixin():
 
 
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.ranking.manager.database_manager.get_provider_efficiency', Mock())
-@patch('golem.ranking.manager.database_manager.get_provider_efficacy', Mock())
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency', 0.0)
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       _fake_get_efficacy())
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
@@ -119,7 +127,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
 
-    def _get_task_session(self):
+   def _get_task_session(self):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
@@ -296,16 +304,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         return ttc, wtct, ctd, hash_, ts
 
     @patch('golem.network.history.MessageHistoryService.instance')
-    @patch('golem.ranking.manager.database_manager.get_provider_efficiency')
-    @patch('golem.ranking.manager.database_manager.get_provider_efficacy')
-    def test_request_task(self, efficacy, efficiency, _):
-        class A:
-            def __init__(self):
-                self.vector = (.0, .0, .0, .0)
-
-        efficiency.return_value = .0
-        efficacy.return_value = A()
-
+    def test_request_task(self, _):
         ttc, wtct, ctd, hash_, ts = self._fake_send_ttc()
         new_path = os.path.join(self.path, "tempzip")
         expected = [
