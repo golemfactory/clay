@@ -32,7 +32,6 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.marketplace import RequestorBrassMarketStrategy
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
