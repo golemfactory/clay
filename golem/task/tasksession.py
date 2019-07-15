@@ -309,8 +309,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        task = self.task_manager.tasks[msg.task_id]
-
         def resolution(task_id):
             for offer in RequestorBrassMarketStrategy\
                     .resolve_task_offers(task_id):
