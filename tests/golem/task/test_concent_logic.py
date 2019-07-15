@@ -479,7 +479,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         class X:
             pass
 
-        task_session.task_server.get_share_options.return_value = X()b
+        task_session.task_server.get_share_options.return_value = X()
         task_session.task_server.config_desc.offer_pooling_interval = 1
 
         with mock.patch(
