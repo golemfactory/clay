@@ -340,7 +340,7 @@ class TransactionSystem(LoopingCallService):
             )
             self._sci.on_transaction_confirmed(
                 tx_hash=operation.tx_hash,
-                cb=self.on_confirmed,
+                cb=self._on_confirmed,
             )
 
         if self.deposit_contract_available:
@@ -613,7 +613,7 @@ class TransactionSystem(LoopingCallService):
         raise ValueError('Unknown currency {}'.format(currency))
 
     @sci_required()
-    def on_confirmed(
+    def _on_confirmed(
             self,
             receipt: 'sci_structs.TransactionReceipt',
             gas_price: Optional[int] = None,
@@ -696,7 +696,7 @@ class TransactionSystem(LoopingCallService):
             self._sci.on_transaction_confirmed(
                 tx_hash,
                 functools.partial(
-                    self.on_confirmed,
+                    self._on_confirmed,
                     gas_price=gas_price,
                 ),
             )
@@ -730,7 +730,7 @@ class TransactionSystem(LoopingCallService):
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
-                self.on_confirmed(
+                self._on_confirmed(
                     receipt=receipt,
                     gas_price=gas_price,
                 )
@@ -853,7 +853,7 @@ class TransactionSystem(LoopingCallService):
                 "Deposit failed",
                 transaction_receipt=receipt,
             )
-        self.on_confirmed(
+        self._on_confirmed(
             receipt=receipt,
         )
         return dpayment.tx_hash
@@ -899,9 +899,9 @@ class TransactionSystem(LoopingCallService):
         tx_hash = self._sci.withdraw_deposit()
         self._concent_withdraw_requested = True
 
-        def on_confirmed(_receipt) -> None:
+        def on_confirmed(receipt) -> None:
             self._concent_withdraw_requested = False
-            self.on_confirmed(receipt=_receipt)
+            self._on_confirmed(receipt=receipt)
         self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
         log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 

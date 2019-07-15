@@ -868,7 +868,7 @@ class TransactionConfirmationTest(TransactionSystemBase):
             destination=random_eth_address(),
             currency='ETH',
         )
-        self.ets.on_confirmed(self.receipt)
+        self.ets._on_confirmed(self.receipt)
         operation = model.WalletOperation.transfers().where(
             model.WalletOperation.tx_hash == self.tx_hash,
         ).get()
@@ -885,7 +885,7 @@ class TransactionConfirmationTest(TransactionSystemBase):
             expected=40,
         )
         deferred.sync_wait(defer)
-        self.ets.on_confirmed(self.receipt)
+        self.ets._on_confirmed(self.receipt)
         operation = model.WalletOperation.deposit_transfers().where(
             model.WalletOperation.tx_hash == self.tx_hash,
         ).get()
