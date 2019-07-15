@@ -22,6 +22,13 @@ class ProviderStats:
         self.usage_benchmark = usage_benchmark
 
 
+class BrassMarketOffer:
+    def __init__(self, scaled_price, reputation, quality):
+        self.scaled_price = scaled_price
+        self.reputation = reputation
+        self.quality = quality
+
+
 class Offer:
     def __init__(
             self,
@@ -108,14 +115,8 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
         if task_id not in cls._pools:
             return None
 
-        class RustOffer:
-            def __init__(self, scaled_price, reputation, quality):
-                self.scaled_price = scaled_price
-                self.reputation = reputation
-                self.quality = quality
-
         order = order_providers(
-            [RustOffer(offer.price, offer.reputation, offer.quality)
+            [BrassMarketOffer(offer.price, offer.reputation, offer.quality)
              for offer in cls._pools[task_id]]
         )
 
