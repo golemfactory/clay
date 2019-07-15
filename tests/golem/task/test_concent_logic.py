@@ -32,6 +32,13 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 # pylint: disable=protected-access
 
 
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
 @mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
             return_value=True)
 @mock.patch("golem.task.tasksession.TaskSession.send")
