@@ -309,6 +309,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
+        current_task = self.task_manager.tasks[msg.task_id]
+
         def resolution(task_id):
             for offer in RequestorBrassMarketStrategy\
                     .resolve_task_offers(task_id):
@@ -336,7 +338,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         RequestorBrassMarketStrategy.add(
             Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
-                  scale_price(task.header.max_price, msg.price))
+                  scale_price(current_task.header.max_price, msg.price))
         )
 
     @defer.inlineCallbacks
