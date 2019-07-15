@@ -311,9 +311,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task = self.task_manager.tasks[msg.task_id]
 
-        def resolution():
+        def resolution(task_id):
             for offer in RequestorBrassMarketStrategy\
-                    .resolve_task_offers(msg.task_id):
+                    .resolve_task_offers(task_id):
                 self._offer_chosen(True,
                                    offer.offer_msg)
 
@@ -327,7 +327,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task.deferLater(
                 reactor,
                 self.task_server.config_desc.offer_pooling_interval,
-                resolution
+                resolution,
+                msg.task_id
             ).addErrback(_on_error)
             logger.info(
                 "Will select providers for task %s in %.1f seconds",
