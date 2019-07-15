@@ -17,6 +17,7 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class TaskMessagesQueueMixin:
     """Message Queue functionality for TaskServer"""
 
@@ -98,8 +99,14 @@ class TaskMessagesQueueMixin:
             self.initiate_session(node_id)
 
     def sweep_sessions(self):
-        for node_id in self.sessions:
-            session = self.sessions[node_id]
+        # Iterate over shallow copy to avoid problems with
+        # dict changing size during iteration.
+        for node_id in tuple(self.sessions.keys()):
+            try:
+                session = self.sessions[node_id]
+            except KeyError:
+                # Dict changed during iteration
+                continue
             if session is None:
                 continue
             if session.is_active:
