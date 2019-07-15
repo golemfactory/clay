@@ -677,7 +677,9 @@ class TaskHeaderKeeper:
     def task_ended(self, task_id):
         try:
             self.running_tasks.remove(task_id)
-        except ValueError:
-            logger.warning("Can not remove running task, already removed. "
-                           "Maybe the callback is called twice. task_id=%r",
-                           task_id)
+        except KeyError:
+            logger.debug(
+                "Cannot remove running task. Not found. "
+                "task_id=%r",
+                task_id,
+            )
