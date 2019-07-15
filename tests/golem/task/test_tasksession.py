@@ -127,7 +127,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
 
-   def _get_task_session(self):
+    def _get_task_session(self):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
