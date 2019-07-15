@@ -381,7 +381,7 @@ class WasmTask(CoreTask):
 
     def finished_computation(self):
         finished = all([subtask.is_finished() for subtask in self.subtasks])
-        logger.info("Finished computation: %d", finished)
+        logger.debug("Finished computation: %d", finished)
         return finished
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
