@@ -473,6 +473,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
         task.header.max_price = 0
+        task.header.subtask_timeout = 3600
         task_manager.tasks = {ctd['task_id']: task}
         task_manager.tasks_states = {ctd['task_id']: task_state}
 
@@ -490,7 +491,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
 
         started = time.time()
         while send_mock.call_args is None:
-            if time.time() - started > 10:
+            if time.time() - started > 5:
                 self.fail("Test timed out")
             time.sleep(0.1)
 
