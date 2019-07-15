@@ -218,13 +218,13 @@ class WasmTask(CoreTask):
                     logger.info("Accepting results for subtask %s", s_id)
                     self.subtasks_given[s_id]['status'] =\
                         SubtaskStatus.finished
-                    TaskClient.assert_exists(actor.uuid, self.counting_nodes)\
-                        .accept()
+                    TaskClient.get_or_initialize(actor.uuid,
+                                                 self.counting_nodes).accept()
                 else:
                     logger.info("Rejecting results for subtask %s", s_id)
                     self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
-                    TaskClient.assert_exists(actor.uuid, self.counting_nodes)\
-                        .reject()
+                    TaskClient.get_or_initialize(actor.uuid,
+                                                 self.counting_nodes).reject()
                     logger.info("Blacklisting node: %s", actor.uuid)
                     self.nodes_blacklist.add(actor.uuid)
 
@@ -317,7 +317,9 @@ class WasmTask(CoreTask):
 
         return results
 
-    def should_accept_client(self, node_id: str) -> AcceptClientVerdict:
+    def should_accept_client(self,
+                             node_id: str,
+                             offer_hash: str) -> AcceptClientVerdict:
         """Deciding whether to accept particular node_id for next task
         computation.
 
@@ -346,8 +348,9 @@ class WasmTask(CoreTask):
                 orphaned_subtask = self.nodes_to_subtasks_map\
                     .pop(assigned_node_id)
                 self.nodes_to_subtasks_map[node_id] = orphaned_subtask
-                client = TaskClient.assert_exists(node_id, self.counting_nodes)
-                client.start()
+                client = TaskClient.get_or_initialize(node_id,
+                                                      self.counting_nodes)
+                client.start(offer_hash, 1)
                 return AcceptClientVerdict.ACCEPTED
 
         for s in self.subtasks:
@@ -356,15 +359,19 @@ class WasmTask(CoreTask):
             next_subtask = s.new_instance(node_id)
             if next_subtask:
                 self.nodes_to_subtasks_map[node_id] = next_subtask
-                client = TaskClient.assert_exists(node_id, self.counting_nodes)
-                client.start()
+                client = TaskClient.get_or_initialize(node_id,
+                                                      self.counting_nodes)
+                client.start(offer_hash, 1)
                 return AcceptClientVerdict.ACCEPTED
 
         """No subtask has yielded next actor meaning that there is no work
         to be done at the moment"""
         return AcceptClientVerdict.SHOULD_WAIT
 
-    def accept_client(self, node_id) -> None:
+    def accept_client(self,
+                      node_id: str,
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
         """Overriding CoreTask behavior with a stub. This is now handled
         entirely in `should_accept_client` method."""
         pass
