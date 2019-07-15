@@ -91,7 +91,8 @@ class ConcentMessageMixin():
 
 
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.ranking.manager.database_manager.get_provider_efficiency', Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
 @patch('golem.ranking.manager.database_manager.get_provider_efficacy',
        Mock(return_value=_fake_get_efficacy()))
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):

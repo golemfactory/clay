@@ -14,8 +14,7 @@ from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
 import twisted
-from twisted.internet import defer, reactor
-from twisted.internet.defer import Deferred
+from twisted.internet import defer
 
 import golem
 from golem.core import common
@@ -316,7 +315,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def resolution():
             for offer in RequestorBrassMarketStrategy\
-                .resolve_task_offers(msg.task_id):
+                    .resolve_task_offers(msg.task_id):
                 self._offer_chosen(True,
                                    offer.offer_msg)
 
@@ -324,7 +323,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.error("%s", str(e))
 
         if RequestorBrassMarketStrategy\
-            .get_task_offer_count(msg.task_id) == 0:
+                .get_task_offer_count(msg.task_id) == 0:
             # This is a first offer for given task_id, schedule resolution.
             from twisted.internet import reactor
             twisted.internet.task.deferLater(

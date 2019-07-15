@@ -64,7 +64,6 @@ class RequestorMarketStrategy(ABC):
         """
         pass
 
-
     @abstractclassmethod
     def report_subtask_usages(cls,
                               subtask_id: str,
@@ -86,6 +85,7 @@ class RequestorMarketStrategy(ABC):
         :param usages: list of pairs (provider_id, usage)
         """
         pass
+
 
 class RequestorBrassMarketStrategy(RequestorMarketStrategy):
 
@@ -125,7 +125,6 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
             offers_sorted.append(offers[index])
 
         return offers_sorted
-
 
     @classmethod
     def get_task_offer_count(cls, task_id: str) -> int:
