@@ -13,12 +13,10 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
-import twisted
-from twisted.internet import defer
+from twisted.internet import defer, task
 
 import golem
 from golem.core import common
-from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -326,7 +324,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 .get_task_offer_count(msg.task_id) == 0:
             # This is a first offer for given task_id, schedule resolution.
             from twisted.internet import reactor
-            twisted.internet.task.deferLater(
+            task.deferLater(
                 reactor,
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution
