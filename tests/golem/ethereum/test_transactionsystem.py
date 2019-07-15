@@ -37,8 +37,8 @@ def get_transaction_receipt(tx_hash, status=1):
         raw_receipt={
             'transactionHash': hexbytes.HexBytes(tx_hash),
             'status': status,
-            'blockHash': bytes.fromhex(
-                'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
+            'blockHash': hexbytes.HexBytes(
+                '0xcbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
                 '97dc22e97399c',
             ),
             'blockNumber': 2940769,
@@ -719,6 +719,7 @@ class ConcentUnlockTest(TransactionSystemBase):
     def setUp(self):
         super().setUp()
         self.ets = self._make_ets(provide_gntdeposit=True)
+        self.sci.get_transaction_gas_price.return_value = 2
 
     def test_empty(self):
         self.sci.get_deposit_value.return_value = 0
@@ -853,8 +854,9 @@ class TransactionConfirmationTest(TransactionSystemBase):
     def setUp(self):
         super().setUp()
         self.ets = self._make_ets(provide_gntdeposit=True)
-        self.ets._gntb_balance = 100
-        self.ets._eth_balance = denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gntb_balance.return_value = 100
+        self.ets._refresh_balances()
         self.receipt = get_transaction_receipt(f'0x{"0"*64}')
         self.tx_hash = self.receipt.tx_hash
         self.sci.on_transaction_confirmed.side_effect = \
@@ -869,7 +871,7 @@ class TransactionConfirmationTest(TransactionSystemBase):
             destination=random_eth_address(),
             currency='ETH',
         )
-        self.ets._on_confirmed(self.receipt)
+        self.sci.on_transaction_confirmed.assert_called_once()
         operation = model.WalletOperation.transfers().where(
             model.WalletOperation.tx_hash == self.tx_hash,
         ).get()
@@ -886,7 +888,7 @@ class TransactionConfirmationTest(TransactionSystemBase):
             expected=40,
         )
         deferred.sync_wait(defer)
-        self.ets._on_confirmed(self.receipt)
+        self.sci.on_transaction_confirmed.assert_called_once()
         operation = model.WalletOperation.deposit_transfers().where(
             model.WalletOperation.tx_hash == self.tx_hash,
         ).get()

@@ -105,3 +105,28 @@ class PaymentsKeeper:
             self,
             subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self.db.get_subtasks_payments(subtask_ids)
+
+    @staticmethod
+    def confirmed_transfer(
+            tx_hash: str,
+            successful: bool,
+            gas_cost: int,
+    ) -> None:
+        try:
+            operation = model.WalletOperation.select() \
+                .where(
+                    model.WalletOperation.tx_hash == tx_hash,
+                ).get()
+        except model.WalletOperation.DoesNotExist:
+            logger.warning(
+                "Got confirmation of unknown transfer. tx_hash=%s",
+                tx_hash,
+            )
+            return
+        if not successful:
+            logger.error("Failed transaction. tx_hash=%s", tx_hash)
+            operation.on_failed(gas_cost=gas_cost)
+            operation.save()
+            return
+        operation.on_confirmed(gas_cost=gas_cost)
+        operation.save()

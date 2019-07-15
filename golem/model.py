@@ -313,6 +313,23 @@ class WalletOperation(BaseModel):
                 == WalletOperation.TYPE.transfer,
             )
 
+    @classmethod
+    def unconfirmed_payments(cls):
+        return cls.select() \
+            .where(
+                cls.status.not_in([
+                    cls.STATUS.confirmed,
+                    cls.STATUS.failed,
+                ]),
+                cls.tx_hash.is_null(False),
+                cls.direction ==
+                cls.DIRECTION.outgoing,
+                cls.operation_type.in_([
+                    cls.TYPE.transfer,
+                    cls.TYPE.deposit_transfer,
+                ]),
+            )
+
     def on_confirmed(self, gas_cost: int):
         if self.operation_type not in (
                 self.TYPE.transfer,

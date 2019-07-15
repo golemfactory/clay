@@ -63,7 +63,7 @@ class PaymentProcessor:
         for sent_payment in model.TaskPayment \
                 .payments() \
                 .where(
-                        model.WalletOperation.status == \
+                        model.WalletOperation.status ==
                         model.WalletOperation.STATUS.sent,
                 ):
             if sent_payment.wallet_operation.tx_hash not in sent:
@@ -177,7 +177,6 @@ class PaymentProcessor:
             subtask=subtask_id,
             expected_amount=value,
         )
-
 
         self._awaiting.add(payment)
         self._gntb_reserved += value
