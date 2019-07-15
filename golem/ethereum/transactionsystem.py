@@ -618,16 +618,15 @@ class TransactionSystem(LoopingCallService):
             receipt: 'sci_structs.TransactionReceipt',
             gas_price: Optional[int] = None,
     ):
-        tx_hash = f'0x{receipt.tx_hash}'
         try:
             operation = model.WalletOperation.select() \
                 .where(
-                    model.WalletOperation.tx_hash == tx_hash,
+                    model.WalletOperation.tx_hash == receipt.tx_hash,
                 ).get()
         except model.WalletOperation.DoesNotExist:
             log.warning(
                 "Got confirmation of unknown transfer. tx_hash=%s",
-                tx_hash,
+                receipt.tx_hash,
             )
             return
         if gas_price is None:

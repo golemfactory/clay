@@ -17,6 +17,7 @@ from golem_messages.factories.helpers import (
 import golem_sci
 import golem_sci.contracts
 import golem_sci.structs
+import hexbytes
 
 from golem import model
 from golem import testutils
@@ -34,7 +35,7 @@ PASSWORD = 'derp'
 def get_transaction_receipt(tx_hash, status=1):
     return golem_sci.structs.TransactionReceipt(
         raw_receipt={
-            'transactionHash': bytes.fromhex(tx_hash[2:]),
+            'transactionHash': hexbytes.HexBytes(tx_hash),
             'status': status,
             'blockHash': bytes.fromhex(
                 'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
@@ -855,7 +856,7 @@ class TransactionConfirmationTest(TransactionSystemBase):
         self.ets._gntb_balance = 100
         self.ets._eth_balance = denoms.ether
         self.receipt = get_transaction_receipt(f'0x{"0"*64}')
-        self.tx_hash = f"0x{self.receipt.tx_hash}"
+        self.tx_hash = self.receipt.tx_hash
         self.sci.on_transaction_confirmed.side_effect = \
             lambda tx_hash, cb: cb(self.receipt)
         self.sci.estimate_transfer_eth_gas.return_value = 1
