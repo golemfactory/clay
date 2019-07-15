@@ -373,7 +373,7 @@ class TaskManager(TaskEventListener):
     def task_needs_computation(self, task_id: str) -> bool:
         if self.task_finished(task_id):
             task_status = self.tasks_states[task_id].status
-            logger.info(
+            logger.debug(
                 'task is not active: %(task_id)s, status: %(task_status)s',
                 {
                     'task_id': task_id,
