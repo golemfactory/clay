@@ -112,7 +112,7 @@ class ResourceHandshakeSessionMixin:
         else:
             self._handshake_error(key_id, 'handshake not started')
             self.disconnect(
-                message.base.Disconnect.REASON.ResourceHandshakeTimeout)
+                message.base.Disconnect.REASON.ResourceHandshakeFailure)
 
     # ########################
     #     START HANDSHAKE
