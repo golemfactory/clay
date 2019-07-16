@@ -372,6 +372,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 resources = self.task_server.get_resources(ctd['subtask_id'])
                 ctd["resources"] = resources
                 logger.info("resources_result: %r", resources_result)
+            else:
+                ctd["resources"] = self.task_server.get_resources(
+                    ctd['task_id'])
 
             logger.info(
                 "Subtask assigned. %s, subtask_id=%r",

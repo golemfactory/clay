@@ -903,7 +903,7 @@ class ClientProvider:
         :param task_id: Task ID of the rendering task for which fragments should
         be obtained.
         :return: A dictionary where keys are the fragment indices and values are
-        lists of subtasks asssociated with a given fragment. Returns None
+        lists of subtasks associated with a given fragment. Returns None
         (along with an error message) if the task is not known or it is not a
         rendering task.
         """
@@ -918,9 +918,7 @@ class ClientProvider:
         for subtask_index in range(1, task.total_tasks + 1):
             fragments[subtask_index] = []
 
-        for extra_data in task.subtasks_given.values():
-            subtask = self.task_manager.get_subtask_dict(
-                extra_data['subtask_id'])
-            fragments[extra_data['start_task']].append(subtask)
+        for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
+            fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None
