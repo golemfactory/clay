@@ -4,10 +4,10 @@ import os
 import socket
 import uuid
 from copy import deepcopy
-from twisted.internet.defer import Deferred
-from twisted.python.failure import Failure
 from types import MethodType
-from typing import Optional
+from typing import Optional, Dict, Iterable, Tuple
+from twisted.internet.defer import Deferred, succeed
+from twisted.python.failure import Failure
 
 import requests
 
@@ -33,7 +33,7 @@ class IClient(object):
     def get(self, content_hash, client_options=None, **kwargs):
         raise NotImplementedError
 
-    def id(self, client_options=None, *args, **kwargs):
+    def id(self, *args, client_options=None, **kwargs):
         raise NotImplementedError
 
 
@@ -220,19 +220,20 @@ class ClientHandler(metaclass=abc.ABCMeta):
 
 class DummyClient(IClient):
 
-    _resources = dict()
-    _paths = dict()
-    _id = "test"
+    _id = "dummy"
 
-    def add(self, files: dict, **_):
-        return self._add(files)
+    def __init__(self, *args, **kwargs):
+        del args, kwargs
+        self._resources = dict()
+        self._paths = dict()
 
-    def add_async(self, files: dict, **_):
-        deferred = Deferred()
-        deferred.callback(self._add(files))
-        return deferred
-
-    def _add(self, files: dict):
+    def add(
+            self,
+            files: Dict,
+            recursive=False,
+            **kwargs
+    ) -> str:
+        del recursive, kwargs
         from golem.core.fileshelper import common_dir
 
         resource_hash = str(uuid.uuid4())
@@ -240,16 +241,25 @@ class DummyClient(IClient):
         self._paths[resource_hash] = common_dir(files.keys())
         return resource_hash
 
-    def get(self,
+    def add_async(
+            self,
+            *args,
+            **kwargs
+    ) -> Deferred:
+        return succeed(self.add(*args, **kwargs))
+
+    def get(
+            self,
             content_hash: str,
             client_options: Optional[ClientOptions] = None,
-            filepath: Optional[str] = None,
-            **_) -> tuple:
-
+            **kwargs
+    ) -> Tuple[str, Iterable[str]]:
         from golem.core.fileshelper import copy_file_tree
 
         resource = self._resources[content_hash]
         path = self._paths[content_hash]
+        filepath = kwargs['filepath']
+
         files = [os.path.join(filepath, f) for f in resource.values()]
 
         if path != filepath:
@@ -257,21 +267,38 @@ class DummyClient(IClient):
 
         return content_hash, files
 
-    def id(self,
-           client_options: Optional[ClientOptions] = None,
-           *args, **kwargs) -> str:
+    def get_async(
+            self,
+            *args,
+            **kwargs
+    ) -> Deferred:
+        return succeed(self.get(*args, **kwargs))
 
-        return self._id
-
-    def cancel(self, content_hash: str):
+    def cancel(
+            self,
+            content_hash: str
+    ) -> str:
         return content_hash
 
-    @staticmethod
-    def cancel_async(content_hash: str):
-        deferred = Deferred()
-        deferred.callback(content_hash)
-        return deferred
+    def cancel_async(
+            self,
+            content_hash: str
+    ) -> Deferred:
+        return succeed(self.cancel(content_hash))
+
+    def id(
+            self,
+            *args,
+            client_options: Optional[ClientOptions] = None,
+            **kwargs
+    ) -> str:
+        del args, client_options, kwargs
+        return self._id
 
     @classmethod
-    def build_options(cls, **kwargs):
-        return ClientOptions(cls._id, 1)
+    def build_options(
+            cls,
+            **kwargs
+    ) -> ClientOptions:
+        del kwargs
+        return ClientOptions(cls._id, 1.)
