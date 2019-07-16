@@ -187,7 +187,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system)
-        self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -543,7 +542,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                         task_id,
                         task.subtask_price,
                         unfinished_subtasks,
-                        task.header.deadline,
                     )
                 except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do
