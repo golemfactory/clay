@@ -1,9 +1,6 @@
 import enum
 import logging
 
-from os import path
-
-from golem.core.common import get_golem_path
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.envs.docker.benchmark.minilight import make_perf_test
 from golem.model import Performance

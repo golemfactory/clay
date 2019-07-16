@@ -1,6 +1,5 @@
 from copy import copy
 import logging
-import os
 from threading import Thread
 from typing import Union
 

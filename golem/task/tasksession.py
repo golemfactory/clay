@@ -956,8 +956,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not env:
             raise exceptions.CannotComputeTask(reason=reasons.WrongEnvironment)
 
-        reasons = message.tasks.CannotComputeTask.REASON
-
         if isinstance(env, DockerEnvironment):
             check_docker_images(ctd, env)
 
