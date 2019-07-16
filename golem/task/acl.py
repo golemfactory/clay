@@ -24,12 +24,12 @@ class DenyReason(Enum):
 class Acl(abc.ABC):
     @abc.abstractmethod
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def disallow(self, node_id: str, timeout_seconds: int, persist: bool) \
             -> None:
-        pass
+        raise NotImplementedError
 
 
 class _DenyAcl(Acl):

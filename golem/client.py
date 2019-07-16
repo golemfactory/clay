@@ -518,7 +518,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
-        self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 

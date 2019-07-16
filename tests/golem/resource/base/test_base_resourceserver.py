@@ -75,9 +75,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             self.client
         )
 
-    def testStartAccepting(self):
-        self.resource_server.start_accepting()
-
     def testGetDistributedResourceRoot(self):
         resource_dir = self.dir_manager.get_node_dir()
 
@@ -105,9 +102,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         _deferred = rs.create_resource_package(existing_paths, self.task_id)
         pkg_path, pkg_sha1 = sync_wait(_deferred)
-        resource_size = os.path.getsize(pkg_path)
-        return rm, rs.add_resources(pkg_path, pkg_sha1, self.task_id,
-                                    resource_size)
+        return rm, rs.add_resources(pkg_path, self.task_id)
 
     def testAddResources(self):
         rm, deferred = self._add_task()

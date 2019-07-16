@@ -72,7 +72,10 @@ Installer/Installer_Win/install_tmp
 
 # virtualenv
 venv/*
+
+# various caches
 .mypy_cache/
+.pytest_cache/
 
 # dummy test temp files
 apps/dummy/test_tmp

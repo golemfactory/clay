@@ -85,7 +85,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         virtual_switch='--hyperv-virtual-switch'
     )
     BOOT2DOCKER_URL = "https://golem-bootdocker.cdn.golem.network/boot2docker" \
-                      "/v18.09.1-golem/boot2docker-v18.09.1-golem.iso"
+                      "/v18.09.7-golem/boot2docker-v18.09.7-golem.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB

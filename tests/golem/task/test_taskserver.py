@@ -10,6 +10,8 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 
 from pydispatch import dispatcher
 import freezegun
+from twisted.internet import defer
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -258,17 +260,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             ),
         )
 
-    def test_change_config(self, *_):
-        ts = self.ts
-
-        ccd2 = ClientConfigDescriptor()
-        ccd2.task_session_timeout = 124
-        ccd2.min_price = 0.0057
-        ccd2.task_request_interval = 31
-        ts.change_config(ccd2)
-        self.assertEqual(ts.config_desc, ccd2)
-        self.assertEqual(ts.task_keeper.min_price, 0.0057)
-
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
         self.ts.sync_network()
@@ -363,7 +354,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, "127.0.0.1", 'tid', 27.18, 1, 1)
+                node_id, "127.0.0.1", 'tid', 27.18, 1, 'oh')
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
@@ -405,9 +396,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(
-                node_id, "127.0.0.1", task_id,
-                provider_perf,
-                DEFAULT_MAX_MEMORY_SIZE_KB, 1)
+                node_id, "127.0.0.1", task_id, provider_perf,
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -450,7 +440,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -498,7 +488,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
         # given
         self.client.get_computing_trust.return_value = \
@@ -506,7 +496,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # when/then
         assert ts.should_accept_provider(
             node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
         # given
         trust = ts.config_desc.computing_trust - 0.2
@@ -515,7 +505,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -560,7 +550,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             # when
             accepted = ts.should_accept_provider(
                 node_id, "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-                DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+                DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
 
             # then
             assert not accepted
@@ -597,7 +587,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             # when
             accepted = ts.should_accept_provider(node_id, "127.0.0.1",
-                                                 task_id, 99, 3, 4)
+                                                 task_id, 99, 4, 'oh')
 
             # then
             assert not accepted
@@ -644,11 +634,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
                 node_id=node_id,
-                address="127.0.0.1",
+                ip_addr="127.0.0.1",
                 task_id=task_id,
                 provider_perf=DEFAULT_PROVIDER_PERF,
-                max_resource_size=DEFAULT_MAX_RESOURCE_SIZE_KB,
                 max_memory_size=DEFAULT_MAX_MEMORY_SIZE_KB,
+                offer_hash='oh'
             )
             _assert_log_msg(
                 cm,
@@ -669,7 +659,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         assert not ts.should_accept_provider(
             "XYZ", "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
-            DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB)
+            DEFAULT_MAX_MEMORY_SIZE_KB, 'oh')
         listener.assert_called_once_with(
             sender=ANY,
             signal='golem.taskserver',
@@ -872,10 +862,7 @@ class TestTaskServer2(TaskServerBase):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = TaskStatus.computing
         subtask = ts.task_manager.get_next_subtask(
-            "DEF",
-            task_id,
-            1000, 10,
-            5, 10)
+            "DEF", task_id, 1000, 10, 'oh')
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
@@ -1284,3 +1271,91 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.stats.increase_stat.assert_called_once_with(
             'tasks_requested')
         request_task.assert_called_once_with(task_header)
+
+
+class TaskServerAsyncTestBase(TaskServerTestBase, TwistedTestCase):
+
+    def _patch_async(self, *args, **kwargs):
+        patcher = patch(*args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_ts_async(self, *args, **kwargs):
+        patcher = patch.object(self.ts, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+
+class TestChangeConfig(TaskServerAsyncTestBase):
+
+    @defer.inlineCallbacks
+    def test(self):
+        change_tc_config = self._patch_ts_async('_change_task_computer_config')
+        change_tk_config = self._patch_ts_async('task_keeper').change_config
+        change_pcs_config = \
+            self._patch_async('golem.task.taskserver.PendingConnectionsServer')\
+                .change_config
+
+        change_tc_config.return_value = defer.succeed(None)
+        change_tk_config.return_value = defer.succeed(None)
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts.change_config(config_desc, run_benchmarks=True)
+        change_tc_config.assert_called_once_with(config_desc, True)
+        change_tk_config.assert_called_once_with(config_desc)
+        change_pcs_config.assert_called_once_with(self.ts, config_desc)
+
+
+class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
+
+    @defer.inlineCallbacks
+    def test_config_unchanged_no_benchmarks(self):
+        change_tc_config = self._patch_ts_async('task_computer').change_config
+        change_tc_config.return_value = defer.succeed(False)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, False)
+        change_tc_config.assert_called_once_with(config_desc)
+        run_benchmarks.assert_not_called()
+
+    @defer.inlineCallbacks
+    def test_config_changed_no_benchmarks(self):
+        task_computer = self._patch_ts_async('task_computer')
+        task_computer.change_config.return_value = defer.succeed(True)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+
+        def _check(callback, _):
+            task_computer.lock_config.assert_called_once_with(True)
+            task_computer.lock_config.reset_mock()
+            callback(None)
+
+        run_benchmarks.side_effect = _check
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, False)
+        task_computer.change_config.assert_called_once_with(config_desc)
+        task_computer.lock_config.assert_called_once_with(False)
+        run_benchmarks.assert_called_once()
+
+    @defer.inlineCallbacks
+    def test_config_unchanged_run_benchmarks(self):
+        task_computer = self._patch_ts_async('task_computer')
+        task_computer.change_config.return_value = defer.succeed(False)
+        run_benchmarks = self._patch_ts_async('benchmark_manager')\
+            .run_all_benchmarks
+
+        def _check(callback, _):
+            task_computer.lock_config.assert_called_once_with(True)
+            task_computer.lock_config.reset_mock()
+            callback(None)
+
+        run_benchmarks.side_effect = _check
+        config_desc = ClientConfigDescriptor()
+
+        yield self.ts._change_task_computer_config(config_desc, True)
+        task_computer.change_config.assert_called_once_with(config_desc)
+        task_computer.lock_config.assert_called_once_with(False)
+        run_benchmarks.assert_called_once()

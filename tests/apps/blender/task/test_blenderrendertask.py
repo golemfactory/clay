@@ -16,6 +16,7 @@ import numpy
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
 
 import OpenEXR
@@ -33,10 +34,9 @@ from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import AcceptClientVerdict
-from golem.task.taskstate import SubtaskStatus
+from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.verificator.verifier import SubtaskVerificationState
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
@@ -143,19 +143,19 @@ class TestBlenderFrameTask(TempDirFixture):
         img = OpenCVImgRepr.empty(self.bt.res_x, self.bt.res_y // 2)
         img.save_with_extension(file1, 'png')
 
-        def verification_finished1(verification_data):
+        def verification_finished1():
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+            result['extra_data']['results'] = list(self.bt.results.values())[0]
             self.bt.verification_finished(
                 extra_data3.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem.verificator.blender_verifier.'
+        with mock.patch('golem.verifier.blender_verifier.'
                         'BlenderVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
@@ -167,13 +167,13 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(verification_data):
+        def verification_finished2():
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+            result['extra_data']['results'] = list(self.bt.results.values())[0]
             self.bt.verification_finished(
                 extra_data4.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
@@ -185,7 +185,7 @@ class TestBlenderFrameTask(TempDirFixture):
         file2 = path.join(file_dir, 'result2')
         img.save_with_extension(file2, "PNG")
 
-        with mock.patch('golem.verificator.blender_verifier.'
+        with mock.patch('golem.verifier.blender_verifier.'
                         'BlenderVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
@@ -346,12 +346,12 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
-        self.bt.accept_client("ABC")
+        self.bt.accept_client("ABC", 'offer hash')
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.should_accept_client("ABC") != \
+        assert self.bt.should_accept_client("ABC", 'offer hash') != \
             AcceptClientVerdict.ACCEPTED
 
     def test_get_min_max_y(self):

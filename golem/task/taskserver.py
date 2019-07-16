@@ -20,17 +20,18 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, Deferred, \
+    TimeoutError as DeferredTimeoutError
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
+from golem.core.deferred import sync_wait
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.envs.manager import EnvironmentManager
 from golem.marketplace import OfferPool
 from golem.model import TaskPayment
 from golem.network.transport import msg_queue
@@ -52,7 +53,9 @@ from golem.ranking.manager.database_manager import (
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task.envmanager import EnvironmentManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -93,6 +96,9 @@ class TaskServer(
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
 ):
+
+    BENCHMARK_TIMEOUT = 60  # s
+
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
@@ -111,7 +117,10 @@ class TaskServer(
             work_dirs=[Path(self.get_task_computer_root())])
         docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
         new_env_manager = EnvironmentManager()
-        new_env_manager.register_env(docker_cpu_env)
+        new_env_manager.register_env(
+            docker_cpu_env,
+            DockerTaskApiPayloadBuilder,
+        )
 
         self.node = node
         self.task_archiver = task_archiver
@@ -142,6 +151,15 @@ class TaskServer(
             docker_cpu_env=docker_cpu_env,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
+        deferred = self._change_task_computer_config(
+            config_desc=config_desc,
+            run_benchmarks=self.benchmark_manager.benchmarks_needed()
+        )
+        try:
+            sync_wait(deferred, self.BENCHMARK_TIMEOUT)
+        except DeferredTimeoutError:
+            logger.warning('Benchmark computation timed out')
+
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.sessions: Dict[str, TaskSession] = {}
@@ -538,11 +556,11 @@ class TaskServer(
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
-    def set_last_message(self, type_, t, msg, address, port):
+    def set_last_message(self, type_, t, msg, ip_addr, port):
         if len(self.last_messages) >= 5:
             self.last_messages = self.last_messages[-4:]
 
-        self.last_messages.append([type_, t, address, port, msg])
+        self.last_messages.append([type_, t, ip_addr, port, msg])
 
     def get_node_name(self):
         return self.config_desc.node_name
@@ -568,13 +586,32 @@ class TaskServer(
             wtr.already_sending = False
 
     @inlineCallbacks
-    def change_config(self, config_desc, run_benchmarks=False):
+    def change_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            run_benchmarks: bool = False
+    ) -> Deferred:  # pylint: disable=arguments-differ
+
         PendingConnectionsServer.change_config(self, config_desc)
-        self.config_desc = config_desc
         yield self.task_keeper.change_config(config_desc)
-        result = yield self.task_computer.change_config(
-            config_desc, run_benchmarks=run_benchmarks)
-        return result
+        yield self._change_task_computer_config(config_desc, run_benchmarks)
+
+    @inlineCallbacks
+    def _change_task_computer_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            run_benchmarks: bool,
+    ) -> Deferred:
+
+        config_changed = yield self.task_computer.change_config(config_desc)
+        if config_changed or run_benchmarks:
+            self.task_computer.lock_config(True)
+            deferred = Deferred()
+            self.benchmark_manager.run_all_benchmarks(
+                deferred.callback, deferred.errback
+            )
+            yield deferred
+            self.task_computer.lock_config(False)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -769,14 +806,14 @@ class TaskServer(
         netmask = 'netmask'
         not_accepted = 'not accepted'
 
-    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
+    def should_accept_provider(  # pylint: disable=too-many-return-statements
             self,
-            node_id,
-            address,
-            task_id,
-            provider_perf,
-            max_resource_size,
-            max_memory_size):
+            node_id: str,
+            ip_addr: str,
+            task_id: str,
+            provider_perf: float,
+            max_memory_size: int,
+            offer_hash: str) -> bool:
 
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -818,7 +855,7 @@ class TaskServer(
 
         allowed, reason = self.acl.is_allowed(node_id)
         if allowed:
-            allowed, reason = self.acl_ip.is_allowed(address)
+            allowed, reason = self.acl_ip.is_allowed(ip_addr)
         if not allowed:
             logger.info(f'provider is {reason.value}; {ids}')
             self.notify_provider_rejected(
@@ -848,7 +885,7 @@ class TaskServer(
             return False
 
         accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id)
+            = task.should_accept_client(node_id, offer_hash)
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '

@@ -90,7 +90,7 @@ class ProviderBase(test_client.TestClientBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 42
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server.create_resource_package = mock.Mock(
@@ -227,7 +227,7 @@ class TestRestartTask(ProviderBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 0
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server = mock.Mock(
@@ -356,7 +356,7 @@ class TestGetMaskForTask(test_client.TestClientBase):
             exp_potential_workers=8)
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestEnqueueNewTask(ProviderBase):
     def test_enqueue_new_task(self, *_):
         c = self.client
@@ -548,13 +548,13 @@ class TestValidateTaskDict(ProviderBase):
             rpc._validate_task_dict(self.client, self.t_dict)
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
 class TestRestartSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -706,7 +706,7 @@ class TestRestartFrameSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -745,12 +745,12 @@ class TestRestartFrameSubtasks(ProviderBase):
         self.assertEqual(error, f'Task not found: {task_id!r}')
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestExceptionPropagation(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -1024,20 +1024,20 @@ class TestGetFragments(ProviderBase):
         deferred = rpc._prepare_task(self.client, task, force=False)
         return golem_deferred.sync_wait(deferred)
 
-    @mock.patch('os.path.getsize')
+    @mock.patch('os.path.getsize', return_value=123)
     @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
     def test_get_fragments(self, *_):
         tm = self.client.task_manager
         task = self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
-        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 0, 0)
+        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 'oh')
         # Create three more subtasks, all with start_task = 2
         for i in range(subtasks_given - 1):
             with mock.patch('apps.rendering.task.renderingtask.RenderingTask'
                             '._get_next_task', return_value=2):
                 tm.get_next_subtask(fake.pystr(min_chars=4, max_chars=24),
-                                    task.header.task_id, 0, 0, 0, 0)
+                                    task.header.task_id, 0, 0, 'oh')
 
         task_fragments, error = self.provider.get_fragments(task.header.task_id)
 

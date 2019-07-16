@@ -155,7 +155,7 @@
     <ROW File="HashInfo.txt" Component_="blink_image_resources_200_percent.pak" FileName="HashInfo.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\HashInfo.txt" SelfReg="false" NextFile="hyperg.exe"/>
     <ROW File="LICENSE.electron.txt" Component_="blink_image_resources_200_percent.pak" FileName="LICENS~1.TXT|LICENSE.electron.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\LICENSE.electron.txt" SelfReg="false" NextFile="LICENSES.chromium.html"/>
     <ROW File="LICENSES.chromium.html" Component_="blink_image_resources_200_percent.pak" FileName="LICENS~1.HTM|LICENSES.chromium.html" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\LICENSES.chromium.html" SelfReg="false" NextFile="am.pak"/>
-    <ROW File="OpenSSLLicense.txt" Component_="blink_image_resources_200_percent.pak" FileName="OPENSS~1.TXT|OpenSSL License.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\OpenSSL License.txt" SelfReg="false" NextFile="pdf_viewer_resources.pak"/>
+    <ROW File="OpenSSLLicense.txt" Component_="blink_image_resources_200_percent.pak" FileName="OPENSS~1.TXT|OpenSSL License.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\OpenSSL License.txt" SelfReg="false" NextFile="ReadMe.txt"/>
     <ROW File="ReadMe.txt" Component_="blink_image_resources_200_percent.pak" FileName="ReadMe.txt" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ReadMe.txt" SelfReg="false" NextFile="app.asar"/>
     <ROW File="am.pak" Component_="am.pak" FileName="am.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\am.pak" SelfReg="false" NextFile="ar.pak"/>
     <ROW File="apimswincoreconsolel110.dll" Component_="apimswincoreconsolel110.dll" FileName="API-MS~1.DLL|api-ms-win-core-console-l1-1-0.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\api-ms-win-core-console-l1-1-0.dll" SelfReg="false" NextFile="apimswincoredatetimel110.dll"/>
@@ -203,7 +203,7 @@
     <ROW File="bg.pak" Component_="am.pak" FileName="bg.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bg.pak" SelfReg="false" NextFile="bn.pak"/>
     <ROW File="blink_image_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="BLINK_~1.PAK|blink_image_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\blink_image_resources_200_percent.pak" SelfReg="false" NextFile="content_resources_200_percent.pak"/>
     <ROW File="bmw27_cpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~1.BLE|bmw27_cpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_cpu.blend" SelfReg="false" NextFile="ffmpeg.dll"/>
-    <ROW File="bmw27_gpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~2.BLE|bmw27_gpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_gpu.blend" SelfReg="false"/>
+    <ROW File="bmw27_gpu.blend" Component_="bmw27_cpu.blend" FileName="BMW27_~2.BLE|bmw27_gpu.blend" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\examples\blender\bmw27_gpu.blend" SelfReg="false" NextFile="v8_context_snapshot.bin"/>
     <ROW File="bn.pak" Component_="am.pak" FileName="bn.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\bn.pak" SelfReg="false" NextFile="ca.pak"/>
     <ROW File="ca.pak" Component_="am.pak" FileName="ca.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ca.pak" SelfReg="false" NextFile="cs.pak"/>
     <ROW File="content_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="CONTEN~1.PAK|content_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\content_resources_200_percent.pak" SelfReg="false" NextFile="content_shell.pak"/>
@@ -215,7 +215,7 @@
     <ROW File="docker.exe" Component_="docker.exe" FileName="docker.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker.exe" SelfReg="false" NextFile="bmw27_gpu.blend" DigSign="true"/>
     <ROW File="dockermachine.exe" Component_="dockermachine.exe" FileName="DOCKER~1.EXE|docker-machine.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker-machine.exe" SelfReg="false" NextFile="docker.exe" DigSign="true"/>
     <ROW File="el.pak" Component_="am.pak" FileName="el.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\el.pak" SelfReg="false" NextFile="enGB.pak"/>
-    <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="snapshot_blob.bin"/>
+    <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="ssleay32.dll"/>
     <ROW File="enGB.pak" Component_="am.pak" FileName="en-GB.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-GB.pak" SelfReg="false" NextFile="enUS.pak"/>
     <ROW File="enUS.pak" Component_="am.pak" FileName="en-US.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-US.pak" SelfReg="false" NextFile="es419.pak"/>
     <ROW File="es.pak" Component_="am.pak" FileName="es.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\es.pak" SelfReg="false" NextFile="et.pak"/>
@@ -258,7 +258,6 @@
     <ROW File="nb.pak" Component_="am.pak" FileName="nb.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\nb.pak" SelfReg="false" NextFile="nl.pak"/>
     <ROW File="nl.pak" Component_="am.pak" FileName="nl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\nl.pak" SelfReg="false" NextFile="pl.pak"/>
     <ROW File="node.dll" Component_="node.dll" FileName="node.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\node.dll" SelfReg="false" NextFile="OpenSSLLicense.txt"/>
-    <ROW File="pdf_viewer_resources.pak" Component_="blink_image_resources_200_percent.pak" FileName="PDF_VI~1.PAK|pdf_viewer_resources.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\pdf_viewer_resources.pak" SelfReg="false" NextFile="ReadMe.txt"/>
     <ROW File="pl.pak" Component_="am.pak" FileName="pl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pl.pak" SelfReg="false" NextFile="ptBR.pak"/>
     <ROW File="ptBR.pak" Component_="am.pak" FileName="pt-BR.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pt-BR.pak" SelfReg="false" NextFile="ptPT.pak"/>
     <ROW File="ptPT.pak" Component_="am.pak" FileName="pt-PT.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\pt-PT.pak" SelfReg="false" NextFile="ro.pak"/>
@@ -267,7 +266,6 @@
     <ROW File="ru.pak" Component_="am.pak" FileName="ru.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\ru.pak" SelfReg="false" NextFile="sk.pak"/>
     <ROW File="sk.pak" Component_="am.pak" FileName="sk.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sk.pak" SelfReg="false" NextFile="sl.pak"/>
     <ROW File="sl.pak" Component_="am.pak" FileName="sl.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sl.pak" SelfReg="false" NextFile="sr.pak"/>
-    <ROW File="snapshot_blob.bin" Component_="blink_image_resources_200_percent.pak" FileName="SNAPSH~1.BIN|snapshot_blob.bin" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\snapshot_blob.bin" SelfReg="false" NextFile="ssleay32.dll"/>
     <ROW File="sr.pak" Component_="am.pak" FileName="sr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sr.pak" SelfReg="false" NextFile="sv.pak"/>
     <ROW File="ssleay32.dll" Component_="ssleay32.dll" FileName="ssleay32.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ssleay32.dll" SelfReg="false" NextFile="ucrtbase.dll"/>
     <ROW File="sv.pak" Component_="am.pak" FileName="sv.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\sv.pak" SelfReg="false" NextFile="sw.pak"/>
@@ -279,6 +277,7 @@
     <ROW File="ucrtbase.dll" Component_="ucrtbase.dll" FileName="ucrtbase.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ucrtbase.dll" SelfReg="false" NextFile="ui_resources_200_percent.pak"/>
     <ROW File="ui_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="UI_RES~1.PAK|ui_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\ui_resources_200_percent.pak" SelfReg="false" NextFile="vcruntime140.dll"/>
     <ROW File="uk.pak" Component_="am.pak" FileName="uk.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\uk.pak" SelfReg="false" NextFile="vi.pak"/>
+    <ROW File="v8_context_snapshot.bin" Component_="blink_image_resources_200_percent.pak" FileName="V8_CON~1.BIN|v8_context_snapshot.bin" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\v8_context_snapshot.bin" SelfReg="false"/>
     <ROW File="vcruntime140.dll" Component_="vcruntime140.dll" FileName="VCRUNT~1.DLL|vcruntime140.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\vcruntime140.dll" SelfReg="false" NextFile="views_resources_200_percent.pak"/>
     <ROW File="vi.pak" Component_="am.pak" FileName="vi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\vi.pak" SelfReg="false" NextFile="zhCN.pak"/>
     <ROW File="views_resources_200_percent.pak" Component_="blink_image_resources_200_percent.pak" FileName="VIEWS_~1.PAK|views_resources_200_percent.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\views_resources_200_percent.pak" SelfReg="false" NextFile="golem.VisualElementsManifest.xml"/>

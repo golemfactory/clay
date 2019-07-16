@@ -22,7 +22,7 @@ class _CommandResultFormatter(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def format(self, result):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def _initial_format(result):

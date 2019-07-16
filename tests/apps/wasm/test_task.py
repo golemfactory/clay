@@ -86,7 +86,6 @@ class WasmTaskVerifierTestCase(TestCase):
         self.assertEqual(verifier.results, ['result1', 'result2'])
 
         self.assertEqual(verifier.subtask_info, {'some': 'info'})
-        self.assertTrue(verifier._verify_result({'some': 'result'}))
 
 
 TEST_TASK_DEFINITION_DICT = {
