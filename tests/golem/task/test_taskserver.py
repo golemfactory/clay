@@ -156,7 +156,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             use_docker_manager=False,
             task_archiver=tar,
         )
-        ts.verify_header_sig = lambda x: True
+        ts._verify_header_sig = lambda x: True
         self.ts = ts
         ts._is_address_accessible = Mock(return_value=True)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
@@ -176,7 +176,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         handshake.local_result = True
         handshake.remote_result = True
         self.ts.get_environment_by_id = Mock(return_value=None)
-        self.ts.get_key_id = Mock(return_value='0'*128)
+        self.ts.keys_auth.key_id = '0'*128
         self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
         ts.add_task_header(task_header)
         self.assertEqual(ts._request_random_task(), task_id)
@@ -276,19 +276,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             .assert_called_once()
         # pylint: enable=no-member
 
-    def test_retry_sending_task_result(self, *_):
-        ts = self.ts
-        ts.network = Mock()
-
-        subtask_id = 'xxyyzz'
-        wtr = Mock()
-        wtr.already_sending = True
-
-        ts.results_to_send[subtask_id] = wtr
-
-        ts.retry_sending_task_result(subtask_id)
-        self.assertFalse(wtr.already_sending)
-
     @patch("golem.task.server.helpers.send_task_failure")
     @patch("golem.task.server.helpers.send_report_computed_task")
     def test_send_waiting_results(self, mock_send_rct, mock_send_tf, *_):
@@ -310,17 +297,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts._send_waiting_results()
         mock_send_rct.assert_not_called()
-
-        wtr.last_sending_trial = 0
-        ts.retry_sending_task_result(subtask_id)
-
-        ts._send_waiting_results()
-        mock_send_rct.assert_called_once_with(
-            task_server=self.ts,
-            waiting_task_result=wtr,
-        )
-
-        mock_send_rct.reset_mock()
 
         ts._send_waiting_results()
         mock_send_rct.assert_not_called()
