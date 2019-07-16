@@ -229,8 +229,8 @@
     <ROW File="d3dcompiler_47.dll" Component_="d3dcompiler_47.dll" FileName="D3DCOM~1.DLL|d3dcompiler_47.dll" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\d3dcompiler_47.dll" SelfReg="false" NextFile="bmw27_cpu.blend"/>
     <ROW File="da.pak" Component_="am.pak" FileName="da.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\da.pak" SelfReg="false" NextFile="de.pak"/>
     <ROW File="de.pak" Component_="am.pak" FileName="de.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\de.pak" SelfReg="false" NextFile="el.pak"/>
-    <ROW File="docker.exe" Component_="docker.exe" FileName="docker.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker.exe" SelfReg="false" NextFile="hyperg.exe" DigSign="true"/>
-    <ROW File="dockermachine.exe" Component_="dockermachine.exe" FileName="DOCKER~1.EXE|docker-machine.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker-machine.exe" SelfReg="false" NextFile="docker.exe" DigSign="true"/>
+    <ROW File="docker.exe" Component_="docker.exe" FileName="docker.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker.exe" SelfReg="false" NextFile="hyperg.exe" DigSign="true"/>
+    <ROW File="dockermachine.exe" Component_="dockermachine.exe" FileName="DOCKER~1.EXE|docker-machine.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\docker-machine.exe" SelfReg="false" NextFile="docker.exe" DigSign="true"/>
     <ROW File="el.pak" Component_="am.pak" FileName="el.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\el.pak" SelfReg="false" NextFile="enGB.pak"/>
     <ROW File="electron.asar" Component_="appupdate.yml" FileName="ELECTR~1.ASA|electron.asar" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\resources\electron.asar" SelfReg="false" NextFile="ssleay32.dll"/>
     <ROW File="enGB.pak" Component_="am.pak" FileName="en-GB.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\en-GB.pak" SelfReg="false" NextFile="enUS.pak"/>
@@ -255,7 +255,7 @@
     <ROW File="hi.pak" Component_="am.pak" FileName="hi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hi.pak" SelfReg="false" NextFile="hr.pak"/>
     <ROW File="hr.pak" Component_="am.pak" FileName="hr.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hr.pak" SelfReg="false" NextFile="hu.pak"/>
     <ROW File="hu.pak" Component_="am.pak" FileName="hu.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hu.pak" SelfReg="false" NextFile="id.pak"/>
-    <ROW File="hyperg.exe" Component_="hyperg.exe" FileName="hyperg.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg.exe" SelfReg="false" DigSign="true"/>
+    <ROW File="hyperg.exe" Component_="hyperg.exe" FileName="hyperg.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\hyperg.exe" SelfReg="false" DigSign="true"/>
     <ROW File="icudtl.dat" Component_="blink_image_resources_200_percent.pak" FileName="icudtl.dat" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\icudtl.dat" SelfReg="false" NextFile="libeay32.dll"/>
     <ROW File="id.pak" Component_="am.pak" FileName="id.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\id.pak" SelfReg="false" NextFile="it.pak"/>
     <ROW File="it.pak" Component_="am.pak" FileName="it.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\it.pak" SelfReg="false" NextFile="ja.pak"/>
