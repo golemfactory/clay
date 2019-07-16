@@ -350,11 +350,9 @@ class TestClient(TestClientBase):
             ),
         }
         subtask_price = 123
-        deadline = 23
         tm.tasks = {
             "t2": Mock(
                 subtask_price=subtask_price,
-                header=Mock(deadline=deadline),
                 get_total_tasks=Mock(return_value=3)
             ),
         }
@@ -363,7 +361,6 @@ class TestClient(TestClientBase):
             "t2",
             subtask_price,
             2,
-            deadline,
         )
 
 
@@ -380,7 +377,6 @@ class TestClientRestartSubtasks(TestClientBase):
             self.task_id,
             self.subtask_price,
             10,
-            time.time(),
         )
 
         self.client.task_server = Mock()
