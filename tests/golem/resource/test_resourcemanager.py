@@ -7,6 +7,7 @@ from golem.testutils import TempDirFixture
 
 
 class TestResourceManager(TempDirFixture):
+    # pylint: disable=no-member
 
     def setUp(self):
         super().setUp()
@@ -72,6 +73,5 @@ class TestResourceManager(TempDirFixture):
             resource_id = self.resource_manager.share(sample_path).result
             assert sample_path in self.resource_manager._cache
 
-            removed_id = self.resource_manager.drop(resource_id).result
+            self.resource_manager.drop(resource_id)
             assert sample_path not in self.resource_manager._cache
-            assert isinstance(removed_id, str)

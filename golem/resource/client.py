@@ -30,7 +30,7 @@ class IClient(object):
     def cancel(self, content_hash):
         raise NotImplementedError
 
-    def get(self, content_hash, client_options=None, **kwargs):
+    def get(self, content_hash, filepath: str, client_options=None, **kwargs):
         raise NotImplementedError
 
     def id(self, *args, client_options=None, **kwargs):
@@ -229,7 +229,7 @@ class DummyClient(IClient):
 
     def add(
             self,
-            files: Dict,
+            files: Dict[str, str],
             recursive=False,
             **kwargs
     ) -> str:
@@ -251,15 +251,15 @@ class DummyClient(IClient):
     def get(
             self,
             content_hash: str,
+            filepath: str,
             client_options: Optional[ClientOptions] = None,
             **kwargs
     ) -> Tuple[str, Iterable[str]]:
+        del kwargs
         from golem.core.fileshelper import copy_file_tree
 
         resource = self._resources[content_hash]
         path = self._paths[content_hash]
-        filepath = kwargs['filepath']
-
         files = [os.path.join(filepath, f) for f in resource.values()]
 
         if path != filepath:
