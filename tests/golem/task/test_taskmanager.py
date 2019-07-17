@@ -1160,6 +1160,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             new_task.last_task += 1
             return Task.ExtraData(ctd=ctd)
 
+        new_task.total_tasks = len(ctds)
         new_task.needs_computation = lambda: new_task.last_task < len(ctds)
         new_task.query_extra_data = query_extra_data
 
@@ -1220,6 +1221,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
+        new_task.total_tasks = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy:
@@ -1263,6 +1265,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
+        new_task.total_tasks = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy, \

@@ -1217,8 +1217,11 @@ class TestOfferChosen(TestCase):
     def test_multi_wtct(self, *_):
         # given
         self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
-        ctd = msg_factories.tasks.ComputeTaskDefFactory(resources=None)
-        self.ts.task_manager.get_next_subtask.return_value = ctd
+
+        def ctd(*args, **kwargs):
+            return msg_factories.tasks.ComputeTaskDefFactory(resources=None)
+
+        self.ts.task_manager.get_next_subtask.side_effect = ctd
 
         # when
         self.ts._offer_chosen(is_chosen=True, msg=self.msg)

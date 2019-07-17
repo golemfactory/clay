@@ -223,6 +223,8 @@ class TaskComputer(object):
             )
         except (IndexError, KeyError):
             outfilebasename = ''
+        except TypeError:
+            return None
 
         tcss = ComputingSubtaskStateSnapshot(
             subtask_id=self.assigned_subtask['subtask_id'],

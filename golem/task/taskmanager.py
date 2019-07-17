@@ -374,7 +374,7 @@ class TaskManager(TaskEventListener):
     def task_needs_computation(self, task_id: str) -> bool:
         if self.task_finished(task_id):
             task_status = self.tasks_states[task_id].status
-            logger.info(
+            logger.debug(
                 'task is not active: %(task_id)s, status: %(task_status)s',
                 {
                     'task_id': task_id,
@@ -585,7 +585,9 @@ class TaskManager(TaskEventListener):
                 .status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
-            new_task.num_failed_subtasks += 1
+
+        new_task.num_failed_subtasks = \
+            new_task.total_tasks - len(subtasks_to_copy)
 
         def handle_copy_error(subtask_id, error):
             logger.error(
