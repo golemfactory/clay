@@ -1,18 +1,23 @@
 import os
 import random
+from pathlib import Path
 from threading import Lock
 import time
 import unittest.mock as mock
 import uuid
 
 from golem_messages.message import ComputeTaskDef
+from twisted.internet import defer
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
+from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
+from golem.task.taskserver import TaskServer
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -22,73 +27,38 @@ from golem.tools.os_info import OSInfo
 @ci_skip
 class TestTaskComputer(DatabaseFixture, LogTestCase):
 
-    def setUp(self):
-        super(TestTaskComputer, self).setUp()
+    @mock.patch('golem.task.taskcomputer.DockerManager')
+    def setUp(self, docker_manager):
+        super().setUp()  # pylint: disable=arguments-differ
+
         task_server = mock.MagicMock()
         task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = ClientConfigDescriptor()
-
         self.task_server = task_server
 
+        self.docker_cpu_env = mock.Mock(spec=DockerCPUEnvironment)
+        self.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
+        docker_manager.install.return_value = self.docker_manager
+
+        self.task_computer = TaskComputer(
+            self.task_server,
+            self.docker_cpu_env)
+
+        self.docker_manager.reset_mock()
+        self.docker_cpu_env.reset_mock()
+
     def test_init(self):
-        task_server = self.task_server
-        tc = TaskComputer(task_server, use_docker_manager=False)
+        tc = TaskComputer(
+            self.task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
-    def test_run(self):
-        task_server = self.task_server
-        task_server.config_desc.task_request_interval = 0.5
-        task_server.config_desc.accept_tasks = True
-        task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer(task_server, use_docker_manager=False)
-        self.assertIsNone(tc.counting_thread)
-        tc.last_task_request = 0
-        tc.run()
-        task_server.request_task.assert_called_with()
-        task_server.request_task = mock.MagicMock()
-        task_server.config_desc.accept_tasks = False
-        tc2 = TaskComputer(task_server, use_docker_manager=False)
-        tc2.counting_thread = None
-        tc2.last_task_request = 0
-
-        tc2.run()
-        task_server.request_task.assert_not_called()
-
-        tc2.runnable = True
-        tc2.compute_tasks = True
-
-        tc2.last_task_request = 0
-        tc2.counting_thread = None
-
-        tc2.run()
-
-        assert task_server.request_task.called
-
-        task_server.request_task.called = False
-
-        tc2.last_checking = 10 ** 10
-
-        tc2.run()
-
-    def test_resource_failure(self):
-        task_server = self.task_server
-
-        tc = TaskComputer(task_server, use_docker_manager=False)
-
-        task_id = 'xyz'
-        subtask_id = 'xxyyzz'
-
-        tc.resource_failure(task_id, 'reason')
-        assert not task_server.send_task_failed.called
-
-        tc.assigned_subtask = ComputeTaskDef(
-            task_id=task_id,
-            subtask_id=subtask_id,
-        )
-
-        tc.resource_failure(task_id, 'reason')
-        assert task_server.send_task_failed.called
+    def test_check_timeout(self):
+        self.task_computer.counting_thread = mock.Mock()
+        self.task_computer.check_timeout()
+        self.task_computer.counting_thread.check_timeout.assert_called_once()
 
     def test_computation(self):  # pylint: disable=too-many-statements
         # FIXME Refactor too single tests and remove disable too many
@@ -117,18 +87,19 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         }
 
         mock_finished = mock.Mock()
-        tc = TaskComputer(task_server, use_docker_manager=False,
-                          finished_cb=mock_finished)
+        tc = TaskComputer(
+            task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
 
         self.assertEqual(tc.assigned_subtask, None)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
-        tc.task_server.request_resource.assert_called_with(
-            "xyz", "xxyyzz", ["abcd", "efgh"])
 
-        assert tc.resource_collected("xyz")
+        tc.start_computation()
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
@@ -136,7 +107,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
-        assert tc.resource_collected("xyz")
+        tc.start_computation()
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
@@ -163,9 +134,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
-        tc.task_server.request_resource.assert_called_with(
-            "xyz", "aabbcc", ["abcd", "efgh"])
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.__wait_for_tasks(tc)
 
         self.assertIsNone(tc.counting_thread)
@@ -179,7 +148,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "print('Hello world')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.__wait_for_tasks(tc)
 
         task_server.send_task_failed.assert_called_with(
@@ -193,7 +162,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         self.assertIsNotNone(tc.counting_thread)
         self.assertGreater(tc.counting_thread.time_to_compute, 10)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 20)
@@ -202,7 +171,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['subtask_id'] = "xxyyzz2"
         ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
-        self.assertTrue(tc.resource_collected("xyz"))
+        tc.start_computation()
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         tt = tc.counting_thread
@@ -219,41 +188,22 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_host_state(self):
         task_server = self.task_server
-        tc = TaskComputer(task_server, use_docker_manager=False)
+        tc = TaskComputer(
+            task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False)
         self.assertEqual(tc.get_host_state(), "Idle")
         tc.counting_thread = mock.Mock()
         self.assertEqual(tc.get_host_state(), "Computing")
-
-    def test_change_config(self):
-        task_server = self.task_server
-
-        tc = TaskComputer(task_server, use_docker_manager=False)
-        tc.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
-
-        tc.use_docker_manager = False
-        tc.change_config(mock.Mock(), in_background=False)
-        assert not tc.docker_manager.update_config.called
-
-        tc.use_docker_manager = True
-
-        def _update_config(status_callback, *_, **__):
-            status_callback()
-        tc.docker_manager.update_config = _update_config
-
-        tc.change_config(mock.Mock(), in_background=False)
-
-        # pylint: disable=unused-argument
-        def _update_config_2(status_callback, done_callback, *_, **__):
-            done_callback(False)
-        tc.docker_manager.update_config = _update_config_2
-
-        tc.change_config(mock.Mock(), in_background=False)
 
     def test_event_listeners(self):
         client = mock.Mock()
         task_server = self.task_server
 
-        tc = TaskComputer(task_server, use_docker_manager=False)
+        tc = TaskComputer(
+            task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False)
 
         tc.lock_config(True)
         tc.lock_config(False)
@@ -273,7 +223,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
         task_computer = mock.Mock()
-        compute_task = TaskComputer._TaskComputer__compute_task
+        compute_task = TaskComputer.start_computation
 
         dir_manager = task_computer.dir_manager
         dir_manager.get_task_resource_dir.return_value = self.tempdir + '_res'
@@ -285,25 +235,21 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.assigned_subtask = ComputeTaskDef(
             task_id=task_id,
             subtask_id=subtask_id,
+            docker_images=[],
+            extra_data=mock.Mock(),
+            deadline=time.time() + 3600
         )
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
 
-        args = (task_computer, subtask_id)
-        kwargs = dict(
-            docker_images=[],
-            extra_data=mock.Mock(),
-            subtask_deadline=time.time() + 3600
-        )
-
-        compute_task(*args, **kwargs)
+        compute_task(task_computer)
         assert not start.called
 
         header = mock.Mock(deadline=time.time() + 3600)
         task_computer.task_server.task_keeper.task_headers[task_id] = header
 
-        compute_task(*args, **kwargs)
+        compute_task(task_computer)
         assert start.called
 
     @staticmethod
@@ -314,7 +260,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             print('counting thread is None')
 
     def test_get_environment_no_assigned_subtask(self):
-        tc = TaskComputer(self.task_server, use_docker_manager=False)
+        tc = TaskComputer(
+            self.task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False)
         assert tc.get_environment() is None
 
     def test_get_environment(self):
@@ -325,7 +274,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             )
         }
 
-        tc = TaskComputer(task_server, use_docker_manager=False)
+        tc = TaskComputer(
+            task_server,
+            self.docker_cpu_env,
+            use_docker_manager=False)
         tc.assigned_subtask = ComputeTaskDef()
         tc.assigned_subtask['task_id'] = "task_id"
         assert tc.get_environment() == "env"
@@ -333,13 +285,22 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
 @ci_skip
 class TestTaskThread(DatabaseFixture):
+
+    @mock.patch(
+        'golem.envs.docker.cpu.deferToThread',
+        lambda f, *args, **kwargs: f(*args, **kwargs))
     def test_thread(self):
         ts = mock.MagicMock()
         ts.config_desc = ClientConfigDescriptor()
+        ts.config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+        ts.config_desc.num_cores = 1
         ts.benchmark_manager.benchmarks_needed.return_value = False
         ts.get_task_computer_root.return_value = self.new_path
 
-        tc = TaskComputer(ts, use_docker_manager=False)
+        tc = TaskComputer(
+            ts,
+            mock.Mock(spec=DockerCPUEnvironment),
+            use_docker_manager=False)
 
         tt = self._new_task_thread(tc)
         sync_wait(tt.start())
@@ -379,6 +340,7 @@ class TestTaskThread(DatabaseFixture):
 
 
 class TestTaskMonitor(DatabaseFixture):
+
     def test_task_computed(self):
         """golem.monitor signal"""
         from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -400,10 +362,15 @@ class TestTaskMonitor(DatabaseFixture):
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
+        task_server.config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+        task_server.config_desc.num_cores = 1
         task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.get_task_computer_root.return_value = self.new_path
 
-        task = TaskComputer(task_server, use_docker_manager=False)
+        task = TaskComputer(
+            task_server,
+            mock.Mock(spec=DockerCPUEnvironment),
+            use_docker_manager=False)
 
         task_thread = mock.MagicMock()
         task_thread.start_time = time.time()
@@ -450,3 +417,185 @@ class TestTaskMonitor(DatabaseFixture):
         prepare()
         task_thread.result = None
         check(False)
+
+
+class TestTaskComputerBase(TwistedTestCase):
+
+    @mock.patch('golem.task.taskcomputer.IntStatsKeeper')
+    @mock.patch('golem.task.taskcomputer.DockerManager')
+    def setUp(self, docker_manager, _):
+        super().setUp()
+        self.task_server = mock.Mock(
+            spec=TaskServer,
+            config_desc=ClientConfigDescriptor(),
+            task_keeper=mock.Mock())
+        self.docker_cpu_env = mock.Mock(spec=DockerCPUEnvironment)
+        self.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
+        docker_manager.install.return_value = self.docker_manager
+        self.task_computer = TaskComputer(
+            self.task_server,
+            self.docker_cpu_env)
+
+
+class TestChangeConfig(TestTaskComputerBase):
+
+    def setUp(self):
+        super().setUp()
+        self.docker_cpu_env.clean_up.return_value = defer.succeed(None)
+        self.docker_cpu_env.prepare.return_value = defer.succeed(None)
+
+    @defer.inlineCallbacks
+    def test_root_path(self):
+        self.task_server.get_task_computer_root.return_value = '/test'
+        config_desc = ClientConfigDescriptor()
+
+        yield self.task_computer.change_config(config_desc)
+        self.assertEqual(self.task_computer.dir_manager.root_path, '/test')
+
+    @defer.inlineCallbacks
+    def _test_compute_tasks(self, accept_tasks, in_shutdown, expected):
+        self.task_server.get_task_computer_root.return_value = '/test'
+        config_desc = ClientConfigDescriptor()
+        config_desc.accept_tasks = accept_tasks
+        config_desc.in_shutdown = in_shutdown
+
+        yield self.task_computer.change_config(config_desc)
+        self.assertEqual(self.task_computer.compute_tasks, expected)
+
+    @defer.inlineCallbacks
+    def test_compute_tasks(self):
+        yield self._test_compute_tasks(
+            accept_tasks=True,
+            in_shutdown=True,
+            expected=False
+        )
+        yield self._test_compute_tasks(
+            accept_tasks=True,
+            in_shutdown=False,
+            expected=True
+        )
+        yield self._test_compute_tasks(
+            accept_tasks=False,
+            in_shutdown=True,
+            expected=False
+        )
+        yield self._test_compute_tasks(
+            accept_tasks=False,
+            in_shutdown=False,
+            expected=False
+        )
+
+    @defer.inlineCallbacks
+    def test_update_docker_cpu_env_config(self):
+        self.task_server.get_task_computer_root.return_value = '/test'
+        config_desc = ClientConfigDescriptor()
+        config_desc.num_cores = 13
+        config_desc.max_memory_size = 1024 * 1024
+
+        yield self.task_computer.change_config(config_desc)
+        self.docker_cpu_env.update_config.assert_called_once_with(
+            DockerCPUConfig(
+                work_dirs=[Path('/test')],
+                cpu_count=13,
+                memory_mb=1024,
+            )
+        )
+
+    @defer.inlineCallbacks
+    def test_update_docker_manager_config(self):
+        def _update_config(done_callback, *_, **__):
+            done_callback(True)
+
+        self.docker_manager.hypervisor = mock.Mock()
+        self.docker_manager.update_config.side_effect = _update_config
+        self.task_server.get_task_computer_root.return_value = '/test'
+        config_desc = ClientConfigDescriptor()
+
+        result = yield self.task_computer.change_config(config_desc)
+        self.assertTrue(result)
+        self.docker_manager.build_config.assert_called_once_with(config_desc)
+        self.docker_manager.update_config.assert_called_once()
+
+
+class TestLockConfig(TestTaskComputerBase):
+
+    def test_on(self):
+        listener = mock.MagicMock()
+        self.task_computer.register_listener(listener)
+        self.task_computer.runnable = True
+
+        self.task_computer.lock_config(True)
+        listener.lock_config.assert_called_once_with(True)
+        self.assertFalse(self.task_computer.runnable)
+
+    def test_off(self):
+        listener = mock.MagicMock()
+        self.task_computer.register_listener(listener)
+        self.task_computer.runnable = False
+
+        self.task_computer.lock_config(False)
+        listener.lock_config.assert_called_once_with(False)
+        self.assertTrue(self.task_computer.runnable)
+
+
+@mock.patch('golem.task.taskcomputer.ProviderTimer')
+class TestTaskGiven(TestTaskComputerBase):
+
+    def test_ok(self, provider_timer):
+        ctd = mock.Mock()
+        self.task_computer.task_given(ctd)
+        self.assertEqual(self.task_computer.assigned_subtask, ctd)
+        provider_timer.start.assert_called_once_with()
+
+    def test_already_assigned(self, provider_timer):
+        self.task_computer.assigned_subtask = mock.Mock()
+        ctd = mock.Mock()
+        with self.assertRaises(AssertionError):
+            self.task_computer.task_given(ctd)
+        provider_timer.start.assert_not_called()
+
+
+class TestTaskInterrupted(TestTaskComputerBase):
+
+    def test_no_task_assigned(self):
+        with self.assertRaises(AssertionError):
+            self.task_computer.task_interrupted()
+
+    @mock.patch('golem.task.taskcomputer.TaskComputer._task_finished')
+    def test_ok(self, task_finished):
+        self.task_computer.assigned_subtask = mock.Mock()
+        self.task_computer.task_interrupted()
+        task_finished.assert_called_once_with()
+
+
+class TestTaskFinished(TestTaskComputerBase):
+
+    def test_no_assigned_subtask(self):
+        with self.assertRaises(AssertionError):
+            self.task_computer._task_finished()
+
+    @mock.patch('golem.task.taskcomputer.dispatcher')
+    @mock.patch('golem.task.taskcomputer.ProviderTimer')
+    def test_ok(self, provider_timer, dispatcher):
+        ctd = ComputeTaskDef(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            performance=123
+        )
+        self.task_computer.assigned_subtask = ctd
+        self.task_computer.counting_thread = mock.Mock()
+        self.task_computer.finished_cb = mock.Mock()
+
+        self.task_computer._task_finished()
+        self.assertIsNone(self.task_computer.assigned_subtask)
+        self.assertIsNone(self.task_computer.counting_thread)
+        provider_timer.finish.assert_called_once_with()
+        dispatcher.send.assert_called_once_with(
+            signal='golem.taskcomputer',
+            event='subtask_finished',
+            subtask_id=ctd['subtask_id'],
+            min_performance=ctd['performance']
+        )
+        self.task_server.task_keeper.task_ended.assert_called_once_with(
+            ctd['task_id'])
+        self.task_computer.finished_cb.assert_called_once_with()

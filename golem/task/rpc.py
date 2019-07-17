@@ -17,8 +17,8 @@ from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
-from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
+from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
@@ -26,7 +26,7 @@ from golem.rpc import utils as rpc_utils
 from golem.task import taskbase, taskkeeper, taskstate, tasktester
 
 if typing.TYPE_CHECKING:
-    from golem.client import Client # noqa pylint: disable=unused-import
+    from golem.client import Client  # noqa pylint: disable=unused-import
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -157,7 +157,24 @@ def _run_test_task(client, task_dict):
     client.task_tester.run()
 
 
-@golem_async.deferred_run()
+def _create_task(client: 'Client', task_dict: dict) -> taskbase.Task:
+    validate_client(client)
+    prepare_and_validate_task_dict(client, task_dict)
+    return client.task_manager.create_task(task_dict)
+
+
+def _prepare_task(
+        client: 'Client',
+        task: taskbase.Task,
+        force: bool
+) -> defer.Deferred:
+    logger.debug('_prepare_task(). dict=%r', task.task_definition.to_dict())
+    seq = DeferredSeq()
+    seq.push(client.task_manager.initialize_task, task)
+    seq.push(enqueue_new_task, client, task, force=force)
+    return seq.execute()
+
+
 def _restart_subtasks(
         client: 'Client',
         old_task_id: str,
@@ -165,31 +182,29 @@ def _restart_subtasks(
         subtask_ids_to_copy: typing.Iterable[str],
         ignore_gas_price: bool = False,
 ):
-    @defer.inlineCallbacks
-    @safe_run(
-        lambda e: logger.error(
-            'Restarting subtasks_failed. task_dict=%r, subtask_ids_to_copy=%r',
-            task_dict,
-            subtask_ids_to_copy,
-        ),
-    )
-    def deferred():
-        new_task = yield enqueue_new_task(
-            client=client,
-            task=client.task_manager.create_task(task_dict),
-            force=ignore_gas_price,
-        )
+    new_task = _create_task(client, task_dict)
 
+    def _copy_results(*_):
         client.task_manager.copy_results(
             old_task_id=old_task_id,
             new_task_id=new_task.header.task_id,
             subtask_ids_to_copy=subtask_ids_to_copy
         )
-    # Function passed to twisted.threads.deferToThread can't itself
-    # return a deferred, that's why I defined inner deferred function
-    # and use sync_wait below.
-    validate_client(client)
-    golem_deferred.sync_wait(deferred())
+
+    # Fire and forget the next steps after create_task
+    deferred = _prepare_task(
+        client=client,
+        task=new_task,
+        force=ignore_gas_price)
+    deferred.addErrback(
+        lambda failure: _restart_subtasks_error(
+            e=failure.value,
+            _self=None,
+            task_id=new_task.header.task_id,
+            subtask_ids=subtask_ids_to_copy
+        )
+    )
+    deferred.addCallback(_copy_results)
 
 
 @defer.inlineCallbacks
@@ -293,14 +308,12 @@ def add_resources(client, resources, res_id, timeout):
     client_options.timeout = timeout
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
-        package_sha1,
         res_id,
-        resource_size,
         client_options=client_options,
     )
 
     logger.info("Resource package created. res_id=%r", res_id)
-    return resource_server_result
+    return resource_server_result + (package_sha1, resource_size)
 
 
 @defer.inlineCallbacks
@@ -359,16 +372,15 @@ def enqueue_new_task(client, task, force=False) \
         task_id,
         task.subtask_price,
         task.get_total_tasks(),
-        task.header.deadline,
     )
-    logger.info('Enqueue new task %r', task)
+    logger.debug('Enqueue new task. task_id=%r', task)
 
     resource_server_result = yield _setup_task_resources(
         client=client,
         task=task,
     )
 
-    logger.info("Task created. task_id=%r", task_id)
+    logger.debug("Task resources created. task_id=%r", task_id)
 
     try:
         yield _ensure_task_deposit(
@@ -383,7 +395,7 @@ def enqueue_new_task(client, task, force=False) \
             resource_server_result=resource_server_result,
         )
 
-        logger.info("Task enqueued. task_id=%r", task_id)
+        logger.info("Task started. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
         logger.error(
             "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
@@ -402,7 +414,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    logger.error("Cannot create task %r: %s", task_dict, e)
+    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -420,7 +432,7 @@ def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
     return None, str(e)
 
 
-def _restart_subtasks_error(e, _self, task_id, subtask_ids, *args, **_kwargs) \
+def _restart_subtasks_error(e, _self, task_id, subtask_ids, *_args, **_kwargs) \
         -> typing.Union[str, typing.Dict]:
     logger.error("Failed to restart subtasks. task_id: %r, subtask_ids: %r, %s",
                  task_id, subtask_ids, e)
@@ -462,12 +474,10 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-        logger.info('Creating task "%r" ...', task_dict)
+        logger.info('Creating task. task_dict=%r', task_dict)
+        logger.debug('force=%r', force)
 
-        validate_client(self.client)
-        prepare_and_validate_task_dict(self.client, task_dict)
-
-        task: taskbase.Task = self.task_manager.create_task(task_dict)
+        task = _create_task(self.client, task_dict)
         self._validate_enough_funds_to_pay_for_task(
             task.subtask_price,
             task.get_total_tasks(),
@@ -476,19 +486,17 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        logger.debug('Enqueue task "%r" ...', task.task_definition.to_dict())
-
-        deferred = enqueue_new_task(self.client, task, force=force)
-        # We want to return quickly from create_task without waiting for
-        # deferred completion.
-        deferred.addErrback(  # pylint: disable=no-member
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=task, force=force)
+        deferred.addErrback(
             lambda failure: _create_task_error(
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
                 force=force
-            ),
+            )
         )
+
         return task_id, None
 
     def _validate_enough_funds_to_pay_for_task(
@@ -550,6 +558,7 @@ class ClientProvider:
                  on failure
         """
         logger.info('Restarting task. task_id=%r', task_id)
+        logger.debug('force=%r, disable_concent=%r', force, disable_concent)
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
@@ -581,19 +590,15 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
-        prepare_and_validate_task_dict(self.client, task_dict)
-        new_task = self.task_manager.create_task(task_dict)
-        validate_client(self.client)
-        enqueue_new_task(  # pylint: disable=no-member
-            client=self.client,
-            task=new_task,
-            force=force,
-        ).addErrback(
+        new_task = _create_task(self.client, task_dict)
+        # Fire and forget the next steps after create_task
+        deferred = _prepare_task(client=self.client, task=new_task, force=force)
+        deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
                 _self=self,
                 task_id=task_id,
-            ),
+            )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
@@ -636,8 +641,8 @@ class ClientProvider:
                 return f'Subtask does not belong to the given task.' \
                     f'task_id: {task_id}, subtask_id: {sub_id}'
 
-        logger.debug('restart_subtasks. task_id=%r, subtask_ids=%r, '
-                     'ignore_gas_price=%r, disable_concent=%r', task_id,
+        logger.info('Restarting subtasks. task_id=%r', task_id)
+        logger.debug('subtask_ids=%r, ignore_gas_price=%r, disable_concent=%r',
                      subtask_ids, ignore_gas_price, disable_concent)
 
         task_state = self.client.task_manager.tasks_states[task_id]
@@ -683,7 +688,7 @@ class ClientProvider:
         if not frame_subtasks:
             logger.error('Frame restart failed, frame has no subtasks.'
                          'task_id=%r, frame=%r', task_id, frame)
-            return
+            return None
 
         return self.restart_subtasks(task_id, list(frame_subtasks))
 
@@ -739,7 +744,6 @@ class ClientProvider:
             task_dict['concent_enabled'] = False
 
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
-        prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -762,8 +766,8 @@ class ClientProvider:
             }
             return False
 
-        self.client.task_test_result = None
         prepare_and_validate_task_dict(self.client, task_dict)
+        self.client.task_test_result = None
         _run_test_task(
             client=self.client,
             task_dict=task_dict,

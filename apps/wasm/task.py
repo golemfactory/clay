@@ -63,7 +63,7 @@ class WasmTaskDefinition(TaskDefinition):
 class WasmTaskVerifier(CoreVerifier):
     def __init__(self,
                  verification_data: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
+        super().__init__(verification_data)
         self.subtask_info = None
         self.results = None
 

@@ -1,6 +1,5 @@
 import os
-import pathlib
-import shutil
+from pathlib import Path
 import subprocess
 import unittest
 from functools import wraps
@@ -8,10 +7,12 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     TYPE_CHECKING
 )
 
 from scripts.node_integration_tests import conftest
+from scripts.node_integration_tests.key_reuse import NodeKeyReuseConfig
 
 from ..helpers import get_testdir
 from ..playbook_loader import get_config
@@ -20,39 +21,37 @@ if TYPE_CHECKING:
     from ..playbooks.test_config_base import NodeId
 
 
-KEYSTORE_DIR = 'rinkeby/keys'
-
-
 def disable_key_reuse(test_function: Callable) -> Callable:
     @wraps(test_function)
     def wrap(*args, **kwargs) -> None:
-        args[0].reuse_keys = False
+        reuse_keys = args[0].reuse_keys
+        was_enabled = reuse_keys.enabled
+        reuse_keys.disable()
         test_function(*args, **kwargs)
+        if was_enabled:
+            reuse_keys.enable()
     return wrap
 
 
 class NodeTestBase(unittest.TestCase):
+    reuse_keys: Optional[NodeKeyReuseConfig] = None
+
+    @classmethod
+    def setUpClass(cls):
+        NodeKeyReuseConfig.set_dir(get_testdir())
+        cls.reuse_keys = NodeKeyReuseConfig.get()
+
+    @classmethod
+    def tearDownClass(cls):
+        NodeKeyReuseConfig.reset()
+
     def setUp(self):
-        self.test_dir = pathlib.Path(get_testdir()) / self._relative_id()
-        self.reuse_keys = True
-        self.key_reuse_dir = self.test_dir.parent / 'key_reuse'
-
-    def tearDown(self):
-        key_reuse = conftest.NodeKeyReuse.get()
-        if key_reuse.enabled and not key_reuse.keys_ready:
-            try:
-                self._copy_keystores()
-            except FileNotFoundError:
-                print('Copying keystores failed...')
-                return
-
-            key_reuse.mark_keys_ready()
+        self.test_dir = get_testdir() / self._relative_id()
 
     def _relative_id(self):
-        return self.id().replace(__name__ + '.', '')
-
-    def _can_recycle_keys(self) -> bool:
-        return conftest.NodeKeyReuse.get().keys_ready and self.reuse_keys
+        # Remove repeated part: `scripts.node_integration_tests.tests.`
+        base_folder = __name__[:__name__.rindex('.')+1]
+        return self.id().replace(base_folder, '')
 
     @staticmethod
     def _get_nodes_ids(test_path: str) -> 'List[NodeId]':
@@ -68,7 +67,7 @@ class NodeTestBase(unittest.TestCase):
             self.datadirs[node_id] = datadir
             os.makedirs(datadir)
 
-        cwd = pathlib.Path(__file__).resolve().parent.parent
+        cwd = Path(__file__).resolve().parent.parent
         test_args = [
             str(cwd / 'run_test.py'),
             test_path,
@@ -89,48 +88,8 @@ class NodeTestBase(unittest.TestCase):
         if conftest.DumpOutput.enabled_on_crash():
             test_args.append('--dump-output-on-crash')
 
-        if self._can_recycle_keys():
-            self._recycle_keys()
-
+        assert self.reuse_keys is not None, "reuse_keys is not configured"
+        self.reuse_keys.begin_test(self.datadirs)
         exit_code = subprocess.call(args=test_args)
+        self.reuse_keys.end_test()
         self.assertEqual(exit_code, 0)
-
-    @staticmethod
-    def _replace_keystore(src: pathlib.Path, dst: pathlib.Path) -> None:
-        src_file = src / 'keystore.json'
-        dst_file = dst / KEYSTORE_DIR / 'keystore.json'
-        os.makedirs(str(dst / KEYSTORE_DIR))
-        shutil.copyfile(str(src_file), str(dst_file))
-
-    def _recycle_keys(self):
-        # this is run before running second and later tests
-        for i, node_id in enumerate(self.nodes):
-            reuse_dir = self.key_reuse_dir / str(i)
-            if not reuse_dir.exists():
-                continue
-            NodeTestBase._replace_keystore(
-                reuse_dir, self.datadirs[node_id])
-
-    def _copy_keystores(self):
-        # this is run after tests
-        self._prepare_keystore_reuse_folders()
-        for i, node_id in enumerate(self.nodes):
-            NodeTestBase._copy_keystore(
-                self.datadirs[node_id], self.key_reuse_dir / str(i))
-
-    def _prepare_keystore_reuse_folders(self) -> None:
-        # this is run after tests
-        try:
-            for i in range(len(self.nodes)):
-                reuse_dir = self.key_reuse_dir / str(i)
-                shutil.rmtree(reuse_dir, ignore_errors=True)
-                os.makedirs(reuse_dir)
-        except OSError:
-            print('Unexpected problem with creating folders for keystore')
-            raise
-
-    @staticmethod
-    def _copy_keystore(datadir: pathlib.Path, reuse_dir: pathlib.Path) -> None:
-        src = str(datadir / KEYSTORE_DIR / 'keystore.json')
-        dst = str(reuse_dir / 'keystore.json')
-        shutil.copyfile(src, dst)

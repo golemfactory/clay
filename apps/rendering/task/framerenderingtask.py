@@ -17,7 +17,7 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from golem.verificator.rendering_verifier import FrameRenderingVerifier
+from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
 from golem.task.taskstate import SubtaskStatus, TaskStatus

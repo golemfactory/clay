@@ -58,7 +58,8 @@ class ProviderBase(test_client.TestClientBase):
         'concent_enabled': False,
     }
 
-    def setUp(self):
+    @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -89,7 +90,7 @@ class ProviderBase(test_client.TestClientBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 42
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server.create_resource_package = mock.Mock(
@@ -101,7 +102,6 @@ class ProviderBase(test_client.TestClientBase):
             instance = self.client.task_manager
             instance.tasks_states[task.header.task_id] = taskstate.TaskState()
             instance.tasks[task.header.task_id] = task
-        self.client.task_server.task_manager.start_task = lambda tid: tid
         self.client.task_server.task_manager.add_new_task = add_new_task
 
 
@@ -122,7 +122,11 @@ class TestCreateTask(ProviderBase, TestClientBase):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
 
-        result = self.provider.create_task(t.to_dict())
+        def execute(f, *args, **kwargs):
+            return defer.succeed(f(*args, **kwargs))
+
+        with mock.patch('golem.core.deferred.deferToThread', execute):
+            result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
@@ -223,7 +227,7 @@ class TestRestartTask(ProviderBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 0
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server = mock.Mock(
@@ -258,9 +262,9 @@ class TestRestartTask(ProviderBase):
 
         task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
-        with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
+        with mock.patch('golem.task.rpc._prepare_task') as prep_mock:
             new_task_id, error = self.provider.restart_task(task.header.task_id)
-            enq_mock.assert_called_once()
+            prep_mock.assert_called_once()
 
         mock_validate_funds.assert_called_once_with(
             task.subtask_price,
@@ -352,7 +356,7 @@ class TestGetMaskForTask(test_client.TestClientBase):
             exp_potential_workers=8)
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestEnqueueNewTask(ProviderBase):
     def test_enqueue_new_task(self, *_):
         c = self.client
@@ -459,7 +463,8 @@ class TestRuntTestTask(ProviderBase):
             _self.success_callback(result, estimated_memory, time_spent, **more)
 
         with mock.patch('golem.task.tasktester.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -480,7 +485,8 @@ class TestRuntTestTask(ProviderBase):
             _self.error_callback(*error, **more)
 
         with mock.patch('golem.client.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -501,6 +507,7 @@ class TestRuntTestTask(ProviderBase):
                     'type': 'blender',
                     'resources': ['_.blend'],
                     'subtasks_count': 1,
+                    'name': 'test task',
                 }))
 
 
@@ -541,13 +548,13 @@ class TestValidateTaskDict(ProviderBase):
             rpc._validate_task_dict(self.client, self.t_dict)
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
 class TestRestartSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -699,7 +706,7 @@ class TestRestartFrameSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -738,16 +745,17 @@ class TestRestartFrameSubtasks(ProviderBase):
         self.assertEqual(error, f'Task not found: {task_id!r}')
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestExceptionPropagation(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
 
+    @mock.patch('twisted.internet.reactor', mock.Mock())
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
     def test_create_task(self, mock_method, *_):
         t = dummytaskstate.DummyTaskDefinition()
@@ -1011,19 +1019,25 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
 
 
 class TestGetFragments(ProviderBase):
-    @mock.patch('os.path.getsize')
+    def _create_task(self) -> taskbase.Task:
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc._prepare_task(self.client, task, force=False)
+        return golem_deferred.sync_wait(deferred)
+
+    @mock.patch('os.path.getsize', return_value=123)
+    @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
     def test_get_fragments(self, *_):
         tm = self.client.task_manager
         task = self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
-        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 0, 0)
+        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 'oh')
         # Create three more subtasks, all with start_task = 2
         for i in range(subtasks_given - 1):
             with mock.patch('apps.rendering.task.renderingtask.RenderingTask'
                             '._get_next_task', return_value=2):
                 tm.get_next_subtask(fake.pystr(min_chars=4, max_chars=24),
-                                    task.header.task_id, 0, 0, 0, 0)
+                                    task.header.task_id, 0, 0, 'oh')
 
         task_fragments, error = self.provider.get_fragments(task.header.task_id)
 
@@ -1048,11 +1062,6 @@ class TestGetFragments(ProviderBase):
 
         self.assertIsNone(task_fragments)
         self.assertTrue('Incorrect task type' in error)
-
-    def _create_task(self) -> taskbase.Task:
-        task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc.enqueue_new_task(self.client, task)
-        return golem_deferred.sync_wait(deferred)
 
     def test_no_subtasks(self, *_):
         task_id = str(uuid.uuid4())

@@ -16,6 +16,9 @@ import golem_messages.cryptography
 import golem_messages.exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
+from golem_messages.factories.helpers import (
+    random_eth_address,
+)
 
 from golem import testutils
 from golem.core import keysauth
@@ -487,13 +490,19 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
     def test_submit(self, submit_mock):
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             payment_ts=int(time.time()) - 3600*26,
+            report_computed_task__task_to_compute__concent_enabled=True,
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             payment_ts=int(time.time()) - 3600*25,
+            report_computed_task__task_to_compute__concent_enabled=True,
         )
+        sra3 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            payment_ts=int(time.time()) - 3600*25,
+        )
+
         local_role = history.Actor.Provider
         remote_role = history.Actor.Requestor
-        for msg in (sra1, sra2):
+        for msg in (sra1, sra2, sra3):
             msg._fake_sign()
             history.add(
                 msg=msg,
@@ -504,8 +513,10 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
             )
             self.incomes_keeper.expect(
                 sender_node='requestor_id',
+                task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address='0x1234',
+                my_address=random_eth_address(),
                 value=msg.task_to_compute.price,  # pylint: disable=no-member
                 accepted_ts=msg.payment_ts,
             )

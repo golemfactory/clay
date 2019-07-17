@@ -9,13 +9,13 @@ import cloudpickle
 from golem_messages.datastructures import p2p as dt_p2p
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, \
-    CoreVerifier
+    CoreVerifier, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
 logger = logging.getLogger(__name__)
 
@@ -62,7 +62,6 @@ class GLambdaTask(CoreTask):
         EXTERNALLY_VERIFIED = "External"
 
     ENVIRONMENT_CLASS = GLambdaTaskEnvironment
-    MAX_PENDING_CLIENT_RESULTS = 1
     SUBTASK_CALLBACKS: Dict[str, Any] = {}
 
     # pylint:disable=too-many-arguments
@@ -75,7 +74,6 @@ class GLambdaTask(CoreTask):
                  total_tasks=1) -> None:
         super().__init__(task_definition,
                          owner,
-                         self.MAX_PENDING_CLIENT_RESULTS,
                          resource_size,
                          root_path,
                          total_tasks)
@@ -223,16 +221,6 @@ class GLambdaTask(CoreTask):
 
 
 class GLambdaTaskVerifier(CoreVerifier):
-    def __init__(self,
-                 verification_data: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
-        if verification_data:
-            self.subtask_info = verification_data['subtask_info']
-            self.results = verification_data['results']
-        else:
-            self.subtask_info = None
-            self.results = None
-
     def _verify_result(self, results: Dict[str, Any]):
         return True
 
@@ -246,14 +234,9 @@ class GLambdaTaskBuilder(CoreTaskBuilder):
         return kwargs
 
     @classmethod
-    def build_minimal_definition(cls, task_type: TaskTypeInfo, dictionary):
-        definition = task_type.definition()
-        definition.task_type = task_type.name
-        definition.compute_on = dictionary.get('compute_on', 'cpu')
-        if 'resources' in dictionary:
-            definition.resources = set(dictionary['resources'])
+    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        definition = super().build_minimal_definition(task_type, dictionary)
         options = dictionary['options']
-        definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.options.method = options['method']
         definition.options.args = options['args']
         definition.options.verification = options['verification']

@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import logging
 import os
 import pickle
@@ -16,6 +18,7 @@ from typing import (
 from zipfile import ZipFile
 
 from golem_messages import message
+from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -69,6 +72,8 @@ class TaskManager(TaskEventListener):
     """ Keeps and manages information about requested tasks
     Requestor uses TaskManager to assign task to providers
     """
+    # pylint: disable=too-many-public-methods
+
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
     handle_generic_key_error = HandleForwardedError(KeyError,
@@ -87,6 +92,7 @@ class TaskManager(TaskEventListener):
             apps_manager=AppsManager(),
             finished_cb=None,
     ) -> None:
+        # pylint: disable=too-many-instance-attributes
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -122,8 +128,15 @@ class TaskManager(TaskEventListener):
             resource_manager
         )
 
-        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
-                             TaskStatus.waiting]
+        self.CREATING_STATUS = frozenset([
+            TaskStatus.creating,
+            TaskStatus.errorCreating,
+        ])
+        self.ACTIVE_STATUS = frozenset([
+            TaskStatus.computing,
+            TaskStatus.starting,
+            TaskStatus.waiting,
+        ])
         self.FINISHED_STATUS = frozenset([
             TaskStatus.finished,
             TaskStatus.aborted,
@@ -164,9 +177,17 @@ class TaskManager(TaskEventListener):
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-        builder = builder_type(self.node, definition, self.dir_manager)
 
-        return builder.build()
+        task = builder_type(self.node, definition, self.dir_manager).build()
+        task_id = task.header.task_id
+
+        logger.info("Creating task. type=%r, id=%s", type(task), task_id)
+        self.tasks[task_id] = task
+        self.tasks_states[task_id] = TaskState(task)
+        return task
+
+    def initialize_task(self, task: Task):
+        task.initialize(self.dir_manager)
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
@@ -177,25 +198,25 @@ class TaskManager(TaskEventListener):
 
     def add_new_task(self, task: Task, estimated_fee: int = 0) -> None:
         task_id = task.header.task_id
-        if task_id in self.tasks:
-            raise RuntimeError("Task {} has been already added"
-                               .format(task.header.task_id))
+        task_state = self.tasks_states.get(task_id)
+
+        if not task_state:
+            task_state = TaskState(task)
+            self.tasks[task_id] = task
+            self.tasks_states[task_id] = task_state
+
+        if task_state.status is not TaskStatus.creating:
+            raise RuntimeError("Task {} has already been added".format(task_id))
 
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
 
         task.register_listener(self)
 
-        ts = TaskState()
-        ts.status = TaskStatus.notStarted
-        ts.outputs = task.get_output_names()
-        ts.subtasks_count = task.get_total_tasks()
-        ts.time_started = time.time()
-        ts.estimated_cost = task.price
-        ts.estimated_fee = estimated_fee
+        task_state.status = TaskStatus.notStarted
+        task_state.time_started = time.time()
+        task_state.estimated_fee = estimated_fee
 
-        self.tasks[task_id] = task
-        self.tasks_states[task_id] = ts
         logger.info("Task %s added", task_id)
 
         self._create_task_output_dir(task.task_definition)
@@ -203,6 +224,14 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  op=TaskOp.CREATED,
                                  persist=False)
+
+    @handle_task_key_error
+    def task_creation_failed(self, task_id: str, reason: str) -> None:
+        logger.error("Cannot create task. id=%s : %s", task_id, reason)
+
+        task_state = self.tasks_states[task_id]
+        task_state.status = TaskStatus.errorCreating
+        task_state.status_message = reason
 
     @handle_task_key_error
     def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
@@ -250,7 +279,7 @@ class TaskManager(TaskEventListener):
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
             logger.debug('TASK %s DUMPED in %r', task_id, filepath)
-        except Exception as e:
+        except Exception:  # pylint: disable=broad-except
             logger.exception(
                 'DUMP ERROR task_id: %r task: %r state: %r',
                 task_id, self.tasks.get(task_id, '<not found>'),
@@ -347,7 +376,7 @@ class TaskManager(TaskEventListener):
     def resources_send(self, task_id):
         self.tasks_states[task_id].status = TaskStatus.waiting
         self.notice_task_updated(task_id)
-        logger.info("Resources for task {} sent".format(task_id))
+        logger.info("Resources for task sent. id=%s", task_id)
 
     def got_wants_to_compute(self,
                              task_id: str):
@@ -366,12 +395,16 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
+    def task_being_created(self, task_id: str) -> bool:
+        task_status = self.tasks_states[task_id].status
+        return task_status in self.CREATING_STATUS
+
     def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
         return task_status in self.FINISHED_STATUS
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.task_finished(task_id):
+        if self.task_being_created(task_id) or self.task_finished(task_id):
             task_status = self.tasks_states[task_id].status
             logger.debug(
                 'task is not active: %(task_id)s, status: %(task_status)s',
@@ -387,27 +420,23 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
-    def get_next_subtask(
-            self, node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size):
+    # noqa pylint: disable=too-many-arguments,too-many-return-statements
+    def get_next_subtask(self,
+                         node_id: str,
+                         task_id: str,
+                         estimated_performance: float,
+                         price: int,
+                         offer_hash: str) \
+            -> Optional[ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
-        id <node_id> and name. If subtask is assigned the function
-        is returning a tuple
-        :param node_id:
-        :param task_id:
-        :param estimated_performance:
-        :param price:
-        :param max_resource_size:
-        :param max_memory_size:
-        :return (ComputeTaskDef|None: Function returns a ComputeTaskDef.
-        First element is either ComputeTaskDef that describe assigned subtask
+        id <node_id>.
+        :return ComputeTaskDef that describe assigned subtask
         or None. It is recommended to call is_my_task and should_wait_for_node
         before this to find the reason why the task is not able to be picked up
         """
         logger.debug(
-            'get_next_subtask(%r, %r, %r, %r, %r, %r)',
+            'get_next_subtask(%r, %r, %r, %r)',
             node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size,
         )
 
         if node_id == self.keys_auth.key_id:
@@ -423,7 +452,7 @@ class TaskManager(TaskEventListener):
         if not self.task_needs_computation(task_id):
             return None
 
-        if self.should_wait_for_node(task_id, node_id):
+        if self.should_wait_for_node(task_id, node_id, offer_hash):
             return None
 
         task = self.tasks[task_id]
@@ -434,11 +463,7 @@ class TaskManager(TaskEventListener):
                          task_id, node_id)
             return None
 
-        extra_data = task.query_extra_data(
-            estimated_performance,
-            node_id,
-            "",
-        )
+        extra_data = task.query_extra_data(estimated_performance, node_id, "")
         ctd = extra_data.ctd
 
         def check_compute_task_def():
@@ -462,12 +487,8 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None
 
-        task.accept_client(node_id)
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
-        self.__add_subtask_to_tasks_states(
-            node_id, ctd, price,
-        )
+        self.__add_subtask_to_tasks_states(node_id, ctd, price)
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
@@ -485,7 +506,10 @@ class TaskManager(TaskEventListener):
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
-    def should_wait_for_node(self, task_id, node_id) -> bool:
+    def should_wait_for_node(self,
+                             task_id: str,
+                             node_id: str,
+                             offer_hash: str) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(
@@ -497,7 +521,7 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
-        verdict = task.should_accept_client(node_id)
+        verdict = task.should_accept_client(node_id, offer_hash)
         logger.debug(
             "Should accept client verdict. verdict=%s, task=%s, node=%s",
             verdict,
@@ -671,7 +695,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             status = self.tasks_states[tid].status
-            if task.needs_computation() and status in self.activeStatus:
+            if task.needs_computation() and status in self.ACTIVE_STATUS:
                 ret.append(task.header)
 
         return ret
@@ -680,9 +704,9 @@ class TaskManager(TaskEventListener):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
-        else:
-            logger.error("This is not my subtask {}".format(subtask_id))
-            return 0
+
+        logger.error("This is not my subtask. id=%s", subtask_id)
+        return 0
 
     def update_task_signatures(self):
         for task in list(self.tasks.values()):
@@ -696,8 +720,7 @@ class TaskManager(TaskEventListener):
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)
-        else:
-            return False
+        return False
 
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
@@ -750,7 +773,7 @@ class TaskManager(TaskEventListener):
 
             verification_finished()
 
-            if self.tasks_states[task_id].status in self.activeStatus:
+            if self.tasks_states[task_id].status in self.ACTIVE_STATUS:
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
@@ -866,7 +889,7 @@ class TaskManager(TaskEventListener):
         nodes_with_timeouts = []
         for t in list(self.tasks.values()):
             th = t.header
-            if self.tasks_states[th.task_id].status not in self.activeStatus:
+            if self.tasks_states[th.task_id].status not in self.ACTIVE_STATUS:
                 continue
             cur_time = int(get_timestamp_utc())
             # Check subtask timeout

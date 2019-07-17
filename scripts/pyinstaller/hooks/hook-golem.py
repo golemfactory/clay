@@ -11,8 +11,6 @@ datas = [
     ('apps/*.ini', 'apps/'),
     ('apps/core/resources/images/*',
      'apps/core/resources/images/'),
-    ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
-     'apps/rendering/benchmark/minilight/'),
     ('apps/blender/resources/images/*.Dockerfile',
      'apps/blender/resources/images/'),
     ('apps/blender/resources/images/entrypoints/scripts/render_tools/templates/'
@@ -32,6 +30,8 @@ datas = [
     ('golem/RELEASE-VERSION', 'golem/'),
     ('golem/TERMS.html', 'golem/'),
     ('golem/database/schemas/*.py', 'golem/database/schemas/'),
+    ('golem/envs/docker/benchmark/minilight/cornellbox.ml.txt',
+     'golem/envs/docker/benchmark/minilight/'),
     ('golem/network/concent/resources/ssl/certs/*.crt',
      'golem/network/concent/resources/ssl/certs/'),
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),

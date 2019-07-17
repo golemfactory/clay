@@ -1,12 +1,8 @@
 import enum
 import logging
 
-from os import path
-
-from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
-
-from golem.core.common import get_golem_path
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.envs.docker.benchmark.minilight import make_perf_test
 from golem.model import Performance
 
 
@@ -121,9 +117,7 @@ class Environment():
     def run_default_benchmark(cls, save=False):
         logger = logging.getLogger('golem.task.benchmarkmanager')
         logger.info('Running benchmark for %s', cls.get_id())
-        test_file = path.join(get_golem_path(), 'apps', 'rendering',
-                              'benchmark', 'minilight', 'cornellbox.ml.txt')
-        performance = make_perf_test(test_file)
+        performance = make_perf_test()
         logger.info('%s performance is %.2f', cls.get_id(), performance)
         if save:
             Performance.update_or_create(cls.get_id(), performance)

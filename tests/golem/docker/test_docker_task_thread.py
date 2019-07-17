@@ -6,6 +6,7 @@ from unittest.mock import Mock
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread, EXIT_CODE_MESSAGE
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.task.taskcomputer import TaskComputer
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -25,14 +26,19 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
     def test_termination(self):
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
+        task_server.config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+        task_server.config_desc.num_cores = 1
         task_server.client.datadir = self.test_dir
         task_server.benchmark_manager = Mock()
         task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = \
             task_server.client.datadir
-        task_computer = TaskComputer(task_server,
-                                     use_docker_manager=False)
+        docker_cpu_env = Mock(spec=DockerCPUEnvironment)
+        task_computer = TaskComputer(
+            task_server,
+            docker_cpu_env,
+            use_docker_manager=False)
         image = DockerImage("golemfactory/base", tag="1.4")
 
         with self.assertRaises(AttributeError):
@@ -59,7 +65,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         ct = task_computer.counting_thread
 
         while ct and ct.is_alive():
-            task_computer.run()
+            task_computer.check_timeout()
 
             if time.time() - started > 15:
                 self.fail("Job timed out")

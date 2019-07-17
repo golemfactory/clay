@@ -8,16 +8,16 @@ class DecisionTree:
     
     ## ======================= ##
     ##
-    def __init__( self, clf ):
-        self.clf = clf
+    def __init__(self, classifier):
+        self.classifier = classifier
         
     ## ======================= ##
     ##
     @staticmethod
-    def load( file ):
-        data = joblib.load( file )
-        tree = DecisionTree( data[0] )
-            
+    def load(file):
+        data = joblib.load(file)
+        tree = DecisionTree(data[0])
+
         return tree, data[1]
     
     ## ======================= ##
@@ -35,6 +35,6 @@ class DecisionTree:
         samples = converted_features.view(numpy.float64).reshape(
             converted_features.shape + (-1,))
 
-        results = self.clf.predict(samples)
+        results = self.classifier.predict(samples)
 
         return numpy.array(results)

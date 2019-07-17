@@ -7,9 +7,9 @@ from typing import (
     Any,
     Dict,
     List,
+    Optional,
     Type,
-    TYPE_CHECKING,
-)
+    TYPE_CHECKING)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
@@ -27,8 +27,10 @@ from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.core_verifier import CoreVerifier
+
+from .coretaskstate import RunVerification
 
 from .coretaskstate import RunVerification
 
@@ -46,9 +48,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class CoreTaskTypeInfo(TaskTypeInfo):
@@ -106,7 +105,6 @@ class CoreTask(Task):
     def __init__(self,
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
                  total_tasks=1):
@@ -174,7 +172,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.max_pending_client_results = max_pending_client_results
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -263,7 +260,7 @@ class CoreTask(Task):
 
         subtask["status"] = SubtaskStatus.finished
         node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
+        TaskClient.get_or_initialize(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -383,8 +380,6 @@ class CoreTask(Task):
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log",
@@ -475,25 +470,26 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def should_accept_client(self, node_id):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
+    def should_accept_client(self,
+                             node_id: str,
+                             offer_hash: str) -> AcceptClientVerdict:
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or \
-                client.started() - finishing >= max_finishing:
+        elif client.should_wait(offer_hash):
             return AcceptClientVerdict.SHOULD_WAIT
 
         return AcceptClientVerdict.ACCEPTED
 
-    def accept_client(self, node_id):
-        verdict = self.should_accept_client(node_id)
+    def accept_client(self,
+                      node_id: str,
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
+        verdict = self.should_accept_client(node_id, offer_hash)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
-            client = TaskClient.assert_exists(node_id, self.counting_nodes)
-            client.start()
+            client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
+            client.start(offer_hash, num_subtasks)
 
         return verdict
 
@@ -504,7 +500,7 @@ class CoreTask(Task):
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
-        self.accept_client(new_subtask['node_id'])
+        self.accept_client(new_subtask['node_id'], '')
         self.result_incoming(subtask_id)
         self.interpret_task_results(
             subtask_id=subtask_id,
@@ -532,10 +528,7 @@ class CoreTaskBuilder(TaskBuilder):
 
     def build(self):
         # pylint:disable=abstract-class-instantiated
-        task = self.TASK_CLASS(**self.get_task_kwargs())
-
-        task.initialize(self.dir_manager)
-        return task
+        return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
@@ -555,8 +548,12 @@ class CoreTaskBuilder(TaskBuilder):
         definition.options = task_type.options()
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
-        definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
+        definition.concent_enabled = dictionary.get('concent_enabled', False)
+
+        if 'resources' in dictionary:
+            definition.resources = set(dictionary['resources'])
+
         return definition
 
     @classmethod

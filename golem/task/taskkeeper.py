@@ -4,11 +4,12 @@ import pathlib
 import pickle
 import time
 import typing
-
 import random
 from collections import Counter
 
 from eth_utils import decode_hex
+from twisted.internet.defer import inlineCallbacks, Deferred
+
 from golem_messages import (
     idgenerator,
     helpers,
@@ -20,9 +21,13 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from golem.core import common
 from golem.core import golem_async
+from golem.core.deferred import sync_wait
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environmentsmanager import \
+    EnvironmentsManager as OldEnvManager
 from golem.network.hyperdrive.client import HyperdriveClientOptions
+from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger(__name__)
@@ -323,7 +328,9 @@ class TaskHeaderKeeper:
 
     def __init__(
             self,
-            environments_manager,
+            old_env_manager: OldEnvManager,
+            # FIXME: rename to `env_manager` when old env manager is removed
+            new_env_manager: NewEnvManager,
             node: dt_p2p.Node,
             min_price=0.0,
             remove_task_timeout=180,
@@ -349,12 +356,17 @@ class TaskHeaderKeeper:
         self.min_price = min_price
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
-        self.environments_manager = environments_manager
+        self.old_env_manager = old_env_manager
+        # FIXME: rename to `environments_manager`
+        # when old env manager is removed
+        self.new_env_manager = new_env_manager
         self.max_tasks_per_requestor = max_tasks_per_requestor
         self.task_archiver = task_archiver
         self.node = node
 
-    def check_support(self, header: dt_tasks.TaskHeader) -> SupportStatus:
+    @inlineCallbacks
+    def check_support(self, header: dt_tasks.TaskHeader) \
+            -> typing.Generator[Deferred, SupportStatus, SupportStatus]:
         """Checks if task described with given task header dict
            may be computed by this node. This node must
            support proper environment, be allowed to make computation
@@ -362,7 +374,12 @@ class TaskHeaderKeeper:
            application version.
         :return SupportStatus: ok() if this node may compute a task
         """
-        supported = self.check_environment(header.environment)
+        if header.environment_prerequisites:
+            supported = yield self._check_new_environment(
+                header.environment, header.environment_prerequisites
+            )
+        else:
+            supported = self._check_old_environment(header.environment)
         supported = supported.join(self.check_mask(header))
         supported = supported.join(self.check_price(header))
 
@@ -380,18 +397,48 @@ class TaskHeaderKeeper:
 
         return supported
 
-    def check_environment(self, env: str) -> SupportStatus:
-        """Checks if this node supports the given environment
+    def _check_old_environment(self, env: str) -> SupportStatus:
+        """Checks if this node supports the given (old) environment
 
         :param str env: environment
         :return SupportStatus: ok() if this node support environment for this
                                task, err() otherwise
         """
         status = SupportStatus.ok()
-        if not self.environments_manager.accept_tasks(env):
+        if not self.old_env_manager.accept_tasks(env):
             status = SupportStatus.err(
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
-        return self.environments_manager.get_support_status(env).join(status)
+        return self.old_env_manager.get_support_status(env).join(status)
+
+    @inlineCallbacks
+    def _check_new_environment(
+            self, env_id: str, prerequisites_dict: dict) -> Deferred:
+        """ Check if node supports the given environment. Try to install
+            the prerequisites. If installation fails the verdict is
+            'unsupported'. """
+        try:
+            env = self.new_env_manager.environment(env_id)
+        except KeyError:
+            logger.info("Environment '%s' not found.", env_id)
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_MISSING: env_id
+            })
+
+        try:
+            prerequisites = env.parse_prerequisites(prerequisites_dict)
+        except ValueError:
+            logger.info("Parsing prerequisites failed: %r", prerequisites_dict)
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+            })
+
+        installed = yield env.install_prerequisites(prerequisites)
+        if not installed:
+            logger.info("Installing prerequisites failed: %r", prerequisites)
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+            })
+        return SupportStatus.ok()
 
     def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
@@ -426,7 +473,8 @@ class TaskHeaderKeeper:
         """
         return list(self.task_headers.values())
 
-    def change_config(self, config_desc):
+    @inlineCallbacks
+    def change_config(self, config_desc) -> Deferred:
         """Change config options, ie. minimal price that this node may offer
            for computation. If a minimal price didn't change it won't do
            anything. If it has changed it will try again to check which
@@ -438,7 +486,7 @@ class TaskHeaderKeeper:
         self.min_price = config_desc.min_price
         self.supported_tasks = []
         for id_, th in self.task_headers.items():
-            supported = self.check_support(th)
+            supported = yield self.check_support(th)
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
@@ -476,7 +524,7 @@ class TaskHeaderKeeper:
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
-            self.update_supported_set(header)
+            sync_wait(self.update_supported_set(header))
 
             self.check_max_tasks_per_owner(header.task_owner.key)
 
@@ -490,10 +538,11 @@ class TaskHeaderKeeper:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, header: dt_tasks.TaskHeader) -> None:
+    @inlineCallbacks
+    def update_supported_set(self, header: dt_tasks.TaskHeader) -> Deferred:
 
         task_id = header.task_id
-        support = self.check_support(header)
+        support = yield self.check_support(header)
         self.support_status[task_id] = support
 
         if not support and task_id in self.supported_tasks:
@@ -548,8 +597,9 @@ class TaskHeaderKeeper:
         # headers, remove the rest
         to_remove = by_age[self.max_tasks_per_requestor:]
 
-        logger.warning(
-            "Too many tasks, dropping %d tasks. owner=%s, ids_to_remove=%r",
+        logger.debug(
+            "Limiting tasks for this node, dropping %d tasks. "
+            "owner=%s, ids_to_remove=%r",
             len(to_remove), common.short_node_id(owner_key_id), to_remove
         )
 
@@ -631,8 +681,9 @@ class TaskHeaderKeeper:
         for t in list(self.task_headers.values()):
             cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.warning("Task owned by %s dies, task_id: %s",
-                               t.task_owner.key, t.task_id)
+                logger.debug("Task owned by %s removed after deadline, "
+                             "task_id: %s",
+                             t.task_owner.key, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):
