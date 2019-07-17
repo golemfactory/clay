@@ -27,7 +27,7 @@ class ResourceManager:
     def build_client_options(
             cls,
             peers: Optional[Peers] = None,
-            **kwargs
+            **kwargs,
     ) -> ClientOptions:
         """ Return client-specific request options """
 
@@ -40,8 +40,8 @@ class ResourceManager:
             file_path: Path,
             client_options: Optional[ClientOptions] = None,
     ):
-        """ Share a single file; return a future which resolves to
-            an assigned resource ID or a client-specific error """
+        """ Share a single file; resolves to an assigned resource ID
+            or a client-specific error """
 
         resolved_path = file_path.resolve()
         cached = self._cache.get(resolved_path)
@@ -52,7 +52,9 @@ class ResourceManager:
             files={str(resolved_path): resolved_path.name},
             client_options=client_options)
 
-        self._shared(resolved_path, resource_id)
+        self._cache[resolved_path] = resource_id
+        self._cache_rev[resource_id] = resolved_path
+
         return resource_id
 
     @inlineCallbacks
@@ -63,56 +65,26 @@ class ResourceManager:
             client_options: Optional[ClientOptions] = None,
     ):
         """ Download a single resource to a given directory;
-            return a future which resolves to Tuple[ResourceId, Path]
-            or a client-specific error """
+            resolves to Path or a client-specific error """
 
         resolved_path = directory.resolve(strict=False)
-        response = yield self._client.get_async(
+        _, files = yield self._client.get_async(
             content_hash=resource_id,
             filepath=str(resolved_path),
             client_options=client_options)
 
-        return self._parse_download_response(response)
+        first_file = next(iter(files))
+        file_path = Path(first_file).resolve()
+        return file_path
 
     @inlineCallbacks
     def drop(
             self,
             resource_id: ResourceId,
     ):
-        """ Stop a single resource ID from being shared;
-            return a future which resolves to a ResourceId or
-            a client-specific error """
+        """ Stop a single resource ID from being shared """
 
         yield self._client.cancel_async(resource_id)
-        self._dropped(resource_id)
-
-    def _shared(
-            self,
-            path: Path,
-            resource_id: ResourceId,
-    ) -> None:
-        """ Cache the resource ID """
-
-        self._cache[path] = resource_id
-        self._cache_rev[resource_id] = path
-
-    def _dropped(
-            self,
-            resource_id: ResourceId,
-    ) -> None:
-        """ Remove the resource ID from cache """
-
         path = self._cache_rev.pop(resource_id, None)
         if path is not None:
             self._cache.pop(path, None)
-
-    @staticmethod
-    def _parse_download_response(
-            result: Tuple[ResourceId, Iterable[str]],
-    ) -> Tuple[ResourceId, Path]:
-        """ Translate the download response w.r.t. only sharing single files """
-
-        resource_id, files = result
-        first_file = next(iter(files))
-        file_path = Path(first_file).resolve()
-        return resource_id, file_path

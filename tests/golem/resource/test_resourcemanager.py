@@ -56,12 +56,11 @@ class TestResourceManager(TempDirFixture):
             wraps=self.resource_manager._client.get_async
         ):
             resource_id = self.resource_manager.share(sample_path).result
-            downloaded_id, downloaded_path = self.resource_manager.download(
+            path = self.resource_manager.download(
                 resource_id, sample_dir).result
 
-            assert isinstance(downloaded_id, str)
-            assert isinstance(downloaded_path, Path)
-            assert downloaded_path == sample_dir / "sample.txt"
+            assert isinstance(path, Path)
+            assert path == sample_dir / "sample.txt"
 
     def test_drop(self):
         sample_path = self.new_path / "sample.txt"
