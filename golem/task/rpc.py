@@ -7,6 +7,7 @@ import os.path
 import re
 import typing
 
+from apps.core.task.manualtask import ManualTask
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages.datastructures import masking
@@ -464,6 +465,35 @@ class ClientProvider:
     @property
     def task_manager(self):
         return self.client.task_server.task_manager
+
+    @rpc_utils.expose('comp.task.nominate_provider')
+    @safe_run(_create_task_error) # TODO
+    def nominate_provider(self, task_id, provider_node_id):
+        task = self.task_manager.tasks.get(task_id)
+        if not task:
+            return None, 'Task with id {} does not exist'.format(task_id)
+        if not isinstance(task, ManualTask):
+            return None, 'Provider cannot be nominated manually for task '\
+                .format(task_id)
+        task.nominate_provider(provider_node_id)
+        logger.info('{} was nominated to compute task {}'
+                    .format(provider_node_id, task_id))
+        return provider_node_id
+
+    @rpc_utils.expose('comp.task.get_willing_providers')
+    @safe_run(_create_task_error) # TODO
+    def get_willing_providers(self, task_id):
+        task = self.task_manager.tasks.get(task_id)
+        if not task:
+            return None, 'Task with id {} does not exist'.format(task_id)
+        if not isinstance(task, ManualTask):
+            return None, 'Provider for task {} cannot be specified manually'\
+                .format(task_id)
+        return task.get_willing_provider()
+
+    # @rpc_utils.expose('comp.task.reset_nominated_provider')
+    # @safe_run(_create_task_error) # TODO
+    # def reset_nominated_provider(self):
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)

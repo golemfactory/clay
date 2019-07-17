@@ -8,6 +8,7 @@ import time
 import weakref
 from enum import Enum
 from pathlib import Path
+from threading import Lock
 from typing import (
     Any,
     Dict,
@@ -16,6 +17,8 @@ from typing import (
     Set,
 )
 
+from apps.core.task.manualtask import ManualTask
+from golem.task.taskclient import TaskClient
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
@@ -886,6 +889,7 @@ class TaskServer(
 
         accept_client_verdict: AcceptClientVerdict \
             = task.should_accept_client(node_id, offer_hash)
+
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '
