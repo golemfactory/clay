@@ -363,7 +363,10 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # We don't want to append timestamp to directory.
         options = cls._get_required_field(dictionary, 'options',
                                           is_type_of(dict))
-        path = os.path.join(options['output_path'], definition.name)
+
         container = options.get('container', cls._get_presets(
             definition.options.input_stream_path))
-        return '{}.{}'.format(path, container)
+        alternative_name = '{}.{}'.format(definition.name, container)
+
+        filename = options.get("output_filename", alternative_name)
+        return os.path.join(options['output_path'], filename)
