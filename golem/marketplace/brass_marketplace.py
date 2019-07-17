@@ -94,7 +94,7 @@ class RequestorMarketStrategy(ABC):
         pass
 
 
-class RequestorBrassMarketStrategy(RequestorMarketStrategy):
+class RequestorPoolingMarketStrategy(RequestorMarketStrategy):
 
     _pools: ClassVar[Dict[str, List[Offer]]] = dict()
 
@@ -109,6 +109,20 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
             offer,
         )
 
+    @classmethod
+    def get_task_offer_count(cls, task_id: str) -> int:
+        return len(cls._pools[task_id]) if task_id in cls._pools else 0
+
+    @classmethod
+    def clear_offers_for_task(cls, task_id) -> None:
+        if task_id in cls._pools:
+            _ = cls._pools.pop(task_id)
+
+    @classmethod
+    def reset(cls) -> None:
+        cls._pools = dict()
+
+class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
         logger.info("Ordering providers for task: %s", task_id)
@@ -126,16 +140,3 @@ class RequestorBrassMarketStrategy(RequestorMarketStrategy):
             offers_sorted.append(offers[index])
 
         return offers_sorted
-
-    @classmethod
-    def get_task_offer_count(cls, task_id: str) -> int:
-        return len(cls._pools[task_id]) if task_id in cls._pools else 0
-
-    @classmethod
-    def clear_offers_for_task(cls, task_id) -> None:
-        if task_id in cls._pools:
-            _ = cls._pools.pop(task_id)
-
-    @classmethod
-    def reset(cls) -> None:
-        cls._pools = dict()
