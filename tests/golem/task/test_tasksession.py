@@ -22,11 +22,15 @@ from golem_messages.utils import encode_hex
 from pydispatch import dispatcher
 
 import twisted.internet.address
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import (
+    Deferred,
+    succeed,
+)
 
 import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
+from golem.core import deferred as core_deferred
 from golem.core import variables
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
@@ -1196,14 +1200,26 @@ class TestOfferChosen(TestCase):
     @patch('golem_messages.utils.copy_and_sign')
     @patch('golem.task.tasksession.TaskSession.send')
     @patch('golem.network.history.add')
-    def test_multi_wtct(self, *_):
+    @patch('golem.task.rpc.add_resources')
+    def test_multi_wtct(self, mock_add_resources, *_):
         # given
         self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
         ctd = msg_factories.tasks.ComputeTaskDefFactory(resources=None)
         self.ts.task_manager.get_next_subtask.return_value = ctd
+        mock_add_resources.return_value = succeed(
+            [
+                'path',
+                'to',
+                'package_hash',
+                10,
+            ]
+        )
+        self.ts.task_server.get_resources.return_value = 'ts resources'
 
         # when
-        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
+        core_deferred.sync_wait(
+            self.ts._offer_chosen(is_chosen=True, msg=self.msg),
+        )
 
         # then
         self.assertEqual(self.ts.task_manager.get_next_subtask.call_count, 3)
