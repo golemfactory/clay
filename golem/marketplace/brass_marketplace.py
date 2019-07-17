@@ -36,11 +36,13 @@ class Offer:
             task_id: str,
             provider_id: str,
             provider_stats: ProviderStats,
+            max_price: float,
             price: float):
         self.offer_msg = offer_msg
         self.task_id = task_id
         self.provider_id = provider_id
         self.provider_stats = provider_stats
+        self.max_price = max_price
         self.price = price
         self.reputation = dbm.get_provider_efficiency(provider_id)
         self.quality = dbm.get_provider_efficacy(provider_id).vector
@@ -130,7 +132,7 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
             return None
 
         order = order_providers(
-            [BrassMarketOffer(offer.price, offer.reputation, offer.quality)
+            [BrassMarketOffer(scale_price(offer.max_price, offer.price), offer.reputation, offer.quality)
              for offer in cls._pools[task_id]]
         )
 

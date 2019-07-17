@@ -34,6 +34,7 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.taskbase import Task
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -311,16 +312,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         current_task = self.task_manager.tasks[msg.task_id]
 
-        def resolution(task_id):
-            for offer in RequestorBrassMarketStrategy\
-                    .resolve_task_offers(task_id):
-                self._offer_chosen(True,
-                                   offer.offer_msg)
+        def resolution(market_strategy, task_id):
+            for offer in market_strategy.resolve_task_offers(task_id):
+                self._offer_chosen(True, offer.offer_msg)
 
         def _on_error(e):
             logger.error("%s", str(e))
 
-        if RequestorBrassMarketStrategy\
+        def get_task_market_strategy(task: Task):
+            return self.task_manager.task_types[
+                task.task_definition.task_type.lower()].MARKET_STRATEGY
+
+        market_strategy = get_task_market_strategy(current_task)
+
+        if market_strategy\
                 .get_task_offer_count(msg.task_id) == 0:
             # This is a first offer for given task_id, schedule resolution.
             from twisted.internet import reactor
@@ -328,6 +333,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 reactor,
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution,
+                market_strategy,
                 msg.task_id
             ).addErrback(_on_error)
             logger.info(
@@ -336,9 +342,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.task_server.config_desc.offer_pooling_interval
             )
 
-        RequestorBrassMarketStrategy.add(
+        market_strategy.add(
             Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
-                  scale_price(current_task.header.max_price, msg.price))
+                  current_task.header.max_price, msg.price)
         )
 
     @defer.inlineCallbacks
