@@ -437,6 +437,13 @@ class TestTaskHeaderKeeper(TaskHeaderKeeperBase):
         assert self.thk.get_owner("UNKNOWN") is None
 
 
+class TestTHKTaskEnded(TaskHeaderKeeperBase):
+    def test_task_not_found(self):
+        task_id = 'non existent id'
+        self.assertNotIn(task_id, self.thk.running_tasks)
+        self.thk.task_ended(task_id)
+
+
 def get_dict_task_header(key_id_seed="kkk"):
     key_id = str.encode(key_id_seed)
     return {
