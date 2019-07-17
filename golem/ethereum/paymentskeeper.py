@@ -75,25 +75,6 @@ class PaymentsKeeper:
         """ Create new payments keeper instance"""
         self.db = PaymentsDatabase()
 
-    @staticmethod
-    def confirmed_transfer(
-            tx_hash: str,
-            gas_cost: int,
-    ):
-        try:
-            operation = model.WalletOperation.select() \
-                .where(
-                    model.WalletOperation.tx_hash == tx_hash,
-                ).get()
-            operation.status = model.WalletOperation.STATUS.confirmed
-            operation.gas_cost = gas_cost
-            operation.save()
-        except model.WalletOperation.DoesNotExist:
-            logger.warning(
-                "Got confirmation of unknown transfer. tx_hash=%s",
-                tx_hash,
-            )
-
     def get_list_of_all_payments(self, num: Optional[int] = None,
                                  interval: Optional[datetime.timedelta] = None):
         # This data is used by UI.
@@ -124,3 +105,28 @@ class PaymentsKeeper:
             self,
             subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self.db.get_subtasks_payments(subtask_ids)
+
+    @staticmethod
+    def confirmed_transfer(
+            tx_hash: str,
+            successful: bool,
+            gas_cost: int,
+    ) -> None:
+        try:
+            operation = model.WalletOperation.select() \
+                .where(
+                    model.WalletOperation.tx_hash == tx_hash,
+                ).get()
+        except model.WalletOperation.DoesNotExist:
+            logger.warning(
+                "Got confirmation of unknown transfer. tx_hash=%s",
+                tx_hash,
+            )
+            return
+        if not successful:
+            logger.error("Failed transaction. tx_hash=%s", tx_hash)
+            operation.on_failed(gas_cost=gas_cost)
+            operation.save()
+            return
+        operation.on_confirmed(gas_cost=gas_cost)
+        operation.save()
