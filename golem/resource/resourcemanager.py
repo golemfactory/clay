@@ -12,26 +12,22 @@ Peers = Iterable[Dict[str, Tuple[str, int]]]
 
 class ResourceManager:
 
-    Client = HyperdriveAsyncClient
-
     def __init__(
             self,
-            port: int,
-            host: str,
+            client: HyperdriveAsyncClient,
     ) -> None:
-        self._client = self.Client(port, host)
+        self._client = client
         self._cache: Dict[Path, ResourceId] = dict()
         self._cache_rev: Dict[ResourceId, Path] = dict()
 
-    @classmethod
     def build_client_options(
-            cls,
+            self,
             peers: Optional[Peers] = None,
             **kwargs,
     ) -> ClientOptions:
         """ Return client-specific request options """
 
-        return cls.Client.build_options(
+        return self._client.build_options(
             peers=peers, **kwargs)
 
     @inlineCallbacks
@@ -73,9 +69,7 @@ class ResourceManager:
             filepath=str(resolved_path),
             client_options=client_options)
 
-        first_file = files[0]
-        file_path = Path(first_file).resolve()
-        return file_path
+        return Path(files[0]).resolve()
 
     @inlineCallbacks
     def drop(
