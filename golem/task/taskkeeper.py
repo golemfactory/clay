@@ -179,7 +179,7 @@ class CompTaskKeeper:
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %d)', theader, price)
+        logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -677,7 +677,9 @@ class TaskHeaderKeeper:
     def task_ended(self, task_id):
         try:
             self.running_tasks.remove(task_id)
-        except ValueError:
-            logger.warning("Can not remove running task, already removed. "
-                           "Maybe the callback is called twice. task_id=%r",
-                           task_id)
+        except KeyError:
+            logger.debug(
+                "Cannot remove running task. Not found. "
+                "task_id=%r",
+                task_id,
+            )
