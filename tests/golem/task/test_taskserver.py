@@ -739,6 +739,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
+    def test_add_task_header_invalid_sig(self):
+        self.ts._verify_header_sig = lambda _: False
+        result = self.ts.add_task_header(Mock())
+        self.assertFalse(result)
+
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):
     def test_add_task_header(self, *_):
@@ -861,14 +866,38 @@ class TestTaskServer2(TaskServerBase):
 
 
 # pylint: disable=too-many-ancestors
-class TestSubtaskWaiting(TaskServerBase):
+class TestSubtask(TaskServerBase):
 
-    def test_requested_tasks(self, *_):
+    def test_waiting_requested_tasks(self, *_):
         task_id = str(uuid.uuid4())
         subtask_id = str(uuid.uuid4())
         self.ts.requested_tasks.add(task_id)
         self.ts.subtask_waiting(task_id, subtask_id)
         self.assertNotIn(task_id, self.ts.requested_tasks)
+
+    @patch('golem.task.taskserver.Trust.PAYMENT.decrease')
+    def test_subtask_rejected(self, mock_decrease):
+        mock_send = self.ts._task_result_sent = Mock()
+        node_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        self.ts.subtask_rejected(node_id, subtask_id)
+        mock_send.assert_called_once_with(subtask_id)
+        mock_decrease.assert_called_once_with(node_id, self.ts.max_trust)
+
+    @patch('golem.task.taskserver.Trust.PAYMENT.increase')
+    @patch('golem.task.taskserver.update_requestor_paid_sum')
+    def test_income_listener_confirmed(self, mock_increase, mock_update):
+        node_id = str(uuid.uuid4())
+        amt = 1
+        self.ts.income_listener(event="confirmed", node_id=node_id, amount=amt)
+        mock_increase.assert_called_once_with(node_id, self.ts.max_trust)
+        mock_update.assert_called_once_with(node_id, amt)
+
+    @patch('golem.task.taskserver.Trust.PAYMENT.decrease')
+    def test_income_listener_overdue(self, mock_decrease):
+        node_id = str(uuid.uuid4())
+        self.ts.income_listener(event="overdue_single", node_id=node_id)
+        mock_decrease.assert_called_once_with(node_id, self.ts.max_trust)
 
 
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
