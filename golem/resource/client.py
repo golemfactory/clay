@@ -5,10 +5,10 @@ import socket
 import uuid
 from copy import deepcopy
 from types import MethodType
-from typing import Optional, Dict, Iterable, Tuple
+from typing import Dict, Iterable, Optional, Tuple
+
 from twisted.internet.defer import Deferred, succeed
 from twisted.python.failure import Failure
-
 import requests
 
 logger = logging.getLogger(__name__)
@@ -222,7 +222,11 @@ class DummyClient(IClient):
 
     _id = "dummy"
 
-    def __init__(self, *args, **kwargs):
+    def __init__(
+            self,
+            *args,
+            **kwargs
+    ) -> None:
         del args, kwargs
         self._resources = dict()
         self._paths = dict()
