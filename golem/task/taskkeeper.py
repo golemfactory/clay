@@ -179,7 +179,7 @@ class CompTaskKeeper:
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %d)', theader, price)
+        logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
