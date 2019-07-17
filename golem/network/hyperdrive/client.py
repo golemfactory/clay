@@ -91,10 +91,11 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
-    def get(self, content_hash, filepath: str, client_options=None, **kwargs):
+    def get(self, content_hash, client_options=None, **kwargs):
+        path = kwargs['filepath']
         params = self._download_params(content_hash, client_options, **kwargs)
         response = self._request(**params)
-        return [(filepath, content_hash, response['files'])]
+        return [(path, content_hash, response['files'])]
 
     @classmethod
     def _download_params(cls, content_hash, client_options, **kwargs):
