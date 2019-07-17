@@ -152,7 +152,7 @@ class FfprobeFormatReport:
     def duration(self) -> 'FuzzyDuration':
         return fuzzy_duration_if_possible(
             self._raw_report.get('format', {}).get('duration', None),
-            0.1,
+            1,
         )
 
     @property
@@ -638,7 +638,7 @@ class FfprobeAudioAndVideoStreamReport(FfprobeStreamReport):
 
     @property
     def duration(self) -> FuzzyDuration:
-        return fuzzy_duration_if_possible(self._raw_report.get('duration'), 0.1)
+        return fuzzy_duration_if_possible(self._raw_report.get('duration'), 1)
 
     @property
     def bitrate(self) -> FuzzyInt:

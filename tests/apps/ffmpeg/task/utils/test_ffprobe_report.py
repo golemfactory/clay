@@ -440,7 +440,7 @@ class TestFfprobeFormatReport(TestCase):
             [{
                 'location': 'audio',
                 'attribute': 'duration',
-                'actual_value': FuzzyDuration(0.5, 0.05),
+                'actual_value': FuzzyDuration(0.5, 1),
                 'expected_value': None,
                 'reason': DiffReason.DifferentAttributeValues.value,
                 'actual_stream_index': 1,
