@@ -5,7 +5,7 @@ import socket
 import uuid
 from copy import deepcopy
 from types import MethodType
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from twisted.internet.defer import Deferred, succeed
 from twisted.python.failure import Failure
@@ -228,8 +228,8 @@ class DummyClient(IClient):
             **kwargs
     ) -> None:
         del args, kwargs
-        self._resources = dict()
-        self._paths = dict()
+        self._resources: Dict[str, List[str]] = dict()
+        self._paths: Dict[str, str] = dict()
 
     def add(
             self,

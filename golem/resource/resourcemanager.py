@@ -73,7 +73,7 @@ class ResourceManager:
             filepath=str(resolved_path),
             client_options=client_options)
 
-        first_file = next(iter(files))
+        first_file = files[0]
         file_path = Path(first_file).resolve()
         return file_path
 
