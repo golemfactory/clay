@@ -184,7 +184,7 @@ class CompTaskKeeper:
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %d)', theader, price)
+        logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -357,14 +357,16 @@ class TaskHeaderKeeper:
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
         self.old_env_manager = old_env_manager
-        # FIXME: rename to `env_manager` when old env manager is removed
+        # FIXME: rename to `environments_manager`
+        # when old env manager is removed
         self.new_env_manager = new_env_manager
         self.max_tasks_per_requestor = max_tasks_per_requestor
         self.task_archiver = task_archiver
         self.node = node
 
     @inlineCallbacks
-    def check_support(self, header: dt_tasks.TaskHeader) -> Deferred:
+    def check_support(self, header: dt_tasks.TaskHeader) \
+            -> typing.Generator[Deferred, SupportStatus, SupportStatus]:
         """Checks if task described with given task header dict
            may be computed by this node. This node must
            support proper environment, be allowed to make computation
@@ -726,7 +728,9 @@ class TaskHeaderKeeper:
     def task_ended(self, task_id):
         try:
             self.running_tasks.remove(task_id)
-        except ValueError:
-            logger.warning("Can not remove running task, already removed. "
-                           "Maybe the callback is called twice. task_id=%r",
-                           task_id)
+        except KeyError:
+            logger.debug(
+                "Cannot remove running task. Not found. "
+                "task_id=%r",
+                task_id,
+            )

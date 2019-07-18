@@ -50,6 +50,7 @@ class UnsupportReason(enum.Enum):
     ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
     ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
     ENVIRONMENT_NOT_SECURE = 'environment_not_secure'
+    ENVIRONMENT_MISCONFIGURED = 'environment_misconfigured'
     MAX_PRICE = 'max_price'
     APP_VERSION = 'app_version'
     DENY_LIST = 'deny_list'

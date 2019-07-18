@@ -35,8 +35,8 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
+from golem.task import rpc
 from golem.task import taskkeeper
-from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -341,7 +341,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         logger.info("Offer confirmed, assigning subtask(s)")
         task = self.task_manager.tasks[msg.task_id]
-
         task_state = self.task_manager.tasks_states[msg.task_id]
         price = taskkeeper.compute_subtask_value(
             msg.price,
@@ -361,7 +360,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             resources_result = None
             if ctd["resources"]:
-                resources_result = yield add_resources(
+                resources_result = yield rpc.add_resources(
                     self.task_server.client,
                     ctd["resources"],
                     ctd["subtask_id"],
@@ -371,6 +370,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 resources = self.task_server.get_resources(ctd['subtask_id'])
                 ctd["resources"] = resources
                 logger.info("resources_result: %r", resources_result)
+            else:
+                ctd["resources"] = self.task_server.get_resources(
+                    ctd['subtask_id'],
+                )
 
             logger.info(
                 "Subtask assigned. %s, subtask_id=%r",
