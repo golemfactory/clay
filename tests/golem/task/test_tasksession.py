@@ -993,6 +993,8 @@ class ReportComputedTaskTest(
             })
         }
         ts.task_server.task_keeper.task_headers = {}
+        ts.task_server.requested_task_manager = \
+            Mock(task_exists=Mock(return_value=False))
         ecc = Mock()
         ecc.get_privkey.return_value = os.urandom(32)
         ts.task_server.keys_auth = keys_auth

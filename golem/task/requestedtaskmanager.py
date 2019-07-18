@@ -4,6 +4,7 @@ from typing import Dict, Any, List
 from dataclasses import dataclass
 
 TaskId = str
+SubtaskId = str
 
 
 @dataclass
@@ -38,4 +39,17 @@ class RequestedTaskManager:
 
     def start_task(self, task_id: TaskId) -> None:
         """ Marks an already initialized task as ready for computation. """
+        raise NotImplementedError
+
+    def task_exists(self, _task_id: TaskId) -> bool:  # noqa pylint: disable=no-self-use
+        """ Return whether task of a given task_id exists. """
+        return False
+
+    def get_subtasks_outputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory where subtasks outputs should be
+        placed. """
+        raise NotImplementedError
+
+    def verify(self, task_id: TaskId, subtask_id: SubtaskId) -> bool:
+        """ Return whether a subtask has been computed corectly. """
         raise NotImplementedError

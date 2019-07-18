@@ -34,6 +34,7 @@ from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.marketplace import OfferPool
 from golem.model import TaskPayment
+from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -50,6 +51,7 @@ from golem.ranking.manager.database_manager import (
     update_requestor_assigned_sum,
     update_requestor_efficiency,
 )
+from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
@@ -141,6 +143,10 @@ class TaskServer(
             finished_cb=task_finished_cb,
         )
         self.requested_task_manager = RequestedTaskManager()
+        self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
+            config_desc.hyperdrive_rpc_address,
+            config_desc.hyperdrive_rpc_port,
+        ))
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(
             node_name=config_desc.node_name,
