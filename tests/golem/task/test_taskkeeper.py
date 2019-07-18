@@ -20,6 +20,7 @@ from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.hyperdrive.client import HyperdriveClient
+from golem.task import taskarchiver
 from golem.task import taskkeeper
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
@@ -30,7 +31,7 @@ from golem.tools.assertlogs import LogTestCase
 def async_run(request, success=None, error=None):
     try:
         result = request.method(*request.args, **request.kwargs)
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-except
         if error:
             error(exc)
     else:
@@ -114,197 +115,187 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         self.assertIn(UnsupportReason.MASK_MISMATCH, supported.desc)
 
 
-class TestTaskHeaderKeeper(LogTestCase):
-    def test_init(self):
-        TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0
-        )
-
-    @mock.patch('golem.task.taskarchiver.TaskArchiver')
-    def test_change_config(self, tar):
-        tk = TaskHeaderKeeper(
+class TaskHeaderKeeperBase(LogTestCase):
+    def setUp(self):
+        super().setUp()
+        self.thk = taskkeeper.TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0,
-            task_archiver=tar)
+        )
+
+
+class TestTaskHeaderKeeperWithArchiver(TaskHeaderKeeperBase):
+    def setUp(self):
+        super().setUp()
+        self.tar = mock.Mock(spec=taskarchiver.TaskArchiver)
+        self.thk = TaskHeaderKeeper(
+            environments_manager=EnvironmentsManager(),
+            node=dt_p2p_factory.Node(),
+            min_price=10.0,
+            task_archiver=self.tar,
+        )
+
+    def test_change_config(self):
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.environments_manager.add_environment(e)
 
         task_header = get_task_header()
         task_id = task_header.task_id
         task_header.max_price = 9.0
-        tk.add_task_header(task_header)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id, tk.task_headers)
+        self.thk.add_task_header(task_header)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id, self.thk.task_headers)
 
         task_header = get_task_header("abc")
         task_id2 = task_header.task_id
         task_header.max_price = 10.0
-        tk.add_task_header(task_header)
-        self.assertIn(task_id2, tk.supported_tasks)
-        self.assertIn(task_id2, tk.task_headers)
+        self.thk.add_task_header(task_header)
+        self.assertIn(task_id2, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.task_headers)
 
         config_desc = mock.Mock()
         config_desc.min_price = 10.0
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
         config_desc.min_price = 8.0
-        tk.change_config(config_desc)
-        self.assertIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
         config_desc.min_price = 11.0
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertNotIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertNotIn(task_id2, self.thk.supported_tasks)
         # Make sure the tasks stats are properly archived
-        tar.reset_mock()
+        self.tar.reset_mock()
         config_desc.min_price = 9.5
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
-        tar.add_support_status.assert_any_call(
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
+        self.tar.add_support_status.assert_any_call(
             task_id, SupportStatus(False, {UnsupportReason.MAX_PRICE: 9.0}))
-        tar.add_support_status.assert_any_call(
+        self.tar.add_support_status.assert_any_call(
             task_id2, SupportStatus(True, {}))
 
+    def test_task_header_update_stats(self):
+        e = Environment()
+        e.accept_tasks = True
+        self.thk.environments_manager.add_environment(e)
+        task_header = get_task_header("good")
+        assert self.thk.add_task_header(task_header)
+        self.tar.add_task.assert_called_with(mock.ANY)
+        task_id = task_header.task_id
+        self.tar.add_support_status.assert_any_call(
+            task_id, SupportStatus(True, {}))
+
+        self.tar.reset_mock()
+        task_header2 = get_task_header("bad")
+        task_id2 = task_header2.task_id
+        task_header2.max_price = 1.0
+        assert self.thk.add_task_header(task_header2)
+        self.tar.add_task.assert_called_with(mock.ANY)
+        self.tar.add_support_status.assert_any_call(
+            task_id2, SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
+
+
+class TestTaskHeaderKeeper(TaskHeaderKeeperBase):
     def test_get_task(self):
         em = EnvironmentsManager()
         em.environments = {}
         em.support_statuses = {}
 
-        tk = TaskHeaderKeeper(
-            environments_manager=em,
-            node=dt_p2p_factory.Node(),
-            min_price=10)
-
-        self.assertIsNone(tk.get_task())
+        self.assertIsNone(self.thk.get_task())
         task_header = get_task_header("uvw")
-        self.assertTrue(tk.add_task_header(task_header))
-        self.assertIsNone(tk.get_task())
+        self.assertTrue(self.thk.add_task_header(task_header))
+        self.assertIsNone(self.thk.get_task())
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.environments_manager.add_environment(e)
         task_header2 = get_task_header("xyz")
-        self.assertTrue(tk.add_task_header(task_header2))
-        th = tk.get_task()
+        self.assertTrue(self.thk.add_task_header(task_header2))
+        th = self.thk.get_task()
         self.assertEqual(task_header2.to_dict(), th.to_dict())
 
     @freeze_time(as_arg=True)
-    def test_old_tasks(frozen_time, _):  # pylint: disable=no-self-argument
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
+    def test_old_tasks(frozen_time, self):  # pylint: disable=no-self-argument
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.environments_manager.add_environment(e)
         task_header = get_task_header()
         task_header.deadline = timeout_to_deadline(10)
-        assert tk.add_task_header(task_header)
+        assert self.thk.add_task_header(task_header)
 
         task_id = task_header.task_id
         task_header2 = get_task_header("abc")
         task_header2.deadline = timeout_to_deadline(1)
         task_id2 = task_header2.task_id
-        assert tk.add_task_header(task_header2)
-        assert tk.task_headers.get(task_id2) is not None
-        assert tk.task_headers.get(task_id) is not None
-        assert tk.removed_tasks.get(task_id2) is None
-        assert tk.removed_tasks.get(task_id) is None
-        assert len(tk.supported_tasks) == 2
+        assert self.thk.add_task_header(task_header2)
+        assert self.thk.task_headers.get(task_id2) is not None
+        assert self.thk.task_headers.get(task_id) is not None
+        assert self.thk.removed_tasks.get(task_id2) is None
+        assert self.thk.removed_tasks.get(task_id) is None
+        assert len(self.thk.supported_tasks) == 2
 
         frozen_time.tick(timedelta(seconds=1.1))  # pylint: disable=no-member
-        tk.remove_old_tasks()
-        assert tk.task_headers.get(task_id2) is None
-        assert tk.task_headers.get(task_id) is not None
-        assert tk.removed_tasks.get(task_id2) is not None
-        assert tk.removed_tasks.get(task_id) is None
-        assert len(tk.supported_tasks) == 1
-        assert tk.supported_tasks[0] == task_id
-
-    @mock.patch('golem.task.taskarchiver.TaskArchiver')
-    def test_task_header_update_stats(self, tar):
-        e = Environment()
-        e.accept_tasks = True
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10,
-            task_archiver=tar)
-        tk.environments_manager.add_environment(e)
-        task_header = get_task_header("good")
-        assert tk.add_task_header(task_header)
-        tar.add_task.assert_called_with(mock.ANY)
-        task_id = task_header.task_id
-        tar.add_support_status.assert_any_call(
-            task_id, SupportStatus(True, {}))
-
-        tar.reset_mock()
-        task_header2 = get_task_header("bad")
-        task_id2 = task_header2.task_id
-        task_header2.max_price = 1.0
-        assert tk.add_task_header(task_header2)
-        tar.add_task.assert_called_with(mock.ANY)
-        tar.add_support_status.assert_any_call(
-            task_id2, SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
+        self.thk.remove_old_tasks()
+        assert self.thk.task_headers.get(task_id2) is None
+        assert self.thk.task_headers.get(task_id) is not None
+        assert self.thk.removed_tasks.get(task_id2) is not None
+        assert self.thk.removed_tasks.get(task_id) is None
+        assert len(self.thk.supported_tasks) == 1
+        assert self.thk.supported_tasks[0] == task_id
 
     @freeze_time(as_arg=True)
     def test_task_limit(frozen_time, self):  # pylint: disable=no-self-argument
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
-        limit = tk.max_tasks_per_requestor
+        limit = self.thk.max_tasks_per_requestor
 
         thd = get_task_header("ta")
         thd.deadline = timeout_to_deadline(0.1)
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         ids = [thd.task_id]
         for i in range(1, limit):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
-            tk.add_task_header(thd)
+            self.thk.add_task_header(thd)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
 
         thd = get_task_header("tb0")
         tb_id = thd.task_id
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
 
-        self.assertIn(tb_id, tk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
         frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
-        tk.add_task_header(thd)
-        self.assertNotIn(new_task_id, tk.task_headers)
+        self.thk.add_task_header(thd)
+        self.assertNotIn(new_task_id, self.thk.task_headers)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb_id, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
         frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
-        tk.remove_old_tasks()
+        self.thk.remove_old_tasks()
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
-        tk.add_task_header(thd)
-        self.assertIn(new_task_id, tk.task_headers)
+        self.thk.add_task_header(thd)
+        self.assertIn(new_task_id, self.thk.task_headers)
 
-        self.assertNotIn(ids[0], tk.task_headers)
+        self.assertNotIn(ids[0], self.thk.task_headers)
         for i in range(1, limit):
-            self.assertIn(ids[i], tk.task_headers)
-        self.assertIn(tb_id, tk.task_headers)
+            self.assertIn(ids[i], self.thk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
     @freeze_time(as_arg=True)
     # pylint: disable=no-self-argument
@@ -392,45 +383,41 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert running_task_id not in tk.running_tasks
 
     def test_get_unsupport_reasons(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.environments_manager.add_environment(e)
 
         # Supported task
         thd = get_task_header("good")
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong version
         thd = get_task_header("wrong version")
         thd.min_version = "42.0.17"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong environment
         thd = get_task_header("wrong env")
         thd.environment = "UNKNOWN"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong price
         thd = get_task_header("wrong price")
         thd.max_price = 1
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong price and version
         thd = get_task_header("wrong price and version")
         thd.min_version = "42.0.17"
         thd.max_price = 1
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # And one more with wrong version
         thd = get_task_header("wrong version 2")
         thd.min_version = "42.0.44"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
-        reasons = tk.get_unsupport_reasons()
+        reasons = self.thk.get_unsupport_reasons()
         # 2 tasks with wrong price
         self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
         # 1 task with wrong environment
@@ -442,16 +429,19 @@ class TestTaskHeaderKeeper(LogTestCase):
                        'ntasks': 1}, reasons)
 
     def test_get_owner(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
         header = get_task_header()
         owner = header.task_owner.key
         key_id = header.task_id
-        tk.add_task_header(header)
-        assert tk.get_owner(key_id) == owner
-        assert tk.get_owner("UNKNOWN") is None
+        self.thk.add_task_header(header)
+        assert self.thk.get_owner(key_id) == owner
+        assert self.thk.get_owner("UNKNOWN") is None
+
+
+class TestTHKTaskEnded(TaskHeaderKeeperBase):
+    def test_task_not_found(self):
+        task_id = 'non existent id'
+        self.assertNotIn(task_id, self.thk.running_tasks)
+        self.thk.task_ended(task_id)
 
 
 def get_dict_task_header(key_id_seed="kkk"):
