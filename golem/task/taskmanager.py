@@ -160,11 +160,13 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
-    def create_task(self, dictionary, minimal=False):
-        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
+    def create_task(self, dictionary, test=False):
+        purpose = TaskPurpose.TESTING if test else TaskPurpose.REQUESTING
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
+        task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         type_name = dictionary['type'].lower()
         compute_on = dictionary.get('compute_on', 'cpu').lower()
-        is_requesting = purpose == TaskPurpose.REQUESTING
 
         if type_name == "blender" and is_requesting and compute_on == "gpu":
             type_name = type_name + "_nvgpu"
@@ -172,17 +174,17 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary,
-                                                   minimal)
-        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition = builder_type.build_definition(task_type, dictionary, test)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
+        definition.task_id = task_id
 
         task = builder_type(self.node, definition, self.dir_manager).build()
-        task_id = task.header.task_id
 
-        logger.info("Creating task. type=%r, id=%s", type(task), task_id)
-        self.tasks[task_id] = task
-        self.tasks_states[task_id] = TaskState(task)
+        if is_requesting:
+            logger.info("Creating task. type=%r, id=%s", type(task), task_id)
+            self.tasks[task_id] = task
+            self.tasks_states[task_id] = TaskState(task)
+
         return task
 
     def initialize_task(self, task: Task):
