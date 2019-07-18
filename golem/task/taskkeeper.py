@@ -59,8 +59,9 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader) -> None:
+    def __init__(self, header: dt_tasks.TaskHeader, performance: float) -> None:
         self.header = header
+        self.performance = performance
         self.requests = 1
         self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
@@ -177,7 +178,12 @@ class CompTaskKeeper:
         self.active_task_offers.update(active_task_offers)
         self.resources_options.update(resources_options)
 
-    def add_request(self, theader: dt_tasks.TaskHeader, price: int):
+    def add_request(
+            self,
+            theader: dt_tasks.TaskHeader,
+            price: int,
+            performance: float
+    ):
         # price is task_header.max_price
         logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
@@ -186,7 +192,7 @@ class CompTaskKeeper:
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader)
+            self.active_tasks[task_id] = CompTaskInfo(theader, performance)
         self.active_task_offers[task_id] = compute_subtask_value(
             price, self.active_tasks[task_id].header.subtask_timeout
         )

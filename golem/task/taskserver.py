@@ -13,6 +13,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Union,
     Set,
 )
 
@@ -22,6 +23,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
+# from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -29,11 +31,16 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environment import (
+    Environment as OldEnv,
+    SupportStatus,
+    UnsupportReason,
+)
+from golem.envs import Environment as NewEnv
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.marketplace import OfferPool
-from golem.model import TaskPayment
+from golem.model import Performance, TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -263,9 +270,13 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
-    def get_environment_by_id(self, env_id):
-        return self.task_keeper.old_env_manager.get_environment_by_id(
-            env_id)
+    def get_environment_by_id(self, env_id: str) -> Union[OldEnv, NewEnv]:
+        """ Looks for the requested env_id in the new, then the old env_manager.
+            Returns None when the environment is not found. """
+        keeper = self.task_keeper
+        if keeper.new_env_manager.enabled(env_id):
+            return keeper.new_env_manager.environment(env_id)
+        return keeper.old_env_manager.get_environment_by_id(env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
         """ Requests task possibly after successful resource handshake. """
@@ -300,12 +311,6 @@ class TaskServer(
 
     def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
         try:
-            env = self.get_environment_by_id(theader.environment)
-            if env is not None:
-                performance = env.get_performance()
-            else:
-                performance = 0.0
-
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
                 supported = supported.join(SupportStatus.err({
@@ -322,6 +327,16 @@ class TaskServer(
                     }),
                 )
 
+            # prepare env for performance, should always exist at this point
+            env_id = theader.environment
+            env = self.get_environment_by_id(env_id)
+            if env is None:
+                supported = supported.join(
+                    SupportStatus.err(
+                        {UnsupportReason.ENVIRONMENT_MISSING: env_id}
+                    )
+                )
+
             if not supported.is_ok():
                 logger.debug(
                     "Support status. task_id=%s supported=%s",
@@ -333,6 +348,29 @@ class TaskServer(
                         theader.task_id,
                         supported,
                     )
+                return None
+
+            # Check performance
+            performance = None
+            if isinstance(env, OldEnv):
+                performance = env.get_performance()
+            else:  # NewEnv
+                env_mgr = self.task_keeper.new_env_manager
+                result = env_mgr.get_performance(env_id)
+                if isinstance(result, Deferred):
+                    performance = sync_wait(result)
+                    # # TODO switch to fire and forget?
+                    # #  needs lock to run only once
+                    # deferred.addCallback(
+                    #     lambda: self.request_task_by_id(theader.task_id)
+                    # )
+                    # deferToThread(deferred)
+                    # return None
+                else:  # float
+                    performance = result
+            if performance is None:
+                # Can not compute a task when benchmark fails
+                logger.warning("Can not request task, benchmark failed")
                 return None
 
             # Check handshake
@@ -364,7 +402,7 @@ class TaskServer(
             )
             price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price)
+                theader=theader, price=price, performance=performance)
             wtct = message.tasks.WantToComputeTask(
                 perf_index=performance,
                 price=price,
@@ -710,14 +748,14 @@ class TaskServer(
 
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id)
-            environment = self.get_environment_by_id(header.environment)
+            performance = keeper.active_tasks[task_id].performance
             computation_time = timer.ProviderTimer.time
 
             update_requestor_efficiency(
                 node_id=keeper.get_node_for_task_id(task_id),
                 timeout=header.subtask_timeout,
                 computation_time=computation_time,
-                performance=environment.get_performance(),
+                performance=performance,
                 min_performance=min_performance,
             )
 
@@ -787,7 +825,11 @@ class TaskServer(
 
     def get_min_performance_for_task(self, task: Task) -> float:
         env = self.get_environment_by_id(task.header.environment)
-        return env.get_min_accepted_performance()
+        if isinstance(env, OldEnv):
+            return env.get_min_accepted_performance()
+        # NewEnv
+        # TODO: Implement minimum performance in new env
+        return 0.0
 
     class RejectedReason(Enum):
         not_my_task = 'not my task'

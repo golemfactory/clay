@@ -1,7 +1,12 @@
-from typing import Dict, List, NamedTuple, Type
+import logging
+from typing import Dict, List, NamedTuple, Type, Union
 
 from golem.envs import EnvId, Environment
+from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
+from twisted.internet.defer import Deferred
+
+logger = logging.getLogger(__name__)
 
 
 class EnvEntry(NamedTuple):
@@ -41,6 +46,8 @@ class EnvironmentManager:
 
     def enabled(self, env_id: EnvId) -> bool:
         """ Get the state (enabled or not) for an Environment. """
+        if env_id not in self._state:
+            return False
         return self._state[env_id]
 
     def set_enabled(self, env_id: EnvId, enabled: bool) -> None:
@@ -60,3 +67,25 @@ class EnvironmentManager:
 
     def payload_builder(self, env_id: EnvId) -> Type[TaskApiPayloadBuilder]:
         return self._envs[env_id].payload_builder
+
+    def get_performance(self, env_id) -> Union[Deferred, float]:
+        perf = None
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+        except Performance.DoesNotExist:
+            pass
+
+        if perf is None or perf.value is None:
+            def _save_performance(raw_perf):
+                Performance.update_or_create(env_id, raw_perf)
+
+            def _benchmark_error(_e):
+                logger.error('failed to run benchmark. env=%r', env_id)
+
+            env = self._envs[env_id]
+            deferred = env.run_benchmark()
+            deferred.addCallback(_save_performance)
+            deferred.addErrback(_benchmark_error)
+            return deferred
+
+        return perf.value
