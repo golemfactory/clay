@@ -23,7 +23,6 @@ from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
-# from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -287,7 +286,7 @@ class TaskServer(
             return
         self._request_task(task_header)
 
-    def _request_random_task(self) -> Optional[str]:
+    def _request_random_task(self):
         """ If there is no task currently computing and time elapsed from last
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
@@ -307,9 +306,10 @@ class TaskServer(
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
-        return self._request_task(task_header)
+        self._request_task(task_header)
 
-    def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
+    @inlineCallbacks
+    def _request_task(self, theader: dt_tasks.TaskHeader) -> Deferred:
         try:
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
@@ -353,24 +353,11 @@ class TaskServer(
             # Check performance
             performance = None
             if isinstance(env, OldEnv):
-                performance = env.get_performance()
+                performance = yield env.get_performance()
             else:  # NewEnv
                 env_mgr = self.task_keeper.new_env_manager
-                result = env_mgr.get_performance(env_id)
-                if isinstance(result, Deferred):
-                    performance = sync_wait(result)
-                    # # TODO switch to fire and forget?
-                    # #  needs lock to run only once
-                    # deferred.addCallback(
-                    #     lambda: self.request_task_by_id(theader.task_id)
-                    # )
-                    # deferToThread(deferred)
-                    # return None
-                else:  # float
-                    performance = result
+                performance = env_mgr.get_performance(env_id)
             if performance is None:
-                # Can not compute a task when benchmark fails
-                logger.warning("Can not request task, benchmark failed")
                 return None
 
             # Check handshake
@@ -425,7 +412,7 @@ class TaskServer(
             return theader.task_id
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Cannot send request for task: %s", err)
-            logger.debug("Detailed traceback", exc_info=True)
+            logger.info("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None
