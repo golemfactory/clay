@@ -27,6 +27,7 @@ from twisted.internet.defer import Deferred
 import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
+from golem.core import deferred as core_deferred
 from golem.core import variables
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
@@ -1206,7 +1207,9 @@ class TestOfferChosen(TestCase):
         self.ts.task_manager.get_next_subtask.side_effect = ctd
 
         # when
-        self.ts._offer_chosen(is_chosen=True, msg=self.msg)
+        core_deferred.sync_wait(  # ensure it's actually finished
+            self.ts._offer_chosen(is_chosen=True, msg=self.msg)
+        )
 
         # then
         self.assertEqual(self.ts.task_manager.get_next_subtask.call_count, 3)
