@@ -53,7 +53,7 @@ from golem.ranking.manager.database_manager import (
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
-from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
+from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskbase import Task, AcceptClientVerdict

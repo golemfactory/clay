@@ -5,37 +5,37 @@ from unittest.mock import Mock
 
 from golem.testutils import async_test
 from golem.envs import Environment, Prerequisites
-from golem.task.appcallbacks.appcallbacks import (
-    EnvironmentCallbacks,
+from golem.task.task_api import (
+    EnvironmentTaskApiService,
     TaskApiPayloadBuilder,
 )
 
 
-class TestAppCallbacks(TestCase):
+class TestTaskApiService(TestCase):
     def setUp(self):
         self.env = Mock(spec_set=Environment)
         self.prereq = Mock(spec_set=Prerequisites)
         self.shared_dir = Mock(spec_set=Path)
-        self.payload_maker = Mock(spec_set=TaskApiPayloadBuilder)
-        self.app_callbacks = EnvironmentCallbacks(
+        self.payload_builder = Mock(spec_set=TaskApiPayloadBuilder)
+        self.service = EnvironmentTaskApiService(
             self.env,
             self.prereq,
             self.shared_dir,
-            self.payload_maker,
+            self.payload_builder,
         )
 
-    def test_spawn_server(self):
+    def test_start(self):
         command = 'test_command'
         port = 1234
-        socket_addr = self.app_callbacks.spawn_server(command, port)
-        self.payload_maker.create_payload.assert_called_once_with(
+        socket_addr = self.service.start(command, port)
+        self.payload_builder.create_payload.assert_called_once_with(
             self.prereq,
             self.shared_dir,
             command,
             port,
         )
         self.env.runtime.assert_called_once_with(
-            self.payload_maker.create_payload.return_value,
+            self.payload_builder.create_payload.return_value,
         )
         runtime = self.env.runtime.return_value
         runtime.prepare.assert_called_once_with()
@@ -44,8 +44,8 @@ class TestAppCallbacks(TestCase):
         self.assertEqual(runtime.get_port_mapping.return_value, socket_addr)
 
     @async_test
-    async def test_wait_after_shutdown(self):
+    async def test_wait_until_shutdown_complete(self):
         runtime = self.env.runtime.return_value
-        self.app_callbacks.spawn_server('cmd', 1234)
-        await self.app_callbacks.wait_after_shutdown()
+        self.service.start('cmd', 1234)
+        await self.service.wait_until_shutdown_complete()
         runtime.wait_until_stopped.assert_called_once_with()
