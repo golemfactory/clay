@@ -141,7 +141,7 @@ def _run_test_task(client, task_dict):
 
     dictionary = simpleserializer.DictSerializer.load(task_dict)
     task = client.task_server.task_manager.create_task(
-        dictionary=dictionary, minimal=True
+        dictionary=dictionary, test=True
     )
 
     client.task_test_result = {
