@@ -26,7 +26,11 @@ from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
 from golem.core.keysauth import KeysAuth
-from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environment import (
+    Environment as OldEnv,
+    SupportStatus,
+    UnsupportReason,
+)
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
@@ -229,7 +233,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
@@ -238,10 +242,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         self._prepare_handshake(task_owner_key, task_id)
 
-        self.ts.get_environment_by_id = Mock(return_value=None)
+        env_mock = Mock(spec=OldEnv)
+        env_mock.get_performance = Mock(return_value=0.0)
+        self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
-        self.assertEqual(ts._request_random_task(), task_id)
+        ts._request_random_task()
         self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
         self.assertNotIn(task_id, ts.requested_tasks)
@@ -261,7 +267,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id3 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id3,
             SupportStatus(
@@ -276,7 +282,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id4 = task_header.task_id
         task_header.max_price = 1
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id4,
             SupportStatus(
@@ -290,7 +296,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id5 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id5,
             SupportStatus(
@@ -1251,8 +1257,9 @@ class TestRequestRandomTask(TaskServerTestBase):
     def test_request_interval(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time()
-
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_already_assigned(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1261,7 +1268,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = True
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_computer_not_accepting_tasks(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1270,7 +1279,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = False
         self.ts.task_computer.runnable = True
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_computer_not_runnable(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1279,7 +1290,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = False
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_no_supported_tasks_in_task_keeper(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1289,7 +1302,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.runnable = True
         self.ts.task_keeper.get_task.return_value = None
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     @patch('golem.task.taskserver.TaskServer._request_task')
     def test_ok(self, request_task):
@@ -1301,8 +1316,7 @@ class TestRequestRandomTask(TaskServerTestBase):
         task_header = Mock()
         self.ts.task_keeper.get_task.return_value = task_header
 
-        result = self.ts._request_random_task()
-        self.assertEqual(result, request_task.return_value)
+        self.ts._request_random_task()
         self.assertEqual(self.ts._last_task_request_time, time.time())
         self.ts.task_computer.stats.increase_stat.assert_called_once_with(
             'tasks_requested')

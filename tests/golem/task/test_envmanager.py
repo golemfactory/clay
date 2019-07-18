@@ -75,7 +75,7 @@ class TestEnvironmentManager(TestCase):
         # Then
         self.assertFalse(self.manager.enabled("env1"))
         self.assertTrue(self.manager.enabled("env2"))
-        self.assertRaises(KeyError, self.manager.enabled, "bogus_env")
+        self.assertFalse(self.manager.enabled("bogus_env"))
 
     def test_payload_builder(self):
         _, pb = self.register_env("env1")
