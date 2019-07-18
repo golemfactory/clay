@@ -106,7 +106,7 @@ class CompTaskKeeper:
 
     handle_key_error = common.HandleKeyError(log_key_error)
 
-    def __init__(self, tasks_path: pathlib.Path, persist=True):
+    def __init__(self, tasks_path: pathlib.Path):
         """ Create new instance of compuatational task's definition's keeper
 
         tasks_path: to tasks directory
@@ -133,12 +133,9 @@ class CompTaskKeeper:
         if not tasks_path.is_dir():
             tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
-        self.persist = persist
         self.restore()
 
     def dump(self):
-        if not self.persist:
-            return
         golem_async.async_run(golem_async.AsyncRequest(self._dump_tasks))
 
     def _dump_tasks(self):
@@ -154,8 +151,6 @@ class CompTaskKeeper:
             pickle.dump(dump_data, f)
 
     def restore(self):
-        if not self.persist:
-            return
         logger.debug('COMPTASK RESTORE: %s', self.dump_path)
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')

@@ -85,10 +85,13 @@ class TaskManager(TaskEventListener):
     class AlreadyRestartedError(Error):
         pass
 
-    def __init__(
-            self, node, keys_auth, root_path,
+    def __init__(  # pylint: disable=too-many-arguments
+            self,
+            node,
+            keys_auth,
+            root_path,
             config_desc: ClientConfigDescriptor,
-            tasks_dir="tasks", task_persistence=True,
+            tasks_dir="tasks",
             apps_manager=AppsManager(),
             finished_cb=None,
     ) -> None:
@@ -106,8 +109,6 @@ class TaskManager(TaskEventListener):
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.task_persistence = task_persistence
 
         tasks_dir = Path(tasks_dir)
         self.tasks_dir = tasks_dir / "tmanager"
@@ -146,7 +147,6 @@ class TaskManager(TaskEventListener):
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
-            persist=self.task_persistence,
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
@@ -155,8 +155,7 @@ class TaskManager(TaskEventListener):
 
         self.finished_cb = finished_cb
 
-        if self.task_persistence:
-            self.restore_tasks()
+        self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
@@ -1203,7 +1202,7 @@ class TaskManager(TaskEventListener):
             task_id, subtask_id, op, persist,
         )
 
-        if persist and self.task_persistence:
+        if persist:
             self.dump_task(task_id)
 
         task_state = self.tasks_states.get(task_id)

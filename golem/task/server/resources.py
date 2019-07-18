@@ -51,9 +51,6 @@ class TaskResourcesMixin:
     def restore_resources(self) -> None:
         task_manager = getattr(self, 'task_manager')
 
-        if not task_manager.task_persistence:
-            return
-
         states = dict(task_manager.tasks_states)
         tasks = dict(task_manager.tasks)
 

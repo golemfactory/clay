@@ -112,7 +112,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             keys_auth,
             root_path=self.path,
             config_desc=ClientConfigDescriptor(),
-            task_persistence=True,
             finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
@@ -227,8 +226,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
-                                  config_desc=ClientConfigDescriptor(),
-                                  task_persistence=True)
+                                  config_desc=ClientConfigDescriptor(),)
 
             temp_tm.key_id = "KEYID"
 
@@ -243,8 +241,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 dt_p2p_factory.Node(),
                 keys_auth=Mock(),
                 root_path=self.path,
-                config_desc=ClientConfigDescriptor(),
-                task_persistence=True)
+                config_desc=ClientConfigDescriptor(),)
 
             assert any(
                 "SEARCHING FOR TASKS TO RESTORE" in log for log in log.output)
@@ -772,13 +769,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def test_resource_send(self, *_):
         # pylint: disable=abstract-class-instantiated
         from pydispatch import dispatcher
-        self.tm.task_persistence = True
-        owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            pub_addr="10.10.10.10",
-            pub_port=1023,
-            key="abcde",
-        )
         t = TaskMock(
             header=dt_tasks_factory.TaskHeaderFactory(
                 task_id="xyz",
@@ -1381,8 +1371,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',
-            config_desc=ClientConfigDescriptor(),
-            task_persistence=False
+            config_desc=ClientConfigDescriptor()
         )
 
         zip_patch = patch('golem.task.taskmanager.ZipFile')
@@ -1485,7 +1474,6 @@ class TestTaskFinished(unittest.TestCase):
                 keys_auth=MagicMock(spec=KeysAuth),
                 root_path='/tmp',
                 config_desc=ClientConfigDescriptor(),
-                task_persistence=False
             )
         self.task_id = str(uuid.uuid4())
         self.tm.tasks_states[self.task_id] = TaskState()
@@ -1512,7 +1500,6 @@ class TestNeedsComputation(unittest.TestCase):
                 keys_auth=MagicMock(spec=KeysAuth),
                 root_path='/tmp',
                 config_desc=ClientConfigDescriptor(),
-                task_persistence=False
             )
         dummy_path = '/fiu/bzdziu'
         self.task_id = str(uuid.uuid4())
