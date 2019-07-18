@@ -27,7 +27,7 @@ class NodeConfig:
         self.log_level: Optional[str] = None
         self.mainnet = False
         self.opts: Dict[str, Any] = {}
-        self.password = 'dupa.8'
+        self.password = 'goleM.8'
         self.protocol_id = 1337
         self.rpc_port = 61000
         self.script = 'node'
