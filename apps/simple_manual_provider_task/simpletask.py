@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Dict, Any
 
 import golem_messages
@@ -8,6 +9,11 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
+from golem.task.taskstate import SubtaskStatus
+from golem.verifier import CoreVerifier
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+
+logger = logging.getLogger(__name__)
 
 
 class SimpleTaskEnvironment(DockerEnvironment):
@@ -27,7 +33,6 @@ class SimpleTaskOptions(Options):
     def __init__(self):
         super().__init__()
         self.name = None
-        self.times = None
         self.environment = SimpleTaskEnvironment()
 
 
@@ -37,7 +42,20 @@ class SimpleTaskDefinition(TaskDefinition):
         self.options = SimpleTaskOptions()
 
 
+class SimpleTaskVerifier(CoreVerifier):
+    def __init__(self, verification_data):
+        super().__init__(verification_data)
+        self.results = verification_data['results']
+        self.state = SubtaskVerificationState.WAITING
+
+    def simple_verification(self):
+        return True
+
+
 class SimpleManualTask(ManualTask):
+    ENVIRONMENT_CLASS = SimpleTaskEnvironment
+    VERIFIER_CLASS = SimpleTaskVerifier
+
     def __init__(self, task_definition: SimpleTaskDefinition,
                  owner: 'dt_p2p.Node', **kwargs):
         super().__init__(task_definition, owner)
@@ -46,9 +64,9 @@ class SimpleManualTask(ManualTask):
 
     def initialize(self, dir_manager: DirManager):
         super().initialize(dir_manager)
-
-        self.task_definition.subtasks_count = self.task_definition.options.times
-        self.total_tasks = self.task_definition.options.times
+        logger.info('self.task_definition.resources = {}'.format(self.task_definition.resources))
+        self.task_definition.subtasks_count = len(self.task_definition.resources)
+        self.total_tasks = len(self.task_definition.resources)
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
@@ -57,11 +75,47 @@ class SimpleManualTask(ManualTask):
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         sid = self.create_subtask_id()
+        extra_data = {
+            'name': self.task_definition.options.name,
+            'entrypoint': 'echo {} from {}'.format(self.task_definition.options.name, node_id)
+        }
+        subtask_num = self._get_next_subtask()
+
+        subtask: Dict[str, Any] = {
+            'perf': perf_index,
+            'node_id': node_id,
+            'subtask_id': sid,
+            'subtask_num': subtask_num,
+            'status': SubtaskStatus.starting
+        }
+
+        self.subtasks_given[sid] = subtask
+        subtask_resource = list(self.task_definition.resources)[subtask_num]
+
         return Task.ExtraData(ctd=self._get_task_computing_definition(
             sid,
-            {'name': self.task_definition.options.name},
+            extra_data,
             perf_index,
-            resources=[]))
+            resources=[subtask_resource]))
+
+    def _get_next_subtask(self):
+        subtasks = self.subtasks_given.values()
+        subtasks = filter(lambda sub: sub['status'] in [
+            SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
+
+        failed_subtask = next(iter(subtasks), None)
+        if failed_subtask:
+            failed_subtask['status'] = SubtaskStatus.resent
+            self.num_failed_subtasks -= 1
+            return failed_subtask['subtask_num']
+
+        assert self.last_task < self.total_tasks
+        curr = self.last_task + 1
+        self.last_task = curr
+        return curr - 1
+
+    def query_extra_data_for_test_task(self):
+        pass
 
     def _get_task_computing_definition(self,
                                        sid,
@@ -87,7 +141,6 @@ class SimpleTaskBuilder(CoreTaskBuilder):
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         task_def = super().build_full_definition(task_type, dictionary)
-        task_def.options.times = dictionary.get('options', {}).get('times', 1)
         task_def.options.name = dictionary.get('options', {}).get('name',
                                                                   'radek')
         return task_def
@@ -96,3 +149,10 @@ class SimpleTaskBuilder(CoreTaskBuilder):
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,
                                  dictionary: Dict[str, Any]):
         return super().build_minimal_definition(task_type, dictionary)
+
+
+class ManualSimpleTaskTypeInfo(CoreTaskTypeInfo):
+    def __init__(self):
+        super().__init__('MANUAL', SimpleTaskDefinition,
+                         SimpleTaskOptions, SimpleTaskBuilder)
+

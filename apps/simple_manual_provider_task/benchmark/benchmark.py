@@ -3,22 +3,19 @@ import pathlib
 import uuid
 
 from apps.simple_manual_provider_task.simpletask import SimpleTaskDefinition
-from ffmpeg_tools.codecs import VideoCodec
-from ffmpeg_tools.formats import Container
-
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 
 logger = logging.getLogger(__name__)
 
 
-class ManualSimpleTask(CoreBenchmark):
+class ManualSimpleTaskBenchmark(CoreBenchmark):
     def __init__(self):
         self._normalization_constant = 1000
         super().__init__()
 
         task_def = SimpleTaskDefinition()
         task_def.task_id = str(uuid.uuid4())
-        task_def.resources = []
+        task_def.resources = ['x']
         task_def.options.name = 'radek'
         task_def.options.times = 1
         self._task_definition = task_def
