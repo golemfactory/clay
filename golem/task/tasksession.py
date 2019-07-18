@@ -35,8 +35,8 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
-from golem.task import rpc
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -360,7 +360,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             resources_result = None
             if ctd["resources"]:
-                resources_result = yield rpc.add_resources(
+                resources_result = yield add_resources(
                     self.task_server.client,
                     ctd["resources"],
                     ctd["subtask_id"],
@@ -372,7 +372,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 logger.info("resources_result: %r", resources_result)
             else:
                 ctd["resources"] = self.task_server.get_resources(
-                    ctd['subtask_id'],
+                    ctd['task_id'],
                 )
 
             logger.info(
