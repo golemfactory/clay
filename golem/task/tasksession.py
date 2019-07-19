@@ -49,6 +49,11 @@ def drop_after_attr_error(*args, **_):
     args[0].dropped()
 
 
+def get_task_market_strategy(task_manager, task: Task):
+    return task_manager.task_types[
+        task.task_definition.task_type.lower()].MARKET_STRATEGY
+
+
 def get_task_message(
         message_class_name,
         node_id,
@@ -317,11 +322,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         def _on_error(e):
             logger.error("%s", str(e))
 
-        def get_task_market_strategy(task: Task):
-            return self.task_manager.task_types[
-                task.task_definition.task_type.lower()].MARKET_STRATEGY
-
-        market_strategy = get_task_market_strategy(current_task)
+        market_strategy = get_task_market_strategy(self.task_manager,
+                                                   current_task)
 
         if market_strategy\
                 .get_task_offer_count(msg.task_id) == 0:

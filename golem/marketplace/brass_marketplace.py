@@ -3,7 +3,6 @@ import sys
 import logging
 from typing import List, Dict, ClassVar, Tuple, Optional
 
-import golem.ranking.manager.database_manager as dbm
 from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
