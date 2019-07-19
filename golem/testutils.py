@@ -30,13 +30,9 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resourcesmanager import \
-    HyperdriveResourceManager
-from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager
-from golem.task.taskstate import TaskState, TaskStatus
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 logger = logging.getLogger(__name__)
