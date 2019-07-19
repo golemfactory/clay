@@ -1,3 +1,4 @@
+import datetime
 import logging
 import typing
 
@@ -6,6 +7,7 @@ from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
 
 from apps.core.task.coretaskstate import RunVerification
+from golem.task.taskbase import Task, ResultMetadata
 
 from golem import model
 from golem.core import common
@@ -113,6 +115,13 @@ class VerificationMixin:
                 local_role=model.Actor.Requestor,
                 remote_role=model.Actor.Provider,
             )
+
+        task_id: str = self.task_manager.subtask2task_mapping[subtask_id]
+        task: Task = self.task_manager.tasks[task_id]
+        task.subtasks_results_metadata[subtask_id] = ResultMetadata(
+            datetime.datetime.now().timestamp -\
+                report_computed_task.task_to_compute.timestamp
+        )
 
         self.task_manager.computed_task_received(
             subtask_id,

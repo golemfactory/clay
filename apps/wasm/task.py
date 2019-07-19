@@ -213,6 +213,10 @@ class WasmTask(CoreTask):
                 if actor is not instance['actor']:
                     continue
 
+                logger.info("Time to complete subtask %s: %d",
+                            s_id,
+                            self.subtasks_results_metadata[s_id].comput_wc_time)
+
                 if verdict == VerificationResult.SUCCESS:
                     # pay up!
                     logger.info("Accepting results for subtask %s", s_id)

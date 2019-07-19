@@ -2,6 +2,7 @@ import abc
 import logging
 from enum import Enum
 from typing import (
+    Dict,
     List,
     Optional,
     Type)
@@ -101,6 +102,7 @@ class Task(abc.ABC):
                  task_definition: TaskDefinition) -> None:
         self.header = header
         self.task_definition = task_definition
+        self.subtasks_results_metadata: Dict[str, ResultMetadata] = {}
 
         self.listeners = []  # type: List[TaskEventListener]
 
@@ -359,3 +361,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, comput_wc_time: int) -> None:
+        self.comput_wc_time: int = comput_wc_time
