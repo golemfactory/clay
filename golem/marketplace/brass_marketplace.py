@@ -124,6 +124,7 @@ class RequestorPoolingMarketStrategy(RequestorMarketStrategy):
     def reset(cls) -> None:
         cls._pools = dict()
 
+
 class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
@@ -132,7 +133,8 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
             return None
 
         order = order_providers(
-            [BrassMarketOffer(scale_price(offer.max_price, offer.price), offer.reputation, offer.quality)
+            [BrassMarketOffer(scale_price(offer.max_price, offer.price),
+                              offer.reputation, offer.quality)
              for offer in cls._pools[task_id]]
         )
 
