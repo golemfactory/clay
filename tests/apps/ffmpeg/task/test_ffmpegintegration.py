@@ -29,11 +29,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
     # flake8: noqa
     # pylint: disable=line-too-long,bad-whitespace
     VIDEO_FILES = [
-        # Files from the repo (good)
+        # Files from the repo
         {"resolution": [320, 240],   "container": Container.c_MP4,      "video_codec": VideoCodec.H_264,     "path": "test_video.mp4"},
         {"resolution": [320, 240],   "container": Container.c_MP4,      "video_codec": VideoCodec.H_264,     "path": "test_video2"},
 
-        # Files from transcoding-video-bundle (good)
+        # Files from transcoding-video-bundle
         {"resolution": [512, 288],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP8,       "path": "videos/good/basen-out8[vp8,512x288,10s,v1a0s0d0,i248p494b247,25fps].webm"},
         {"resolution": [512, 288],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP9,       "path": "videos/good/basen-out9[vp9,512x288,10s,v1a0s0d0,i248p494b247,25fps].webm"},
         {"resolution": [1920, 1080], "container": Container.c_MPEG,     "video_codec": VideoCodec.MPEG_2,    "path": "videos/good/beachfront-dandelion[mpeg2video+mp2,1920x1080,20s,v1a1s0d0,i1765p1925b1604,23.976fps][segment1of11].mpeg"},
@@ -89,8 +89,6 @@ class TestFfmpegIntegration(TestTaskIntegration):
         {"resolution": [1920, 1080], "container": Container.c_WEBM,     "video_codec": VideoCodec.VP8,       "path": "videos/good/wikipedia-tractor[vp8+vorbis,1920x1080,28s,v1a1s0d0,i695p1373b689,1000fps][segment1of5].webm"},
         {"resolution": [854, 480],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP9,       "path": "videos/good/wikipedia-tractor[vp9+opus,854x480,28s,v1a1s0d0,i692p1376b689,25fps][segment1of3].webm"},
         {"resolution": [854, 480],   "container": Container.c_WEBM,     "video_codec": VideoCodec.AV1,       "path": "videos/good/woolyss-llamadrama[av1+opus,854x480,87s,v1a1s0d0,i1879p1879b1879,24fps].webm"},
-
-        # Files from transcoding-video-bundle (bad)
         {"resolution": [1920, 1080], "container": Container.c_MOV,      "video_codec": VideoCodec.MJPEG,     "path": "videos/bad/beachfront-moonandclouds[mjpeg,1920x1080,50s,v1a0s0d1,i3574p2382b2382,24fps].mov"},
         {"resolution": [1920, 1080], "container": Container.c_MOV,      "video_codec": VideoCodec.MJPEG,     "path": "videos/bad/beachfront-mooncloseup[mjpeg,1920x1080,33s,v1a0s0d1,i2374p1582b1582,23.976fps].mov"},
         {"resolution": [1280, 720],  "container": Container.c_MATROSKA, "video_codec": VideoCodec.THEORA,    "path": "videos/bad/matroska-test4[theora+vorbis,1280x720,_,v1a1s0d0,i1677p3247b1641,24fps].mkv"},
