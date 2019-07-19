@@ -180,7 +180,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (
             (video, video_codec, container)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for video_codec, container in [
                 (VideoCodec.FLV1, Container.c_FLV),
                 (VideoCodec.H_264, Container.c_AVI),
@@ -253,7 +253,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (
             (video, resolution)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for resolution in (
                 [320, 240],
                 [640, 260],
@@ -316,7 +316,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (
             (video, frame_rate)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for frame_rate in (1, 25, '30000/1001', 60)
         ),
         testcase_func_name=lambda testcase_func, param_num, param: (
@@ -376,7 +376,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @parameterized.expand(
         (
             (video, subtasks_count)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for subtasks_count in (1, 6, 10)
         ),
         testcase_func_name=lambda testcase_func, param_num, param: (
