@@ -139,7 +139,6 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             logger.error(e.response_message)
             raise e
 
-
     def accept_results(self, subtask_id, result_files):
         with self.lock:
             super(TranscodingTask, self).accept_results(subtask_id,
