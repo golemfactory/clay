@@ -311,9 +311,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=scale_price(task.header.max_price, msg.price),
+            scaled_price=scale_price(msg.task_header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )
@@ -340,11 +339,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        task = self.task_manager.tasks[msg.task_id]
-        task_state = self.task_manager.tasks_states[msg.task_id]
         price = taskkeeper.compute_subtask_value(
             msg.price,
-            task.header.subtask_timeout,
+            msg.task_header.subtask_timeout,
         )
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
@@ -356,9 +353,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
+            task = self.task_manager.tasks[msg.task_id]
             task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
 
-            resources_result = None
             if ctd["resources"]:
                 resources_result = yield add_resources(
                     self.task_server.client,
@@ -366,6 +363,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     ctd["subtask_id"],
                     common.deadline_to_timeout(ctd["deadline"])
                 )
+                _, _, package_hash, package_size = resources_result
                 # overwrite resources so they are serialized by resource_manager
                 resources = self.task_server.get_resources(ctd['subtask_id'])
                 ctd["resources"] = resources
@@ -373,23 +371,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             else:
                 ctd["resources"] = self.task_server.get_resources(
                     ctd['task_id'])
+                task_state = self.task_manager.tasks_states[msg.task_id]
+                package_hash = task_state.package_hash
+                package_size = task_state.package_size
 
             logger.info(
                 "Subtask assigned. %s, subtask_id=%r",
                 task_node_info, ctd["subtask_id"]
             )
-            if resources_result:
-                _, _, package_hash, package_size = resources_result
-            else:
-                package_hash = task_state.package_hash
-                package_size = task_state.package_size
 
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
-                requestor_id=task.header.task_owner.key,
-                requestor_public_key=task.header.task_owner.key,
-                requestor_ethereum_public_key=task.header.task_owner.key,
+                requestor_id=msg.task_header.task_owner.key,
+                requestor_public_key=msg.task_header.task_owner.key,
+                requestor_ethereum_public_key=msg.task_header.task_owner.key,
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
