@@ -2,7 +2,10 @@ import sys
 from unittest import TestCase
 from unittest.mock import Mock
 
-from golem.marketplace import scale_price, RequestorBrassMarketStrategy
+from golem.marketplace.brass_marketplace import (
+    scale_price,
+    RequestorBrassMarketStrategy
+)
 
 
 class TestScalePrice(TestCase):
