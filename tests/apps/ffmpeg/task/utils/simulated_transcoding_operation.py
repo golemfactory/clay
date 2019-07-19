@@ -195,8 +195,7 @@ class SimulatedTranscodingOperation:
                 input_report,
                 self._diff_overrides,
                 self._diff_excludes,
-                assume_attribute_unchanged_if_missing = \
-                    self._assume_attribute_unchanged_if_missing,
+                assume_attribute_unchanged_if_missing=self._assume_attribute_unchanged_if_missing,  # noqa: E501  # pylint: disable=line-too-long
             ),
         )
 

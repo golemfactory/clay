@@ -569,7 +569,7 @@ class TestFfprobeFormatReport(TestCase):
                     'reason': 'Different attribute values',
                     'actual_stream_index': stream_index,
                     'expected_stream_index': stream_index,
-                } for stream_index, stream_type, new_relative_start_time, stream_start_time in [
+                } for stream_index, stream_type, new_relative_start_time, stream_start_time in [  # noqa: E501  # pylint: disable=line-too-long
                     (0, 'video', 1, 0),
                     (1, 'audio', 2, 0.012),
                     (2, 'subtitle', 3, 0),

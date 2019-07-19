@@ -91,8 +91,7 @@ class FfprobeFormatReport:
     @classmethod
     def _create_stream_report(cls,
                               raw_stream_report: dict,
-                              format_report: 'FfprobeFormatReport',
-                             ) -> 'FfprobeStreamReport':
+                              format_report: 'FfprobeFormatReport') -> 'FfprobeStreamReport':  # noqa: E501  # pylint: disable=line-too-long
         codec_type_to_report_class = {
             'video':    FfprobeVideoStreamReport,
             'audio':    FfprobeAudioStreamReport,
@@ -197,9 +196,7 @@ class FfprobeFormatReport:
                                 List['FfprobeStreamReport'],
                                 overrides: Optional[FileOverrides] = None,
                                 excludes: Optional[FileExcludes] = None,
-                                assume_attribute_unchanged_if_missing:
-                                bool = False,
-                               ) -> Diff:
+                                assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
         assert len(
             set(r.codec_type for r in actual_stream_reports) |
             set(r.codec_type for r in expected_stream_reports)
@@ -306,8 +303,7 @@ class FfprobeFormatReport:
                          expected_report: 'FfprobeFormatReport',
                          overrides: Optional[StreamOverrides] = None,
                          excludes: Optional[StreamExcludes] = None,
-                         assume_attribute_unchanged_if_missing: bool = False
-                        ) -> Diff:
+                         assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
         if overrides is None:
             overrides = {}
         if excludes is None:
@@ -562,8 +558,7 @@ class FfprobeStreamReport:
                          expected_stream_report: 'FfprobeStreamReport',
                          overrides: Optional[StreamOverrides] = None,
                          excludes: Optional[StreamExcludes] = None,
-                         assume_attribute_unchanged_if_missing: bool = False
-                        ) -> Diff:
+                         assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
 
         assert (actual_stream_report.codec_type ==
                 expected_stream_report.codec_type)
