@@ -312,13 +312,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def resolution(market_strategy, task_id):
             for offer in market_strategy.resolve_task_offers(task_id):
-                try:
-                    offer_session = self.task_server.sessions[
-                        offer.offer_msg.provider_public_key
-                    ]
-                except KeyError:
-                    continue
-                offer_session._offer_chosen(True, offer.offer_msg)
+                offer.context._offer_chosen(True, offer.offer_msg)
 
         def _on_error(e):
             logger.error("%s", str(e))
@@ -348,7 +342,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         market_strategy.add(
             Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
-                  current_task.header.max_price, msg.price)
+                  current_task.header.max_price, msg.price, self)
         )
 
     @defer.inlineCallbacks

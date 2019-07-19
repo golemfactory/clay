@@ -37,7 +37,8 @@ class Offer:
             provider_id: str,
             provider_stats: ProviderStats,
             max_price: float,
-            price: float):
+            price: float,
+            context):
         self.offer_msg = offer_msg
         self.task_id = task_id
         self.provider_id = provider_id
@@ -46,6 +47,7 @@ class Offer:
         self.price = price
         self.reputation = dbm.get_provider_efficiency(provider_id)
         self.quality = dbm.get_provider_efficacy(provider_id).vector
+        self.context = context
 
 
 class RequestorMarketStrategy(ABC):
