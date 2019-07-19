@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict, ClassVar, Tuple, Optional
+from typing import List, Dict, ClassVar, Tuple, Optional, Iterable
 import numpy
 
 from golem.marketplace.marketplace import Offer
@@ -61,7 +61,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             assert r > 0
             ds[pid] = u / r
 
-        d = gmean(list(ds.values()))
+        d = gmean(ds.values())
         assert d > 0
         #deltas = {pid: di / d for pid, di in ds}
         for pid, di in ds.items():
@@ -73,7 +73,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             if r > cls._max_usage_factor:
                 logger.info("Provider %s has excessive usage factor: %f", pid, r)
 
-def gmean(a: List[float]) -> float:
+def gmean(a: Iterable[float]) -> float:
     if not a:
         return 1.0
     if numpy.prod(a) == 0.0:
