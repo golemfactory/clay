@@ -33,6 +33,7 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace.brass_marketplace import RequestorBrassMarketStrategy
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
@@ -58,6 +59,10 @@ def _fake_get_efficacy():
         def __init__(self):
             self.vector = (.0, .0, .0, .0)
     return A()
+
+
+def mock_market_strategy():
+    return RequestorBrassMarketStrategy
 
 
 def fill_slots(msg):
@@ -271,6 +276,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ANY,
         )
 
+    @patch('golem.task.tasksession.get_task_market_strategy',
+           Mock(return_value=mock_market_strategy()))
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
