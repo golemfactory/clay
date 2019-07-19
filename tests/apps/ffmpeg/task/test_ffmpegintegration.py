@@ -90,9 +90,6 @@ class TestFfmpegIntegration(TestTaskIntegration):
         {"resolution": [854, 480],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP9,       "path": "videos/good/wikipedia-tractor[vp9+opus,854x480,28s,v1a1s0d0,i692p1376b689,25fps][segment1of3].webm"},
         {"resolution": [854, 480],   "container": Container.c_WEBM,     "video_codec": VideoCodec.AV1,       "path": "videos/good/woolyss-llamadrama[av1+opus,854x480,87s,v1a1s0d0,i1879p1879b1879,24fps].webm"},
 
-        # Files from the repo (bad)
-        {"resolution": [320, 240],   "container": Container.c_MP4,      "video_codec": VideoCodec.H_264,     "path": "invalid_test_video.mp4"},
-
         # Files from transcoding-video-bundle (bad)
         {"resolution": [1920, 1080], "container": Container.c_MOV,      "video_codec": VideoCodec.MJPEG,     "path": "videos/bad/beachfront-moonandclouds[mjpeg,1920x1080,50s,v1a0s0d1,i3574p2382b2382,24fps].mov"},
         {"resolution": [1920, 1080], "container": Container.c_MOV,      "video_codec": VideoCodec.MJPEG,     "path": "videos/bad/beachfront-mooncloseup[mjpeg,1920x1080,33s,v1a0s0d1,i2374p1582b1582,23.976fps].mov"},
