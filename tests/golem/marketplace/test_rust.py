@@ -1,4 +1,4 @@
-from golem.marketplace import scale_price, BrassMarketOffer
+from golem.marketplace.brass_marketplace import scale_price, BrassMarketOffer
 from golem.marketplace.rust import order_providers
 
 
