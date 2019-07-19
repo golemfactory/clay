@@ -21,10 +21,7 @@ from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import (
-    Offer, RequestorBrassMarketStrategy,
-    scale_price, ProviderStats
-)
+from golem.marketplace import Offer, ProviderStats
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
