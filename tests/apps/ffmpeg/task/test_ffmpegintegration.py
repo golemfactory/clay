@@ -13,11 +13,10 @@ import pytest
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
     AudioCodecNotSupportedByContainer
-from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
-from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
+from tests.apps.ffmpeg.task.ffmpeg_integration_base import FfmpegIntegrationBase
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration, \
     parse_ffprobe_frame_rate
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
@@ -27,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 @ci_skip
-class TestFfmpegIntegration(TestTaskIntegration):
+class TestFfmpegIntegration(FfmpegIntegrationBase):
 
     # flake8: noqa
     # pylint: disable=line-too-long,bad-whitespace
@@ -117,72 +116,6 @@ class TestFfmpegIntegration(TestTaskIntegration):
         {"resolution": [560, 320],   "container": Container.c_OGG,      "video_codec": VideoCodec.THEORA,    "key_frames": 3,    "path": "videos/bad/techslides-small[theora+vorbis,560x320,6s,v1a1s0d1,i168p328b165,30fps].ogv"},
     ]
     # pylint: enable=line-too-long,bad-whitespace
-
-    ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS = {
-        'video': {
-            'bitrate',
-            'pixel_format',
-        },
-        'audio': {
-            'codec_name',
-            'sample_rate',
-            'sample_format',
-            'bitrate',
-
-            # It's the total number of samples that is preserved. The number
-            # of samples per frame and the number of frames often both change
-            # without affecting the total.
-            'frame_count',
-        },
-        'subtitle': {
-            'codec_name',
-        },
-    }
-
-    # flake8: noqa
-    # pylint: disable=line-too-long
-    _IGNORED_ATTRIBUTES_OF_BROKEN_FILE = {
-        # The merge step (using ffmpeg’s concat demuxer) changes FPS from 29.97
-        # to 30. This happens only for this particular file and there does not
-        # seem to be anything unusual about the input file itself. We have
-        # decided to ignore this problem for now because we can’t do anything
-        # about it and it’s likely to be a bug in ffmpeg. So bad output is
-        # unfortunately the expected result here.
-        'standalone-tra3106[mjpeg,720x496,17s,v1a0s0d0,i1525p1016b1016,29.97fps][segment1of17].avi': {'video': {'frame_rate'}},
-        # This wmv3/wmv file has incorrect FPS in metadata (or at least ffprobe
-        # returns an incorrect value). This makes ffmpeg (incorrectly) double
-        # the number of frames while keeping the FPS in output file metadata the
-        # same as in the original. We can’t help it. We’re going to assume that
-        # this is the expected result, i.e. garbage in, garbage out.”
-        'standalone-catherine[wmv3+wmav2,180x140,42s,v1a1s0d0,i637p1257b631,_][segment1of6].wmv': {'video': {'frame_rate'}},
-    }
-    # pylint: enable=line-too-long
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls._ffprobe_report_set = FfprobeReportSet()
-
-    @classmethod
-    def tearDownClass(cls):
-        super().tearDownClass()
-        report_file_name = os.path.join(
-            cls.root_dir,
-            'ffmpeg-integration-test-transcoding-diffs.md'
-        )
-        with open(report_file_name, 'w') as file:
-            file.write(cls._ffprobe_report_set.to_markdown())
-
-    def setUp(self):
-        super().setUp()
-
-        # We'll be comparing output from FfprobeFormatReport.diff() which
-        # can be long but we still want to see it all.
-        self.maxDiff = None
-
-        self.RESOURCES = os.path.join(os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__))), 'resources')
-        self.tt = ffmpegTaskTypeInfo()
 
     @classmethod
     def _create_task_def_for_transcoding(  # pylint: disable=too-many-arguments
