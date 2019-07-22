@@ -36,6 +36,8 @@ class TestOfferChoice(TestCase):
 
     def test_resolution_length_correct(self):
         RequestorWasmMarketStrategy.reset()
+        self.mock_offer_1.task_id = 'Task1'
+        self.mock_offer_2.task_id = 'Task1'
         RequestorWasmMarketStrategy.add(self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.mock_offer_2)
         self.assertEqual(
@@ -45,6 +47,8 @@ class TestOfferChoice(TestCase):
 
     def test_adjusted_prices(self):
         RequestorWasmMarketStrategy.reset()
+        self.mock_offer_1.task_id = 'Task1'
+        self.mock_offer_2.task_id = 'Task1'
         RequestorWasmMarketStrategy.add(self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.mock_offer_2)
         self.assertEqual(
@@ -52,3 +56,28 @@ class TestOfferChoice(TestCase):
         result = RequestorWasmMarketStrategy.resolve_task_offers('Task1')
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].provider_id, 'P2')
+
+    def test_usage_adjustment(self):
+        self.mock_offer_1.task_id = 'Task1'
+        self.mock_offer_2.task_id = 'Task1'
+        RequestorWasmMarketStrategy.reset()
+        RequestorWasmMarketStrategy.add(self.mock_offer_1)
+        RequestorWasmMarketStrategy.add(self.mock_offer_2)
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_task_offer_count('Task1'), 2)
+        result = RequestorWasmMarketStrategy.resolve_task_offers('Task1')
+
+        RequestorWasmMarketStrategy.report_subtask_usages('Task1',
+                                                          [('P1', 5.0), ('P2', 8.0)]
+        )
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].provider_id, 'P2')
+        self.mock_offer_1.task_id = 'Task2'
+        self.mock_offer_2.task_id = 'Task2'
+        RequestorWasmMarketStrategy.add(self.mock_offer_1)
+        RequestorWasmMarketStrategy.add(self.mock_offer_2)
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_task_offer_count('Task2'), 2)
+        result = RequestorWasmMarketStrategy.resolve_task_offers('Task2')
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].provider_id, 'P1')
