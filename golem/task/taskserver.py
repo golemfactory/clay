@@ -39,7 +39,7 @@ from golem.envs import Environment as NewEnv
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.marketplace import OfferPool
-from golem.model import Performance, TaskPayment
+from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -353,10 +353,10 @@ class TaskServer(
             # Check performance
             performance = None
             if isinstance(env, OldEnv):
-                performance = yield env.get_performance()
+                performance = env.get_performance()
             else:  # NewEnv
                 env_mgr = self.task_keeper.new_env_manager
-                performance = env_mgr.get_performance(env_id)
+                performance = yield env_mgr.get_performance(env_id)
             if performance is None:
                 return None
 

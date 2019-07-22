@@ -77,33 +77,31 @@ class EnvironmentManager:
             Checks the database first, if not found it starts a benchmark
             Return value Deferred resulting in a float
             or None when the benchmark is already running"""
+        if self._running_benchmark:
+            return None
+
         perf = None
         try:
             perf = Performance.get(Performance.environment_id == env_id)
+            return perf.value
         except Performance.DoesNotExist:
             pass
 
-        if perf is None or perf.value is None:
-            if self._running_benchmark:
-                return None
+        env = self._envs[env_id]
+        self._running_benchmark = True
 
-            env = self._envs[env_id]
-            self._running_benchmark = True
+        try:
+            result = yield env.run_benchmark()
+        except Exception:
+            logger.error('failed to run benchmark. env=%r', env_id)
+            raise
+        finally:
+            self._running_benchmark = False
 
-            try:
-                result = yield env.run_benchmark()
-            except Exception:
-                logger.error('failed to run benchmark. env=%r', env_id)
-                raise
-            finally:
-                self._running_benchmark = False
-
-            Performance.update_or_create(env_id, result)
-            logger.info(
-                'finshed running benchmark. env=%r, score=%r',
-                env_id,
-                result
-            )
-            return result
-
-        return perf.value
+        Performance.update_or_create(env_id, result)
+        logger.info(
+            'Finshed running benchmark. env=%r, score=%r',
+            env_id,
+            result
+        )
+        return result
