@@ -49,9 +49,9 @@ def drop_after_attr_error(*args, **_):
     args[0].dropped()
 
 
-def get_task_market_strategy(task_manager, task: Task):
+def get_task_market_strategy(task_manager, current_task: Task):
     return task_manager.task_types[
-        task.task_definition.task_type.lower()].MARKET_STRATEGY
+        current_task.task_definition.task_type.lower()].MARKET_STRATEGY
 
 
 def get_task_message(
@@ -317,7 +317,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def resolution(market_strategy, task_id):
             for offer in market_strategy.resolve_task_offers(task_id):
-                offer.context._offer_chosen(True, offer.offer_msg)
+                offer.context._offer_chosen(True, offer.offer_msg)  # noqa pylint:disable=protected-access
 
         def _on_error(e):
             logger.error("%s", str(e))

@@ -9,7 +9,9 @@ class ProviderStats:
         self.usage_benchmark = usage_benchmark
 
 
+# pylint:disable=too-many-instance-attributes,too-many-public-methods
 class Offer:
+    # pylint:disable=too-many-arguments
     def __init__(
             self,
             offer_msg,
