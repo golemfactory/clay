@@ -66,7 +66,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             assert r > 0
             ds[pid] = u / r
 
-        d = gmean(ds.values())
+        d = geomean(ds.values())
         assert d > 0
         #deltas = {pid: di / d for pid, di in ds}
         for pid, di in ds.items():
@@ -78,11 +78,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             if r > cls._max_usage_factor:
                 logger.info("Provider %s has excessive usage factor: %f", pid, r)
 
-def gmean(a: Iterable[float]) -> float:
+def geomean(a: Iterable[float]) -> float:
     if not a:
         return 1.0
     if numpy.prod(a) == 0.0:
         return 0.0
 
-    log_a = numpy.log(numpy.array(a))
+    log_a = numpy.log(numpy.array(list(a)))
     return numpy.exp(log_a.mean())
