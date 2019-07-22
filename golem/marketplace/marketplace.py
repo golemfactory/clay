@@ -54,26 +54,3 @@ class RequestorMarketStrategy(ABC):
         Returns number of offers known for the task.
         """
         pass
-
-    @abstractclassmethod
-    def report_subtask_usages(cls,
-                              subtask_id: str,
-                              usages: List[Tuple[str, float]]) -> None:
-        """
-        Report resource usages for a subtask
-        :param subtask_id: id of the reported subtask
-        :param usages: list of pairs (provider_id, usage)
-        """
-        pass
-
-    @abstractclassmethod
-    def report_task_usages(cls,
-                           task_id: str,
-                           usages: List[Tuple[str, float]]) -> None:
-        """
-        Report resource usages for a task
-        :param task_id: id of the reported task
-        :param usages: list of pairs (provider_id, usage)
-        """
-        pass
-
