@@ -517,16 +517,18 @@ class TaskServer(
     def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
         if not self._verify_header_sig(task_header):
             logger.info(
-                'Invalid signature task_header:%r, signature: %r',
-                task_header,
+                'Invalid signature. task_id=%r, signature=%r',
+                task_header.task_id,
                 task_header.signature,
             )
+            logger.debug("task_header=%r", task_header)
             return False
         if task_header.deadline < time.time():
             logger.info(
-                "Task's deadline already in the past. task_header: %r",
-                task_header
+                "Task's deadline already in the past. task_id=%r",
+                task_header.task_id
             )
+            logger.debug("task_header=%r", task_header)
             return False
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
