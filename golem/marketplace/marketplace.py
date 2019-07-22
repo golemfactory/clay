@@ -76,4 +76,3 @@ class RequestorMarketStrategy(ABC):
         :param usages: list of pairs (provider_id, usage)
         """
         pass
-

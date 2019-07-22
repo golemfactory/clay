@@ -1,7 +1,6 @@
-from abc import ABC, abstractclassmethod
 import sys
 import logging
-from typing import List, Dict, ClassVar, Tuple, Optional
+from typing import List, Optional
 
 from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
