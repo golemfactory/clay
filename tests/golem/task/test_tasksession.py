@@ -387,11 +387,12 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.get_environment_by_id.return_value = \
             self.env
 
-        self.header = self.task_session.task_manager.\
-            comp_task_keeper.get_task_header()
+        self.header = msg_factories.tasks.TaskHeaderFactory()
         self.header.task_owner.key = self.task_session.key_id
         self.header.task_owner.pub_addr = '10.10.10.10'
         self.header.task_owner.pub_port = 1112
+        self.task_session.task_manager.\
+            comp_task_keeper.get_task_header.return_value = self.header
 
         self.reasons = message.tasks.CannotComputeTask.REASON
 
@@ -421,6 +422,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
             compute_task_def=ctd,
             **kwargs,
         )
+        ttc.want_to_compute_task.task_header = self.header
         ttc.want_to_compute_task.provider_public_key = encode_hex(
             self.keys.ecc.raw_pubkey)
         ttc.want_to_compute_task.sign_message(self.keys.ecc.raw_privkey)  # noqa pylint: disable=no-member
