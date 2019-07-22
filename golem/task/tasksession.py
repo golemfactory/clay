@@ -533,7 +533,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
 
         try:
-            self._check_ctd_params(ctd)
+            self._check_task_header(msg.want_to_compute_task.task_header)
             self._set_env_params(
                 env_id=msg.want_to_compute_task.task_header.environment,
                 ctd=ctd,
@@ -930,9 +930,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd: message.ComputeTaskDef) -> None:
-        header = self.task_manager.comp_task_keeper.get_task_header(
-            ctd['task_id'])
+    def _check_task_header(self, header: message.tasks.TaskHeader) -> None:
         owner = header.task_owner
 
         reasons = message.tasks.CannotComputeTask.REASON
