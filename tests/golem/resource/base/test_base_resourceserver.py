@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest import mock
 
 import os
@@ -5,7 +6,7 @@ import shutil
 import time
 import uuid
 
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import succeed
 
 from golem.core.deferred import sync_wait
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -132,7 +133,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
     def testPendingResources(self):
         self.resource_manager.add_resources(self.target_resources, self.task_id,
-                                       async_=False)
+                                            async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
         assert len(self.resource_server.pending_resources) == 0
@@ -142,36 +143,37 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         assert len(pending) == len(resources)
 
     def testGetResources(self):
-        self.resource_manager.add_resources(self.target_resources, self.task_id,
-                                       async_=False)
+        self.resource_manager.add_resources(
+            self.target_resources,
+            self.task_id,
+            async_=False)
 
         resources = self.resource_manager.storage.get_resources(self.task_id)
-        relative = [[r.hash, r.files] for r in resources]
+        resources = [[r.hash, r.files] for r in resources]
 
-        new_server = BaseResourceServer(
-            DummyResourceManager(
-                self.dir_manager, **hyperdrive_client_kwargs()),
-            self.client
-        )
+        client_kwargs = hyperdrive_client_kwargs()
+        # DummyClient resolves hashes via an in-memory store;
+        # assign the currently used one with proper entries
+        manager = DummyResourceManager(self.dir_manager, **client_kwargs)
+        manager.client = self.resource_manager.client
 
-        new_task_id = str(uuid.uuid4())
-        new_task_path = new_server.resource_manager.storage.get_dir(new_task_id)
-        new_server.download_resources(relative, new_task_id)
+        task_id = str(uuid.uuid4())
+        task_path = manager.storage.get_dir(task_id)
 
-        def run(_, **_kwargs):
-            deferred = Deferred()
-            deferred.callback(True)
-            return deferred
+        server = BaseResourceServer(manager, self.client)
+        server.download_resources(resources, task_id)
+
+        def run(*args, **kwargs):
+            del args, kwargs
+            return succeed(True)
 
         with mock.patch('golem.core.golem_async.async_run', run):
-            new_server._download_resources(async_=False)
+            server._download_resources(async_=False)
+            assert self.client.downloaded
 
-        for entry in relative:
+        for entry in resources:
             for f in entry[1]:
-                new_file_path = os.path.join(new_task_path, f)
-                assert os.path.exists(new_file_path)
-
-        assert self.client.downloaded
+                assert (Path(task_path) / f).exists()
 
     def testAddFilesToGet(self):
         test_files = [
