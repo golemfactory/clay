@@ -24,6 +24,7 @@ from apps.core.task.coretask import (
 )
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
+from apps.wasm.benchmark import WasmTaskBenchmark
 from golem.marketplace.marketplace import RequestorMarketStrategy
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 from golem.model import Performance
@@ -521,4 +522,6 @@ class WasmTaskTypeInfo(CoreTaskTypeInfo):
         perf_db_item = Performance.get(
             Performance.environment_id == WasmTaskEnvironment.ENV_ID
         )
-        self.MARKET_STRATEGY.set_performance(perf_db_item.value)
+        self.MARKET_STRATEGY.set_performance(
+            WasmTaskBenchmark.normalization_constant / perf_db_item.value
+        )
