@@ -1187,6 +1187,7 @@ class TestOfferChosen(TestCase):
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
     def test_ctd_is_none(self, mock_cat, *_):
         self.ts.task_manager.get_next_subtask.return_value = None
+        self.msg.price = 123
         self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         mock_cat.assert_called_once_with(
             self.msg.task_id,
@@ -1199,7 +1200,10 @@ class TestOfferChosen(TestCase):
     @patch('golem.network.history.add')
     def test_multi_wtct(self, *_):
         # given
-        self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
+        self.msg = msg_factories.tasks.WantToComputeTaskFactory(
+            num_subtasks=3,
+            price=123,
+        )
 
         def ctd(*args, **kwargs):
             return msg_factories.tasks.ComputeTaskDefFactory(resources=None)
