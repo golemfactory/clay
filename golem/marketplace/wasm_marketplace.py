@@ -49,7 +49,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def report_subtask_usages(cls,
-                              subtask_id: str,
+                              task_id: str,
                               usages: List[Tuple[str, float]]) -> None:
         if len(usages) < 2:
             return
