@@ -16,6 +16,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     _max_usage_factor: ClassVar[float] = 2.0
 
     @classmethod
+    def reset(cls) -> None:
+        super().reset()
+        cls._usage_factors = dict()
+
+    @classmethod
     def get_my_usage_benchmark(cls):
         return 1.0
 

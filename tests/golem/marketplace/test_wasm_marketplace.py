@@ -10,14 +10,14 @@ class TestOfferChoice(TestCase):
     def test_get_usage_benchmark(self):
         cls = RequestorWasmMarketStrategy
         cls.reset()
-        assert cls.get_my_usage_benchmark() == 1.0
-        assert cls.get_usage_factor('P1', 1.0) == 1.0
+        self.assertEqual(cls.get_my_usage_benchmark(), 1.0)
+        self.assertEqual(cls.get_usage_factor('P1', 1.0), 1.0)
 
     def test_resolution_length_correct(self):
         RequestorWasmMarketStrategy.reset()
 
         mock_offer_1 = Mock()
-        mock_offer_1.task_id = 'aaa'
+        mock_offer_1.task_id = 'Task1'
         mock_offer_1.provider_id = 'P1'
         mock_offer_1.quality = (.0, .0, .0, .0)
         mock_offer_1.reputation = .0
