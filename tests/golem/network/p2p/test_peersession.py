@@ -19,6 +19,7 @@ from golem import testutils
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
@@ -38,7 +39,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):
+    def setUp(self, docker_env):
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
@@ -53,6 +54,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             )
         client = MagicMock()
         client.datadir = self.path
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -461,7 +463,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def _gen_data_for_test_react_to_remove_task(self, _):
+    def _gen_data_for_test_react_to_remove_task(self, docker_env):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
@@ -469,6 +471,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Unknown task owner
         client = MagicMock()
         client.datadir = self.path
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             task_server = task_server_factory.TaskServer(client=client,)

@@ -27,6 +27,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
@@ -110,16 +111,18 @@ class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient):
 
-    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
     @patch('golem.network.concent.handlers_library.HandlersLibrary'
            '.register_handler')
-    def setUp(self, *_):
+    @patch('golem.task.taskserver.TaskComputerAdapter')
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, docker_env, *_):
         super().setUp()  # pylint: disable=arguments-differ
         random.seed()
         self.ccd = ClientConfigDescriptor()
         self.ccd.init_from_app_config(
             AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
         self.client.concent_service.enabled = False
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         self.ts = TaskServer(
             node=dt_p2p_factory.Node(),
             config_desc=self.ccd,
@@ -145,10 +148,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     @patch('golem.task.taskarchiver.TaskArchiver')
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
     # pylint: disable=too-many-locals,too-many-statements
-    def test_request(self, tar, *_):
+    def test_request(self, docker_env, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = dt_p2p_factory.Node()
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -235,30 +239,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 False,
                 {UnsupportReason.DENY_LIST: keys_auth.key_id}))
         assert ts.remove_task_header(task_id5)
-
-    @patch(
-        "golem.task.taskserver.TaskServer.should_accept_requestor",
-        return_value=SupportStatus(True),
-    )
-    def test_request_task_concent_required(self, *_):
-        self.ts.config_desc.min_price = 0
-        self.ts.client.concent_service.enabled = True
-        self.ts.task_archiver = Mock()
-        self.ts._last_task_request_time = 0.0
-        keys_auth = KeysAuth(self.path, 'prv_key', '')
-        task_header = get_example_task_header(keys_auth.public_key)
-        task_header.concent_enabled = False
-        task_header.sign(private_key=keys_auth._private_key)
-        self.ts.add_task_header(task_header)
-
-        self.assertIsNone(self.ts._request_random_task())
-        self.ts.task_archiver.add_support_status.assert_called_once_with(
-            task_header.task_id,
-            SupportStatus(
-                False,
-                {UnsupportReason.CONCENT_REQUIRED: True},
-            ),
-        )
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
@@ -707,8 +687,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_download_options_errors(self, *_):
         built_options = Mock()
-        self.ts.resource_manager.build_client_options\
-            .return_value=built_options
+        self.ts.resource_manager.build_client_options.return_value = \
+            built_options
 
         self.assertIs(
             self.ts.get_download_options(received_options=None),
@@ -904,7 +884,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):
+    def setUp(self, docker_env):
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
@@ -919,6 +899,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
@@ -1110,8 +1091,6 @@ class TestSendResults(TaskServerTestBase):
         trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)
 
 
-@patch('golem.task.taskcomputer.TaskComputer.has_assigned_task')
-@patch('golem.task.taskcomputer.TaskComputer.task_given')
 @patch('golem.task.taskserver.TaskServer.request_resource')
 @patch('golem.task.taskserver.update_requestor_assigned_sum')
 @patch('golem.task.taskserver.dispatcher')
@@ -1121,9 +1100,9 @@ class TestTaskGiven(TaskServerTestBase):
 
     def test_ok(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
-            request_resource, task_given, has_assigned_task):
+            request_resource):
 
-        has_assigned_task.return_value = False
+        self.ts.task_computer.has_assigned_task.return_value = False
         node_id = 'test_node'
         task_id = 'test_task'
         subtask_id = 'test_subtask'
@@ -1138,7 +1117,7 @@ class TestTaskGiven(TaskServerTestBase):
         result = self.ts.task_given(node_id, ctd, price)
         self.assertEqual(result, True)
 
-        task_given.assert_called_once_with(ctd)
+        self.ts.task_computer.task_given.assert_called_once_with(ctd)
         request_resource.assert_called_once_with(task_id, subtask_id, resources)
         update_requestor_assigned_sum.assert_called_once_with(node_id, price)
         dispatcher_mock.send.assert_called_once_with(
@@ -1151,13 +1130,13 @@ class TestTaskGiven(TaskServerTestBase):
 
     def test_already_assigned(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
-            request_resource, task_given, has_assigned_task):
+            request_resource):
 
-        has_assigned_task.return_value = True
+        self.ts.task_computer.has_assigned_task.return_value = True
         result = self.ts.task_given('', Mock(), 0)
         self.assertEqual(result, False)
 
-        task_given.assert_not_called()
+        self.ts.task_computer.task_given.assert_not_called()
         request_resource.assert_not_called()
         update_requestor_assigned_sum.assert_not_called()
         dispatcher_mock.send.assert_not_called()
@@ -1165,43 +1144,40 @@ class TestTaskGiven(TaskServerTestBase):
 
 
 @patch('golem.task.taskserver.logger')
-@patch('golem.task.taskcomputer.TaskComputer.start_computation')
 class TestResourceCollected(TaskServerTestBase):
 
-    def test_wrong_task_id(self, start_computation, logger_mock):
-        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+    def test_wrong_task_id(self, logger_mock):
+        self.ts.task_computer.assigned_task_id = 'test'
         result = self.ts.resource_collected('wrong_id')
         self.assertFalse(result)
         logger_mock.error.assert_called_once()
-        start_computation.assert_not_called()
+        self.ts.task_computer.start_computation.assert_not_called()
 
-    def test_ok(self, start_computation, logger_mock):
-        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+    def test_ok(self, logger_mock):
+        self.ts.task_computer.assigned_task_id = 'test'
         result = self.ts.resource_collected('test')
         self.assertTrue(result)
         logger_mock.error.assert_not_called()
-        start_computation.assert_called_once_with()
+        self.ts.task_computer.start_computation.assert_called_once_with()
 
 
 @patch('golem.task.taskserver.logger')
 @patch('golem.task.taskserver.TaskServer.send_task_failed')
-@patch('golem.task.taskcomputer.TaskComputer.task_interrupted')
 class TestResourceFailure(TaskServerTestBase):
 
-    def test_wrong_task_id(self, interrupted, send_task_failed, logger_mock):
-        self.ts.task_computer.assigned_subtask = ComputeTaskDef(task_id='test')
+    def test_wrong_task_id(self, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_task_id = 'test'
         self.ts.resource_failure('wrong_id', 'reason')
         logger_mock.error.assert_called_once()
-        interrupted.assert_not_called()
+        self.ts.task_computer.task_interrupted.assert_not_called()
         send_task_failed.assert_not_called()
 
-    def test_ok(self, interrupted, send_task_failed, logger_mock):
-        self.ts.task_computer.assigned_subtask = ComputeTaskDef(
-            task_id='test_task', subtask_id='test_subtask'
-        )
+    def test_ok(self, send_task_failed, logger_mock):
+        self.ts.task_computer.assigned_task_id = 'test_task'
+        self.ts.task_computer.assigned_subtask_id = 'test_subtask'
         self.ts.resource_failure('test_task', 'test_reason')
         logger_mock.error.assert_not_called()
-        interrupted.assert_called_once_with()
+        self.ts.task_computer.task_interrupted.assert_called_once_with()
         send_task_failed.assert_called_once_with(
             'test_subtask',
             'test_task',
@@ -1209,20 +1185,20 @@ class TestResourceFailure(TaskServerTestBase):
         )
 
 
-@freezegun.freeze_time()
 class TestRequestRandomTask(TaskServerTestBase):
 
     def setUp(self):
         super().setUp()
-        self.ts.task_computer = MagicMock()
         self.ts.task_keeper = MagicMock()
 
+    @freezegun.freeze_time()
     def test_request_interval(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time()
 
         self.assertIsNone(self.ts._request_random_task())
 
+    @freezegun.freeze_time()
     def test_task_already_assigned(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
@@ -1232,6 +1208,7 @@ class TestRequestRandomTask(TaskServerTestBase):
 
         self.assertIsNone(self.ts._request_random_task())
 
+    @freezegun.freeze_time()
     def test_task_computer_not_accepting_tasks(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
@@ -1241,6 +1218,7 @@ class TestRequestRandomTask(TaskServerTestBase):
 
         self.assertIsNone(self.ts._request_random_task())
 
+    @freezegun.freeze_time()
     def test_task_computer_not_runnable(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
@@ -1250,6 +1228,7 @@ class TestRequestRandomTask(TaskServerTestBase):
 
         self.assertIsNone(self.ts._request_random_task())
 
+    @freezegun.freeze_time()
     def test_no_supported_tasks_in_task_keeper(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
@@ -1260,6 +1239,7 @@ class TestRequestRandomTask(TaskServerTestBase):
 
         self.assertIsNone(self.ts._request_random_task())
 
+    @freezegun.freeze_time()
     @patch('golem.task.taskserver.TaskServer._request_task')
     def test_ok(self, request_task):
         self.ts.config_desc.task_request_interval = 1.0
