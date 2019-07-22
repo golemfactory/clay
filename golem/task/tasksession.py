@@ -22,7 +22,7 @@ from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import Offer, ProviderStats
-from golem.model import Actor, Performance
+from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
 from golem.network.concent import helpers as concent_helpers
@@ -368,11 +368,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             msg.task_header.subtask_timeout,
         )
-
-        perf_db_item = Performance.get(
-            Performance.environment_id == task.header.environment
-        )
-        task.MARKET_STRATEGY.set_performance(perf_db_item.value)
 
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):

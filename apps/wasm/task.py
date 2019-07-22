@@ -216,7 +216,7 @@ class WasmTask(CoreTask):
                 if actor is not instance['actor']:
                     continue
 
-                logger.info("Time to complete subtask %s: %d",
+                logger.info("Time to complete subtask %s: %f",
                             s_id,
                             self.subtasks_results_metadata[s_id].comput_wc_time)
 
