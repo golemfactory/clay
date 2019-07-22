@@ -490,12 +490,6 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         ):
             task_session._react_to_want_to_compute_task(self.msg)
 
-        started = time.time()
-        while send_mock.call_args is None:
-            if time.time() - started > 5:
-                self.fail("Test timed out")
-            time.sleep(0.1)
-
         send_mock.assert_called()
         ttc = send_mock.call_args_list[0][0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
