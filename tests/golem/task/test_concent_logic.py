@@ -18,6 +18,7 @@ from golem_messages.utils import encode_hex
 from golem import testutils
 from golem.config.active import EthereumConfig
 from golem.core import keysauth
+from golem.marketplace.brass_marketplace import RequestorBrassMarketStrategy
 from golem.network import history
 from golem.task import tasksession
 from golem.task import taskstate
@@ -389,6 +390,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
+@mock.patch("golem.task.tasksession.get_task_market_strategy",
+            mock.Mock(return_value=RequestorBrassMarketStrategy))
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
             mock.Mock(return_value=0.0))
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
@@ -481,7 +484,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
 
         task_session.task_server.get_share_options.return_value = X()
         task_session.task_server.get_resources.return_value = []
-        task_session.task_server.config_desc.offer_pooling_interval = 1
+        task_session.task_server.config_desc.offer_pooling_interval = 0
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',
