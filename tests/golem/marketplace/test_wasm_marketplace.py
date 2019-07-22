@@ -25,8 +25,8 @@ class TestOfferChoice(TestCase):
         mock_offer_1.provider_stats = ProviderStats(1.0)
 
         mock_offer_2 = Mock()
-        mock_offer_2.task_id = 'aaa'
-        mock_offer_2.provider_id = 'P1'
+        mock_offer_2.task_id = 'Task1'
+        mock_offer_2.provider_id = 'P2'
         mock_offer_2.quality = (.0, .0, .0, .0)
         mock_offer_2.reputation = .0
         mock_offer_2.price = .0
@@ -35,6 +35,33 @@ class TestOfferChoice(TestCase):
         RequestorWasmMarketStrategy.add(mock_offer_1)
         RequestorWasmMarketStrategy.add(mock_offer_2)
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_task_offer_count('aaa'), 2)
-        result = RequestorWasmMarketStrategy.resolve_task_offers('aaa')
+            RequestorWasmMarketStrategy.get_task_offer_count('Task1'), 2)
+        result = RequestorWasmMarketStrategy.resolve_task_offers('Task1')
         self.assertEqual(len(result), 2)
+
+    def test_adjusted_prices(self):
+        RequestorWasmMarketStrategy.reset()
+
+        mock_offer_1 = Mock()
+        mock_offer_1.task_id = 'Task1'
+        mock_offer_1.provider_id = 'P1'
+        mock_offer_1.quality = (.0, .0, .0, .0)
+        mock_offer_1.reputation = .0
+        mock_offer_1.price = 5.0
+        mock_offer_1.provider_stats = ProviderStats(1.25)
+
+        mock_offer_2 = Mock()
+        mock_offer_2.task_id = 'Task1'
+        mock_offer_2.provider_id = 'P2'
+        mock_offer_2.quality = (.0, .0, .0, .0)
+        mock_offer_2.reputation = .0
+        mock_offer_2.price = 6.0
+        mock_offer_2.provider_stats = ProviderStats(0.8)
+
+        RequestorWasmMarketStrategy.add(mock_offer_1)
+        RequestorWasmMarketStrategy.add(mock_offer_2)
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_task_offer_count('Task1'), 2)
+        result = RequestorWasmMarketStrategy.resolve_task_offers('Task1')
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0].provider_id, 'P2')
