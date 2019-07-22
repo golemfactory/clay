@@ -5,7 +5,6 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
-import time
 import unittest.mock as mock
 
 from freezegun import freeze_time
