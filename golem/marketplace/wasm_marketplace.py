@@ -14,15 +14,20 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     _usage_factors: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
-
+    _my_usage_benchmark: ClassVar[float] = 1.0
     @classmethod
     def reset(cls) -> None:
         super().reset()
         cls._usage_factors = dict()
 
     @classmethod
-    def get_my_usage_benchmark(cls):
-        return 1.0
+    def get_my_usage_benchmark(cls) -> float:
+        return cls._my_usage_benchmark
+
+    @classmethod
+    def set_my_usage_benchmark(cls, benchmark: float) -> None:
+        cls._my_usage_benchmark = benchmark
+
 
     @classmethod
     def get_usage_factor(cls, provider_id, usage_benchmark):
