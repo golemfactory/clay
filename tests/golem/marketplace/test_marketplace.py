@@ -105,3 +105,12 @@ class TestRequestorBrassMarketStrategy(TestCase):
             RequestorBrassMarketStrategy.get_task_offer_count('aaa'), 2)
         result = RequestorBrassMarketStrategy.resolve_task_offers('aaa')
         self.assertEqual(len(result), 2)
+
+        mock_offer_1.task_id = 'Task2'
+        mock_offer_2.task_id = 'Task2'
+        RequestorBrassMarketStrategy.add(mock_offer_1)
+        RequestorBrassMarketStrategy.add(mock_offer_2)
+        self.assertEqual(
+            RequestorBrassMarketStrategy.get_task_offer_count('Task2'), 2)
+        result = RequestorBrassMarketStrategy.resolve_task_offers('Task2')
+        self.assertEqual(len(result), 2)
