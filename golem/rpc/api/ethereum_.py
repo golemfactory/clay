@@ -26,6 +26,8 @@ def lru_node_factory():
     def _inner(node_id):
         if node_id is None:
             return None
+        if node_id.startswith('0x'):
+            node_id = node_id[2:]
         node = lru_node(node_id)
         if node is None:
             node = dt_p2p.Node(key=node_id)
@@ -61,9 +63,10 @@ class ETSProvider:
         lru_node = lru_node_factory()
 
         def item(o):
+            node_id = o.node if not o.node.startswith('0x') else o.node[2:]
             return {
                 "subtask": common.to_unicode(o.subtask),
-                "payer": common.to_unicode(o.node),
+                "payer": common.to_unicode(node_id),
                 "value": common.to_unicode(o.wallet_operation.amount),
                 "status": common.to_unicode(o.wallet_operation.status.name),
                 "transaction": common.to_unicode(o.wallet_operation.tx_hash),

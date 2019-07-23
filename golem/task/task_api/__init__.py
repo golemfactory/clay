@@ -2,7 +2,7 @@ import abc
 from pathlib import Path
 from typing import Optional, Tuple, Type
 
-from golem_task_api import AppCallbacks
+from golem_task_api import TaskApiService
 
 from golem.core.deferred import sync_wait
 from golem.envs import Environment, Prerequisites, Runtime, RuntimePayload
@@ -21,22 +21,22 @@ class TaskApiPayloadBuilder(abc.ABC):
         raise NotImplementedError
 
 
-class EnvironmentCallbacks(AppCallbacks):
+class EnvironmentTaskApiService(TaskApiService):
     def __init__(
             self,
             env: Environment,
             prereq: Prerequisites,
             shared_dir: Path,
-            payload_maker: Type[TaskApiPayloadBuilder],
+            payload_builder: Type[TaskApiPayloadBuilder],
     ) -> None:
         self._shared_dir = shared_dir
         self._prereq = prereq
         self._env = env
-        self._payload_maker = payload_maker
+        self._payload_builder = payload_builder
         self._runtime: Optional[Runtime] = None
 
-    def spawn_server(self, command: str, port: int) -> Tuple[str, int]:
-        runtime_payload = self._payload_maker.create_payload(
+    def start(self, command: str, port: int) -> Tuple[str, int]:
+        runtime_payload = self._payload_builder.create_payload(
             self._prereq,
             self._shared_dir,
             command,
@@ -47,6 +47,6 @@ class EnvironmentCallbacks(AppCallbacks):
         sync_wait(self._runtime.start())
         return self._runtime.get_port_mapping(port)
 
-    async def wait_after_shutdown(self) -> None:
+    async def wait_until_shutdown_complete(self) -> None:
         assert self._runtime is not None
         sync_wait(self._runtime.wait_until_stopped())

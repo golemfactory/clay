@@ -1,7 +1,7 @@
 from typing import Dict, List, NamedTuple, Type
 
 from golem.envs import EnvId, Environment
-from golem.task.appcallbacks.appcallbacks import TaskApiPayloadBuilder
+from golem.task.task_api import TaskApiPayloadBuilder
 
 
 class EnvEntry(NamedTuple):

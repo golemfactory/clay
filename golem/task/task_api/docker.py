@@ -10,7 +10,7 @@ from golem.envs.docker import (
     DockerPrerequisites,
     DockerRuntimePayload,
 )
-from golem.task.appcallbacks.appcallbacks import TaskApiPayloadBuilder
+from golem.task.task_api import TaskApiPayloadBuilder
 
 
 class DockerTaskApiPayloadBuilder(TaskApiPayloadBuilder):

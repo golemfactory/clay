@@ -4,7 +4,7 @@ from unittest import TestCase
 from golem_task_api import constants as api_constants
 
 from golem.envs.docker import DockerPrerequisites, DockerBind
-from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
+from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 
 
 class TestDockerPayloadBuilder(TestCase):

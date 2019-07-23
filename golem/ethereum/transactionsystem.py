@@ -47,7 +47,7 @@ from .faucet import tETH_faucet_donate
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
-    from golem_sci import events as sci_events
+    from golem_sci import structs as sci_structs
 
 
 log = logging.getLogger(__name__)
@@ -319,29 +319,16 @@ class TransactionSystem(LoopingCallService):
             ),
         )
 
-        def _outgoing_gnt_transfer_confirmed(
-                event: 'sci_events.GntTransferEvent',
-        ):
-            assert self._sci is not None  # mypy :(
-            receipt: TransactionReceipt = self._sci.get_transaction_receipt(
-                event.tx_hash,
+        unconfirmed_query = model.WalletOperation.unconfirmed_payments()
+        for operation in unconfirmed_query.iterator():
+            log.debug(
+                'Setting transaction confirmation listener. tx_hash=%s',
+                operation.tx_hash,
             )
-            gas_price = self._sci.get_transaction_gas_price(
-                tx_hash=event.tx_hash,
+            self._sci.on_transaction_confirmed(
+                tx_hash=operation.tx_hash,
+                cb=self._on_confirmed,
             )
-            # Mined transaction won't return None
-            assert isinstance(gas_price, int)
-            self._payments_keeper.confirmed_transfer(
-                tx_hash=event.tx_hash,
-                gas_cost=receipt.gas_used * gas_price,
-            )
-
-        self._sci.subscribe_to_gnt_transfers(
-            from_address=self._sci.get_eth_address(),
-            to_address=None,
-            from_block=from_block,
-            cb=_outgoing_gnt_transfer_confirmed,
-        )
 
         if self.deposit_contract_available:
             self._sci.subscribe_to_forced_subtask_payments(
@@ -613,6 +600,23 @@ class TransactionSystem(LoopingCallService):
         raise ValueError('Unknown currency {}'.format(currency))
 
     @sci_required()
+    def _on_confirmed(
+            self,
+            receipt: 'sci_structs.TransactionReceipt',
+            gas_price: Optional[int] = None,
+    ):
+        if gas_price is None:
+            assert self._sci is not None  # mypy...
+            gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+            # Mined transactions won't return None
+            assert isinstance(gas_price, int)
+        self._payments_keeper.confirmed_transfer(
+            tx_hash=receipt.tx_hash,
+            successful=bool(receipt.status),
+            gas_cost=gas_price * receipt.gas_used,
+        )
+
+    @sci_required()
     def withdraw(
             self,
             amount: int,
@@ -663,16 +667,13 @@ class TransactionSystem(LoopingCallService):
                 currency=model.WalletOperation.CURRENCY.ETH,
                 gas_cost=gas_eth,
             )
-
-            def on_eth_receipt(receipt):
-                if not receipt.status:
-                    log.error("Failed ETH withdrawal: %r", receipt)
-                    return
-                self._payments_keeper.confirmed_transfer(
-                    tx_hash=receipt.tx_hash,
-                    gas_cost=receipt.gas_cost * gas_price,
-                )
-            self._sci.on_transaction_confirmed(tx_hash, on_eth_receipt)
+            self._sci.on_transaction_confirmed(
+                tx_hash,
+                functools.partial(
+                    self._on_confirmed,
+                    gas_price=gas_price,
+                ),
+            )
             return tx_hash
 
         if currency == 'GNT':
@@ -703,6 +704,10 @@ class TransactionSystem(LoopingCallService):
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
+                self._on_confirmed(
+                    receipt=receipt,
+                    gas_price=gas_price,
+                )
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
@@ -822,14 +827,9 @@ class TransactionSystem(LoopingCallService):
                 "Deposit failed",
                 transaction_receipt=receipt,
             )
-
-        tx_gas_price = self._sci.get_transaction_gas_price(
-            receipt.tx_hash,
+        self._on_confirmed(
+            receipt=receipt,
         )
-        dpayment.gas_cost = receipt.gas_used * tx_gas_price
-        dpayment.status = \
-            model.WalletOperation.STATUS.confirmed
-        dpayment.save()
         return dpayment.tx_hash
 
     @gnt_deposit_required()
@@ -873,8 +873,9 @@ class TransactionSystem(LoopingCallService):
         tx_hash = self._sci.withdraw_deposit()
         self._concent_withdraw_requested = True
 
-        def on_confirmed(_receipt) -> None:
+        def on_confirmed(receipt) -> None:
             self._concent_withdraw_requested = False
+            self._on_confirmed(receipt=receipt)
         self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
         log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 

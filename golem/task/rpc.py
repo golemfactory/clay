@@ -372,7 +372,6 @@ def enqueue_new_task(client, task, force=False) \
         task_id,
         task.subtask_price,
         task.get_total_tasks(),
-        task.header.deadline,
     )
     logger.debug('Enqueue new task. task_id=%r', task)
 

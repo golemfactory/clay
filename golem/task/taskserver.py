@@ -53,7 +53,7 @@ from golem.ranking.manager.database_manager import (
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
-from golem.task.appcallbacks.docker import DockerTaskApiPayloadBuilder
+from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskbase import Task, AcceptClientVerdict
@@ -360,7 +360,7 @@ class TaskServer(
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
                 concent_enabled=self.client.concent_service.enabled,
-                provider_public_key=self.get_key_id(),
+                provider_public_key=self.keys_auth.key_id,
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
@@ -515,7 +515,7 @@ class TaskServer(
         return self.task_keeper.get_all_tasks()
 
     def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
-        if not self.verify_header_sig(task_header):
+        if not self._verify_header_sig(task_header):
             logger.info(
                 'Invalid signature task_header:%r, signature: %r',
                 task_header,
@@ -539,7 +539,7 @@ class TaskServer(
             return False
 
     @classmethod
-    def verify_header_sig(cls, header: dt_tasks.TaskHeader):
+    def _verify_header_sig(cls, header: dt_tasks.TaskHeader):
         try:
             header.verify(public_key=decode_hex(header.task_owner.key))
         except msg_exceptions.CryptoError:
@@ -562,28 +562,8 @@ class TaskServer(
 
         self.last_messages.append([type_, t, ip_addr, port, msg])
 
-    def get_node_name(self):
-        return self.config_desc.node_name
-
-    def get_key_id(self):
-        return self.keys_auth.key_id
-
-    def sign(self, data):
-        return self.keys_auth.sign(data)
-
-    def get_resource_addr(self):
-        return self.client.node.prv_addr
-
-    def get_resource_port(self):
-        return self.client.resource_port
-
-    def task_result_sent(self, subtask_id):
+    def _task_result_sent(self, subtask_id):
         return self.results_to_send.pop(subtask_id, None)
-
-    def retry_sending_task_result(self, subtask_id):
-        wtr = self.results_to_send.get(subtask_id, None)
-        if wtr:
-            wtr.already_sending = False
 
     @inlineCallbacks
     def change_config(
@@ -619,9 +599,9 @@ class TaskServer(
     def subtask_rejected(self, sender_node_id, subtask_id):
         """My (providers) results were rejected"""
         logger.debug("Subtask %r result rejected", subtask_id)
-        self.task_result_sent(subtask_id)
+        self._task_result_sent(subtask_id)
 
-        self.decrease_trust_payment(sender_node_id)
+        self._decrease_trust_payment(sender_node_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
@@ -637,7 +617,7 @@ class TaskServer(
             accepted_ts: int):
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
-        self.task_result_sent(subtask_id)
+        self._task_result_sent(subtask_id)
         self.client.transaction_system.expect_income(
             sender_node=sender_node_id,
             task_id=task_id,
@@ -650,7 +630,7 @@ class TaskServer(
     def subtask_settled(self, sender_node_id, subtask_id, settled_ts):
         """My (provider's) results were accepted by the Concent"""
         logger.debug("Subtask %r settled by the Concent", subtask_id)
-        self.task_result_sent(subtask_id)
+        self._task_result_sent(subtask_id)
         self.client.transaction_system.settle_income(
             sender_node_id, subtask_id, settled_ts)
 
@@ -697,9 +677,9 @@ class TaskServer(
 
     def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':
-            self.increase_trust_payment(node_id, kwargs['amount'])
+            self._increase_trust_payment(node_id, kwargs['amount'])
         elif event == 'overdue_single':
-            self.decrease_trust_payment(node_id)
+            self._decrease_trust_payment(node_id)
 
     def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
                                   event='default', subtask_id=None,
@@ -739,11 +719,11 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
 
-    def increase_trust_payment(self, node_id: str, amount: int):
+    def _increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)
         update_requestor_paid_sum(node_id, amount)
 
-    def decrease_trust_payment(self, node_id: str):
+    def _decrease_trust_payment(self, node_id: str):
         Trust.PAYMENT.decrease(node_id, self.max_trust)
 
     def reject_result(self, subtask_id, key_id):
@@ -751,9 +731,6 @@ class TaskServer(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.WRONG_COMPUTED.decrease(key_id, mod)
-
-    def get_computing_trust(self, node_id):
-        return self.client.get_computing_trust(node_id)
 
     def get_socket_addresses(self, node_info, prv_port=None, pub_port=None):
         """ Change node info into tcp addresses. Adds a suggested address.
@@ -864,7 +841,7 @@ class TaskServer(
                 details={'acl_reason': reason.value})
             return False
 
-        trust = self.get_computing_trust(node_id)
+        trust = self.client.get_computing_trust(node_id)
         if trust < self.config_desc.computing_trust:
             logger.info(f'insufficient provider trust level: {trust} < '
                         f'{self.config_desc.computing_trust}; {ids}')

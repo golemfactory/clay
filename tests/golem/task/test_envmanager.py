@@ -2,7 +2,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 from golem.envs import Environment
-from golem.task.appcallbacks.appcallbacks import TaskApiPayloadBuilder
+from golem.task.task_api import TaskApiPayloadBuilder
 from golem.task.envmanager import EnvironmentManager
 
 
