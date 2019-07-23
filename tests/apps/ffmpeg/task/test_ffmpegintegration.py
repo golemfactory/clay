@@ -254,6 +254,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.exclude_from_diff({'video': {'frame_count'}})
         operation.enable_treating_missing_attributes_as_unchanged()
 
+        filename = os.path.basename(video['path'])
+        if filename in self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE:
+            operation.exclude_from_diff(self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE[
+                filename])
+
         if not Container.is_supported(video['container'].value):
             pytest.skip("Source container not supported")
         if not Container.is_supported(container.value):
@@ -317,6 +322,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
             TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
 
+        filename = os.path.basename(video['path'])
+        if filename in self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE:
+            operation.exclude_from_diff(self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE[
+                filename])
+
         if not Container.is_supported(video['container'].value):
             pytest.skip("Target container not supported")
         if not video['container'].is_supported_video_codec(source_codec.value):
@@ -376,6 +386,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
+        filename = os.path.basename(video['path'])
+        if filename in self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE:
+            operation.exclude_from_diff(self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE[
+                filename])
+
         if not Container.is_supported(video['container'].value):
             pytest.skip("Target container not supported")
         if not video['container'].is_supported_video_codec(source_codec.value):
@@ -434,6 +449,11 @@ class TestFfmpegIntegration(TestTaskIntegration):
         operation.exclude_from_diff(
             TestFfmpegIntegration.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
+
+        filename = os.path.basename(video['path'])
+        if filename in self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE:
+            operation.exclude_from_diff(self._IGNORED_ATTRIBUTES_OF_BROKEN_FILE[
+                filename])
 
         if not Container.is_supported(video['container'].value):
             pytest.skip("Target container not supported")
