@@ -11,7 +11,3 @@ class TestConfig(TestConfigBase):
     def update_task_dict(self):
         self.task_package = 'test_task_1'
         super().update_task_dict()
-        self.task_dict['main_scene_file'] = helpers.scene_file_path(
-            task_package_name='test_task_1',
-            file_path='wlochaty3.blend',
-        )
