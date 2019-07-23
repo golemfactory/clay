@@ -79,6 +79,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for pid, delta in deltas.items():
             r = delta * cls._usage_factors[pid]
+            logger.info("Adjust R for provider %s: %.3f -> %.3f", pid[:8], cls._usage_factors[pid], r)
             cls._usage_factors[pid] = r
             if r > cls._max_usage_factor:
                 logger.info("Provider %s has excessive usage factor: %f", pid, r)
