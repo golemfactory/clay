@@ -21,7 +21,7 @@ from golem.core import golem_async
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer, ProviderStats
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -343,7 +343,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         market_strategy.add(
-            Offer(msg, msg.task_id, self.key_id, ProviderStats(0),
+            Offer(msg, msg.task_id, self.key_id, ProviderPerformance(0),
                   current_task.header.max_price, msg.price, self)
         )
 

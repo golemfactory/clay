@@ -365,4 +365,4 @@ class Task(abc.ABC):
 
 class ResultMetadata:
     def __init__(self, comput_wc_time: int) -> None:
-        self.comput_wc_time: int = comput_wc_time
+        self.comput_time: int = comput_time

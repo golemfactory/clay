@@ -265,6 +265,19 @@ class WasmTask(CoreTask):
 
         if subtask.is_finished():
             self.__resolve_payments(subtask)
+
+            subtask_usages = []
+            for s_id in subtask.get_instances():
+                subtask_instance = subtask.get_instance(s_id)
+                subtask_usages.append(
+                    (subtask_instance['actor'].uuid,
+                     self.subtasks_results_metadata[s_id].comput_time)
+                )
+            WasmTaskTypeInfo.MARKET_STRATEGY.report_subtask_usages(
+                self.task_definition.task_id,
+                subtask_usages
+            )
+
             for s_id in subtask.get_instances():
                 WasmTask.CALLBACKS.pop(s_id)()
 
@@ -513,7 +526,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    MARKET_STRATEGY: Type[RequestorMarketStrategy]\
+    MARKET_STRATEGY: Type[RequestorWasmMarketStrategy]\
         = RequestorWasmMarketStrategy
 
     def __init__(self) -> None:
@@ -523,19 +536,23 @@ class WasmTaskTypeInfo(CoreTaskTypeInfo):
         )
 
     def _load_requestor_perf(self):
-        perf_db_item = Performance.get(
-            Performance.environment_id == WasmTaskEnvironment.ENV_ID
-        )
-        self.MARKET_STRATEGY.set_performance(
-            WasmBenchmark.normalization_constant / perf_db_item.value
+        try:
+            perf = Performance.get(
+                Performance.environment_id == WasmTaskEnvironment.ENV_ID
+            ).value
+        except Performance.DoesNotExist:
+            perf = 1
+
+        self.MARKET_STRATEGY.set_my_usage_benchmark(
+            WasmBenchmark.normalization_constant / perf
         )
 
 
 class WasmBenchmark(CoreBenchmark):
     EXPECTED_OUTPUT = 'Hello world!\ntest_input\ntest_arg\n'
+    normalization_constant = 1000
 
     def __init__(self):
-        self._normalization_constant = 1000
         self.test_data_dir = os.path.join(
             get_golem_path(), 'apps', 'wasm', 'test_data'
         )
@@ -557,10 +574,6 @@ class WasmBenchmark(CoreBenchmark):
         self._task_definition.options = opts
         self._task_definition.subtasks_count = 1
         self._task_definition.add_to_resources()
-
-    @property
-    def normalization_constant(self):
-        return self._normalization_constant
 
     @property
     def task_definition(self):

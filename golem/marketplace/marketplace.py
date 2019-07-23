@@ -4,7 +4,7 @@ from typing import Optional, List, Tuple
 import golem.ranking.manager.database_manager as dbm
 
 
-class ProviderStats:
+class ProviderPerformance:
     def __init__(self, usage_benchmark):
         self.usage_benchmark = usage_benchmark
 
@@ -17,14 +17,14 @@ class Offer:
             offer_msg,
             task_id: str,
             provider_id: str,
-            provider_stats: ProviderStats,
+            provider_performance: ProviderPerformance,
             max_price: float,
             price: float,
             context):
         self.offer_msg = offer_msg
         self.task_id = task_id
         self.provider_id = provider_id
-        self.provider_stats = provider_stats
+        self.provider_performance = provider_performance
         self.max_price = max_price
         self.price = price
         self.reputation = dbm.get_provider_efficiency(provider_id)

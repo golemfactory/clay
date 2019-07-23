@@ -28,7 +28,6 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     def set_my_usage_benchmark(cls, benchmark: float) -> None:
         cls._my_usage_benchmark = benchmark
 
-
     @classmethod
     def get_usage_factor(cls, provider_id, usage_benchmark):
         usage_factor = cls._usage_factors.get(provider_id, None)

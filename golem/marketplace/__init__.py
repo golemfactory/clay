@@ -1,1 +1,1 @@
-from .marketplace import Offer, ProviderStats, RequestorMarketStrategy  # noqa pylint: disable=unused-import
+from .marketplace import Offer, ProviderPerformance, RequestorMarketStrategy  # noqa pylint: disable=unused-import
