@@ -1017,13 +1017,13 @@ class TestGetFragments(ProviderBase):
         task = self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
-        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 0, 0)
+        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, '')
         # Create three more subtasks, all with start_task = 2
         for i in range(subtasks_given - 1):
             with mock.patch('apps.rendering.task.renderingtask.RenderingTask'
                             '._get_next_task', return_value=2):
                 tm.get_next_subtask(fake.pystr(min_chars=4, max_chars=24),
-                                    task.header.task_id, 0, 0, 0, 0)
+                                    task.header.task_id, 0, 0, '')
 
         task_fragments, error = self.provider.get_fragments(task.header.task_id)
 

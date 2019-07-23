@@ -477,6 +477,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
             pass
 
         task_session.task_server.get_share_options.return_value = X()
+        task_session.task_server.get_resources.return_value = []
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',

@@ -34,9 +34,9 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
         with READ_LOCK:
             try:
                 db_model = model.QueuedMessage.select()\
-                .where(
-                    model.QueuedMessage.node == node_id,
-                ).order_by(model.QueuedMessage.created_date).get()
+                    .where(
+                        model.QueuedMessage.node == node_id,
+                    ).order_by(model.QueuedMessage.created_date).get()
             except model.QueuedMessage.DoesNotExist:
                 return
             try:
