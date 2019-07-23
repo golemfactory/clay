@@ -7,7 +7,11 @@ from ffmpeg_tools.formats import Container
 from golem.testutils import remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
-    FfmpegIntegrationBase, CODEC_CONTAINER_PAIRS_TO_TEST
+    FfmpegIntegrationBase, CODEC_CONTAINER_PAIRS_TO_TEST, \
+    create_split_and_merge_with_codec_change_test_name, \
+    create_split_and_merge_with_resolution_change_test_name, \
+    create_split_and_merge_with_frame_rate_change_test_name, \
+    create_split_and_merge_with_different_subtask_counts_test_name
 
 # flake8: noqa
 # pylint: disable=line-too-long,bad-whitespace
@@ -105,16 +109,10 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
     @parameterized.expand(
         (
             (video, video_codec, container)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for video_codec, container in CODEC_CONTAINER_PAIRS_TO_TEST
         ),
-        testcase_func_name=lambda testcase_func, param_num, param: (
-            f"{testcase_func.__name__}_{param_num}_from_"
-            f"{param[0][0]['video_codec'].value}_"
-            f"{param[0][0]['container'].value}_to_"
-            f"{param[0][1].value}_"
-            f"{param[0][2].value}"
-        ),
+        name_func=create_split_and_merge_with_codec_change_test_name
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -134,12 +132,7 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
                 [720, 480],
             )
         ),
-        testcase_func_name=lambda testcase_func, param_num, param: (
-            f"{testcase_func.__name__}_{param_num}_from_"
-            f"{param[0][0]['resolution'][0]}x"
-            f"{param[0][0]['resolution'][1]}_to_"
-            f"{param[0][1][0]}x{param[0][1][1]}"
-        ),
+        name_func=create_split_and_merge_with_resolution_change_test_name
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -149,15 +142,10 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
     @parameterized.expand(
         (
             (video, frame_rate)
-            for video in VIDEO_FILES
+            for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for frame_rate in (1, 25, '30000/1001', 60)
         ),
-        testcase_func_name=lambda testcase_func, param_num, param: (
-            f"{testcase_func.__name__}_{param_num}_of_"
-            f"{param[0][0]['video_codec'].value}_"
-            f"{param[0][0]['container'].value}_to_"
-            f"{str(param[0][1]).replace('/', '_')}_fps"
-        ),
+        name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
@@ -170,12 +158,7 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
             for subtasks_count in (1, 6, 10, video['key_frames'])
         ),
-        name_func=lambda testcase_func, param_num, param: (
-            f"{testcase_func.__name__}_{param_num}_of_"
-            f"{param[0][0]['video_codec'].value}_"
-            f"{param[0][0]['container'].value}_into_"
-            f"{param[0][1]}_subtasks"
-        ),
+        name_func=create_split_and_merge_with_different_subtask_counts_test_name
     )
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed

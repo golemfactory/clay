@@ -35,6 +35,67 @@ CODEC_CONTAINER_PAIRS_TO_TEST = [
 ]
 
 
+def create_split_and_merge_with_codec_change_test_name(
+        testcase_func,
+        param_num,
+        param):
+    source_video_codec = {param[0][0]['video_codec'].value}
+    destination_video_codec = {param[0][1].value}
+    destination_container = {param[0][2].value}
+
+    return (
+        f'{testcase_func.__name__}_{param_num}_from_'
+        f'{source_video_codec}_to_video_codec_'
+        f'{destination_video_codec}_and_container_'
+        f'{destination_container}'
+    )
+
+
+def create_split_and_merge_with_resolution_change_test_name(
+        testcase_func,
+        param_num,
+        param):
+    source_width = f"{param[0][0]['resolution'][0]}"
+    source_height = f"{param[0][0]['resolution'][1]}"
+    destination_resolution = f"{param[0][1][0]}x{param[0][1][1]}"
+    return (
+        f'{testcase_func.__name__}_{param_num}_from_'
+        f'{source_width}x'
+        f'{source_height}_to_'
+        f'{destination_resolution}'
+    )
+
+
+def create_split_and_merge_with_frame_rate_change_test_name(
+        testcase_func,
+        param_num,
+        param):
+    source_video_codec = f"{param[0][0]['video_codec'].value}"
+    source_video_container = f"{param[0][0]['container'].value}"
+    destination_frame_rate = f"{str(param[0][1]).replace('/', '_')}"
+    return (
+        f'{testcase_func.__name__}_{param_num}_of_codec_'
+        f'{source_video_codec}_and_container_'
+        f'{source_video_container}_to_'
+        f'{destination_frame_rate}_fps'
+    )
+
+
+def create_split_and_merge_with_different_subtask_counts_test_name(
+        testcase_func,
+        param_num,
+        param):
+    source_video_codec = f"{param[0][0]['video_codec'].value}_"
+    source_video_container = f"{param[0][0]['container'].value}"
+    number_of_subtasks = f"{param[0][1]}_subtasks"
+    return (
+        f'{testcase_func.__name__}_{param_num}_of_codec_'
+        f'{source_video_codec}_and_container_'
+        f'{source_video_container}_into_'
+        f'{number_of_subtasks}_subtasks'
+    )
+
+
 @ci_skip
 class FfmpegIntegrationBase(TestTaskIntegration):
 
