@@ -50,7 +50,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         for offer in offers:
             usage_factor = cls.get_usage_factor(
                 offer.provider_id,
-                offer.provider_stats.usage_benchmark)
+                offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
             to_sort.append((offer, usage_factor, adjusted_price))
         offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2]) if t[1] <= max_factor]

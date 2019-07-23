@@ -5,8 +5,8 @@ from unittest.mock import Mock
 from golem.marketplace import ProviderStats
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 
-class TestOfferChoice(TestCase):
 
+class TestOfferChoice(TestCase):
     def setUp(self):
         super().setUp()
         mock_offer_1 = Mock()
@@ -15,7 +15,7 @@ class TestOfferChoice(TestCase):
         mock_offer_1.quality = (.0, .0, .0, .0)
         mock_offer_1.reputation = .0
         mock_offer_1.price = 5.0
-        mock_offer_1.provider_stats = ProviderStats(1.25)
+        mock_offer_1.provider_performance = ProviderStats(1.25)
         self.mock_offer_1 = mock_offer_1
 
         mock_offer_2 = Mock()
@@ -24,9 +24,8 @@ class TestOfferChoice(TestCase):
         mock_offer_2.quality = (.0, .0, .0, .0)
         mock_offer_2.reputation = .0
         mock_offer_2.price = 6.0
-        mock_offer_2.provider_stats = ProviderStats(0.8)
+        mock_offer_2.provider_performance = ProviderStats(0.8)
         self.mock_offer_2 = mock_offer_2
-
 
     def test_get_usage_benchmark(self):
         cls = RequestorWasmMarketStrategy

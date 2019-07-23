@@ -223,7 +223,7 @@ class WasmTask(CoreTask):
 
                 logger.info("Time to complete subtask %s: %f",
                             s_id,
-                            self.subtasks_results_metadata[s_id].comput_wc_time)
+                            self.subtasks_results_metadata[s_id].compute_time)
 
                 if verdict == VerificationResult.SUCCESS:
                     # pay up!
@@ -271,7 +271,7 @@ class WasmTask(CoreTask):
                 subtask_instance = subtask.get_instance(s_id)
                 subtask_usages.append(
                     (subtask_instance['actor'].uuid,
-                     self.subtasks_results_metadata[s_id].comput_time)
+                     self.subtasks_results_metadata[s_id].compute_time)
                 )
             WasmTaskTypeInfo.MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
