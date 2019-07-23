@@ -31,6 +31,7 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
+from golem.envs import Environment as NewEnv
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
@@ -1409,3 +1410,97 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+
+
+class TestEnvManager(TaskServerAsyncTestBase):
+    def test_get_environment_by_id(self):
+        # Given
+        env_manager = self.ts.task_keeper.new_env_manager
+        env_manager.enabled = Mock(return_value=True)
+        env_manager.environment = Mock()
+        env_id = "env1"
+
+        # When
+        self.ts.get_environment_by_id(env_id)
+
+        # Then
+        env_manager.enabled.assert_called_with(env_id)
+        env_manager.environment.assert_called_with(env_id)
+
+    def test_get_environment_by_id_not_found(self):
+        # Given
+        env_manager = self.ts.task_keeper.new_env_manager
+        env_manager.enabled = Mock(return_value=False)
+        env_manager.environment = Mock()
+        env_id = "env1"
+
+        # When
+        self.ts.get_environment_by_id(env_id)
+
+        # Then
+        env_manager.enabled.assert_called_with(env_id)
+        env_manager.environment.assert_not_called()
+
+    @defer.inlineCallbacks
+    def test_request_task(self):
+        # Given
+        task_header = get_example_task_header("abc")
+
+        self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
+        self.ts.client.concent_service.enabled = False
+        self.ts.config_desc.min_price = task_header.max_price
+
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+
+        mock_get = Mock(return_value=300.0)
+        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+
+        mock_handshake = Mock()
+        mock_handshake.success = Mock(return_value=True)
+        self.ts.resource_handshakes[task_header.task_owner.key] = mock_handshake
+
+        # When
+        yield self.ts._request_task(task_header)
+
+        # Then
+        mock_get.assert_called_once()
+
+    @defer.inlineCallbacks
+    def test_request_task_running_benchmark(self):
+        # Given
+        performance = None
+        task_header = get_example_task_header("abc")
+
+        self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
+        self.ts.client.concent_service.enabled = False
+        self.ts.config_desc.min_price = task_header.max_price
+
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+
+        mock_get = Mock(return_value=performance)
+        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+
+        mock_handshake = Mock()
+        mock_handshake.success = Mock(return_value=True)
+        self.ts.resource_handshakes[task_header.task_owner.key] = mock_handshake
+
+        # When
+        result = yield self.ts._request_task(task_header)
+
+        self.assertEqual(result, performance)
+        mock_get.assert_called_once()
+
+    def test_get_min_performance_for_task(self):
+        # Given
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+        task = get_mock_task()
+
+        # When
+        result = self.ts.get_min_performance_for_task(task)
+
+        # Then
+        self.ts.get_environment_by_id.assert_called_once()
+        self.assertEqual(result, 0.0)

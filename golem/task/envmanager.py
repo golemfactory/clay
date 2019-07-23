@@ -76,9 +76,12 @@ class EnvironmentManager:
         """ Gets the performance for the given environment
             Checks the database first, if not found it starts a benchmark
             Return value Deferred resulting in a float
-            or None when the benchmark is already running"""
+            or None when the benchmark is already running. """
         if self._running_benchmark:
             return None
+
+        if not self.enabled(env_id):
+            raise Exception("Requested performance for disabled environment")
 
         perf = None
         try:
@@ -87,13 +90,17 @@ class EnvironmentManager:
         except Performance.DoesNotExist:
             pass
 
-        env = self._envs[env_id]
+        env = self._envs[env_id].instance
         self._running_benchmark = True
 
         try:
             result = yield env.run_benchmark()
         except Exception:
-            logger.error('failed to run benchmark. env=%r', env_id)
+            logger.error(
+                'failed to run benchmark. env=%r',
+                env_id,
+                exc_info=True
+            )
             raise
         finally:
             self._running_benchmark = False
