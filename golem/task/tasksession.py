@@ -14,7 +14,8 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
-from twisted.internet import defer
+
+from twisted.internet import defer, task
 
 import golem
 from golem.core import common
@@ -22,7 +23,7 @@ from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import scale_price, Offer, OfferPool
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -30,10 +31,10 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.taskbase import Task
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -48,6 +49,11 @@ logger = logging.getLogger(__name__)
 def drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
+
+
+def get_task_market_strategy(task_manager, current_task: Task):
+    return task_manager.task_types[
+        current_task.task_definition.task_type.lower()].MARKET_STRATEGY
 
 
 def get_task_message(
@@ -309,24 +315,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        offer = Offer(
-            scaled_price=scale_price(msg.task_header.max_price, msg.price),
-            reputation=ranking_dbm.get_provider_efficiency(self.key_id),
-            quality=ranking_dbm.get_provider_efficacy(self.key_id).vector,
-        )
+        current_task = self.task_manager.tasks[msg.task_id]
+        market_strategy = get_task_market_strategy(self.task_manager,
+                                                   current_task)
 
+        offer = Offer(msg, self.key_id, ProviderPerformance(0),
+                current_task.header.max_price, msg.price)
         callback = functools.partial(self._offer_chosen, True, msg=msg)
         offer_cb_pair = (offer, callback)
 
-        def resolution(task_id):
-            for offer, cb in OfferPool.\
-                    choose_offers(task_id, key=itemgetter(0)):
+        def resolution(market_strategy, task_id):
+            for offer, cb in market_strategy\
+                    .resolve_task_offers(task_id, key=itemgetter(0)):
                 cb()
 
-        if OfferPool.get_task_offer_count(msg.task_id) == 0:
+        if market_strategy\
+                .get_task_offer_count(msg.task_id) == 0:
+            # This is a first offer for given task_id, schedule resolution.
             deferred.call_later(
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution,
+                market_strategy,
                 msg.task_id
             )
             logger.info(
@@ -334,8 +343,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 self.task_server.config_desc.offer_pooling_interval
             )
-        OfferPool.add(msg.task_id, offer_cb_pair)
-        logger.debug("Offer accepted & added to pool. offer=%s", offer)
+
+        market_strategy.add(msg.task_id, offer_cb_pair)
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals
@@ -358,6 +367,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             msg.task_header.subtask_timeout,
         )
+
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(

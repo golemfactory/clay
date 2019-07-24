@@ -2,6 +2,7 @@ import abc
 import logging
 from enum import Enum
 from typing import (
+    Dict,
     List,
     Optional,
     Type)
@@ -11,6 +12,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
+from golem.marketplace.brass_marketplace import RequestorBrassMarketStrategy
 
 logger = logging.getLogger("golem.task")
 
@@ -28,6 +30,7 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
+    MARKET_STRATEGY = RequestorBrassMarketStrategy
 
     def __init__(self,
                  name: str,
@@ -99,6 +102,7 @@ class Task(abc.ABC):
                  task_definition: TaskDefinition) -> None:
         self.header = header
         self.task_definition = task_definition
+        self.subtasks_results_metadata: Dict[str, ResultMetadata] = {}
 
         self.listeners = []  # type: List[TaskEventListener]
 
@@ -357,3 +361,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, compute_time: int) -> None:
+        self.compute_time: int = compute_time
