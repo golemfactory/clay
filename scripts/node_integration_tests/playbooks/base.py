@@ -339,7 +339,7 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file_name = settings.get('name') + '.' + self.output_extension
+        output_file_name = settings.get('name') + '*.' + self.output_extension
 
         print("Verifying output file: {}".format(output_file_name))
         found_files = list(
