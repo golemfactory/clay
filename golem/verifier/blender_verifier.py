@@ -119,24 +119,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             logs=os.path.join(root_dir, "logs"),
         )
 
-        extra_data = dict(
-            subtask_paths=['/golem/work/{}'.format(
-                os.path.basename(i)) for i in self.results
-            ],
-            subtask_borders=[
-                self.subtask_info['crop_window'][0],
-                self.subtask_info['crop_window'][2],
-                self.subtask_info['crop_window'][1],
-                self.subtask_info['crop_window'][3],
-            ],
-            scene_path=self.subtask_info['scene_file'],
-            resolution=self.subtask_info['resolution'],
-            samples=self.subtask_info['samples'],
-            frames=self.subtask_info['frames'],
-            output_format=self.subtask_info['output_format'],
-            basefilename='crop',
-            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
-        )
+        extra_data = self._generate_verification_params()
 
         self.docker_task = self.docker_task_cls(
             docker_images=[(self.DOCKER_NAME, self.DOCKER_TAG)],
@@ -172,3 +155,23 @@ class BlenderVerifier(FrameRenderingVerifier):
         d = self.docker_task.start()
         d.addErrback(error)
         d.addCallback(callback)
+
+    def _generate_verification_params(self):
+        return dict(
+            subtask_paths=['/golem/work/{}'.format(
+                os.path.basename(i)) for i in self.results
+            ],
+            subtask_borders=[
+                self.subtask_info['crop_window'][0],
+                self.subtask_info['crop_window'][2],
+                self.subtask_info['crop_window'][1],
+                self.subtask_info['crop_window'][3],
+            ],
+            scene_path=self.subtask_info['scene_file'],
+            resolution=self.subtask_info['resolution'],
+            samples=self.subtask_info['samples'],
+            frames=self.subtask_info['frames'],
+            output_format=self.subtask_info['output_format'],
+            basefilename='crop',
+            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
+        )
