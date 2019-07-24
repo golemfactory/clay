@@ -4,7 +4,7 @@ import operator
 import time
 from enum import Enum
 from pathlib import Path
-from typing import Dict, Set, Union, Iterable, Optional, Tuple
+from typing import Dict, Set, Union, Iterable, Optional, Tuple, List, cast
 from sortedcontainers import SortedList
 
 from golem.core import common
@@ -13,6 +13,32 @@ logger = logging.getLogger(__name__)
 
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
+
+
+class AclRule(Enum):
+    allow = "allow"
+    deny = "deny"
+
+
+class AclStatus:
+    default_rule: AclRule
+    rules: List[Tuple[str, AclRule, Optional[int]]]
+
+    def __init__(self,
+                 default_rule: AclRule,
+                 rules: List[Tuple[str, AclRule, Optional[int]]]) \
+            -> None:
+        self.default_rule = default_rule
+        self.rules = rules
+
+    def to_message(self):
+        return {
+            'default_rule': self.default_rule.value,
+            'rules': [
+                (ident, rule.value, deadline)
+                for (ident, rule, deadline) in self.rules
+            ]
+        }
 
 
 class DenyReason(Enum):
@@ -31,6 +57,14 @@ class Acl(abc.ABC):
             -> None:
         pass
 
+    @abc.abstractmethod
+    def allow(self, node_id: str, persist: bool) -> None:
+        pass
+
+    @abc.abstractmethod
+    def status(self) -> AclStatus:
+        pass
+
 
 class _DenyAcl(Acl):
     class _Always:
@@ -41,6 +75,14 @@ class _DenyAcl(Acl):
     # SortedList of floats = deadlines
     _deny_deadlines: Dict[str, Union[_Always, SortedList]]
     _list_path: Optional[Path]
+
+    @classmethod
+    def new_from_rules(cls, deny_coll: List[str],
+                       list_path: Optional[Path]) -> '_DenyAcl':
+        deny_set = set(deny_coll)
+        if list_path is not None:
+            _write_set_to_file(list_path, deny_set)
+        return cls(deny_coll, list_path)
 
     def __init__(self, deny_coll: Optional[Iterable[str]] = None,
                  list_path: Optional[Path] = None, max_times: int = 1) -> None:
@@ -65,8 +107,8 @@ class _DenyAcl(Acl):
 
         assert isinstance(deadlines, SortedList)
         now = time.time()
-        while deadlines and deadlines[0] <= now:
-            del deadlines[0]
+        while deadlines and deadlines[-1] <= now:
+            del deadlines[-1]
         if not deadlines:
             del self._deny_deadlines[node_id]
 
@@ -100,12 +142,60 @@ class _DenyAcl(Acl):
             if node_id not in deny_set:
                 _write_set_to_file(self._list_path, deny_set | {node_id})
 
+    def allow(self, node_id: str, persist: bool) -> None:
+        logger.info(
+            'Whitelist node. node_id=%s, persist=%s',
+            common.short_node_id(node_id),
+            persist,
+        )
+        del self._deny_deadlines[node_id]
+        if persist and self._list_path:
+            deny_set = _read_set_from_file(self._list_path)
+            if node_id in deny_set:
+                _write_set_to_file(self._list_path, deny_set - {node_id})
+
+    def status(self) -> AclStatus:
+        _always = self._always
+        now = time.time()
+
+        def decode_deadline(deadline):
+            if deadline is _always:
+                return None
+            return deadline[0]
+
+        rules_to_remove = []
+        for (identity, deadlines) in self._deny_deadlines.items():
+            if isinstance(deadlines, SortedList):
+                while deadlines and deadlines[0] < now:
+                    del deadlines[0]
+                if not deadlines:
+                    rules_to_remove.append(identity)
+
+        for identity in rules_to_remove:
+            del self._deny_deadlines[identity]
+
+        rules = [
+            (identity,
+             AclRule.deny,
+             decode_deadline(deadline), )
+            for (identity, deadline) in self._deny_deadlines.items()]
+        return AclStatus(AclRule.allow, rules)
+
     @staticmethod
     def _deadline(timeout: int) -> float:
         return time.time() + timeout
 
 
 class _AllowAcl(Acl):
+
+    @classmethod
+    def new_from_rules(cls, allow_coll: List[str],
+                       list_path: Optional[Path]) -> '_AllowAcl':
+        allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
+        if list_path is not None:
+            _write_set_to_file(list_path, allow_set)
+        return cls(set(allow_coll), list_path)
+
     def __init__(
             self,
             allow_set: Optional[Set[str]] = None,
@@ -138,6 +228,27 @@ class _AllowAcl(Acl):
             if node_id in allow_set:
                 _write_set_to_file(self._list_path, allow_set - {node_id})
 
+    def allow(self, node_id: str, persist: bool) -> None:
+        logger.info(
+            'Whitelist node. node_id=%s, persist=%s',
+            common.short_node_id(node_id),
+            persist,
+        )
+        self._allow_set.add(node_id)
+        if persist and self._list_path:
+            allow_set = _read_set_from_file(self._list_path)
+            if node_id not in allow_set:
+                _write_set_to_file(self._list_path, allow_set | {node_id})
+
+    def status(self) -> AclStatus:
+        rules = [
+            (identity,
+             AclRule.allow,
+             cast(Optional[int], None))
+            for identity in self._allow_set]
+
+        return AclStatus(AclRule.deny, rules)
+
 
 def _read_set_from_file(path: Path) -> Set[str]:
     try:
@@ -162,3 +273,14 @@ def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
         return _AllowAcl(nodes_ids, deny_list_path)
 
     return _DenyAcl(nodes_ids, deny_list_path, max_times)
+
+
+def setup_acl(datadir: Optional[Path],
+              default_rule: AclRule,
+              exceptions: List[str]) -> Union[_DenyAcl, _AllowAcl]:
+    deny_list_path = datadir / DENY_LIST_NAME if datadir is not None else None
+    if default_rule == AclRule.deny:
+        return _AllowAcl.new_from_rules(exceptions, deny_list_path)
+    if default_rule == AclRule.allow:
+        return _DenyAcl.new_from_rules(exceptions, deny_list_path)
+    raise ValueError('invalid acl default %r' % default_rule)
