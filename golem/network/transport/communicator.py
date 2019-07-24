@@ -1,4 +1,5 @@
 # import twisted.persisted. TODO
+import functools
 import threading
 from collections import defaultdict
 
@@ -10,6 +11,11 @@ from twisted.internet.task import Clock
 
 from golem.task.tasksession import TaskSession
 
+
+class ProviderRejectComputation(Exception):
+    def __init(self, provider_id, task_id):
+        super().__init__('Provider {} does not agree on computation of task {}'
+                         .format(provider_id, task_id))
 
 class Communicator:
     def __init__(self):
@@ -45,7 +51,22 @@ class Communicator:
         d.addCallbacks(callback, errback=err_callback, errbackArgs={'node_id': no})
         return d
 
-    def nominate_provider_with_assurance(self, provider_id, task_id, timeout, callback_err, callback_success, msg : TaskToCompute):
+    def _await_for_acceptance(self, node_id, task_id, task_to_compute_msg_hash,
+                              task_acceptance_timeout):
+        # TODO: how to identify taskToCompute
+        def check_if_task_was_rejected():
+            with self.locks.get(node_id):
+                if task_to_compute_msg_hash \
+                        in self.computation_rejections.get(node_id):
+                    raise ProviderRejectComputation(node_id, task_id)
+
+        return task.deferLater(reactor, task_acceptance_timeout,
+                               check_if_task_was_rejected, node_id, task_id)
+
+
+    def nominate_provider_with_assurance(self, provider_id, task_id, timeout,
+                                         callback_err, callback_success,
+                                         msg : TaskToCompute):
         def on_timeout_error():
             '''
                 Check if message was sent to provider. If yes and there is no rejection we treat it as acceptance
@@ -60,8 +81,7 @@ class Communicator:
             clock = Clock()  # TODO
             task_session : TaskSession = self.task_sessions.get(provider_id)
             if task_session:
-                d\
-                    = self._send(task_session, msg)
+                d = self._send(task_session, msg)
             else:
                 self.pending_messages.get(provider_id, []).append(msg)
 
@@ -69,21 +89,13 @@ class Communicator:
 
             deferred = twisted.internet.defer.Deferred()
             deferred.addTimeout(timeout, clock, onTimeoutCancel=on_timeout_error)
-            d = threads.deferToThread(self.logic.sendpp, msg, user, "np")
+            d = threads.deferToThread(self._send( msg, user, "np")
             deferred.callback(result)
 
             # tu trzymam deferred od wysłania
+            d.chainDeferred(self._await_for_acceptance, provider_id, task_id,
+                            hash(msg))
+            return d
 
-            d.chainDeferred(_await_for_acceptance(provider_id, task_id, hash(msg)))
 
 
-    def _await_for_acceptance(self, node_id, task_id, task_to_compute_msg_hash):
-        # TODO: how to identify taskToCompute
-        def x():
-            with self.locks.get(node_id):
-                if task_to_compute_msg_hash in self.computation_rejections.get(node_id):
-                    raise
-
-        d = task.deferLater(reactor, 3.5, x, node_id, task_id)
-        reactor
-        twisted.internet.defer.execute(x, node_id, task_id)
