@@ -133,7 +133,11 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             # matter which we choose.
             dst_params = self._get_extra_data(0)["targs"]
 
-            validation.validate_transcoding_params(src_params, dst_params)
+            validation.validate_transcoding_params(
+                src_params,
+                dst_params,
+                video_metadata
+            )
 
         except validation.InvalidVideo as e:
             logger.error(e.response_message)
