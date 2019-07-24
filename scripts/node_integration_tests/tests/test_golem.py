@@ -104,3 +104,7 @@ class GolemNodeTest(NodeTestBase):
             'golem.regular_run_stop_on_reject',
             **{'task-settings': '4-by-3'}
         )
+
+    def test_concent_provider(self):
+        self._run_test('golem.concent_provider')
+
