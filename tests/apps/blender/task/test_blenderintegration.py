@@ -19,7 +19,7 @@ class TestBlenderIntegration(TestTaskIntegration):
     def _get_test_scene(cls) -> pathlib.Path:
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
-        return scene_file
+        return str(scene_file)
 
     @classmethod
     def _task_dictionary(  # pylint: disable=too-many-arguments

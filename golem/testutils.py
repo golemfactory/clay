@@ -3,18 +3,34 @@ import logging
 import os
 import os.path
 import shutil
+import string
 import tempfile
 import unittest
+from unittest.mock import Mock, patch
 from pathlib import Path
+from random import SystemRandom
 from time import sleep
 
 import ethereum.keys
 import pycodestyle
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.message import ComputeTaskDef
 
+from apps.appsmanager import AppsManager
 from golem.core.common import get_golem_path, is_windows, is_osx
+from golem.core.fileshelper import outer_dir_path
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
+from golem.docker.image import DockerImage
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
 from golem.model import DB_MODELS, db, DB_FIELDS
+from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import TaskEventListener, Task
+from golem.task.taskmanager import TaskManager
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +203,7 @@ def async_test(coro):
     return wrapper
 
 
-    
+
 
 class TestTaskIntegration(DatabaseFixture):
 
@@ -287,8 +303,7 @@ class TestTaskIntegration(DatabaseFixture):
                                  price=int(
                                      task.price /
                                      task.task_definition.subtasks_count),
-                                 max_resource_size=10000000000,
-                                 max_memory_size=10000000000)
+                                 offer_hash="blaa offeeeeer {}".format(i))
 
             subtask_id = ctd["subtask_id"]
 
@@ -317,9 +332,6 @@ class TestTaskIntegration(DatabaseFixture):
 
             task.accept_results(subtask_id, list(
                 map(lambda res: outer_dir_path(res), result)))
-
-            # finish subtask
-            TaskClient.assert_exists(self.node_id, task.counting_nodes).finish()
 
         return task
 
