@@ -1,48 +1,22 @@
+import asyncio
 import logging
 import os
 import os.path
 import shutil
-import string
 import tempfile
 import unittest
-from functools import wraps
-from unittest.mock import Mock, patch
 from pathlib import Path
-from random import SystemRandom
 from time import sleep
-from typing import Dict
-
 
 import ethereum.keys
 import pycodestyle
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from golem_messages.message import ComputeTaskDef
 
-from apps.appsmanager import AppsManager
 from golem.core.common import get_golem_path, is_windows, is_osx
-from golem.core.fileshelper import outer_dir_path
-from golem.core.keysauth import KeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.docker.image import DockerImage
-from golem.docker.manager import DockerManager
-from golem.docker.task_thread import DockerTaskThread
 from golem.model import DB_MODELS, db, DB_FIELDS
-from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resourcesmanager import \
-    HyperdriveResourceManager
-from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task
-from golem.task.taskclient import TaskClient
-from golem.task.taskmanager import TaskManager
-from golem.task.taskstate import TaskState, TaskStatus
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 logger = logging.getLogger(__name__)
-
-
-class DockerTestJobFailure(Exception):
-    pass
 
 
 class TempDirFixture(unittest.TestCase):
@@ -174,10 +148,8 @@ class PEP8MixIn(object):
     To use it in your TestCase just add it to inheritance list like so:
     class MyTestCase(unittest.TestCase, testutils.PEP8MixIn):
         PEP8_FILES = <iterable>
-
     PEP8_FILES attribute should be an iterable containing paths of python
     source files relative to <golem root>.
-
     Afterwards your test case will perform conformance test on files mentioned
     in this attribute.
     """
@@ -206,6 +178,16 @@ def remove_temporary_dirtree_if_test_passed(fun):
         self.REMOVE_TMP_DIRS = True
     return wrapper
 
+
+
+def async_test(coro):
+    def wrapper(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        return loop.run_until_complete(coro(*args, **kwargs))
+    return wrapper
+
+
+    
 
 class TestTaskIntegration(DatabaseFixture):
 
