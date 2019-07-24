@@ -119,8 +119,8 @@ class VerificationMixin:
         task_id: str = self.task_manager.subtask2task_mapping[subtask_id]
         task: Task = self.task_manager.tasks[task_id]
         task.subtasks_results_metadata[subtask_id] = ResultMetadata(
-            datetime.datetime.now().timestamp() -\
-                report_computed_task.task_to_compute.timestamp
+            datetime.datetime.now().timestamp() -
+            report_computed_task.task_to_compute.timestamp
         )
 
         self.task_manager.computed_task_received(

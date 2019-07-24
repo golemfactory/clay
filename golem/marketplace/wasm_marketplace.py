@@ -1,5 +1,8 @@
 import logging
-from typing import List, Dict, ClassVar, Tuple, Optional, Iterable
+from typing import (
+    Any, List, Dict, ClassVar,
+    Tuple, Optional, Iterable
+)
 import numpy
 
 from golem.marketplace.marketplace import Offer
@@ -38,8 +41,10 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             cls._usage_factors[provider_id] = usage_factor
         return usage_factor
 
+    # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str,
+                            key=None) -> Optional[List[Any]]:
         logger.info("RWMS ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
             return None
@@ -47,18 +52,21 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         max_factor: float = cls._max_usage_factor
         offers: List[Offer] = cls._pools.pop(task_id)
         to_sort: List[Tuple[Offer, float, float]] = []
-        for offer in offers:
+        for offer_composite in offers:
+            if key:
+                offer = key(offer_composite)
             usage_factor = cls.get_usage_factor(
                 offer.provider_id,
                 offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
-            to_sort.append((offer, usage_factor, adjusted_price))
-        offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2]) if t[1] <= max_factor]
+            to_sort.append((offer_composite, usage_factor, adjusted_price))
+        offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
+                         if t[1] <= max_factor]
         return offers_sorted
 
     @classmethod
     def report_subtask_usages(cls,
-                              task_id: str,
+                              _task_id: str,
                               usages: List[Tuple[str, float]]) -> None:
         if len(usages) < 2:
             return
@@ -72,16 +80,19 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         d = geomean(ds.values())
         assert d > 0
-        #deltas = {pid: di / d for pid, di in ds}
+        # deltas = {pid: di / d for pid, di in ds}
         for pid, di in ds.items():
             deltas[pid] = di / d
 
         for pid, delta in deltas.items():
             r = delta * cls._usage_factors[pid]
-            logger.info("Adjust R for provider %s: %.3f -> %.3f", pid[:8], cls._usage_factors[pid], r)
+            logger.info("Adjust R for provider %s: %.3f -> %.3f",
+                        pid[:8], cls._usage_factors[pid], r)
             cls._usage_factors[pid] = r
             if r > cls._max_usage_factor:
-                logger.info("Provider %s has excessive usage factor: %f", pid, r)
+                logger.info("Provider %s has excessive usage factor: %f",
+                            pid, r)
+
 
 def geomean(a: Iterable[float]) -> float:
     if not a:

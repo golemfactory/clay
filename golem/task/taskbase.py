@@ -12,7 +12,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
-from golem.marketplace.brass_marketplace import RequestorBrassMarketStrategy
+from golem.marketplace.marketplace import RequestorMarketStrategy
 
 logger = logging.getLogger("golem.task")
 
@@ -30,7 +30,7 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    MARKET_STRATEGY = RequestorBrassMarketStrategy
+    MARKET_STRATEGY = RequestorMarketStrategy
 
     def __init__(self,
                  name: str,
@@ -364,5 +364,5 @@ class Task(abc.ABC):
 
 
 class ResultMetadata:
-    def __init__(self, compute_time: int) -> None:
-        self.compute_time: int = compute_time
+    def __init__(self, compute_time: float) -> None:
+        self.compute_time: float = compute_time

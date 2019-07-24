@@ -39,6 +39,6 @@ class WasmBenchmarkTestCase(TestCase):
         with patch('builtins.open', mock_open(read_data='wrong_content')):
             self.assertFalse(self.benchmark.verify_result(['/path/to/out.txt']))
 
-        good_content = benchmark.WasmBenchmark.EXPECTED_OUTPUT
+        good_content = self.benchmark.EXPECTED_OUTPUT
         with patch('builtins.open', mock_open(read_data=good_content)):
             self.assertTrue(self.benchmark.verify_result(['/path/to/out.txt']))

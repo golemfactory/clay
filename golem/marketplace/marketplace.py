@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import Optional, List, Tuple
+from typing import Any, Optional, List
 
 import golem.ranking.manager.database_manager as dbm
 
@@ -15,38 +15,43 @@ class Offer:
     def __init__(
             self,
             offer_msg,
-            task_id: str,
             provider_id: str,
             provider_performance: ProviderPerformance,
             max_price: float,
-            price: float,
-            context):
+            price: float):
         self.offer_msg = offer_msg
-        self.task_id = task_id
         self.provider_id = provider_id
         self.provider_performance = provider_performance
         self.max_price = max_price
         self.price = price
         self.reputation = dbm.get_provider_efficiency(provider_id)
         self.quality = dbm.get_provider_efficacy(provider_id).vector
-        self.context = context
 
 
 class RequestorMarketStrategy(ABC):
 
     @abstractclassmethod
-    def add(cls, offer: Offer):
+    def add(cls, task_id: str, offer: Any):
         """
         Called when a WantToComputeTask arrives.
         """
         pass
 
+    # pylint: disable-msg=line-too-long
     @abstractclassmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str,
+                            key=None) -> Optional[List[Any]]:
         """
-        Called when the time to choose offers comes.
-        Returns list of offers ordered by preference.
-        Returns None for unknonw tasks.
+        Arguments:
+            task_id {str} -- task_id
+
+        Keyword Arguments:
+            key {Optional[Callable[..., Offer]]} -- Callable used to retrieve
+                Offer from given composites (default: {None})
+
+        Returns:
+            List[Any] -- Returns a sorted list of
+                composites as added in `add` method.
         """
         pass
 

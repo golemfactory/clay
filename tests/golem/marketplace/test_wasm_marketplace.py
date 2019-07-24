@@ -1,4 +1,3 @@
-import pdb
 from unittest import TestCase
 from unittest.mock import Mock
 
@@ -66,9 +65,8 @@ class TestOfferChoice(TestCase):
             RequestorWasmMarketStrategy.get_task_offer_count('Task1'), 2)
         result = RequestorWasmMarketStrategy.resolve_task_offers('Task1')
 
-        RequestorWasmMarketStrategy.report_subtask_usages('Task1',
-                                                          [('P1', 5.0), ('P2', 8.0)]
-        )
+        RequestorWasmMarketStrategy.\
+            report_subtask_usages('Task1', [('P1', 5.0), ('P2', 8.0)])
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].provider_id, 'P2')
         self.mock_offer_1.task_id = 'Task2'

@@ -15,7 +15,7 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
-from twisted.internet import defer, task
+from twisted.internet import defer
 
 import golem
 from golem.core import common
@@ -320,12 +320,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                                    current_task)
 
         offer = Offer(msg, self.key_id, ProviderPerformance(0),
-                current_task.header.max_price, msg.price)
+                      current_task.header.max_price, msg.price)
         callback = functools.partial(self._offer_chosen, True, msg=msg)
         offer_cb_pair = (offer, callback)
 
         def resolution(market_strategy, task_id):
-            for offer, cb in market_strategy\
+            for _offer, cb in market_strategy\
                     .resolve_task_offers(task_id, key=itemgetter(0)):
                 cb()
 
