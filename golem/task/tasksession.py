@@ -4,6 +4,7 @@ import datetime
 import enum
 import functools
 import logging
+from operator import itemgetter
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -17,7 +18,7 @@ from twisted.internet import defer
 
 import golem
 from golem.core import common
-from golem.core import golem_async
+from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -29,10 +30,7 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
+import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
@@ -313,14 +311,31 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer = Offer(
             scaled_price=scale_price(msg.task_header.max_price, msg.price),
-            reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector,
+            reputation=ranking_dbm.get_provider_efficiency(self.key_id),
+            quality=ranking_dbm.get_provider_efficacy(self.key_id).vector,
         )
 
-        d = OfferPool.add(msg.task_id, offer)
+        callback = functools.partial(self._offer_chosen, True, msg=msg)
+        offer_cb_pair = (offer, callback)
+
+        def resolution(task_id):
+            for offer, cb in OfferPool.\
+                    choose_offers(task_id, key=itemgetter(0)):
+                cb()
+
+        if OfferPool.get_task_offer_count(msg.task_id) == 0:
+            deferred.call_later(
+                self.task_server.config_desc.offer_pooling_interval,
+                resolution,
+                msg.task_id
+            )
+            logger.info(
+                "Will select providers for task %s in %.1f seconds",
+                msg.task_id,
+                self.task_server.config_desc.offer_pooling_interval
+            )
+        OfferPool.add(msg.task_id, offer_cb_pair)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
-        d.addCallback(functools.partial(self._offer_chosen, msg=msg))
-        d.addErrback(golem_async.default_errback)
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals

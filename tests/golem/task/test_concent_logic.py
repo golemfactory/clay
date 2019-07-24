@@ -32,6 +32,13 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 # pylint: disable=protected-access
 
 
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
 @mock.patch("golem.task.tasksession.TaskSession._check_task_header",
             return_value=True)
 @mock.patch("golem.task.tasksession.TaskSession.send")
@@ -382,15 +389,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
-@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
-@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       mock.Mock(return_value=0.0))
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       mock.Mock(return_value=_fake_get_efficacy()))
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
@@ -478,6 +480,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
 
         task_session.task_server.get_share_options.return_value = X()
         task_session.task_server.get_resources.return_value = []
+        task_session.task_server.config_desc.offer_pooling_interval = 0
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',

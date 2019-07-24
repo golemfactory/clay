@@ -1,6 +1,6 @@
-import sys
 from unittest import TestCase
-from unittest.mock import Mock, patch, ANY
+import pytest
+import sys
 
 from golem.marketplace import scale_price, Offer, OfferPool
 
@@ -13,7 +13,6 @@ class TestScalePrice(TestCase):
         assert scale_price(5, 0) == sys.float_info.max
 
 
-@patch('golem.marketplace.offerpool.task.deferLater')
 class TestOfferPool(TestCase):
     @staticmethod
     def _mock_offer() -> Offer:
@@ -23,47 +22,64 @@ class TestOfferPool(TestCase):
             quality=(0., 0., 0., 0.),
         )
 
-    def test_callback(self, defer_later):
-        task_id = 'test_task_id'
-        deferreds = []
-        for _ in range(3):
-            deferred = OfferPool.add(task_id, self._mock_offer())
-            deferreds.append(deferred)
+    def test_choose_from_empty_pool(self):
+        OfferPool.reset()
 
-        defer_later.assert_called_once_with(
-            ANY,
-            OfferPool._INTERVAL,
-            ANY,
-            ANY,
+        with pytest.raises(KeyError):
+            OfferPool.choose_offers('aaa')
+
+    def test_empty_after_clear(self):
+        OfferPool.reset()
+
+        offer = self._mock_offer()
+        OfferPool.add('aaa', offer)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 1)
+        OfferPool.clear_offers_for_task('aaa')
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 0)
+
+    def test_all_tasks_empty_after_reset(self):
+        OfferPool.reset()
+
+        offer = self._mock_offer()
+
+        OfferPool.add('aaa', offer)
+        OfferPool.add('bbb', offer)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 1)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('bbb'), 1)
+
+        OfferPool.reset()
+
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 0)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('bbb'), 0)
+
+    def test_empty_after_choice(self):
+        OfferPool.reset()
+
+        offer = self._mock_offer()
+        OfferPool.add('aaa', offer)
+        OfferPool.add('aaa', offer)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 2)
+
+        _ = OfferPool.choose_offers('aaa')
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'),
+            0
         )
 
-        defer_later.call_args[0][2](*defer_later.call_args[0][3:])
-        for deferred in deferreds:
-            assert deferred.called
+    def test_resolution_length_correct(self):
+        OfferPool.reset()
 
-    def test_different_tasks(self, defer_later):
-        task_id1 = 'test_task_id1'
-        task_id2 = 'test_task_id2'
-
-        OfferPool.add(task_id1, Mock())
-        defer_later.assert_called_once_with(ANY, ANY, ANY, task_id1)
-        defer_later.reset_mock()
-
-        OfferPool.add(task_id2, Mock())
-        defer_later.assert_called_once_with(ANY, ANY, ANY, task_id2)
-        defer_later.reset_mock()
-
-    def test_defer_once_per_batch(self, defer_later):
-        task_id = 'test_task_id'
-
-        OfferPool.add(task_id, self._mock_offer())
-        defer_later.assert_called_once_with(ANY, ANY, ANY, task_id)
-
-        OfferPool.add(task_id, self._mock_offer())
-        defer_later.assert_called_once()
-
-        defer_later.call_args[0][2](*defer_later.call_args[0][3:])
-        defer_later.reset_mock()
-
-        OfferPool.add(task_id, self._mock_offer())
-        defer_later.assert_called_once_with(ANY, ANY, ANY, task_id)
+        offer = self._mock_offer()
+        OfferPool.add('aaa', offer)
+        OfferPool.add('aaa', offer)
+        self.assertEqual(
+            OfferPool.get_task_offer_count('aaa'), 2)
+        result = OfferPool.choose_offers('aaa')
+        self.assertEqual(len(result), 2)
