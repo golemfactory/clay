@@ -317,8 +317,9 @@ def config_logging(
 
 
 def install_reactor():
+    import asyncio
     from twisted.internet import asyncioreactor
-    asyncioreactor.install()
+    asyncioreactor.install(asyncio.get_event_loop())
 
     from twisted.internet import reactor
     _patch_remove_writer(reactor)
