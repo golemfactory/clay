@@ -29,7 +29,6 @@ from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.core.common import get_golem_path
-from golem.marketplace.marketplace import RequestorMarketStrategy
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 from golem.model import Performance
 from golem.task.taskbase import Task, AcceptClientVerdict
@@ -266,7 +265,7 @@ class WasmTask(CoreTask):
         if subtask.is_finished():
             self.__resolve_payments(subtask)
 
-            subtask_usages = []
+            subtask_usages: List[Tuple[str, float]] = []
             for s_id in subtask.get_instances():
                 subtask_instance = subtask.get_instance(s_id)
                 subtask_usages.append(
@@ -526,8 +525,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    MARKET_STRATEGY: Type[RequestorWasmMarketStrategy]\
-        = RequestorWasmMarketStrategy
+    MARKET_STRATEGY = RequestorWasmMarketStrategy
 
     def __init__(self) -> None:
         self._load_requestor_perf()
@@ -579,8 +577,8 @@ class WasmBenchmark(CoreBenchmark):
     def task_definition(self):
         return self._task_definition
 
-    def verify_result(self, result):
-        for result_file in result:
+    def verify_result(self, result_data_path) -> bool:
+        for result_file in result_data_path:
             if os.path.basename(result_file) == 'out.txt':
                 actual_output_path = result_file
                 break
