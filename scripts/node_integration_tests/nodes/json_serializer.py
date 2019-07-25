@@ -1,4 +1,4 @@
-from golemapp import start
+from golemapp import main
 from golem.client import Client
 from golem.rpc import utils as rpc_utils
 
@@ -12,4 +12,4 @@ def _get_bignum(self):
 setattr(Client, "_get_bignum", _get_bignum)
 
 
-start()
+main()
