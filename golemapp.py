@@ -28,13 +28,15 @@ from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.rpc.router import SerializerType  # noqa
+from golem.rpc import (  # noqa
+    generate_rpc_certificate,
+    WORKER_PROCESS_MODULE,
+    WORKER_PROCESS_STANDALONE_ARGS,
+)
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
-# Monkey patch for ethereum.slogging.
-# SLogger aggressively mess up with python looger.
-# This patch is to settle down this.
-# It should be done before any SLogger is created.
+# ethereum.slogging and logging compatibility patch
 orig_getLogger = slogging.SManager.getLogger
 
 
@@ -111,35 +113,12 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   SerializerType.json.value,
               ]),
               help="Crossbar serializer (default: msgpack)")
-# Python flags, needed by crossbar (package only)
-@click.option('-m', nargs=1, default=None)
-@click.option('--node', expose_value=False)
-@click.option('--klass', expose_value=False)
-@click.option('-u', is_flag=True, default=False, expose_value=False)
-# Multiprocessing option (ignored)
-@click.option('--multiprocessing-fork', nargs=1, expose_value=False)
-# Crossbar arguments (package only)
-@click.option('--cbdir', expose_value=False)
-@click.option('--worker', expose_value=False)
-@click.option('--type', expose_value=False)
-@click.option('--realm', expose_value=False)
-@click.option('--loglevel', expose_value=False)  # Crossbar specific level
-@click.option('--title', expose_value=False)
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
-        accept_all_terms, version, log_level, enable_talkback, m,
+        accept_all_terms, version, log_level, enable_talkback,
         hyperdrive_port, hyperdrive_rpc_port, crossbar_serializer
 ):
-
-    freeze_support()
-    delete_reactor()
-
-    # Crossbar
-    if m == 'crossbar.worker.process':
-        start_crossbar_worker(m)
-        return 0
-
     if version:
         print("GOLEM version: {}".format(golem.__version__))
         return 0
@@ -231,23 +210,37 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
     return 0
 
 
-def delete_reactor():
+@click.command(context_settings=dict(
+    allow_extra_args=True,
+    ignore_unknown_options=True,
+))
+def start_crossbar_worker():
+    # Remove extra arguments used for spawning a frozen version of Crossbar
+    for arg in WORKER_PROCESS_STANDALONE_ARGS:
+        sys.argv.pop(sys.argv.index(arg))
+
+    # Drop the "unbuffered mode" flag which causes issues on Windows
+    if '-u' in sys.argv:
+        sys.argv.remove('-u')
+
+    # Run the worker process module
+    import runpy
+    runpy.run_module(WORKER_PROCESS_MODULE, run_name="__main__")
+
+
+def main():
+    freeze_support()
+
+    # When the pyinstaller binary forks, the reactor might already be imported
+    # by the parent process and copied to child's memory.
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
 
-
-def start_crossbar_worker(module):
-    idx = sys.argv.index('-m')
-    sys.argv.pop(idx)
-    sys.argv.pop(idx)
-
-    if '-u' in sys.argv:
-        # ignore; unbuffered mode causes issues on Windows
-        sys.argv.remove('-u')
-
-    import importlib
-    module = importlib.import_module(module)
-    module.run()
+    # Crossbar (standalone) is invoked with extra positional arguments
+    if all(a in sys.argv for a in WORKER_PROCESS_STANDALONE_ARGS):
+        start_crossbar_worker()
+    else:
+        start()  # pylint: disable=no-value-for-parameter
 
 
 def log_golem_version():
@@ -298,16 +291,5 @@ def log_concent_choice(value: dict):
     )
 
 
-def generate_rpc_certificate(datadir: str):
-    from golem.rpc.cert import CertificateManager
-    from golem.rpc.common import CROSSBAR_DIR
-
-    cert_dir = os.path.join(datadir, CROSSBAR_DIR)
-    os.makedirs(cert_dir, exist_ok=True)
-
-    cert_manager = CertificateManager(cert_dir)
-    cert_manager.generate_if_needed()
-
-
 if __name__ == '__main__':
-    start()  # pylint: disable=no-value-for-parameter
+    main()
