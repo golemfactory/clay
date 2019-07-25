@@ -17,11 +17,14 @@ if TYPE_CHECKING:
     requestor = None
     provider = None
 
+CONCENT_STAGING = 'staging'
+CONCENT_DISABLED = 'disabled'
+
 
 class NodeConfig:
     def __init__(self) -> None:
         self.additional_args: Dict[str, Any] = {}
-        self.concent = 'disabled'
+        self.concent = CONCENT_DISABLED
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
         self.log_level: Optional[str] = None

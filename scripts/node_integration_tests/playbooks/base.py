@@ -89,6 +89,7 @@ class NodeTestPlaybook:
         self.current_step = 0
         self.known_tasks: typing.Optional[typing.Set[str]] = None
         self.task_id: typing.Optional[str] = None
+        self.previous_task_id: typing.Optional[str] = None
         self.nodes_started = False
         self.task_in_creation = False
         self.subtasks: typing.Dict[NodeId, typing.Set[str]] = {}
@@ -425,6 +426,75 @@ class NodeTestPlaybook:
         self.start_nodes()
         print("Nodes restarted")
         self.next()
+
+    def step_wait_task_timeout(self):
+        def on_success(result):
+            if result['status'] == 'Timeout':
+                print("Task timed out as expected.")
+                self.previous_task_id = self.task_id
+                self.task_id = None
+                self.next()
+            elif result['status'] == 'Finished':
+                print("Task finished unexpectedly, failing test :(")
+                self.fail()
+            else:
+                print("Task status: {} ... ".format(result['status']))
+                time.sleep(10)
+
+        return self.call(NodeId.requestor, 'comp.task', self.task_id,
+                         on_success=on_success)
+
+    def step_enable_concent(self, node_id: NodeId):
+        def on_success(_):
+            self.next()
+
+        def on_error(_):
+            print(f"Error enabling Concent for {node_id.value}")
+            self.fail()
+
+        return self.call(
+            node_id,
+            'golem.concent.switch.turn', 1,
+            on_success=on_success, on_error=on_error,
+        )
+
+    def step_disable_concent(self, node_id: NodeId):
+        def on_success(_):
+            self.next()
+
+        def on_error(_):
+            print(f"Error disabling Concent for {node_id.value}")
+            self.fail()
+
+        return self.call(
+            node_id,
+            'golem.concent.switch.turn', 0,
+            on_success=on_success, on_error=on_error,
+        )
+
+    def step_ensure_concent_on(self, node_id: NodeId):
+        def on_success(result):
+            if result is True:
+                print(f"Concent is enabled for {node_id.value}.")
+                self.next()
+            else:
+                self.fail(
+                    "Concent unexpectedly disabled for %s... (result=%r)" % (
+                        node_id.value, result
+                    )
+                )
+
+        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
+
+    def step_ensure_concent_off(self, node_id: NodeId):
+        def on_success(result):
+            if result is True:
+                self.fail(f"Concent unexpectedly enabled for {node_id.value}.")
+            else:
+                print(f"Concent is disabled for {node_id.value} as expected.")
+                self.next()
+
+        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
 
     initial_steps: typing.Tuple = (
         partial(step_get_key, node_id=NodeId.provider),

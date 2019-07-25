@@ -64,6 +64,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             self.ethereum_config.deposit_contract_address
 
         self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.required_as_provider = True
         self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
             self.keys.raw_pubkey
@@ -103,6 +104,12 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(send_mock)
+
+    def test_requestor_concent_disabled_but_not_required(self, send_mock, *_):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.required_as_provider = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
 
     def test_provider_doesnt_want_concent(self, send_mock, *_):
         self.task_session.concent_service.enabled = False

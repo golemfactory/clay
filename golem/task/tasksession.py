@@ -44,6 +44,7 @@ if TYPE_CHECKING:
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
     from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
+    from golem.network.concent.client import ConcentClientService  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -137,7 +138,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.task_computer
 
     @property
-    def concent_service(self):
+    def concent_service(self) -> 'ConcentClientService':
         return self.task_server.client.concent_service
 
     @property
@@ -522,8 +523,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.OfferCancelled)
             return
 
-        if self.concent_service.enabled and not msg.concent_enabled:
-            # Provider requires concent if it's enabed locally
+        if (
+                self.concent_service.enabled
+                and self.concent_service.required_as_provider
+                and not msg.concent_enabled
+        ):
+            # Provider requires concent
+            # if it's enabled locally and marked as required
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:

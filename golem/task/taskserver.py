@@ -311,13 +311,16 @@ class TaskServer(
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
-            if self.client.concent_service.enabled:
-                if not theader.concent_enabled:
-                    supported = supported.join(
-                        SupportStatus.err({
-                            UnsupportReason.CONCENT_REQUIRED: True,
-                        }),
-                    )
+            if (
+                    self.client.concent_service.enabled
+                    and self.client.concent_service.required_as_provider
+                    and not theader.concent_enabled
+            ):
+                supported = supported.join(
+                    SupportStatus.err({
+                        UnsupportReason.CONCENT_REQUIRED: True,
+                    }),
+                )
 
             if not supported.is_ok():
                 logger.debug(
@@ -367,7 +370,10 @@ class TaskServer(
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
-                concent_enabled=self.client.concent_service.enabled,
+
+                concent_enabled=self.client.concent_service.enabled
+                if theader.concent_enabled else False,
+
                 provider_public_key=self.keys_auth.key_id,
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
