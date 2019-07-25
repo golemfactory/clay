@@ -542,9 +542,7 @@ class WasmTaskTypeInfo(CoreTaskTypeInfo):
         except golem.model.Performance.DoesNotExist:
             perf = 1.0
 
-        self.MARKET_STRATEGY.set_my_usage_benchmark(
-            WasmBenchmark.normalization_constant / perf
-        )
+        self.MARKET_STRATEGY.set_my_usage_benchmark(perf)
 
 
 class WasmBenchmark(CoreBenchmark):
