@@ -4,7 +4,6 @@ import datetime
 import enum
 import functools
 import logging
-from operator import itemgetter
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
