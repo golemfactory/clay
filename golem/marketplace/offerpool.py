@@ -53,7 +53,3 @@ class OfferPool:
     @classmethod
     def reset(cls):
         cls._pools = {}
-
-    @classmethod
-    def clear_offers_for_task(cls, task_id):
-        cls._pools.pop(task_id)

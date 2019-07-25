@@ -1,6 +1,6 @@
 from unittest import TestCase
-import pytest
 import sys
+import pytest
 
 from golem.marketplace import scale_price, Offer, OfferPool
 
@@ -27,17 +27,6 @@ class TestOfferPool(TestCase):
 
         with pytest.raises(KeyError):
             OfferPool.choose_offers('aaa')
-
-    def test_empty_after_clear(self):
-        OfferPool.reset()
-
-        offer = self._mock_offer()
-        OfferPool.add('aaa', offer)
-        self.assertEqual(
-            OfferPool.get_task_offer_count('aaa'), 1)
-        OfferPool.clear_offers_for_task('aaa')
-        self.assertEqual(
-            OfferPool.get_task_offer_count('aaa'), 0)
 
     def test_all_tasks_empty_after_reset(self):
         OfferPool.reset()
