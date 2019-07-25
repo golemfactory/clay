@@ -228,7 +228,7 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def task_creation_failed(self, task_id: str, reason: str) -> None:
-        logger.error("Cannot create task. id=%s : %s", task_id, reason)
+        logger.error("Cannot create task. task_id=%s : %s", task_id, reason)
 
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.errorCreating

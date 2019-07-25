@@ -756,14 +756,16 @@ class TestExceptionPropagation(ProviderBase):
             )
 
     @mock.patch('twisted.internet.reactor', mock.Mock())
+    @mock.patch("golem.task.taskmanager.TaskManager.task_creation_failed")
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
-    def test_create_task(self, mock_method, *_):
+    def test_create_task(self, mock_method, creation_failed, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
         mock_method.side_effect = Exception("Test")
 
         result = self.provider.create_task(t.to_dict())
         mock_method.assert_called()
+        creation_failed.assert_called()
         self.assertEqual(result, (None, "Test"))
 
     def test_restart_task(self, *_):
