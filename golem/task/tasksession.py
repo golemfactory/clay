@@ -341,7 +341,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             for offer in OfferPool.choose_offers(task_id):
                 offer.callback()
 
-        if OfferPool.get_task_offer_count(msg.task_id) == 0:
+        OfferPool.add(msg.task_id, offer)
+        logger.debug("Offer accepted & added to pool. offer=%s", offer)
+
+        if OfferPool.get_task_offer_count(msg.task_id) == 1:
             deferred.call_later(
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution,
@@ -352,8 +355,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 self.task_server.config_desc.offer_pooling_interval
             )
-        OfferPool.add(msg.task_id, offer)
-        logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals

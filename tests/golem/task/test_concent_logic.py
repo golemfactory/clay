@@ -5,7 +5,6 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
-import time
 import unittest.mock as mock
 
 from freezegun import freeze_time
@@ -38,6 +37,10 @@ def _fake_get_efficacy():
         def __init__(self):
             self.vector = (.0, .0, .0, .0)
     return A()
+
+
+def _call_in_place(_delay, fn, *args, **kwargs):
+    return fn(*args, **kwargs)
 
 
 @mock.patch("golem.task.tasksession.TaskSession._check_task_header",
@@ -397,6 +400,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
+@mock.patch('golem.core.deferred.call_later', _call_in_place)
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
             mock.Mock(return_value=0.0))
 @mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
@@ -497,12 +501,6 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
             mock.Mock(return_value=667),
         ):
             task_session._react_to_want_to_compute_task(self.msg)
-
-        started = time.time()
-        while send_mock.call_args is None:
-            if time.time() - started > 10:
-                self.fail("Test timed out")
-            time.sleep(0.1)
 
         send_mock.assert_called()
         ttc = send_mock.call_args_list[0][0][0]
