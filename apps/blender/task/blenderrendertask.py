@@ -115,7 +115,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             with handle_opencv_image_error(logger):
-                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y)\
+                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y) \
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):
@@ -441,10 +441,8 @@ class BlenderRenderTask(FrameRenderingTask):
         if self.use_frames:
             if total_tasks <= len(self.frames):
                 return 1
-            else:
-                return max(1, int(total_tasks / len(self.frames)))
-        else:
-            return total_tasks
+            return max(1, int(total_tasks / len(self.frames)))
+        return total_tasks
 
     def get_subtask_y_border(self, start_task):
         parts_in_frame = self.get_parts_in_frame(self.total_tasks)
@@ -693,7 +691,8 @@ def get_min_max_y(part, parts_in_frame, res_y):
         max_y = (parts_in_frame - part + 1) * (1.0 / parts_in_frame)
     else:
         ceiling_height = int(math.ceil(res_y / parts_in_frame))
-        ceiling_subtasks = parts_in_frame - (ceiling_height * parts_in_frame - res_y)
+        ceiling_subtasks = parts_in_frame - \
+            (ceiling_height * parts_in_frame - res_y)
         if part > ceiling_subtasks:
             min_y = (parts_in_frame - part) * (ceiling_height - 1) / res_y
             max_y = (parts_in_frame - part + 1) * (ceiling_height - 1) / res_y
