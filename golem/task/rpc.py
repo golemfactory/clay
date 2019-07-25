@@ -491,13 +491,18 @@ class ClientProvider:
         logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            task.get_total_tasks(),
-            task.header.concent_enabled,
-            force
-        )
         task_id = task.header.task_id
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                task.get_total_tasks(),
+                task.header.concent_enabled,
+                force
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.client.task_manager.task_creation_failed(task_id, str(exc))
+            raise
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
