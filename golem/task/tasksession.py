@@ -319,7 +319,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         market_strategy = get_task_market_strategy(self.task_manager,
                                                    current_task)
 
-        offer = Offer(msg, self.key_id, ProviderPerformance(0),
+        offer = Offer(msg, self.key_id, ProviderPerformance(msg.perf_index),
                       current_task.header.max_price, msg.price)
         callback = functools.partial(self._offer_chosen, True, msg=msg)
         offer_cb_pair = (offer, callback)
