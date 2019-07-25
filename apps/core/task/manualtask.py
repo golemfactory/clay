@@ -2,8 +2,11 @@ import copy
 import logging
 import threading
 
+from golem_messages import message
+
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
+from golem.network.transport.communicator import Communicator
 from golem.task.taskbase import AcceptClientVerdict
 
 
@@ -43,8 +46,15 @@ class ManualTask(CoreTask):
             return self.declared_providers - self.nominated_providers
 
     def nominate_provider(self, node_id):
+        def on_success():
+            logger.info('Successfully nominated {}'.format(node_id))
+
+        def on_error():
+            logger.info('Unsuccessful nomination of {}'.format(node_id))
+
         with self.lock:
-            self.nominated_providers.add(node_id)
+            logger.info('Nominating provider {}'.format(node_id))
+            Communicator.nominate_provider_with_assurance(node_id, self.task_definition.task_id, 360, on_error, on_success, message.tasks.TaskToCompute)
 
     def is_provider_declared(self, node_id):
         with self.lock:

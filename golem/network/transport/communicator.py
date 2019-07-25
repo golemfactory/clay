@@ -1,101 +1,115 @@
-# import twisted.persisted. TODO
+import asyncio
 import functools
+import logging
 import threading
+from asyncio import Event
 from collections import defaultdict
-
-import twisted.internet.reactor
-import twisted.internet.defer
 from golem_messages.message import TaskToCompute
-from twisted.internet import reactor, threads, task
-from twisted.internet.task import Clock
+from pydispatch import dispatcher
 
-from golem.task.tasksession import TaskSession
+logger = logging.getLogger(__name__)
 
 
-class ProviderRejectComputation(Exception):
-    def __init(self, provider_id, task_id):
-        super().__init__('Provider {} does not agree on computation of task {}'
-                         .format(provider_id, task_id))
+class ConnectionEstablished(Event):
+    def __init__(self, loop=None):
+        super().__init__(loop=loop)
+        self._task_session = None
+
+    @property
+    def task_session(self):
+        return self._task_session
+
+    @task_session.setter
+    def task_session(self, task_session):
+        self._task_session = task_session
+
 
 class Communicator:
-    def __init__(self):
-        self.task_sessions = {}
-        self.pending_messages = defaultdict(list)
-        self.computation_rejections = defaultdict(list)
-        self.locks = defaultdict(threading.Lock) # is that dict threadsafe?
+    computation_rejections_events = {}
+    _event_loop = asyncio.new_event_loop()
+    connection_established_events = defaultdict(
+    functools.partial(ConnectionEstablished, loop=_event_loop))
+    # def __init__(self):
 
-    def on_connection_established(self, node_id, task_session):
-        with self.locks.get(node_id):
-            self.task_sessions[node_id] = task_session
-            self._send_pending_messages(node_id)
+    @classmethod
+    def on_connect(cls, node_id, task_session):
+        async def _on_connect():
+            conn_established_event = \
+                cls.connection_established_events.get(node_id)
+            conn_established_event.task_session = task_session
+            conn_established_event.set()
+        logger.info('Node {} connected [task_session={}]'.format(node_id,
+                                                                 task_session))
+        asyncio.run_coroutine_threadsafe(_on_connect(), loop=cls._event_loop)
 
-    def on_disconnect(self, node_id):
-        with self.locks.get(node_id):
-            del self.task_sessions[node_id]
+    @classmethod
+    def on_disconnect(cls, node_id):
+        async def _on_disconnect():
+            conn_established_event = \
+                cls.connection_established_events.get(node_id)
+            conn_established_event.task_session = None
+            conn_established_event.clear()
+        asyncio.run_coroutine_threadsafe(_on_disconnect(),
+                                         loop=cls._event_loop)
 
-    def _send_pending_messages(self, node_id):
-        with self.locks.get(node_id):
-            pending_messages = self.pending_messages.get(node_id)
-            for pending_message in pending_messages:
-                self.send()
+    @classmethod
+    def on_computation_rejected(cls, provider_id, msg : TaskToCompute):
+        async def _on_computation_rejected():
+            event = cls.get_offer_rejected_event(provider_id, msg)
+            event.set()
+        asyncio.run_coroutine_threadsafe(_on_computation_rejected(),
+                                         loop=cls._event_loop)
 
-    def on_computation_rejected(self, provider_id, msg : TaskToCompute):
-        with self.locks.get(provider_id):
-            self.computation_rejections.get(provider_id).append(hash(msg))
+    @classmethod
+    def get_offer_rejected_event(cls, provider_id, msg: TaskToCompute):
+        x = cls.computation_rejections_events.get(provider_id, {})
+        event = x.get(hash(msg), Event())
+        x[hash(msg)] = event
+        return event
 
+    @classmethod
+    def _send(cls, task_session, msg):
+        task_session.send(msg)
 
-    def _send(self, task_session, message, callback, err_callback) -> twisted.Deferred:
-        def __send(task_session, message):
-            return task_session.send(message) # modify TaskSession::send to raise an exception
-        d = threads.deferToThread(__send, task_session, message, err_callback)
-        d.addCallbacks(callback, errback=err_callback, errbackArgs={'node_id': no})
-        return d
+    @classmethod
+    def nominate_provider_with_assurance(cls, provider_id, task_id, timeout,
+                                         on_failure, on_success, msg):
 
-    def _await_for_acceptance(self, node_id, task_id, task_to_compute_msg_hash,
-                              task_acceptance_timeout):
-        # TODO: how to identify taskToCompute
-        def check_if_task_was_rejected():
-            with self.locks.get(node_id):
-                if task_to_compute_msg_hash \
-                        in self.computation_rejections.get(node_id):
-                    raise ProviderRejectComputation(node_id, task_id)
+        async def _nominate():
+            try:
+                logger.info('Communicator::_nominate waiting for connection')
+                conn_established_evt = \
+                    cls.connection_established_events.get(provider_id)
+                await asyncio.wait_for(conn_established_evt.wait(),
+                                       loop=cls._event_loop, timeout=timeout)
+                logger.info('Communicator::_nominate connected')
+            except TimeoutError:
+                logger.info('Cannot connect to provider {}. Timeout [] was '
+                            'reached'.format(provider_id, timeout))
+                cls._event_loop.run_in_executor(None, on_failure)
+                return
+            try:
+                logger.info('Communicator::_nominate send [empty] task to provider')
+                cls._send(conn_established_evt.task_session, msg)
+                offer_rejected_evt = cls.get_offer_rejected_event(provider_id,
+                                                                   msg)
+                logger.info('Communicator:: waiting for acceptance by silence')
 
-        return task.deferLater(reactor, task_acceptance_timeout,
-                               check_if_task_was_rejected, node_id, task_id)
-
-
-    def nominate_provider_with_assurance(self, provider_id, task_id, timeout,
-                                         callback_err, callback_success,
-                                         msg : TaskToCompute):
-        def on_timeout_error():
-            '''
-                Check if message was sent to provider. If yes and there is no rejection we treat it as acceptance
-                If not, callback error,
-            '''
-
-        def sending_failed():
-
-        def sending_succeded():
-
-        with self.locks.get(provider_id):
-            clock = Clock()  # TODO
-            task_session : TaskSession = self.task_sessions.get(provider_id)
-            if task_session:
-                d = self._send(task_session, msg)
-            else:
-                self.pending_messages.get(provider_id, []).append(msg)
-
-            def f():
-
-            deferred = twisted.internet.defer.Deferred()
-            deferred.addTimeout(timeout, clock, onTimeoutCancel=on_timeout_error)
-            d = threads.deferToThread(self._send( msg, user, "np")
-            deferred.callback(result)
-
-            # tu trzymam deferred od wysłania
-            d.chainDeferred(self._await_for_acceptance, provider_id, task_id,
-                            hash(msg))
-            return d
+                await asyncio.wait_for(offer_rejected_evt.wait(),
+                                       loop=cls._event_loop, timeout=timeout)
+                offer_rejected_evt.clear()
+                logger.info('Provider {} eventually resigned from computing '
+                            'the task {}'.format(provider_id, task_id))
+                cls._event_loop.run_in_executor(None, on_failure)
+            except TimeoutError:
+                logger.info('Provider {} decided to compute the task {}'.format(
+                        provider_id, task_id))
+                cls._event_loop.run_in_executor(None, on_success)
+        logger.info('Communicator::nominate_provider_with_assurance')
+        asyncio.run_coroutine_threadsafe(_nominate(), loop=cls._event_loop)
 
 
-
+logger.info('Registering in dispatcher')
+dispatcher.connect(Communicator.on_connect, signal='golem.peer.connected')
+logger.info('Starting event loop')
+threading.Thread(target=Communicator._event_loop.run_forever, daemon=True).start()

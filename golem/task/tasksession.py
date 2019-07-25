@@ -790,6 +790,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             send_hello = True
 
         nodeskeeper.store(msg.node_info)
+        logger.info('Notify listeners by dispatcher that node {} is connected '
+                    '[task_session = {}]'.format(self.key_id, self))
+        dispatcher.send(signal='golem.peer.connected',
+                        node_id=self.key_id, task_session=self)
 
         if send_hello:
             self.send_hello()
