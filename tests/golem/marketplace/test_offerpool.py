@@ -23,33 +23,10 @@ class TestOfferPool(TestCase):
         )
 
     def test_choose_from_empty_pool(self):
-        OfferPool.reset()
-
         with pytest.raises(KeyError):
             OfferPool.choose_offers('aaa')
 
-    def test_all_tasks_empty_after_reset(self):
-        OfferPool.reset()
-
-        offer = self._mock_offer()
-
-        OfferPool.add('aaa', offer)
-        OfferPool.add('bbb', offer)
-        self.assertEqual(
-            OfferPool.get_task_offer_count('aaa'), 1)
-        self.assertEqual(
-            OfferPool.get_task_offer_count('bbb'), 1)
-
-        OfferPool.reset()
-
-        self.assertEqual(
-            OfferPool.get_task_offer_count('aaa'), 0)
-        self.assertEqual(
-            OfferPool.get_task_offer_count('bbb'), 0)
-
     def test_empty_after_choice(self):
-        OfferPool.reset()
-
         offer = self._mock_offer()
         OfferPool.add('aaa', offer)
         OfferPool.add('aaa', offer)
@@ -63,8 +40,6 @@ class TestOfferPool(TestCase):
         )
 
     def test_resolution_length_correct(self):
-        OfferPool.reset()
-
         offer = self._mock_offer()
         OfferPool.add('aaa', offer)
         OfferPool.add('aaa', offer)
