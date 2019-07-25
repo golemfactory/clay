@@ -295,6 +295,11 @@ class SCIBaseTest(ConcentBaseTest):
             chain=self.ethereum_config.CHAIN,
         )
 
+    def tearDown(self):
+        self.requestor_sci.stop()
+        self.provider_sci.stop()
+        super().tearDown()
+
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
             self,

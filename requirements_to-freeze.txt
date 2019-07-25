@@ -11,7 +11,7 @@ certifi
 cffi==1.10.0
 click>=4.0
 crossbar==17.12.1
-dataclasses==0.6
+dataclasses
 distro
 docker==3.5.0
 enforce==0.3.4

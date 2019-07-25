@@ -608,7 +608,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
     def test_receive_subtask_problems(self):
-        ctk = CompTaskKeeper(Path(self.path), False)
+        ctk = CompTaskKeeper(Path(self.path))
         th = get_task_header()
         task_id = th.task_id
         price_bid = 5

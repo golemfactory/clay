@@ -35,8 +35,8 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
-from golem.task import rpc
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
@@ -311,9 +311,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        task = self.task_manager.tasks[msg.task_id]
         offer = Offer(
-            scaled_price=scale_price(task.header.max_price, msg.price),
+            scaled_price=scale_price(msg.task_header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
             quality=get_provider_efficacy(self.key_id).vector,
         )
@@ -340,11 +339,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        task = self.task_manager.tasks[msg.task_id]
-        task_state = self.task_manager.tasks_states[msg.task_id]
         price = taskkeeper.compute_subtask_value(
             msg.price,
-            task.header.subtask_timeout,
+            msg.task_header.subtask_timeout,
         )
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
@@ -356,41 +353,39 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
 
+            task = self.task_manager.tasks[msg.task_id]
             task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
 
-            resources_result = None
             if ctd["resources"]:
-                resources_result = yield rpc.add_resources(
+                resources_result = yield add_resources(
                     self.task_server.client,
                     ctd["resources"],
                     ctd["subtask_id"],
                     common.deadline_to_timeout(ctd["deadline"])
                 )
+                _, _, package_hash, package_size = resources_result
                 # overwrite resources so they are serialized by resource_manager
                 resources = self.task_server.get_resources(ctd['subtask_id'])
                 ctd["resources"] = resources
                 logger.info("resources_result: %r", resources_result)
             else:
                 ctd["resources"] = self.task_server.get_resources(
-                    ctd['subtask_id'],
-                )
+                    ctd['task_id'])
+                task_state = self.task_manager.tasks_states[msg.task_id]
+                package_hash = task_state.package_hash
+                package_size = task_state.package_size
 
             logger.info(
                 "Subtask assigned. %s, subtask_id=%r",
                 task_node_info, ctd["subtask_id"]
             )
-            if resources_result:
-                _, _, package_hash, package_size = resources_result
-            else:
-                package_hash = task_state.package_hash
-                package_size = task_state.package_size
 
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
-                requestor_id=task.header.task_owner.key,
-                requestor_public_key=task.header.task_owner.key,
-                requestor_ethereum_public_key=task.header.task_owner.key,
+                requestor_id=msg.task_header.task_owner.key,
+                requestor_public_key=msg.task_header.task_owner.key,
+                requestor_ethereum_public_key=msg.task_header.task_owner.key,
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
@@ -534,7 +529,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
 
         try:
-            self._check_ctd_params(ctd)
+            self._check_task_header(msg.want_to_compute_task.task_header)
             self._set_env_params(
                 env_id=msg.want_to_compute_task.task_header.environment,
                 ctd=ctd,
@@ -931,9 +926,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd: message.ComputeTaskDef) -> None:
-        header = self.task_manager.comp_task_keeper.get_task_header(
-            ctd['task_id'])
+    def _check_task_header(self, header: message.tasks.TaskHeader) -> None:
         owner = header.task_owner
 
         reasons = message.tasks.CannotComputeTask.REASON

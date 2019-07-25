@@ -22,10 +22,7 @@ from golem_messages.utils import encode_hex
 from pydispatch import dispatcher
 
 import twisted.internet.address
-from twisted.internet.defer import (
-    Deferred,
-    succeed,
-)
+from twisted.internet.defer import Deferred
 
 import golem
 from golem import model, testutils
@@ -390,11 +387,12 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.get_environment_by_id.return_value = \
             self.env
 
-        self.header = self.task_session.task_manager.\
-            comp_task_keeper.get_task_header()
+        self.header = msg_factories.tasks.TaskHeaderFactory()
         self.header.task_owner.key = self.task_session.key_id
         self.header.task_owner.pub_addr = '10.10.10.10'
         self.header.task_owner.pub_port = 1112
+        self.task_session.task_manager.\
+            comp_task_keeper.get_task_header.return_value = self.header
 
         self.reasons = message.tasks.CannotComputeTask.REASON
 
@@ -424,6 +422,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
             compute_task_def=ctd,
             **kwargs,
         )
+        ttc.want_to_compute_task.task_header = self.header
         ttc.want_to_compute_task.provider_public_key = encode_hex(
             self.keys.ecc.raw_pubkey)
         ttc.want_to_compute_task.sign_message(self.keys.ecc.raw_privkey)  # noqa pylint: disable=no-member
@@ -994,6 +993,8 @@ class ReportComputedTaskTest(
             })
         }
         ts.task_server.task_keeper.task_headers = {}
+        ts.task_server.requested_task_manager = \
+            Mock(task_exists=Mock(return_value=False))
         ecc = Mock()
         ecc.get_privkey.return_value = os.urandom(32)
         ts.task_server.keys_auth = keys_auth
@@ -1190,6 +1191,7 @@ class TestOfferChosen(TestCase):
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
     def test_ctd_is_none(self, mock_cat, *_):
         self.ts.task_manager.get_next_subtask.return_value = None
+        self.msg.price = 123
         self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         mock_cat.assert_called_once_with(
             self.msg.task_id,
@@ -1200,25 +1202,21 @@ class TestOfferChosen(TestCase):
     @patch('golem_messages.utils.copy_and_sign')
     @patch('golem.task.tasksession.TaskSession.send')
     @patch('golem.network.history.add')
-    @patch('golem.task.rpc.add_resources')
-    def test_multi_wtct(self, mock_add_resources, *_):
+    def test_multi_wtct(self, *_):
         # given
-        self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
-        ctd = msg_factories.tasks.ComputeTaskDefFactory(resources=None)
-        self.ts.task_manager.get_next_subtask.return_value = ctd
-        mock_add_resources.return_value = succeed(
-            [
-                'path',
-                'to',
-                'package_hash',
-                10,
-            ]
+        self.msg = msg_factories.tasks.WantToComputeTaskFactory(
+            num_subtasks=3,
+            price=123,
         )
-        self.ts.task_server.get_resources.return_value = 'ts resources'
+
+        def ctd(*args, **kwargs):
+            return msg_factories.tasks.ComputeTaskDefFactory(resources=None)
+
+        self.ts.task_manager.get_next_subtask.side_effect = ctd
 
         # when
-        core_deferred.sync_wait(
-            self.ts._offer_chosen(is_chosen=True, msg=self.msg),
+        core_deferred.sync_wait(  # ensure it's actually finished
+            self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         )
 
         # then

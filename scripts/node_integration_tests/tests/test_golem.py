@@ -71,3 +71,13 @@ class GolemNodeTest(NodeTestBase):
 
     def test_lenient_verification(self):
         self._run_test('golem.lenient_verification')
+
+    def test_four_by_three(self):
+        """
+        introduces an uneven division 400 pixels -> 3 subtasks
+        to test for the cropping regressions
+        """
+        self._run_test(
+            'golem.regular_run_stop_on_reject',
+            **{'task-settings': '4-by-3'}
+        )
