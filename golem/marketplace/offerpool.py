@@ -49,7 +49,3 @@ class OfferPool:
     @classmethod
     def get_task_offer_count(cls, task_id: str):
         return len(cls._pools[task_id]) if task_id in cls._pools else 0
-
-    @classmethod
-    def reset(cls):
-        cls._pools = {}
