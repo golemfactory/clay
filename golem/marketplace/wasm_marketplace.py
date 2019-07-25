@@ -29,13 +29,15 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def set_my_usage_benchmark(cls, benchmark: float) -> None:
+        logger.info("RWMS: set_my_usage_benchmark %.3f", benchmark)
         cls._my_usage_benchmark = benchmark
 
     @classmethod
     def get_usage_factor(cls, provider_id, usage_benchmark):
         usage_factor = cls._usage_factors.get(provider_id, None)
         if usage_factor is None:
-            usage_factor = usage_benchmark / cls.get_my_usage_benchmark()
+            # Division goes this way since higher benchmark val means faster processor
+            usage_factor = cls.get_my_usage_benchmark() / usage_benchmark
             if not usage_factor:
                 usage_factor = 1.0
             cls._usage_factors[provider_id] = usage_factor
@@ -45,7 +47,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def resolve_task_offers(cls, task_id: str,
                             key=None) -> Optional[List[Any]]:
-        logger.info("RWMS ordering providers for task: %s", task_id)
+        logger.info("RWMS: ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
             return None
 
@@ -59,6 +61,12 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
                 offer.provider_id,
                 offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
+            logger.info(
+                "RWMS: offer from %s, b=%.3f, R=%.3f, a=%g",
+                offer.provider_id[:8],
+                offer.provider_performance.usage_benchmark,
+                usage_factor,
+                adjusted_price)
             to_sort.append((offer_composite, usage_factor, adjusted_price))
         offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
                          if t[1] <= max_factor]
@@ -86,11 +94,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for pid, delta in deltas.items():
             r = delta * cls._usage_factors[pid]
-            logger.info("Adjust R for provider %s: %.3f -> %.3f",
+            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f",
                         pid[:8], cls._usage_factors[pid], r)
             cls._usage_factors[pid] = r
             if r > cls._max_usage_factor:
-                logger.info("Provider %s has excessive usage factor: %f",
+                logger.info("RWMS: Provider %s has excessive usage factor: %f",
                             pid, r)
 
 
