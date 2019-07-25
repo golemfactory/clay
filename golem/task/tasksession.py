@@ -325,12 +325,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        offer = Offer(
-            scaled_price=scale_price(msg.task_header.max_price, msg.price),
-            reputation=ranking_dbm.get_provider_efficiency(self.key_id),
-            quality=ranking_dbm.get_provider_efficacy(self.key_id).vector,
+        class OfferWithCallback(Offer):
+            def __init__(self, scaled_price, reputation, quality, callback):
+                super().__init__(scaled_price, reputation, quality)
+                self.callback = callback
+
+        offer = OfferWithCallback(
+            scale_price(msg.task_header.max_price, msg.price),
+            ranking_dbm.get_provider_efficiency(self.key_id),
+            ranking_dbm.get_provider_efficacy(self.key_id).vector,
+            functools.partial(self._offer_chosen, True, msg=msg)
         )
-        offer.callback = functools.partial(self._offer_chosen, True, msg=msg)
 
         def resolution(task_id):
             for offer in OfferPool.choose_offers(task_id):
