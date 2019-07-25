@@ -329,11 +329,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         class OfferWithCallback(Offer):
-            def __init__(self,
-                         scaled_price: float,
-                         reputation: float,
-                         quality: Tuple[float, float, float, float],
-                         callback: Callable[..., None]) -> None:
+            def __init__(
+                    self,
+                    scaled_price: float,
+                    reputation: float,
+                    quality: Tuple[float, float, float, float],
+                    callback: Callable[..., None]) -> None:
                 super().__init__(scaled_price, reputation, quality)
                 self.callback = callback
 
