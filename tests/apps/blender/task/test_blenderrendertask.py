@@ -364,7 +364,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                 self.bt.res_y = yres
                 cur_max_y = self.bt.res_y
                 for i in range(1, self.bt.total_tasks + 1):
-                    min_y, max_y = self.bt._get_min_max_y(i)
+                    min_y, max_y = self.bt.get_subtask_y_border(i)
                     min_y = int(float(self.bt.res_y) * min_y)
                     max_y = int(float(self.bt.res_y) * max_y)
                     self.assertTrue(max_y == cur_max_y)
@@ -375,7 +375,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.frames = [4, 5, 10, 11, 12]
         self.bt.total_tasks = 20
         self.bt.res_y = 300
-        assert self.bt._get_min_max_y(2) == (0.5, 0.75)
+        assert self.bt.get_subtask_y_border(2) == (0.5, 0.75)
 
     def test_put_img_together_exr(self):
         for chunks in [1, 5, 7, 11, 13, 31, 57, 100]:
