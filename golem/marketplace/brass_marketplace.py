@@ -35,12 +35,12 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
 
         offers = cls._pools.pop(task_id)
         if key:
-            offers = [key(offer) for offer in offers]
+            extracted_offers = [key(offer) for offer in offers]
 
         permutation = order_providers(
             [BrassMarketOffer(scale_price(offer.max_price, offer.price),
                               offer.reputation, offer.quality)
-             for offer in offers]
+             for offer in extracted_offers]
         )
 
         return [offers[i] for i in permutation]
