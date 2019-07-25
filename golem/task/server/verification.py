@@ -17,6 +17,7 @@ if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.core import keysauth
     from golem.task import taskmanager
+    from golem.task import requestedtaskmanager
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,15 @@ logger = logging.getLogger(__name__)
 class VerificationMixin:
     keys_auth: 'keysauth.KeysAuth'
     task_manager: 'taskmanager.TaskManager'
+    requested_task_manager: 'requestedtaskmanager.RequestedTaskManager'
 
     def verify_results(
             self,
             report_computed_task: message.tasks.ReportComputedTask,
             extracted_package: ExtractedPackage,
     ) -> None:
-
         node = dt_p2p.Node(**report_computed_task.node_info)
+        task_id = report_computed_task.task_id
         subtask_id = report_computed_task.subtask_id
         logger.info(
             'Verifying results. node=%s, subtask_id=%s',
@@ -41,19 +43,13 @@ class VerificationMixin:
             ),
             subtask_id,
         )
-        result_files = extracted_package.get_full_path_files()
 
-        def verification_finished():
+        def verification_finished(
+                is_verification_lenient: bool,
+                verification_failed: bool,
+        ):
             logger.debug("Verification finished handler.")
 
-            task_id = self.task_manager.subtask_to_task(
-                subtask_id, model.Actor.Requestor)
-            is_verification_lenient = (
-                self.task_manager.tasks[task_id]
-                .task_definition.run_verification == RunVerification.lenient)
-
-            verification_failed = \
-                not self.task_manager.verify_subtask(subtask_id)
             if verification_failed:
                 if not is_verification_lenient:
                     logger.debug("Verification failure. subtask_id=%r",
@@ -114,11 +110,30 @@ class VerificationMixin:
                 remote_role=model.Actor.Provider,
             )
 
-        self.task_manager.computed_task_received(
-            subtask_id,
-            result_files,
-            verification_finished
-        )
+        if self.requested_task_manager.task_exists(task_id):
+            verification_failed = not self.requested_task_manager.verify(
+                task_id,
+                subtask_id,
+            )
+            verification_finished(False, verification_failed)
+        else:
+            def verification_finished_old():
+                is_verification_lenient = (
+                    self.task_manager.tasks[task_id].task_definition
+                    .run_verification == RunVerification.lenient)
+                verification_failed = \
+                    not self.task_manager.verify_subtask(subtask_id)
+                verification_finished(
+                    is_verification_lenient,
+                    verification_failed,
+                )
+
+            result_files = extracted_package.get_full_path_files()
+            self.task_manager.computed_task_received(
+                subtask_id,
+                result_files,
+                verification_finished_old,
+            )
 
     def send_result_rejected(
             self,

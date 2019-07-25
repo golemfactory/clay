@@ -32,7 +32,7 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 # pylint: disable=protected-access
 
 
-@mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
+@mock.patch("golem.task.tasksession.TaskSession._check_task_header",
             return_value=True)
 @mock.patch("golem.task.tasksession.TaskSession.send")
 class TaskToComputeConcentTestCase(testutils.TempDirFixture):
@@ -409,6 +409,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.task_session.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
         self.task_session.task_manager.task_finished.return_value = False
+        self.task_session.requested_task_manager.task_exists.return_value = \
+            False
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)

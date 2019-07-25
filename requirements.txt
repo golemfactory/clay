@@ -23,6 +23,7 @@ constantly==15.1.0
 crossbar==19.6.2
 cryptography==2.7
 cytoolz==0.9.0.1
+dataclasses==0.6
 distro==1.3.0
 dnspython==1.15.0
 docker==3.5.0

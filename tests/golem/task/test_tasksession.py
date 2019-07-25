@@ -123,6 +123,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             resource_manager=resource_manager,
             client=server.client
         )
+        server.requested_task_manager = Mock()
+        server.requested_task_manager.task_exists.return_value = False
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
@@ -366,6 +368,9 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = self.keys
+        self.task_session.task_server.requested_task_manager = Mock()
+        self.task_session.task_server.requested_task_manager.task_exists.\
+            return_value = False
         self.task_session.task_server.sessions = {}
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
@@ -387,11 +392,12 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.get_environment_by_id.return_value = \
             self.env
 
-        self.header = self.task_session.task_manager.\
-            comp_task_keeper.get_task_header()
+        self.header = msg_factories.tasks.TaskHeaderFactory()
         self.header.task_owner.key = self.task_session.key_id
         self.header.task_owner.pub_addr = '10.10.10.10'
         self.header.task_owner.pub_port = 1112
+        self.task_session.task_manager.\
+            comp_task_keeper.get_task_header.return_value = self.header
 
         self.reasons = message.tasks.CannotComputeTask.REASON
 
@@ -421,6 +427,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
             compute_task_def=ctd,
             **kwargs,
         )
+        ttc.want_to_compute_task.task_header = self.header
         ttc.want_to_compute_task.provider_public_key = encode_hex(
             self.keys.ecc.raw_pubkey)
         ttc.want_to_compute_task.sign_message(self.keys.ecc.raw_privkey)  # noqa pylint: disable=no-member
@@ -991,6 +998,8 @@ class ReportComputedTaskTest(
             })
         }
         ts.task_server.task_keeper.task_headers = {}
+        ts.task_server.requested_task_manager = \
+            Mock(task_exists=Mock(return_value=False))
         ecc = Mock()
         ecc.get_privkey.return_value = os.urandom(32)
         ts.task_server.keys_auth = keys_auth
@@ -1182,6 +1191,9 @@ class TestOfferChosen(TestCase):
         )
         self.ts = TaskSession(conn)
         self.ts.key_id = 'deadbeef'
+        self.ts.task_server.requested_task_manager = Mock()
+        self.ts.task_server.requested_task_manager.task_exists.return_value = \
+            False
         self.msg = msg_factories.tasks.WantToComputeTaskFactory()
 
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
