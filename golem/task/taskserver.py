@@ -21,6 +21,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
@@ -436,12 +437,25 @@ class TaskServer(
             return False
 
         self.task_computer.task_given(msg.compute_task_def)
-        self.request_resource(
-            msg.task_id,
-            msg.subtask_id,
-            msg.compute_task_def['resources'],
-            msg.resources_options,
-        )
+        if msg.want_to_compute_task.task_header.environment_prerequisites:
+            deferreds = []
+            for resource_id in msg.compute_task_def['resources']:
+                deferreds.append(self.new_resource_manager.download(
+                    resource_id,
+                    self.task_computer.get_task_resources_dir(),
+                    msg.resources_options,
+                ))
+            defer.gatherResults(deferreds).addBoth(
+                lambda _: self.resource_collected(msg.task_id),
+                lambda e: self.resource_failure(msg.task_id, e),
+            )
+        else:
+            self.request_resource(
+                msg.task_id,
+                msg.subtask_id,
+                msg.compute_task_def['resources'],
+                msg.resources_options,
+            )
         self.requested_tasks.clear()
         update_requestor_assigned_sum(msg.requestor_id, msg.price)
         dispatcher.send(
@@ -473,9 +487,15 @@ class TaskServer(
             f'Error downloading resources: {reason}',
         )
 
-    def send_results(self, subtask_id: str, task_id: str, result: List[Path]):
-        if not result:
-            raise ValueError('Not results to send')
+    def send_results(
+            self,
+            subtask_id: str,
+            task_id: str,
+            result: Optional[List[Path]] = None,
+            task_api_result: Optional[Path] = None,
+    ) -> None:
+        if not result and not task_api_result:
+            raise ValueError('No results to send')
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
@@ -495,12 +515,18 @@ class TaskServer(
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result,
+            result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner)
 
-        self._create_and_set_result_package(wtr)
+        if result:
+            self._create_and_set_result_package(wtr)
+        else:
+            resource_id = \
+                sync_wait(self.new_resource_manager.share(task_api_result))
+            wtr.result_hash = resource_id
+
         self.results_to_send[subtask_id] = wtr
 
         Trust.REQUESTED.increase(header.task_owner.key)

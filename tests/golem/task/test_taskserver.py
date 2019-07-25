@@ -35,6 +35,7 @@ from golem.envs import Environment as NewEnv
 from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
+from golem.resource import resourcemanager
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
@@ -1110,6 +1111,24 @@ class TestSendResults(TaskServerTestBase):
 
         trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)
 
+    def test_task_api(self):
+        subtask_id = 'test_subtask_id'
+        task_id = 'test_task_id'
+        filepath = 'test_filepath'
+        self.ts.task_keeper.task_headers[task_id] = Mock()
+        self.ts.new_resource_manager = \
+            Mock(spec=resourcemanager.ResourceManager)
+
+        self.ts.send_results(subtask_id, task_id, task_api_result=filepath)
+
+        self.ts.new_resource_manager.share.assert_called_once_with(filepath)
+        wtr = self.ts.results_to_send[subtask_id]
+        self.assertEqual(
+            self.ts.new_resource_manager.share.return_value,
+            wtr.result_hash,
+        )
+        self.assertEqual(filepath, wtr.result)
+
 
 @patch('golem.task.taskserver.TaskServer.request_resource')
 @patch('golem.task.taskserver.update_requestor_assigned_sum')
@@ -1162,6 +1181,30 @@ class TestTaskGiven(TaskServerTestBase):
         update_requestor_assigned_sum.assert_not_called()
         dispatcher_mock.send.assert_not_called()
         logger_mock.error.assert_called()
+
+    def test_task_api(
+            self, _logger_mock, _dispatcher_mock,
+            _update_requestor_assigned_sum, _request_resource):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        ttc = msg_factories.tasks.TaskToComputeFactory()
+        ttc.want_to_compute_task.task_header.environment_prerequisites = Mock()
+        self.assertTrue(ttc.compute_task_def['resources'])  # noqa pylint: disable=unsubscriptable-object
+        self.ts.new_resource_manager = \
+            Mock(spec=resourcemanager.ResourceManager)
+        self.ts.task_computer._new_computer = Mock()
+
+        self.ts.task_given(ttc)
+
+        for resource in ttc.compute_task_def['resources']:  # noqa pylint: disable=unsubscriptable-object
+            self.ts.new_resource_manager.download.assert_any_call(
+                resource,
+                self.ts.task_computer.get_task_resources_dir.return_value,
+                ttc.resources_options,
+            )
+        self.assertEqual(
+            len(ttc.compute_task_def['resources']),  # noqa pylint: disable=unsubscriptable-object
+            self.ts.new_resource_manager.download.call_count,
+        )
 
 
 @patch('golem.task.taskserver.logger')
