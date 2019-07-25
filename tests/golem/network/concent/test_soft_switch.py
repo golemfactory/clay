@@ -2,7 +2,7 @@ from golem.network.concent import soft_switch
 from golem.tools.testwithdatabase import TestWithDatabase
 
 
-class ContentSwitchTestMixin:
+class ConcentSwitchTestMixin:
     @property
     def _default(self):
         raise NotImplementedError()
@@ -27,7 +27,7 @@ class ContentSwitchTestMixin:
         self.assertFalse(self._is_on())
 
 
-class TestContentSoftSwitch(ContentSwitchTestMixin, TestWithDatabase):
+class TestConcentSoftSwitch(ConcentSwitchTestMixin, TestWithDatabase):
     @property
     def _default(self):
         return False
@@ -39,7 +39,7 @@ class TestContentSoftSwitch(ContentSwitchTestMixin, TestWithDatabase):
         return soft_switch.concent_is_on()
 
 
-class TestContentRequiredAsProvider(ContentSwitchTestMixin, TestWithDatabase):
+class TestConcentRequiredAsProvider(ConcentSwitchTestMixin, TestWithDatabase):
     @property
     def _default(self):
         return True

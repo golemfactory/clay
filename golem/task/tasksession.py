@@ -471,7 +471,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 and not msg.concent_enabled
         ):
             # Provider requires concent
-            # if it's enabed locally and marked as required
+            # if it's enabled locally and marked as required
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:
