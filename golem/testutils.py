@@ -35,6 +35,10 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 logger = logging.getLogger(__name__)
 
 
+class DockerTestJobFailure(Exception):
+    pass
+
+
 class TempDirFixture(unittest.TestCase):
     root_dir = None
 
@@ -216,7 +220,7 @@ class TestTaskIntegration(DatabaseFixture):
         return os.path.isdir(dir_path)
 
     def setUp(self):
-        super(TestTaskIntegration, self).setUp()
+        super().setUp()
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
         # will set this variable to True on the end of test.
@@ -233,6 +237,7 @@ class TestTaskIntegration(DatabaseFixture):
             in range(8))
         self.task = None
         self.dir_manager = DirManager(self.tempdir)
+        print("Tempdir: {}".format(self.tempdir))
 
         # load all apps to be enabled for tests
         app_manager = AppsManager()
@@ -329,6 +334,8 @@ class TestTaskIntegration(DatabaseFixture):
             # computed_task_received
             logger.info("Executing task.accept_results [subtask_id = {}] "
                         "[task_id = {}].".format(subtask_id, task_id))
+
+            self.assertTrue(self.task_manager.verify_subtask(subtask_id))
 
             task.accept_results(subtask_id, list(
                 map(lambda res: outer_dir_path(res), result)))
