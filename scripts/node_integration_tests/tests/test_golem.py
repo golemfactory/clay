@@ -107,4 +107,3 @@ class GolemNodeTest(NodeTestBase):
 
     def test_concent_provider(self):
         self._run_test('golem.concent_provider')
-

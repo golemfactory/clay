@@ -168,9 +168,9 @@ class TestTaskServerConcent(TaskServerTestBase):
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         self.task_header = get_example_task_header(keys_auth.public_key)
         self.task_header.concent_enabled = False
-        self.task_header.sign(private_key=keys_auth._private_key)
+        self.task_header.sign(private_key=keys_auth._private_key)  # noqa pylint:disable=no-value-for-parameter
         self._prepare_handshake(
-            self.task_header.task_owner.key,
+            self.task_header.task_owner.key,  # noqa pylint:disable=no-member
             self.task_header.task_id
         )
         self.ts.add_task_header(self.task_header)

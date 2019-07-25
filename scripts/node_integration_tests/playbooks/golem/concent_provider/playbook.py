@@ -1,5 +1,4 @@
 from functools import partial
-import time
 import typing
 
 from ...base import NodeTestPlaybook

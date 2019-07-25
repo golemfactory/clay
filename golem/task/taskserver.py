@@ -363,8 +363,7 @@ class TaskServer(
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
 
-                concent_enabled=
-                self.client.concent_service.enabled
+                concent_enabled=self.client.concent_service.enabled
                 if theader.concent_enabled else False,
 
                 provider_public_key=self.keys_auth.key_id,
