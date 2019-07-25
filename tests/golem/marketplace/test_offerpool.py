@@ -1,5 +1,6 @@
 from unittest import TestCase
 import sys
+import pytest
 
 from golem.marketplace import scale_price, Offer, OfferPool
 
