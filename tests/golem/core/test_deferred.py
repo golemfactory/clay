@@ -1,10 +1,19 @@
+import asyncio
 import unittest
 from unittest import mock
 
+from twisted.internet import defer
 from twisted.internet.defer import Deferred, succeed, fail
 from twisted.python.failure import Failure
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
-from golem.core.deferred import chain_function, DeferredSeq
+from golem.core.common import install_reactor
+from golem.core.deferred import (
+    chain_function,
+    DeferredSeq,
+    deferred_from_future
+)
+from golem.tools.testwithreactor import uninstall_reactor
 
 
 @mock.patch('golem.core.deferred.deferToThread', lambda x: succeed(x()))
@@ -86,3 +95,77 @@ class TestChainFunction(unittest.TestCase):
         assert result.called
         assert result.result
         assert isinstance(result.result, Failure)
+
+
+class TestDeferredFromFuture(TwistedTestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        uninstall_reactor()  # Because other tests don't clean up
+        install_reactor()
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        uninstall_reactor()
+
+    @defer.inlineCallbacks
+    def test_result(self):
+        future = asyncio.Future()
+        future.set_result(1)
+        deferred = deferred_from_future(future)
+        result = yield deferred
+        self.assertEqual(result, 1)
+
+    @defer.inlineCallbacks
+    def test_exception(self):
+        future = asyncio.Future()
+        future.set_exception(ValueError())
+        deferred = deferred_from_future(future)
+        with self.assertRaises(ValueError):
+            yield deferred
+
+    @defer.inlineCallbacks
+    def test_deferred_cancelled(self):
+        future = asyncio.Future()
+        deferred = deferred_from_future(future)
+        deferred.cancel()
+        with self.assertRaises(defer.CancelledError):
+            yield deferred
+
+    @defer.inlineCallbacks
+    def test_future_cancelled(self):
+        future = asyncio.Future()
+        deferred = deferred_from_future(future)
+        future.cancel()
+        with self.assertRaises(defer.CancelledError):
+            yield deferred
+
+    @defer.inlineCallbacks
+    def test_timed_out(self):
+        from twisted.internet import reactor
+        coroutine = asyncio.sleep(3)
+        future = asyncio.ensure_future(coroutine)
+        deferred = deferred_from_future(future)
+        deferred.addTimeout(1, reactor)
+        with self.assertRaises(defer.TimeoutError):
+            yield deferred
+
+    @defer.inlineCallbacks
+    def test_deferred_with_timeout_cancelled(self):
+        from twisted.internet import reactor
+        future = asyncio.Future()
+        deferred = deferred_from_future(future)
+        deferred.addTimeout(1, reactor)
+        deferred.cancel()
+        with self.assertRaises(defer.CancelledError):
+            yield deferred
+
+    @defer.inlineCallbacks
+    def test_future_with_timeout_cancelled(self):
+        from twisted.internet import reactor
+        future = asyncio.Future()
+        deferred = deferred_from_future(future)
+        deferred.addTimeout(1, reactor)
+        future.cancel()
+        with self.assertRaises(defer.CancelledError):
+            yield deferred
