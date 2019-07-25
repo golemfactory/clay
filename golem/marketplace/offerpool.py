@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import Any, Callable, List, Dict, ClassVar, Tuple, Optional
+from typing import List, Dict, ClassVar, Tuple
 
 from .rust import order_providers
 
@@ -26,42 +26,24 @@ class Offer:
 
 
 class OfferPool:
-    _pools: ClassVar[Dict[str, List[Any]]] = dict()
+    _pools: ClassVar[Dict[str, List[Offer]]] = dict()
 
     @classmethod
-    def add(cls, task_id: str, offer: Any) -> None:
-        """
-        Arguments:
-            task_id {str} -- task_id
-            offer {Any} -- offer can be a composite (tuple,
-                dict, etc.) containing Offer
-        """
+    def add(cls, task_id: str, offer: Offer) -> None:
         if task_id not in cls._pools:
             cls._pools[task_id] = []
         cls._pools[task_id].append(offer)
 
     @classmethod
-    def choose_offers(cls, task_id: str,
-                      key: Optional[Callable[..., Offer]]=None) -> List[Any]:
+    def choose_offers(cls, task_id: str) -> List[Offer]:
         """
         Arguments:
             task_id {str} -- task_id
-
-        Keyword Arguments:
-            key {Callable[..., Offer]} -- Callable used to retrieve
-                Offer from given composites (default: {None})
-
         Returns:
-            List[Any] -- Returns a sorted list of
-                composites as added in `add` method.
+            List[Offer] -- Returns a sorted list of Offers
         """
         offers = cls._pools.pop(task_id)
-        if key:
-            permutation = order_providers(
-                [key(offer) for offer in offers]
-            )
-        else:
-            permutation = order_providers(offers)
+        permutation = order_providers(offers)
         return [offers[i] for i in permutation]
 
     @classmethod
