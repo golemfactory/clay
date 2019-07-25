@@ -1444,7 +1444,8 @@ class TestEnvManager(TaskServerAsyncTestBase):
     @defer.inlineCallbacks
     def test_request_task(self):
         # Given
-        task_header = get_example_task_header("abc")
+
+        task_header = get_example_task_header('abc')
 
         self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
         self.ts.client.concent_service.enabled = False
@@ -1458,7 +1459,9 @@ class TestEnvManager(TaskServerAsyncTestBase):
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
-        self.ts.resource_handshakes[task_header.task_owner.key] = mock_handshake
+        self.ts.resource_handshakes[
+            task_header.task_owner.key  # pylint: disable=no-member
+        ] = mock_handshake
 
         # When
         yield self.ts._request_task(task_header)
@@ -1470,7 +1473,7 @@ class TestEnvManager(TaskServerAsyncTestBase):
     def test_request_task_running_benchmark(self):
         # Given
         performance = None
-        task_header = get_example_task_header("abc")
+        task_header = get_example_task_header('abc')
 
         self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
         self.ts.client.concent_service.enabled = False
@@ -1484,7 +1487,9 @@ class TestEnvManager(TaskServerAsyncTestBase):
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
-        self.ts.resource_handshakes[task_header.task_owner.key] = mock_handshake
+        self.ts.resource_handshakes[
+            task_header.task_owner.key  # pylint: disable=no-member
+        ] = mock_handshake
 
         # When
         result = yield self.ts._request_task(task_header)

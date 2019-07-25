@@ -90,7 +90,7 @@ class TestEnvironmentManager(EnvManagerBaseTest):
         self.assertEqual(pb, self.manager.payload_builder("env1"))
 
 
-class TestEnvironmentManagerDB(
+class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         EnvManagerBaseTest,
         DatabaseFixture,
         TwistedTestCase

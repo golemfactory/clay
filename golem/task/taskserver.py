@@ -269,7 +269,10 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
-    def get_environment_by_id(self, env_id: str) -> Union[OldEnv, NewEnv]:
+    def get_environment_by_id(
+            self,
+            env_id: str
+    ) -> Optional[Union[OldEnv, NewEnv]]:
         """ Looks for the requested env_id in the new, then the old env_manager.
             Returns None when the environment is not found. """
         keeper = self.task_keeper
@@ -293,16 +296,16 @@ class TaskServer(
 
         if time.time() - self._last_task_request_time \
                 < self.config_desc.task_request_interval:
-            return None
+            return
 
         if self.task_computer.has_assigned_task() \
                 or (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
-            return None
+            return
 
         task_header = self.task_keeper.get_task(self.requested_tasks)
         if task_header is None:
-            return None
+            return
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
