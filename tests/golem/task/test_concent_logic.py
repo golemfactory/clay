@@ -409,6 +409,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.task_session.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
         self.task_session.task_manager.task_finished.return_value = False
+        self.task_session.requested_task_manager.task_exists.return_value = \
+            False
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)

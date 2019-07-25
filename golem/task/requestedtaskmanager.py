@@ -21,6 +21,14 @@ class CreateTaskParams:
     concent_enabled: bool
 
 
+@dataclass
+class SubtaskDefinition:
+    subtask_id: SubtaskId
+    resources: List[str]
+    params: Dict[str, Any]
+    deadline: int
+
+
 class RequestedTaskManager:
     def create_task(
             self,
@@ -45,9 +53,35 @@ class RequestedTaskManager:
         """ Return whether task of a given task_id exists. """
         return False
 
+    def is_task_finished(self, task_id: TaskId) -> bool:
+        """ Return True if there is no more computation needed for this
+        task because the task has finished, e.g. completed successfully, timed
+        out, aborted, etc. """
+        raise NotImplementedError
+
+    def get_task_network_resources_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory of the task network resources. """
+        raise NotImplementedError
+
     def get_subtasks_outputs_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory where subtasks outputs should be
         placed. """
+        raise NotImplementedError
+
+    def has_pending_subtasks(self, task_id: TaskId) -> bool:
+        """ Return True is there are pending subtasks waiting for
+        computation at the given moment. Is there are the next call to
+        get_next_subtask will return properly defined subtask. It may happen
+        that after not having any pending subtasks some will become available
+        again, e.g. in case of failed verification a subtask may be marked
+        as pending again. """
+        raise NotImplementedError
+
+    def get_next_subtask(
+            self,
+            task_id: TaskId,
+    ) -> SubtaskDefinition:
+        """ Return a set of data required for subtask computation. """
         raise NotImplementedError
 
     def verify(self, task_id: TaskId, subtask_id: SubtaskId) -> bool:
