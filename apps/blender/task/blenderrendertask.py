@@ -369,7 +369,7 @@ class BlenderRenderTask(FrameRenderingTask):
             frames = self.frames or [1]
             parts = 1
 
-        min_y, max_y = self.get_subtask_y_border(start_task, parts)
+        min_y, max_y = self.get_subtask_y_border(start_task)
 
         crops = [
             {"outfilebasename": "{}_{}".format(
@@ -437,7 +437,17 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[subtask_id]['ctd'] = ctd
         return self.ExtraData(ctd=ctd)
 
-    def get_subtask_y_border(self, start_task, parts_in_frame):
+    def get_parts_in_frame(self, total_tasks):
+        if self.use_frames:
+            if total_tasks <= len(self.frames):
+                return 1
+            else:
+                return max(1, int(total_tasks / len(self.frames)))
+        else:
+            return total_tasks
+
+    def get_subtask_y_border(self, start_task):
+        parts_in_frame = self.get_parts_in_frame(self.total_tasks)
         if not self.use_frames:
             return get_min_max_y(start_task, parts_in_frame, self.res_y)
         elif parts_in_frame > 1:
