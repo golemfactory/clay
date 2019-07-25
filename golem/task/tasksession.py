@@ -4,7 +4,6 @@ import datetime
 import enum
 import functools
 import logging
-from operator import itemgetter
 import time
 from typing import TYPE_CHECKING, Optional
 
@@ -314,14 +313,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reputation=ranking_dbm.get_provider_efficiency(self.key_id),
             quality=ranking_dbm.get_provider_efficacy(self.key_id).vector,
         )
-
-        callback = functools.partial(self._offer_chosen, True, msg=msg)
-        offer_cb_pair = (offer, callback)
+        offer.callback = functools.partial(self._offer_chosen, True, msg=msg)
 
         def resolution(task_id):
-            for offer, cb in OfferPool.\
-                    choose_offers(task_id, key=itemgetter(0)):
-                cb()
+            for offer in OfferPool.choose_offers(task_id):
+                offer.callback()
 
         if OfferPool.get_task_offer_count(msg.task_id) == 0:
             deferred.call_later(
@@ -334,7 +330,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 self.task_server.config_desc.offer_pooling_interval
             )
-        OfferPool.add(msg.task_id, offer_cb_pair)
+        OfferPool.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
     @defer.inlineCallbacks
