@@ -427,7 +427,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
         (
             (video, subtasks_count)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for subtasks_count in (1, 6, 10)
+            for subtasks_count in (1, 6, 10, video['key_frames'])
         ),
         testcase_func_name=lambda testcase_func, param_num, param: (
             f"{testcase_func.__name__}_{param_num}_of_"
