@@ -135,6 +135,73 @@ class TaskServerTestBase(LogTestCase,
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
+    def _prepare_handshake(self, task_owner_key, task_id):
+        self.ts.start_handshake(
+            key_id=task_owner_key,
+            task_id=task_id,
+        )
+        handshake = self.ts.resource_handshakes[task_owner_key]
+        handshake.local_result = True
+        handshake.remote_result = True
+
+    def _prepare_keys_auth(self):
+        self.ts.keys_auth.key_id = '0'*128
+        self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
+
+    def _prepare_env(self, *,
+                     min_accepted_perf: int = DEFAULT_MIN_ACCEPTED_PERF) \
+            -> None:
+        env = Mock()
+        env.get_min_accepted_performance.return_value = min_accepted_perf
+        env.get_performance = Mock(return_value=0.0)
+        self.ts.get_environment_by_id = Mock(return_value=env)
+
+
+class TestTaskServerConcent(TaskServerTestBase):
+    def setUp(self, *_):
+        super().setUp(*_)
+        self._prepare_env()
+        self.ts.config_desc.min_price = 0
+        self.ts.task_archiver = Mock()
+        self.ts._last_task_request_time = 0.0
+        self._prepare_keys_auth()
+        keys_auth = KeysAuth(self.path, 'prv_key', '')
+        self.task_header = get_example_task_header(keys_auth.public_key)
+        self.task_header.concent_enabled = False
+        self.task_header.sign(private_key=keys_auth._private_key)
+        self._prepare_handshake(
+            self.task_header.task_owner.key,
+            self.task_header.task_id
+        )
+        self.ts.add_task_header(self.task_header)
+
+    @patch(
+        "golem.task.taskserver.TaskServer.should_accept_requestor",
+        return_value=SupportStatus(True),
+    )
+    def test_request_task_concent_required(self, *_):
+        self.ts.client.concent_service.enabled = True
+        self.assertIsNone(self.ts._request_random_task())
+        self.ts.task_archiver.add_support_status.assert_called_once_with(
+            self.task_header.task_id,
+            SupportStatus(
+                False,
+                {UnsupportReason.CONCENT_REQUIRED: True},
+            ),
+        )
+
+    @patch(
+        "golem.task.taskserver.TaskServer.should_accept_requestor",
+        return_value=SupportStatus(True),
+    )
+    def test_request_task_concent_enabled_but_not_required(self, *_):
+        self.ts.client.concent_service.enabled = True
+        self.ts.client.concent_service.required_as_provider = False
+        self.assertEqual(
+            self.ts._request_random_task(),
+            self.task_header.task_id
+        )
+
 
 class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
     @patch('twisted.internet.task', create=True)
@@ -168,16 +235,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header.task_id
         task_owner_key = task_header.task_owner.key  # pylint: disable=no-member
-        self.ts.start_handshake(
-            key_id=task_owner_key,
-            task_id=task_id,
-        )
-        handshake = self.ts.resource_handshakes[task_owner_key]
-        handshake.local_result = True
-        handshake.remote_result = True
+
+        self._prepare_handshake(task_owner_key, task_id)
+
         self.ts.get_environment_by_id = Mock(return_value=None)
-        self.ts.keys_auth.key_id = '0'*128
-        self.ts.keys_auth.eth_addr = pubkey_to_address('0' * 128)
+        self._prepare_keys_auth()
         ts.add_task_header(task_header)
         self.assertEqual(ts._request_random_task(), task_id)
         self.assertIn(task_id, ts.requested_tasks)
@@ -235,30 +297,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 False,
                 {UnsupportReason.DENY_LIST: keys_auth.key_id}))
         assert ts.remove_task_header(task_id5)
-
-    @patch(
-        "golem.task.taskserver.TaskServer.should_accept_requestor",
-        return_value=SupportStatus(True),
-    )
-    def test_request_task_concent_required(self, *_):
-        self.ts.config_desc.min_price = 0
-        self.ts.client.concent_service.enabled = True
-        self.ts.task_archiver = Mock()
-        self.ts._last_task_request_time = 0.0
-        keys_auth = KeysAuth(self.path, 'prv_key', '')
-        task_header = get_example_task_header(keys_auth.public_key)
-        task_header.concent_enabled = False
-        task_header.sign(private_key=keys_auth._private_key)
-        self.ts.add_task_header(task_header)
-
-        self.assertIsNone(self.ts._request_random_task())
-        self.ts.task_archiver.add_support_status.assert_called_once_with(
-            task_header.task_id,
-            SupportStatus(
-                False,
-                {UnsupportReason.CONCENT_REQUIRED: True},
-            ),
-        )
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, mock_sync_pending, *_):
@@ -343,13 +381,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             task_id='tid',
             reason='not my task',
             details=None)
-
-    def _prepare_env(self, *,
-                     min_accepted_perf: int = DEFAULT_MIN_ACCEPTED_PERF) \
-            -> None:
-        env = Mock()
-        env.get_min_accepted_performance.return_value = min_accepted_perf
-        self.ts.get_environment_by_id = Mock(return_value=env)
 
     def test_should_accept_provider_insufficient_performance(self, *_args):
         # given
