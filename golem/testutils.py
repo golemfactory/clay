@@ -6,6 +6,7 @@ import shutil
 import string
 import tempfile
 import unittest
+import threading
 from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
@@ -17,6 +18,8 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
+from apps.core.verification_queue import VerificationQueue
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.fileshelper import outer_dir_path
 from golem.core.keysauth import KeysAuth
@@ -208,6 +211,41 @@ def async_test(coro):
 
 
 
+class VerificationWait:
+
+    def __init__(self, task: Task, subtask_id):
+        self.task = task
+        self.subtask_id = subtask_id
+        self.condition_var = threading.Condition(threading.RLock())
+
+        self.is_finished = False
+
+    def wait_until_finished(self, timeout=10) -> None:
+        with self.condition_var:
+            while not self.is_finished:
+                # If timeout is set to None, we wait for ethernity.
+                timeouted = not self.condition_var.wait(timeout=timeout)
+                
+                # This implementation can wait much longer then timeout,
+                # because we are in loop and timeout is always restarted,
+                # but who cares.
+                if timeouted:
+                    return
+
+    def on_verification_finished(self):
+
+        task_id = self.task.task_definition.task_id
+        logger.info("Verification of [subtask_id = {}] "
+                    "[task_id = {}] callback called.".format(self.subtask_id,
+                                                             task_id))
+
+        with self.condition_var:
+            from twisted.internet import reactor
+            reactor.stop()
+
+            self.is_finished = True
+            self.condition_var.notify()
+
 
 class TestTaskIntegration(DatabaseFixture):
 
@@ -221,6 +259,8 @@ class TestTaskIntegration(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
+
+        CoreTask.VERIFICATION_QUEUE = VerificationQueue()
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
         # will set this variable to True on the end of test.
@@ -325,24 +365,56 @@ class TestTaskIntegration(DatabaseFixture):
                         "[subtask_id = {}] [task_id = {}].".format(subtask_id,
                                                                    task_id))
 
-            self.task_manager.computed_task_received(
-                subtask_id=subtask_id,
-                result=result,
-                verification_finished=None)
-
-            # all results are moved to the parent dir inside
-            # computed_task_received
-            logger.info("Executing task.accept_results [subtask_id = {}] "
-                        "[task_id = {}].".format(subtask_id, task_id))
-
-            self.assertTrue(self.task_manager.verify_subtask(subtask_id))
-
-            task.accept_results(subtask_id, list(
-                map(lambda res: outer_dir_path(res), result)))
+            self.verify_subtask(task, subtask_id, result)
 
         return task
 
-    def _execute_subtask(self, task, ctd):
+    def verify_subtask(self, task: Task, subtask_id, result):
+        task_id = task.task_definition.task_id
+
+        verification_lock = VerificationWait(task, subtask_id)
+
+        def verification_callback():
+            logger.info("Blaaaaaaaaaaaaaaaaaaaaaaaa callaback")
+            verification_lock.on_verification_finished()
+
+        self.task_manager.computed_task_received(
+            subtask_id=subtask_id,
+            result=result,
+            verification_finished=verification_callback)
+
+        #verification_lock.wait_until_finished(timeout=10)
+        self._run_reactor_events()
+        verification_lock.wait_until_finished(timeout=10)
+
+        # all results are moved to the parent dir inside
+        # computed_task_received
+        logger.info("Executing task.accept_results [subtask_id = {}] "
+                    "[task_id = {}].".format(subtask_id, task_id))
+
+        # task.accept_results(subtask_id, list(
+        #     map(lambda res: outer_dir_path(res), result)))
+
+        self.assertTrue(self.task_manager.verify_subtask(subtask_id))
+
+    def _run_reactor_events(self):
+        # We must stop reactor to reach code after reactor.run.
+        # But there's problem that reactor is not restartable.
+        # To workaround is described here:
+        # http://www.blog.pythonlibrary.org/2016/09/14/restarting-a-twisted-reactor/
+        try:
+            from twisted.internet import reactor
+            reactor.run()
+        except Exception as e:
+            import sys
+            if sys.modules.get('twisted.internet.reactor', None) is not None:
+                del sys.modules['twisted.internet.reactor']
+                from twisted.internet import reactor
+                from twisted.internet import default
+                default.install()
+
+
+    def _execute_subtask(self, task: Task, ctd: dict):
 
         extra_data = ctd["extra_data"]
         provider_tempdir = self._get_provider_dir(ctd["subtask_id"])
