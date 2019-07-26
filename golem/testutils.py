@@ -341,6 +341,16 @@ class TestTaskIntegration(DatabaseFixture):
         return requestor_results
 
     def execute_task(self, task_def):
+
+        task: Task = self.start_task(task_def)
+
+        for i in range(task.task_definition.subtasks_count):
+            result, subtask_id, _ = self.compute_next_subtask(task, i)
+            self.verify_subtask(task, subtask_id, result)
+
+        return task
+
+    def start_task(self, task_def):
         task: Task = self._add_task(task_def)
         task_id = task.task_definition.task_id
 
@@ -348,37 +358,36 @@ class TestTaskIntegration(DatabaseFixture):
                     "on mocked provider.".format(task_id))
 
         self.task_manager.start_task(task_id)
-        for i in range(task.task_definition.subtasks_count):
-            ctd: ComputeTaskDef = self.task_manager. \
-                get_next_subtask(node_id=self.node_id,
-                                 task_id=task.task_definition.task_id,
-                                 estimated_performance=1000,
-                                 price=int(
-                                     task.price /
-                                     task.task_definition.subtasks_count),
-                                 offer_hash="blaa offeeeeer {}".format(i))
-
-            subtask_id = ctd["subtask_id"]
-
-            logger.info("Executing test subtask {}/{} [subtask_id = {}] "
-                        "[task_id = {}] on mocked provider.".format(
-                            i+1, task.task_definition.subtasks_count,
-                            subtask_id, task_id))
-
-            result = self._execute_subtask(task, ctd)
-            result = self._collect_results_from_provider(result,
-                                                         task_id, subtask_id)
-
-            logger.info("Executing TaskManager.computed_task_received "
-                        "[subtask_id = {}] [task_id = {}].".format(subtask_id,
-                                                                   task_id))
-
-            self.verify_subtask(task, subtask_id, result)
-
         return task
+
+    def compute_next_subtask(self, task: Task, subtask_num: int):
+        task_id = task.task_definition.task_id
+        i = subtask_num
+
+        ctd: ComputeTaskDef = self.task_manager. \
+            get_next_subtask(node_id=self.node_id,
+                             task_id=task.task_definition.task_id,
+                             estimated_performance=1000,
+                             price=int(
+                                 task.price /
+                                 task.task_definition.subtasks_count),
+                             offer_hash="blaa offeeeeer {}".format(i))
+
+        subtask_id = ctd["subtask_id"]
+
+        logger.info("Executing test subtask {}/{} [subtask_id = {}] "
+                    "[task_id = {}] on mocked provider.".format(
+                        subtask_num+1, task.task_definition.subtasks_count,
+                        subtask_id, task_id))
+
+        result = self._execute_subtask(task, ctd)
+        result = self._collect_results_from_provider(result,
+                                                     task_id, subtask_id)
+        return result, subtask_id, ctd
 
     def verify_subtask(self, task: Task, subtask_id, result):
 
+        task_id = task.task_definition.task_id
         verification_lock = VerificationWait(task, subtask_id)
 
         # We must clean reactor, before we call function which adds
@@ -391,6 +400,10 @@ class TestTaskIntegration(DatabaseFixture):
             reactor.callFromThread(reactor.stop)
 
             verification_lock.on_verification_finished()
+
+        logger.info("Executing TaskManager.computed_task_received "
+                    "[subtask_id = {}] [task_id = {}].".format(subtask_id,
+                                                               task_id))
 
         self.task_manager.computed_task_received(
             subtask_id=subtask_id,
