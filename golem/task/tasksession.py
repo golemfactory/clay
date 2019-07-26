@@ -597,7 +597,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         self.task_manager.comp_task_keeper.receive_subtask(msg)
-        if not self.task_server.task_given(self.key_id, ctd, msg.price):
+        if not self.task_server.task_given(msg):
             _cannot_compute(None)
             return
 

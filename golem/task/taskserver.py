@@ -388,27 +388,26 @@ class TaskServer(
 
     def task_given(
             self,
-            node_id: str,
-            ctd: message.ComputeTaskDef,
-            price: int
+            msg: message.tasks.TaskToCompute,
     ) -> bool:
         if self.task_computer.has_assigned_task():
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
-        self.task_computer.task_given(ctd)
+        self.task_computer.task_given(msg.compute_task_def)
         self.request_resource(
-            ctd['task_id'],
-            ctd['subtask_id'],
-            ctd['resources'],
+            msg.task_id,
+            msg.subtask_id,
+            msg.compute_task_def['resources'],
+            msg.resources_options,
         )
         self.requested_tasks.clear()
-        update_requestor_assigned_sum(node_id, price)
+        update_requestor_assigned_sum(msg.requestor_id, msg.price)
         dispatcher.send(
             signal='golem.subtask',
             event='started',
-            subtask_id=ctd['subtask_id'],
-            price=price,
+            subtask_id=msg.subtask_id,
+            price=msg.price,
         )
         return True
 

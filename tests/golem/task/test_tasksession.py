@@ -458,11 +458,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         ttc = self.ttc_prepare_and_react(ctd)
         self.task_session.task_manager.\
             comp_task_keeper.receive_subtask.assert_called_with(ttc)
-        self.task_session.task_server.task_given.assert_called_with(
-            self.header.task_owner.key,
-            ctd,
-            ttc.price,
-        )
+        self.task_session.task_server.task_given.assert_called_with(ttc)
         self.conn.close.assert_not_called()
 
     def test_no_ctd(self, *_):
@@ -496,17 +492,6 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         # Wrong data size -> failure
         self.ttc_prepare_and_react(resource_size=1024)
         self.assertCannotComputeTask(self.reasons.ResourcesTooBig)
-
-    def test_ctd_custom_code(self):
-        # Allow custom code / code in ComputerTaskDef -> proper execution
-        ctd = self.ctd(extra_data__src_code="print 'Hello world!'")
-        ttc = self.ttc_prepare_and_react(ctd)
-        self.task_session.task_server.task_given.assert_called_with(
-            self.header.task_owner.key,
-            ctd,
-            ttc.price,
-        )
-        self.conn.close.assert_not_called()
 
     def test_fail_no_environment_available(self):
         # No environment available -> failure
