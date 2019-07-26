@@ -220,7 +220,7 @@ class VerificationWait:
 
         self.is_finished = False
 
-    def wait_until_finished(self, timeout=10) -> None:
+    def wait_until_finished(self, timeout=10) -> bool:
         with self.condition_var:
             while not self.is_finished:
                 # If timeout is set to None, we wait for ethernity.
@@ -230,7 +230,8 @@ class VerificationWait:
                 # because we are in loop and timeout is always restarted,
                 # but who cares.
                 if timeouted:
-                    return
+                    return False
+        return True
 
     def on_verification_finished(self):
 
@@ -240,11 +241,12 @@ class VerificationWait:
                                                              task_id))
 
         with self.condition_var:
-            from twisted.internet import reactor
-            reactor.stop()
-
             self.is_finished = True
-            self.condition_var.notify()
+
+            from twisted.internet import reactor
+            reactor.callFromThread(reactor.stop)
+
+            self.condition_var.notify_all()
 
 
 class TestTaskIntegration(DatabaseFixture):
@@ -299,6 +301,12 @@ class TestTaskIntegration(DatabaseFixture):
                                             apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
+        self.verification_timeout = 100
+
+    def tearDown(self):
+        if self.REMOVE_TMP_DIRS:
+            if os.path.isdir(self.tempdir):
+                shutil.rmtree(self.tempdir)
 
     def _add_task(self, task_dict):
 
@@ -370,12 +378,18 @@ class TestTaskIntegration(DatabaseFixture):
         return task
 
     def verify_subtask(self, task: Task, subtask_id, result):
-        task_id = task.task_definition.task_id
 
         verification_lock = VerificationWait(task, subtask_id)
 
+        # We must clean reactor, before we call function which adds
+        # callbacks to reactor, otherwise we will remove them.
+        self._clean_reactor()
+
         def verification_callback():
-            logger.info("Blaaaaaaaaaaaaaaaaaaaaaaaa callaback")
+            # Stop reactor to unlock thread.
+            from twisted.internet import reactor
+            reactor.callFromThread(reactor.stop)
+
             verification_lock.on_verification_finished()
 
         self.task_manager.computed_task_received(
@@ -383,36 +397,15 @@ class TestTaskIntegration(DatabaseFixture):
             result=result,
             verification_finished=verification_callback)
 
-        #verification_lock.wait_until_finished(timeout=10)
         self._run_reactor_events()
-        verification_lock.wait_until_finished(timeout=10)
 
-        # all results are moved to the parent dir inside
-        # computed_task_received
-        logger.info("Executing task.accept_results [subtask_id = {}] "
-                    "[task_id = {}].".format(subtask_id, task_id))
+        logger.debug("Stop processing reactor events and waiting on lock for verification.")
 
-        # task.accept_results(subtask_id, list(
-        #     map(lambda res: outer_dir_path(res), result)))
+        timeouted = not verification_lock.wait_until_finished(
+            timeout=self.verification_timeout)
 
+        self.assertFalse(timeouted)
         self.assertTrue(self.task_manager.verify_subtask(subtask_id))
-
-    def _run_reactor_events(self):
-        # We must stop reactor to reach code after reactor.run.
-        # But there's problem that reactor is not restartable.
-        # To workaround is described here:
-        # http://www.blog.pythonlibrary.org/2016/09/14/restarting-a-twisted-reactor/
-        try:
-            from twisted.internet import reactor
-            reactor.run()
-        except Exception as e:
-            import sys
-            if sys.modules.get('twisted.internet.reactor', None) is not None:
-                del sys.modules['twisted.internet.reactor']
-                from twisted.internet import reactor
-                from twisted.internet import default
-                default.install()
-
 
     def _execute_subtask(self, task: Task, ctd: dict):
 
@@ -501,7 +494,23 @@ class TestTaskIntegration(DatabaseFixture):
 
         return dtt.result.get('data')
 
-    def tearDown(self):
-        if self.REMOVE_TMP_DIRS:
-            if os.path.isdir(self.tempdir):
-                shutil.rmtree(self.tempdir)
+
+    def _run_reactor_events(self):
+        # We must stop reactor to reach code after reactor.run.
+        # But there's problem that reactor is not restartable.
+        # To workaround is described here:
+        # http://www.blog.pythonlibrary.org/2016/09/14/restarting-a-twisted-reactor/
+        try:
+            from twisted.internet import reactor
+            reactor.run()
+        except Exception as e:
+            self._clean_reactor()
+
+    def _clean_reactor(self):
+        import sys
+        if sys.modules.get('twisted.internet.reactor', None) is not None:
+            del sys.modules['twisted.internet.reactor']
+            from twisted.internet import reactor
+            from twisted.internet import default
+            default.install()
+

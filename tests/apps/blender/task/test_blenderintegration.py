@@ -62,4 +62,4 @@ class TestBlenderIntegration(TestTaskIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-        assert False
+        #assert False
