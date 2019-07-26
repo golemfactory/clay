@@ -62,10 +62,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
                 offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
             logger.info(
-                "RWMS: offer from %s, b=%.3f, R=%.3f, a=%g",
+                "RWMS: offer from %s, b=%.1f, R=%.3f, price=%d Gwei, a=%g",
                 offer.provider_id[:8],
                 offer.provider_performance.usage_benchmark,
                 usage_factor,
+                offer.price/10**9,
                 adjusted_price)
             to_sort.append((offer_composite, usage_factor, adjusted_price))
         offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
