@@ -1,4 +1,5 @@
 import pathlib
+import os
 import logging
 from typing import List
 
@@ -14,12 +15,19 @@ logger = logging.getLogger(__name__)
 @ci_skip
 class TestBlenderIntegration(TestTaskIntegration):
 
-
     @classmethod
     def _get_test_scene(cls) -> pathlib.Path:
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
         return str(scene_file)
+
+    @classmethod
+    def _get_chessboard_scene(cls):
+        return os.path.join(
+            get_golem_path(),
+            'tests/apps/blender/verification/test_data/'
+            'chessboard_400x400.blend'
+        )
 
     def _task_dictionary(  # pylint: disable=too-many-arguments
             self,
@@ -53,7 +61,7 @@ class TestBlenderIntegration(TestTaskIntegration):
         return task_def_for_blender
 
     def test_full_task_flow(self):
-        task_def = self._task_dictionary(scene_file=self._get_test_scene(),
+        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=[400, 400],
                                          subtasks_count=3)
 
@@ -62,4 +70,3 @@ class TestBlenderIntegration(TestTaskIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-        #assert False

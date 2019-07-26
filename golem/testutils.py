@@ -308,45 +308,12 @@ class TestTaskIntegration(DatabaseFixture):
             if os.path.isdir(self.tempdir):
                 shutil.rmtree(self.tempdir)
 
-    def _add_task(self, task_dict):
-
-        task = self.task_manager.create_task(task_dict)
-        self.task_manager.add_new_task(task)
-        self.task_manager.initialize_task(task)
-        return task
-
-    def _get_provider_dir(self, subtask_id):
-        return os.path.join(self.tempdir, "mock-provider", subtask_id)
-
-    def _collect_results_from_provider(self, results, task_id, subtask_id):
-
-        logger.info("Collecting results from mock provider {}".format(
-            str(results)))
-
-        task_dir = self.dir_manager.get_task_temporary_dir(task_id)
-        subtasks_results_dir = os.path.join(task_dir, subtask_id)
-
-        requestor_results = [os.path.join(
-            subtasks_results_dir,
-            os.path.basename(result)) for result in results]
-
-        for provider_result, requestor_result in zip(results,
-                                                     requestor_results):
-            os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
-            shutil.move(provider_result, requestor_result)
-
-        logger.info("Collected results from mock provider moved to {}".format(
-            str(requestor_results)))
-
-        return requestor_results
-
     def execute_task(self, task_def):
-
         task: Task = self.start_task(task_def)
 
         for i in range(task.task_definition.subtasks_count):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
-            self.verify_subtask(task, subtask_id, result)
+            self.assertTrue(self.verify_subtask(task, subtask_id, result))
 
         return task
 
@@ -386,7 +353,6 @@ class TestTaskIntegration(DatabaseFixture):
         return result, subtask_id, ctd
 
     def verify_subtask(self, task: Task, subtask_id, result):
-
         task_id = task.task_definition.task_id
         verification_lock = VerificationWait(task, subtask_id)
 
@@ -418,7 +384,7 @@ class TestTaskIntegration(DatabaseFixture):
             timeout=self.verification_timeout)
 
         self.assertFalse(timeouted)
-        self.assertTrue(self.task_manager.verify_subtask(subtask_id))
+        return self.task_manager.verify_subtask(subtask_id)
 
     def _execute_subtask(self, task: Task, ctd: dict):
 
@@ -507,6 +473,37 @@ class TestTaskIntegration(DatabaseFixture):
 
         return dtt.result.get('data')
 
+    def _add_task(self, task_dict):
+
+        task = self.task_manager.create_task(task_dict)
+        self.task_manager.add_new_task(task)
+        self.task_manager.initialize_task(task)
+        return task
+
+    def _get_provider_dir(self, subtask_id):
+        return os.path.join(self.tempdir, "mock-provider", subtask_id)
+
+    def _collect_results_from_provider(self, results, task_id, subtask_id):
+
+        logger.info("Collecting results from mock provider {}".format(
+            str(results)))
+
+        task_dir = self.dir_manager.get_task_temporary_dir(task_id)
+        subtasks_results_dir = os.path.join(task_dir, subtask_id)
+
+        requestor_results = [os.path.join(
+            subtasks_results_dir,
+            os.path.basename(result)) for result in results]
+
+        for provider_result, requestor_result in zip(results,
+                                                     requestor_results):
+            os.makedirs(os.path.dirname(requestor_result), exist_ok=True)
+            shutil.move(provider_result, requestor_result)
+
+        logger.info("Collected results from mock provider moved to {}".format(
+            str(requestor_results)))
+
+        return requestor_results
 
     def _run_reactor_events(self):
         # We must stop reactor to reach code after reactor.run.
