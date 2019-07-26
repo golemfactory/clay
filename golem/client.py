@@ -137,6 +137,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             key=self.keys_auth.key_id,
         )
 
+        pub_key = self.keys_auth.key_id 
+        pub_key_short = pub_key[:16] + '...' + pub_key[-16:]
+
+        golem.tools.talkback.update_sentry_user(id=pub_key_short,node_name=self.config_desc.node_name)
+        print('node_id=', self.keys_auth.key_id)
+
         self.p2pservice = None
         self.diag_service = None
 

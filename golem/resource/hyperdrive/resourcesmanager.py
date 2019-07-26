@@ -2,6 +2,7 @@ import logging
 
 import os
 import typing
+import golem.tools.talkback
 from collections import Iterable, Sized
 from functools import partial
 from twisted.internet.defer import Deferred
