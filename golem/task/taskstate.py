@@ -53,7 +53,7 @@ class TaskState:
             'time_remaining': self.remaining_time,
             'last_updated': getattr(self, 'last_update_time', None),
             'status': self.status.value,
-            'status_message': self.status_message,
+            'status_message': getattr(self, 'status_message', None),
             'estimated_cost': getattr(self, 'estimated_cost', None),
             'estimated_fee': getattr(self, 'estimated_fee', None)
         }
