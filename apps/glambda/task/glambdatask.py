@@ -62,7 +62,6 @@ class GLambdaTask(CoreTask):
         EXTERNALLY_VERIFIED = "External"
 
     ENVIRONMENT_CLASS = GLambdaTaskEnvironment
-    MAX_PENDING_CLIENT_RESULTS = 1
     SUBTASK_CALLBACKS: Dict[str, Any] = {}
 
     # pylint:disable=too-many-arguments
@@ -75,7 +74,6 @@ class GLambdaTask(CoreTask):
                  total_tasks=1) -> None:
         super().__init__(task_definition,
                          owner,
-                         self.MAX_PENDING_CLIENT_RESULTS,
                          resource_size,
                          root_path,
                          total_tasks)

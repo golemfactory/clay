@@ -20,6 +20,24 @@ _TASK_SETTINGS = {
             ]
         }
     },
+    '4-by-3': {
+        'type': "Blender",
+        'name': 'test task',
+        'timeout': "0:15:00",
+        "subtask_timeout": "0:09:50",
+        "subtasks_count": 6,
+        "bid": 1.0,
+        "resources": [],
+        "options": {
+            "output_path": '',
+            "format": "PNG",
+            "resolution": [
+                400,
+                400,
+            ],
+            'frames': '1-2',
+        }
+    },
     '2_short': {
         'type': "Blender",
         'name': 'test task',
@@ -141,7 +159,28 @@ _TASK_SETTINGS = {
             'samples': 32,
         }
     },
-
+    'WASM_g_flite': {
+        'type': "wasm",
+        'name': 'my_wasm_g_flite_task',
+        'timeout': "0:15:00",
+        "subtask_timeout": "0:15:00",
+        "bid": 1,
+        "resources": [],
+        'options': {
+            'js_name': 'flite.js',
+            'subtasks': {
+                'subtask0': {
+                    'exec_args': ['in.txt', 'in.wav'],
+                    'output_file_paths': ['in.wav']
+                },
+                'subtask1': {
+                    'exec_args': ['in.txt', 'in.wav'],
+                    'output_file_paths': ['in.wav']
+                }
+            },
+            'wasm_name': 'flite.wasm'
+        },
+    },
 }
 
 
