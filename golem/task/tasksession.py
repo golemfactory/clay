@@ -333,7 +333,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                          scaled_price: float,
                          reputation: float,
                          quality: Tuple[float, float, float, float],
-                         callback: Callable[[...], None]) -> None:
+                         callback: Callable[..., None]) -> None:
                 super().__init__(scaled_price, reputation, quality)
                 self.callback = callback
 
