@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator, Tuple
+    Optional, Generator
 )
 
 from ethereum.utils import denoms
