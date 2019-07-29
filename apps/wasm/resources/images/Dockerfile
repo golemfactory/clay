@@ -4,12 +4,12 @@ RUN apt -y update && apt -y install autoconf2.13 clang-6.0 --no-install-recommen
 
 RUN git clone https://github.com/golemfactory/sp-wasm.git
 WORKDIR /sp-wasm
-RUN git checkout tags/0.2.1
+RUN git checkout tags/0.4.0
 ENV SHELL=/bin/bash
 ENV CC=clang-6.0
 ENV CPP="clang-6.0 -E"
 ENV CXX=clang++-6.0
-RUN cargo install --path /sp-wasm/sp-wasm-cli --root /usr
+RUN cargo install --path . --root /usr
 RUN cargo clean
 
 FROM golemfactory/base:1.5
