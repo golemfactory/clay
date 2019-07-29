@@ -1,12 +1,10 @@
-import pathlib
-import os
 import logging
-import string
 from typing import List
+import sys
 
-from golem.core.common import get_golem_path
+sys.path.insert(0,'.')
+
 from golem.testutils import TestTaskIntegration
-from golem.tools.ci import ci_skip
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegration
 
@@ -14,23 +12,101 @@ from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegrati
 logger = logging.getLogger(__name__)
 
 
-class ExtendedVerifierTest(TestBlenderIntegration):
 
-    def test_script_for_verifier(self):
+class Report:
+
+    def __init__(self):
+        self.failed_params: List[dict] = list()
+        self.success_params: List[dict] = list()
+        self.all_params: List[dict] = list()
+
+    def success(self, params: dict) -> None:
+        self.success_params.append(params)
+        self.all_params.append(params)
+
+    def fail(self, params: dict, reason: dict) -> None:
+        params['fail_reason'] = reason
+
+        self.failed_params.append(params)
+        self.all_params.append(params)
+
+    def update(self, report: 'Report') -> None:
+        self.failed_params = self.failed_params + report.failed_params
+        self.success_params = self.success_params + report.success_params
+        self.all_params = self.all_params + report.all_params
+
+
+
+
+class ExtendedVerifierTestEnv():
+
+    def __init__(self):
+        self.report = Report()
+
+    def run(self):
         parameters_sets = self._generate_parameters()
 
-        for parameters_set in parameters_sets:
-            self._run_for_params_dict(parameters_set)
+        logger.info("Parameters {}".format(str(parameters_sets)))
 
-    def _run_for_params_dict(self, parameters_set):
+        num_sets = len(parameters_sets)
+        logger.info("Running {} parameters sets.".format(num_sets))
+
+        for parameters_set in parameters_sets:
+
+            try:
+                tester = ExtendedVerifierTest()
+                
+                tester.setUp()
+                tester.run_for_params_dict(parameters_set)
+
+            except (Exception, RuntimeError)as e:
+                logger.error("Exception ocured during testing: {}".format(repr(e)))
+            finally:
+                self.report.update(tester.get_report())
+                tester.tearDown()
+
+            # Print dot for each test to indicate progress like in pytest.
+            print(".", end = '')
+        
+        # Add newline on end.
+        print("")
+        self._print_failes()
+
+    def _generate_parameters(self):
+        return [
+            {
+                'resolution' : [400, 400],
+                'subtasks_count' : 2,
+                'frames' : None,
+                'crops_params' : {}
+            }
+        ]
+
+    def _print_failes(self):
+        print("Printing failed tests:")
+        print(str(self.report.failed_params))
+
+
+
+
+class ExtendedVerifierTest(TestBlenderIntegration):
+
+    def __init__(self):
+        super().__init__()
+        self.report = Report()
+
+    def get_report(self):
+        return self.report
+
+    def run_for_params_dict(self, parameters_set: dict):
         resolution = parameters_set['resolution']
         subtasks = parameters_set['subtasks_count']
         frames = parameters_set['frames']
         crops_params = parameters_set['crops_params']
 
-        self._run_for_parameters_set(resolution, subtasks, frames, crops_params)
+        self.run_for_parameters_set(resolution, subtasks, frames, crops_params)
 
-    def _run_for_parameters_set(self, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
+    def run_for_parameters_set(self, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=resolution,
                                          subtasks_count=subtasks,
@@ -45,9 +121,14 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-    def _generate_parameters(self):
-        return []
 
 
 
+def run_script():
+    test_env = ExtendedVerifierTestEnv()
+    test_env.run()
 
+
+
+if __name__ == "__main__":
+    run_script()
