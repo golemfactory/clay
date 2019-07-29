@@ -1,10 +1,8 @@
 import logging
 from raven.handlers.logging import SentryHandler
-import golem
-import golem.config.active
-from typing import Dict
 
 DEFAULT_SENTRY_ENABLED = False
+
 
 class SwitchedSentryHandler(SentryHandler):
 
@@ -13,7 +11,7 @@ class SwitchedSentryHandler(SentryHandler):
             self.enabled = bool(kwargs.pop('enabled', DEFAULT_SENTRY_ENABLED))
         except Exception:   # pylint: disable=broad-except
             self.enabled = DEFAULT_SENTRY_ENABLED
-        self._user = {}            
+        self._user = {}
         super().__init__(*args, **kwargs)
 
     def emit(self, record):
@@ -21,7 +19,6 @@ class SwitchedSentryHandler(SentryHandler):
             return None
         self.client.context.merge({'user': self._user})
         return super().emit(record)
-
 
     def update_user(self, **kwargs):
         self._user.update(kwargs)
@@ -31,7 +28,6 @@ class SwitchedSentryHandler(SentryHandler):
             self.client.release = version
         if env is not None:
             self.client.environment = env
-
 
     def set_enabled(self, value):
         try:

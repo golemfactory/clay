@@ -2,7 +2,6 @@ import logging
 
 import os
 import typing
-import golem.tools.talkback
 from collections import Iterable, Sized
 from functools import partial
 from twisted.internet.defer import Deferred
@@ -129,7 +128,7 @@ class HyperdriveResourceManager(ClientHandler):
     @handle_async(on_error=partial(log_error,
                                    "Error adding resources for id: %r"))
     def add_resources(self, files, res_id,  # pylint: disable=too-many-arguments
-                 resource_hash=None, async_=True, client_options=None):
+                      resource_hash=None, async_=True, client_options=None):
 
         prefix = self.storage.cache.get_prefix(res_id)
         resources = self.storage.get_resources(res_id)
@@ -294,7 +293,6 @@ class HyperdriveResourceManager(ClientHandler):
         if resource.files and self.storage.exists(resource):
             success(entry, resource.files, res_id)
             return
-
 
         def success_wrapper(response, **_):
             logger.debug("Downloaded resource. path=%s, hash=%s",

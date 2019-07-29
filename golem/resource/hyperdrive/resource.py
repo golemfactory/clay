@@ -3,9 +3,8 @@ import re
 import shutil
 from threading import Lock
 from typing import List
-
 from golem.core.fileshelper import copy_file_tree, relative_path
-from golem.tools.talkback import user
+
 
 def split_path(path):
     return re.split('/|\\\\', path) if path else path
