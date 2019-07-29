@@ -99,56 +99,57 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
     def test_get_performance_running(self):
         # Given
         env_id = "env1"
-        self.register_env(env_id)
-        env = self.manager._envs[env_id]
+        env, _ = self.register_env(env_id)
         self.manager._running_benchmark = True
 
         # When
         result = yield self.manager.get_performance(env_id)
 
         # Then
-        env.instance.run_benchmark.assert_not_called()
-        self.assertTrue(result is None)
+        env.run_benchmark.assert_not_called()
+        self.assertIsNone(result)
 
     @inlineCallbacks
     def test_get_performance_disabled_env(self):
         # Given
         env_id = "env1"
-        self.register_env(env_id)
-        env = self.manager._envs[env_id]
+        env, _ = self.register_env(env_id)
         self.manager.set_enabled(env_id, False)
 
         # When
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(
+            Exception,
+            'Requested performance for disabled environment'
+        ):
             yield self.manager.get_performance(env_id)
 
         # Then
-        env.instance.run_benchmark.assert_not_called()
+        env.run_benchmark.assert_not_called()
 
     @inlineCallbacks
     def test_get_performance_in_db(self):
         # Given
+        perf = 300.0
         env_id = "env1"
-        self.register_env(env_id)
-        env = self.manager._envs[env_id]
+        env, _ = self.register_env(env_id)
         self.manager.set_enabled(env_id, True)
 
-        Performance.update_or_create(env_id, 300.0)
+        Performance.update_or_create(env_id, perf)
 
         # When
-        yield self.manager.get_performance(env_id)
+        result = yield self.manager.get_performance(env_id)
 
         # Then
-        env.instance.run_benchmark.assert_not_called()
+        env.run_benchmark.assert_not_called()
+        self.assertEqual(result, perf)
 
     @inlineCallbacks
     def test_get_performance_benchmark_error(self):
         # Given
         env_id = "env1"
-        self.register_env(env_id)
-        env = self.manager._envs[env_id]
-        env.instance.get_benchmark = MagicMock(side_effect=Exception)
+        env, _ = self.register_env(env_id)
+        env.get_benchmark = MagicMock(side_effect=Exception)
 
         self.manager.set_enabled(env_id, True)
 
@@ -156,4 +157,4 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         yield self.manager.get_performance(env_id)
 
         # Then
-        env.instance.run_benchmark.assert_called_once()
+        env.run_benchmark.assert_called_once()

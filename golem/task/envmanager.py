@@ -83,7 +83,6 @@ class EnvironmentManager:
         if not self.enabled(env_id):
             raise Exception("Requested performance for disabled environment")
 
-        perf = None
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             return perf.value

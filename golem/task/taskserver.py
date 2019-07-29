@@ -309,7 +309,16 @@ class TaskServer(
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
-        self._request_task(task_header)
+
+        def _request_task_error(e):
+            logger.error(
+                "Failed to request task: task_id=%r, exception=%r",
+                task_header.task_id,
+                e
+            )
+        # Unyielded deferred, fire and forget requesting a new task
+        deferred = self._request_task(task_header)
+        deferred.addErrback(_request_task_error)  # pylint: disable=no-member
 
     @inlineCallbacks
     def _request_task(self, theader: dt_tasks.TaskHeader) -> Deferred:
