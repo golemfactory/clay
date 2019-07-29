@@ -36,7 +36,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     def get_usage_factor(cls, provider_id, usage_benchmark):
         usage_factor = cls._usage_factors.get(provider_id, None)
         if usage_factor is None:
-            # Division goes this way since higher benchmark val means faster processor
+            # Division goes this way since higher benchmark val means
+            # faster processor
             usage_factor = cls.get_my_usage_benchmark() / usage_benchmark
             if not usage_factor:
                 usage_factor = 1.0

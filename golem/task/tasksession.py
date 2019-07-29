@@ -4,9 +4,8 @@ import datetime
 import enum
 import functools
 import logging
-from operator import itemgetter
 import time
-from typing import Callable, TYPE_CHECKING, Optional, Tuple
+from typing import Callable, TYPE_CHECKING, Optional
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
