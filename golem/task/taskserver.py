@@ -431,9 +431,10 @@ class TaskServer(
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
 
+        subtask_id = self.task_computer.assigned_subtask_id
         self.task_computer.task_interrupted()
         self.send_task_failed(
-            self.task_computer.assigned_subtask_id,
+            subtask_id,
             task_id,
             f'Error downloading resources: {reason}',
         )

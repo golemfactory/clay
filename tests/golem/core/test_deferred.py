@@ -101,7 +101,10 @@ class TestDeferredFromFuture(TwistedTestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        uninstall_reactor()  # Because other tests don't clean up
+        try:
+            uninstall_reactor()  # Because other tests don't clean up
+        except AttributeError:
+            pass
         install_reactor()
 
     @classmethod

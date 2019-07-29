@@ -16,7 +16,7 @@ from twisted.internet import defer
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
-from golem.core.deferred import sync_wait
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
@@ -55,8 +55,8 @@ class TaskComputerAdapter:
             self,
             task_server: 'TaskServer',
             env_manager: EnvironmentManager,
-            use_docker_manager=True,
-            finished_cb=None
+            use_docker_manager: bool = True,
+            finished_cb: Callable[[], Any] = lambda: None
     ) -> None:
         self.stats = IntStatsKeeper(CompStats)
         self._task_server = task_server
@@ -112,10 +112,10 @@ class TaskComputerAdapter:
 
     def start_computation(self) -> None:
         if self._new_computer.has_assigned_task():
-            # Fire and forget because compute resolves when computation ends
             task_id = self.assigned_task_id
             subtask_id = self.assigned_subtask_id
             computation = self._new_computer.compute()
+            # Fire and forget because it resolves when computation ends
             self._handle_computation_results(task_id, subtask_id, computation)
         elif self._old_computer.has_assigned_task():
             self._old_computer.start_computation()
@@ -132,19 +132,17 @@ class TaskComputerAdapter:
     ) -> defer.Deferred:
         try:
             output_file = yield computation
+            self._task_server.send_results(
+                subtask_id=subtask_id,
+                task_id=task_id,
+                result={'data': [output_file]},
+            )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
                 subtask_id=subtask_id,
                 task_id=task_id,
                 err_msg=str(e)
             )
-            return
-
-        self._task_server.send_results(
-            subtask_id=subtask_id,
-            task_id=task_id,
-            result={'data': [output_file]},
-        )
 
     def task_interrupted(self) -> None:
         if self._new_computer.has_assigned_task():
@@ -160,8 +158,6 @@ class TaskComputerAdapter:
             self._old_computer.check_timeout()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
-        if self._new_computer.has_assigned_task():
-            return self._new_computer.get_progress()
         if self._old_computer.has_assigned_task():
             return self._old_computer.get_progress()
         return None
@@ -262,7 +258,7 @@ class NewTaskComputer:
         return self._assigned_task.subtask_id
 
     def _is_computing(self) -> bool:
-        return self._runtime is not None
+        return self._computation is not None
 
     def task_given(
             self,
@@ -292,8 +288,7 @@ class NewTaskComputer:
             prereq_dict=assigned_task.prereq_dict
         )
         # FIXME: Remove when ProviderAppClient implements shutdown
-        # pylint: disable=protected-access
-        self._runtime = task_api_service._runtime
+        self._runtime = task_api_service._runtime  # noqa pylint: disable=protected-access
 
         compute_future = asyncio.ensure_future(self._app_client.compute(
             service=task_api_service,
@@ -302,9 +297,9 @@ class NewTaskComputer:
             subtask_params=assigned_task.subtask_params
         ))
 
-        self._computation = defer.Deferred.fromFuture(compute_future)
+        self._computation = deferred_from_future(compute_future)
         from twisted.internet import reactor
-        timeout = deadline_to_timeout(assigned_task.deadline)
+        timeout = int(deadline_to_timeout(assigned_task.deadline))
         self._computation.addTimeout(timeout, reactor)
         return self._wait_until_computation_ends()
 
@@ -395,10 +390,6 @@ class NewTaskComputer:
         # FIXME: Remove when ProviderAppClient implements shutdown
         assert self._runtime is not None
         self._runtime.stop()
-
-    @staticmethod
-    def get_progress() -> Optional[ComputingSubtaskStateSnapshot]:
-        return None  # Not supported because it's app-specific
 
     def get_current_computing_env(self) -> Optional[EnvId]:
         if self._assigned_task is None:

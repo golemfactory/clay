@@ -887,7 +887,7 @@ class TestTaskServer2(TaskServerBase):
             subtask_id="xxyyzz",
             value=expected_value,
             eth_address="eth_address",
-            node_id=task_mock.header.task_owner.key,  # pylint: disable=no-member
+            node_id=task_mock.header.task_owner.key,
             task_id=task_mock.header.task_id,
         )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)

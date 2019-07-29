@@ -37,7 +37,7 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
 
 class TestInit(TaskComputerAdapterTestBase):
 
-    def test(self):
+    def test_init(self):
         self.new_computer.prepare.aseert_called_once()
         self.assertTrue(self.adapter.compute_tasks)
         self.assertTrue(self.adapter.runnable)
@@ -247,20 +247,10 @@ class TestCheckTimeout(TaskComputerAdapterTestBase):
 class TestGetProgress(TaskComputerAdapterTestBase):
 
     def test_no_assigned_task(self):
-        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = False
         self.assertIsNone(self.adapter.get_progress())
 
-    def test_assigned_new_task(self):
-        self.new_computer.has_assigned_task.return_value = True
-        self.old_computer.has_assigned_task.return_value = False
-        self.assertIs(
-            self.adapter.get_progress(),
-            self.new_computer.get_progress()
-        )
-
     def test_assigned_old_task(self):
-        self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = True
         self.assertIs(
             self.adapter.get_progress(),
@@ -365,7 +355,7 @@ class TestChangeConfig(TaskComputerAdapterTestBase):
 
 class TestQuit(TaskComputerAdapterTestBase):
 
-    def test(self):
+    def test_quit(self):
         self.adapter.quit()
         self.new_computer.clean_up.assert_called_once()
         self.old_computer.quit.assert_called_once()
