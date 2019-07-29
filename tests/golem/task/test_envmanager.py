@@ -1,5 +1,5 @@
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 from twisted.internet.defer import inlineCallbacks
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -95,26 +95,28 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         DatabaseFixture,
         TwistedTestCase
 ):
+
+    def setUp(self):
+        super().setUp()
+        self.env_id = "env1"
+        self.env, _ = self.register_env(self.env_id)
+
     @inlineCallbacks
     def test_get_performance_running(self):
         # Given
-        env_id = "env1"
-        env, _ = self.register_env(env_id)
         self.manager._running_benchmark = True
 
         # When
-        result = yield self.manager.get_performance(env_id)
+        result = yield self.manager.get_performance(self.env_id)
 
         # Then
-        env.run_benchmark.assert_not_called()
+        self.env.run_benchmark.assert_not_called()
         self.assertIsNone(result)
 
     @inlineCallbacks
     def test_get_performance_disabled_env(self):
         # Given
-        env_id = "env1"
-        env, _ = self.register_env(env_id)
-        self.manager.set_enabled(env_id, False)
+        self.manager.set_enabled(self.env_id, False)
 
         # When
 
@@ -122,39 +124,39 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
             Exception,
             'Requested performance for disabled environment'
         ):
-            yield self.manager.get_performance(env_id)
+            yield self.manager.get_performance(self.env_id)
 
         # Then
-        env.run_benchmark.assert_not_called()
+        self.env.run_benchmark.assert_not_called()
 
     @inlineCallbacks
     def test_get_performance_in_db(self):
         # Given
         perf = 300.0
-        env_id = "env1"
-        env, _ = self.register_env(env_id)
-        self.manager.set_enabled(env_id, True)
+        self.manager.set_enabled(self.env_id, True)
 
-        Performance.update_or_create(env_id, perf)
+        Performance.update_or_create(self.env_id, perf)
 
         # When
-        result = yield self.manager.get_performance(env_id)
+        result = yield self.manager.get_performance(self.env_id)
 
         # Then
-        env.run_benchmark.assert_not_called()
+        self.env.run_benchmark.assert_not_called()
         self.assertEqual(result, perf)
 
     @inlineCallbacks
     def test_get_performance_benchmark_error(self):
         # Given
-        env_id = "env1"
-        env, _ = self.register_env(env_id)
-        env.get_benchmark = MagicMock(side_effect=Exception)
+        error_msg = "Benchmark failed"
+        self.env.run_benchmark = Mock(side_effect=Exception(error_msg))
 
-        self.manager.set_enabled(env_id, True)
+        self.manager.set_enabled(self.env_id, True)
 
         # When
-        yield self.manager.get_performance(env_id)
+        result = None
+        with self.assertRaisesRegex(Exception, error_msg):
+            result = yield self.manager.get_performance(self.env_id)
 
         # Then
-        env.run_benchmark.assert_called_once()
+        self.env.run_benchmark.assert_called_once()
+        self.assertIsNone(result)
