@@ -1,3 +1,4 @@
+import datetime
 import logging
 import typing
 
@@ -9,6 +10,7 @@ from golem import model
 from golem.core import common
 from golem.network import history
 from golem.network.transport import msg_queue
+from golem.task.taskbase import ResultMetadata
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
@@ -47,6 +49,17 @@ def computed_task_reported(
             report_computed_task.subtask_id,
             'ForceGetTaskResult',
         )
+
+        task = task_server.task_manager.tasks.get(
+            report_computed_task.task_id,
+            None
+        )
+        task.subtasks_results_metadata[report_computed_task.subtask_id] =\
+            ResultMetadata(
+                datetime.datetime.now().timestamp() -
+                report_computed_task.task_to_compute.timestamp
+            )
+
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,
