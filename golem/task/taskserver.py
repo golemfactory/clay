@@ -477,10 +477,10 @@ class TaskServer(
         result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
-            wtr.result_path,
+            _,
             wtr.package_sha1,
             wtr.result_size,
-            wtr.package_path,
+            _,
         ) = \
             result
 
@@ -995,9 +995,9 @@ class TaskServer(
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result,
-                 last_sending_trial, delay_time, owner, result_path=None,
+                 last_sending_trial, delay_time, owner,
                  result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None, package_path=None):
+                 result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -1006,11 +1006,9 @@ class WaitingTaskResult(object):
         self.owner = owner
 
         self.result = result
-        self.result_path = result_path
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
-        self.package_path = package_path
         self.result_size = result_size
 
         self.already_sending = False

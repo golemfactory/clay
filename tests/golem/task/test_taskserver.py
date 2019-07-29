@@ -1133,10 +1133,8 @@ class TestSendResults(TaskServerTestBase):
         self.assertEqual(result.owner, header.task_owner)
         self.assertEqual(result.result_secret, result_secret)
         self.assertEqual(result.result_hash, result_hash)
-        self.assertEqual(result.result_path, result_path)
         self.assertEqual(result.package_sha1, package_sha1)
         self.assertEqual(result.result_size, package_size)
-        self.assertEqual(result.package_path, package_path)
 
         trust.REQUESTED.increase.assert_called_once_with(header.task_owner.key)
 
