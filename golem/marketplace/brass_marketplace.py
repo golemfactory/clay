@@ -37,7 +37,7 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         permutation = order_providers(
             [BrassMarketOffer(scale_price(offer.max_price, offer.price),
                               offer.reputation, offer.quality)
-             for offer in extracted_offers]
+             for offer in offers]
         )
 
         return [offers[i] for i in permutation]
