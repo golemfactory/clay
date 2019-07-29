@@ -61,7 +61,9 @@ class ExtendedVerifierTestEnv():
 
     def run(self):
         parameters_sets = self._generate_parameters()
+        self.run_for_params(parameters_sets)
 
+    def run_for_params(self, parameters_sets: dict):
         logger.info("Parameters {}".format(str(parameters_sets)))
 
         num_sets = len(parameters_sets)
