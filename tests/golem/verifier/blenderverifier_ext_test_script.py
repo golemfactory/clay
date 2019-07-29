@@ -92,16 +92,6 @@ class ExtendedVerifierTestEnv():
         print("")
         self._print_failes()
 
-    def _generate_parameters(self):
-        return [
-            {
-                'resolution' : [400, 400],
-                'subtasks_count' : 2,
-                'frames' : None,
-                'crops_params' : {}
-            }
-        ]
-
     def _print_failes(self):
         print("Printing failed tests:")
         print(json.dumps(self.report.failed_params, indent=4, sort_keys=False))
@@ -109,6 +99,22 @@ class ExtendedVerifierTestEnv():
     def _progress(self):
         # Print dot for each test to indicate progress like in pytest.
         print(".", end = '')
+
+    def _generate_parameters(self):
+        return [
+            {
+                'resolution' : [400, 400],
+                'subtasks_count' : 2,
+                'frames' : None,
+                'crops_params' : {}
+            },
+            {
+                'resolution' : [400, 400],
+                'subtasks_count' : 6,
+                'frames' : [1,2],
+                'crops_params' : {}
+            }
+        ]
 
 
 

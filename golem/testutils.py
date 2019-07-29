@@ -277,12 +277,8 @@ class TestTaskIntegration(DatabaseFixture):
         # build mock node
         self.node = dt_p2p_factory.Node()
         self.task_definition = None
-        self.node_id = ''.join(
-            SystemRandom().choice(string.ascii_lowercase + string.digits) for _
-            in range(8))
-        self.node_name = ''.join(
-            SystemRandom().choice(string.ascii_lowercase + string.digits) for _
-            in range(8))
+        self.node_id = self._generate_node_id()
+        self.node_name = self._generate_node_id()
         self.task = None
         self.dir_manager = DirManager(self.tempdir)
         logger.info("Tempdir: {}".format(self.tempdir))
@@ -338,7 +334,7 @@ class TestTaskIntegration(DatabaseFixture):
         i = subtask_num
 
         ctd: ComputeTaskDef = self.task_manager. \
-            get_next_subtask(node_id=self.node_id,
+            get_next_subtask(node_id=self._generate_node_id(),
                              task_id=task.task_definition.task_id,
                              estimated_performance=1000,
                              price=int(
@@ -530,3 +526,8 @@ class TestTaskIntegration(DatabaseFixture):
             from twisted.internet import default
             default.install()
 
+    @classmethod
+    def _generate_node_id(cls):
+        return ''.join(
+            SystemRandom().choice(string.ascii_lowercase + string.digits) for _
+            in range(8))
