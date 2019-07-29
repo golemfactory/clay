@@ -5,7 +5,10 @@ import enum
 import functools
 import logging
 import time
-from typing import Any, TYPE_CHECKING, Optional, Generator
+from typing import (
+    Any, Callable, TYPE_CHECKING,
+    Optional, Generator, Tuple
+)
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
@@ -326,7 +329,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         class OfferWithCallback(Offer):
-            def __init__(self, scaled_price, reputation, quality, callback):
+            def __init__(self,
+                         scaled_price: float,
+                         reputation: float,
+                         quality: Tuple[float, float, float, float],
+                         callback: Callable[[...], None]) -> None:
                 super().__init__(scaled_price, reputation, quality)
                 self.callback = callback
 
