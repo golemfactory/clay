@@ -156,7 +156,7 @@ class TaskServerTestBase(LogTestCase,
     def _prepare_env(self, *,
                      min_accepted_perf: int = DEFAULT_MIN_ACCEPTED_PERF) \
             -> None:
-        env = Mock()
+        env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
         env.get_performance = Mock(return_value=0.0)
         self.ts.get_environment_by_id = Mock(return_value=env)
@@ -202,9 +202,10 @@ class TestTaskServerConcent(TaskServerTestBase):
     def test_request_task_concent_enabled_but_not_required(self, *_):
         self.ts.client.concent_service.enabled = True
         self.ts.client.concent_service.required_as_provider = False
-        self.assertEqual(
-            self.ts._request_random_task(),
-            self.task_header.task_id
+        yield self.ts._request_random_task()
+        self.assertIn(
+            self.task_header.task_id,
+            self.ts.requested_tasks
         )
 
 
@@ -402,6 +403,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task = get_mock_task()
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
+        ts.client.get_computing_trust = Mock(return_value=1.0)
 
         self._prepare_env()
 
