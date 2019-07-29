@@ -27,7 +27,6 @@ class SwitchedSentryHandler(SentryHandler):
         self._user.update(kwargs)
 
     def set_version(self, version=None, env=None):
-        print('enabled=', self.enabled, 'v=', version, 'env=', env)
         if version is not None:
             self.client.release = version
         if env is not None:
