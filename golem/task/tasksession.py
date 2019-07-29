@@ -347,7 +347,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     provider_performance: ProviderPerformance,
                     max_price: float,
                     price: float,
-                    callback: Callable[[...], None]) -> None:
+                    callback: Callable[..., None]) -> None:
                 super().__init__(provider_id, provider_performance,
                                  max_price, price)
                 self.callback = callback
