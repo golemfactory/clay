@@ -1,6 +1,7 @@
 import logging
 from typing import List
 import sys
+import os
 import traceback
 import json
 
@@ -37,7 +38,20 @@ class Report:
         self.success_params = self.success_params + report.success_params
         self.all_params = self.all_params + report.all_params
 
+    def to_file(self, dir: str):
+        os.makedirs(dir, exist_ok=True)
 
+        all_path = os.path.join(dir, 'all_tests.json')
+        with open(all_path, 'w') as outfile:
+            json.dump(self.all_params, outfile, indent=4, sort_keys=False)
+
+        failed_path = os.path.join(dir, 'failed_tests.json')
+        with open(failed_path, 'w') as outfile:
+            json.dump(self.failed_params, outfile, indent=4, sort_keys=False)
+
+        success_path = os.path.join(dir, 'success_tests.json')
+        with open(success_path, 'w') as outfile:
+            json.dump(self.success_params, outfile, indent=4, sort_keys=False)
 
 
 class ExtendedVerifierTestEnv():
@@ -77,6 +91,7 @@ class ExtendedVerifierTestEnv():
                     'filename' : filename,
                     'function' : function,
                     'stacktrace' : message,
+                    'tmp_dir' : tester.tempdir
                 }
 
                 self.report.fail(parameters_set, reason)
@@ -89,6 +104,7 @@ class ExtendedVerifierTestEnv():
         # Add newline on end.
         print("")
         self._print_failes()
+        self._reports_to_files()
 
     def _print_failes(self):
         print("Printing failed tests:")
@@ -99,7 +115,7 @@ class ExtendedVerifierTestEnv():
         print(".", end = '')
 
     def _reports_to_files(self):
-        pass
+        self.report.to_file("reports")
 
     def _generate_parameters(self):
         return [
