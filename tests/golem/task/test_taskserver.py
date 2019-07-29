@@ -26,7 +26,12 @@ from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
 from golem.core.keysauth import KeysAuth
-from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environment import (
+    Environment as OldEnv,
+    SupportStatus,
+    UnsupportReason,
+)
+from golem.envs import Environment as NewEnv
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource.dirmanager import DirManager
@@ -151,7 +156,7 @@ class TaskServerTestBase(LogTestCase,
     def _prepare_env(self, *,
                      min_accepted_perf: int = DEFAULT_MIN_ACCEPTED_PERF) \
             -> None:
-        env = Mock()
+        env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
         env.get_performance = Mock(return_value=0.0)
         self.ts.get_environment_by_id = Mock(return_value=env)
@@ -197,9 +202,10 @@ class TestTaskServerConcent(TaskServerTestBase):
     def test_request_task_concent_enabled_but_not_required(self, *_):
         self.ts.client.concent_service.enabled = True
         self.ts.client.concent_service.required_as_provider = False
-        self.assertEqual(
-            self.ts._request_random_task(),
-            self.task_header.task_id
+        yield self.ts._request_random_task()
+        self.assertIn(
+            self.task_header.task_id,
+            self.ts.requested_tasks
         )
 
 
@@ -229,7 +235,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
@@ -238,10 +244,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         self._prepare_handshake(task_owner_key, task_id)
 
-        self.ts.get_environment_by_id = Mock(return_value=None)
+        env_mock = Mock(spec=OldEnv)
+        env_mock.get_performance = Mock(return_value=0.0)
+        self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
-        self.assertEqual(ts._request_random_task(), task_id)
+        ts._request_random_task()
         self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
         self.assertNotIn(task_id, ts.requested_tasks)
@@ -261,7 +269,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id3 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id3,
             SupportStatus(
@@ -276,7 +284,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id4 = task_header.task_id
         task_header.max_price = 1
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id4,
             SupportStatus(
@@ -290,7 +298,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id5 = task_header.task_id
         ts.add_task_header(task_header)
-        self.assertIsNone(ts._request_random_task())
+        ts._request_random_task()
         tar.add_support_status.assert_called_with(
             task_id5,
             SupportStatus(
@@ -395,6 +403,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task = get_mock_task()
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
+        ts.client.get_computing_trust = Mock(return_value=1.0)
 
         self._prepare_env()
 
@@ -1250,8 +1259,9 @@ class TestRequestRandomTask(TaskServerTestBase):
     def test_request_interval(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time()
-
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_already_assigned(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1260,7 +1270,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = True
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_computer_not_accepting_tasks(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1269,7 +1281,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = False
         self.ts.task_computer.runnable = True
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_task_computer_not_runnable(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1278,7 +1292,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = False
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     def test_no_supported_tasks_in_task_keeper(self):
         self.ts.config_desc.task_request_interval = 1.0
@@ -1288,7 +1304,9 @@ class TestRequestRandomTask(TaskServerTestBase):
         self.ts.task_computer.runnable = True
         self.ts.task_keeper.get_task.return_value = None
 
-        self.assertIsNone(self.ts._request_random_task())
+        with patch.object(self.ts, '_request_task') as mock_req:
+            self.ts._request_random_task()
+            mock_req.assert_not_called()
 
     @patch('golem.task.taskserver.TaskServer._request_task')
     def test_ok(self, request_task):
@@ -1300,8 +1318,7 @@ class TestRequestRandomTask(TaskServerTestBase):
         task_header = Mock()
         self.ts.task_keeper.get_task.return_value = task_header
 
-        result = self.ts._request_random_task()
-        self.assertEqual(result, request_task.return_value)
+        self.ts._request_random_task()
         self.assertEqual(self.ts._last_task_request_time, time.time())
         self.ts.task_computer.stats.increase_stat.assert_called_once_with(
             'tasks_requested')
@@ -1394,3 +1411,102 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+
+
+class TestEnvManager(TaskServerAsyncTestBase):
+    def test_get_environment_by_id(self):
+        # Given
+        env_manager = self.ts.task_keeper.new_env_manager
+        env_manager.enabled = Mock(return_value=True)
+        env_manager.environment = Mock()
+        env_id = "env1"
+
+        # When
+        self.ts.get_environment_by_id(env_id)
+
+        # Then
+        env_manager.enabled.assert_called_with(env_id)
+        env_manager.environment.assert_called_with(env_id)
+
+    def test_get_environment_by_id_not_found(self):
+        # Given
+        env_manager = self.ts.task_keeper.new_env_manager
+        env_manager.enabled = Mock(return_value=False)
+        env_manager.environment = Mock()
+        env_id = "env1"
+
+        # When
+        self.ts.get_environment_by_id(env_id)
+
+        # Then
+        env_manager.enabled.assert_called_with(env_id)
+        env_manager.environment.assert_not_called()
+
+    @defer.inlineCallbacks
+    def test_request_task(self):
+        # Given
+
+        task_header = get_example_task_header('abc')
+
+        self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
+        self.ts.client.concent_service.enabled = False
+        self.ts.config_desc.min_price = task_header.max_price
+
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+
+        mock_get = Mock(return_value=300.0)
+        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+
+        mock_handshake = Mock()
+        mock_handshake.success = Mock(return_value=True)
+        self.ts.resource_handshakes[
+            task_header.task_owner.key  # pylint: disable=no-member
+        ] = mock_handshake
+
+        # When
+        yield self.ts._request_task(task_header)
+
+        # Then
+        mock_get.assert_called_once()
+
+    @defer.inlineCallbacks
+    def test_request_task_running_benchmark(self):
+        # Given
+        performance = None
+        task_header = get_example_task_header('abc')
+
+        self.ts.should_accept_requestor = Mock(return_value=SupportStatus.ok())
+        self.ts.client.concent_service.enabled = False
+        self.ts.config_desc.min_price = task_header.max_price
+
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+
+        mock_get = Mock(return_value=performance)
+        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+
+        mock_handshake = Mock()
+        mock_handshake.success = Mock(return_value=True)
+        self.ts.resource_handshakes[
+            task_header.task_owner.key  # pylint: disable=no-member
+        ] = mock_handshake
+
+        # When
+        result = yield self.ts._request_task(task_header)
+
+        self.assertEqual(result, performance)
+        mock_get.assert_called_once()
+
+    def test_get_min_performance_for_task(self):
+        # Given
+        mock_env = Mock(spec=NewEnv)
+        self.ts.get_environment_by_id = Mock(return_value=mock_env)
+        task = get_mock_task()
+
+        # When
+        result = self.ts.get_min_performance_for_task(task)
+
+        # Then
+        self.ts.get_environment_by_id.assert_called_once()
+        self.assertEqual(result, 0.0)

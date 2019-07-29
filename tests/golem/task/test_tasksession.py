@@ -683,6 +683,7 @@ class TestTaskSession(TaskSessionTestBase):
                 max_price=1,
             ),
             20,
+            0.0,
         )
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
