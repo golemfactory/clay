@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
 from time import sleep
+import twisted
 
 import ethereum.keys
 import pycodestyle
@@ -244,7 +245,12 @@ class VerificationWait:
             self.is_finished = True
 
             from twisted.internet import reactor
-            reactor.callFromThread(reactor.stop)
+
+            try:
+                reactor.stop()
+                #reactor.callFromThread(reactor.stop)
+            except RuntimeError as e:
+                logger.error("Stoping reactor error {}".format(repr(e)))
 
             self.condition_var.notify_all()
 
@@ -279,7 +285,7 @@ class TestTaskIntegration(DatabaseFixture):
             in range(8))
         self.task = None
         self.dir_manager = DirManager(self.tempdir)
-        print("Tempdir: {}".format(self.tempdir))
+        logger.info("Tempdir: {}".format(self.tempdir))
 
         # load all apps to be enabled for tests
         app_manager = AppsManager()
@@ -513,7 +519,7 @@ class TestTaskIntegration(DatabaseFixture):
         try:
             from twisted.internet import reactor
             reactor.run()
-        except Exception as e:
+        except (Exception, RuntimeError) as e:
             self._clean_reactor()
 
     def _clean_reactor(self):

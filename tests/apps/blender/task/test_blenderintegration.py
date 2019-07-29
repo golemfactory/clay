@@ -3,6 +3,7 @@ import os
 import logging
 from typing import List
 
+from apps.rendering.task.framerenderingtask import FrameRenderingTaskBuilder
 from golem.core.common import get_golem_path
 from golem.testutils import TestTaskIntegration
 from golem.tools.ci import ci_skip
@@ -45,11 +46,12 @@ class TestBlenderIntegration(TestTaskIntegration):
             output_path = self.tempdir
 
         if frames is not None:
-            use_frames = False
-        else:
+            frames = FrameRenderingTaskBuilder.frames_to_string(frames)
             use_frames = True
+        else:
+            use_frames = False
+            frames = "1"
 
-        frames = self._frames_to_string(frames)
 
         logger.info(frames)
 
@@ -73,19 +75,40 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         return task_def_for_blender
 
-    @classmethod
-    def _frames_to_string(cls, frames: List[int]):
-        frames_string = ["{};".format(frame) for frame in frames]
-        frames_string = ''.join(frames_string)
-        return frames_string[:-1]        # Remove last semicolon.
+    def check_outputs_existance(self, task: Task):
+        result = task.task_definition.output_file
 
-    def test_full_task_flow(self):
+        if task.task_definition.options.use_frames:
+            # For multiple frames we must build frame path.
+            base, ext = os.path.splitext(task.task_definition.output_file)
+
+            for frame in task.task_definition.options.frames:                
+                path = base + "{:04d}".format(frame) + ext
+                
+                logger.info("Expected result path [{}]".format(path))
+                self.assertTrue(TestTaskIntegration.check_file_existence(path))    
+        else:
+            # For single frame, blender generates file with the same name
+            # as in task_definition.
+            logger.info("Expected result path [{}]".format(result))
+            self.assertTrue(TestTaskIntegration.check_file_existence(result))
+
+
+    def test_full_task_flow_multiframes(self):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=[400, 400],
-                                         subtasks_count=3,
+                                         subtasks_count=2,
                                          frames=[1,2])
 
-        task = self.execute_task(task_def)
+        task: Task = self.execute_task(task_def)
+        self.check_outputs_existance(task)
+
+    def test_full_task_flow_singleframe(self):
+        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
+                                         resolution=[400, 400],
+                                         subtasks_count=3)
+
+        task: Task = self.execute_task(task_def)
 
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
