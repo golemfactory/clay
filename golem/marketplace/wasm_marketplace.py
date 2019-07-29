@@ -1,6 +1,6 @@
 import logging
 from typing import (
-    Any, List, Dict, ClassVar,
+    List, Dict, ClassVar,
     Tuple, Optional, Iterable
 )
 import numpy
@@ -45,8 +45,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str,
-                            key=None) -> Optional[List[Any]]:
+    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
         logger.info("RWMS: ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
             return None
@@ -54,9 +53,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         max_factor: float = cls._max_usage_factor
         offers: List[Offer] = cls._pools.pop(task_id)
         to_sort: List[Tuple[Offer, float, float]] = []
-        for offer_composite in offers:
-            if key:
-                offer = key(offer_composite)
+        for offer in offers:
             usage_factor = cls.get_usage_factor(
                 offer.provider_id,
                 offer.provider_performance.usage_benchmark)
@@ -68,7 +65,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
                 usage_factor,
                 offer.price/10**9,
                 adjusted_price)
-            to_sort.append((offer_composite, usage_factor, adjusted_price))
+            to_sort.append((offer, usage_factor, adjusted_price))
         offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
                          if t[1] <= max_factor]
         return offers_sorted

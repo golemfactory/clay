@@ -1,7 +1,8 @@
 import sys
 import logging
-from typing import Any, List, Optional
+from typing import List, Optional
 
+from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 
@@ -27,16 +28,12 @@ class BrassMarketOffer:
 class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str,
-                            key=None) -> Optional[List[Any]]:
+    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
         logger.info("Ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
             return None
 
         offers = cls._pools.pop(task_id)
-        if key:
-            extracted_offers = [key(offer) for offer in offers]
-
         permutation = order_providers(
             [BrassMarketOffer(scale_price(offer.max_price, offer.price),
                               offer.reputation, offer.quality)

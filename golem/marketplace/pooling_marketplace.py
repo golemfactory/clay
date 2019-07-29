@@ -1,17 +1,17 @@
 import logging
-from typing import Any, ClassVar, Dict, List
+from typing import ClassVar, Dict, List
 
-from golem.marketplace.marketplace import RequestorMarketStrategy
+from golem.marketplace.marketplace import RequestorMarketStrategy, Offer
 
 logger = logging.getLogger(__name__)
 
 
 class RequestorPoolingMarketStrategy(RequestorMarketStrategy):
 
-    _pools: ClassVar[Dict[str, List[Any]]] = dict()
+    _pools: ClassVar[Dict[str, List[Offer]]] = dict()
 
     @classmethod
-    def add(cls, task_id: str, offer: Any):
+    def add(cls, task_id: str, offer: Offer):
         if task_id not in cls._pools:
             cls._pools[task_id] = []
         cls._pools[task_id].append(offer)

@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import Any, Optional, List
+from typing import Optional, List
 
 import golem.ranking.manager.database_manager as dbm
 
@@ -14,12 +14,10 @@ class Offer:
     # pylint:disable=too-many-arguments
     def __init__(
             self,
-            offer_msg,
             provider_id: str,
             provider_performance: ProviderPerformance,
             max_price: float,
             price: float):
-        self.offer_msg = offer_msg
         self.provider_id = provider_id
         self.provider_performance = provider_performance
         self.max_price = max_price
@@ -31,7 +29,7 @@ class Offer:
 class RequestorMarketStrategy(ABC):
 
     @abstractclassmethod
-    def add(cls, task_id: str, offer: Any):
+    def add(cls, task_id: str, offer: Offer):
         """
         Called when a WantToComputeTask arrives.
         """
@@ -39,19 +37,12 @@ class RequestorMarketStrategy(ABC):
 
     # pylint: disable-msg=line-too-long
     @abstractclassmethod
-    def resolve_task_offers(cls, task_id: str,
-                            key=None) -> Optional[List[Any]]:
+    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
         """
         Arguments:
             task_id {str} -- task_id
-
-        Keyword Arguments:
-            key {Optional[Callable[..., Offer]]} -- Callable used to retrieve
-                Offer from given composites (default: {None})
-
         Returns:
-            List[Any] -- Returns a sorted list of
-                composites as added in `add` method.
+            List[Offer] -- Returns a sorted list of Offers
         """
         pass
 
