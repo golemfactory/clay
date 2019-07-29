@@ -289,7 +289,7 @@ class TaskServer(
             return
         self._request_task(task_header)
 
-    def _request_random_task(self):
+    def _request_random_task(self) -> None:
         """ If there is no task currently computing and time elapsed from last
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
