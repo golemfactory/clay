@@ -47,5 +47,5 @@ class OfferPool:
         return [offers[i] for i in permutation]
 
     @classmethod
-    def get_task_offer_count(cls, task_id: str):
+    def get_task_offer_count(cls, task_id: str) -> int:
         return len(cls._pools[task_id]) if task_id in cls._pools else 0

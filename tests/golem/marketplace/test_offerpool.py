@@ -1,6 +1,5 @@
 from unittest import TestCase
 import sys
-import pytest
 
 from golem.marketplace import scale_price, Offer, OfferPool
 
@@ -25,7 +24,7 @@ class TestOfferPool(TestCase):
         )
 
     def test_choose_from_empty_pool(self):
-        with pytest.raises(KeyError):
+        with self.raises(KeyError):
             OfferPool.choose_offers(self.TASK_A)
 
     def test_empty_after_choice(self):
