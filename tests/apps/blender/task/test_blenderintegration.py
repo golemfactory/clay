@@ -113,3 +113,11 @@ class TestBlenderIntegration(TestTaskIntegration):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
+    def test_failing_case_uneven_divisions(self):
+        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
+                                         resolution=[400, 400],
+                                         subtasks_count=6,
+                                         frames=[1,2])
+
+        task: Task = self.execute_task(task_def)
+        self.check_outputs_existance(task)
