@@ -1,6 +1,8 @@
 import logging
 from typing import List
 import sys
+import traceback
+import json
 
 sys.path.insert(0,'.')
 
@@ -49,7 +51,7 @@ class ExtendedVerifierTestEnv():
         logger.info("Parameters {}".format(str(parameters_sets)))
 
         num_sets = len(parameters_sets)
-        logger.info("Running {} parameters sets.".format(num_sets))
+        print("Running {} parameters sets.".format(num_sets))
 
         for parameters_set in parameters_sets:
 
@@ -59,14 +61,32 @@ class ExtendedVerifierTestEnv():
                 tester.setUp()
                 tester.run_for_params_dict(parameters_set)
 
+                self.report.success(parameters_set)
+
             except (Exception, RuntimeError)as e:
                 logger.error("Exception ocured during testing: {}".format(repr(e)))
+
+                _, _, tb = sys.exc_info()
+                tb_info = traceback.extract_tb(tb)
+                filename, line, function, _ = tb_info[-1]
+
+                summary = traceback.StackSummary.extract(traceback.walk_stack(None))
+                message = ''.join(summary.format())
+
+                reason = {
+                    'exception' : repr(e),
+                    'line' : line,
+                    'filename' : filename,
+                    'function' : function,
+                    'stacktrace' : message,
+                }
+
+                self.report.fail(parameters_set, reason)
             finally:
                 self.report.update(tester.get_report())
                 tester.tearDown()
 
-            # Print dot for each test to indicate progress like in pytest.
-            print(".", end = '')
+            self._progress()
         
         # Add newline on end.
         print("")
@@ -84,8 +104,11 @@ class ExtendedVerifierTestEnv():
 
     def _print_failes(self):
         print("Printing failed tests:")
-        print(str(self.report.failed_params))
+        print(json.dumps(self.report.failed_params, indent=4, sort_keys=False))
 
+    def _progress(self):
+        # Print dot for each test to indicate progress like in pytest.
+        print(".", end = '')
 
 
 
