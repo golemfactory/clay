@@ -4,6 +4,7 @@ import datetime
 import enum
 import functools
 import logging
+from operator import itemgetter
 import time
 from typing import Callable, TYPE_CHECKING, Optional, Tuple
 
@@ -13,6 +14,7 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
+
 from twisted.internet import defer
 
 import golem
@@ -21,7 +23,7 @@ from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import scale_price, Offer, OfferPool
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -29,10 +31,10 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.taskbase import Task
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -47,6 +49,11 @@ logger = logging.getLogger(__name__)
 def drop_after_attr_error(*args, **_):
     logger.warning("Attribute error occured(1)", exc_info=True)
     args[0].dropped()
+
+
+def get_task_market_strategy(task_manager, current_task: Task):
+    return task_manager.task_types[
+        current_task.task_definition.task_type.lower()].MARKET_STRATEGY
 
 
 def get_task_message(
@@ -308,33 +315,44 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
+        current_task = self.task_manager.tasks[msg.task_id]
+        market_strategy = get_task_market_strategy(self.task_manager,
+                                                   current_task)
+
+        # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
-            def __init__(self,
-                         scaled_price: float,
-                         reputation: float,
-                         quality: Tuple[float, float, float, float],
-                         callback: Callable[[...], None]) -> None:
-                super().__init__(scaled_price, reputation, quality)
+            # pylint:disable=too-many-arguments
+            def __init__(
+                    self,
+                    provider_id: str,
+                    provider_performance: ProviderPerformance,
+                    max_price: float,
+                    price: float,
+                    callback: Callable[[...], None]) -> None:
+                super().__init__(provider_id, provider_performance,
+                                 max_price, price)
                 self.callback = callback
 
         offer = OfferWithCallback(
-            scale_price(msg.task_header.max_price, msg.price),
-            ranking_dbm.get_provider_efficiency(self.key_id),
-            ranking_dbm.get_provider_efficacy(self.key_id).vector,
+            self.key_id,
+            ProviderPerformance(msg.perf_index),
+            current_task.header.max_price,
+            msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
         )
 
-        def resolution(task_id):
-            for offer in OfferPool.choose_offers(task_id):
+        def resolution(market_strategy, task_id):
+            for offer in market_strategy\
+                    .resolve_task_offers(task_id):
                 offer.callback()
 
-        OfferPool.add(msg.task_id, offer)
-        logger.debug("Offer accepted & added to pool. offer=%s", offer)
-
-        if OfferPool.get_task_offer_count(msg.task_id) == 1:
+        if market_strategy\
+                .get_task_offer_count(msg.task_id) == 0:
+            # This is a first offer for given task_id, schedule resolution.
             deferred.call_later(
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution,
+                market_strategy,
                 msg.task_id
             )
             logger.info(
@@ -342,6 +360,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.task_id,
                 self.task_server.config_desc.offer_pooling_interval
             )
+
+        market_strategy.add(msg.task_id, offer)
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals
@@ -364,6 +384,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.price,
             msg.task_header.subtask_timeout,
         )
+
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
             ctd = self.task_manager.get_next_subtask(
