@@ -10,6 +10,9 @@ sys.path.insert(0,'.')
 from golem.testutils import TestTaskIntegration
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegration
+from tests.golem.verifier.test_utils.helpers import \
+    find_crop_files_in_path, \
+    are_pixels_equal, find_fragments_in_path
 
 
 logger = logging.getLogger(__name__)
@@ -79,9 +82,7 @@ class ExtendedVerifierTestEnv():
 
                 self.report.success(parameters_set)
 
-            except (Exception, RuntimeError)as e:
-                logger.error("Exception ocured during testing: {}".format(repr(e)))
-
+            except (Exception, RuntimeError) as e:
                 _, _, tb = sys.exc_info()
                 message = traceback.format_exc()
                 tb_info = traceback.extract_tb(tb)
@@ -164,12 +165,34 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
         for i in range(task.task_definition.subtasks_count):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
+            
             self.verify_subtask(task, subtask_id, result)
+            self._assert_crops_match(task.task_definition.task_id)
 
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
+    def _assert_crops_match(self, task_id: str) -> None:
+        task_dir = os.path.join(self.tempdir, task_id)
 
+        try:
+            crops_paths = find_crop_files_in_path(os.path.join(task_dir, 'output'))
+            fragments_paths = find_fragments_in_path(os.path.join(task_dir, "work"))
+        except:
+            raise Exception("Can't find crop files in output or work directory.")
+
+        assert len(crops_paths) > 0, "There were no crops produced!"
+        assert len(crops_paths) == len(
+            fragments_paths
+        ), "Amount of rendered crops != amount of image fragments!"
+        for crop_path, fragment_path in zip(
+                crops_paths,
+                fragments_paths,
+        ):
+            assert are_pixels_equal(
+                crop_path,
+                fragment_path,
+            ), f"crop: {crop_path} doesn't match: {fragment_path}"
 
 
 def run_script():
