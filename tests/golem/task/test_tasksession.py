@@ -274,7 +274,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
-        ts.task_server.config_desc.offer_pooling_interval = 1
+        ts.task_server.config_desc.offer_pooling_interval = 0
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
