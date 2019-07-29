@@ -67,11 +67,9 @@ class ExtendedVerifierTestEnv():
                 logger.error("Exception ocured during testing: {}".format(repr(e)))
 
                 _, _, tb = sys.exc_info()
+                message = traceback.format_exc()
                 tb_info = traceback.extract_tb(tb)
                 filename, line, function, _ = tb_info[-1]
-
-                summary = traceback.StackSummary.extract(traceback.walk_stack(None))
-                message = ''.join(summary.format())
 
                 reason = {
                     'exception' : repr(e),
@@ -99,6 +97,9 @@ class ExtendedVerifierTestEnv():
     def _progress(self):
         # Print dot for each test to indicate progress like in pytest.
         print(".", end = '')
+
+    def _reports_to_files(self):
+        pass
 
     def _generate_parameters(self):
         return [
