@@ -1,23 +1,26 @@
 import logging
-from typing import Optional
+from typing import Optional, Dict
+from golem.tools.customloggers import SwitchedSentryHandler
 
 logger = logging.getLogger(__name__)
 
-__sentry_user = dict()
+_sentry_user: Dict[str, str] = dict()
 
 
-def user() -> dict:
-    return __sentry_user.copy()
+def user() -> Optional[Dict[str, str]]:
+    return None if _sentry_user['env'] is None else _sentry_user.copy()
 
 
-def update_sentry_user(id: str, node_name: Optional[str] = None):
+def update_sentry_user(node_id: str, node_name: Optional[str] = None):
     logger_root = logging.getLogger()
-    __sentry_user["id"] = id
-    __sentry_user["nodeName"] = node_name
+    _sentry_user['id'] = node_id
+    if node_name is not None:
+        _sentry_user['nodeName'] = node_name
 
     for handler in [h for h in logger_root.handlers if h.name == 'sentry'
-            or h.name == 'sentry-metrics']:
-        handler.update_user(id=id, node_name=node_name)
+                    or h.name == 'sentry-metrics']:
+        if isinstance(handler, SwitchedSentryHandler):
+            handler.update_user(id=node_id, node_name=node_name)
 
 
 def enable_sentry_logger(value):
@@ -28,10 +31,15 @@ def enable_sentry_logger(value):
         from golem.config.active import EthereumConfig
 
         is_mainnet = EthereumConfig().IS_MAINNET
-        env = 'mainnet' if is_mainnet else 'testnet'
 
-        __sentry_user["env"] = env
-        __sentry_user["golemVersion"] = golem.__version__
+        if talkback_value:
+            env = 'mainnet' if is_mainnet else 'testnet'
+
+            _sentry_user["env"] = env
+            _sentry_user["golemVersion"] = golem.__version__
+        else:
+            del _sentry_user['env']
+            del _sentry_user['golemVersion']
 
         sentry_handler = [h for h in logger_root.handlers if h.name == 'sentry'
                           or h.name == 'sentry-metrics']
