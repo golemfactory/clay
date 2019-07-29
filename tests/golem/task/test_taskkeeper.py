@@ -721,18 +721,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.restore()
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
 
-    @mock.patch('golem.core.golem_async.async_run', async_run)
-    def test_resources_options(self):
-        task_path = Path(self.path)
-        self._dump_some_tasks(task_path)
-        ctk = CompTaskKeeper(task_path)
-
-        assert ctk.get_resources_options("unknown") is None
-        subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
-        res = ctk.get_resources_options(subtask_id)
-        assert isinstance(res, dict)
-        assert res['client_id'] == HyperdriveClient.CLIENT_ID
-
 
 class TestTaskHeaderKeeperBase(TwistedTestCase):
 

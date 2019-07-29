@@ -1155,28 +1155,27 @@ class TestTaskGiven(TaskServerTestBase):
             request_resource, task_given, has_assigned_task):
 
         has_assigned_task.return_value = False
-        node_id = 'test_node'
-        task_id = 'test_task'
-        subtask_id = 'test_subtask'
-        resources = ['test_resource']
-        ctd = ComputeTaskDef(
-            task_id=task_id,
-            subtask_id=subtask_id,
-            resources=resources
-        )
-        price = 123
+        ttc = msg_factories.tasks.TaskToComputeFactory()
 
-        result = self.ts.task_given(node_id, ctd, price)
+        result = self.ts.task_given(ttc)
         self.assertEqual(result, True)
 
-        task_given.assert_called_once_with(ctd)
-        request_resource.assert_called_once_with(task_id, subtask_id, resources)
-        update_requestor_assigned_sum.assert_called_once_with(node_id, price)
+        task_given.assert_called_once_with(ttc.compute_task_def)
+        request_resource.assert_called_once_with(
+            ttc.task_id,
+            ttc.subtask_id,
+            ttc.compute_task_def['resources'],  # noqa pylint: disable=unsubscriptable-object
+            ttc.resources_options,
+        )
+        update_requestor_assigned_sum.assert_called_once_with(
+            ttc.requestor_id,
+            ttc.price,
+        )
         dispatcher_mock.send.assert_called_once_with(
             signal='golem.subtask',
             event='started',
-            subtask_id=subtask_id,
-            price=price
+            subtask_id=ttc.subtask_id,
+            price=ttc.price,
         )
         logger_mock.error.assert_not_called()
 
@@ -1185,7 +1184,7 @@ class TestTaskGiven(TaskServerTestBase):
             request_resource, task_given, has_assigned_task):
 
         has_assigned_task.return_value = True
-        result = self.ts.task_given('', Mock(), 0)
+        result = self.ts.task_given(Mock())
         self.assertEqual(result, False)
 
         task_given.assert_not_called()
