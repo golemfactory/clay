@@ -8,7 +8,7 @@ _sentry_user: Dict[str, str] = dict()
 
 
 def user() -> Optional[Dict[str, str]]:
-    return None if _sentry_user['env'] is None else _sentry_user.copy()
+    return None if 'env' not in _sentry_user else _sentry_user.copy()
 
 
 def update_sentry_user(node_id: str, node_name: Optional[str] = None):
