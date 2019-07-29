@@ -123,6 +123,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             resource_manager=resource_manager,
             client=server.client
         )
+        server.requested_task_manager = Mock()
+        server.requested_task_manager.task_exists.return_value = False
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
@@ -366,6 +368,9 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = self.keys
+        self.task_session.task_server.requested_task_manager = Mock()
+        self.task_session.task_server.requested_task_manager.task_exists.\
+            return_value = False
         self.task_session.task_server.sessions = {}
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
@@ -1186,6 +1191,9 @@ class TestOfferChosen(TestCase):
         )
         self.ts = TaskSession(conn)
         self.ts.key_id = 'deadbeef'
+        self.ts.task_server.requested_task_manager = Mock()
+        self.ts.task_server.requested_task_manager.task_exists.return_value = \
+            False
         self.msg = msg_factories.tasks.WantToComputeTaskFactory()
 
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')

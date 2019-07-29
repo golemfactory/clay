@@ -6,7 +6,10 @@ import secrets
 
 import enum
 from OpenSSL import crypto
-from OpenSSL._util import ffi, lib
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives.asymmetric import dh
+from cryptography.hazmat.primitives.serialization import Encoding, \
+    ParameterFormat
 
 from golem.core.common import is_windows
 from golem.rpc.common import X509_COMMON_NAME
@@ -115,12 +118,12 @@ class CertificateManager:
     def _generate_dh_params(output_path: str, bits: int) -> None:
         # pylint: disable=no-member
         logger.info("Generating DH key exchange params: %r", output_path)
-
-        dh = lib.DH_new()
-        lib.DH_generate_parameters_ex(dh, bits, 2, ffi.NULL)
-        with open(output_path, 'w') as output_file:
-            lib.DHparams_print_fp(output_file, dh)
-        lib.DH_free(dh)
+        parameters = dh.generate_parameters(generator=2, key_size=bits,
+                                            backend=default_backend())
+        parameter_bytes = parameters.parameter_bytes(Encoding.DER,
+                                                     ParameterFormat.PKCS3)
+        with open(output_path, 'wb') as output_file:
+            output_file.write(parameter_bytes)
 
     @staticmethod
     def _generate_key_pair(output_path: str, bits: int = KEY_BITS) -> None:

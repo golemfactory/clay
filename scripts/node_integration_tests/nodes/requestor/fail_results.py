@@ -8,7 +8,7 @@ Requestor Node that fails to download the results.
 import mock
 import time
 
-from golemapp import start  # noqa: E402 module level import not at top of file
+from golemapp import main  # noqa: E402 module level import not at top of file
 
 
 def pull_package(
@@ -21,4 +21,4 @@ def pull_package(
 with mock.patch("golem.task.result.resultmanager."
                 "EncryptedResultPackageManager.pull_package",
                 pull_package):
-    start()
+    main()
