@@ -24,7 +24,7 @@ class TestOfferPool(TestCase):
         )
 
     def test_choose_from_empty_pool(self):
-        with self.raises(KeyError):
+        with self.assertRaises(KeyError):
             OfferPool.choose_offers(self.TASK_A)
 
     def test_empty_after_choice(self):
