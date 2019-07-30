@@ -88,6 +88,10 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
+            # Probably get a market instance in here and determine payment strategy
+            # For BrassMarket that would be simply price
+
+
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,

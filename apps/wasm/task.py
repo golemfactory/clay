@@ -147,6 +147,7 @@ class WasmTaskDefinition(TaskDefinition):
         super().__init__()
         self.options = WasmTaskOptions()
         self.task_type = 'WASM'
+        self.budget: float = 1.0
 
     def add_to_resources(self) -> None:
         self.resources = [self.options.input_dir]
@@ -292,6 +293,12 @@ class WasmTask(CoreTask):
 
     def accept_results(self, subtask_id, result_files):
         pass
+
+    @property
+    def subtask_price(self):
+        sub_price = self.task_definition.budget / self.get_total_tasks()
+        logger.warning("WASM subtask price: %.03f", sub_price)
+        return sub_price
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         next_subtask_instance = self.subtasks[0]\
@@ -508,6 +515,11 @@ class WasmTaskBuilder(CoreTaskBuilder):
             )
             for name, subtask_opts in options['subtasks'].items()
         }
+
+        task_def.budget = dictionary.get('budget', 3.33)
+        if 'budget' not in dictionary:
+            logger.warning("Assigning task default budget: %.03f",
+                           task_def.budget)
 
         return task_def
 
