@@ -39,7 +39,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())

@@ -60,7 +60,7 @@ class ProviderBase(test_client.TestClientBase):
     }
 
     @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})

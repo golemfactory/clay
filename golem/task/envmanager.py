@@ -1,7 +1,13 @@
+import logging
 from typing import Dict, List, NamedTuple, Type
 
+from twisted.internet.defer import Deferred, inlineCallbacks
+
 from golem.envs import EnvId, Environment
+from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
+
+logger = logging.getLogger(__name__)
 
 
 class EnvEntry(NamedTuple):
@@ -15,6 +21,7 @@ class EnvironmentManager:
     def __init__(self):
         self._envs: Dict[EnvId, EnvEntry] = {}
         self._state: Dict[EnvId, bool] = {}
+        self._running_benchmark: bool = False
 
     def register_env(
             self,
@@ -40,7 +47,10 @@ class EnvironmentManager:
             self.set_enabled(env_id, enabled)
 
     def enabled(self, env_id: EnvId) -> bool:
-        """ Get the state (enabled or not) for an Environment. """
+        """ Get the state (enabled or not) for an Environment.
+            Also returns false when the environment is not registered"""
+        if env_id not in self._state:
+            return False
         return self._state[env_id]
 
     def set_enabled(self, env_id: EnvId, enabled: bool) -> None:
@@ -60,3 +70,44 @@ class EnvironmentManager:
 
     def payload_builder(self, env_id: EnvId) -> Type[TaskApiPayloadBuilder]:
         return self._envs[env_id].payload_builder
+
+    @inlineCallbacks
+    def get_performance(self, env_id) -> Deferred:
+        """ Gets the performance for the given environment
+            Checks the database first, if not found it starts a benchmark
+            Return value Deferred resulting in a float
+            or None when the benchmark is already running. """
+        if self._running_benchmark:
+            return None
+
+        if not self.enabled(env_id):
+            raise Exception("Requested performance for disabled environment")
+
+        try:
+            perf = Performance.get(Performance.environment_id == env_id)
+            return perf.value
+        except Performance.DoesNotExist:
+            pass
+
+        env = self._envs[env_id].instance
+        self._running_benchmark = True
+
+        try:
+            result = yield env.run_benchmark()
+        except Exception:
+            logger.error(
+                'failed to run benchmark. env=%r',
+                env_id,
+                exc_info=True
+            )
+            raise
+        finally:
+            self._running_benchmark = False
+
+        Performance.update_or_create(env_id, result)
+        logger.info(
+            'Finshed running benchmark. env=%r, score=%r',
+            env_id,
+            result
+        )
+        return result

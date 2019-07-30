@@ -26,7 +26,6 @@ from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
-from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskproviderstats import ProviderStatsManager
 
@@ -59,8 +58,9 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader) -> None:
+    def __init__(self, header: dt_tasks.TaskHeader, performance: float) -> None:
         self.header = header
+        self.performance = performance
         self.requests = 1
         self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
@@ -114,10 +114,6 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
-        # information about resource options for subtask
-        self.resources_options: typing.Dict[str, typing.Optional[
-            HyperdriveClientOptions]] = {}
-
         # price information per last task request
         self.active_task_offers: typing.Dict[str, int] = {}
 
@@ -146,7 +142,7 @@ class CompTaskKeeper:
                 self.subtask_to_task,
                 self.task_package_paths,
                 self.active_task_offers,
-                self.resources_options
+                None,  # resources_options, leaving for backwards compatibility
             )
             pickle.dump(dump_data, f)
 
@@ -162,7 +158,8 @@ class CompTaskKeeper:
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
                 active_task_offers = data[3] if len(data) > 3 else {}
-                resources_options = data[4] if len(data) > 4 else {}
+                # backwards compatibility, don't use slot 4
+                # resources_options = data[4] if len(data) > 4 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -175,9 +172,13 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
         self.active_task_offers.update(active_task_offers)
-        self.resources_options.update(resources_options)
 
-    def add_request(self, theader: dt_tasks.TaskHeader, price: int):
+    def add_request(
+            self,
+            theader: dt_tasks.TaskHeader,
+            price: int,
+            performance: float
+    ):
         # price is task_header.max_price
         logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
@@ -186,7 +187,7 @@ class CompTaskKeeper:
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader)
+            self.active_tasks[task_id] = CompTaskInfo(theader, performance)
         self.active_task_offers[task_id] = compute_subtask_value(
             price, self.active_tasks[task_id].header.subtask_timeout
         )
@@ -227,10 +228,6 @@ class CompTaskKeeper:
             header.subtask_timeout, task_to_compute.size)
 
         self.subtask_to_task[subtask_id] = task_id
-        if task_to_compute.resources_options:
-            task_to_compute.resources_options['options']['size'] = \
-                task_to_compute.size
-        self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
 
@@ -270,10 +267,6 @@ class CompTaskKeeper:
     def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
-    def get_resources_options(self, subtask_id: str) -> \
-            typing.Optional[HyperdriveClientOptions]:
-        return self.resources_options.get(subtask_id)
-
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)
@@ -295,7 +288,6 @@ class CompTaskKeeper:
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
-                self.resources_options.pop(subtask_id, None)
                 self.subtask_to_task.pop(subtask_id, None)
 
             self.active_tasks.pop(task_id, None)

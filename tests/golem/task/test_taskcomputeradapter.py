@@ -16,7 +16,7 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
     @mock.patch('golem.task.taskcomputer.IntStatsKeeper')
     @mock.patch('golem.task.taskcomputer.TaskComputer')
     @mock.patch('golem.task.taskcomputer.NewTaskComputer')
-    def setUp(self, new_task_computer, old_task_computer, int_stats_keeper):
+    def setUp(self, new_task_computer, old_task_computer, int_stats_keeper):  # noqa pylint: disable=arguments-differ
         self.new_computer = new_task_computer()
         self.old_computer = old_task_computer()
         self.int_stats_keeper = int_stats_keeper()

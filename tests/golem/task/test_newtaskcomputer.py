@@ -21,7 +21,7 @@ from golem.tools.testwithreactor import uninstall_reactor
 class NewTaskComputerTestBase(TwistedTestCase):
 
     @mock.patch('golem.task.taskcomputer.ProviderAppClient')
-    def setUp(self, provider_client) -> None:
+    def setUp(self, provider_client):  # pylint: disable=arguments-differ
         self.env_manager = mock.Mock(spec=EnvironmentManager)
         self.task_finished_callback = mock.Mock()
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
@@ -152,7 +152,7 @@ class TestCompute(NewTaskComputerTestBase):
     def tearDownClass(cls) -> None:
         uninstall_reactor()
 
-    def setUp(self):
+    def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
         self.runtime = mock.Mock(spec_set=Runtime)
         self.task_api_service = mock.Mock(
