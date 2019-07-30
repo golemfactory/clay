@@ -4,10 +4,11 @@ import sys
 import os
 import traceback
 import json
+import re
 
-sys.path.insert(0,'.')
+sys.path.insert(0, '.')
 
-from golem.testutils import TestTaskIntegration
+from golem.testutils_app_integration import TestTaskIntegration
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegration
 from tests.golem.verifier.test_utils.helpers import \
@@ -142,7 +143,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
     def __init__(self):
         super().__init__()
-        self.report = Report()
+        self.report: Report = Report()
 
     def get_report(self):
         return self.report
@@ -166,8 +167,18 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         for i in range(task.task_definition.subtasks_count):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
             
-            self.verify_subtask(task, subtask_id, result)
-            self._assert_crops_match(task.task_definition.task_id)
+            try:
+                verified_positive = self.verify_subtask(task, subtask_id, result)
+                self._assert_crops_match(task.task_definition.task_id)
+
+            except:
+                pass
+            #     self.report.success(params)
+            # except (Exception, RuntimeError) as e:
+            #     crops = self._deduce_crop_parameters(task.task_definition.task_id)
+            #     params = self._build_params(resolution, subtasks, frames, crops)
+                #self.report.fail(params)
+
 
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
@@ -193,6 +204,29 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                 crop_path,
                 fragment_path,
             ), f"crop: {crop_path} doesn't match: {fragment_path}"
+
+    def _deduce_crop_parameters(self, task_id: str) -> dict:
+        # Crop parameters are randomly chosen inside docker container and
+        # we don't have access to them.
+        # Here we use unelegant approach and we parse logs to find these
+        # parameters.
+        task_dir = os.path.join(self.tempdir, task_id)
+        log_file = os.path.join(task_dir, 'logs', 'stdout.log')
+
+        with open(log_file, "r") as log:
+            content = log.read()
+            text = re.search(r'blender_render_params:\n.*?results:', content, re.DOTALL).group()
+
+            return json.loads(text)
+
+    @classmethod
+    def _build_params(cls, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
+        return {
+            'resolution' : resolution,
+            'subtasks_count' : subtasks,
+            'frames' : frames,
+            'crops_params' : crops_params
+        }
 
 
 def run_script():
