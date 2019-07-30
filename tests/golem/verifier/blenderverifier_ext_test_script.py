@@ -159,20 +159,18 @@ class ExtendedVerifierTestEnv():
         self.report.to_file("reports")
 
     def _generate_parameters(self):
-        return [
-            {
-                'resolution' : [400, 400],
-                'subtasks_count' : 2,
-                'frames' : None,
-                'crops_params' : {}
-            },
-            {
-                'resolution' : [400, 400],
-                'subtasks_count' : 6,
-                'frames' : [1,2],
-                'crops_params' : {}
-            }
-        ]
+        parameters_set = []
+        
+        resolution = [400, 400]
+
+        for subtasks in range(1,17):
+            for num_frames in range(1,15):
+                frames = range(0, num_frames)
+                params = ExtendedVerifierTest._build_params(resolution, subtasks, frames, None)
+                
+                parameters_set.append(params)
+
+        return parameters_set
 
 
 
