@@ -5,7 +5,7 @@ from typing import List
 
 from apps.rendering.task.framerenderingtask import FrameRenderingTaskBuilder
 from golem.core.common import get_golem_path
-from golem.testutils import TestTaskIntegration
+from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from golem.task.taskbase import Task
 
