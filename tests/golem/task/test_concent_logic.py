@@ -14,7 +14,6 @@ from golem_messages import factories
 from golem_messages import message
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
-from twisted.internet.defer import Deferred
 
 from golem import testutils
 from golem.config.active import EthereumConfig
@@ -243,6 +242,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             send_mock,
             reason=cannot_reasons.PromissoryNoteMissing,
         )
+
 
 @mock.patch(
     'golem.task.tasksession.TaskSession.verify_owners',

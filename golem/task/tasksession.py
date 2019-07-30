@@ -346,7 +346,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def resolution(task_id):
             for offer in OfferPool.choose_offers(task_id):
-                offer.callback()
+                try:
+                    offer.callback()
+                except Exception as e:
+                    logger.error(e)
 
         OfferPool.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
