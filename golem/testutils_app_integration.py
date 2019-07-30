@@ -21,7 +21,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskEventListener, Task
 from golem.task.taskmanager import TaskManager
-from golem.testutils import DatabaseFixture
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 
@@ -63,7 +63,7 @@ class VerificationWait:
                 # This implementation can wait much longer then timeout,
                 # because we are in loop and timeout is always restarted,
                 # but who cares.
-                if timeouted:
+                if timeouted and not self.is_finished:
                     return False
         return True
 
@@ -76,19 +76,10 @@ class VerificationWait:
 
         with self.condition_var:
             self.is_finished = True
-
-            from twisted.internet import reactor
-
-            try:
-                reactor.stop()
-                #reactor.callFromThread(reactor.stop)
-            except RuntimeError as e:
-                logger.error("Stoping reactor error {}".format(repr(e)))
-
             self.condition_var.notify_all()
 
 
-class TestTaskIntegration(DatabaseFixture):
+class TestTaskIntegration(TestDatabaseWithReactor):
 
     @staticmethod
     def check_file_existence(filename):
@@ -103,10 +94,6 @@ class TestTaskIntegration(DatabaseFixture):
 
         # Clean verification queue.
         CoreTask.VERIFICATION_QUEUE = VerificationQueue()
-
-        # Clean reactor state in case it was used somewhere else.
-        self._stop_reactor()
-        self._clean_reactor()
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
         # will set this variable to True on the end of test.
@@ -146,9 +133,6 @@ class TestTaskIntegration(DatabaseFixture):
         if self.REMOVE_TMP_DIRS:
             if os.path.isdir(self.tempdir):
                 shutil.rmtree(self.tempdir)
-
-        self._stop_reactor()
-        self._clean_reactor()
 
     def execute_task(self, task_def):
         task: Task = self.start_task(task_def)
@@ -205,15 +189,6 @@ class TestTaskIntegration(DatabaseFixture):
         task_id = task.task_definition.task_id
         verification_lock = VerificationWait(task, subtask_id)
 
-        # We must clean reactor, before we call function which adds
-        # callbacks to reactor, otherwise we will remove them.
-        self._clean_reactor()
-
-        def verification_callback():
-            # Stop reactor to unlock thread.
-            self._stop_reactor()
-            verification_lock.on_verification_finished()
-
         logger.info("Executing TaskManager.computed_task_received "
                     "[subtask_id = {}] [task_id = {}].".format(subtask_id,
                                                                task_id))
@@ -221,11 +196,7 @@ class TestTaskIntegration(DatabaseFixture):
         self.task_manager.computed_task_received(
             subtask_id=subtask_id,
             result=result,
-            verification_finished=verification_callback)
-
-        self._run_reactor_events()
-
-        logger.debug("Stop processing reactor events and waiting on lock for verification.")
+            verification_finished=verification_lock.on_verification_finished)
 
         timeouted = not verification_lock.wait_until_finished(
             timeout=self.verification_timeout)
@@ -351,29 +322,6 @@ class TestTaskIntegration(DatabaseFixture):
             str(requestor_results)))
 
         return requestor_results
-
-    def _run_reactor_events(self):
-        # We must stop reactor to reach code after reactor.run.
-        # But there's problem that reactor is not restartable.
-        # To workaround is described here:
-        # http://www.blog.pythonlibrary.org/2016/09/14/restarting-a-twisted-reactor/
-        try:
-            from twisted.internet import reactor
-            reactor.run()
-        except (Exception, RuntimeError) as e:
-            self._clean_reactor()
-
-    def _clean_reactor(self):
-        import sys
-        if sys.modules.get('twisted.internet.reactor', None) is not None:
-            del sys.modules['twisted.internet.reactor']
-            from twisted.internet import reactor
-            from twisted.internet import default
-            default.install()
-
-    def _stop_reactor(self):
-        from twisted.internet import reactor
-        reactor.callFromThread(reactor.stop)
 
     @classmethod
     def _generate_node_id(cls):
