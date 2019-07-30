@@ -26,9 +26,10 @@ class NewTaskComputerTestBase(TwistedTestCase):
         self.task_finished_callback = mock.Mock()
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
         self.provider_client = provider_client()
+        self.work_dir = Path('test')
         self.task_computer = NewTaskComputer(
             env_manager=self.env_manager,
-            work_dir=mock.Mock(),
+            work_dir=self.work_dir,
             task_finished_callback=self.task_finished_callback,
             stats_keeper=self.stats_keeper
         )
@@ -69,18 +70,18 @@ class NewTaskComputerTestBase(TwistedTestCase):
     def subtask_deadline(self):
         return int(time.time()) + 3600
 
-    def get_task_header(self, **kwargs):
+    def _get_task_header(self, **kwargs):
         return mock.Mock(
             task_id=kwargs.get('task_id') or self.task_id,
             environment=kwargs.get('env_id') or self.env_id,
-            environment_prerequistes=(
+            environment_prerequisites=(
                 kwargs.get('prereq_dict') or self.prereq_dict),
             subtask_timeout=(
                 kwargs.get('subtask_timeout') or self.subtask_timeout),
             deadline=kwargs.get('task_deadline') or self.task_deadline
         )
 
-    def get_compute_task_def(self, **kwargs):
+    def _get_compute_task_def(self, **kwargs):
         return ComputeTaskDef(
             subtask_id=kwargs.get('subtask_id') or self.subtask_id,
             extra_data=kwargs.get('subtask_params') or self.subtask_params,
@@ -88,10 +89,15 @@ class NewTaskComputerTestBase(TwistedTestCase):
             deadline=kwargs.get('subtask_deadline') or self.subtask_deadline
         )
 
-    def patch_async(self, name, *args, **kwargs):
+    def _patch_async(self, name, *args, **kwargs):
         patcher = mock.patch(f'golem.task.taskcomputer.{name}', *args, **kwargs)
         self.addCleanup(patcher.stop)
         return patcher.start()
+
+    def _assign_task(self, **kwargs):
+        task_header = self._get_task_header(**kwargs)
+        compute_task_def = self._get_compute_task_def(**kwargs)
+        self.task_computer.task_given(task_header, compute_task_def)
 
 
 class TestPrepare(NewTaskComputerTestBase):
@@ -118,19 +124,28 @@ class TestCleanUp(NewTaskComputerTestBase):
 class TestTaskGiven(NewTaskComputerTestBase):
 
     def test_ok(self, provider_timer):
-        task_header = self.get_task_header()
-        compute_task_def = self.get_compute_task_def()
+        self.assertFalse(self.task_computer.has_assigned_task())
+        self.assertIsNone(self.task_computer.assigned_task_id)
+        self.assertIsNone(self.task_computer.assigned_subtask_id)
+        self.assertIsNone(self.task_computer.get_current_computing_env())
+
+        task_header = self._get_task_header()
+        compute_task_def = self._get_compute_task_def()
         self.task_computer.task_given(task_header, compute_task_def)
+
         self.assertTrue(self.task_computer.has_assigned_task())
         self.assertEqual(self.task_computer.assigned_task_id, self.task_id)
         self.assertEqual(
             self.task_computer.assigned_subtask_id,
             self.subtask_id)
+        self.assertEqual(
+            self.task_computer.get_current_computing_env(),
+            self.env_id)
         provider_timer.start.assert_called_once_with()
 
     def test_has_assigned_task(self, provider_timer):
-        task_header = self.get_task_header()
-        compute_task_def = self.get_compute_task_def()
+        task_header = self._get_task_header()
+        compute_task_def = self._get_compute_task_def()
         self.task_computer.task_given(task_header, compute_task_def)
         provider_timer.reset_mock()
         with self.assertRaises(AssertionError):
@@ -159,28 +174,23 @@ class TestCompute(NewTaskComputerTestBase):
             spec=TaskApiService,
             _runtime=self.runtime
         )
-        self.patch_async(
+        self._patch_async(
             'NewTaskComputer._get_task_api_service',
             return_value=self.task_api_service
         )
         self.task_dir = Path('task_dir')
-        self.patch_async(
+        self._patch_async(
             'NewTaskComputer._get_task_dir',
             return_value=self.task_dir
         )
-        self.provider_timer = self.patch_async('ProviderTimer')
-        self.dispatcher = self.patch_async('dispatcher')
-        self.logger = self.patch_async('logger')
+        self.provider_timer = self._patch_async('ProviderTimer')
+        self.dispatcher = self._patch_async('dispatcher')
+        self.logger = self._patch_async('logger')
 
     @defer.inlineCallbacks
     def test_no_assigned_task(self):
         with self.assertRaises(AssertionError):
             yield self.task_computer.compute()
-
-    def _assign_task(self, **kwargs):
-        task_header = self.get_task_header(**kwargs)
-        compute_task_def = self.get_compute_task_def(**kwargs)
-        self.task_computer.task_given(task_header, compute_task_def)
 
     @defer.inlineCallbacks
     def test_ok(self):
@@ -298,6 +308,26 @@ class TestCompute(NewTaskComputerTestBase):
         self.provider_timer.finish.assert_called_once()
         self.task_finished_callback.assert_called_once()
         self.assertFalse(self.task_computer.has_assigned_task())
+
+
+class TestGetTaskApiService(NewTaskComputerTestBase):
+
+    @mock.patch('golem.task.taskcomputer.EnvironmentTaskApiService')
+    def test_get_task_api_service(self, env_task_api_service):
+        self._assign_task()
+        service = self.task_computer._get_task_api_service()
+        self.env_manager.environment.assert_called_once_with(self.env_id)
+        self.env_manager.payload_builder.assert_called_once_with(self.env_id)
+        self.env_manager.environment().parse_prerequisites\
+            .assert_called_once_with(self.prereq_dict)
+
+        self.assertEqual(service, env_task_api_service.return_value)
+        env_task_api_service.assert_called_once_with(
+            env=self.env_manager.environment(),
+            prereq=self.env_manager.environment().parse_prerequisites(),
+            shared_dir=self.work_dir / self.env_id / self.task_id,
+            payload_builder=self.env_manager.payload_builder()
+        )
 
 
 class TestChangeConfig(NewTaskComputerTestBase):

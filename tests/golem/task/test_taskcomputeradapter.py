@@ -5,17 +5,24 @@ from golem_messages.message import ComputeTaskDef
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
+from golem.core.statskeeper import IntStatsKeeper
 from golem.task.envmanager import EnvironmentManager
-from golem.task.taskcomputer import TaskComputerAdapter
+from golem.task.taskcomputer import (
+    NewTaskComputer,
+    TaskComputer,
+    TaskComputerAdapter
+)
 from golem.task.taskserver import TaskServer
 from tests.factories.taskserver import ClientConfigDescriptor
 
 
 class TaskComputerAdapterTestBase(TwistedTestCase):
 
-    @mock.patch('golem.task.taskcomputer.IntStatsKeeper')
-    @mock.patch('golem.task.taskcomputer.TaskComputer')
-    @mock.patch('golem.task.taskcomputer.NewTaskComputer')
+    @mock.patch(
+        'golem.task.taskcomputer.IntStatsKeeper', spec_set=IntStatsKeeper)
+    @mock.patch('golem.task.taskcomputer.TaskComputer', spec_set=TaskComputer)
+    @mock.patch(
+        'golem.task.taskcomputer.NewTaskComputer', spec_set=NewTaskComputer)
     def setUp(self, new_task_computer, old_task_computer, int_stats_keeper):  # noqa pylint: disable=arguments-differ
         self.new_computer = new_task_computer()
         self.old_computer = old_task_computer()

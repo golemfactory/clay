@@ -110,6 +110,14 @@ class TaskComputerAdapter:
         return self._new_computer.assigned_subtask_id \
             or self._old_computer.assigned_subtask_id
 
+    @property
+    def support_direct_computation(self) -> bool:
+        return self._old_computer.support_direct_computation
+
+    @support_direct_computation.setter
+    def support_direct_computation(self, value: bool) -> None:
+        self._old_computer.support_direct_computation = value
+
     def start_computation(self) -> None:
         if self._new_computer.has_assigned_task():
             task_id = self.assigned_task_id
@@ -282,14 +290,7 @@ class NewTaskComputer:
         assigned_task = self._assigned_task
         assert assigned_task is not None
 
-        task_api_service = self._get_task_api_service(
-            task_id=assigned_task.task_id,
-            env_id=assigned_task.env_id,
-            prereq_dict=assigned_task.prereq_dict
-        )
-        # FIXME: Remove when ProviderAppClient implements shutdown
-        self._runtime = task_api_service._runtime  # noqa pylint: disable=protected-access
-
+        task_api_service = self._get_task_api_service()
         compute_future = asyncio.ensure_future(self._app_client.compute(
             service=task_api_service,
             task_id=assigned_task.task_id,
@@ -298,6 +299,9 @@ class NewTaskComputer:
         ))
 
         self._computation = deferred_from_future(compute_future)
+        # FIXME: Remove when ProviderAppClient implements shutdown
+        self._runtime = task_api_service._runtime  # noqa pylint: disable=protected-access
+
         from twisted.internet import reactor
         timeout = int(deadline_to_timeout(assigned_task.deadline))
         self._computation.addTimeout(timeout, reactor)
@@ -307,9 +311,7 @@ class NewTaskComputer:
     def _wait_until_computation_ends(self) -> defer.Deferred:
         assigned_task = self._assigned_task
         assert assigned_task is not None
-        task_dir = self._get_task_dir(
-            assigned_task.task_id,
-            assigned_task.env_id)
+        task_dir = self._get_task_dir()
 
         success = False
         try:
@@ -362,19 +364,21 @@ class NewTaskComputer:
             self._runtime = None
             self._task_finished_callback()
 
-    def _get_task_dir(self, task_id: str, env_id: EnvId) -> Path:
+    def _get_task_dir(self) -> Path:
+        assert self._assigned_task is not None
+        env_id = self._assigned_task.env_id
+        task_id = self._assigned_task.task_id
         return self._work_dir / env_id / task_id
 
-    def _get_task_api_service(
-            self,
-            task_id: str,
-            env_id: EnvId,
-            prereq_dict: dict
-    ) -> EnvironmentTaskApiService:
+    def _get_task_api_service(self) -> EnvironmentTaskApiService:
+        assert self._assigned_task is not None
+        env_id = self._assigned_task.env_id
+        prereq_dict = self._assigned_task.prereq_dict
+
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(prereq_dict)
-        shared_dir = self._get_task_dir(task_id, env_id)
+        shared_dir = self._get_task_dir()
 
         return EnvironmentTaskApiService(
             env=env,
