@@ -1,9 +1,15 @@
 # Dockerfile for a base image for computing tasks in Golem.
 # Installs python and sets up directories for Golem tasks.
 
-FROM ubuntu:18.04
+FROM golang:1.12.7 as stats-builder
+RUN git clone https://github.com/golemfactory/docker-cgroups-stats.git /build
+WORKDIR /build
+RUN go build -o docker-cgroups-stats main.go
 
+FROM ubuntu:18.04
 MAINTAINER Golem Tech <tech@golem.network>
+
+COPY --from=stats-builder /build/docker-cgroups-stats /usr/bin
 
 RUN set -x \
     && apt-get update \
@@ -19,7 +25,7 @@ RUN mkdir /golem \
  && mkdir /golem/resources \
  && mkdir /golem/output
 
-COPY core/resources/images/scripts/ /golem/
+COPY scripts/ /golem/
 RUN chmod +x /golem/install_py_libs.sh
 
 WORKDIR /golem/work/

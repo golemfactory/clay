@@ -140,7 +140,7 @@ class DockerJob:
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=self.entrypoint,
+            command=self._build_stats_entrypoint(),
             working_dir=self.WORK_DIR,
             environment=self.environment,
             user=None if is_windows() else os.getuid(),
@@ -152,6 +152,10 @@ class DockerJob:
         logger.debug("Container %s prepared, image: %s, dirs: %s; %s; %s; %s",
                      self.container_id, self.image.name, self.work_dir,
                      self.resources_dir, self.output_dir, self.stats_dir)
+
+    def _build_stats_entrypoint(self) -> str:
+        return f'docker-cgroups-stats -o {self.stats_dir}/stats.json ' \
+               + self.entrypoint
 
     def _cleanup(self):
         if self.container:
