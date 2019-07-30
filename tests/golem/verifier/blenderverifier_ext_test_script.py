@@ -79,7 +79,7 @@ class ExtendedVerifierTestEnv():
                 tester = ExtendedVerifierTest()
                 
                 tester.setUp()
-                tester.run_for_params_dict(parameters_set)
+                tester.run_for_parameters_set(parameters_set)
 
                 self.report.success(parameters_set)
 
@@ -148,15 +148,13 @@ class ExtendedVerifierTest(TestBlenderIntegration):
     def get_report(self):
         return self.report
 
-    def run_for_params_dict(self, parameters_set: dict):
+    def run_for_parameters_set(self, parameters_set: dict):
+
         resolution = parameters_set['resolution']
         subtasks = parameters_set['subtasks_count']
         frames = parameters_set['frames']
         crops_params = parameters_set['crops_params']
 
-        self.run_for_parameters_set(resolution, subtasks, frames, crops_params)
-
-    def run_for_parameters_set(self, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=resolution,
                                          subtasks_count=subtasks,
@@ -168,20 +166,33 @@ class ExtendedVerifierTest(TestBlenderIntegration):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
             
             try:
-                verified_positive = self.verify_subtask(task, subtask_id, result)
+                self.verify_subtask(task, subtask_id, result)
                 self._assert_crops_match(task.task_definition.task_id)
 
-            except:
-                pass
-            #     self.report.success(params)
-            # except (Exception, RuntimeError) as e:
-            #     crops = self._deduce_crop_parameters(task.task_definition.task_id)
-            #     params = self._build_params(resolution, subtasks, frames, crops)
-                #self.report.fail(params)
+            except (Exception, RuntimeError) as e:
+                parameters_set_copy = self._add_crop_params(parameters_set, task, i)
+                
+                reason = {
+                    'exception' : "Crops don't match.",
+                    'tmp_dir' : self.tempdir
+                }
 
+                self.report.fail(parameters_set_copy, reason)
+            else:
+                self.report.success(self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
+
+    def _add_crop_params(self,
+                         parameters_set: dict, 
+                         task: Task,
+                         subtask_num: int):
+        parameters_set_copy = parameters_set.copy()
+        crops = self._deduce_crop_parameters(task.task_definition.task_id)
+        parameters_set_copy['crops_params'][subtask_num] = crops['crops']
+
+        return parameters_set_copy
 
     def _assert_crops_match(self, task_id: str) -> None:
         task_dir = os.path.join(self.tempdir, task_id)
@@ -215,7 +226,10 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
         with open(log_file, "r") as log:
             content = log.read()
-            text = re.search(r'blender_render_params:\n.*?results:', content, re.DOTALL).group()
+            text = re.search(r'blender_render_params:\n(.*)?results:', content, re.DOTALL).group(1)
+            text = text.replace('\'', '\"')
+            text = text.replace('False', 'false')
+            text = text.replace('True', 'true')
 
             return json.loads(text)
 
