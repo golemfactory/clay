@@ -5,6 +5,7 @@ import os
 import traceback
 import json
 import re
+import copy
 
 sys.path.insert(0, '.')
 
@@ -41,6 +42,40 @@ class Report:
         self.failed_params = self.failed_params + report.failed_params
         self.success_params = self.success_params + report.success_params
         self.all_params = self.all_params + report.all_params
+
+    # Merge rapports with the same parameters but different crops.
+    # Note: This function doesn't check if reports have the same parameters.
+    def merge_raports_content(self):
+        self.failed_params = [self.merge_report(self.failed_params)]
+        self.all_params = [self.merge_report(self.all_params)]
+        self.success_params = [self.merge_report(self.success_params)]
+
+    def merge_report(self, report: dict):
+        if len(report) > 0:
+            # Choose one report and copy common part.
+            report_params = copy.deepcopy(report[0])
+            
+            # Delete parameters and replace it with empty dict.
+            # It will be updated below.
+            del report_params['crops_params']
+            report_params['crops_params'] = dict()
+            report_params['fails'] = list()
+
+            for subtasks in report:
+                crops_params = subtasks["crops_params"]
+
+                # Probably there's only one subtask, but we can iterate over whole list.
+                for subtask_num, crop in crops_params.items():
+
+                    report_params['crops_params'][subtask_num] = crop
+
+                    # Copy fail if it existed.
+                    if subtasks.get('fail_reason') is not None:
+                        report_params['fails'][subtask_num].append(
+                            subtasks['fail_reason'])
+            
+            return report_params
+        return report
 
     def to_file(self, dir: str):
         os.makedirs(dir, exist_ok=True)
@@ -81,8 +116,6 @@ class ExtendedVerifierTestEnv():
                 tester.setUp()
                 tester.run_for_parameters_set(parameters_set)
 
-                self.report.success(parameters_set)
-
             except (Exception, RuntimeError) as e:
                 _, _, tb = sys.exc_info()
                 message = traceback.format_exc()
@@ -99,8 +132,12 @@ class ExtendedVerifierTestEnv():
                 }
 
                 self.report.fail(parameters_set, reason)
+            else:
+                report = tester.get_report()
+                report.merge_raports_content()
+
+                self.report.update(report)
             finally:
-                self.report.update(tester.get_report())
                 tester.tearDown()
 
             self._progress()
@@ -145,7 +182,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         super().__init__()
         self.report: Report = Report()
 
-    def get_report(self):
+    def get_report(self) -> Report:
         return self.report
 
     def run_for_parameters_set(self, parameters_set: dict):
@@ -153,6 +190,8 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         resolution = parameters_set['resolution']
         subtasks = parameters_set['subtasks_count']
         frames = parameters_set['frames']
+
+        # TODO: Use these parameters to test chosen crops.
         crops_params = parameters_set['crops_params']
 
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
@@ -188,7 +227,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                          parameters_set: dict, 
                          task: Task,
                          subtask_num: int):
-        parameters_set_copy = parameters_set.copy()
+        parameters_set_copy = copy.deepcopy(parameters_set)
         crops = self._deduce_crop_parameters(task.task_definition.task_id)
         parameters_set_copy['crops_params'][subtask_num] = crops['crops']
 
