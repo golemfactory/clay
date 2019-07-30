@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 from pathlib import Path
 from random import SystemRandom
 from time import sleep
+from typing import Tuple, List
 import twisted
 
 import ethereum.keys
@@ -276,11 +277,10 @@ class TestTaskIntegration(DatabaseFixture):
 
         # build mock node
         self.node = dt_p2p_factory.Node()
-        self.task_definition = None
         self.node_id = self._generate_node_id()
         self.node_name = self._generate_node_id()
-        self.task = None
         self.dir_manager = DirManager(self.tempdir)
+        
         logger.info("Tempdir: {}".format(self.tempdir))
 
         # load all apps to be enabled for tests
@@ -329,10 +329,13 @@ class TestTaskIntegration(DatabaseFixture):
         self.task_manager.start_task(task_id)
         return task
 
-    def compute_next_subtask(self, task: Task, subtask_num: int):
-        task_id = task.task_definition.task_id
-        i = subtask_num
+    def compute_next_subtask(self, task: Task, subtask_num: int) -> Tuple[List[str], int, dict]:
+        subtask_id, ctd = self.query_next_subtask(task)
+        result = self.execute_on_mock_provider(task, ctd, subtask_id, subtask_num)
 
+        return result, subtask_id, ctd
+
+    def query_next_subtask(self, task: Task):
         ctd: ComputeTaskDef = self.task_manager. \
             get_next_subtask(node_id=self._generate_node_id(),
                              task_id=task.task_definition.task_id,
@@ -340,9 +343,12 @@ class TestTaskIntegration(DatabaseFixture):
                              price=int(
                                  task.price /
                                  task.task_definition.subtasks_count),
-                             offer_hash="blaa offeeeeer {}".format(i))
+                             offer_hash="blaa offeeeeer")
 
-        subtask_id = ctd["subtask_id"]
+        return ctd["subtask_id"], ctd
+
+    def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int, subtask_num: int):
+        task_id = task.task_definition.task_id
 
         logger.info("Executing test subtask {}/{} [subtask_id = {}] "
                     "[task_id = {}] on mocked provider.".format(
@@ -351,8 +357,9 @@ class TestTaskIntegration(DatabaseFixture):
 
         result = self._execute_subtask(task, ctd)
         result = self._collect_results_from_provider(result,
-                                                     task_id, subtask_id)
-        return result, subtask_id, ctd
+                                                     task_id,
+                                                     subtask_id)
+        return result
 
     def verify_subtask(self, task: Task, subtask_id, result):
         task_id = task.task_definition.task_id
