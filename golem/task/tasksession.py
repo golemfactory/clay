@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator, Tuple
+    Optional, Generator
 )
 
 from ethereum.utils import denoms
@@ -24,7 +24,9 @@ from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import scale_price, Offer, OfferPool
+from golem.marketplace import (
+    Offer, ProviderPerformance
+)
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -32,7 +34,6 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
@@ -328,37 +329,48 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
+        current_task = self.task_manager.tasks[msg.task_id]
+        market_strategy = self.task_manager.get_market_strategy_for_task(
+            current_task
+        )
+
+        # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
+            # pylint:disable=too-many-arguments
             def __init__(
                     self,
-                    scaled_price: float,
-                    reputation: float,
-                    quality: Tuple[float, float, float, float],
+                    provider_id: str,
+                    provider_performance: ProviderPerformance,
+                    max_price: float,
+                    price: float,
                     callback: Callable[..., None]) -> None:
-                super().__init__(scaled_price, reputation, quality)
+                super().__init__(provider_id, provider_performance,
+                                 max_price, price)
                 self.callback = callback
 
         offer = OfferWithCallback(
-            scale_price(msg.task_header.max_price, msg.price),
-            ranking_dbm.get_provider_efficiency(self.key_id),
-            ranking_dbm.get_provider_efficacy(self.key_id).vector,
+            self.key_id,
+            ProviderPerformance(msg.perf_index),
+            current_task.header.max_price,
+            msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
         )
 
-        def resolution(task_id):
-            for offer in OfferPool.choose_offers(task_id):
+        def resolution(market_strategy, task_id):
+            for offer in market_strategy.resolve_task_offers(task_id):
                 try:
                     offer.callback()
                 except Exception as e:
                     logger.error(e)
 
-        OfferPool.add(msg.task_id, offer)
+        market_strategy.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
-        if OfferPool.get_task_offer_count(msg.task_id) == 1:
+        if market_strategy.get_task_offer_count(msg.task_id) == 1:
             deferred.call_later(
                 self.task_server.config_desc.offer_pooling_interval,
                 resolution,
+                market_strategy,
                 msg.task_id
             )
             logger.info(
