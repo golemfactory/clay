@@ -274,6 +274,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ANY,
         )
 
+    @patch("golem.task.taskmanager.TaskManager.get_market_strategy_for_task",
+           Mock(return_value=RequestorBrassMarketStrategy))
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
