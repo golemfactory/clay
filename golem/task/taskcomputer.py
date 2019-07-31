@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
 from golem_task_api import (
     ProviderAppClient,
-	TaskApiService,
 	constants as task_api_constants
 )
 from pydispatch import dispatcher
@@ -242,7 +241,6 @@ class NewTaskComputer:
         self._work_dir = work_dir
         self._task_finished_callback = task_finished_callback
         self._stats_keeper = stats_keeper or IntStatsKeeper(CompStats)
-        self._app_client: Optional[TaskApiService] = None
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
 
@@ -300,11 +298,11 @@ class NewTaskComputer:
 
     def compute(self) -> defer.Deferred:
         assigned_task = self._assigned_task
-        assert self.has_assigned_task()
+        assert assigned_task is not None
 
         task_api_service = self._get_task_api_service()
-        self._app_client = ProviderAppClient(service=task_api_service)
-        compute_future = asyncio.ensure_future(self._app_client.compute(
+        app_client = ProviderAppClient(service=task_api_service)
+        compute_future = asyncio.ensure_future(app_client.compute(
             task_id=assigned_task.task_id,
             subtask_id=assigned_task.subtask_id,
             subtask_params=assigned_task.subtask_params
@@ -315,12 +313,15 @@ class NewTaskComputer:
         from twisted.internet import reactor
         timeout = int(deadline_to_timeout(assigned_task.deadline))
         self._computation.addTimeout(timeout, reactor)
-        return self._wait_until_computation_ends()
+        return self._wait_until_computation_ends(app_client)
 
     @defer.inlineCallbacks
-    def _wait_until_computation_ends(self) -> defer.Deferred:
+    def _wait_until_computation_ends(
+            self,
+            app_client: ProviderAppClient
+    ) -> defer.Deferred:
         assigned_task = self._assigned_task
-        assert self.has_assigned_task()
+        assert assigned_task is not None
         task_dir = self._get_task_dir()
 
         success = False
@@ -371,12 +372,8 @@ class NewTaskComputer:
             ProviderTimer.finish()
             self._computation = None
             self._assigned_task = None
-            # This check should not be needed but is there to please the linter
-            if self._app_client is not None:
-                if not success:
-                    # Ensure the app_client is shutdown before dropping the var
-                    yield self._app_client.shutdown()
-                self._app_client = None
+            if not success:
+                yield app_client.shutdown()
             self._task_finished_callback()
 
     def _get_task_dir(self) -> Path:
