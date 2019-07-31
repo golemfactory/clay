@@ -476,17 +476,16 @@ class TaskServer(
             f'Error downloading resources: {reason}',
         )
 
-    def send_results(self, subtask_id, task_id, result):
-
-        if 'data' not in result:
-            raise AttributeError("Wrong result format")
+    def send_results(self, subtask_id: str, task_id: str, result: List[Path]):
+        if not result:
+            raise ValueError('Not results to send')
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         # this is purely for tests
         if self.config_desc.overwrite_results:
-            for file_path in result['data']:
+            for file_path in result:
                 shutil.copyfile(
                     src=self.config_desc.overwrite_results,
                     dst=file_path)
@@ -499,7 +498,7 @@ class TaskServer(
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result['data'],
+            result=result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner)
