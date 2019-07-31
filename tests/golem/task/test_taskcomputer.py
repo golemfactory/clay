@@ -113,7 +113,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         args = task_server.send_results.call_args[0]
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
-        self.assertEqual(args[2]["data"], 10000)
+        self.assertEqual(args[2], 10000)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 

@@ -196,7 +196,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
         self.task_server.send_results.assert_called_once_with(
             task_id='test_task',
             subtask_id='test_subtask',
-            result={'data': [output_file]}
+            result=[output_file],
         )
 
     @defer.inlineCallbacks

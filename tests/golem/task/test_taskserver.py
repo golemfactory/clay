@@ -1057,14 +1057,14 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
 
 class TestSendResults(TaskServerTestBase):
 
-    def test_wrong_result_format(self):
-        with self.assertRaises(AttributeError):
-            self.ts.send_results('subtask_id', 'task_id', {'foo': 'bar'})
+    def test_no_results(self):
+        with self.assertRaises(ValueError):
+            self.ts.send_results('subtask_id', 'task_id', [])
 
     def test_subtask_already_sent(self):
         self.ts.results_to_send['subtask_id'] = Mock(spec=WaitingTaskResult)
         with self.assertRaises(RuntimeError):
-            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+            self.ts.send_results('subtask_id', 'task_id', ['data'])
 
     @patch('golem.task.taskserver.Trust')
     def test_ok(self, trust):
@@ -1091,13 +1091,13 @@ class TestSendResults(TaskServerTestBase):
         with patch.object(
             self.ts.task_manager, 'task_result_manager', result_manager
         ):
-            self.ts.send_results('subtask_id', 'task_id', {'data': 'data'})
+            self.ts.send_results('subtask_id', 'task_id', ['data'])
 
         result = self.ts.results_to_send.get('subtask_id')
         self.assertIsInstance(result, WaitingTaskResult)
         self.assertEqual(result.task_id, 'task_id')
         self.assertEqual(result.subtask_id, 'subtask_id')
-        self.assertEqual(result.result, 'data')
+        self.assertEqual(result.result, ['data'])
         self.assertEqual(result.last_sending_trial, 0)
         self.assertEqual(result.delay_time, 0)
         self.assertEqual(result.owner, header.task_owner)

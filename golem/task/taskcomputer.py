@@ -143,7 +143,7 @@ class TaskComputerAdapter:
             self._task_server.send_results(
                 subtask_id=subtask_id,
                 task_id=task_id,
-                result={'data': [output_file]},
+                result=[output_file],
             )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
@@ -528,11 +528,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                         str(work_wall_clock_time))
             self.stats.increase_stat('computed_tasks')
 
+            assert isinstance(task_thread.result, dict)
             try:
                 self.task_server.send_results(
                     subtask_id,
                     subtask['task_id'],
-                    task_thread.result,
+                    task_thread.result['data'],
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error("Error sending the results: %r", exc)
