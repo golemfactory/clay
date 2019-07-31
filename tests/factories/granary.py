@@ -10,11 +10,13 @@ from golem_messages.cryptography import ECCx
 
 _logging = False
 
-
 def _log(*args):
     # Private log function since pytest.tearDown() does not print logger
     if _logging:
         print(*args)
+
+
+GRANARY_EXECUTABLE_NAME = 'golem-granary'
 
 
 class Account:
@@ -27,12 +29,17 @@ class Account:
 
 
 class Granary:
-    def __init__(self, hostname: str):
+    def __init__(self, hostname: Optional[str] = None):
         self.hostname = hostname
+
+    def _cmd(self, *args):
+        cmd = ['ssh', self.hostname] if self.hostname else []
+        cmd.extend([GRANARY_EXECUTABLE_NAME, *args])
+        return cmd
 
     def request_account(self) -> Optional[Account]:
         _log("Granary called, account requested")
-        cmd = ['ssh', self.hostname, 'golem-granary', 'get_used_account']
+        cmd = self._cmd('get_used_account')
 
         completed = subprocess.run(
             cmd,
@@ -62,8 +69,12 @@ class Granary:
         ts = account.transaction_store or '{}'
         ts = shlex.quote(ts)
 
-        cmd = ['ssh', self.hostname, 'golem-granary', 'return_used_account',
-               '-p', key_pub_addr, '-P', encode_hex(account.raw_key), '-t', ts]
+        cmd = self._cmd(
+            'return_used_account',
+            '-p', key_pub_addr,
+            '-P', encode_hex(account.raw_key),
+            '-t', ts
+        )
 
         _log(cmd)
         completed = subprocess.run(

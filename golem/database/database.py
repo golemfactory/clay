@@ -40,8 +40,10 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
                 elif datetime.datetime.now() > deadline:
                     logger.warning(
                         "execute_sql() retry timeout after %d iterations."
-                        " Giving up.",
+                        " Giving up. sql=%r, params=%r",
                         iterations,
+                        sql,
+                        params,
                     )
                     raise
                 logger.debug(

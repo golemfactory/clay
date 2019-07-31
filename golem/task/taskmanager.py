@@ -85,10 +85,13 @@ class TaskManager(TaskEventListener):
     class AlreadyRestartedError(Error):
         pass
 
-    def __init__(
-            self, node, keys_auth, root_path,
+    def __init__(  # pylint: disable=too-many-arguments
+            self,
+            node,
+            keys_auth,
+            root_path,
             config_desc: ClientConfigDescriptor,
-            tasks_dir="tasks", task_persistence=True,
+            tasks_dir="tasks",
             apps_manager=AppsManager(),
             finished_cb=None,
     ) -> None:
@@ -106,8 +109,6 @@ class TaskManager(TaskEventListener):
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.task_persistence = task_persistence
 
         tasks_dir = Path(tasks_dir)
         self.tasks_dir = tasks_dir / "tmanager"
@@ -146,7 +147,6 @@ class TaskManager(TaskEventListener):
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
-            persist=self.task_persistence,
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
@@ -155,17 +155,18 @@ class TaskManager(TaskEventListener):
 
         self.finished_cb = finished_cb
 
-        if self.task_persistence:
-            self.restore_tasks()
+        self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
 
-    def create_task(self, dictionary, minimal=False):
-        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
+    def create_task(self, dictionary, test=False):
+        purpose = TaskPurpose.TESTING if test else TaskPurpose.REQUESTING
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
+        task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         type_name = dictionary['type'].lower()
         compute_on = dictionary.get('compute_on', 'cpu').lower()
-        is_requesting = purpose == TaskPurpose.REQUESTING
 
         if type_name == "blender" and is_requesting and compute_on == "gpu":
             type_name = type_name + "_nvgpu"
@@ -173,17 +174,17 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary,
-                                                   minimal)
-        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition = builder_type.build_definition(task_type, dictionary, test)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
+        definition.task_id = task_id
 
         task = builder_type(self.node, definition, self.dir_manager).build()
-        task_id = task.header.task_id
 
-        logger.info("Creating task. type=%r, id=%s", type(task), task_id)
-        self.tasks[task_id] = task
-        self.tasks_states[task_id] = TaskState(task)
+        if is_requesting:
+            logger.info("Creating task. type=%r, id=%s", type(task), task_id)
+            self.tasks[task_id] = task
+            self.tasks_states[task_id] = TaskState(task)
+
         return task
 
     def initialize_task(self, task: Task):
@@ -227,7 +228,7 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def task_creation_failed(self, task_id: str, reason: str) -> None:
-        logger.error("Cannot create task. id=%s : %s", task_id, reason)
+        logger.error("Cannot create task. task_id=%s : %s", task_id, reason)
 
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.errorCreating
@@ -1138,9 +1139,9 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    def add_comp_task_request(self, theader, price):
+    def add_comp_task_request(self, theader, price, performance):
         """ Add a header of a task which this node may try to compute """
-        self.comp_task_keeper.add_request(theader, price)
+        self.comp_task_keeper.add_request(theader, price, performance)
 
     def __add_subtask_to_tasks_states(self, node_id,
                                       ctd, price: int):
@@ -1203,7 +1204,7 @@ class TaskManager(TaskEventListener):
             task_id, subtask_id, op, persist,
         )
 
-        if persist and self.task_persistence:
+        if persist:
             self.dump_task(task_id)
 
         task_state = self.tasks_states.get(task_id)

@@ -5,7 +5,10 @@ import enum
 import functools
 import logging
 import time
-from typing import TYPE_CHECKING, Optional
+from typing import (
+    Any, Callable, TYPE_CHECKING,
+    Optional, Generator, Tuple
+)
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
@@ -17,7 +20,7 @@ from twisted.internet import defer
 
 import golem
 from golem.core import common
-from golem.core import golem_async
+from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -29,20 +32,19 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
+import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
-from golem.task import rpc
 from golem.task import taskkeeper
+from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
+    from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
     from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
+    from golem.network.concent.client import ConcentClientService  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -128,11 +130,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.task_manager
 
     @property
+    def requested_task_manager(self) -> 'RequestedTaskManager':
+        return self.task_server.requested_task_manager
+
+    @property
     def task_computer(self) -> 'TaskComputer':
         return self.task_server.task_computer
 
     @property
-    def concent_service(self):
+    def concent_service(self) -> 'ConcentClientService':
         return self.task_server.client.concent_service
 
     @property
@@ -259,14 +265,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
-
+        task_id = msg.task_id
         reasons = message.tasks.CannotAssignTask.REASON
 
         if msg.concent_enabled and not self.concent_service.enabled:
             self._cannot_assign_task(msg.task_id, reasons.ConcentDisabled)
             return
 
-        if not self.task_manager.is_my_task(msg.task_id):
+        if not self.task_manager.is_my_task(task_id) and \
+                not self.requested_task_manager.task_exists(task_id):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
@@ -289,16 +296,26 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        if not self.task_manager.check_next_subtask(
-                msg.task_id, msg.price):
-            logger.debug("check_next_subtask False. %s", task_node_info)
-            self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
-            return
+        if self.requested_task_manager.task_exists(task_id):
+            if not self.requested_task_manager.has_pending_subtasks(task_id):
+                logger.debug("has_pending_subtasks False. %s", task_node_info)
+                self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
+                return
+            if self.requested_task_manager.is_task_finished(task_id):
+                logger.debug("is_task_finished True. %s", task_node_info)
+                self._cannot_assign_task(task_id, reasons.TaskFinished)
+                return
+        else:
+            if not self.task_manager.check_next_subtask(
+                    msg.task_id, msg.price):
+                logger.debug("check_next_subtask False. %s", task_node_info)
+                self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+                return
 
-        if self.task_manager.task_finished(msg.task_id):
-            logger.debug("TaskFinished. %s", task_node_info)
-            self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
-            return
+            if self.task_manager.task_finished(msg.task_id):
+                logger.debug("TaskFinished. %s", task_node_info)
+                self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
+                return
 
         if self._handshake_required(self.key_id):
             logger.warning('Can not accept offer: Resource handshake is'
@@ -311,17 +328,43 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        task = self.task_manager.tasks[msg.task_id]
-        offer = Offer(
-            scaled_price=scale_price(task.header.max_price, msg.price),
-            reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector,
+        class OfferWithCallback(Offer):
+            def __init__(self,
+                         scaled_price: float,
+                         reputation: float,
+                         quality: Tuple[float, float, float, float],
+                         callback: Callable[..., None]) -> None:
+                super().__init__(scaled_price, reputation, quality)
+                self.callback = callback
+
+        offer = OfferWithCallback(
+            scale_price(msg.task_header.max_price, msg.price),
+            ranking_dbm.get_provider_efficiency(self.key_id),
+            ranking_dbm.get_provider_efficacy(self.key_id).vector,
+            functools.partial(self._offer_chosen, True, msg=msg)
         )
 
-        d = OfferPool.add(msg.task_id, offer)
+        def resolution(task_id):
+            for offer in OfferPool.choose_offers(task_id):
+                try:
+                    offer.callback()
+                except Exception as e:
+                    logger.error(e)
+
+        OfferPool.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
-        d.addCallback(functools.partial(self._offer_chosen, msg=msg))
-        d.addErrback(golem_async.default_errback)
+
+        if OfferPool.get_task_offer_count(msg.task_id) == 1:
+            deferred.call_later(
+                self.task_server.config_desc.offer_pooling_interval,
+                resolution,
+                msg.task_id
+            )
+            logger.info(
+                "Will select providers for task %s in %.1f seconds",
+                msg.task_id,
+                self.task_server.config_desc.offer_pooling_interval
+            )
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals
@@ -330,6 +373,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg: message.tasks.WantToComputeTask,
     ):
         assert self.key_id is not None
+        task_id = msg.task_id
 
         task_node_info = "task_id=%r, node=%r" % (
             msg.task_id, common.short_node_id(self.key_id))
@@ -340,57 +384,29 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        task = self.task_manager.tasks[msg.task_id]
-        task_state = self.task_manager.tasks_states[msg.task_id]
         price = taskkeeper.compute_subtask_value(
             msg.price,
-            task.header.subtask_timeout,
+            msg.task_header.subtask_timeout,
         )
-        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         for _i in range(msg.num_subtasks):
-            ctd = self.task_manager.get_next_subtask(
-                self.key_id, msg.task_id, msg.perf_index, msg.price, offer_hash)
-
-            logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
-            if ctd is None:
-                self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
+            ctd_res = yield self._get_next_ctd(msg)
+            if ctd_res is None:
+                self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
                 return
-
-            task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
-
-            resources_result = None
-            if ctd["resources"]:
-                resources_result = yield rpc.add_resources(
-                    self.task_server.client,
-                    ctd["resources"],
-                    ctd["subtask_id"],
-                    common.deadline_to_timeout(ctd["deadline"])
-                )
-                # overwrite resources so they are serialized by resource_manager
-                resources = self.task_server.get_resources(ctd['subtask_id'])
-                ctd["resources"] = resources
-                logger.info("resources_result: %r", resources_result)
-            else:
-                ctd["resources"] = self.task_server.get_resources(
-                    ctd['subtask_id'],
-                )
+            ctd, package_hash, package_size = ctd_res
+            logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
 
             logger.info(
                 "Subtask assigned. %s, subtask_id=%r",
                 task_node_info, ctd["subtask_id"]
             )
-            if resources_result:
-                _, _, package_hash, package_size = resources_result
-            else:
-                package_hash = task_state.package_hash
-                package_size = task_state.package_size
 
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
-                requestor_id=task.header.task_owner.key,
-                requestor_public_key=task.header.task_owner.key,
-                requestor_ethereum_public_key=task.header.task_owner.key,
+                requestor_id=msg.task_header.task_owner.key,
+                requestor_public_key=msg.task_header.task_owner.key,
+                requestor_ethereum_public_key=msg.task_header.task_owner.key,
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
@@ -424,6 +440,71 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
+
+    # pylint: disable=too-many-locals
+    @defer.inlineCallbacks
+    def _get_next_ctd(
+            self,
+            msg: message.tasks.WantToComputeTask,
+    ) -> Optional[Generator[defer.Deferred, Any, None]]:
+        assert self.key_id is not None
+        task_id = msg.task_id
+
+        if self.requested_task_manager.task_exists(task_id):
+            if not self.requested_task_manager.has_pending_subtasks(task_id):
+                return None
+            subtask_definition = \
+                self.requested_task_manager.get_next_subtask(task_id)
+            task_resources_dir = self.requested_task_manager.\
+                get_task_network_resources_dir(task_id)
+            rm = self.task_server.new_resource_manager
+            cdn_resources = yield defer.gatherResults([
+                rm.share(task_resources_dir / r)
+                for r in subtask_definition.resources
+            ])
+            new_ctd = {
+                'task_id': task_id,
+                'subtask_id': subtask_definition.subtask_id,
+                'extra_data': subtask_definition.params,
+                'deadline': subtask_definition.deadline,
+                'resources': cdn_resources,
+                'performance': msg.perf_index,
+            }
+            return new_ctd, '', 1
+
+        offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
+        ctd = self.task_manager.get_next_subtask(
+            self.key_id,
+            msg.task_id,
+            msg.perf_index,
+            msg.price,
+            offer_hash,
+        )
+        if ctd is None:
+            return None
+
+        task = self.task_manager.tasks[msg.task_id]
+        task.accept_client(self.key_id, offer_hash, msg.num_subtasks)
+
+        if ctd["resources"]:
+            resources_result = yield add_resources(
+                self.task_server.client,
+                ctd["resources"],
+                ctd["subtask_id"],
+                common.deadline_to_timeout(ctd["deadline"])
+            )
+            _, _, package_hash, package_size = resources_result
+            # overwrite resources so they are serialized by
+            # resource_manager
+            resources = self.task_server.get_resources(ctd['subtask_id'])
+            ctd["resources"] = resources
+            logger.info("resources_result: %r", resources_result)
+        else:
+            ctd["resources"] = self.task_server.get_resources(ctd['task_id'])
+            task_state = self.task_manager.tasks_states[msg.task_id]
+            package_hash = task_state.package_hash
+            package_size = task_state.package_size
+        return ctd, package_hash, package_size
 
     # pylint: disable=too-many-return-statements, too-many-branches
     @handle_attr_error
@@ -469,8 +550,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.OfferCancelled)
             return
 
-        if self.concent_service.enabled and not msg.concent_enabled:
-            # Provider requires concent if it's enabed locally
+        if (
+                self.concent_service.enabled
+                and self.concent_service.required_as_provider
+                and not msg.concent_enabled
+        ):
+            # Provider requires concent
+            # if it's enabled locally and marked as required
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:
@@ -534,7 +620,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
 
         try:
-            self._check_ctd_params(ctd)
+            self._check_task_header(msg.want_to_compute_task.task_header)
             self._set_env_params(
                 env_id=msg.want_to_compute_task.task_header.environment,
                 ctd=ctd,
@@ -544,7 +630,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         self.task_manager.comp_task_keeper.receive_subtask(msg)
-        if not self.task_server.task_given(self.key_id, ctd, msg.price):
+        if not self.task_server.task_given(msg):
             _cannot_compute(None)
             return
 
@@ -931,9 +1017,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd: message.ComputeTaskDef) -> None:
-        header = self.task_manager.comp_task_keeper.get_task_header(
-            ctd['task_id'])
+    def _check_task_header(self, header: message.tasks.TaskHeader) -> None:
         owner = header.task_owner
 
         reasons = message.tasks.CannotComputeTask.REASON

@@ -18,6 +18,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -59,7 +60,7 @@ class ProviderBase(test_client.TestClientBase):
     }
 
     @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -67,6 +68,7 @@ class ProviderBase(test_client.TestClientBase):
             return_value=True
         )
         self.client.apps_manager.load_all_apps()
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with mock.patch(
             'golem.network.concent.handlers_library.HandlersLibrary'
             '.register_handler',
@@ -756,14 +758,16 @@ class TestExceptionPropagation(ProviderBase):
             )
 
     @mock.patch('twisted.internet.reactor', mock.Mock())
+    @mock.patch("golem.task.taskmanager.TaskManager.task_creation_failed")
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
-    def test_create_task(self, mock_method, *_):
+    def test_create_task(self, mock_method, creation_failed, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
         mock_method.side_effect = Exception("Test")
 
         result = self.provider.create_task(t.to_dict())
         mock_method.assert_called()
+        creation_failed.assert_called()
         self.assertEqual(result, (None, "Test"))
 
     def test_restart_task(self, *_):
@@ -1031,13 +1035,13 @@ class TestGetFragments(ProviderBase):
         task = self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
-        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, 'oh')
+        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, '')
         # Create three more subtasks, all with start_task = 2
         for i in range(subtasks_given - 1):
             with mock.patch('apps.rendering.task.renderingtask.RenderingTask'
                             '._get_next_task', return_value=2):
                 tm.get_next_subtask(fake.pystr(min_chars=4, max_chars=24),
-                                    task.header.task_id, 0, 0, 'oh')
+                                    task.header.task_id, 0, 0, '')
 
         task_fragments, error = self.provider.get_fragments(task.header.task_id)
 

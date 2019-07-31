@@ -506,7 +506,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
             test_headers.append(header)
             price_bid = int(random.random() * 100)
-            ctk.add_request(header, price_bid)
+            ctk.add_request(header, price_bid, 0.0)
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
@@ -571,28 +571,28 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header.task_id = "xyz"
         header.subtask_timeout = 1
         with self.assertRaises(TypeError):
-            ctk.add_request(header, "not a number")
+            ctk.add_request(header, "not a number", 0.0)
         with self.assertRaises(ValueError):
-            ctk.add_request(header, -2)
-        ctk.add_request(header, 5 * 10 ** 18)
+            ctk.add_request(header, -2, 0.0)
+        ctk.add_request(header, 5 * 10 ** 18, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        ctk.add_request(header, 1 * 10 ** 17)
+        ctk.add_request(header, 1 * 10 ** 17, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
-        ctk.add_request(header, 314 * 10 ** 15)
+        ctk.add_request(header, 314 * 10 ** 15, 0.0)
         self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
         with self.assertRaises(ValueError):
-            ctk.add_request(thread, -1)
+            ctk.add_request(thread, -1, 0.0)
         with self.assertRaises(TypeError):
-            ctk.add_request(thread, '1')
-        ctk.add_request(thread, 12)
+            ctk.add_request(thread, '1', 0.0)
+        ctk.add_request(thread, 12, 0.0)
 
         ctd = ComputeTaskDef()
         ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
@@ -608,11 +608,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
     def test_receive_subtask_problems(self):
-        ctk = CompTaskKeeper(Path(self.path), False)
+        ctk = CompTaskKeeper(Path(self.path))
         th = get_task_header()
         task_id = th.task_id
         price_bid = 5
-        ctk.add_request(th, price_bid)
+        ctk.add_request(th, price_bid, 0.0)
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -648,7 +648,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk = CompTaskKeeper(self.new_path)
         header = get_task_header()
         task_id = header.task_id
-        ctk.add_request(header, 40003)
+        ctk.add_request(header, 40003, 0.0)
         ctk.active_tasks[task_id].requests = 0
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         comp_task_def = {
@@ -720,18 +720,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.task_package_paths = {}
         ctk.restore()
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
-
-    @mock.patch('golem.core.golem_async.async_run', async_run)
-    def test_resources_options(self):
-        task_path = Path(self.path)
-        self._dump_some_tasks(task_path)
-        ctk = CompTaskKeeper(task_path)
-
-        assert ctk.get_resources_options("unknown") is None
-        subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
-        res = ctk.get_resources_options(subtask_id)
-        assert isinstance(res, dict)
-        assert res['client_id'] == HyperdriveClient.CLIENT_ID
 
 
 class TestTaskHeaderKeeperBase(TwistedTestCase):

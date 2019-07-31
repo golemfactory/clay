@@ -13,6 +13,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Union,
     Set,
 )
 
@@ -29,11 +30,16 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.environments.environment import (
+    Environment as OldEnv,
+    SupportStatus,
+    UnsupportReason,
+)
+from golem.envs import Environment as NewEnv
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
-from golem.marketplace import OfferPool
 from golem.model import TaskPayment
+from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -50,12 +56,14 @@ from golem.ranking.manager.database_manager import (
     update_requestor_assigned_sum,
     update_requestor_efficiency,
 )
+from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
+from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -65,7 +73,7 @@ from .server import helpers
 from .server import queue_ as srv_queue
 from .server import resources
 from .server import verification as srv_verification
-from .taskcomputer import TaskComputer
+from .taskcomputer import TaskComputerAdapter
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
@@ -126,7 +134,7 @@ class TaskServer(
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
             old_env_manager=client.environments_manager,
-            new_env_manager=EnvironmentManager(),
+            new_env_manager=new_env_manager,
             node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
@@ -139,6 +147,11 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
+        self.requested_task_manager = RequestedTaskManager()
+        self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
+            config_desc.hyperdrive_rpc_address,
+            config_desc.hyperdrive_rpc_port,
+        ))
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(
             node_name=config_desc.node_name,
@@ -146,9 +159,9 @@ class TaskServer(
             root_path=self.get_task_computer_root(),
             benchmarks=benchmarks
         )
-        self.task_computer = TaskComputer(
+        self.task_computer = TaskComputerAdapter(
             task_server=self,
-            docker_cpu_env=docker_cpu_env,
+            env_manager=new_env_manager,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
         deferred = self._change_task_computer_config(
@@ -164,8 +177,6 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.sessions: Dict[str, TaskSession] = {}
         self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
-
-        OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -255,9 +266,16 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
-    def get_environment_by_id(self, env_id):
-        return self.task_keeper.old_env_manager.get_environment_by_id(
-            env_id)
+    def get_environment_by_id(
+            self,
+            env_id: str
+    ) -> Optional[Union[OldEnv, NewEnv]]:
+        """ Looks for the requested env_id in the new, then the old env_manager.
+            Returns None when the environment is not found. """
+        keeper = self.task_keeper
+        if keeper.new_env_manager.enabled(env_id):
+            return keeper.new_env_manager.environment(env_id)
+        return keeper.old_env_manager.get_environment_by_id(env_id)
 
     def request_task_by_id(self, task_id: str) -> None:
         """ Requests task possibly after successful resource handshake. """
@@ -268,48 +286,65 @@ class TaskServer(
             return
         self._request_task(task_header)
 
-    def _request_random_task(self) -> Optional[str]:
+    def _request_random_task(self) -> None:
         """ If there is no task currently computing and time elapsed from last
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
 
         if time.time() - self._last_task_request_time \
                 < self.config_desc.task_request_interval:
-            return None
+            return
 
         if self.task_computer.has_assigned_task() \
                 or (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
-            return None
+            return
 
         task_header = self.task_keeper.get_task(self.requested_tasks)
         if task_header is None:
-            return None
+            return
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
-        return self._request_task(task_header)
 
-    def _request_task(self, theader: dt_tasks.TaskHeader) -> Optional[str]:
+        def _request_task_error(e):
+            logger.error(
+                "Failed to request task: task_id=%r, exception=%r",
+                task_header.task_id,
+                e
+            )
+        # Unyielded deferred, fire and forget requesting a new task
+        deferred = self._request_task(task_header)
+        deferred.addErrback(_request_task_error)  # pylint: disable=no-member
+
+    @inlineCallbacks
+    def _request_task(self, theader: dt_tasks.TaskHeader) -> Deferred:
         try:
-            env = self.get_environment_by_id(theader.environment)
-            if env is not None:
-                performance = env.get_performance()
-            else:
-                performance = 0.0
-
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
-            if self.client.concent_service.enabled:
-                if not theader.concent_enabled:
-                    supported = supported.join(
-                        SupportStatus.err({
-                            UnsupportReason.CONCENT_REQUIRED: True,
-                        }),
+            if (
+                    self.client.concent_service.enabled
+                    and self.client.concent_service.required_as_provider
+                    and not theader.concent_enabled
+            ):
+                supported = supported.join(
+                    SupportStatus.err({
+                        UnsupportReason.CONCENT_REQUIRED: True,
+                    }),
+                )
+
+            # prepare env for performance, should always exist at this point
+            env_id = theader.environment
+            env = self.get_environment_by_id(env_id)
+            if env is None:
+                supported = supported.join(
+                    SupportStatus.err(
+                        {UnsupportReason.ENVIRONMENT_MISSING: env_id}
                     )
+                )
 
             if not supported.is_ok():
                 logger.debug(
@@ -322,6 +357,17 @@ class TaskServer(
                         theader.task_id,
                         supported,
                     )
+                return None
+
+            # Check performance
+            performance = None
+            if isinstance(env, OldEnv):
+                performance = env.get_performance()
+            else:  # NewEnv
+                env_mgr = self.task_keeper.new_env_manager
+                performance = yield env_mgr.get_performance(env_id)
+            if performance is None:
+                logger.debug("Not requesting task, benchmark is in progress.")
                 return None
 
             # Check handshake
@@ -353,13 +399,16 @@ class TaskServer(
             )
             price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price)
+                theader=theader, price=price, performance=performance)
             wtct = message.tasks.WantToComputeTask(
                 perf_index=performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
-                concent_enabled=self.client.concent_service.enabled,
+
+                concent_enabled=self.client.concent_service.enabled
+                if theader.concent_enabled else False,
+
                 provider_public_key=self.keys_auth.key_id,
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
@@ -380,27 +429,26 @@ class TaskServer(
 
     def task_given(
             self,
-            node_id: str,
-            ctd: message.ComputeTaskDef,
-            price: int
+            msg: message.tasks.TaskToCompute,
     ) -> bool:
         if self.task_computer.has_assigned_task():
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
-        self.task_computer.task_given(ctd)
+        self.task_computer.task_given(msg.compute_task_def)
         self.request_resource(
-            ctd['task_id'],
-            ctd['subtask_id'],
-            ctd['resources'],
+            msg.task_id,
+            msg.subtask_id,
+            msg.compute_task_def['resources'],
+            msg.resources_options,
         )
         self.requested_tasks.clear()
-        update_requestor_assigned_sum(node_id, price)
+        update_requestor_assigned_sum(msg.requestor_id, msg.price)
         dispatcher.send(
             signal='golem.subtask',
             event='started',
-            subtask_id=ctd['subtask_id'],
-            price=price,
+            subtask_id=msg.subtask_id,
+            price=msg.price,
         )
         return True
 
@@ -417,24 +465,24 @@ class TaskServer(
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
 
+        subtask_id = self.task_computer.assigned_subtask_id
         self.task_computer.task_interrupted()
         self.send_task_failed(
-            self.task_computer.assigned_subtask['subtask_id'],
+            subtask_id,
             task_id,
             f'Error downloading resources: {reason}',
         )
 
-    def send_results(self, subtask_id, task_id, result):
-
-        if 'data' not in result:
-            raise AttributeError("Wrong result format")
+    def send_results(self, subtask_id: str, task_id: str, result: List[Path]):
+        if not result:
+            raise ValueError('Not results to send')
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         # this is purely for tests
         if self.config_desc.overwrite_results:
-            for file_path in result['data']:
+            for file_path in result:
                 shutil.copyfile(
                     src=self.config_desc.overwrite_results,
                     dst=file_path)
@@ -447,7 +495,7 @@ class TaskServer(
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result['data'],
+            result=result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner)
@@ -517,16 +565,18 @@ class TaskServer(
     def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
         if not self._verify_header_sig(task_header):
             logger.info(
-                'Invalid signature task_header:%r, signature: %r',
-                task_header,
+                'Invalid signature. task_id=%r, signature=%r',
+                task_header.task_id,
                 task_header.signature,
             )
+            logger.debug("task_header=%r", task_header)
             return False
         if task_header.deadline < time.time():
             logger.info(
-                "Task's deadline already in the past. task_header: %r",
-                task_header
+                "Task's deadline already in the past. task_id=%r",
+                task_header.task_id
             )
+            logger.debug("task_header=%r", task_header)
             return False
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
@@ -694,14 +744,14 @@ class TaskServer(
 
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id)
-            environment = self.get_environment_by_id(header.environment)
+            performance = keeper.active_tasks[task_id].performance
             computation_time = timer.ProviderTimer.time
 
             update_requestor_efficiency(
                 node_id=keeper.get_node_for_task_id(task_id),
                 timeout=header.subtask_timeout,
                 computation_time=computation_time,
-                performance=environment.get_performance(),
+                performance=performance,
                 min_performance=min_performance,
             )
 
@@ -771,7 +821,11 @@ class TaskServer(
 
     def get_min_performance_for_task(self, task: Task) -> float:
         env = self.get_environment_by_id(task.header.environment)
-        return env.get_min_accepted_performance()
+        if isinstance(env, OldEnv):
+            return env.get_min_accepted_performance()
+        # NewEnv
+        # TODO: Implement minimum performance in new env
+        return 0.0
 
     class RejectedReason(Enum):
         not_my_task = 'not my task'

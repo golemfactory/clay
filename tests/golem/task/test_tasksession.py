@@ -22,10 +22,7 @@ from golem_messages.utils import encode_hex
 from pydispatch import dispatcher
 
 import twisted.internet.address
-from twisted.internet.defer import (
-    Deferred,
-    succeed,
-)
+from twisted.internet.defer import Deferred
 
 import golem
 from golem import model, testutils
@@ -54,6 +51,13 @@ from tests.factories import hyperdrive
 
 
 fake = faker.Faker()
+
+
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
 
 
 def fill_slots(msg):
@@ -87,16 +91,11 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@patch('golem.task.tasksession.get_provider_efficiency', Mock())
-@patch('golem.task.tasksession.get_provider_efficacy', Mock())
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       Mock(return_value=_fake_get_efficacy()))
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
@@ -126,6 +125,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             resource_manager=resource_manager,
             client=server.client
         )
+        server.requested_task_manager = Mock()
+        server.requested_task_manager.task_exists.return_value = False
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
@@ -275,6 +276,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
+        ts.task_server.config_desc.offer_pooling_interval = 0
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -369,6 +371,9 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = self.keys
+        self.task_session.task_server.requested_task_manager = Mock()
+        self.task_session.task_server.requested_task_manager.task_exists.\
+            return_value = False
         self.task_session.task_server.sessions = {}
         self.task_session.task_manager.task_finished.return_value = False
         self.pubkey = self.keys.public_key
@@ -390,11 +395,12 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.get_environment_by_id.return_value = \
             self.env
 
-        self.header = self.task_session.task_manager.\
-            comp_task_keeper.get_task_header()
+        self.header = msg_factories.tasks.TaskHeaderFactory()
         self.header.task_owner.key = self.task_session.key_id
         self.header.task_owner.pub_addr = '10.10.10.10'
         self.header.task_owner.pub_port = 1112
+        self.task_session.task_manager.\
+            comp_task_keeper.get_task_header.return_value = self.header
 
         self.reasons = message.tasks.CannotComputeTask.REASON
 
@@ -424,6 +430,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
             compute_task_def=ctd,
             **kwargs,
         )
+        ttc.want_to_compute_task.task_header = self.header
         ttc.want_to_compute_task.provider_public_key = encode_hex(
             self.keys.ecc.raw_pubkey)
         ttc.want_to_compute_task.sign_message(self.keys.ecc.raw_privkey)  # noqa pylint: disable=no-member
@@ -454,11 +461,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         ttc = self.ttc_prepare_and_react(ctd)
         self.task_session.task_manager.\
             comp_task_keeper.receive_subtask.assert_called_with(ttc)
-        self.task_session.task_server.task_given.assert_called_with(
-            self.header.task_owner.key,
-            ctd,
-            ttc.price,
-        )
+        self.task_session.task_server.task_given.assert_called_with(ttc)
         self.conn.close.assert_not_called()
 
     def test_no_ctd(self, *_):
@@ -492,17 +495,6 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         # Wrong data size -> failure
         self.ttc_prepare_and_react(resource_size=1024)
         self.assertCannotComputeTask(self.reasons.ResourcesTooBig)
-
-    def test_ctd_custom_code(self):
-        # Allow custom code / code in ComputerTaskDef -> proper execution
-        ctd = self.ctd(extra_data__src_code="print 'Hello world!'")
-        ttc = self.ttc_prepare_and_react(ctd)
-        self.task_session.task_server.task_given.assert_called_with(
-            self.header.task_owner.key,
-            ctd,
-            ttc.price,
-        )
-        self.conn.close.assert_not_called()
 
     def test_fail_no_environment_available(self):
         # No environment available -> failure
@@ -694,6 +686,7 @@ class TestTaskSession(TaskSessionTestBase):
                 max_price=1,
             ),
             20,
+            0.0,
         )
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
@@ -994,6 +987,8 @@ class ReportComputedTaskTest(
             })
         }
         ts.task_server.task_keeper.task_headers = {}
+        ts.task_server.requested_task_manager = \
+            Mock(task_exists=Mock(return_value=False))
         ecc = Mock()
         ecc.get_privkey.return_value = os.urandom(32)
         ts.task_server.keys_auth = keys_auth
@@ -1185,11 +1180,15 @@ class TestOfferChosen(TestCase):
         )
         self.ts = TaskSession(conn)
         self.ts.key_id = 'deadbeef'
+        self.ts.task_server.requested_task_manager = Mock()
+        self.ts.task_server.requested_task_manager.task_exists.return_value = \
+            False
         self.msg = msg_factories.tasks.WantToComputeTaskFactory()
 
     @patch('golem.task.tasksession.TaskSession._cannot_assign_task')
     def test_ctd_is_none(self, mock_cat, *_):
         self.ts.task_manager.get_next_subtask.return_value = None
+        self.msg.price = 123
         self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         mock_cat.assert_called_once_with(
             self.msg.task_id,
@@ -1200,25 +1199,21 @@ class TestOfferChosen(TestCase):
     @patch('golem_messages.utils.copy_and_sign')
     @patch('golem.task.tasksession.TaskSession.send')
     @patch('golem.network.history.add')
-    @patch('golem.task.rpc.add_resources')
-    def test_multi_wtct(self, mock_add_resources, *_):
+    def test_multi_wtct(self, *_):
         # given
-        self.msg = msg_factories.tasks.WantToComputeTaskFactory(num_subtasks=3)
-        ctd = msg_factories.tasks.ComputeTaskDefFactory(resources=None)
-        self.ts.task_manager.get_next_subtask.return_value = ctd
-        mock_add_resources.return_value = succeed(
-            [
-                'path',
-                'to',
-                'package_hash',
-                10,
-            ]
+        self.msg = msg_factories.tasks.WantToComputeTaskFactory(
+            num_subtasks=3,
+            price=123,
         )
-        self.ts.task_server.get_resources.return_value = 'ts resources'
+
+        def ctd(*_args, **_kwargs):
+            return msg_factories.tasks.ComputeTaskDefFactory(resources=None)
+
+        self.ts.task_manager.get_next_subtask.side_effect = ctd
 
         # when
-        core_deferred.sync_wait(
-            self.ts._offer_chosen(is_chosen=True, msg=self.msg),
+        core_deferred.sync_wait(  # ensure it's actually finished
+            self.ts._offer_chosen(is_chosen=True, msg=self.msg)
         )
 
         # then

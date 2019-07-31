@@ -83,13 +83,13 @@ class TestCertificateManager(TempDirFixture):
     def test_generate_dh_params(self):
         cert_manager = CertificateManager(self.tempdir,
                                           setup_forward_secrecy=True)
-        cert_manager._generate_dh_params(cert_manager.dh_path, bits=16)
+        cert_manager._generate_dh_params(cert_manager.dh_path, bits=512)
         with open(cert_manager.dh_path, 'rb') as f:
             assert f.read()
 
     def test_generate_key_pair(self):
         cert_manager = CertificateManager(self.tempdir)
-        cert_manager._generate_key_pair(cert_manager.key_path, bits=64)
+        cert_manager._generate_key_pair(cert_manager.key_path, bits=512)
         assert isinstance(cert_manager.read_key(), crypto.PKey)
 
     def test_create_and_sign_certificate(self):
