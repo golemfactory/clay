@@ -53,6 +53,13 @@ from tests.factories import hyperdrive
 fake = faker.Faker()
 
 
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
 def fill_slots(msg):
     for slot in msg.__slots__:
         if hasattr(msg, slot):
@@ -84,16 +91,11 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
 # pylint:disable=no-member,too-many-instance-attributes
-@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@patch('golem.task.tasksession.get_provider_efficiency', Mock())
-@patch('golem.task.tasksession.get_provider_efficacy', Mock())
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       Mock(return_value=_fake_get_efficacy()))
 class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def setUp(self):
         super().setUp()
@@ -274,6 +276,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
+        ts.task_server.config_desc.offer_pooling_interval = 0
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -1203,7 +1206,7 @@ class TestOfferChosen(TestCase):
             price=123,
         )
 
-        def ctd(*args, **kwargs):
+        def ctd(*_args, **_kwargs):
             return msg_factories.tasks.ComputeTaskDefFactory(resources=None)
 
         self.ts.task_manager.get_next_subtask.side_effect = ctd

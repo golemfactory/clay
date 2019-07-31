@@ -5,7 +5,10 @@ import enum
 import functools
 import logging
 import time
-from typing import Any, TYPE_CHECKING, Optional, Generator
+from typing import (
+    Any, Callable, TYPE_CHECKING,
+    Optional, Generator, Tuple
+)
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
@@ -17,7 +20,7 @@ from twisted.internet import defer
 
 import golem
 from golem.core import common
-from golem.core import golem_async
+from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -29,10 +32,7 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
-from golem.ranking.manager.database_manager import (
-    get_provider_efficacy,
-    get_provider_efficiency,
-)
+import golem.ranking.manager.database_manager as ranking_dbm
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
@@ -328,16 +328,43 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        offer = Offer(
-            scaled_price=scale_price(msg.task_header.max_price, msg.price),
-            reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector,
+        class OfferWithCallback(Offer):
+            def __init__(self,
+                         scaled_price: float,
+                         reputation: float,
+                         quality: Tuple[float, float, float, float],
+                         callback: Callable[..., None]) -> None:
+                super().__init__(scaled_price, reputation, quality)
+                self.callback = callback
+
+        offer = OfferWithCallback(
+            scale_price(msg.task_header.max_price, msg.price),
+            ranking_dbm.get_provider_efficiency(self.key_id),
+            ranking_dbm.get_provider_efficacy(self.key_id).vector,
+            functools.partial(self._offer_chosen, True, msg=msg)
         )
 
-        d = OfferPool.add(msg.task_id, offer)
+        def resolution(task_id):
+            for offer in OfferPool.choose_offers(task_id):
+                try:
+                    offer.callback()
+                except Exception as e:
+                    logger.error(e)
+
+        OfferPool.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
-        d.addCallback(functools.partial(self._offer_chosen, msg=msg))
-        d.addErrback(golem_async.default_errback)
+
+        if OfferPool.get_task_offer_count(msg.task_id) == 1:
+            deferred.call_later(
+                self.task_server.config_desc.offer_pooling_interval,
+                resolution,
+                msg.task_id
+            )
+            logger.info(
+                "Will select providers for task %s in %.1f seconds",
+                msg.task_id,
+                self.task_server.config_desc.offer_pooling_interval
+            )
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals
