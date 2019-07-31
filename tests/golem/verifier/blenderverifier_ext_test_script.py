@@ -18,6 +18,7 @@ from tests.golem.verifier.test_utils.helpers import \
 
 
 logger = logging.getLogger(__name__)
+logging.disable(logging.CRITICAL)
 
 
 
@@ -99,6 +100,9 @@ class ExtendedVerifierTestEnv():
         self.report = Report()
 
     def run(self):
+
+        ExtendedVerifierTest.setUpClass()
+
         try:
             parameters_sets = self._generate_parameters()
             self.run_for_params(parameters_sets)
@@ -106,7 +110,8 @@ class ExtendedVerifierTestEnv():
             print("Script error ocured: {}".format(repr(e)))
             print("Saving to file partial results.")
             self._reports_to_files()
-
+        finally:
+            ExtendedVerifierTest.tearDownClass()
 
     def run_for_params(self, parameters_sets: dict):
         logger.info("Parameters {}".format(str(parameters_sets)))

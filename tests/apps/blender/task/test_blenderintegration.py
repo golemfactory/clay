@@ -45,7 +45,7 @@ class TestBlenderIntegration(TestTaskIntegration):
         if output_path is None:
             output_path = self.tempdir
 
-        if frames is not None:
+        if frames is not None and len(frames) > 1:
             frames = FrameRenderingTaskBuilder.frames_to_string(frames)
             use_frames = True
         else:
