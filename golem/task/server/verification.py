@@ -65,23 +65,6 @@ class VerificationMixin:
 
             task_to_compute = report_computed_task.task_to_compute
 
-            config_desc = self.config_desc
-            if config_desc.disallow_node_timeout_seconds is not None:
-                # Experimental feature. Try to spread subtasks fairly amongst
-                # providers.
-                self.disallow_node(
-                    node_id=task_to_compute.provider_id,
-                    timeout_seconds=config_desc.disallow_node_timeout_seconds,
-                    persist=False,
-                )
-            if config_desc.disallow_ip_timeout_seconds is not None:
-                # Experimental feature. Try to spread subtasks fairly amongst
-                # providers.
-                self.disallow_ip(
-                    ip=self.address,
-                    timeout_seconds=config_desc.disallow_ip_timeout_seconds,
-                )
-
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,

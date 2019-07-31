@@ -189,11 +189,6 @@ class AppConfig:
             initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
             min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
             mask_update_num_bits=MASK_UPDATE_NUM_BITS,
-            # acl
-            disallow_node_timeout_seconds=DISALLOW_NODE_TIMEOUT_SECONDS,
-            disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
-            disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
-            disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
             #hyperg
             hyperdrive_port=DEFAULT_HYPERDRIVE_PORT,
             hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,

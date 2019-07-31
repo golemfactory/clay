@@ -66,12 +66,6 @@ class ClientConfigDescriptor(object):
         self.mask_update_interval = 0
         self.mask_update_num_bits = 0
 
-        self.disallow_node_timeout_seconds: typing.Optional[int] = None
-        self.disallow_ip_timeout_seconds: typing.Optional[int] = None
-
-        self.disallow_id_max_times = 1
-        self.disallow_ip_max_times = 1
-
         self.hyperdrive_port: typing.Optional[int] = None
         self.hyperdrive_address: typing.Optional[str] = None
         self.hyperdrive_rpc_port: typing.Optional[int] = None
