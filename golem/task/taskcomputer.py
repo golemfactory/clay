@@ -371,10 +371,12 @@ class NewTaskComputer:
             ProviderTimer.finish()
             self._computation = None
             self._assigned_task = None
-            if not success:
-                # Ensure the app_client is shutdown before dropping the var
-                yield self._app_client.shutdown()
-            self._app_client = None
+            # This check should not be needed but is there to please the linter
+            if self._app_client is not None:
+                if not success:
+                    # Ensure the app_client is shutdown before dropping the var
+                    yield self._app_client.shutdown()
+                self._app_client = None
             self._task_finished_callback()
 
     def _get_task_dir(self) -> Path:
