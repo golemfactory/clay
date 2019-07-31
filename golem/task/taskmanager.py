@@ -18,7 +18,7 @@ from typing import (
 from zipfile import ZipFile
 
 from golem_messages import message
-from golem_messages.message import ComputeTaskDef
+from golem_messages.message import ComputeTaskDef, TaskToCompute
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -32,7 +32,9 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
+from golem.marketplace import OfferPool
 from golem.network import nodeskeeper
+from golem.network.transport.communicator import Communicator
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -854,10 +856,14 @@ class TaskManager(TaskEventListener):
         task_state = self.tasks_states[task_id]
         subtask_state = task_state.subtask_states[subtask_id]
         ban_node = subtask_state.time_started + timeout < time.time()
+
+        logger.info('subtask {} was cancelled by provider. Sending info to dispatcher'.format(subtask_id))
+        dispatcher.send('golem.taskmanager.task_computation_cancelled.subtask_id={}'.format(subtask_id))
+
         return self.task_computation_failure(
             subtask_id,
             f'Task computation rejected: {err.value}',
-            ban_node,
+            ban_node
         )
 
     def task_result_incoming(self, subtask_id):

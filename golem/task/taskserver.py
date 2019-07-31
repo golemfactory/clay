@@ -4,8 +4,10 @@ import itertools
 import logging
 import os
 import shutil
+import threading
 import time
 import weakref
+from collections import defaultdict
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -20,6 +22,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
+from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
@@ -111,7 +114,8 @@ class TaskServer(
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
-
+        self.task_was_accepted_by_provider = defaultdict(lambda: True)
+        self.lock = threading.Lock()
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
         docker_cpu_config = DockerCPUConfig(
             work_dirs=[Path(self.get_task_computer_root())])
@@ -901,6 +905,53 @@ class TaskServer(
 
         logger.debug('provider can be accepted %s', ids)
         return True
+
+    def nominate_provider(self, task_id, provider_id):
+        logger.info('Nominating provider {} for task {}'.format(task_id, provider_id))
+        def on_task_rejected(subtask_id):
+            with self.lock:
+                logger.info('on_task_rejected_callback [subtask_id={}]'.format(subtask_id))
+                self.task_was_accepted_by_provider[subtask_id] = False
+
+        def on_failure(task_id, subtask_id, provider_id, error_msg=None):
+            logger.info(
+                'Cannot choose provider {} for task {} [subtask_ud'.format(provider_id,
+                                                               task_id))
+        def on_success(task_id, subtask_id, provider_id):
+            with self.lock:
+                if self.task_was_accepted_by_provider[subtask_id]:
+                    logger.info('Task {} [subtask = {}] was accepted by provider {}'.format(task_id, subtask_id, provider_id))
+                else:
+                    on_failure(task_id, subtask_id, provider_id, error_msg='Provider decided to not compute task {} [subtask={}]'.format(provider_id, provider_id, subtask_id))
+
+        offers = OfferPool.get_offer_for_provider(task_id, provider_id)
+        logger.info('Offers from provider {} for task {} are '.format(provider_id, offers))
+        assert len(offers) == 1  # TODO
+        task_session = self.sessions.get(provider_id)
+        if not task_session:
+            on_failure(None, None, provider_id, error_msg='No session to provider {}'.format(provider_id))
+
+        ttcs = task_session.offer_chosen(True, offers[0].want_to_compute_task_msg)
+        logger.info('ttc returned by offer_chosen are '.format(ttcs))
+        assert len(ttcs) == 1 # We assume that provider wants to compute only one subtask at that moment
+
+        for ttc, _ in ttcs:
+            subtask_id = ttc.compute_task_def.subtask_id
+            signal = 'golem.taskmanager.task_computation_cancelled.subtask_id={}'.format(subtask_id)
+            logger.info('Registered for {}'.format(signal))
+            dispatcher.connect(on_task_rejected, signal)
+
+            timeout = self.config_desc.computation_cancellation_timeout
+            from twisted.internet import reactor
+            logger.info('Deferring with timeout {} for subtask_id = {}, subtask_id = {}, provider_id = {}'.format(timeout, provider_id, task_id, subtask_id))
+            task.deferLater(
+                reactor,
+                timeout,
+                on_success,
+                task_id,
+                subtask_id,
+                provider_id
+            )
 
     @classmethod
     def notify_provider_rejected(cls, node_id: str, task_id: str,

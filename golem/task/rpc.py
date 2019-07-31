@@ -21,6 +21,7 @@ from golem.core import common
 from golem.core import simpleserializer
 from golem.core.deferred import DeferredSeq
 from golem.ethereum import exceptions as eth_exceptions
+from golem.marketplace import OfferPool
 from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
@@ -479,10 +480,10 @@ class ClientProvider:
         if not isinstance(task, ManualTask):
             return None, 'Provider cannot be nominated manually for task '\
                 .format(task_id)
-        if not task.is_provider_declared(provider_node_id):
+        if provider_node_id not in OfferPool.get_declared_providers(task_id):
             return None, 'Provider {} is not declared to compute task {}'.format(provider_node_id, task_id)
-        task.nominate_provider(provider_node_id)
-        self.task_manager.notice_task_updated(task_id)
+        self.task_manager.nominate_provider(provider_node_id)
+        # self.task_manager.notice_task_updated(task_id)
         return provider_node_id
 
     @rpc_utils.expose('comp.task.get_declared_providers')
@@ -494,7 +495,9 @@ class ClientProvider:
         if not isinstance(task, ManualTask):
             return None, 'Provider for task {} cannot be specified manually'\
                 .format(task_id)
-        return list(task.get_declared_providers())
+        declared_providers = OfferPool.get_declared_providers(task_id)
+        logger.info('Declared providers for task {} are: {}'.format(task_id, declared_providers))
+        return declared_providers
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)

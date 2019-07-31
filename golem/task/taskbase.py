@@ -20,7 +20,6 @@ class AcceptClientVerdict(Enum):
     REJECTED = 1
     SHOULD_WAIT = 2
 
-
 class TaskPurpose(Enum):
     TESTING = "testing"
     REQUESTING = "requesting"
@@ -357,3 +356,6 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+    def is_provider_chosen_manually(self):
+        return False

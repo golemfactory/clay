@@ -27,17 +27,17 @@ class ConnectionEstablished(Event):
 class Communicator:
     computation_rejections_events = {}
     _event_loop = asyncio.new_event_loop()
-    connection_established_events = defaultdict(
-    functools.partial(ConnectionEstablished, loop=_event_loop))
-    # def __init__(self):
+    connection_established_events = defaultdict(lambda: ConnectionEstablished(Communicator._event_loop))
 
     @classmethod
     def on_connect(cls, node_id, task_session):
         async def _on_connect():
             conn_established_event = \
-                cls.connection_established_events.get(node_id)
+                cls.connection_established_events[node_id]
+            logger.info('_on_connect id(conn_established_event) = {}, event_loop = {}'.format(id(conn_established_event), id(conn_established_event._loop)))
             conn_established_event.task_session = task_session
             conn_established_event.set()
+
         logger.info('Node {} connected [task_session={}]'.format(node_id,
                                                                  task_session))
         asyncio.run_coroutine_threadsafe(_on_connect(), loop=cls._event_loop)
@@ -46,7 +46,7 @@ class Communicator:
     def on_disconnect(cls, node_id):
         async def _on_disconnect():
             conn_established_event = \
-                cls.connection_established_events.get(node_id)
+                cls.connection_established_events[node_id]
             conn_established_event.task_session = None
             conn_established_event.clear()
         asyncio.run_coroutine_threadsafe(_on_disconnect(),
@@ -63,7 +63,7 @@ class Communicator:
     @classmethod
     def get_offer_rejected_event(cls, provider_id, msg: TaskToCompute):
         x = cls.computation_rejections_events.get(provider_id, {})
-        event = x.get(hash(msg), Event())
+        event = x.get(hash(msg), Event(loop=cls._event_loop))
         x[hash(msg)] = event
         return event
 
@@ -77,9 +77,11 @@ class Communicator:
 
         async def _nominate():
             try:
-                logger.info('Communicator::_nominate waiting for connection')
+                logger.info('Communicator::_nominate waiting for connection [node_id = {}]'.format(provider_id))
                 conn_established_evt = \
-                    cls.connection_established_events.get(provider_id)
+                    cls.connection_established_events[provider_id]
+                logger.info(
+                    '_nominate id(conn_established_evt) = {}, loop = {}'.format(conn_established_evt, None))
                 await asyncio.wait_for(conn_established_evt.wait(),
                                        loop=cls._event_loop, timeout=timeout)
                 logger.info('Communicator::_nominate connected')
@@ -89,7 +91,7 @@ class Communicator:
                 cls._event_loop.run_in_executor(None, on_failure)
                 return
             try:
-                logger.info('Communicator::_nominate send [empty] task to provider')
+                logger.info('Communicator::_nominate [msg = {}] send task to provider'.format(msg))
                 cls._send(conn_established_evt.task_session, msg)
                 offer_rejected_evt = cls.get_offer_rejected_event(provider_id,
                                                                    msg)
@@ -110,6 +112,6 @@ class Communicator:
 
 
 logger.info('Registering in dispatcher')
-dispatcher.connect(Communicator.on_connect, signal='golem.peer.connected')
+# dispatcher.connect(Communicator.on_connect, signal='golem.peer.connected')
 logger.info('Starting event loop')
 threading.Thread(target=Communicator._event_loop.run_forever, daemon=True).start()
