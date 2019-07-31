@@ -18,6 +18,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -59,7 +60,7 @@ class ProviderBase(test_client.TestClientBase):
     }
 
     @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -67,6 +68,7 @@ class ProviderBase(test_client.TestClientBase):
             return_value=True
         )
         self.client.apps_manager.load_all_apps()
+        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with mock.patch(
             'golem.network.concent.handlers_library.HandlersLibrary'
             '.register_handler',

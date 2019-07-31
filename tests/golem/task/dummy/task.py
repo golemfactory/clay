@@ -267,8 +267,11 @@ class DummyTask(Task):
         self.resource_parts = resource_parts
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        print('DummyTask.computation_failed called')
-        self.computation_finished(subtask_id, None)
+        print(f'DummyTask.computation_failed called. subtask_id: {subtask_id}')
+        with self._lock:
+            if subtask_id in self.assigned_subtasks:
+                node_id = self.assigned_subtasks.pop(subtask_id, None)
+                self.assigned_nodes.pop(node_id, None)
 
     def restart(self):
         print('DummyTask.restart called')

@@ -74,7 +74,7 @@ from .server import helpers
 from .server import queue_ as srv_queue
 from .server import resources
 from .server import verification as srv_verification
-from .taskcomputer import TaskComputer
+from .taskcomputer import TaskComputerAdapter
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
@@ -135,7 +135,7 @@ class TaskServer(
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
             old_env_manager=client.environments_manager,
-            new_env_manager=EnvironmentManager(),
+            new_env_manager=new_env_manager,
             node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
@@ -160,9 +160,9 @@ class TaskServer(
             root_path=self.get_task_computer_root(),
             benchmarks=benchmarks
         )
-        self.task_computer = TaskComputer(
+        self.task_computer = TaskComputerAdapter(
             task_server=self,
-            docker_cpu_env=docker_cpu_env,
+            env_manager=new_env_manager,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
         deferred = self._change_task_computer_config(
@@ -468,9 +468,10 @@ class TaskServer(
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
 
+        subtask_id = self.task_computer.assigned_subtask_id
         self.task_computer.task_interrupted()
         self.send_task_failed(
-            self.task_computer.assigned_subtask['subtask_id'],
+            subtask_id,
             task_id,
             f'Error downloading resources: {reason}',
         )
