@@ -47,9 +47,12 @@ class Report:
     # Merge rapports with the same parameters but different crops.
     # Note: This function doesn't check if reports have the same parameters.
     def merge_raports_content(self):
-        self.failed_params = [self.merge_report(self.failed_params)]
-        self.all_params = [self.merge_report(self.all_params)]
-        self.success_params = [self.merge_report(self.success_params)]
+        if self.failed_params:
+            self.failed_params = [self.merge_report(self.failed_params)]
+        if self.all_params:
+            self.all_params = [self.merge_report(self.all_params)]
+        if self.success_params:
+            self.success_params = [self.merge_report(self.success_params)]
 
     def merge_report(self, report: dict):
         if len(report) > 0:
