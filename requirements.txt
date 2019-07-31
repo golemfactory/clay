@@ -1,4 +1,5 @@
 #git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
+#golem_task_api==0.9.0
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2
@@ -38,9 +39,9 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
+git+https://github.com/golemfactory/task-api@mwu/provider-shutdown&subdirectory=python#egg=golem_task_api
 Golem-Messages==3.9.0
 Golem-Smart-Contracts-Interface==1.10.2
-golem_task_api==0.9.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0

@@ -1,4 +1,5 @@
 #git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
+#golem_task_api==0.9.0
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
@@ -17,9 +18,9 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
+git+https://github.com/golemfactory/task-api@mwu/provider-shutdown&subdirectory=python#egg=golem_task_api
 Golem-Messages==3.9.0
 Golem-Smart-Contracts-Interface==1.10.2
-golem_task_api==0.9.0
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
