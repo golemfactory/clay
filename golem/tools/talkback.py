@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Dict
+from typing import Optional, Dict, cast
 from golem.tools.customloggers import SwitchedSentryHandler
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,12 @@ def update_sentry_user(node_id: str, node_name: Optional[str] = None):
     if node_name is not None:
         _sentry_user['nodeName'] = node_name
 
-    for handler in [h for h in logger_root.handlers if h.name == 'sentry'
-                    or h.name == 'sentry-metrics']:
-        if isinstance(handler, SwitchedSentryHandler):
-            handler.update_user(id=node_id, node_name=node_name)
+    for handler in [
+            cast(SwitchedSentryHandler, h)
+            for h in logger_root.handlers
+            if isinstance(h, SwitchedSentryHandler)
+    ]:
+        handler.update_user(id=node_id, node_name=node_name)
 
 
 def enable_sentry_logger(value):
@@ -41,8 +43,10 @@ def enable_sentry_logger(value):
             del _sentry_user['env']
             del _sentry_user['golemVersion']
 
-        sentry_handler = [h for h in logger_root.handlers if h.name == 'sentry'
-                          or h.name == 'sentry-metrics']
+        sentry_handler = [
+            h for h in logger_root.handlers
+            if isinstance(h, SwitchedSentryHandler)
+        ]
         for handler in sentry_handler:
             msg_part = 'Enabling' if talkback_value else 'Disabling'
             logger.debug('%s talkback %r service', msg_part, handler.name)
@@ -50,5 +54,4 @@ def enable_sentry_logger(value):
             handler.set_version(golem.__version__, env)
     except Exception as e:  # pylint: disable=broad-except
         msg_part = 'enable' if talkback_value else 'disable'
-        logger.error(
-            'Cannot %s talkback. Error was: %s', msg_part, str(e))
+        logger.error('Cannot %s talkback. Error was: %s', msg_part, str(e))
