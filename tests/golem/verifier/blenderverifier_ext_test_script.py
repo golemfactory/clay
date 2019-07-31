@@ -177,8 +177,12 @@ class ExtendedVerifierTestEnv():
 
     def _generate_parameters(self):
         resolutions_list = [[400, 400]]
-        subtasks_num_list = range(1, 5)
-        num_frames = [list(range(1,2))]
+        subtasks_num_list = range(1, 4)
+        num_frames = [list(range(1, 2))]
+        # resolutions_list = [[400, 400]]
+        # subtasks_num_list = range(1, 134)
+        # num_frames = [list(range(1, 17))]
+
 
         return self._generate_combinations(resolutions_list,
                                            subtasks_num_list,
@@ -233,8 +237,11 @@ class ExtendedVerifierTest(TestBlenderIntegration):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
             
             try:
-                self.verify_subtask(task, subtask_id, result)
+                result = self.verify_subtask(task, subtask_id, result)
                 self._assert_crops_match(task.task_definition.task_id)
+
+                if not result:
+                    raise RuntimeError("Verification (decision tree) resulted in negative response.")
 
             except (Exception, RuntimeError) as e:
                 parameters_set_copy = self._add_crop_params(parameters_set, task, i)
@@ -249,7 +256,8 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                 self.report.success(self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
-        self.assertTrue(TestTaskIntegration.check_file_existence(result))
+        if not TestTaskIntegration.check_file_existence(result):
+            raise RuntimeError("Result file [{}] doesn't exist.".format(result))
 
     def _add_crop_params(self,
                          parameters_set: dict, 
