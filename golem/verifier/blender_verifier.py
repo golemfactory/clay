@@ -156,7 +156,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         d.addErrback(error)
         d.addCallback(callback)
 
-    def _generate_verification_params(self, subtask_info, results):
+    @classmethod
+    def _generate_verification_params(cls, subtask_info: dict, results: list):
         return dict(
             subtask_paths=['/golem/work/{}'.format(
                 os.path.basename(i)) for i in results

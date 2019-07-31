@@ -1,7 +1,8 @@
 import json
 import os
+import sys
 from pathlib import Path
-from pprint import pprint
+from pprint import pprint, pformat
 from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
@@ -216,9 +217,18 @@ def verify(  # pylint: disable=too-many-arguments
     )
     print("blender_render_params:")
     pprint(blender_render_parameters)
+    save_params(blender_render_parameters, "blender_render_params.json", mounted_paths)
+
     results = blender.render(blender_render_parameters, mounted_paths)
 
     print("results:")
     pprint(results)
 
     make_verdict(subtask_file_paths, crops, results)
+
+def save_params(params: dict, filename: str, mounted_paths: dict):
+    path = os.path.join(mounted_paths["WORK_DIR"], filename)
+    json_as_string = pformat(params)
+    
+    with open(path, 'w', encoding='utf-8') as f:
+        f.write(json_as_string)

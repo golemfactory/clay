@@ -6,9 +6,11 @@ import traceback
 import json
 import re
 import copy
+import mock
 
 sys.path.insert(0, '.')
 
+from golem.verifier.blender_verifier import BlenderVerifier
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegration
@@ -199,6 +201,9 @@ class ExtendedVerifierTestEnv():
                     parameters_set.append(params)
         return parameters_set
 
+
+
+
 class ExtendedVerifierTest(TestBlenderIntegration):
 
     def __init__(self):
@@ -286,16 +291,15 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         # Here we use unelegant approach and we parse logs to find these
         # parameters.
         task_dir = os.path.join(self.tempdir, task_id)
-        log_file = os.path.join(task_dir, 'logs', 'stdout.log')
+        params_file = os.path.join(task_dir, 'work', 'blender_render_params.json')
 
-        with open(log_file, "r") as log:
-            content = log.read()
-            text = re.search(r'blender_render_params:\n(.*)?results:', content, re.DOTALL).group(1)
-            text = text.replace('\'', '\"')
-            text = text.replace('False', 'false')
-            text = text.replace('True', 'true')
+        with open(params_file, "r") as file:
+            content = file.read()
+            content = content.replace('\'', '\"')
+            content = content.replace('False', 'false')
+            content = content.replace('True', 'true')
 
-            return json.loads(text)
+            return json.loads(content)
 
     @classmethod
     def _build_params(cls, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
