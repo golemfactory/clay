@@ -229,6 +229,11 @@ def verify(  # pylint: disable=too-many-arguments
 def save_params(params: dict, filename: str, mounted_paths: dict):
     path = os.path.join(mounted_paths["WORK_DIR"], filename)
     json_as_string = pformat(params)
-    
+
+    # We must repair pretty json to something parsable.
+    json_as_string = json_as_string.replace('\'', '\"')
+    json_as_string = json_as_string.replace('False', 'false')
+    json_as_string = json_as_string.replace('True', 'true')
+
     with open(path, 'w', encoding='utf-8') as f:
         f.write(json_as_string)
