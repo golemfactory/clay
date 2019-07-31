@@ -303,10 +303,6 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
         with open(params_file, "r") as file:
             content = file.read()
-            content = content.replace('\'', '\"')
-            content = content.replace('False', 'false')
-            content = content.replace('True', 'true')
-
             return json.loads(content)
 
     @classmethod
