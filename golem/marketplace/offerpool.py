@@ -24,10 +24,12 @@ class Offer:
             scaled_price: float,
             reputation: float,
             quality: Tuple[float, float, float, float],
+            provider_id
     ) -> None:
         self.scaled_price = scaled_price
         self.reputation = reputation
         self.quality = quality
+        self.provider_id = provider_id
 
 
 class OfferPool:
@@ -86,10 +88,10 @@ class OfferPool:
 
     @classmethod
     def get_declared_providers(cls, task_id: str) -> list:
-        return list(map(lambda offer: offer.provider,
+        return list(map(lambda offer: offer[0].provider_id,
                         cls.get_offers(task_id)))
 
     @classmethod
     def get_offer_for_provider(cls, task_id: str, provider_id) -> list:
-        return list(filter(lambda offer: offer.provider == provider_id,
+        return list(filter(lambda offer: offer[0].provider_id == provider_id,
                            cls._pools.get(task_id, [])))

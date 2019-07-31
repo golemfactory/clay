@@ -318,17 +318,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         offer = Offer(
             scaled_price=scale_price(task.header.max_price, msg.price),
             reputation=get_provider_efficiency(self.key_id),
-            quality=get_provider_efficacy(self.key_id).vector
+            quality=get_provider_efficacy(self.key_id).vector,
+            provider_id=self.key_id
         )
+        manual_choose_provider = task.is_provider_chosen_manually()
 
-        if task.is_provider_chosen_manually():
+        d = OfferPool.add(msg.task_id, offer, manual_choose_provider )
+        logger.debug("Offer accepted & added to pool. offer=%s", offer)
+
+        if manual_choose_provider :
             logger.info('Provider for task {} should be chosen manually so '
                         'we dont place his offer in pool as for task other type'.format(task.task_definition.task_id))
-
             return
 
-        d = OfferPool.add(msg.task_id, offer)
-        logger.debug("Offer accepted & added to pool. offer=%s", offer)
         d.addCallback(functools.partial(self.offer_chosen, msg=msg))
         d.addCallback(self.send_tasks_to_provider)
         d.addErrback(golem_async.default_errback)
