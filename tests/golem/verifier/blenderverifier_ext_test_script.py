@@ -99,8 +99,14 @@ class ExtendedVerifierTestEnv():
         self.report = Report()
 
     def run(self):
-        parameters_sets = self._generate_parameters()
-        self.run_for_params(parameters_sets)
+        try:
+            parameters_sets = self._generate_parameters()
+            self.run_for_params(parameters_sets)
+        except (Exception, RuntimeError) as e:
+            print("Script error ocured: {}".format(repr(e)))
+            print("Saving to file partial results.")
+            self._reports_to_files()
+
 
     def run_for_params(self, parameters_sets: dict):
         logger.info("Parameters {}".format(str(parameters_sets)))
@@ -154,25 +160,36 @@ class ExtendedVerifierTestEnv():
     def _progress(self):
         # Print dot for each test to indicate progress like in pytest.
         print(".", end = '')
+        sys.stdout.flush()
 
     def _reports_to_files(self):
         self.report.to_file("reports")
 
     def _generate_parameters(self):
+        resolutions_list = [[400, 400]]
+        subtasks_num_list = range(1, 5)
+        num_frames = [list(range(1,2))]
+
+        return self._generate_combinations(resolutions_list,
+                                           subtasks_num_list,
+                                           num_frames)
+
+    @classmethod
+    def _generate_combinations(cls,
+                               resolutions_list: List[List[int]],
+                               subtasks_num_list: List[int],
+                               frames_list: List[List[int]]):
         parameters_set = []
-        
-        resolution = [400, 400]
 
-        for subtasks in range(1,17):
-            for num_frames in range(1,15):
-                frames = range(0, num_frames)
-                params = ExtendedVerifierTest._build_params(resolution, subtasks, frames, None)
-                
-                parameters_set.append(params)
-
+        for resolution in resolutions_list:
+            for subtasks_num in subtasks_num_list:
+                for frames in frames_list:
+                    params = ExtendedVerifierTest._build_params(resolution,
+                                                                subtasks_num,
+                                                                frames,
+                                                                None)
+                    parameters_set.append(params)
         return parameters_set
-
-
 
 class ExtendedVerifierTest(TestBlenderIntegration):
 
@@ -227,6 +244,8 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                          subtask_num: int):
         parameters_set_copy = copy.deepcopy(parameters_set)
         crops = self._deduce_crop_parameters(task.task_definition.task_id)
+        
+        parameters_set_copy['crops_params'] = dict()
         parameters_set_copy['crops_params'][subtask_num] = crops['crops']
 
         return parameters_set_copy
