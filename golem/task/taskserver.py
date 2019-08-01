@@ -915,20 +915,6 @@ class TaskServer(
                 reason=self.RejectedReason.netmask)
             return False
 
-        accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id, offer_hash)
-        if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
-            logger.info(f'provider {node_id} is not allowed'
-                        f' for this task at this moment '
-                        f'(either waiting for results or previously failed)')
-            self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
-                reason=self.RejectedReason.not_accepted,
-                details={
-                    'verdict': accept_client_verdict.value,
-                })
-            return False
-
         logger.debug('provider can be accepted %s', ids)
         return True
 
