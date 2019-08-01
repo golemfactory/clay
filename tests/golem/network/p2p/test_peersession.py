@@ -9,6 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch, Mock, MagicMock, ANY
 
 import semantic_version
+from golem_messages import factories as msg_factories
 from golem_messages import message
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
@@ -316,6 +317,30 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             sender=ANY,
         )
         listener.reset_mock()
+
+    def test_react_to_hello_new_version_partial(self):
+        "Sometimes we'll get partial version from bootstrap node"
+        listener = MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+        self.peer_session.p2p_service.seeds = {
+            (host, random.randint(0, 65535))
+            for host in
+            ipaddress.ip_network('192.0.2.0/29').hosts()
+        }
+        version = semantic_version.Version(golem.__version__)
+        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        self.peer_session.address = chosen_seed[0]
+        msg = msg_factories.base.HelloFactory(
+            client_ver=f"{version.major}.{version.next_minor().minor}",
+            port=chosen_seed[1],
+        )
+        self.peer_session._react_to_hello(msg)
+        listener.assert_called_once_with(
+            signal='golem.p2p',
+            event='new_version',
+            version=version.next_minor(),  # Full version here
+            sender=ANY,
+        )
 
     def test_disconnect(self):
         conn = MagicMock()

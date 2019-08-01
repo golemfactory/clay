@@ -5,7 +5,7 @@ from ipaddress import AddressValueError, ip_address
 from typing import Optional, Dict, Tuple, List, Iterable, Callable, Union
 
 import collections
-
+import golem.tools.talkback
 import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
@@ -116,7 +116,8 @@ class HyperdriveClient(IClient):
             dest=path,
             peers=peers or [],
             size=size,
-            timeout=timeout
+            timeout=timeout,
+            user=golem.tools.talkback.user(),
         )
 
     def cancel(self, content_hash):
@@ -127,6 +128,8 @@ class HyperdriveClient(IClient):
         return response['hash']
 
     def _request(self, **data):
+        if 'user' not in data:
+            data['user'] = golem.tools.talkback.user()
         response = requests.post(url=self._url,
                                  headers=self._headers,
                                  data=json.dumps(data),
@@ -161,7 +164,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(timeout)
+            timeout=round_timeout(timeout),
+            user=golem.tools.talkback.user()
         )
 
         return self._async_request(
@@ -175,7 +179,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(timeout)
+            timeout=round_timeout(timeout),
+            user=golem.tools.talkback.user()
         )
 
         return self._async_request(
