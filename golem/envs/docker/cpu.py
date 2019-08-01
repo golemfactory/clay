@@ -299,12 +299,6 @@ class DockerCPURuntime(RuntimeBase):
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
 
-    def wait_until_stopped(self) -> Deferred:
-        def _wait_until_stopped():
-            while self.status() == RuntimeStatus.RUNNING:
-                sleep(1)
-        return deferToThread(_wait_until_stopped)
-
     def stop(self) -> Deferred:
         with self._status_lock:
             self._assert_status(self._status, RuntimeStatus.RUNNING)
