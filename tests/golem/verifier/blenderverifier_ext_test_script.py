@@ -176,17 +176,19 @@ class ExtendedVerifierTestEnv():
         self.report.to_file("reports")
 
     def _generate_parameters(self):
-        resolutions_list = [[400, 400]]
-        subtasks_num_list = range(1, 4)
-        num_frames = [list(range(1, 2))]
         # resolutions_list = [[400, 400]]
-        # subtasks_num_list = range(1, 134)
-        # num_frames = [list(range(1, 17))]
-
+        # subtasks_num_list = range(1, 4)
+        # num_frames = [list(range(1, 2))]
+        resolutions_list = [[400, 400]]
+        subtasks_num_list = range(1, 134)
+        num_frames = self._generate_num_frames(1, 37)
 
         return self._generate_combinations(resolutions_list,
                                            subtasks_num_list,
                                            num_frames)
+
+    def _generate_num_frames(self, min_num_frames: int, max_num_frames: int):
+        return [list(range(1, i+1)) for i in range(min_num_frames, max_num_frames+1)]
 
     @classmethod
     def _generate_combinations(cls,
@@ -294,10 +296,6 @@ class ExtendedVerifierTest(TestBlenderIntegration):
             ), f"crop: {crop_path} doesn't match: {fragment_path}"
 
     def _deduce_crop_parameters(self, task_id: str) -> dict:
-        # Crop parameters are randomly chosen inside docker container and
-        # we don't have access to them.
-        # Here we use unelegant approach and we parse logs to find these
-        # parameters.
         task_dir = os.path.join(self.tempdir, task_id)
         params_file = os.path.join(task_dir, 'work', 'blender_render_params.json')
 
