@@ -121,3 +121,12 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)
+
+    def test_failing_case_one_subtask(self):
+        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
+                                         resolution=[400, 400],
+                                         subtasks_count=1,
+                                         frames=[1,2])
+
+        task: Task = self.execute_task(task_def)
+        self.check_outputs_existance(task)
