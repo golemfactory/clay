@@ -39,7 +39,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
-git+https://github.com/golemfactory/task-api@mwu/provider-shutdown&subdirectory=python#egg=golem_task_api
+git+https://github.com/golemfactory/task-api@mwu/provider-shutdown#egg=golem_task_api&subdirectory=python
 Golem-Messages==3.9.0
 Golem-Smart-Contracts-Interface==1.10.2
 greenlet==0.4.15

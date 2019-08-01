@@ -18,7 +18,7 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-git+https://github.com/golemfactory/task-api@mwu/provider-shutdown&subdirectory=python#egg=golem_task_api
+git+https://github.com/golemfactory/task-api@mwu/provider-shutdown#egg=golem_task_api&subdirectory=python
 Golem-Messages==3.9.0
 Golem-Smart-Contracts-Interface==1.10.2
 html2text==2018.1.9
