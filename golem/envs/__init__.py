@@ -3,10 +3,9 @@ from copy import deepcopy
 from enum import Enum
 from logging import Logger, getLogger
 from threading import RLock
-from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager, Set
+    Sequence, Iterable, ContextManager, Set, Tuple
 
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
@@ -123,6 +122,7 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
             a closed input won't do anything.
             NOTE: If there are many open input handles for a single Runtime
             then closing one of them will effectively close all the other. """
+        raise NotImplementedError
 
     def __enter__(self) -> 'RuntimeInput':
         return self
@@ -317,6 +317,14 @@ class Runtime(ABC):
             stream will be raw (bytes), otherwise it will be decoded (str).
             Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
             (however, in the last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        """
+        After a runtime is created with exposed ports this function should
+        return a valid socket address where the initial port is accessible from.
+        """
         raise NotImplementedError
 
     @abstractmethod

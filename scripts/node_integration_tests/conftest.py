@@ -1,10 +1,12 @@
 from typing import List
 import _pytest
+import pytest
 
 from .key_reuse import NodeKeyReuseConfig
 
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
+
 
 class DumpOutput:
     @staticmethod
@@ -26,7 +28,7 @@ class DumpOutput:
         DUMP_OUTPUT_ON_FAIL = True
 
 
-def pytest_addoption(parser: _pytest.config.Parser) -> None:
+def pytest_addoption(parser: _pytest.config.argparsing.Parser) -> None:
 
     parser.addoption(
         "--disable-key-reuse", action="store_true",
@@ -34,8 +36,17 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
              "All node_integration_tests run with new, fresh keys."
     )
     parser.addoption(
+        "--use-granary", action="store_true",
+        help="Enable the `golem-granary`. "
+             "Unless you also provide the `--granary-hostname`, it will "
+             "use a local `golem-granary` executable."
+    )
+    parser.addoption(
         "--granary-hostname", action="store",
-        help="The ssh hostname for the granary server to use."
+        help="The ssh hostname for the granary server to use. "
+             "Implicitly enables the granary. "
+             "If not provided and --use-granary is specified, "
+             "will use a local `golem-granary`."
     )
     parser.addoption(
         "--dump-output-on-fail", action="store_true",
@@ -48,12 +59,12 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: _pytest.config.Config,
-                                  items: List[_pytest.main.Item]) -> None:
+                                  items: List[pytest.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
         NodeKeyReuseConfig.disable()
     hostname = config.getoption("--granary-hostname")
-    if hostname:
-        NodeKeyReuseConfig.set_granary(hostname)
+    if hostname or config.getoption('--use-granary'):
+        NodeKeyReuseConfig.enable_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):

@@ -2,6 +2,7 @@ import random
 import unittest.mock as mock
 
 from golem.monitor.test_helper import MonitorTestBaseClass
+from golem.task.taskcomputer import TaskComputerAdapter
 
 
 class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
@@ -10,9 +11,13 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
     @mock.patch('requests.post')
     @mock.patch('json.dumps')
     def test_channel(self, mock_dumps, *_):
-        computer_mock = mock.MagicMock()
-        computer_mock.compute_tasks = compute_tasks = random.random() > 0.5
-        computer_mock.assigned_subtask = {'subtask_id': 'test_subtask_id'}
+        compute_tasks = random.random() > 0.5
+        computer_mock = mock.Mock(
+            spec=TaskComputerAdapter,
+            compute_tasks=compute_tasks
+        )
+        computer_mock.has_assigned_task.return_value = True
+        computer_mock.assigned_subtask_id = 'test_subtask_id'
 
         self.loop.run_until_complete(self.monitor.on_task_computer_snapshot(
             task_computer=computer_mock,

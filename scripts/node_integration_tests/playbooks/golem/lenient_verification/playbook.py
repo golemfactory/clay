@@ -1,4 +1,5 @@
 from functools import partial
+import time
 
 from ...base import NodeTestPlaybook
 from .test_config import NodeId
@@ -20,6 +21,7 @@ class Playbook(NodeTestPlaybook):
                 self.next()
             else:
                 print("waiting for a subtask to finish")
+                time.sleep(10)
 
         return self.call(node_id, 'comp.task.subtasks', self.task_id,
                          on_success=on_success)

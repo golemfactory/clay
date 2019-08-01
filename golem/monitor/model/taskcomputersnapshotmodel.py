@@ -8,5 +8,5 @@ class TaskComputerSnapshotModel(BasicModel):
 
         self.compute_task = task_computer.compute_tasks
         self.assigned_subtask = ''
-        if task_computer.assigned_subtask:
-            self.assigned_subtask = task_computer.assigned_subtask['subtask_id']
+        if task_computer.has_assigned_task():
+            self.assigned_subtask = task_computer.assigned_subtask_id

@@ -9,7 +9,7 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from golem.verificator.rendering_verifier import RenderingVerifier
+from golem.verifier.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.job import DockerJob
@@ -190,6 +190,9 @@ class RenderingTask(CoreTask):
         exec_cmd(cmd)
 
     def _get_next_task(self):
+        logger.debug("_get_next_task. last_task=%d, total_tasks=%d, "
+                     "num_failed_subtasks=%d", self.last_task, self.total_tasks,
+                     self.num_failed_subtasks)
         if self.last_task != self.total_tasks:
             self.last_task += 1
             start_task = self.last_task

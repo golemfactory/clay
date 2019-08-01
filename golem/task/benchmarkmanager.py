@@ -1,6 +1,5 @@
 from copy import copy
 import logging
-import os
 from threading import Thread
 from typing import Union
 
@@ -88,15 +87,17 @@ class BenchmarkManager(object):
             run_non_default_benchmarks()
 
     def run_benchmarks(self, benchmarks, success=None, error=None):
+        if not benchmarks:
+            if success:
+                success(None)
+            return
+
         env_id, (benchmark, builder_class) = benchmarks.popitem()
 
-        def on_success(performance):
-            if benchmarks:
-                self.run_benchmarks(benchmarks, success, error)
-            elif success:
-                success(performance)
+        def recurse(_):
+            self.run_benchmarks(benchmarks, success, error)
 
-        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
+        self.run_benchmark(benchmark, builder_class, env_id, recurse, error)
 
     @staticmethod
     def _validate_task_state(task_state):

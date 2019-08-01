@@ -14,6 +14,7 @@ from typing import (
     TypeVar,
 )
 
+from autobahn.wamp import ApplicationError
 from fs.tempfs import TempFS
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
@@ -170,7 +171,6 @@ class Node(HardwarePresetsMixin):
         self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
-
         HardwarePresets.initialize(self._datadir)
         HardwarePresets.update_config(self._config_desc.hardware_preset_name,
                                       self._config_desc)
@@ -185,15 +185,21 @@ class Node(HardwarePresetsMixin):
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             def on_start_error(failure: FirstError):
-                sub_failure: Failure = failure.value.subFailure
-                sub_failure.trap(EnvironmentError)
+                exception = failure.value
+
+                if isinstance(exception, ApplicationError):
+                    error_message = exception.error_message()
+                else:
+                    sub_failure: Failure = exception.subFailure
+                    sub_failure.trap(EnvironmentError)
+                    error_message = sub_failure.getErrorMessage()
 
                 logger.error(
                     """
-                    There was a problem setting up the environment: {}
+                    There was a problem setting up the environment: %s
                     Golem will run with limited functionality to support
                     communication with local clients.
-                    """.format(sub_failure.getErrorMessage())
+                    """, error_message
                 )
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
@@ -552,6 +558,8 @@ class Node(HardwarePresetsMixin):
         # pylint: disable=no-member
         self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
             rpc_ready,
+        ).addErrback(
+            self._error('Registering RPC procedures failed')
         )
         # pylint: enable=no-member
 

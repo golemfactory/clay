@@ -6,6 +6,7 @@ import logging
 import os.path
 import re
 import typing
+from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -23,7 +24,13 @@ from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import taskbase, taskkeeper, taskstate, tasktester
+from golem.task import (
+    taskbase,
+    taskkeeper,
+    taskstate,
+    tasktester,
+    requestedtaskmanager,
+)
 
 if typing.TYPE_CHECKING:
     from golem.client import Client  # noqa pylint: disable=unused-import
@@ -141,7 +148,7 @@ def _run_test_task(client, task_dict):
 
     dictionary = simpleserializer.DictSerializer.load(task_dict)
     task = client.task_server.task_manager.create_task(
-        dictionary=dictionary, minimal=True
+        dictionary=dictionary, test=True
     )
 
     client.task_test_result = {
@@ -308,14 +315,12 @@ def add_resources(client, resources, res_id, timeout):
     client_options.timeout = timeout
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
-        package_sha1,
         res_id,
-        resource_size,
         client_options=client_options,
     )
 
     logger.info("Resource package created. res_id=%r", res_id)
-    return resource_server_result
+    return resource_server_result + (package_sha1, resource_size)
 
 
 @defer.inlineCallbacks
@@ -374,7 +379,6 @@ def enqueue_new_task(client, task, force=False) \
         task_id,
         task.subtask_price,
         task.get_total_tasks(),
-        task.header.deadline,
     )
     logger.debug('Enqueue new task. task_id=%r', task)
 
@@ -467,6 +471,12 @@ class ClientProvider:
     def task_manager(self):
         return self.client.task_server.task_manager
 
+    @property
+    def requested_task_manager(
+            self,
+    ) -> requestedtaskmanager.RequestedTaskManager:
+        return self.client.task_server.requested_task_manager
+
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
     def create_task(self, task_dict, force=False) \
@@ -481,13 +491,18 @@ class ClientProvider:
         logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            task.get_total_tasks(),
-            task.header.concent_enabled,
-            force
-        )
         task_id = task.header.task_id
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                task.get_total_tasks(),
+                task.header.concent_enabled,
+                force
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.client.task_manager.task_creation_failed(task_id, str(exc))
+            raise
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
@@ -501,6 +516,61 @@ class ClientProvider:
         )
 
         return task_id, None
+
+    @rpc_utils.expose('comp.task_api.create')
+    def create_task_api_task(self, task_params: dict, golem_params: dict):
+        logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        create_task_params = requestedtaskmanager.CreateTaskParams(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            environment=golem_params['environment'],
+            output_directory=Path(golem_params['output_directory']),
+            resources=list(map(Path, golem_params['resources'])),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=False,  # Concent doesn't support Task API
+        )
+
+        self._validate_enough_funds_to_pay_for_task(
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+            create_task_params.concent_enabled,
+            False,
+        )
+
+        task_id = self.requested_task_manager.create_task(
+            create_task_params,
+            task_params,
+        )
+
+        self.client.funds_locker.lock_funds(
+            task_id,
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+        )
+
+        @defer.inlineCallbacks
+        def init_task():
+            try:
+                self.requested_task_manager.init_task(task_id)
+            except Exception:
+                self.client.funds_locker.remove_task(task_id)
+                raise
+            else:
+                self.requested_task_manager.start_task(task_id)
+            # Dummy yield to make this function work with inlineCallbacks.
+            # To be removed when there are other yeilds in this function.
+            yield defer.Deferred()
+
+        # Do not yield, this is a fire and forget deferred as it may take long
+        # time to complete and shouldn't block the RPC call.
+        d = init_task()
+        d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
+
+        return task_id
 
     def _validate_enough_funds_to_pay_for_task(
             self,
@@ -910,7 +980,7 @@ class ClientProvider:
         :param task_id: Task ID of the rendering task for which fragments should
         be obtained.
         :return: A dictionary where keys are the fragment indices and values are
-        lists of subtasks asssociated with a given fragment. Returns None
+        lists of subtasks associated with a given fragment. Returns None
         (along with an error message) if the task is not known or it is not a
         rendering task.
         """
@@ -925,9 +995,7 @@ class ClientProvider:
         for subtask_index in range(1, task.total_tasks + 1):
             fragments[subtask_index] = []
 
-        for extra_data in task.subtasks_given.values():
-            subtask = self.task_manager.get_subtask_dict(
-                extra_data['subtask_id'])
-            fragments[extra_data['start_task']].append(subtask)
+        for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
+            fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None

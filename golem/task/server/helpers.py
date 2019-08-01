@@ -22,24 +22,15 @@ def computed_task_reported(
         report_computed_task,
         after_success=lambda: None,
         after_error=lambda: None):
-    task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
-
-    task = task_manager.tasks.get(report_computed_task.task_id, None)
-    output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
-    client_options = task_server.get_download_options(
-        report_computed_task.options
-    )
-
-    fgtr = message.concents.ForceGetTaskResult(
-        report_computed_task=report_computed_task
-    )
 
     # submit a delayed `ForceGetTaskResult` to the Concent
     # in case the download exceeds the maximum allowable download time.
     # however, if it succeeds, the message will get cancelled
     # in the success handler
-
+    fgtr = message.concents.ForceGetTaskResult(
+        report_computed_task=report_computed_task
+    )
     concent_service.submit_task_message(
         report_computed_task.subtask_id,
         fgtr,
@@ -79,18 +70,37 @@ def computed_task_reported(
             )
         after_error()
 
-    # Actually request results
-    task_manager.task_result_incoming(report_computed_task.subtask_id)
-    task_manager.task_result_manager.pull_package(
-        report_computed_task.multihash,
-        report_computed_task.task_id,
-        report_computed_task.subtask_id,
-        report_computed_task.secret,
-        success=on_success,
-        error=on_error,
-        client_options=client_options,
-        output_dir=output_dir
+    task_id = report_computed_task.task_id
+    client_options = task_server.get_download_options(
+        report_computed_task.options
     )
+
+    requested_task_manager = task_server.requested_task_manager
+    if requested_task_manager.task_exists(task_id):
+        deferred = task_server.new_resource_manager.download(
+            report_computed_task.multihash,
+            requested_task_manager.get_subtasks_outputs_dir(task_id),
+            client_options,
+        )
+        deferred.addCallback(on_success)
+        deferred.addErrback(on_error)
+    else:
+        task_manager = task_server.task_manager
+        task = task_manager.tasks.get(task_id, None)
+        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+        # Request results
+        task_manager.task_result_incoming(report_computed_task.subtask_id)
+        task_manager.task_result_manager.pull_package(
+            report_computed_task.multihash,
+            report_computed_task.task_id,
+            report_computed_task.subtask_id,
+            report_computed_task.secret,
+            success=on_success,
+            error=on_error,
+            client_options=client_options,
+            output_dir=output_dir
+        )
+
 
 def send_report_computed_task(task_server, waiting_task_result) -> None:
     """ Send task results after finished computations

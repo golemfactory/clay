@@ -69,6 +69,12 @@ class UTCDateTimeField(DateTimeField):
 
 class BaseModel(Model):
     class Meta:
+        # WARNING: Meta won't be inherited by subclasses
+        #          due too meta class hack in peewee...
+        # SEE:
+        #  https://github.com/coleifer/peewee/blob/2.10.2/peewee.py#L4831-L4836
+        # In other words - you have to define Meta in every
+        # class that inherits from peewee.Model
         database = db
 
     created_date = UTCDateTimeField(default=default_now)
@@ -85,6 +91,9 @@ class BaseModel(Model):
 class GenericKeyValue(BaseModel):
     key = CharField(primary_key=True)
     value = CharField(null=True)
+
+    class Meta:
+        database = db
 
 
 ##################
@@ -252,6 +261,7 @@ class WalletOperation(BaseModel):
         sent = enum.auto()
         confirmed = enum.auto()
         overdue = enum.auto()
+        failed = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -277,6 +287,9 @@ class WalletOperation(BaseModel):
     currency = StringEnumField(enum_type=CURRENCY)
     gas_cost = HexIntegerField()
 
+    class Meta:
+        database = db
+
     def __str__(self):
         return (
             f"WalletOperation. tx_hash={self.tx_hash},"
@@ -292,6 +305,46 @@ class WalletOperation(BaseModel):
                 == WalletOperation.TYPE.deposit_transfer,
             )
 
+    @classmethod
+    def transfers(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.transfer,
+            )
+
+    @classmethod
+    def unconfirmed_payments(cls):
+        return cls.select() \
+            .where(
+                cls.status.not_in([
+                    cls.STATUS.confirmed,
+                    cls.STATUS.failed,
+                ]),
+                cls.tx_hash.is_null(False),
+                cls.direction ==
+                cls.DIRECTION.outgoing,
+                cls.operation_type.in_([
+                    cls.TYPE.transfer,
+                    cls.TYPE.deposit_transfer,
+                ]),
+            )
+
+    def on_confirmed(self, gas_cost: int):
+        if self.operation_type not in (
+                self.TYPE.transfer,
+                self.TYPE.deposit_transfer
+        ):
+            return
+        if self.direction != self.DIRECTION.outgoing:
+            return
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.confirmed  # type: ignore
+
+    def on_failed(self, gas_cost: int):
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.failed  # type: ignore
+
 
 class TaskPayment(BaseModel):
     wallet_operation = ForeignKeyField(WalletOperation, unique=True)
@@ -301,6 +354,9 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+
+    class Meta:
+        database = db
 
     def __str__(self):
         return (
@@ -362,6 +418,9 @@ class LocalRank(BaseModel):
     provider_efficacy = ProviderEfficacyField(
         default=ProviderEfficacy(0., 0., 0., 0.))
 
+    class Meta:
+        database = db
+
 
 class GlobalRank(BaseModel):
     """ Represents global ranking vector estimation
@@ -371,6 +430,9 @@ class GlobalRank(BaseModel):
     computing_trust_value = FloatField(default=NEUTRAL_TRUST)
     gossip_weight_computing = FloatField(default=0.0)
     gossip_weight_requesting = FloatField(default=0.0)
+
+    class Meta:
+        database = db
 
 
 class NeighbourLocRank(BaseModel):
@@ -487,6 +549,9 @@ class Performance(BaseModel):
 class DockerWhitelist(BaseModel):
     repository = CharField(primary_key=True)
 
+    class Meta:
+        database = db
+
 
 ##################
 # MESSAGE MODELS #
@@ -519,6 +584,9 @@ class NetworkMessage(BaseModel):
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
 
+    class Meta:
+        database = db
+
     def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
@@ -529,6 +597,9 @@ class QueuedMessage(BaseModel):
     msg_version = VersionField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+
+    class Meta:
+        database = db
 
     @classmethod
     def from_message(cls, node_id: str, msg: message.base.Message):
@@ -572,6 +643,9 @@ class QueuedMessage(BaseModel):
 class CachedNode(BaseModel):
     node = CharField(null=False, index=True, unique=True)
     node_field = NodeField(null=False)
+
+    class Meta:
+        database = db
 
     def __str__(self):
         # pylint: disable=no-member

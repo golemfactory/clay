@@ -37,7 +37,6 @@ class TaskPayment(factory.Factory):
 
     wallet_operation = factory.SubFactory(
         WalletOperation,
-        status=model.WalletOperation.STATUS.awaiting,
     )
     node = factory.LazyFunction(random_eth_pub_key)
     task = factory.Faker('uuid4')

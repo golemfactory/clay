@@ -1,4 +1,4 @@
-    # pylint: disable=protected-access
+# pylint: disable=protected-access
 from os import path
 import unittest
 from unittest.mock import (
@@ -10,7 +10,7 @@ from unittest.mock import (
 )
 
 from click.testing import CliRunner
-from twisted.internet.defer import Deferred, succeed, maybeDeferred, FirstError
+from twisted.internet.defer import Deferred, succeed, FirstError
 from twisted.python.failure import Failure
 
 import golem.argsparser as argsparser
@@ -31,9 +31,8 @@ concent_disabled = variables.CONCENT_CHOICES['disabled']
 
 # pylint: disable=too-many-public-methods
 @ci_skip
-@patch('golem.core.golem_async.start_asyncio_thread')
-@patch('twisted.internet.iocpreactor', create=True)
-@patch('twisted.internet.kqreactor', create=True)
+@patch('twisted.internet.asyncioreactor', Mock(), create=True)
+@patch('twisted.internet.reactor', Mock(), create=True)
 @patch('golem.core.common.config_logging')
 class TestNode(TestWithDatabase):
     def setUp(self):
@@ -64,7 +63,7 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, ['--blargh'],
                                      catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
-        self.assertTrue(return_value.output.startswith('Error'))
+        self.assertTrue(return_value.output.startswith('Usage'))
 
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.node.Node')
