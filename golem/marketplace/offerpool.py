@@ -24,13 +24,15 @@ class Offer:
             scaled_price: float,
             reputation: float,
             quality: Tuple[float, float, float, float],
-            provider_id
+            provider_id,
+            want_to_compute_task_msg: WantToComputeTask
+
     ) -> None:
         self.scaled_price = scaled_price
         self.reputation = reputation
         self.quality = quality
         self.provider_id = provider_id
-
+        self.want_to_compute_task_msg = want_to_compute_task_msg
 
 class OfferPool:
 
@@ -94,4 +96,4 @@ class OfferPool:
     @classmethod
     def get_offer_for_provider(cls, task_id: str, provider_id) -> list:
         return list(filter(lambda offer: offer[0].provider_id == provider_id,
-                           cls._pools.get(task_id, [])))
+                           cls.get_offers(task_id)))

@@ -41,7 +41,7 @@ def safe_run(errback):
             try:
                 result = f(*args, **kwargs)
             except Exception as e:  # pylint: disable=broad-except
-                logger.debug('Full traceback', exc_info=e)
+                logger.info('Full traceback', exc_info=e) # TODO
                 return errback(e, *args, **kwargs)
             return result
         return curry
@@ -482,7 +482,7 @@ class ClientProvider:
                 .format(task_id)
         if provider_node_id not in OfferPool.get_declared_providers(task_id):
             return None, 'Provider {} is not declared to compute task {}'.format(provider_node_id, task_id)
-        self.task_manager.nominate_provider(provider_node_id)
+        self.client.task_server.nominate_provider(task_id, provider_node_id)
         # self.task_manager.notice_task_updated(task_id)
         return provider_node_id
 

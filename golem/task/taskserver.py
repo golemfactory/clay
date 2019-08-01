@@ -906,48 +906,53 @@ class TaskServer(
         logger.debug('provider can be accepted %s', ids)
         return True
 
+    def on_failure(self, task_id, subtask_id, provider_id, error_msg=None):
+        logger.info('Cannot choose provider {} for task {} [subtask_id={}]'
+                    .format(provider_id, task_id, subtask_id))
+
     def nominate_provider(self, task_id, provider_id):
         logger.info('Nominating provider {} for task {}'.format(task_id, provider_id))
-        def on_task_rejected(subtask_id):
-            with self.lock:
-                logger.info('on_task_rejected_callback [subtask_id={}]'.format(subtask_id))
-                self.task_was_accepted_by_provider[subtask_id] = False
-
-        def on_failure(task_id, subtask_id, provider_id, error_msg=None):
-            logger.info(
-                'Cannot choose provider {} for task {} [subtask_ud'.format(provider_id,
-                                                               task_id))
-        def on_success(task_id, subtask_id, provider_id):
-            with self.lock:
-                if self.task_was_accepted_by_provider[subtask_id]:
-                    logger.info('Task {} [subtask = {}] was accepted by provider {}'.format(task_id, subtask_id, provider_id))
-                else:
-                    on_failure(task_id, subtask_id, provider_id, error_msg='Provider decided to not compute task {} [subtask={}]'.format(provider_id, provider_id, subtask_id))
 
         offers = OfferPool.get_offer_for_provider(task_id, provider_id)
-        logger.info('Offers from provider {} for task {} are '.format(provider_id, offers))
+        logger.info('Offers from provider {} for task {} are {}'.format(provider_id, task_id, offers))
         assert len(offers) == 1  # TODO
         task_session = self.sessions.get(provider_id)
         if not task_session:
-            on_failure(None, None, provider_id, error_msg='No session to provider {}'.format(provider_id))
+            self.on_failure(None, None, provider_id, error_msg='No session to provider {}'.format(provider_id))
+            return
 
-        ttcs = task_session.offer_chosen(True, offers[0].want_to_compute_task_msg)
-        logger.info('ttc returned by offer_chosen are '.format(ttcs))
+        deferred_ttcs = task_session.offer_chosen(True, offers[0][0].want_to_compute_task_msg)
+        deferred_ttcs.addCallback(self.send_to_provider, task_session, provider_id, task_id)
+
+    def on_task_rejected(self, subtask_id):
+        with self.lock:
+            logger.info(
+                'on_task_rejected_callback [subtask_id={}]'.format(subtask_id))
+            self.task_was_accepted_by_provider[subtask_id] = False
+
+    def on_success(self, task_id, subtask_id, provider_id):
+        with self.lock:
+            if self.task_was_accepted_by_provider[subtask_id]:
+                logger.info('Task {} [subtask = {}] was accepted by provider {}'.format(task_id, subtask_id, provider_id))
+            else:
+                self.on_failure(task_id, subtask_id, provider_id, error_msg='Provider decided to not compute task {} [subtask={}]'.format(provider_id, provider_id, subtask_id))
+
+    def send_to_provider(self, ttcs, task_session, provider_id, task_id):
         assert len(ttcs) == 1 # We assume that provider wants to compute only one subtask at that moment
-
+        logger.info('Provider is {}'.format(provider_id))
         for ttc, _ in ttcs:
-            subtask_id = ttc.compute_task_def.subtask_id
+            subtask_id = ttc.compute_task_def['subtask_id']
             signal = 'golem.taskmanager.task_computation_cancelled.subtask_id={}'.format(subtask_id)
             logger.info('Registered for {}'.format(signal))
-            dispatcher.connect(on_task_rejected, signal)
-
+            dispatcher.connect(self.on_task_rejected, signal)
+            task_session.send_tasks_to_provider([(ttc, _)])
             timeout = self.config_desc.computation_cancellation_timeout
             from twisted.internet import reactor
-            logger.info('Deferring with timeout {} for subtask_id = {}, subtask_id = {}, provider_id = {}'.format(timeout, provider_id, task_id, subtask_id))
+            logger.info('Deferring with timeout {} for subtask_id = {}, subtask_id = {}, provider_id = {}'.format(timeout, task_id, subtask_id, provider_id))
             task.deferLater(
                 reactor,
                 timeout,
-                on_success,
+                self.on_success,
                 task_id,
                 subtask_id,
                 provider_id

@@ -26,9 +26,9 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
         self.ACTIVE_NET = TESTNET
         self.NODE_LIST = [
             'https://rinkeby.golem.network:55555',
-            'http://188.165.227.180:55555',
-            'http://94.23.17.170:55555',
-            'http://94.23.57.58:55555',
+            # 'http://188.165.227.180:55555',
+            # 'http://94.23.17.170:55555',
+            # 'http://94.23.57.58:55555',
         ]
 
         self.FALLBACK_NODE_LIST: List[str] = [
