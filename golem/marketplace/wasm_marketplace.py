@@ -85,7 +85,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         ds: Dict[str, float] = dict()
         deltas: Dict[str, float] = dict()
-        for pid, u in usages:
+        for pid, _, u in usages:
             r = cls.get_usage_factor(pid, cls.get_my_usage_benchmark())
             assert r > 0
             ds[pid] = u / r

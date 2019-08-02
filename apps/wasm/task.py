@@ -492,8 +492,9 @@ class WasmTaskBuilder(CoreTaskBuilder):
     TASK_CLASS: Type[WasmTask] = WasmTask
 
     @classmethod
-    def build_full_definition(cls, task_type: 'CoreTaskTypeInfo',
-                              dictionary: Dict[str, Any]) -> TaskDefinition:
+    def build_full_definition(
+            cls, task_type: 'CoreTaskTypeInfo',
+            dictionary: Dict[str, Any]) -> TaskDefinition:
         # Resources are generated from 'input_dir' later on.
         dictionary['resources'] = []
         # Output is determined from 'output_dir' later on.
@@ -518,12 +519,14 @@ class WasmTaskBuilder(CoreTaskBuilder):
             for name, subtask_opts in options['subtasks'].items()
         }
 
-        task_def.budget = dictionary.get('budget', 2.22)
+        wasm_task_def = WasmTaskDefinition()
+        wasm_task_def.options = task_def.options
+        wasm_task_def.budget = dictionary.get('budget', 2.22)
         if 'budget' not in dictionary:
             logger.warning("Assigning task default budget: %.03f",
                            task_def.budget)
 
-        return task_def
+        return wasm_task_def
 
 
 class WasmBenchmarkTask(WasmTask):

@@ -3,8 +3,6 @@ from typing import Callable, Optional, List, Tuple
 
 from dataclasses import dataclass
 
-from dataclasses import dataclass
-
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark):
