@@ -5,6 +5,9 @@ from dataclasses import dataclass
 
 import golem.ranking.manager.database_manager as dbm
 
+if TYPE_CHECKING:
+    from golem.task.taskbase import Task
+
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark):

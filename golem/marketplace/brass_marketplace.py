@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
 from golem.marketplace import Offer
@@ -8,6 +8,9 @@ from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 
 from .rust import order_providers
+
+if TYPE_CHECKING:
+    from golem.task.taskbase import Task
 
 logger = logging.getLogger(__name__)
 
