@@ -30,7 +30,9 @@ from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.core.common import get_golem_path
-from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
+from golem.marketplace.wasm_marketplace import (
+    RequestorWasmMarketStrategy, UsageReport
+)
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 from golem.task.taskstate import SubtaskStatus
@@ -157,6 +159,7 @@ class WasmTaskDefinition(TaskDefinition):
         super().__init__()
         self.options = WasmTaskOptions()
         self.task_type = 'WASM'
+        self.budget: float = 1.0
 
     def add_to_resources(self) -> None:
         self.resources = [self.options.input_dir]
@@ -278,11 +281,12 @@ class WasmTask(CoreTask):
         if subtask.is_finished():
             self._resolve_payments(subtask)
 
-            subtask_usages: List[Tuple[str, float]] = []
+            subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
                 subtask_instance = subtask.get_instance(s_id)
                 subtask_usages.append(
                     (subtask_instance['actor'].uuid,
+                     s_id,
                      self.subtasks_results_metadata[s_id].compute_time)
                 )
             WasmTaskTypeInfo.MARKET_STRATEGY.report_subtask_usages(
@@ -477,6 +481,12 @@ class WasmTask(CoreTask):
         instance = subtask.get_instance(subtask_id)
         return instance["results"]
 
+    @property
+    def subtask_price(self):
+        sub_price = self.task_definition.budget / self.get_total_tasks()
+        logger.info("WASM subtask price: %.03f", sub_price)
+        return sub_price
+
 
 class WasmTaskBuilder(CoreTaskBuilder):
     TASK_CLASS: Type[WasmTask] = WasmTask
@@ -507,6 +517,11 @@ class WasmTaskBuilder(CoreTaskBuilder):
             )
             for name, subtask_opts in options['subtasks'].items()
         }
+
+        task_def.budget = dictionary.get('budget', 2.22)
+        if 'budget' not in dictionary:
+            logger.warning("Assigning task default budget: %.03f",
+                           task_def.budget)
 
         return task_def
 

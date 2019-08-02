@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import Optional, List, Tuple
+from typing import Callable, Optional, List, Tuple
 
 from dataclasses import dataclass
 
@@ -44,5 +44,17 @@ class RequestorMarketStrategy(ABC):
     def get_task_offer_count(cls, task_id: str) -> int:
         """
         Returns number of offers known for the task.
+        """
+        raise NotImplementedError()
+
+    @abstractclassmethod
+    def get_payment_computer(cls, task: Task, subtask_id: str)\
+            -> Callable[[float], float]:
+        """Returns a function computing payment based on price in TTC.
+        Raises:
+            NotImplementedError: [description]
+
+        Returns:
+            Callable[[float], float] -- Function computing payment
         """
         raise NotImplementedError()
