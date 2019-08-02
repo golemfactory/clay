@@ -105,6 +105,7 @@ class Task(abc.ABC):
                  task_definition: TaskDefinition) -> None:
         self.header = header
         self.task_definition = task_definition
+        self.subtasks_results_metadata: Dict[str, ResultMetadata] = {}
 
         self.listeners = []  # type: List[TaskEventListener]
 
@@ -364,3 +365,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, compute_time: float) -> None:
+        self.compute_time: float = compute_time
