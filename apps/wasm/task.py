@@ -494,8 +494,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1)\
             * len(dictionary['options']['subtasks'])
 
-        task_def = super().build_full_definition(task_type, dictionary)
-
+        task_def: Any = super().build_full_definition(task_type, dictionary)
         options = dictionary['options']
         task_def.options.js_name = options['js_name']
         task_def.options.wasm_name = options['wasm_name']
@@ -510,14 +509,12 @@ class WasmTaskBuilder(CoreTaskBuilder):
             for name, subtask_opts in options['subtasks'].items()
         }
 
-        wasm_task_def = WasmTaskDefinition()
-        wasm_task_def.options = task_def.options
-        wasm_task_def.budget = dictionary.get('budget', 2.22)
+        task_def.budget = dictionary.get('budget', 2.22)
         if 'budget' not in dictionary:
             logger.warning("Assigning task default budget: %.03f",
-                           wasm_task_def.budget)
+                           task_def.budget)
 
-        return wasm_task_def
+        return task_def
 
 
 class WasmBenchmarkTask(WasmTask):
