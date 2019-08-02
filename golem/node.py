@@ -104,12 +104,6 @@ class Node(HardwarePresetsMixin):
         from twisted.internet import reactor
 
         self._reactor = reactor
-        self._reactor.addSystemEventTrigger(
-            "before",
-            "shutdown",
-            golem_async.asyncio_stop,
-        )
-        golem_async.start_asyncio_thread()
         self._app_config = app_config
         self._config_desc = config_desc
         self._datadir = datadir

@@ -108,35 +108,7 @@ def deferred_run():
 # ASYNCIO
 ##
 
-_ASYNCIO_RUN = threading.Event()
-_ASYNCIO_ID = 'Thread-aio'
-_ASYNCIO_THREAD_QUEUE: queue.Queue = queue.Queue()
-_ASYNCIO_TASKS: Optional[asyncio.Queue] = None
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
-
-
-def in_asyncio_thread() -> bool:
-    return threading.current_thread().name == _ASYNCIO_ID
-
-
-def start_asyncio_thread():
-    asyncio_thread = threading.Thread(
-        target=asyncio_start,
-        name=_ASYNCIO_ID,
-    )
-    asyncio_thread.start()
-
-
-def in_asyncio():
-    def wrapper(f):
-        @functools.wraps(f)
-        def curry(*args, **kwargs):
-            if not in_asyncio_thread():
-                _ASYNCIO_THREAD_QUEUE.put_nowait((f, args, kwargs))
-                return None
-            return f(*args, **kwargs)
-        return curry
-    return wrapper
 
 
 def run_at_most_every(delta: datetime.timedelta):
@@ -160,7 +132,7 @@ def run_at_most_every(delta: datetime.timedelta):
 
 def run_in_thread():
     # Use for IO bound operations
-    # SEE: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor  pylint: disable=line-too-long
+    # noqa SEE: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor  pylint: disable=line-too-long
     def wrapped(f):
         # No coroutines in a pool
         assert not asyncio.iscoroutinefunction(f)
@@ -169,7 +141,12 @@ def run_in_thread():
         async def curry(*args, **kwargs):
             return await asyncio.get_event_loop().run_in_executor(
                 executor=_ASYNCIO_THREAD_POOL,
-                func=functools.partial(f, *args, **kwargs, loop=asyncio.get_event_loop()),
+                func=functools.partial(
+                    f,
+                    *args,
+                    **kwargs,
+                    loop=asyncio.get_event_loop(),
+                ),
             )
         return curry
     return wrapped
@@ -215,28 +192,6 @@ def asyncio_start():
     asyncio_run(asyncio_main())
     logger.info("ASYNCIO thread finished")
 
-
-def asyncio_stop():
-    logger.info('Stopping ASYNCIO thread')
-    _ASYNCIO_RUN.clear()
-
-
-async def _asyncio_process_thread_queue():
-    for _ in range(10):
-        try:
-            f, args, kwargs = _ASYNCIO_THREAD_QUEUE.get_nowait()
-        except queue.Empty:
-            return
-        result = f(*args, **kwargs)
-        if asyncio.iscoroutine(result):
-            await _ASYNCIO_TASKS.put(asyncio.ensure_future(result))
-
-
-async def _asyncio_wait_for_tasks():
-    while True:
-        task = await _ASYNCIO_TASKS.get()
-        await asyncio.wait({task})
-        _ASYNCIO_TASKS.task_done()
 
 async def asyncio_main():
     wait_task = asyncio.ensure_future(_asyncio_wait_for_tasks())
