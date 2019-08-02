@@ -85,6 +85,15 @@ class VerificationByRedundancy(ABC):
         """
         pass
 
+    @abstractmethod
+    def validate_actor(self, actor):
+        """Validates whether given actor is acceptable
+
+        Arguments:
+            actor {[type]} -- Actor to be validated
+        """
+        pass
+
 
 class Bucket:
     """A bucket containing a key and some values. Values are comparable
@@ -131,13 +140,15 @@ class BucketVerifier(VerificationByRedundancy):
         self.referee_count = referee_count
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
 
-    def add_actor(self, actor):
+    def validate_actor(self, actor):
         if actor in self.actors:
             raise NotAllowedError
 
         if not self.more_actors_needed:
             raise MissingResultsError
 
+    def add_actor(self, actor):
+        self.validate_actor(actor)
         self.actors.append(actor)
         if len(self.actors) >= self.redundancy_factor + 1:
             self.more_actors_needed = False
