@@ -24,7 +24,7 @@ def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
 
 
-def round_timeout(value: Union[int, float]) -> int:
+def round_timeout(value: Optional[Union[int, float]]) -> int:
     if not isinstance(value, (int, float)) or value <= 0:
         raise ValueError(f"Invalid timeout: {value}")
     return int(math.ceil(value))
