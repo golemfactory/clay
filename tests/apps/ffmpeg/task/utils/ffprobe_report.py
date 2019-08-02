@@ -71,6 +71,51 @@ def parse_ffprobe_frame_rate(raw_frame_rate: Union[int, float, str, None],
         return value
 
 
+def _diff_attributes(  # pylint: disable=too-many-arguments
+        attributes_to_compare,
+        actual_report,
+        overrides,
+        expected_report,
+        assume_attribute_unchanged_if_missing,
+        excludes,
+        location):
+
+    if overrides is None:
+        overrides = {}
+    if excludes is None:
+        excludes = set()
+
+    differences = []
+    for attribute in attributes_to_compare:
+        actual_value = getattr(actual_report, attribute)
+        expected_value = overrides.get(
+            attribute,
+            getattr(expected_report, attribute),
+        )
+
+        skip_missing_value = (
+            assume_attribute_unchanged_if_missing and (
+                actual_value is None or
+                expected_value is None)
+        )
+
+        if (
+                not skip_missing_value and
+                attribute not in excludes and
+                expected_value != actual_value
+        ):
+            diff_dict = {
+                'location': location,
+                'attribute': attribute,
+                'actual_value': actual_value,
+                'expected_value': expected_value,
+                'reason': DiffReason.DifferentAttributeValues.value,
+            }
+            differences.append(diff_dict)
+
+    return differences
+
+
 class FfprobeFormatReport:
     ATTRIBUTES_TO_COMPARE = {
         'format_name',
@@ -304,41 +349,16 @@ class FfprobeFormatReport:
                          overrides: Optional[StreamOverrides] = None,
                          excludes: Optional[StreamExcludes] = None,
                          assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
-        if overrides is None:
-            overrides = {}
-        if excludes is None:
-            excludes = set()
 
-        differences = []
-        for attribute in attributes_to_compare:
-            actual_value = getattr(actual_report, attribute)
-            expected_value = overrides.get(
-                attribute,
-                getattr(expected_report, attribute),
-            )
-
-            skip_missing_value = (
-                assume_attribute_unchanged_if_missing and (
-                    actual_value is None or
-                    expected_value is None
-                )
-            )
-
-            if (
-                    not skip_missing_value and
-                    attribute not in excludes and
-                    expected_value != actual_value
-            ):
-                diff_dict = {
-                    'location': 'format',
-                    'attribute': attribute,
-                    'actual_value': actual_value,
-                    'expected_value': expected_value,
-                    'reason': DiffReason.DifferentAttributeValues.value,
-                }
-                differences.append(diff_dict)
-
-        return differences
+        return _diff_attributes(
+            attributes_to_compare=attributes_to_compare,
+            actual_report=actual_report,
+            overrides=overrides,
+            expected_report=expected_report,
+            assume_attribute_unchanged_if_missing=assume_attribute_unchanged_if_missing,  # noqa: E501  # pylint: disable=line-too-long
+            excludes=excludes,
+            location='format',
+        )
 
     def diff(self,
              expected_report: 'FfprobeFormatReport',
@@ -559,45 +579,18 @@ class FfprobeStreamReport:
                          overrides: Optional[StreamOverrides] = None,
                          excludes: Optional[StreamExcludes] = None,
                          assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
-
         assert (actual_stream_report.codec_type ==
                 expected_stream_report.codec_type)
 
-        if overrides is None:
-            overrides = {}
-        if excludes is None:
-            excludes = set()
-
-        differences = []
-        for attribute in attributes_to_compare:
-            actual_value = getattr(actual_stream_report, attribute)
-            expected_value = overrides.get(
-                attribute,
-                getattr(expected_stream_report, attribute),
-            )
-
-            skip_missing_value = (
-                assume_attribute_unchanged_if_missing and (
-                    actual_value is None or
-                    expected_value is None
-                )
-            )
-
-            if (
-                    not skip_missing_value and
-                    attribute not in excludes and
-                    expected_value != actual_value
-            ):
-                diff_dict = {
-                    'location': actual_stream_report.codec_type,
-                    'attribute': attribute,
-                    'actual_value': actual_value,
-                    'expected_value': expected_value,
-                    'reason': DiffReason.DifferentAttributeValues.value,
-                }
-                differences.append(diff_dict)
-
-        return differences
+        return _diff_attributes(
+            attributes_to_compare=attributes_to_compare,
+            actual_report=actual_stream_report,
+            overrides=overrides,
+            expected_report=expected_stream_report,
+            assume_attribute_unchanged_if_missing=assume_attribute_unchanged_if_missing,  # noqa: E501  # pylint: disable=line-too-long
+            excludes=excludes,
+            location=actual_stream_report.codec_type,
+        )
 
     def diff(self,
              expected_stream_report: 'FfprobeStreamReport',
