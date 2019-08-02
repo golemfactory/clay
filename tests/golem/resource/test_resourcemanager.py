@@ -4,6 +4,10 @@ from golem.resource.client import ClientOptions
 from golem.resource.resourcemanager import ResourceManager, ResourceId
 from golem.testutils import TempDirFixture
 
+NOW = 500
+TIMEOUT = 10
+VALID_TO = 1000
+
 
 class TestResourceManager(TempDirFixture):
     # pylint: disable=no-member
@@ -11,10 +15,16 @@ class TestResourceManager(TempDirFixture):
     def setUp(self):
         super().setUp()
 
+        self.client_options = ClientOptions(
+            client_id="mocked",
+            version=1.0,
+            options={'timeout': TIMEOUT})
+
         client = mock.Mock()
-        client.build_options.return_value = ClientOptions("mocked", 1.0)
         client.add_async.return_value = ResourceId("0x0")
         client.get_async.return_value = ["0x0", ["mocked.file"]]
+        client.resource_async.return_value = {'validTo': VALID_TO}
+        client.build_options.return_value = self.client_options
 
         self.resource_manager = ResourceManager(client)  # noqa
         self.client = client
@@ -30,33 +40,58 @@ class TestResourceManager(TempDirFixture):
     def test_share(self):
         sample_path = self.new_path / "sample.txt"
 
-        result = self.resource_manager.share(sample_path).result
-        assert isinstance(result, str)
-        assert self.resource_manager._cache[sample_path] == result
+        response = self.resource_manager.share(sample_path, self.client_options)
+        assert isinstance(response.result, str)
+        assert self.resource_manager._cache[sample_path] == response.result
 
-    def test_share_cached(self):
+    @mock.patch(
+        'golem.resource.resourcemanager.get_timestamp_utc',
+        return_value=NOW)
+    def test_share_cached(self, _):
         sample_path = self.new_path / "sample.txt"
 
         # First upload
-        self.resource_manager.share(sample_path)
+        self.resource_manager.share(sample_path, self.client_options)
         assert self.client.add_async.call_count == 1
         # Second upload (cache lookup)
-        self.resource_manager.share(sample_path)
+        self.resource_manager.share(sample_path, self.client_options)
         assert self.client.add_async.call_count == 1
+
+    @mock.patch(
+        'golem.resource.resourcemanager.get_timestamp_utc',
+        return_value=NOW)
+    def test_share_cache_timed_out(self, _):
+        sample_path = self.new_path / "sample.txt"
+
+        self.client.resource_async.return_value = {'validTo': NOW + TIMEOUT - 1}
+
+        # First upload
+        self.resource_manager.share(sample_path, self.client_options)
+        assert self.client.cancel_async.call_count == 0
+        assert self.client.add_async.call_count == 1
+
+        # Second upload (cache lookup)
+        self.resource_manager.share(sample_path, self.client_options)
+        assert self.client.cancel_async.call_count == 1
+        assert self.client.add_async.call_count == 2
 
     def test_download(self):
         resource_id = ResourceId("0x0")
         sample_dir = self.new_path / "directory"
         sample_dir.mkdir(parents=True)
 
-        self.resource_manager.download(resource_id, sample_dir)
+        self.resource_manager.download(
+            resource_id,
+            sample_dir,
+            self.client_options)
         assert self.client.get_async.called
 
     def test_drop(self):
         sample_path = self.new_path / "sample.txt"
 
-        resource_id = self.resource_manager.share(sample_path).result
+        response = self.resource_manager.share(
+            sample_path, self.client_options)
         assert sample_path in self.resource_manager._cache
 
-        self.resource_manager.drop(resource_id)
+        self.resource_manager.drop(response.result)
         assert sample_path not in self.resource_manager._cache
