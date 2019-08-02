@@ -722,7 +722,8 @@ class TestRestartSubtasks(ProviderBase):
         self.provider.restart_subtasks(
             task_id=task_id,
             subtask_ids=self.subtask_ids,
-            disable_concent=True
+            disable_concent=True,
+            ignore_gas_price=ignore_gas_price,
         )
 
         validate_funds_mock.assert_called_once_with(
