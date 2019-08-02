@@ -8,9 +8,9 @@ import collections
 
 import requests
 from requests import HTTPError
-from twisted.internet.defer import inlineCallbacks
 
 from golem_messages import helpers as msg_helpers
+from twisted.internet.defer import inlineCallbacks
 from twisted.web.client import readBody
 from twisted.web.http_headers import Headers
 
@@ -243,17 +243,19 @@ class HyperdriveAsyncClient(HyperdriveClient):
             params: Optional[Dict] = None,
             parser: Optional[Callable[[Dict], Any]] = None,
     ):
+        body = None
+
         if endpoint and endpoint[0] == '/':
             endpoint = endpoint[1:]
         if params:
-            params = json.dumps(params).encode(self.ENCODING)
+            body = json.dumps(params).encode(self.ENCODING)
 
         uri = f'{self._url}/{endpoint}'.encode(self.ENCODING)
         response = yield AsyncHTTPRequest.run(
             method,
             uri=uri,
             headers=self.RAW_HEADERS,
-            body=params
+            body=body
         )
 
         try:
