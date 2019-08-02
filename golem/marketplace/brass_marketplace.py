@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from golem.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
-from golem.task.taskbase import Task
 
 from .rust import order_providers
 
@@ -46,5 +45,5 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         return [offers[i] for i in permutation]
 
     @classmethod
-    def get_payment_computer(cls, task: Task, subtask_id: str):
+    def get_payment_computer(cls, task: 'Task', subtask_id: str):
         return lambda price: price

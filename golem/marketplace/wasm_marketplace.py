@@ -5,7 +5,6 @@ from typing import (
 )
 import numpy
 
-from golem.task.taskbase import Task
 from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
@@ -115,7 +114,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return cls._usages.pop(subtask_id)
 
     @classmethod
-    def get_payment_computer(cls, task: Task, subtask_id: str):
+    def get_payment_computer(cls, task: 'Task', subtask_id: str):
         def payment_computer(price):
             subtask_usage = cls._get_subtask_usage(subtask_id)
             return min(price * subtask_usage, task.subtask_price)
