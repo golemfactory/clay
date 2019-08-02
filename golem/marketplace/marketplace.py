@@ -6,10 +6,12 @@ from dataclasses import dataclass
 import golem.ranking.manager.database_manager as dbm
 
 if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
     from golem.task.taskbase import Task
 
 
 class ProviderPerformance:
+
     def __init__(self, usage_benchmark):
         self.usage_benchmark = usage_benchmark
 
@@ -26,6 +28,12 @@ class Offer:
     def __post_init__(self):
         self.reputation = dbm.get_provider_efficiency(self.provider_id)
         self.quality = dbm.get_provider_efficacy(self.provider_id).vector
+
+
+@dataclass
+class ProviderPricing:
+    price_per_wallclock_h: int
+    price_per_cpu_h: int
 
 
 class RequestorMarketStrategy(ABC):
@@ -66,4 +74,12 @@ class RequestorMarketStrategy(ABC):
         Returns:
             Callable[[int], int] -- Function computing payment
         """
+        raise NotImplementedError()
+
+
+class ProviderMarketStrategy(ABC):
+
+    @abstractclassmethod
+    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
+                        requestor_id: str) -> int:
         raise NotImplementedError()

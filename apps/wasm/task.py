@@ -26,7 +26,8 @@ from apps.core.task.coretask import (
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
-    RequestorWasmMarketStrategy, UsageReport
+    RequestorWasmMarketStrategy, UsageReport,
+    ProviderWasmMarketStrategy
 )
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict
@@ -161,6 +162,11 @@ class WasmTaskDefinition(TaskDefinition):
 
 
 class WasmTask(CoreTask):
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
+        RequestorWasmMarketStrategy
+    PROVIDER_MARKET_STRATEGY: Type[ProviderWasmMarketStrategy] =\
+        ProviderWasmMarketStrategy
+
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
@@ -188,6 +194,7 @@ class WasmTask(CoreTask):
             self.subtasks.append(subtask)
 
         self.nodes_blacklist: Set[str] = set()
+        self._load_requestor_perf()
 
     def query_extra_data(
             self, perf_index: float,
@@ -284,7 +291,7 @@ class WasmTask(CoreTask):
                      s_id,
                      self.subtasks_results_metadata[s_id].compute_time)
                 )
-            WasmTaskTypeInfo.MARKET_STRATEGY.report_subtask_usages(
+            self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
                 subtask_usages
             )
@@ -475,6 +482,17 @@ class WasmTask(CoreTask):
         logger.info("WASM subtask price: %d", sub_price)
         return sub_price
 
+    def _load_requestor_perf(self):
+        try:
+            perf = golem.model.Performance.get(
+                golem.model.Performance.environment_id ==
+                WasmTaskEnvironment.ENV_ID
+            ).value
+        except golem.model.Performance.DoesNotExist:
+            perf = 1.0
+
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)
+
 
 class WasmTaskBuilder(CoreTaskBuilder):
     TASK_CLASS: Type[WasmTask] = WasmTask
@@ -527,22 +545,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
-        RequestorWasmMarketStrategy
-
     def __init__(self) -> None:
-        self._load_requestor_perf()
         super().__init__(
             'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder
         )
-
-    def _load_requestor_perf(self):
-        try:
-            perf = golem.model.Performance.get(
-                golem.model.Performance.environment_id ==
-                WasmTaskEnvironment.ENV_ID
-            ).value
-        except golem.model.Performance.DoesNotExist:
-            perf = 1.0
-
-        self.MARKET_STRATEGY.set_my_usage_benchmark(perf)

@@ -1,15 +1,20 @@
 import logging
-from typing import (
-    Callable, List, Dict, ClassVar, Tuple, Optional,
-    Iterable, TYPE_CHECKING
-)
+from typing import (Callable, List, Dict, ClassVar, Tuple, Optional, Iterable,
+                    TYPE_CHECKING)
 import numpy
 
-from golem.marketplace.marketplace import Offer
+from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
+                                           ProviderPricing)
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
+from golem.task import timer
+from golem.ranking.manager.database_manager import (
+    get_requestor_assigned_sum,
+    get_requestor_paid_sum,
+)
 
 if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
     from golem.task.taskbase import Task
 
 ProviderId = str
@@ -60,25 +65,24 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for offer in offers:
             usage_factor = cls.get_usage_factor(
-                offer.provider_id,
-                offer.provider_performance.usage_benchmark)
+                offer.provider_id, offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
             logger.info(
                 "RWMS: offer from %s, b=%.1f, R=%.3f, price=%d Gwei, a=%g",
                 offer.provider_id[:8],
-                offer.provider_performance.usage_benchmark,
-                usage_factor,
-                offer.price/10**9,
-                adjusted_price)
+                offer.provider_performance.usage_benchmark, usage_factor,
+                offer.price / 10**9, adjusted_price)
             to_sort.append((offer, usage_factor, adjusted_price))
-        offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
-                         if t[1] <= max_factor]
+        offers_sorted = [
+            t[0]
+            for t in sorted(to_sort, key=lambda t: t[2])
+            if t[1] <= max_factor
+        ]
 
         return offers_sorted
 
     @classmethod
-    def report_subtask_usages(cls,
-                              _task_id: str,
+    def report_subtask_usages(cls, _task_id: str,
                               usages: List[UsageReport]) -> None:
         assert len(usages) > 1
 
@@ -100,8 +104,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for pid, delta in deltas.items():
             r = delta * cls._usage_factors[pid]
-            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f",
-                        pid[:8], cls._usage_factors[pid], r)
+            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f", pid[:8],
+                        cls._usage_factors[pid], r)
             cls._usage_factors[pid] = r
             if r > cls._max_usage_factor:
                 logger.info("RWMS: Provider %s has excessive usage factor: %f",
@@ -122,9 +126,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def get_payment_computer(cls, task: 'Task', subtask_id: str)\
             -> Callable[[int], int]:
+
         def payment_computer(price: int) -> int:
             subtask_usage: float = cls._get_subtask_usage(subtask_id)
             return min(int(price * subtask_usage / 3600), task.subtask_price)
+
         return payment_computer
 
 
@@ -136,3 +142,17 @@ def geomean(a: Iterable[float]) -> float:
 
     log_a = numpy.log(numpy.array(list(a)))
     return numpy.exp(log_a.mean())
+
+
+class ProviderWasmMarketStrategy(ProviderMarketStrategy):
+
+    @classmethod
+    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
+                        requestor_id: str) -> int:
+        r = pricing.price_per_cpu_h * (1.0 + timer.ProviderTimer.profit_factor)
+        v_paid = get_requestor_paid_sum(requestor_id)
+        v_assigned = get_requestor_assigned_sum(requestor_id)
+        c = pricing.price_per_cpu_h
+        Q = min(1.0, (pricing.price_per_cpu_h + 1 + v_paid + c) /
+                (pricing.price_per_cpu_h + 1 + v_assigned))
+        return min(max(int(r / Q), pricing.price_per_cpu_h), max_price)

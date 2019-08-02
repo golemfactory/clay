@@ -3,13 +3,20 @@ import logging
 from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
-from golem.marketplace import Offer
+from golem.marketplace import (Offer, ProviderMarketStrategy, ProviderPricing)
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
+from golem.task import timer
+from golem.ranking.manager.database_manager import (
+    get_requestor_efficiency,
+    get_requestor_assigned_sum,
+    get_requestor_paid_sum,
+)
 
 from .rust import order_providers
 
 if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
     from golem.task.taskbase import Task
 
 logger = logging.getLogger(__name__)
@@ -50,6 +57,29 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def get_payment_computer(cls, task: 'Task', subtask_id: str)\
             -> Callable[[int], int]:
+
         def payment_computer(price: int):
             return price * task.header.subtask_timeout
+
         return payment_computer
+
+
+class ProviderBrassMarketStrategy(ProviderMarketStrategy):
+
+    @classmethod
+    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
+                        requestor_id: str) -> int:
+        """
+        Provider's subtask price function as proposed in
+        https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
+        """
+        r = pricing.price_per_wallclock_h *\
+            (1.0 + timer.ProviderTimer.profit_factor)
+        v_paid = get_requestor_paid_sum(requestor_id)
+        v_assigned = get_requestor_assigned_sum(requestor_id)
+        c = pricing.price_per_wallclock_h
+        Q = min(1.0, (pricing.price_per_wallclock_h + 1 + v_paid + c) /
+                (pricing.price_per_wallclock_h + 1 + v_assigned))
+        R = get_requestor_efficiency(requestor_id)
+        S = Q * R
+        return min(max(int(r / S), pricing.price_per_wallclock_h), max_price)

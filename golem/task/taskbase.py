@@ -9,6 +9,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
 from golem.marketplace import (
+    ProviderMarketStrategy, ProviderBrassMarketStrategy,
     RequestorMarketStrategy, RequestorBrassMarketStrategy
 )
 
@@ -28,8 +29,6 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    MARKET_STRATEGY: Type[RequestorMarketStrategy]\
-        = RequestorBrassMarketStrategy
 
     def __init__(self,
                  name: str,
@@ -88,6 +87,10 @@ class TaskEventListener(object):
 
 
 class Task(abc.ABC):
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorMarketStrategy]\
+        = RequestorBrassMarketStrategy
+    PROVIDER_MARKET_STRATEGY: Type[ProviderMarketStrategy]\
+        = ProviderBrassMarketStrategy
 
     class ExtraData(object):
         def __init__(self, ctd=None, **kwargs):
