@@ -1,13 +1,16 @@
 import logging
 from typing import (
-    List, Dict, ClassVar,
-    Tuple, Optional, Iterable
+    List, Dict, ClassVar, Tuple, Optional,
+    Iterable, TYPE_CHECKING
 )
 import numpy
 
 from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
+
+if TYPE_CHECKING:
+    from golem.task.taskbase import Task
 
 ProviderId = str
 SubtaskId = str

@@ -3,6 +3,9 @@ from typing import Callable, Optional, List, Tuple
 
 from dataclasses import dataclass
 
+if TYPE_CHECKING:
+    from golem.task.taskbase import Task
+
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark):
