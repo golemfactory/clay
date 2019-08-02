@@ -1,17 +1,16 @@
 import abc
 import logging
 from enum import Enum
-from typing import (
-    List,
-    Optional,
-    Type)
+from typing import Dict, List, Optional, Type
 
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
-from golem.marketplace import RequestorBrassMarketStrategy
+from golem.marketplace import (
+    RequestorMarketStrategy, RequestorBrassMarketStrategy
+)
 
 logger = logging.getLogger("golem.task")
 
@@ -29,7 +28,8 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    MARKET_STRATEGY = RequestorBrassMarketStrategy
+    MARKET_STRATEGY: Type[RequestorMarketStrategy]\
+        = RequestorBrassMarketStrategy
 
     def __init__(self,
                  name: str,
@@ -101,6 +101,7 @@ class Task(abc.ABC):
                  task_definition: TaskDefinition) -> None:
         self.header = header
         self.task_definition = task_definition
+        self.subtasks_results_metadata: Dict[str, ResultMetadata] = {}
 
         self.listeners = []  # type: List[TaskEventListener]
 
@@ -360,3 +361,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, compute_time: float) -> None:
+        self.compute_time: float = compute_time

@@ -1,3 +1,4 @@
+import datetime
 import inspect
 import logging
 
@@ -10,6 +11,7 @@ from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
+from golem.task.taskbase import ResultMetadata
 from golem.task.server import helpers as task_server_helpers
 
 from .filetransfers import ConcentFiletransferService
@@ -511,6 +513,13 @@ class TaskServerMessageHandler():
 
             # instantiate session and run the tasksession's reaction to
             # received results
+            self.task_server.add_subtask_metadata(
+                rct.subtask_id,
+                ResultMetadata(
+                    datetime.datetime.now().timestamp() -
+                    rct.task_to_compute.timestamp
+                )
+            )
             self.task_server.verify_results(
                 report_computed_task=rct,
                 extracted_package=extracted_package)
