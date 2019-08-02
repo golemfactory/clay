@@ -515,7 +515,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         wasm_task_def.budget = dictionary.get('budget', 2.22)
         if 'budget' not in dictionary:
             logger.warning("Assigning task default budget: %.03f",
-                           task_def.budget)
+                           wasm_task_def.budget)
 
         return wasm_task_def
 

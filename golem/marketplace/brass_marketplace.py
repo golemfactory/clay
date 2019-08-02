@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from golem.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
+from golem.task.taskbase import Task
 
 from .rust import order_providers
 
