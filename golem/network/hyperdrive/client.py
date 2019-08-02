@@ -2,17 +2,19 @@ import json
 import logging
 import math
 from ipaddress import AddressValueError, ip_address
-from typing import Optional, Dict, Tuple, List, Iterable, Callable, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import collections
 
 import requests
 from requests import HTTPError
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import inlineCallbacks
 
 from golem_messages import helpers as msg_helpers
+from twisted.web.client import readBody
+from twisted.web.http_headers import Headers
 
-from golem.core import golem_async
+from golem.core.golem_async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
 
 log = logging.getLogger(__name__)
@@ -37,27 +39,23 @@ class HyperdriveClient(IClient):
 
     CLIENT_ID = 'hyperg'
     VERSION = 1.1
+    DEFAULT_ENDPOINT = 'api'
+    HEADERS = {'content-type': 'application/json'}
 
     def __init__(self, port, host, timeout=None):
-        super(HyperdriveClient, self).__init__()
-
-        # API destination address
-        self.host = host
-        self.port = port
+        super().__init__()
         # connection / read timeout
         self.timeout = timeout
-
         # default POST request headers
-        self._url = 'http://{}:{}/api'.format(self.host, self.port)
-        self._headers = {'content-type': 'application/json'}
+        self._url = f'http://{host}:{port}'
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.CLIENT_ID} at {self._url}>'
 
     @classmethod
-    def build_options(cls, peers=None, **kwargs):
-        return HyperdriveClientOptions(cls.CLIENT_ID, cls.VERSION,
-                                       options=dict(peers=peers))
+    def build_options(cls, **kwargs):
+        return HyperdriveClientOptions(
+            cls.CLIENT_ID, cls.VERSION, options=kwargs)
 
     def id(self, client_options=None, *args, **kwargs):
         return self._request(command='id')
@@ -126,9 +124,16 @@ class HyperdriveClient(IClient):
         )
         return response['hash']
 
-    def _request(self, **data):
-        response = requests.post(url=self._url,
-                                 headers=self._headers,
+    def _request(
+            self,
+            endpoint: str = DEFAULT_ENDPOINT,
+            **data
+    ) -> Dict:
+        if endpoint and endpoint[0] == '/':
+            endpoint = endpoint[1:]
+
+        response = requests.post(url=f'{self._url}/{endpoint}',
+                                 headers=self.HEADERS,
                                  data=json.dumps(data),
                                  timeout=self.timeout)
 
@@ -142,110 +147,126 @@ class HyperdriveClient(IClient):
 
         if response.content:
             return json.loads(response.content.decode('utf-8'))
+        return dict()
 
 
 class HyperdriveAsyncClient(HyperdriveClient):
 
-    def __init__(self, port, host, timeout=None):
-        from twisted.web.http_headers import Headers  # imports reactor
+    RAW_HEADERS = Headers({'Content-Type': ['application/json']})
+    ENCODING = 'utf-8'
 
-        super().__init__(port, host, timeout)
-
-        # default POST request headers
-        self._url_bytes = self._url.encode('utf-8')
-        self._headers_obj = Headers({'Content-Type': ['application/json']})
-
-    def add_async(self, files, client_options=None, **kwargs):
+    def add_async(
+            self,
+            files: Dict[str, str],
+            client_options: ClientOptions,
+            **kwargs
+    ):
         timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(timeout)
-        )
+            timeout=round_timeout(timeout))
 
         return self._async_request(
-            params,
-            lambda response: response['hash']
-        )
+            params=params,
+            parser=lambda res: res['hash'])
 
-    def restore_async(self, content_hash, client_options=None, **kwargs):
+    def restore_async(
+            self,
+            content_hash: str,
+            client_options: ClientOptions,
+            **kwargs
+    ):
         timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(timeout)
-        )
+            timeout=round_timeout(timeout))
 
         return self._async_request(
-            params,
-            lambda response: response['hash']
-        )
+            params=params,
+            parser=lambda res: res['hash'])
 
-    def get_async(self, content_hash, client_options=None, **kwargs):
-        params = self._download_params(content_hash, client_options, **kwargs)
-        path = kwargs['filepath']
+    def get_async(
+            self,
+            content_hash: str,
+            filepath: str,
+            client_options: ClientOptions,
+            **kwargs
+    ):
+        params = self._download_params(
+            content_hash,
+            client_options,
+            filepath=filepath,
+            **kwargs)
 
         return self._async_request(
-            params,
-            lambda response: [(path, content_hash, response['files'])]
-        )
+            params=params,
+            parser=lambda res: [(filepath, content_hash, res['files'])])
 
-    def cancel_async(self, content_hash):
+    def cancel_async(
+            self,
+            content_hash: str,
+            **kwargs
+    ):
         params = dict(
             command='cancel',
-            hash=content_hash
-        )
+            id=kwargs.get('id'),
+            hash=content_hash)
 
         return self._async_request(
-            params,
-            lambda response: response['hash']
+            params=params,
+            parser=lambda response: response['hash'])
+
+    def resources_async(
+            self,
+    ):
+        return self._async_request(
+            endpoint='resources',
+            method=b'GET')
+
+    def resource_async(
+            self,
+            content_hash: str,
+    ):
+        return self._async_request(
+            endpoint=f'resources/{content_hash}',
+            method=b'GET')
+
+    @inlineCallbacks
+    def _async_request(
+            self,
+            endpoint: str = HyperdriveClient.DEFAULT_ENDPOINT,
+            method: bytes = b'POST',
+            params: Optional[Dict] = None,
+            parser: Optional[Callable[[Dict], Any]] = None,
+    ):
+        if endpoint and endpoint[0] == '/':
+            endpoint = endpoint[1:]
+        if params:
+            params = json.dumps(params).encode(self.ENCODING)
+
+        uri = f'{self._url}/{endpoint}'.encode(self.ENCODING)
+        response = yield AsyncHTTPRequest.run(
+            method,
+            uri=uri,
+            headers=self.RAW_HEADERS,
+            body=params
         )
 
-    def _async_request(self, params, response_parser):
-        from twisted.web.client import readBody  # imports reactor
+        try:
+            response_body = yield readBody(response)
+        except Exception:  # pylint: disable=broad-except
+            raise HTTPError(response.decode(self.ENCODING))
 
-        serialized_params = json.dumps(params)
-        encoded_params = serialized_params.encode('utf-8')
-        _result = Deferred()
+        decoded = response_body.decode(self.ENCODING)
+        deserialized = json.loads(decoded)
 
-        def on_response(response):
-            _body = readBody(response)
-            _body.addErrback(on_error)
-
-            if response.code == 200:
-                _body.addCallback(on_success)
-            else:
-                _body.addCallback(on_error)
-
-        def on_success(body):
-            try:
-                decoded = body.decode('utf-8')
-                deserialized = json.loads(decoded)
-                parsed = response_parser(deserialized)
-            except Exception as exc:  # pylint: disable=broad-except
-                _result.errback(exc)
-            else:
-                _result.callback(parsed)
-
-        def on_error(body):
-            try:
-                decoded = body.decode('utf-8')
-            except Exception as exc:  # pylint: disable=broad-except
-                _result.errback(exc)
-            else:
-                _result.errback(HTTPError(decoded))
-
-        deferred = golem_async.AsyncHTTPRequest.run(
-            b'POST',
-            self._url_bytes,
-            self._headers_obj,
-            encoded_params
-        )
-        deferred.addCallbacks(on_response, _result.errback)
-
-        return _result
+        if parser:
+            return parser(deserialized)
+        return deserialized
 
 
 class HyperdriveClientOptions(ClientOptions):
