@@ -83,7 +83,8 @@ class VerificationMixin:
                 )
 
             task = self.task_manager.tasks[task_id]
-            market_strategy = self.get_market_strategy_for_task(task)
+            market_strategy =\
+                self.task_manager.get_market_strategy_for_task(task)
             payment_computer = market_strategy.get_payment_computer(
                 task, subtask_id
             )

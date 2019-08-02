@@ -3,6 +3,7 @@ from typing import Callable, Optional, List, Tuple
 
 from dataclasses import dataclass
 
+from golem.task.taskbase import Task
 import golem.ranking.manager.database_manager as dbm
 
 
