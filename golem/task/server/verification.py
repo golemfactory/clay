@@ -82,11 +82,17 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
+            task = self.task_manager.tasks[task_id]
+            market_strategy = self.get_market_strategy_for_task(task)
+            payment_computer = market_strategy.get_payment_computer(
+                task, subtask_id
+            )
+
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
+                payment_computer(task_to_compute.price),
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )

@@ -5,15 +5,21 @@ from typing import (
 )
 import numpy
 
+from golem.task.taskbase import Task
 from golem.marketplace.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 
+ProviderId = str
+SubtaskId = str
+Usage = float
+UsageReport = Tuple[ProviderId, SubtaskId, Usage]
 
 logger = logging.getLogger(__name__)
 
 
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
+    _usages: ClassVar[Dict[str, float]] = dict()
     _usage_factors: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
     _my_usage_benchmark: ClassVar[float] = 1.0
@@ -71,9 +77,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def report_subtask_usages(cls,
                               _task_id: str,
-                              usages: List[Tuple[str, float]]) -> None:
-        if len(usages) < 2:
-            return
+                              usages: List[UsageReport]) -> None:
+        assert len(usages) > 1
+
+        for pid, sid, usage in usages:
+            cls._usages[sid] = usage
 
         ds: Dict[str, float] = dict()
         deltas: Dict[str, float] = dict()
@@ -101,6 +109,17 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     def reset(cls) -> None:
         super().reset()
         cls._usage_factors = dict()
+
+    @classmethod
+    def _get_subtask_usage(cls, subtask_id: str) -> float:
+        return cls._usages.pop(subtask_id)
+
+    @classmethod
+    def get_payment_computer(cls, task: Task, subtask_id: str):
+        def payment_computer(price):
+            subtask_usage = cls._get_subtask_usage(subtask_id)
+            return min(price * subtask_usage, task.subtask_price)
+        return payment_computer
 
 
 def geomean(a: Iterable[float]) -> float:

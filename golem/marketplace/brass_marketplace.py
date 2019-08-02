@@ -43,3 +43,7 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         ])
 
         return [offers[i] for i in permutation]
+
+    @classmethod
+    def get_payment_computer(cls, task: Task, subtask_id: str):
+        return lambda price: price
