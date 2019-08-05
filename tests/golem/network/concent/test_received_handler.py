@@ -603,7 +603,8 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
                 self.requestor_keys.raw_pubkey))
         return msg
 
-    def test_force_get_task_result_download(self):
+    @mock.patch('golem.task.taskserver.TaskServer.add_subtask_metadata')
+    def test_force_get_task_result_download(self, _):
         fgtrd = self._get_correct_message()
 
         library.interpret(fgtrd)
