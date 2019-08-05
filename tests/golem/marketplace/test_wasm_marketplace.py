@@ -10,6 +10,8 @@ class TestOfferChoice(TestCase):
     TASK_2 = 'task_2'
     PROVIDER_1 = 'P1'
     PROVIDER_2 = 'P2'
+    SUBTASK_1 = 'subtask_1'
+    SUBTASK_2 = 'subtask_2'
 
     def setUp(self):
         super().setUp()
@@ -63,7 +65,8 @@ class TestOfferChoice(TestCase):
         result = RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_1)
 
         RequestorWasmMarketStrategy.report_subtask_usages(
-            self.TASK_1, [(self.PROVIDER_1, 5.0), (self.PROVIDER_2, 8.0)]
+            self.TASK_1, [(self.PROVIDER_1, self.SUBTASK_1, 5.0),
+                          (self.PROVIDER_2, self.SUBTASK_2, 8.0)]
         )
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].provider_id, self.PROVIDER_2)
