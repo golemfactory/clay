@@ -1,5 +1,7 @@
 from abc import ABC, abstractclassmethod
-from typing import Optional, List
+from typing import Optional, List, Tuple
+
+from dataclasses import dataclass
 
 import golem.ranking.manager.database_manager as dbm
 
@@ -9,21 +11,18 @@ class ProviderPerformance:
         self.usage_benchmark = usage_benchmark
 
 
-# pylint:disable=too-many-instance-attributes,too-many-public-methods
+@dataclass
 class Offer:
-    # pylint:disable=too-many-arguments
-    def __init__(
-            self,
-            provider_id: str,
-            provider_performance: ProviderPerformance,
-            max_price: float,
-            price: float):
-        self.provider_id = provider_id
-        self.provider_performance = provider_performance
-        self.max_price = max_price
-        self.price = price
-        self.reputation = dbm.get_provider_efficiency(provider_id)
-        self.quality = dbm.get_provider_efficacy(provider_id).vector
+    provider_id: str
+    provider_performance: ProviderPerformance
+    max_price: float
+    price: float
+    reputation: float = .0
+    quality: Tuple[float, float, float, float] = (.0, .0, .0, .0)
+
+    def __post_init__(self):
+        self.reputation = dbm.get_provider_efficiency(self.provider_id)
+        self.quality = dbm.get_provider_efficacy(self.provider_id).vector
 
 
 class RequestorMarketStrategy(ABC):
