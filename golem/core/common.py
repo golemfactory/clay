@@ -317,18 +317,32 @@ def config_logging(
 
 
 def install_reactor():
-
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
-    elif is_osx():
-        from twisted.internet import kqreactor
-        kqreactor.install()
+    import asyncio
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install(asyncio.get_event_loop())
 
     from twisted.internet import reactor
+    _patch_remove_writer(reactor)
+
     from golem.core.variables import REACTOR_THREAD_POOL_SIZE
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
+
+
+def _patch_remove_writer(reactor):
+    import logging
+    import types
+
+    logger = logging.getLogger('golem.core')
+
+    def patched_remove_writer(_, writer):
+        try:
+            reactor_remove_writer(writer)
+        except KeyError as err:
+            logger.debug("Reactor removeWriter error: %r", err)
+
+    reactor_remove_writer = reactor.removeWriter
+    reactor.removeWriter = types.MethodType(patched_remove_writer, reactor)
 
 
 if is_windows():
