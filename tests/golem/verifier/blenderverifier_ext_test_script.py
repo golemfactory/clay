@@ -83,20 +83,26 @@ class Report:
             return report_params
         return report
 
-    def to_file(self, dir: str):
+    def to_file(self, dir: str, part: int):
         os.makedirs(dir, exist_ok=True)
 
-        all_path = os.path.join(dir, 'all_tests.json')
+        all_path = os.path.join(dir, 'all_tests{}.json'.format(part))
         with open(all_path, 'w') as outfile:
             json.dump(self.all_params, outfile, indent=4, sort_keys=False)
 
-        failed_path = os.path.join(dir, 'failed_tests.json')
+        failed_path = os.path.join(dir, 'failed_tests{}.json'.format(part))
         with open(failed_path, 'w') as outfile:
             json.dump(self.failed_params, outfile, indent=4, sort_keys=False)
 
-        success_path = os.path.join(dir, 'success_tests.json')
+        success_path = os.path.join(dir, 'success_tests{}.json'.format(part))
         with open(success_path, 'w') as outfile:
             json.dump(self.success_params, outfile, indent=4, sort_keys=False)
+
+    def clear_reports(self):
+        self.failed_params: List[dict] = list()
+        self.success_params: List[dict] = list()
+        self.all_params: List[dict] = list()
+
 
 
 class ExtendedVerifierTestEnv():
@@ -123,6 +129,10 @@ class ExtendedVerifierTestEnv():
 
         num_sets = len(parameters_sets)
         print("Running {} parameters sets.".format(num_sets))
+
+        counter = 0
+        max_sets_in_batch = 100
+        part = 0
 
         for parameters_set in parameters_sets:
 
@@ -157,11 +167,21 @@ class ExtendedVerifierTestEnv():
                 tester.tearDown()
 
             self._progress()
+
+            # Reports consume to much space to keep them in memory
+            # all the time.
+            counter += 1
+            if counter >= max_sets_in_batch:
+                counter = 0
+                self._reports_to_files(part)
+                self.report.clear_reports()
+                part += 1
+
         
         # Add newline on end.
         print("")
         self._print_failes()
-        self._reports_to_files()
+        self._reports_to_files(part)
 
     def _print_failes(self):
         print("Printing failed tests:")
@@ -172,8 +192,8 @@ class ExtendedVerifierTestEnv():
         print(".", end = '')
         sys.stdout.flush()
 
-    def _reports_to_files(self):
-        self.report.to_file("reports")
+    def _reports_to_files(self, part):
+        self.report.to_file("reports", part)
 
     def _generate_parameters(self):
         # resolutions_list = [[400, 400]]
