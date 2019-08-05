@@ -1,8 +1,12 @@
 import sys
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
-from golem.marketplace import RequestorBrassMarketStrategy, ProviderPerformance
+from golem.marketplace import (
+    RequestorBrassMarketStrategy,
+    RequestorWasmMarketStrategy,
+    ProviderPerformance
+)
 from golem.marketplace.brass_marketplace import scale_price
 
 
@@ -13,6 +17,55 @@ class TestScalePrice(TestCase):
 
     def test_zero(self):
         assert scale_price(5, 0) == sys.float_info.max
+
+
+class TestRequestorMarketStrategy(TestCase):
+    TASK_A = 'aaa'
+    PROVIDER_A = 'provider_a'
+    PROVIDER_B = 'provider_b'
+    SUBTASK_A = 'subtask_a'
+    SUBTASK_B = 'subtask_b'
+
+    def test_brass_payment_computer(self):
+        market_strategy = RequestorBrassMarketStrategy
+        payment_computer = market_strategy.get_payment_computer(None, None)
+        self.assertEqual(payment_computer(1.0), 1.0)
+
+    def test_wasm_payment_computer(self):
+        task = Mock()
+        task.subtask_price = 10.0
+        market_strategy = RequestorWasmMarketStrategy
+        market_strategy.report_subtask_usages(
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0)]
+        )
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_A
+        )
+        self.assertEqual(payment_computer(1.0), 5.0)
+
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_B
+        )
+        self.assertEqual(payment_computer(1.0), 8.0)
+
+    def test_wasm_payment_computer_budget_exceeded(self):
+        task = Mock()
+        task.subtask_price = 1.0
+        market_strategy = RequestorWasmMarketStrategy
+        market_strategy.report_subtask_usages(
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0)]
+        )
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_A
+        )
+        self.assertEqual(payment_computer(1.0), 1.0)
+
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_B
+        )
+        self.assertEqual(payment_computer(1.0), 1.0)
 
 
 class TestRequestorBrassMarketStrategy(TestCase):
