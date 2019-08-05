@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
 from golem.marketplace import Offer
@@ -48,5 +48,6 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         return [offers[i] for i in permutation]
 
     @classmethod
-    def get_payment_computer(cls, task: 'Task', subtask_id: str):
+    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
+            -> Callable[[int], int]:
         return lambda price: price

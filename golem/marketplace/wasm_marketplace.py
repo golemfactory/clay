@@ -114,14 +114,22 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def _get_subtask_usage(cls, subtask_id: str) -> float:
+        """
+        Returns:
+            float -- Returns usage in seconds
+        """
         return cls._usages.pop(subtask_id)
 
     @classmethod
     def get_payment_computer(cls, task: 'Task', subtask_id: str)\
             -> Callable[[int], int]:
         def payment_computer(price: int) -> int:
-            subtask_usage: int = int(cls._get_subtask_usage(subtask_id))
-            return min(price * subtask_usage, task.subtask_price)
+            subtask_usage: float = cls._get_subtask_usage(subtask_id)
+            price_per_sec = price // task.header.subtask_timeout
+            return min(
+                int(price_per_sec * subtask_usage),
+                task.subtask_price
+            )
         return payment_computer
 
 

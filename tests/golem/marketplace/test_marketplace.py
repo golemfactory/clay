@@ -33,7 +33,9 @@ class TestRequestorMarketStrategy(TestCase):
 
     def test_wasm_payment_computer(self):
         task = Mock()
-        task.subtask_price = 10.0
+        task.subtask_price = 10000
+        task.header = Mock()
+        task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
         market_strategy.report_subtask_usages(
             self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
@@ -42,16 +44,18 @@ class TestRequestorMarketStrategy(TestCase):
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
         )
-        self.assertEqual(payment_computer(1.0), 5.0)
+        self.assertEqual(payment_computer(10000), 5000)
 
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_B
         )
-        self.assertEqual(payment_computer(1.0), 8.0)
+        self.assertEqual(payment_computer(10000), 8000)
 
     def test_wasm_payment_computer_budget_exceeded(self):
         task = Mock()
-        task.subtask_price = 1.0
+        task.subtask_price = 6000
+        task.header = Mock()
+        task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
         market_strategy.report_subtask_usages(
             self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
@@ -60,12 +64,12 @@ class TestRequestorMarketStrategy(TestCase):
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
         )
-        self.assertEqual(payment_computer(1.0), 1.0)
+        self.assertEqual(payment_computer(10000), 5000)
 
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_B
         )
-        self.assertEqual(payment_computer(1.0), 1.0)
+        self.assertEqual(payment_computer(10000), 6000)
 
 
 class TestRequestorBrassMarketStrategy(TestCase):
