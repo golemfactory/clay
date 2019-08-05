@@ -1,5 +1,7 @@
 from abc import ABC, abstractclassmethod
-from typing import Optional, List
+from typing import Optional, List, Tuple
+
+from dataclasses import dataclass
 
 from dataclasses import dataclass
 
