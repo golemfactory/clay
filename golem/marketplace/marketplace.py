@@ -58,12 +58,12 @@ class RequestorMarketStrategy(ABC):
 
     @abstractclassmethod
     def get_payment_computer(cls, task: 'Task', subtask_id: str)\
-            -> Callable[[float], float]:
+            -> Callable[[int], int]:
         """Returns a function computing payment based on price in TTC.
         Raises:
             NotImplementedError: [description]
 
         Returns:
-            Callable[[float], float] -- Function computing payment
+            Callable[[int], int] -- Function computing payment
         """
         raise NotImplementedError()

@@ -1,4 +1,5 @@
 from copy import deepcopy
+from ethereum.utils import denoms
 import os
 from pathlib import Path, PurePath
 from tempfile import TemporaryDirectory
@@ -158,7 +159,7 @@ class WasmTaskDefinition(TaskDefinition):
         super().__init__()
         self.options = WasmTaskOptions()
         self.task_type = 'WASM'
-        self.budget: float = 1.0
+        self.budget: int = 1 * denoms.ether
 
     def add_to_resources(self) -> None:
         self.resources = [self.options.input_dir]
@@ -473,9 +474,9 @@ class WasmTask(CoreTask):
         return instance["results"]
 
     @property
-    def subtask_price(self):
-        sub_price = self.task_definition.budget / self.get_total_tasks()
-        logger.info("WASM subtask price: %.03f", sub_price)
+    def subtask_price(self) -> int:
+        sub_price: int = self.task_definition.budget // self.get_total_tasks()
+        logger.info("WASM subtask price: %d", sub_price)
         return sub_price
 
 
@@ -509,10 +510,10 @@ class WasmTaskBuilder(CoreTaskBuilder):
             for name, subtask_opts in options['subtasks'].items()
         }
 
-        task_def.budget = dictionary.get('budget', 2.22)
+        task_def.budget = dictionary.get('budget', 1) * denoms.ether
         if 'budget' not in dictionary:
-            logger.warning("Assigning task default budget: %.03f",
-                           task_def.budget)
+            logger.warning("Assigning task default budget: %d",
+                           task_def.budget / denoms.ether)
 
         return task_def
 
