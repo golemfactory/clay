@@ -13,7 +13,7 @@ from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 class SimulatedTranscodingOperation:
     def __init__(self,
                  task_executor,
-                 experiment_name: str,
+                 experiment_name: Optional[str],
                  resource_dir: str,
                  tmp_dir: str,
                  dont_include_in_option_description: Optional[list] = None)\
@@ -24,7 +24,7 @@ class SimulatedTranscodingOperation:
         assert os.path.isdir(tmp_dir)
 
         self._task_executor = task_executor
-        self._experiment_name: str = experiment_name
+        self._experiment_name: Optional[str] = experiment_name
         self._host_dirs: Dict[str, str] = {
             'resource': resource_dir,
             'tmp': tmp_dir,
@@ -219,7 +219,9 @@ class SimulatedTranscodingOperation:
                 output_file,
             )
         except BaseException as exception:
-            if self._ffprobe_report_set is not None:
+            if self._ffprobe_report_set is not None and \
+                    self._experiment_name is not None:
+
                 self._ffprobe_report_set.collect_error(
                     type(exception).__name__,
                     experiment_name=self._experiment_name,
@@ -228,7 +230,8 @@ class SimulatedTranscodingOperation:
                 )
             raise
         else:
-            if self._ffprobe_report_set is not None:
+            if self._ffprobe_report_set is not None and \
+                    self._experiment_name is not None:
                 self._ffprobe_report_set.collect_reports(
                     diff,
                     experiment_name=self._experiment_name,
