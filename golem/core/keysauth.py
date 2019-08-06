@@ -53,9 +53,8 @@ class WrongPassword(Exception):
 class KeysAuth:
     """
     Elliptical curves cryptographic authorization manager. Generates
-    private and public keys based on ECC (curve secp256k1) with specified
-    difficulty. Private key is stored in file. When this file not exist, is
-    broken or contain key below requested difficulty new key is generated.
+    private and public keys based on ECC (curve secp256k1). Private key is
+    stored in file. When this file not exist or is broken new key is generated.
     """
     KEYS_SUBDIR = 'keys'
 
@@ -64,29 +63,28 @@ class KeysAuth:
     key_id: str = ""
     ecc: ECCx = None
 
-    def __init__(self, datadir: str, private_key_name: str, password: str,
-                 difficulty: int = 0) -> None:
+    def __init__(
+            self,
+            datadir: str,
+            private_key_name: str,
+            password: str,
+    ) -> None:
         """
         Create new ECC keys authorization manager, load or create keys.
 
         :param datadir where to store files
         :param private_key_name: name of the file containing private key
         :param password: user password to protect private key
-        :param difficulty:
-            desired key difficulty level. It's a number of leading zeros in
-            binary representation of public key. Value in range <0, 255>.
-            0 accepts all keys, 255 is nearly impossible.
         """
 
         prv, pub = KeysAuth._load_or_generate_keys(
-            datadir, private_key_name, password, difficulty)
+            datadir, private_key_name, password)
 
         self._private_key = prv
         self.ecc = ECCx(prv)
         self.public_key = pub
         self.key_id = encode_hex(pub)[2:]
         self.eth_addr = pubkey_to_address(pub)
-        self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
     def key_exists(datadir: str, private_key_name: str) -> bool:
@@ -95,15 +93,17 @@ class KeysAuth:
         return os.path.isfile(priv_key_path)
 
     @staticmethod
-    def _load_or_generate_keys(datadir: str, filename: str, password: str,
-                               difficulty: int) -> Tuple[bytes, bytes]:
+    def _load_or_generate_keys(
+            datadir: str,
+            filename: str,
+            password: str,
+    ) -> Tuple[bytes, bytes]:
         keys_dir = KeysAuth._get_or_create_keys_dir(datadir)
         priv_key_path = os.path.join(keys_dir, filename)
 
         loaded_keys = KeysAuth._load_and_check_keys(
             priv_key_path,
             password,
-            difficulty,
         )
 
         if loaded_keys:
@@ -111,7 +111,7 @@ class KeysAuth:
             priv_key, pub_key = loaded_keys
         else:
             logger.debug('No keys found, generating new one')
-            priv_key, pub_key = KeysAuth._generate_keys(difficulty)
+            priv_key, pub_key = KeysAuth._generate_keys()
             logger.debug('Generation completed, saving keys')
             KeysAuth._save_private_key(priv_key, priv_key_path, password)
             logger.debug('Keys stored succesfully')
@@ -126,9 +126,10 @@ class KeysAuth:
         return keys_dir
 
     @staticmethod
-    def _load_and_check_keys(priv_key_path: str,
-                             password: str,
-                             difficulty: int) -> Optional[Tuple[bytes, bytes]]:
+    def _load_and_check_keys(
+            priv_key_path: str,
+            password: str,
+    ) -> Optional[Tuple[bytes, bytes]]:
         try:
             with open(priv_key_path, 'r') as f:
                 keystore = f.read()
@@ -143,29 +144,13 @@ class KeysAuth:
 
         pub_key = privtopub(priv_key)
 
-        if not KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-            raise Exception("Loaded key is not difficult enough")
-
         return priv_key, pub_key
 
     @staticmethod
-    def _generate_keys(difficulty: int) -> Tuple[bytes, bytes]:
-        from twisted.internet import reactor
-        reactor_started = reactor.running
+    def _generate_keys() -> Tuple[bytes, bytes]:
         logger.info("Generating new key pair")
-        started = time.time()
-        while True:
-            priv_key = mk_privkey(str(get_random_float()))
-            pub_key = privtopub(priv_key)
-            if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
-                break
-
-            # lets be responsive to reactor stop (eg. ^C hit by user)
-            if reactor_started and not reactor.running:
-                logger.warning("reactor stopped, aborting key generation ..")
-                raise Exception("aborting key generation")
-
-        logger.info("Keys generated in %.2fs", time.time() - started)
+        priv_key = mk_privkey(str(get_random_float()))
+        pub_key = privtopub(priv_key)
         return priv_key, pub_key
 
     @staticmethod
@@ -177,29 +162,6 @@ class KeysAuth:
         )
         with open(key_path, 'w') as f:
             f.write(json.dumps(keystore))
-
-    @staticmethod
-    def _count_max_hash(difficulty: int) -> int:
-        return 2 << (256 - difficulty - 1)
-
-    @staticmethod
-    def is_pubkey_difficult(pub_key: Union[bytes, str],
-                            difficulty: int) -> bool:
-        if isinstance(pub_key, str):
-            pub_key = decode_hex(pub_key)
-        return sha2(pub_key) < KeysAuth._count_max_hash(difficulty)
-
-    def is_difficult(self, difficulty: int) -> bool:
-        return self.is_pubkey_difficult(self.public_key, difficulty)
-
-    @staticmethod
-    def get_difficulty(key_id: str) -> int:
-        """
-        Calculate given key difficulty.
-        This is more expensive to calculate than is_difficult, so use
-        the latter if possible.
-        """
-        return int(math.floor(256 - math.log2(sha2(decode_hex(key_id)))))
 
     def sign(self, data: bytes) -> bytes:
         """

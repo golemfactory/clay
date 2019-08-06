@@ -2,7 +2,7 @@
 name: Bug report
 about: Please tell us if you encountered an issue with Golem
 title: ''
-labels: brass, bug
+labels: P3, brass, bug
 assignees: ZmijaWA
 
 ---
@@ -20,6 +20,12 @@ assignees: ZmijaWA
 **Branch** (if launched from source):
 
 **Mainnet/Testnet**:
+
+**Priority label is set to the lowest by default. To setup higher priority please change the label**
+_P0 label is set for Severity-Critical/Effort-easy
+P1 label is set  for Severity-Critical/Effort-hard
+P2 label is set for Severity-Low/ Effort-easy
+P3 label is set for Severity-Low/Effort-hard_
 
 **Description of the issue**:
 

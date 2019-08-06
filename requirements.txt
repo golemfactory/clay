@@ -37,8 +37,9 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
-Golem-Messages==3.7.0
+Golem-Messages==3.9.0
 Golem-Smart-Contracts-Interface==1.10.0
+golem_task_api==0.7.1
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0

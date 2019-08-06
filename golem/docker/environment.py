@@ -66,22 +66,22 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def DOCKER_IMAGE(cls):
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def DOCKER_TAG(cls):
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def ENV_ID(cls):
-        pass
+        raise NotImplementedError
 
     @property
     @abc.abstractmethod
     def SHORT_DESCRIPTION(cls):
-        pass
+        raise NotImplementedError
 
     @classmethod
     def get_id(cls):

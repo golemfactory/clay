@@ -18,11 +18,11 @@ class TaskResultPackageManager(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def create(self, node, task_result, **kwargs):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def extract(self, path, output_dir=None, **kwargs):
-        pass
+        raise NotImplementedError
 
 
 class EncryptedResultPackageManager(TaskResultPackageManager):

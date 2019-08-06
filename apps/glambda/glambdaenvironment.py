@@ -8,7 +8,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 
 class GLambdaTaskEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/glambda"
-    DOCKER_TAG = "1.4"
+    DOCKER_TAG = "1.5"
     ENV_ID = "glambda"
     SHORT_DESCRIPTION = "GLambda PoC"
 

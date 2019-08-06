@@ -4,7 +4,7 @@ import time
 from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Callable, Any, Iterable
+from typing import Any, Callable, Iterable, List, Optional
 
 from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
@@ -15,7 +15,6 @@ from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.report import report_calls, Component
 
@@ -94,8 +93,6 @@ class DockerManager(DockerConfigManager):
         elif is_osx():
             if DockerForMac.is_available():
                 return DockerForMac.instance(self.get_config)
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor.instance(self.get_config)
         return None
 
     def get_config(self) -> dict:
@@ -105,13 +102,13 @@ class DockerManager(DockerConfigManager):
             self,
             status_callback: Callable[[], Any],
             done_callback: Callable[[bool], Any],
-            work_dir: Path,
+            work_dirs: List[Path],
             in_background: bool = True
     ) -> None:
         self.check_environment()
 
         if self.hypervisor:
-            self.hypervisor.update_work_dir(work_dir)
+            self.hypervisor.update_work_dirs(work_dirs)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,

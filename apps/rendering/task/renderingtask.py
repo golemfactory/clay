@@ -190,6 +190,9 @@ class RenderingTask(CoreTask):
         exec_cmd(cmd)
 
     def _get_next_task(self):
+        logger.debug("_get_next_task. last_task=%d, total_tasks=%d, "
+                     "num_failed_subtasks=%d", self.last_task, self.total_tasks,
+                     self.num_failed_subtasks)
         if self.last_task != self.total_tasks:
             self.last_task += 1
             start_task = self.last_task
@@ -295,10 +298,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         kwargs = super().get_task_kwargs(**kwargs)
         kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
         return kwargs
-
-    def build(self):
-        task = super(RenderingTaskBuilder, self).build()
-        return task
 
     @classmethod
     def build_dictionary(cls, definition):

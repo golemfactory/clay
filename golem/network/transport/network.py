@@ -7,15 +7,15 @@ from .tcpnetwork_helpers import TCPConnectInfo, TCPListenInfo, TCPListeningInfo
 class Network(abc.ABC):
     @abc.abstractmethod
     def connect(self, connect_info: TCPConnectInfo) -> None:
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def listen(self, listen_info: TCPListenInfo) -> None:
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def stop_listening(self, listening_info: TCPListeningInfo):
-        return
+        raise NotImplementedError
 
 
 class SessionFactory(object):
@@ -115,19 +115,17 @@ class Session(object, metaclass=abc.ABCMeta):
     CONN_TYPE_CLIENT = 1
     CONN_TYPE_SERVER = 2
 
-    @abc.abstractmethod
-    def __init__(self, conn):
+    def __init__(self):
         self.conn_type = None
-        return
 
     @abc.abstractmethod
     def dropped(self):
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def interpret(self, msg):
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def disconnect(self, reason):
-        return
+        raise NotImplementedError

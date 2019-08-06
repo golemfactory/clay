@@ -15,22 +15,22 @@ class IPortMapper(ABC):
     @property
     @abstractmethod
     def available(self) -> bool:
-        pass
+        raise NotImplementedError
 
     @property
     @abstractmethod
     def network(self) -> dict:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def discover(self) -> str:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def get_mapping(self,
                     external_port: int,
                     protocol: str = 'TCP') -> Optional[Tuple[str, int, bool]]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def create_mapping(self,
@@ -38,14 +38,14 @@ class IPortMapper(ABC):
                        external_port: int = None,
                        protocol: str = 'TCP',
                        lease_duration: int = None) -> Optional[int]:
-        pass
+        raise NotImplementedError
 
     @abstractmethod
     def remove_mapping(self,
                        port: int,
                        external_port: int,
                        protocol: str = 'TCP') -> bool:
-        pass
+        raise NotImplementedError
 
 
 class PortMapperManager(IPortMapper):

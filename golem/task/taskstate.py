@@ -1,32 +1,41 @@
 from enum import Enum, auto
 import functools
 import time
-from typing import Dict
+from typing import Dict, Optional
 
 from golem_messages import datastructures
 from golem_messages import validators
 
 
-class TaskState(object):
-    def __init__(self):
-        self.status = TaskStatus.notStarted
+class TaskState:
+    # pylint: disable=too-many-instance-attributes
+
+    def __init__(self, task=None) -> None:
+        self.status = TaskStatus.creating
+        self.status_message: Optional[str] = None
         self.progress = 0.0
         self.remaining_time = 0
         self.elapsed_time = 0
-        self.time_started = 0
+        self.time_started = 0.0
         self.payment_booked = False
         self.payment_settled = False
-        self.outputs = []
-        self.subtasks_count = 0
         self.subtask_states: Dict[str, SubtaskState] = {}
         self.resource_hash = None
         self.package_hash = None
         self.package_path = None
         self.package_size = None
-        self.extra_data = {}
+        self.extra_data: Dict = {}
         self.last_update_time = time.time()
-        self.estimated_cost = 0
         self.estimated_fee = 0
+
+        if task:
+            self.outputs = task.get_output_names()
+            self.subtasks_count = task.get_total_tasks()
+            self.estimated_cost = task.price
+        else:
+            self.outputs = []
+            self.subtasks_count = 0
+            self.estimated_cost = 0
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
@@ -44,6 +53,7 @@ class TaskState(object):
             'time_remaining': self.remaining_time,
             'last_updated': getattr(self, 'last_update_time', None),
             'status': self.status.value,
+            'status_message': self.status_message,
             'estimated_cost': getattr(self, 'estimated_cost', None),
             'estimated_fee': getattr(self, 'estimated_fee', None)
         }
@@ -142,6 +152,8 @@ class SubtaskState(datastructures.Container):
 
 
 class TaskStatus(Enum):
+    creating = "Creating"
+    errorCreating = "Error creating"
     notStarted = "Not started"
     creatingDeposit = "Creating the deposit"
     sending = "Sending"
@@ -159,6 +171,7 @@ class TaskStatus(Enum):
 
     def is_preparing(self) -> bool:
         return self in (
+            self.creating,
             self.notStarted,
             self.creatingDeposit,
         )

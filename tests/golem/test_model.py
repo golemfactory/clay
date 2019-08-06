@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import (
+    datetime,
+    timezone,
+)
 
-from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from peewee import IntegrityError
 
 import golem.model as m
@@ -10,101 +11,39 @@ from golem.testutils import DatabaseFixture
 from tests.factories import model as m_factory
 
 
+class TestBaseModel(DatabaseFixture):
+    def test_utc(self):
+        instance = m.GenericKeyValue.create(key='test')
+        instance_copy = m.GenericKeyValue.get()
+        self.assertEqual(instance.created_date, instance_copy.created_date)
+        # pylint: disable=no-member
+        self.assertIs(instance.created_date.tzinfo, timezone.utc)
+        self.assertIs(instance_copy.created_date.tzinfo, timezone.utc)
+
+
 class TestPayment(DatabaseFixture):
-    def test_default_fields(self):
-        p = m.Payment()
-        self.assertGreaterEqual(datetime.now(), p.created_date)
-        self.assertGreaterEqual(datetime.now(), p.modified_date)
-
-    def test_create(self):
-        p = m.Payment(payee=b"\xDE", subtask="xyz", value=5,
-                      status=m.PaymentStatus.awaiting)
-        self.assertEqual(p.save(force_insert=True), 1)
-
-        with self.assertRaises(IntegrityError):
-            m.Payment.create(payee=b"\xDE", subtask="xyz", value=5,
-                             status=m.PaymentStatus.awaiting)
-        m.Payment.create(payee=b"\xDE", subtask="xyz2", value=4,
-                         status=m.PaymentStatus.confirmed)
-        m.Payment.create(payee=b"\xDE\xF2", subtask="xyz4", value=5,
-                         status=m.PaymentStatus.sent)
-
-        self.assertEqual(3, len([payment for payment in m.Payment.select()]))
-
-    def test_status_base_type(self):
-        payee = b"\xab"
-        subtask = 'zz'
-        m.Payment.create(payee=payee, subtask=subtask, value=5,
-                         status=m.PaymentStatus.awaiting.value)
-        p2 = m.Payment.get(payee=payee, subtask=subtask)
-        self.assertEqual(p2.status, m.PaymentStatus.awaiting)
-
-    def test_invalid_status(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="zz", value=5, status=667)
-
-    def test_invalid_value_type(self):
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="float", value=5.5,
-                             status=m.PaymentStatus.sent)
-        with self.assertRaises(TypeError):
-            m.Payment.create(payee=b"\xab", subtask="str", value="500",
-                             status=m.PaymentStatus.sent)
-
-    def test_payment_details(self):
-        p1 = m.Payment(payee=b"\xab", subtask="T1000", value=123456)
-        p2 = m.Payment(payee=b"\xcd", subtask="T900", value=654321)
-        self.assertNotEqual(p1.payee, p2.payee)
-        self.assertNotEqual(p1.subtask, p2.subtask)
-        self.assertNotEqual(p1.value, p2.value)
-        self.assertEqual(p1.details, m.PaymentDetails())
-        self.assertEqual(p1.details, p2.details)
-        self.assertIsNot(p1.details, p2.details)
-        p1.details.check = True
-        self.assertTrue(p1.details.check)
-        self.assertEqual(p2.details.check, None)
-
     def test_payment_big_value(self):
         value = 10000 * 10**18
-        assert value > 2**64
-        m.Payment.create(payee=b"\xab", subtask="T1000", value=value,
-                         status=m.PaymentStatus.sent)
-
-    def test_payment_details_serialization(self):
-        p = m.PaymentDetails(node_info=dt_p2p_factory.Node(),
-                             fee=700)
-        dct = p.to_dict()
-        self.assertIsInstance(dct, dict)
-        self.assertIsInstance(dct['node_info'], dict)
-        pd = m.PaymentDetails.from_dict(dct)
-        self.assertIsInstance(pd.node_info, dt_p2p.Node)
-        self.assertEqual(p, pd)
-
-
-class TestIncome(DatabaseFixture):
-    def setUp(self):
-        super().setUp()
-        self.income = m_factory.Income()
-
-    def test_status_overdue_but_settled(self):
-        self.income.overdue = True
-        self.income.value_received = self.income.value
-        self.assertIs(self.income.status, m.PaymentStatus.confirmed)
-
-    def test_status_overdue(self):
-        self.income.overdue = True
-        self.assertIs(self.income.status, m.PaymentStatus.overdue)
-
-    def test_status_awaiting(self):
-        self.assertIs(self.income.status, m.PaymentStatus.awaiting)
+        self.assertGreater(value, 2**64)
+        payment = m_factory.TaskPayment(
+            value=value,
+        )
+        payment.wallet_operation.save(force_insert=True)
+        payment.save(force_insert=True)
 
 
 class TestLocalRank(DatabaseFixture):
     def test_default_fields(self):
         # pylint: disable=no-member
         r = m.LocalRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(
+            datetime.now(tz=timezone.utc),
+            r.created_date,
+        )
+        self.assertGreaterEqual(
+            datetime.now(tz=timezone.utc),
+            r.modified_date,
+        )
         self.assertEqual(0, r.positive_computed)
         self.assertEqual(0, r.negative_computed)
         self.assertEqual(0, r.wrong_computed)
@@ -120,8 +59,8 @@ class TestLocalRank(DatabaseFixture):
 class TestGlobalRank(DatabaseFixture):
     def test_default_fields(self):
         r = m.GlobalRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.modified_date)
         self.assertEqual(m.NEUTRAL_TRUST, r.requesting_trust_value)
         self.assertEqual(m.NEUTRAL_TRUST, r.computing_trust_value)
         self.assertEqual(0, r.gossip_weight_computing)
@@ -131,8 +70,8 @@ class TestGlobalRank(DatabaseFixture):
 class TestNeighbourRank(DatabaseFixture):
     def test_default_fields(self):
         r = m.NeighbourLocRank()
-        self.assertGreaterEqual(datetime.now(), r.created_date)
-        self.assertGreaterEqual(datetime.now(), r.modified_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), r.modified_date)
         self.assertEqual(m.NEUTRAL_TRUST, r.requesting_trust_value)
         self.assertEqual(m.NEUTRAL_TRUST, r.computing_trust_value)
 
@@ -140,15 +79,15 @@ class TestNeighbourRank(DatabaseFixture):
 class TestTaskPreset(DatabaseFixture):
     def test_default_fields(self):
         tp = m.TaskPreset()
-        assert datetime.now() >= tp.created_date
-        assert datetime.now() >= tp.modified_date
+        assert datetime.now(tz=timezone.utc) >= tp.created_date
+        assert datetime.now(tz=timezone.utc) >= tp.modified_date
 
 
 class TestPerformance(DatabaseFixture):
     def test_default_fields(self):
         perf = m.Performance()
-        assert datetime.now() >= perf.created_date
-        assert datetime.now() >= perf.modified_date
+        assert datetime.now(tz=timezone.utc) >= perf.created_date
+        assert datetime.now(tz=timezone.utc) >= perf.modified_date
         assert perf.value == 0.0
 
     def test_constraints(self):

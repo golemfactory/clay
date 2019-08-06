@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import Any, Dict, Optional, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -8,7 +8,7 @@ import uuid
 from threading import Lock
 
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred, TimeoutError
+from twisted.internet.defer import Deferred, TimeoutError, inlineCallbacks
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
@@ -17,6 +17,8 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
+from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
+from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.task.timer import ProviderTimer
@@ -30,8 +32,6 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
-
-BENCHMARK_TIMEOUT = 60  # s
 
 
 class CompStats(object):
@@ -51,88 +51,62 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, task_server: 'TaskServer', use_docker_manager=True,
-                 finished_cb=None) -> None:
+    def __init__(
+            self,
+            task_server: 'TaskServer',
+            docker_cpu_env: DockerCPUEnvironment,
+            use_docker_manager=True,
+            finished_cb=None
+    ) -> None:
         self.task_server = task_server
         # Currently computing TaskThread
         self.counting_thread = None
         # Is task computer currently able to run computation?
         self.runnable = True
         self.listeners = []
-        self.last_task_request = time.time()
 
         self.dir_manager: DirManager = DirManager(
             task_server.get_task_computer_root())
-        self.task_request_frequency = None
 
         self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
-            self.docker_manager.check_environment()
-
+            self.docker_manager.check_environment()  # pylint: disable=no-member
         self.use_docker_manager = use_docker_manager
-        run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
-        deferred = self.change_config(
-            task_server.config_desc, in_background=False,
-            run_benchmarks=run_benchmarks)
-        try:
-            sync_wait(deferred, BENCHMARK_TIMEOUT)
-        except TimeoutError:
-            logger.warning('Benchmark computation timed out')
+
+        self.docker_cpu_env = docker_cpu_env
+        sync_wait(self.docker_cpu_env.prepare())
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtask: Optional['ComputeTaskDef'] = None
+        # So apparently it is perfectly fine for mypy to assign None to a
+        # non-optional variable. And if I tried Optional['ComputeTaskDef']
+        # then I would get "Optional[Any] is not indexable" error.
+        # Get your sh*t together, mypy!
+        self.assigned_subtask: 'ComputeTaskDef' = None
 
-        self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd: 'ComputeTaskDef'):
-        if self.assigned_subtask is not None:
-            logger.error("Trying to assign a task, when it's already assigned")
-            return False
-
-        ProviderTimer.start()
-
+    def task_given(self, ctd: 'ComputeTaskDef') -> None:
+        assert self.assigned_subtask is None
         self.assigned_subtask = ctd
-        self.__request_resource(
-            ctd['task_id'],
-            ctd['subtask_id'],
-            ctd['resources'],
-        )
-        return True
+        ProviderTimer.start()
 
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
 
-    def resource_collected(self, res_id):
-        subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != res_id:
-            logger.error("Resource collected for a wrong task, %s", res_id)
-            return False
-        self.last_task_timeout_checking = time.time()
-        self.__compute_task(
-            subtask['subtask_id'],
-            subtask['docker_images'],
-            subtask['extra_data'],
-            subtask['deadline'])
-        return True
+    @property
+    def assigned_task_id(self) -> Optional[str]:
+        if self.assigned_subtask is None:
+            return None
+        return self.assigned_subtask.get('task_id')
 
-    def resource_failure(self, res_id, reason):
-        subtask = self.assigned_subtask
-        self.assigned_subtask = None
-        if not subtask or subtask['task_id'] != res_id:
-            logger.error("Resource failure for a wrong task, %s", res_id)
-            return
-        self.task_server.send_task_failed(
-            subtask['subtask_id'],
-            subtask['task_id'],
-            'Error downloading resources: {}'.format(reason),
-        )
-        self.__task_finished(subtask)
+    def task_interrupted(self) -> None:
+        assert self.assigned_subtask is not None
+        self._task_finished()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
@@ -142,7 +116,6 @@ class TaskComputer(object):
         try:
             subtask = self.assigned_subtask
             assert subtask is not None
-            self.assigned_subtask = None
             subtask_id = subtask['subtask_id']
             task_id = subtask['task_id']
             task_header = self.task_server.task_keeper.task_headers[task_id]
@@ -154,7 +127,7 @@ class TaskComputer(object):
             logger.error("Task header not found in task keeper. "
                          "task_id=%r, subtask_id=%r",
                          task_id, subtask_id)
-            self.__task_finished(subtask)
+            self._task_finished()
             return
 
         was_success = False
@@ -199,16 +172,11 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-        self.__task_finished(subtask)
+        self._task_finished()
 
-    def run(self):
-        """ Main loop of task computer """
+    def check_timeout(self):
         if self.counting_thread is not None:
             self.counting_thread.check_timeout()
-        elif self.compute_tasks and self.runnable:
-            last_request = time.time() - self.last_task_request
-            if last_request > self.task_request_frequency:
-                self.__request_task()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if not self.is_computing() or self.assigned_subtask is None:
@@ -223,6 +191,8 @@ class TaskComputer(object):
             )
         except (IndexError, KeyError):
             outfilebasename = ''
+        except TypeError:
+            return None
 
         tcss = ComputingSubtaskStateSnapshot(
             subtask_id=self.assigned_subtask['subtask_id'],
@@ -256,94 +226,71 @@ class TaskComputer(object):
 
         return task_header.environment
 
-    def change_config(self, config_desc, in_background=True,
-                      run_benchmarks=False):
-        self.dir_manager = DirManager(
-            self.task_server.get_task_computer_root())
-        self.task_request_frequency = config_desc.task_request_interval
-        self.compute_tasks = config_desc.accept_tasks \
-            and not config_desc.in_shutdown
-        return self.change_docker_config(
-            config_desc=config_desc,
-            run_benchmarks=run_benchmarks,
-            work_dir=Path(self.dir_manager.root_path),
-            in_background=in_background)
-
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
 
-    def change_docker_config(
+    @inlineCallbacks
+    def change_config(
             self,
             config_desc: ClientConfigDescriptor,
-            run_benchmarks: bool,
-            work_dir: Path,
             in_background: bool = True
-    ) -> Optional[Deferred]:
+    ) -> Deferred:
+
+        self.dir_manager = DirManager(
+            self.task_server.get_task_computer_root())
+        self.compute_tasks = config_desc.accept_tasks \
+            and not config_desc.in_shutdown
 
         dm = self.docker_manager
         assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
+        work_dirs = [Path(self.dir_manager.root_path)]
 
-        deferred = Deferred()
-        if not dm.hypervisor and run_benchmarks:
-            self.task_server.benchmark_manager.run_all_benchmarks(
-                deferred.callback, deferred.errback
+        yield self.docker_cpu_env.clean_up()
+        self.docker_cpu_env.update_config(DockerCPUConfig(
+            work_dirs=work_dirs,
+            cpu_count=config_desc.num_cores,
+            memory_mb=scale_memory(
+                config_desc.max_memory_size,
+                unit=MemSize.kibi,
+                to_unit=MemSize.mebi
             )
-            return deferred
+        ))
+        yield self.docker_cpu_env.prepare()
 
         if dm.hypervisor and self.use_docker_manager:  # noqa pylint: disable=no-member
-            self.lock_config(True)
-
-            def status_callback():
-                return self.is_computing()
-
-            def done_callback(config_differs):
-                if run_benchmarks or config_differs:
-                    self.task_server.benchmark_manager.run_all_benchmarks(
-                        deferred.callback, deferred.errback
-                    )
-                else:
-                    deferred.callback('Benchmarks not executed')
-                logger.debug("Resuming new task computation")
-                self.lock_config(False)
-                self.runnable = True
-
-            self.runnable = False
+            deferred = Deferred()
             # PyLint thinks dm is of type DockerConfigManager not DockerManager
             # pylint: disable=no-member
             dm.update_config(
-                status_callback=status_callback,
-                done_callback=done_callback,
-                work_dir=work_dir,
-                in_background=in_background)
+                status_callback=self.is_computing,
+                done_callback=deferred.callback,
+                work_dirs=work_dirs,
+                in_background=in_background
+            )
+            return (yield deferred)
 
-            return deferred
-
-        return None
+        return False
 
     def register_listener(self, listener):
         self.listeners.append(listener)
 
-    def lock_config(self, on=True):
+    def lock_config(self, on: bool = True) -> None:
+        self.runnable = not on
         for l in self.listeners:
             l.lock_config(on)
 
-    def __request_task(self):
-        if self.has_assigned_task():
-            return
+    def start_computation(self) -> None:  # pylint: disable=too-many-locals
+        subtask = self.assigned_subtask
+        assert subtask is not None
 
-        self.last_task_request = time.time()
-        requested_task = self.task_server.request_task()
-        if requested_task is not None:
-            self.stats.increase_stat('tasks_requested')
+        task_id = subtask['task_id']
+        subtask_id = subtask['subtask_id']
+        docker_images = subtask['docker_images']
+        extra_data = subtask['extra_data']
+        subtask_deadline = subtask['deadline']
 
-    def __request_resource(self, task_id, subtask_id, resources):
-        self.task_server.request_resource(task_id, subtask_id, resources)
-
-    def __compute_task(self, subtask_id, docker_images,
-                       extra_data, subtask_deadline):
-        task_id = self.assigned_subtask['task_id']
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
         if not task_header:
@@ -381,15 +328,13 @@ class TaskComputer(object):
                               task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
-            subtask = self.assigned_subtask
-            self.assigned_subtask = None
             self.task_server.send_task_failed(
                 subtask_id,
-                subtask['task_id'],
+                self.assigned_subtask['task_id'],
                 "Host direct task not supported",
             )
 
-            self.__task_finished(subtask)
+            self._task_finished()
             return
 
         with self.lock:
@@ -398,7 +343,10 @@ class TaskComputer(object):
         self.task_server.task_keeper.task_started(task_id)
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
+    def _task_finished(self) -> None:
+        ctd = self.assigned_subtask
+        assert ctd is not None
+        self.assigned_subtask = None
 
         ProviderTimer.finish()
         dispatcher.send(
