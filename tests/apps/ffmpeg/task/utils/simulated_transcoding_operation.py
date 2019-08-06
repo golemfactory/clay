@@ -1,6 +1,6 @@
 import os
 import tempfile
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
@@ -98,7 +98,10 @@ class SimulatedTranscodingOperation:
 
     def _build_option_description(self):
         if self._task_options['output_container'] is not None:
-            container = self._task_options['output_container'].value
+            if isinstance(self._task_options['output_container'], str):
+                container = self._task_options['output_container']
+            else:
+                container = self._task_options['output_container'].value
         else:
             container = None
 
@@ -135,9 +138,15 @@ class SimulatedTranscodingOperation:
     def _build_task_def(cls,
                         video_file: str,
                         result_file: str,
-                        container: Container,
+                        container: Union[Container, str],
                         video_options: Dict[str, str],
                         subtasks_count: int) -> dict:
+
+        if isinstance(container, Container):
+            container_str = container.value
+        else:
+            container_str = container
+
         return {
             'type': 'FFMPEG',
             'name': os.path.splitext(os.path.basename(result_file))[0],
@@ -149,14 +158,16 @@ class SimulatedTranscodingOperation:
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
-                'container': container.value if container is not None else None,
+                'container': container_str,
             }
         }
 
     def _build_file_names(self, relative_input_file: str):
         if self._task_options['output_container'] is not None:
-            output_extension = "." +\
-                               self._task_options['output_container'].value
+            if isinstance(self._task_options['output_container'], str):
+                output_extension = "." + self._task_options['output_container']
+            else:
+                output_extension = "." + self._task_options['output_container'].value  # noqa: E501  # pylint: disable=line-too-long
         else:
             output_extension = os.path.splitext(relative_input_file)[1]
 
