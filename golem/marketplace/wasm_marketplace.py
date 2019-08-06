@@ -109,7 +109,6 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def reset(cls) -> None:
-        super().reset()
         cls._usage_factors = dict()
 
     @classmethod
