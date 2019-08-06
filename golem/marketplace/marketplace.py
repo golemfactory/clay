@@ -1,5 +1,5 @@
 from abc import ABC, abstractclassmethod
-from typing import Callable, Optional, List, Tuple
+from typing import Callable, Optional, List, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
 

@@ -32,10 +32,14 @@ class TestOfferChoice(TestCase):
         self.mock_offer_2 = mock_offer_2
 
     def test_get_usage_benchmark(self):
-        cls = RequestorWasmMarketStrategy
-        cls.reset()
-        self.assertEqual(cls.get_my_usage_benchmark(), 1.0)
-        self.assertEqual(cls.get_usage_factor(self.PROVIDER_1, 1.0), 1.0)
+        RequestorWasmMarketStrategy.reset()
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_my_usage_benchmark(), 1.0
+        )
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, 1.0),
+            1.0
+        )
 
     def test_resolution_length_correct(self):
         RequestorWasmMarketStrategy.reset()
