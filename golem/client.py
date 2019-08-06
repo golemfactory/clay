@@ -16,6 +16,7 @@ from twisted.internet.defer import (
     inlineCallbacks,
     gatherResults,
     Deferred)
+from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 import golem
@@ -187,7 +188,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system)
-        self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -467,6 +467,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_cleaner_service.start()
             self._services.append(task_cleaner_service)
 
+        @inlineCallbacks
         def connect(ports):
             logger.info(
                 'Golem is listening on addr: %s'
@@ -477,10 +478,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 self.node.hyperdrive_prv_port
             )
 
+            ports = ports + list(hyperdrive_ports)
             if self.config_desc.use_upnp:
-                self.start_upnp(ports + list(hyperdrive_ports))
-            self.node.update_public_info()
+                yield deferToThread(self.start_upnp, ports)
 
+            self.node.update_public_info()
             public_ports = [
                 self.node.p2p_pub_port,
                 self.node.pub_port,
@@ -543,7 +545,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                         task_id,
                         task.subtask_price,
                         unfinished_subtasks,
-                        task.header.deadline,
                     )
                 except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do

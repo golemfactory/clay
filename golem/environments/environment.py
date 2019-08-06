@@ -1,9 +1,6 @@
 import enum
 import logging
 
-from os import path
-
-from golem.core.common import get_golem_path
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.envs.docker.benchmark.minilight import make_perf_test
 from golem.model import Performance
@@ -53,6 +50,7 @@ class UnsupportReason(enum.Enum):
     ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
     ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
     ENVIRONMENT_NOT_SECURE = 'environment_not_secure'
+    ENVIRONMENT_MISCONFIGURED = 'environment_misconfigured'
     MAX_PRICE = 'max_price'
     APP_VERSION = 'app_version'
     DENY_LIST = 'deny_list'

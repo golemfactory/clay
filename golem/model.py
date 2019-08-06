@@ -261,6 +261,7 @@ class WalletOperation(BaseModel):
         sent = enum.auto()
         confirmed = enum.auto()
         overdue = enum.auto()
+        failed = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -303,6 +304,46 @@ class WalletOperation(BaseModel):
                 WalletOperation.operation_type
                 == WalletOperation.TYPE.deposit_transfer,
             )
+
+    @classmethod
+    def transfers(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.transfer,
+            )
+
+    @classmethod
+    def unconfirmed_payments(cls):
+        return cls.select() \
+            .where(
+                cls.status.not_in([
+                    cls.STATUS.confirmed,
+                    cls.STATUS.failed,
+                ]),
+                cls.tx_hash.is_null(False),
+                cls.direction ==
+                cls.DIRECTION.outgoing,
+                cls.operation_type.in_([
+                    cls.TYPE.transfer,
+                    cls.TYPE.deposit_transfer,
+                ]),
+            )
+
+    def on_confirmed(self, gas_cost: int):
+        if self.operation_type not in (
+                self.TYPE.transfer,
+                self.TYPE.deposit_transfer
+        ):
+            return
+        if self.direction != self.DIRECTION.outgoing:
+            return
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.confirmed  # type: ignore
+
+    def on_failed(self, gas_cost: int):
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.failed  # type: ignore
 
 
 class TaskPayment(BaseModel):

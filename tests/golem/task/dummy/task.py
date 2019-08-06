@@ -267,8 +267,11 @@ class DummyTask(Task):
         self.resource_parts = resource_parts
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        print('DummyTask.computation_failed called')
-        self.computation_finished(subtask_id, None)
+        print(f'DummyTask.computation_failed called. subtask_id: {subtask_id}')
+        with self._lock:
+            if subtask_id in self.assigned_subtasks:
+                node_id = self.assigned_subtasks.pop(subtask_id, None)
+                self.assigned_nodes.pop(node_id, None)
 
     def restart(self):
         print('DummyTask.restart called')
@@ -303,7 +306,7 @@ class DummyTask(Task):
     def query_extra_data_for_test_task(self):
         pass
 
-    def should_accept_client(self, node_id):
+    def should_accept_client(self, node_id, offer_hash):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
@@ -314,7 +317,7 @@ class DummyTask(Task):
         except KeyError:
             return []
 
-    def accept_client(self, node_id):
+    def accept_client(self, node_id, offer_hash, num_subtasks=1):
         print(
             "DummyTask.accept_client called"
             f" node_id={common.short_node_id(node_id)}"

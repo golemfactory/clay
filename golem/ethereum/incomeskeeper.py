@@ -68,6 +68,7 @@ class IncomesKeeper:
             e.wallet_operation.amount += received
             amount_left -= received
             e.wallet_operation.tx_hash = tx_hash
+            e.wallet_operation.status = model.WalletOperation.STATUS.confirmed
             e.wallet_operation.save()
 
             if e.missing_amount == 0:

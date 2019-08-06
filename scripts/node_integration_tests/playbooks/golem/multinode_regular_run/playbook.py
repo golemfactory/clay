@@ -1,5 +1,6 @@
 from functools import partial, reduce
 from operator import or_
+import time
 import typing
 
 from ...base import NodeTestPlaybook
@@ -13,11 +14,17 @@ class Playbook(NodeTestPlaybook):
 
     def step_get_paid_subtasks(self, node_id: NodeId, from_node: NodeId):
         def on_success(result):
-            self.paid_subtasks[node_id] = {
+            # FIXME: This only waits for 1 payment per node_id
+            filtered_payments = {
                 p.get('subtask')
                 for p in result
                 if p.get('payer') == self.nodes_keys[from_node]
             }
+            if not filtered_payments:
+                print("No payments yet to node: %s" % node_id)
+                time.sleep(3)
+                return
+            self.paid_subtasks[node_id] = filtered_payments
             self.next()
 
         return self.call(node_id, 'pay.incomes', on_success=on_success)

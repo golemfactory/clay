@@ -4,8 +4,7 @@ from enum import Enum
 from typing import (
     List,
     Optional,
-    Type,
-)
+    Type)
 
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
@@ -150,9 +149,10 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float,
-                         node_id: Optional[str] = None,
-                         node_name: Optional[str] = None) -> 'ExtraData':
+    def query_extra_data(
+            self, perf_index: float,
+            node_id: Optional[str] = None,
+            node_name: Optional[str] = None) -> 'ExtraData':
         """ Called when a node asks with given parameters asks for a new
         subtask to compute.
         :param perf_index: performance that given node declares
@@ -337,11 +337,16 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def should_accept_client(self, node_id):
+    def should_accept_client(self,
+                             node_id: str,
+                             offer_hash: str) -> AcceptClientVerdict:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def accept_client(self, node_id):
+    def accept_client(self,
+                      node_id: str,
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
         raise NotImplementedError
 
     # pylint: disable=unused-argument, no-self-use

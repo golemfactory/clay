@@ -17,6 +17,18 @@ STATUS_MAPPING = {
 
 def migrate_payment(database, db_row):
     details = json.loads(db_row['details'])
+    if details['node_info'] is None:
+        logger.info(
+            "Won't migrate payment without node_info. Skipping. db_row=%s",
+            db_row,
+        )
+        return
+    if details['node_info']['key'] is None:
+        logger.info(
+            "Won't migrate payment without node id. Skipping. db_row=%s",
+            db_row,
+        )
+        return
     status = STATUS_MAPPING[db_row['status']]
     cursor = database.execute_sql(
         "INSERT INTO walletoperation"

@@ -36,8 +36,17 @@ def pytest_addoption(parser: _pytest.config.argparsing.Parser) -> None:
              "All node_integration_tests run with new, fresh keys."
     )
     parser.addoption(
+        "--use-granary", action="store_true",
+        help="Enable the `golem-granary`. "
+             "Unless you also provide the `--granary-hostname`, it will "
+             "use a local `golem-granary` executable."
+    )
+    parser.addoption(
         "--granary-hostname", action="store",
-        help="The ssh hostname for the granary server to use."
+        help="The ssh hostname for the granary server to use. "
+             "Implicitly enables the granary. "
+             "If not provided and --use-granary is specified, "
+             "will use a local `golem-granary`."
     )
     parser.addoption(
         "--dump-output-on-fail", action="store_true",
@@ -54,8 +63,8 @@ def pytest_collection_modifyitems(config: _pytest.config.Config,
     if config.getoption("--disable-key-reuse"):
         NodeKeyReuseConfig.disable()
     hostname = config.getoption("--granary-hostname")
-    if hostname:
-        NodeKeyReuseConfig.set_granary(hostname)
+    if hostname or config.getoption('--use-granary'):
+        NodeKeyReuseConfig.enable_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):

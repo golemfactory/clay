@@ -37,6 +37,16 @@ def migrate_dp(database, db_row):
 
 
 def migrate(migrator, database, fake=False, **kwargs):
+    try:
+        database.execute_sql('SELECT 1 from depositpayment')
+    except pw.OperationalError as e:
+        if str(e) == 'no such table: depositpayment':
+            logger.info(
+                "depositpayment table missing in DB. Skipping this migration.",
+            )
+            return
+        # Raise unexpected exceptions
+        raise
     cursor = database.execute_sql(
         'SELECT tx, value, status, fee,'
         '       created_date'
