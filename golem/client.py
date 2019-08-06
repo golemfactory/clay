@@ -541,10 +541,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                             subtask_state.status.is_finished():
                         unfinished_subtasks -= 1
                 try:
-                    self.funds_locker.lock_funds(
+                    self.funds_locker.deposit(
                         task_id,
-                        task.subtask_price,
-                        unfinished_subtasks,
+                        task.subtask_price * unfinished_subtasks,
                     )
                 except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do
@@ -687,7 +686,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         task_manager = self.task_server.task_manager
 
         task_id = task_manager.get_task_id(subtask_id)
-        self.funds_locker.add_subtask(task_id)
+        task: Task = task_manager.tasks[task_id]
+        self.funds_locker.add_subtask(task.subtask_price)
 
         task_manager.restart_subtask(subtask_id)
 
@@ -697,7 +697,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
-        self.funds_locker.remove_task(task_id)
+        self.funds_locker.remove(task_id)
 
     @rpc_utils.expose('comp.task.purge')
     def purge_tasks(self):

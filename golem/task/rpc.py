@@ -248,7 +248,7 @@ def _ensure_task_deposit(client, task, force):
             expected=opt_amount,
         )
     except eth_exceptions.EthereumError:
-        client.funds_locker.remove_task(task_id)
+        client.funds_locker.remove(task_id)
         raise
 
     logger.info(
@@ -375,10 +375,9 @@ def enqueue_new_task(client, task, force=False) \
     """Feed a fresh Task to all golem subsystems"""
     validate_client(client)
     task_id = task.header.task_id
-    client.funds_locker.lock_funds(
+    client.funds_locker.deposit(
         task_id,
-        task.subtask_price,
-        task.get_total_tasks(),
+        task.subtask_price * task.get_total_tasks(),
     )
     logger.debug('Enqueue new task. task_id=%r', task)
 
@@ -546,10 +545,9 @@ class ClientProvider:
             task_params,
         )
 
-        self.client.funds_locker.lock_funds(
+        self.client.funds_locker.deposit(
             task_id,
-            create_task_params.max_price_per_hour,
-            create_task_params.max_subtasks,
+            create_task_params.max_price_per_hour * create_task_params.max_subtasks,
         )
 
         @defer.inlineCallbacks
@@ -557,7 +555,7 @@ class ClientProvider:
             try:
                 self.requested_task_manager.init_task(task_id)
             except Exception:
-                self.client.funds_locker.remove_task(task_id)
+                self.client.funds_locker.remove(task_id)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)

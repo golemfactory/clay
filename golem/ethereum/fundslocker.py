@@ -25,62 +25,43 @@ class FundsLocker:
             self,
             transaction_system: 'TransactionSystem',
     ) -> None:
-        self.task_lock: Dict[str, TaskFundsLock] = {}
+        self.funds: Dict[str, int] = {}
         self.transaction_system: 'TransactionSystem' = transaction_system
 
-    def lock_funds(
+    def deposit(
             self,
-            task_id: str,
-            subtask_price: int,
-            num_tasks: int,
+            fund_id: str,
+            amount: int
     ) -> None:
-        if self.task_lock.get(task_id) is not None:
-            logger.error("Tried to duplicate lock_fund with same "
-                         "task_id %r", task_id)
+        if self.funds.get(fund_id) is not None:
+            logger.error("Tried to duplicate fund with same %r", fund_id)
             return
-
-        tfl = TaskFundsLock(subtask_price, num_tasks)
-        logger.info(
-            'Locking funds for task: %r price: %.3f GNTB num: %d',
-            task_id,
-            tfl.price / denoms.ether,
-            tfl.num_tasks,
-        )
         self.transaction_system.lock_funds_for_payments(
-            tfl.price,
-            tfl.num_tasks,
+            funds
+            1
         )
-        self.task_lock[task_id] = tfl
+        self.funds[fund_id] = amount
 
-    def remove_subtask(self, task_id):
-        task_lock = self.task_lock.get(task_id)
-        if task_lock is None:
-            logger.warning("I can't remove payment lock for subtask from task"
-                           "%r: unkown task.", task_id)
+    def withdraw(self, fund_id, amount):
+        fund = self.funds.get(fund_id)
+        if fund is None:
+            logger.warning("No such fund %r.", fund_id)
             return
-        logger.info('Removing subtask lock for task %r', task_id)
-        task_lock.num_tasks -= 1
-        self.transaction_system.unlock_funds_for_payments(task_lock.price, 1)
 
-    def remove_task(self, task_id):
-        task_lock = self.task_lock.get(task_id)
-        if task_lock is None:
-            logger.warning("I can't remove payment lock from task"
-                           "%r: unkown task.", task_id)
-            return
-        logger.info('Removing task lock %r', task_id)
-        del self.task_lock[task_id]
-        self.transaction_system.unlock_funds_for_payments(
-            task_lock.price,
-            task_lock.num_tasks,
-        )
+        assert fund >= 0
+        unlock_amount = min(amount, fund)
 
-    def add_subtask(self, task_id, num=1):
-        task_lock = self.task_lock.get(task_id)
-        if task_lock is None:
-            logger.warning("I can't add payment lock for subtask from task "
-                           "%r: unkown task.", task_id)
+        fund -= unlock_amount
+        if fund == 0:
+            del self.funds[fund_id]
+
+        logger.info('Removing %r from fund %r', unlock_amount, fund_id)
+        self.transaction_system.unlock_funds_for_payments(unlock_amount, 1)
+
+    def remove(self, fund_id):
+        fund = self.funds.pop(fund_id)
+        if fund is None:
+            logger.warning("No such fund %r.", fund_id)
             return
-        logger.info('Adding subtask lock for task %r', task_id)
-        task_lock.num_tasks += num
-        self.transaction_system.lock_funds_for_payments(task_lock.price, num)
+        logger.info('Removing fund for id %r', fund_id)
+        self.transaction_system.unlock_funds_for_payments(fund, 1)

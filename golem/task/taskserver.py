@@ -720,7 +720,7 @@ class TaskServer(
             eth_address=eth_address,
         )
         if unlock_funds:
-            self.client.funds_locker.remove_subtask(task_id)
+            self.client.funds_locker.withdraw(value)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment)
         return payment
@@ -767,7 +767,7 @@ class TaskServer(
         if not (op in [TaskOp.FINISHED, TaskOp.TIMEOUT]):
             return
         self.client.p2pservice.remove_task(task_id)
-        self.client.funds_locker.remove_task(task_id)
+        self.client.funds_locker.remove(task_id)
 
     def _increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)
