@@ -53,11 +53,16 @@ class SimulatedTranscodingOperation:
     def attach_to_report_set(self, report_set: FfprobeReportSet):
         self._ffprobe_report_set = report_set
 
-    def request_container_change(self, new_container: Container):
-        self._task_options['output_container'] = new_container
+    def request_container_change(
+            self,
+            new_container: Container,
+            expected_format_name: Optional[str] = None):
 
-        format_name = new_container.get_demuxer()
-        self.set_override('format', 'format_name', format_name)
+        self._task_options['output_container'] = new_container
+        if expected_format_name is None:
+            expected_format_name = new_container.get_demuxer()
+
+        self.set_override('format', 'format_name', expected_format_name)
 
     def request_video_codec_change(self, new_codec: VideoCodec):
         self._video_options['codec'] = new_codec.value
