@@ -97,7 +97,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
         # will set this variable to True on the end of test.
-        self.REMOVE_TMP_DIRS = False
+        self.REMOVE_TMP_DIRS = True
 
         # build mock node
         self.node = dt_p2p_factory.Node()
@@ -129,7 +129,15 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
         self.verification_timeout = 100
 
+    def _mock_remove_files(self):
+        pass
+
     def tearDown(self):
+        # Patch __remove_files. We will remove directory conditionally.
+        self.__remove_files = self._mock_remove_files
+
+        super().tearDown()
+
         if self.REMOVE_TMP_DIRS:
             if os.path.isdir(self.tempdir):
                 shutil.rmtree(self.tempdir)
