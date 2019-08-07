@@ -47,6 +47,9 @@ class DockerJob:
     # Mounted read-write in the container.
     STATS_DIR = "/golem/stats"
 
+    # Default name for the file containing job execution statistics.
+    STATS_FILE = "stats.json"
+
     # these keys/values pairs will be saved in "params" module - it is
     # dynamically created during docker setup and available for import
     # inside docker
@@ -154,7 +157,7 @@ class DockerJob:
                      self.resources_dir, self.output_dir, self.stats_dir)
 
     def _build_stats_entrypoint(self) -> str:
-        return f'docker-cgroups-stats -o {self.stats_dir}/stats.json ' \
+        return f'docker-cgroups-stats -o {self.STATS_DIR}/{self.STATS_FILE} ' \
                + self.entrypoint
 
     def _cleanup(self):
