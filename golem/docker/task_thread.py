@@ -99,10 +99,15 @@ class DockerTaskThread(TaskThread):
         self.dir_mapping = dir_mapping
 
     @staticmethod
-    def specify_dir_mapping(resources: str, temporary: str, work: str,
-                            output: str, logs: str) -> DockerDirMapping:
-        return DockerDirMapping(Path(resources), Path(temporary),
-                                Path(work), Path(output), Path(logs))
+    def specify_dir_mapping(
+            resources: str,
+            temporary: str,
+            work: str,
+            output: str,
+            logs: str,
+            stats: str) -> DockerDirMapping:
+        return DockerDirMapping(Path(resources), Path(temporary), Path(work),
+                                Path(output), Path(logs), Path(stats))
 
     @staticmethod
     def generate_dir_mapping(resources: str, temporary: str) \

@@ -97,9 +97,10 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         root_dir = Path(os.path.dirname(
             self.results[0])).parent
-        work_dir = os.path.join(root_dir, 'work')
 
+        work_dir = os.path.join(root_dir, 'work')
         os.makedirs(work_dir, exist_ok=True)
+
         res_dir = os.path.join(root_dir, 'resources')
         os.makedirs(res_dir, exist_ok=True)
 
@@ -117,6 +118,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             work=work_dir,
             output=os.path.join(root_dir, "output"),
             logs=os.path.join(root_dir, "logs"),
+            stats=os.path.join(root_dir, "stats")
         )
 
         extra_data = dict(
