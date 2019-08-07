@@ -22,8 +22,8 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
-    Environment, EnvSupportStatus, RuntimePayload, EnvConfig,
-    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
+    EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
+    RuntimeBase, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
     EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
 )
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
@@ -140,7 +140,7 @@ class ContainerPortMapper:
         return self._hypervisor.get_port_mapping(container_id, port)
 
 
-class DockerCPURuntime(Runtime):
+class DockerCPURuntime(RuntimeBase):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
     CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]
@@ -420,7 +420,7 @@ class DockerCPURuntime(Runtime):
         raise NotImplementedError
 
 
-class DockerCPUEnvironment(Environment):
+class DockerCPUEnvironment(EnvironmentBase):
 
     ENV_ID: ClassVar[EnvId] = 'docker_cpu'
     ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
