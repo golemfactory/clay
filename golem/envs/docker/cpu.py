@@ -23,7 +23,7 @@ from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
     EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
-    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
+    RuntimeBase, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
     EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
 )
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
@@ -140,7 +140,7 @@ class ContainerPortMapper:
         return self._hypervisor.get_port_mapping(container_id, port)
 
 
-class DockerCPURuntime(Runtime):
+class DockerCPURuntime(RuntimeBase):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
     CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]

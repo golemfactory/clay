@@ -149,6 +149,91 @@ class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
 
+    @abstractmethod
+    def prepare(self) -> Deferred:
+        """ Prepare the Runtime to be started. Assumes current status is
+            'CREATED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def clean_up(self) -> Deferred:
+        """ Clean up after the Runtime has finished running. Assumes current
+            status is 'STOPPED' or 'FAILURE'. In the latter case it is not
+            guaranteed that the cleanup will be successful. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def start(self) -> Deferred:
+        """ Start the computation. Assumes current status is 'PREPARED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop(self) -> Deferred:
+        """ Interrupt the computation. Assumes current status is 'RUNNING'. """
+        raise NotImplementedError
+
+    def status(self) -> RuntimeStatus:
+        """ Get the current status of the Runtime. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        """ Get STDIN stream of the Runtime. If encoding is None the returned
+            stream will be raw (accepting bytes), otherwise it will be encoded
+            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
+            or 'RUNNING'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDOUT stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is one of the following: 'PREPARED',
+            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
+            last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDERR stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
+            (however, in the last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        """
+        After a runtime is created with exposed ports this function should
+        return a valid socket address where the initial port is accessible from.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
+        """ For each usage counter supported by the Environment (e.g. clock
+            time) get current usage by this Runtime. """
+        raise NotImplementedError
+
+    def listen(self, event_type: RuntimeEventType,
+               listener: RuntimeEventListener) -> None:
+        """ Register a listener for a given type of Runtime events. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def call(self, alias: str, *args, **kwargs) -> Deferred:
+        """ Send RPC call to the Runtime. """
+        raise NotImplementedError
+
+
+class RuntimeBase(Runtime, ABC):
+
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._logger = logger or getLogger(__name__)
         self._status = RuntimeStatus.CREATED
@@ -159,7 +244,8 @@ class Runtime(ABC):
     @staticmethod
     def _assert_status(
             actual: RuntimeStatus,
-            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]) -> None:
+            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]
+    ) -> None:
         """ Assert that actual status is one of the expected. """
 
         if isinstance(expected, RuntimeStatus):
@@ -173,7 +259,8 @@ class Runtime(ABC):
     def _change_status(
             self,
             from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
-            to_status: RuntimeStatus) -> None:
+            to_status: RuntimeStatus
+    ) -> None:
         """ Assert that current Runtime status is the given one and change to
             another one. Using lock to ensure atomicity. """
 
@@ -260,88 +347,16 @@ class Runtime(ABC):
             return failure
         return _callback
 
-    @abstractmethod
-    def prepare(self) -> Deferred:
-        """ Prepare the Runtime to be started. Assumes current status is
-            'CREATED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def clean_up(self) -> Deferred:
-        """ Clean up after the Runtime has finished running. Assumes current
-            status is 'STOPPED' or 'FAILURE'. In the latter case it is not
-            guaranteed that the cleanup will be successful. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def start(self) -> Deferred:
-        """ Start the computation. Assumes current status is 'PREPARED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def wait_until_stopped(self) -> Deferred:
-        """ Can be called after calling `start` to wait until the runtime has
-            stopped """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stop(self) -> Deferred:
-        """ Interrupt the computation. Assumes current status is 'RUNNING'. """
-        raise NotImplementedError
-
     def status(self) -> RuntimeStatus:
-        """ Get the current status of the Runtime. """
         with self._status_lock:
             return self._status
 
-    @abstractmethod
-    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
-        """ Get STDIN stream of the Runtime. If encoding is None the returned
-            stream will be raw (accepting bytes), otherwise it will be encoded
-            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
-            or 'RUNNING'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        """ Get STDOUT stream of the Runtime. If encoding is None the returned
-            stream will be raw (bytes), otherwise it will be decoded (str).
-            Assumes current status is one of the following: 'PREPARED',
-            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
-            last case output might not be available). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        """ Get STDERR stream of the Runtime. If encoding is None the returned
-            stream will be raw (bytes), otherwise it will be decoded (str).
-            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
-            (however, in the last case output might not be available). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_port_mapping(self, port: int) -> Tuple[str, int]:
-        """
-        After a runtime is created with exposed ports this function should
-        return a valid socket address where the initial port is accessible from.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        """ For each usage counter supported by the Environment (e.g. clock
-            time) get current usage by this Runtime. """
-        raise NotImplementedError
-
-    def listen(self, event_type: RuntimeEventType,
-               listener: RuntimeEventListener) -> None:
-        """ Register a listener for a given type of Runtime events. """
+    def listen(
+            self,
+            event_type: RuntimeEventType,
+            listener: RuntimeEventListener
+    ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
-
-    @abstractmethod
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        """ Send RPC call to the Runtime. """
-        raise NotImplementedError
 
 
 class EnvMetadata(NamedTuple):
