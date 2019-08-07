@@ -39,7 +39,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
-from golem.task.acl import DenyReason as AclDenyReason
+from golem.task.acl import DenyReason as AclDenyReason, AclRule
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
@@ -743,7 +743,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # then
         assert acl_status['default_rule'] == 'allow'
-        assert len(acl_status['rules']) == 0
+        assert not acl_status['rules']
 
     def test_acl_ip_status(self, *_):
         # given
@@ -768,7 +768,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # then
         assert ts.acl.status().default_rule == AclRule.deny
-        assert len(ts.acl.status().rules) == 0
+        assert not ts.acl.status().rules
 
     def test_acl_setup_default_allow(self, *_):
         # given
@@ -779,7 +779,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # then
         assert ts.acl.status().default_rule == AclRule.allow
-        assert len(ts.acl.status().rules) == 0
+        assert not ts.acl.status().rules
 
     def test_acl_setup_default_inexistent(self, *_):
         # then
