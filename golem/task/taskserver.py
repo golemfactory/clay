@@ -59,7 +59,7 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
-from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
@@ -957,13 +957,41 @@ class TaskServer(
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
-    def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
-            -> None:
+    @rpc_utils.expose('net.peer.disallow')
+    def disallow_node(
+            self,
+            node_id: str,
+            timeout_seconds: int = -1,
+            persist: bool = False
+    ) -> None:
         self.acl.disallow(node_id, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
+    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
         self.acl_ip.disallow(ip, timeout_seconds)
+
+    @rpc_utils.expose('net.peer.allow')
+    def allow_node(self, node_id: str, persist: bool = True) -> None:
+        self.acl.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.allow_ip')
+    def allow_ip(self, node_id: str, persist: bool = True) -> None:
+        self.acl_ip.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.acl')
+    def acl_status(self) -> Dict:
+        return self.acl.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl_ip')
+    def acl_ip_status(self) -> Dict:
+        return self.acl_ip.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl.new')
+    def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
+        new_acl = setup_acl(Path(self.client.datadir),
+                            AclRule[default_rule],
+                            exceptions)
+        self.acl = new_acl
 
     def _sync_forwarded_session_requests(self):
         now = time.time()

@@ -39,7 +39,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
-from golem.task.acl import DenyReason as AclDenyReason
+from golem.task.acl import DenyReason as AclDenyReason, AclRule
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
@@ -606,7 +606,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # given
         task.header.mask = Mask()
-        ts.acl.disallow(node_id)
+        ts.disallow_node(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
@@ -632,7 +632,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         listener.reset_mock()
 
         # given
-        ts.acl_ip.disallow("127.0.0.1")
+        ts.disallow_ip("127.0.0.1")
         # then
         assert not ts.should_accept_provider(
             "XYZ", "127.0.0.1", task_id, DEFAULT_PROVIDER_PERF,
@@ -662,11 +662,129 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.config_desc.requesting_trust = 0.2
         assert ts.should_accept_requestor("ABC").is_ok()
 
-        ts.acl.disallow("ABC")
+        ts.disallow_node("ABC")
         ss = ts.should_accept_requestor("ABC")
         assert not ss.is_ok()
         assert UnsupportReason.DENY_LIST in ss.desc
         self.assertEqual(ss.desc[UnsupportReason.DENY_LIST], "ABC")
+
+    def test_disallow_node(self, *_):
+        # given
+        ts = self.ts
+        ts.acl = Mock()
+
+        # when
+        ts.disallow_node('ABC', 314, True)
+
+        # then
+        ts.acl.disallow.assert_called_once_with('ABC', 314, True)
+
+    def test_disallow_ip(self, *_):
+        # given
+        ts = self.ts
+        ts.acl_ip = Mock()
+
+        # when
+        ts.disallow_ip('ABC', 314)
+
+        # then
+        ts.acl_ip.disallow.assert_called_once_with('ABC', 314)
+
+    def test_allow_node(self, *_):
+        # given
+        ts = self.ts
+        ts.acl = Mock()
+
+        # when
+        ts.allow_node('ABC')
+
+        # then
+        ts.acl.allow.assert_called_once_with('ABC', True)
+
+    def test_allow_node_not_persistent(self, *_):
+        # given
+        ts = self.ts
+        ts.acl = Mock()
+
+        # when
+        ts.allow_node('ABC', False)
+
+        # then
+        ts.acl.allow.assert_called_once_with('ABC', False)
+
+    def test_allow_ip(self, *_):
+        # given
+        ts = self.ts
+        ts.acl_ip = Mock()
+
+        # when
+        ts.allow_ip('ABC', 314)
+
+        # then
+        ts.acl_ip.allow.assert_called_once_with('ABC', 314)
+
+    def test_acl_status(self, *_):
+        # given
+        ts = self.ts
+        ts.acl = Mock()
+        status_mock = Mock()
+        ts.acl.status.return_value = status_mock
+
+        # when
+        ts.acl_status()
+
+        # then
+        ts.acl.status.assert_called_once_with()
+        status_mock.to_message.assert_called_once_with()
+
+    def test_default_acl_status(self, *_):
+        # when
+        acl_status = self.ts.acl_status()
+
+        # then
+        assert acl_status['default_rule'] == 'allow'
+        assert not acl_status['rules']
+
+    def test_acl_ip_status(self, *_):
+        # given
+        ts = self.ts
+        ts.acl_ip = Mock()
+        status_mock = Mock()
+        ts.acl_ip.status.return_value = status_mock
+
+        # when
+        ts.acl_ip_status()
+
+        # then
+        ts.acl_ip.status.assert_called_once_with()
+        status_mock.to_message.assert_called_once_with()
+
+    def test_acl_setup_default_deny(self, *_):
+        # given
+        ts = self.ts
+
+        # when
+        ts.acl_setup('deny', [])
+
+        # then
+        assert ts.acl.status().default_rule == AclRule.deny
+        assert not ts.acl.status().rules
+
+    def test_acl_setup_default_allow(self, *_):
+        # given
+        ts = self.ts
+
+        # when
+        ts.acl_setup('allow', [])
+
+        # then
+        assert ts.acl.status().default_rule == AclRule.allow
+        assert not ts.acl.status().rules
+
+    def test_acl_setup_default_inexistent(self, *_):
+        # then
+        with self.assertRaises(KeyError, None, 'not existent rule'):
+            self.ts.acl_setup('not existent rule', [])
 
     def test_new_connection(self, *_):
         ts = self.ts
