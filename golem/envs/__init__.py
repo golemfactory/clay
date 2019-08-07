@@ -366,6 +366,94 @@ class Environment(ABC):
     """ An Environment capable of running computations. It is responsible for
         creating Runtimes. """
 
+    @classmethod
+    @abstractmethod
+    def supported(cls) -> EnvSupportStatus:
+        """ Is the Environment supported on this machine? """
+        raise NotImplementedError
+
+    def status(self) -> EnvStatus:
+        """ Get current status of the Environment. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def prepare(self) -> Deferred:
+        """ Activate the Environment. Assumes current status is 'DISABLED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def clean_up(self) -> Deferred:
+        """ Deactivate the Environment. Assumes current status is 'ENABLED' or
+            'ERROR'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def run_benchmark(self) -> Deferred:
+        """ Get the general performance score for this environment. """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def metadata(cls) -> EnvMetadata:
+        """ Get Environment metadata. """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+            -> Prerequisites:
+        """ Build Prerequisites struct from supplied dictionary. Returned value
+            is of appropriate type for calling install_prerequisites(). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+        """ Prepare Prerequisites for running a computation. Assumes current
+            status is 'ENABLED'.
+            Returns boolean indicating whether installation was successful. """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
+        """ Build config struct from supplied dictionary. Returned value
+            is of appropriate type for calling update_config(). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def config(self) -> EnvConfig:
+        """ Get current configuration of the Environment. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_config(self, config: EnvConfig) -> None:
+        """ Update configuration. Assumes current status is 'DISABLED'. """
+        raise NotImplementedError
+
+    def listen(
+            self,
+            event_type: EnvEventType,
+            listener: EnvEventListener
+    ) -> None:
+        """ Register a listener for a given type of Environment events. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def runtime(
+            self,
+            payload: RuntimePayload,
+            config: Optional[EnvConfig] = None
+    ) -> Runtime:
+        """ Create a Runtime from the given Payload. Optionally, share the
+            specified directory with the created Runtime. Optionally, override
+            current config with the supplied one (it is however not guaranteed
+            that all config parameters could be overridden). Assumes current
+            status is 'ENABLED'. """
+        raise NotImplementedError
+
+
+class EnvironmentBase(Environment, ABC):
+
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._status = EnvStatus.DISABLED
         self._logger = logger or getLogger(__name__)
@@ -440,84 +528,13 @@ class Environment(ABC):
                 'message': message
             })
 
-    @classmethod
-    @abstractmethod
-    def supported(cls) -> EnvSupportStatus:
-        """ Is the Environment supported on this machine? """
-        raise NotImplementedError
-
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
         return self._status
 
-    @abstractmethod
-    def prepare(self) -> Deferred:
-        """ Activate the Environment. Assumes current status is 'DISABLED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def clean_up(self) -> Deferred:
-        """ Deactivate the Environment. Assumes current status is 'ENABLED' or
-            'ERROR'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_benchmark(self) -> Deferred:
-        """ Get the general performace score for this environment. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def metadata(cls) -> EnvMetadata:
-        """ Get Environment metadata. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
-            -> Prerequisites:
-        """ Build Prerequisites struct from supplied dictionary. Returned value
-            is of appropriate type for calling install_prerequisites(). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
-        """ Prepare Prerequisites for running a computation. Assumes current
-            status is 'ENABLED'.
-            Returns boolean indicating whether installation was successful. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
-        """ Build config struct from supplied dictionary. Returned value
-            is of appropriate type for calling update_config(). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def config(self) -> EnvConfig:
-        """ Get current configuration of the Environment. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def update_config(self, config: EnvConfig) -> None:
-        """ Update configuration. Assumes current status is 'DISABLED'. """
-        raise NotImplementedError
-
-    def listen(self, event_type: EnvEventType, listener: EnvEventListener) \
-            -> None:
-        """ Register a listener for a given type of Environment events. """
-        self._event_listeners.setdefault(event_type, set()).add(listener)
-
-    @abstractmethod
-    def runtime(
+    def listen(
             self,
-            payload: RuntimePayload,
-            config: Optional[EnvConfig] = None
-    ) -> Runtime:
-        """ Create a Runtime from the given Payload. Optionally, share the
-            specified directory with the created Runtime. Optionally, override
-            current config with the supplied one (it is however not guaranteed
-            that all config parameters could be overridden). Assumes current
-            status is 'ENABLED'. """
-        raise NotImplementedError
+            event_type: EnvEventType,
+            listener: EnvEventListener
+    ) -> None:
+        self._event_listeners.setdefault(event_type, set()).add(listener)

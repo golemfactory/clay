@@ -22,7 +22,7 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
-    Environment, EnvSupportStatus, RuntimePayload, EnvConfig,
+    EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
     Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
     EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
 )
@@ -420,7 +420,7 @@ class DockerCPURuntime(Runtime):
         raise NotImplementedError
 
 
-class DockerCPUEnvironment(Environment):
+class DockerCPUEnvironment(EnvironmentBase):
 
     ENV_ID: ClassVar[EnvId] = 'docker_cpu'
     ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
