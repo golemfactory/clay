@@ -12,20 +12,21 @@ class MetricPSNR:
     ## ======================= ##
     ##
     @staticmethod
-    def compute_metrics(image1, image2):
+    def compute_metrics( image1, image2 ):
+
         image1 = image1.convert("RGB")
         image2 = image2.convert("RGB")
 
-        np_image1 = numpy.array(image1)
-        np_image2 = numpy.array(image2)
+        np_image1 = numpy.array( image1 )
+        np_image2 = numpy.array( image2 )
 
-        psnr = compare_psnr(np_image1, np_image2)
+        psnr = compare_psnr( np_image1, np_image2 )
 
-        if math.isinf(psnr):
-            psnr = numpy.finfo(numpy.float32).max
+        if math.isinf( psnr ):
+            psnr = numpy.finfo( numpy.float32 ).max
 
         result = dict()
-        result["psnr"] = psnr
+        result[ "psnr" ] = psnr
 
         return result
 
@@ -33,19 +34,22 @@ class MetricPSNR:
     ##
     @staticmethod
     def get_labels():
-        return ["psnr"]
-
+        return [ "psnr" ]
 
 ## ======================= ##
 ##
 def run():
-    first_image = sys.argv[1]
-    second_image = sys.argv[2]
+
+    first_img = sys.argv[ 1 ]
+    second_img = sys.argv[ 2 ]
 
     psnr = MetricPSNR()
 
-    print(psnr.compute_metrics(first_image, second_image))
+    print( psnr.compute_metrics( first_img, second_img ) )
+
 
 
 if __name__ == "__main__":
     run()
+
+

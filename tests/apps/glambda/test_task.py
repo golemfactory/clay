@@ -16,7 +16,7 @@ from apps.glambda.task.glambdatask import (
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
-from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verificator.verifier import SubtaskVerificationState
 
 
 def my_test_task(args):
@@ -45,13 +45,7 @@ TEST_TASK_DEF_DICT = {
 
 class GLambdaTaskVerifierTestCase(TestCase):
     def test_verifier(self):
-        verification_data = {
-            'subtask_info': {},
-            'results': [],
-            'reference_data': [],
-            'resources': []
-        }
-        verifier = GLambdaTaskVerifier(verification_data)
+        verifier = GLambdaTaskVerifier()
         self.assertTrue(
             verifier._verify_result({'abitrary': 'result accepted'}))
 

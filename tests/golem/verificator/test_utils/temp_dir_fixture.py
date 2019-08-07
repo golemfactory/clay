@@ -6,8 +6,8 @@ import ethereum.keys
 import shutil
 from time import sleep
 from pathlib import Path
-from golem.core.common import is_windows, is_osx
-from golem.core.simpleenv import get_local_datadir
+from golem.verificator.common.common import is_windows, is_osx
+from golem.verificator.common.common import get_local_datadir
 
 logger = logging.getLogger(__name__)
 

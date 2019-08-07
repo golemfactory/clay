@@ -28,7 +28,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem.verifier.blender_verifier import BlenderVerifier
+from golem.verificator.blender_verifier import BlenderVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +115,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             with handle_opencv_image_error(logger):
-                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y) \
+                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y)\
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):
@@ -369,7 +369,16 @@ class BlenderRenderTask(FrameRenderingTask):
             frames = self.frames or [1]
             parts = 1
 
-        min_y, max_y = self.get_subtask_y_border(start_task)
+        if not self.use_frames:
+            min_y, max_y = self._get_min_max_y(start_task)
+        elif parts > 1:
+            min_y = (parts - self._count_part(start_task, parts)) \
+                    * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) \
+                * (1.0 / parts)
+        else:
+            min_y = 0.0
+            max_y = 1.0
 
         crops = [
             {"outfilebasename": "{}_{}".format(
@@ -437,23 +446,6 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[subtask_id]['ctd'] = ctd
         return self.ExtraData(ctd=ctd)
 
-    def get_parts_in_frame(self, total_tasks):
-        if self.use_frames:
-            if total_tasks <= len(self.frames):
-                return 1
-            return max(1, int(total_tasks / len(self.frames)))
-        return total_tasks
-
-    def get_subtask_y_border(self, start_task):
-        parts_in_frame = self.get_parts_in_frame(self.total_tasks)
-        if not self.use_frames:
-            return get_min_max_y(start_task, parts_in_frame, self.res_y)
-        elif parts_in_frame > 1:
-            part = self._count_part(start_task, parts_in_frame)
-            return get_min_max_y(part, parts_in_frame, self.res_y)
-
-        return 0.0, 1.0
-
     def restart(self):
         super(BlenderRenderTask, self).restart()
         if self.use_frames:
@@ -502,6 +494,13 @@ class BlenderRenderTask(FrameRenderingTask):
             os.makedirs(self.test_task_res_path)
 
         return self._new_compute_task_def(hash, extra_data, 0)
+
+    def _get_min_max_y(self, start_task):
+        if self.use_frames:
+            parts = int(self.total_tasks / len(self.frames))
+        else:
+            parts = self.total_tasks
+        return get_min_max_y(start_task, parts, self.res_y)
 
     def after_test(self, results, tmp_dir):
         return_data = dict()
@@ -685,23 +684,22 @@ def generate_expected_offsets(parts, res_x, res_y):
     return expected_offsets
 
 
-def get_min_max_y(part, parts_in_frame, res_y):
-    if res_y % parts_in_frame == 0:
-        min_y = (parts_in_frame - part) * (1.0 / parts_in_frame)
-        max_y = (parts_in_frame - part + 1) * (1.0 / parts_in_frame)
+def get_min_max_y(task_num, parts, res_y):
+    if res_y % parts == 0:
+        min_y = (parts - task_num) * (1.0 / parts)
+        max_y = (parts - task_num + 1) * (1.0 / parts)
     else:
-        ceiling_height = int(math.ceil(res_y / parts_in_frame))
-        ceiling_subtasks = parts_in_frame - \
-            (ceiling_height * parts_in_frame - res_y)
-        if part > ceiling_subtasks:
-            min_y = (parts_in_frame - part) * (ceiling_height - 1) / res_y
-            max_y = (parts_in_frame - part + 1) * (ceiling_height - 1) / res_y
+        ceiling_height = int(math.ceil(res_y / parts))
+        ceiling_subtasks = parts - (ceiling_height * parts - res_y)
+        if task_num > ceiling_subtasks:
+            min_y = (parts - task_num) * (ceiling_height - 1) / res_y
+            max_y = (parts - task_num + 1) * (ceiling_height - 1) / res_y
         else:
-            min_y = (parts_in_frame - ceiling_subtasks) * (ceiling_height - 1)
-            min_y += (ceiling_subtasks - part) * ceiling_height
+            min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+            min_y += (ceiling_subtasks - task_num) * ceiling_height
             min_y = min_y / res_y
 
-            max_y = (parts_in_frame - ceiling_subtasks) * (ceiling_height - 1)
-            max_y += (ceiling_subtasks - part + 1) * ceiling_height
+            max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
+            max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = max_y / res_y
     return min_y, max_y

@@ -1,16 +1,20 @@
 import os
 from typing import Dict, Optional, Any
 
-from golem.verifier.core_verifier import CoreVerifier
+from golem.verificator.core_verifier import CoreVerifier
 from apps.dummy.resources.code_dir import computing
 
 
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def __init__(self, verification_data: Dict[str, Any]) -> None:
-        super().__init__(verification_data)
-        self.subtask_info = verification_data["subtask_info"]
+    def __init__(self, verification_data: Optional[Dict[str, Any]] = None) ->\
+            None:
+        super().__init__()
+        if verification_data:
+            self.subtask_info = verification_data["subtask_info"]
+        else:
+            self.subtask_info = None
 
     def _verify_result(self, results: Dict[str, Any]):
 

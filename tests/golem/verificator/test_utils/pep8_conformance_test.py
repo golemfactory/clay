@@ -1,6 +1,6 @@
 import pycodestyle
 from pathlib import Path
-from golem.core.common import get_golem_path
+from golem.verificator.common.common import get_golem_path
 
 
 class Pep8ConformanceTest(object):

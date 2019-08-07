@@ -8,7 +8,7 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
     DummyTaskDefaults
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
-from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verificator.verifier import SubtaskVerificationState
 
 
 class DummyTaskBenchmark(CoreBenchmark):
@@ -34,7 +34,6 @@ class DummyTaskBenchmark(CoreBenchmark):
         verification_data = dict()
         self.verification_options["subtask_id"] = "DummyBenchmark"
         verification_data['subtask_info'] = self.verification_options
-        verification_data['results'] = self.dummy_task_path
         self.verifier = DummyTaskVerifier(verification_data)
         self.subtask_data = \
             DummyTask.TESTING_CHAR * td.options.subtask_data_size
@@ -58,6 +57,6 @@ class DummyTaskBenchmark(CoreBenchmark):
         verification_data["subtask_info"] = sd
         verification_data["results"] = results
 
-        self.verifier.start_verification()
+        self.verifier.start_verification(verification_data)
 
         return self.verifier.state == SubtaskVerificationState.VERIFIED

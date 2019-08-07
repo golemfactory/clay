@@ -63,12 +63,12 @@ class MetricMassCenterDistance:
 
 
 def run():
-    first_image = Image.open(sys.argv[1])
-    second_image = Image.open(sys.argv[2])
+    first_img = Image.open(sys.argv[1])
+    second_img = Image.open(sys.argv[2])
 
     mass_center_distance = MetricMassCenterDistance()
 
-    print(mass_center_distance.compute_metrics(first_image, second_image))
+    print(mass_center_distance.compute_metrics(first_img, second_img))
 
 
 if __name__ == "__main__":

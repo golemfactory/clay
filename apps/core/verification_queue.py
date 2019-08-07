@@ -4,7 +4,7 @@ from functools import partial
 from types import FunctionType
 from typing import Optional, Type, Dict, Tuple
 
-from golem.verifier.core_verifier import CoreVerifier
+from golem.verificator.verifier import Verifier
 from twisted.internet.defer import Deferred, gatherResults
 
 from apps.core.verification_task import VerificationTask
@@ -29,7 +29,7 @@ class VerificationQueue:
         self._paused = False
 
     def submit(self,
-               verifier_class: Type[CoreVerifier],
+               verifier_class: Type[Verifier],
                subtask_id: str,
                deadline: int,
                cb: FunctionType,
@@ -65,15 +65,14 @@ class VerificationQueue:
             if entry and verifier_cls:
                 self._run(entry, verifier_cls)
 
-    def _next(self) -> Tuple[Optional[VerificationTask],
-                             Optional[Type[CoreVerifier]]]:
+    def _next(self) -> Tuple[Optional[VerificationTask], Optional[Verifier]]:
         try:
             return self._queue.get(block=False)
         except queue.Empty:
             return None, None
 
     def _run(self, entry: VerificationTask,
-             verifier_cls: Type[CoreVerifier]) -> None:
+             verifier_cls: Type[Verifier]) -> None:
         subtask_id = entry.subtask_id
 
         logger.info("Running verification of subtask %r", subtask_id)
