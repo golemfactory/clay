@@ -957,12 +957,17 @@ class TaskServer(
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
-    def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
-            -> None:
+    @rpc_utils.expose('net.peer.disallow')
+    def disallow_node(
+            self,
+            node_id: str,
+            timeout_seconds: int = -1,
+            persist: bool = False
+    ) -> None:
         self.acl.disallow(node_id, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
+    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
         self.acl_ip.disallow(ip, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
@@ -974,11 +979,11 @@ class TaskServer(
         self.acl_ip.allow(node_id, persist)
 
     @rpc_utils.expose('net.peer.acl')
-    def acl_status(self):
+    def acl_status(self) -> Dict:
         return self.acl.status().to_message()
 
     @rpc_utils.expose('net.peer.acl_ip')
-    def acl_ip_status(self):
+    def acl_ip_status(self) -> Dict:
         return self.acl_ip.status().to_message()
 
     @rpc_utils.expose('net.peer.acl.new')

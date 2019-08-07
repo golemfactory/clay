@@ -31,7 +31,7 @@ class AclStatus:
         self.default_rule = default_rule
         self.rules = rules
 
-    def to_message(self):
+    def to_message(self) -> Dict:
         return {
             'default_rule': self.default_rule.value,
             'rules': [
@@ -142,7 +142,7 @@ class _DenyAcl(Acl):
             if node_id not in deny_set:
                 _write_set_to_file(self._list_path, deny_set | {node_id})
 
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -228,7 +228,7 @@ class _AllowAcl(Acl):
             if node_id in allow_set:
                 _write_set_to_file(self._list_path, allow_set - {node_id})
 
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
