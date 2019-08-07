@@ -149,7 +149,11 @@ class TestAcl(TempDirFixture):
             "{}\nNode1 \nNode2\nNode3\n\tNode4 ".format(ALL_EXCEPT_ALLOWED))
 
         acl = get_acl(self.new_path)
-        assert acl._allow_set == {"Node1", "Node2", "Node3", "Node4"}
+        acl.allow('Node5')
+
+        allowed_nodes = [r[0] for r in acl.status().rules]
+        self.assertCountEqual(
+            allowed_nodes, ["Node1", "Node2", "Node3", "Node4", "Node5"])
 
         self.assertEqual((True, None),
                          acl.is_allowed("Node1"))
@@ -183,9 +187,14 @@ class TestAcl(TempDirFixture):
         acl.disallow('node_id1', persist=True)
         acl.disallow('node_id3', persist=True)
         acl.disallow('node_id1', persist=True)
+        acl.allow('node_id4')
 
-        saved_nodes = self.deny_list_path.read_text().split()
-        self.assertEqual(sorted(saved_nodes), [ALL_EXCEPT_ALLOWED, 'node_id2'])
+        allowed_nodes = [r[0] for r in acl.status().rules]
+        self.assertCountEqual(allowed_nodes, ['node_id2', 'node_id4'])
+
+        saved_allowed_nodes = self.deny_list_path.read_text().split()
+        self.assertCountEqual(saved_allowed_nodes,
+                              [ALL_EXCEPT_ALLOWED, 'node_id2'])
 
         self.assertEqual((False, DenyReason.not_whitelisted),
                          acl.is_allowed("node_id1"))
@@ -193,3 +202,5 @@ class TestAcl(TempDirFixture):
                          acl.is_allowed("node_id2"))
         self.assertEqual((False, DenyReason.not_whitelisted),
                          acl.is_allowed("node_id3"))
+        self.assertEqual((True, None),
+                         acl.is_allowed("node_id4"))
