@@ -416,9 +416,6 @@ class DockerCPURuntime(RuntimeBase):
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
 
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        raise NotImplementedError
-
 
 class DockerCPUEnvironment(EnvironmentBase):
 

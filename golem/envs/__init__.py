@@ -226,11 +226,6 @@ class Runtime(ABC):
         """ Register a listener for a given type of Runtime events. """
         raise NotImplementedError
 
-    @abstractmethod
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        """ Send RPC call to the Runtime. """
-        raise NotImplementedError
-
 
 class RuntimeBase(Runtime, ABC):
 
