@@ -441,7 +441,7 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.task_keeper\
             .task_headers[ttc.task_id].subtasks_count = 10
         self.task_session.task_server.client.transaction_system.\
-            get_available_gnt.return_value = ttc.price * 10
+            get_available_gnt.return_value = ttc.budget * 10
         self.task_session.task_server.\
             config_desc.max_resource_size = resource_size
         self.task_session._react_to_task_to_compute(ttc)
@@ -908,7 +908,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             task_id=sra.task_id,
             subtask_id=sra.subtask_id,
             payer_address=sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
-            value=sra.task_to_compute.price,  # noqa pylint:disable=no-member
+            value=sra.task_to_compute.budget,  # noqa pylint:disable=no-member
             accepted_ts=sra.payment_ts,
         )
         cancel = self.task_session.concent_service.cancel_task_message

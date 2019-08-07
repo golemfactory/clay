@@ -443,12 +443,12 @@ class TaskServer(
             msg.resources_options,
         )
         self.requested_tasks.clear()
-        update_requestor_assigned_sum(msg.requestor_id, msg.price)
+        update_requestor_assigned_sum(msg.requestor_id, msg.budget)
         dispatcher.send(
             signal='golem.subtask',
             event='started',
             subtask_id=msg.subtask_id,
-            price=msg.price,
+            budget=msg.budget,
         )
         return True
 

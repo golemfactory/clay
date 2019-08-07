@@ -517,7 +517,7 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
                 subtask_id=msg.subtask_id,
                 payer_address='0x1234',
                 my_address=random_eth_address(),
-                value=msg.task_to_compute.price,  # pylint: disable=no-member
+                value=msg.task_to_compute.budget,  # pylint: disable=no-member
                 accepted_ts=msg.payment_ts,
             )
         self.incomes_keeper.update_overdue_incomes()

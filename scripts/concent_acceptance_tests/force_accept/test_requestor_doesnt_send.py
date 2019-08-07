@@ -88,9 +88,9 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
             self, mode='within', ttc_kwargs=None, rct_kwargs=None, **kwargs):
         ttc_kwargs = ttc_kwargs or {}
         rct_kwargs = rct_kwargs or {}
-        price = random.randint(1 << 20, 10 << 20)
-        self.requestor_put_deposit(helpers.requestor_deposit_amount(price)[0])
-        ttc_kwargs['price'] = price
+        budget = random.randint(1 << 20, 10 << 20)
+        self.requestor_put_deposit(helpers.requestor_deposit_amount(budget)[0])
+        ttc_kwargs['budget'] = budget
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
             ttc_kwargs=ttc_kwargs,
@@ -112,7 +112,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         )
         fsr.sign_message(private_key=self.provider_priv_key)
         self.assertTrue(fsr.task_to_compute.verify_ethsig())
-        self.assertEqual(fsr.task_to_compute.price, price)
+        self.assertEqual(fsr.task_to_compute.budget, budget)
         self.assertTrue(
             fsr.validate_ownership_chain(
                 concent_public_key=self.variant['pubkey'],

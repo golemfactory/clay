@@ -84,9 +84,9 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             .task_headers[self.msg.task_id]\
             .subtasks_count = 10
         self.task_session.task_server.client.transaction_system\
-            .get_available_gnt.return_value = self.msg.price * 10
+            .get_available_gnt.return_value = self.msg.budget * 10
         self.task_session.task_server.client.transaction_system\
-            .concent_balance.return_value = (self.msg.price * 10) * 2
+            .concent_balance.return_value = (self.msg.budget * 10) * 2
         self.task_session.task_server.client.transaction_system\
             .concent_timelock.return_value = 0
         self.task_session.task_manager.task_finished.return_value = False
@@ -140,7 +140,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_requestor_low_balance(self, send_mock, *_):
         self.task_session.task_server.client.transaction_system\
-            .get_available_gnt.return_value = self.msg.price * 9
+            .get_available_gnt.return_value = self.msg.budget * 9
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
             send_mock,
@@ -152,7 +152,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             send_mock,
             *_):
         self.task_session.task_server.client.transaction_system\
-            .get_available_gnt.return_value = self.msg.price * 9
+            .get_available_gnt.return_value = self.msg.budget * 9
         self.task_session.concent_service.enabled = False
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
@@ -163,7 +163,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_requestor_low_deposit(self, send_mock, *_):
         self.task_session.task_server.client.transaction_system\
-            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+            .concent_balance.return_value = int((self.msg.budget * 10) * 1.5)
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
             send_mock,
@@ -186,7 +186,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.task_session.concent_service.enabled = False
         self.msg.concent_enabled = False
         self.task_session.task_server.client.transaction_system\
-            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+            .concent_balance.return_value = int((self.msg.budget * 10) * 1.5)
         self.task_session.task_server.client.transaction_system\
             .concent_timelock.return_value = 1
         self.task_session._react_to_task_to_compute(self.msg)

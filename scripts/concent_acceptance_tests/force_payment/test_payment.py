@@ -230,19 +230,19 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         """
 
         LOA = self._prepare_list_of_acceptances()
-        V = sum(sra.task_to_compute.price for sra in LOA)
+        V = sum(sra.task_to_compute.budget for sra in LOA)
         self.put_deposit(self.requestor_sci, V + 10)
         self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_exact_funds(self):
         LOA = self._prepare_list_of_acceptances()
-        V = sum(sra.task_to_compute.price for sra in LOA)
+        V = sum(sra.task_to_compute.budget for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
         self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_insufficient_funds(self):
         LOA = self._prepare_list_of_acceptances()
-        V = sum(sra.task_to_compute.price for sra in LOA)
+        V = sum(sra.task_to_compute.budget for sra in LOA)
         requestors_funds = V - 10
         self.put_deposit(self.requestor_sci, requestors_funds)
         self.assertPaymentCommited(LOA, requestors_funds, 0)
@@ -285,7 +285,7 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
 
     def test_provider_replay(self):
         LOA = self._prepare_list_of_acceptances()
-        V = sum(sra.task_to_compute.price for sra in LOA)
+        V = sum(sra.task_to_compute.budget for sra in LOA)
         self.put_deposit(self.requestor_sci, V*2)
         self.assertPaymentCommited(LOA, V, 0)
         fp = message.concents.ForcePayment(
@@ -301,7 +301,7 @@ class RequestorPaysTest(ForcePaymentBase):
                     int,
             ]:
         LOA = self._prepare_list_of_acceptances()
-        V = sum(sra.task_to_compute.price for sra in LOA)
+        V = sum(sra.task_to_compute.budget for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
         tx_hash = self.requestor_sci.batch_transfer(
             payments=[

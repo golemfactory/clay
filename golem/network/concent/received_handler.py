@@ -323,7 +323,7 @@ class TaskServerMessageHandler():
                 task_id=msg.task_id,
                 subtask_id=msg.subtask_id,
                 payer_address=ttc.requestor_ethereum_address,
-                value=ttc.price,
+                value=ttc.budget,
                 accepted_ts=msg.subtask_results_accepted.payment_ts,
             )
         elif msg.subtask_results_rejected:

@@ -86,7 +86,7 @@ class VerificationMixin:
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
+                task_to_compute.budget,
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )

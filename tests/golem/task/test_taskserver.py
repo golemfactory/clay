@@ -1139,13 +1139,13 @@ class TestTaskGiven(TaskServerTestBase):
         )
         update_requestor_assigned_sum.assert_called_once_with(
             ttc.requestor_id,
-            ttc.price,
+            ttc.budget,
         )
         dispatcher_mock.send.assert_called_once_with(
             signal='golem.subtask',
             event='started',
             subtask_id=ttc.subtask_id,
-            price=ttc.price,
+            budget=ttc.budget,
         )
         logger_mock.error.assert_not_called()
 

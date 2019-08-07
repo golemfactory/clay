@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
     from golem.network.concent.client import ConcentClientService  # noqa pylint:disable=unused-import
+    from golem.task.taskbase import Task  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -384,10 +385,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        price = taskkeeper.compute_subtask_value(
-            msg.price,
-            msg.task_header.subtask_timeout,
-        )
+        task: Task = self.task_manager.tasks[task_id]
+        budget = task.subtask_price
+
         for _i in range(msg.num_subtasks):
             ctd_res = yield self._get_next_ctd(msg)
             if ctd_res is None:
@@ -410,7 +410,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
-                price=price,
+                price=budget,
+                budget=budget,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
                     ctd['subtask_id'], self.address).__dict__
@@ -572,7 +573,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         number_of_subtasks = self.task_server.task_keeper\
             .task_headers[msg.task_id]\
             .subtasks_count
-        total_task_price = msg.price * number_of_subtasks
+        total_task_price = msg.budget * number_of_subtasks
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.get_available_gnt(
             account_address=msg.requestor_ethereum_address,
@@ -768,7 +769,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             payer_address=msg.task_to_compute.requestor_ethereum_address,
-            value=msg.task_to_compute.price,
+            value=msg.task_to_compute.budget,
             accepted_ts=msg.payment_ts,
         )
         self.dropped()
@@ -793,7 +794,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # we can be paid for this subtask despite the rejection
 
             amount, expected = msg_helpers.provider_deposit_amount(
-                subtask_price=msg.task_to_compute.price,
+                subtask_price=msg.task_to_compute.budget,
             )
 
             def ask_for_verification(_):

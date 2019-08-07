@@ -416,7 +416,7 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             payer_address=msg.task_to_compute.requestor_ethereum_address,
-            value=msg.task_to_compute.price,
+            value=msg.task_to_compute.budget,
             accepted_ts=msg.subtask_results_accepted.payment_ts,
         )
 
