@@ -59,11 +59,11 @@ class Acl(abc.ABC):
 
     @abc.abstractmethod
     def allow(self, node_id: str, persist: bool) -> None:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def status(self) -> AclStatus:
-        pass
+        raise NotImplementedError
 
 
 class _DenyAcl(Acl):
