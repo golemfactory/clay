@@ -12,6 +12,7 @@ from golem.marketplace import (
 from golem.marketplace.brass_marketplace import scale_price
 
 GWEI = denoms.szabo
+HOUR = 3600
 
 
 class TestScalePrice(TestCase):
@@ -45,8 +46,8 @@ class TestRequestorMarketStrategy(TestCase):
         task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
         market_strategy.report_subtask_usages(
-            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
-                          (self.PROVIDER_B, self.SUBTASK_B, 8.0)]
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0 * HOUR),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
         )
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
@@ -65,8 +66,8 @@ class TestRequestorMarketStrategy(TestCase):
         task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
         market_strategy.report_subtask_usages(
-            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0),
-                          (self.PROVIDER_B, self.SUBTASK_B, 8.0)]
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0 * HOUR),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
         )
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
