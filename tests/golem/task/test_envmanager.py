@@ -1,14 +1,19 @@
 from unittest import TestCase
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
+
+from twisted.internet.defer import inlineCallbacks
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem.envs import Environment
+from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
 from golem.task.envmanager import EnvironmentManager
+from golem.testutils import DatabaseFixture
 
 
-class TestEnvironmentManager(TestCase):
-
+class EnvManagerBaseTest(TestCase):
     def setUp(self):
+        super().setUp()
         self.manager = EnvironmentManager()
 
     def register_env(self, env_id):
@@ -17,6 +22,9 @@ class TestEnvironmentManager(TestCase):
         payload_builder = MagicMock(sepc_set=TaskApiPayloadBuilder)
         self.manager.register_env(env, payload_builder)
         return env, payload_builder
+
+
+class TestEnvironmentManager(EnvManagerBaseTest):
 
     def test_register_env(self):
         # Given
@@ -75,8 +83,80 @@ class TestEnvironmentManager(TestCase):
         # Then
         self.assertFalse(self.manager.enabled("env1"))
         self.assertTrue(self.manager.enabled("env2"))
-        self.assertRaises(KeyError, self.manager.enabled, "bogus_env")
+        self.assertFalse(self.manager.enabled("bogus_env"))
 
     def test_payload_builder(self):
         _, pb = self.register_env("env1")
         self.assertEqual(pb, self.manager.payload_builder("env1"))
+
+
+class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
+        EnvManagerBaseTest,
+        DatabaseFixture,
+        TwistedTestCase
+):
+
+    def setUp(self):
+        super().setUp()
+        self.env_id = "env1"
+        self.env, _ = self.register_env(self.env_id)
+
+    @inlineCallbacks
+    def test_get_performance_running(self):
+        # Given
+        self.manager._running_benchmark = True
+
+        # When
+        result = yield self.manager.get_performance(self.env_id)
+
+        # Then
+        self.env.run_benchmark.assert_not_called()
+        self.assertIsNone(result)
+
+    @inlineCallbacks
+    def test_get_performance_disabled_env(self):
+        # Given
+        self.manager.set_enabled(self.env_id, False)
+
+        # When
+
+        with self.assertRaisesRegex(
+            Exception,
+            'Requested performance for disabled environment'
+        ):
+            yield self.manager.get_performance(self.env_id)
+
+        # Then
+        self.env.run_benchmark.assert_not_called()
+
+    @inlineCallbacks
+    def test_get_performance_in_db(self):
+        # Given
+        perf = 300.0
+        self.manager.set_enabled(self.env_id, True)
+
+        Performance.update_or_create(self.env_id, perf)
+
+        # When
+        result = yield self.manager.get_performance(self.env_id)
+
+        # Then
+        self.env.run_benchmark.assert_not_called()
+        self.assertEqual(result, perf)
+
+    @inlineCallbacks
+    def test_get_performance_benchmark_error(self):
+        # Given
+        error_msg = "Benchmark failed"
+        self.env.run_benchmark = Mock(side_effect=Exception(error_msg))
+
+        self.manager.set_enabled(self.env_id, True)
+
+        # When
+        result = None
+        with self.assertRaisesRegex(Exception, error_msg):
+            result = yield self.manager.get_performance(self.env_id)
+
+        # Then
+        self.env.run_benchmark.assert_called_once()
+        self.assertIsNone(result)

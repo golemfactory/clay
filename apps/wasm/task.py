@@ -59,12 +59,21 @@ class VbrSubtask:
     def contains(self, s_id) -> bool:
         return s_id in self.subtasks
 
-    def new_instance(self, node_id) -> Optional[Tuple[str, dict]]:
+    def is_allowed_node(self, node_id):
         actor = Actor(node_id)
         try:
-            self.verifier.add_actor(actor)
+            self.verifier.validate_actor(actor)
         except (NotAllowedError, MissingResultsError):
+            return False
+        return True
+
+    def new_instance(self, node_id) -> Optional[Tuple[str, dict]]:
+        actor = Actor(node_id)
+
+        if not self.is_allowed_node(node_id):
             return None
+
+        self.verifier.add_actor(actor)
 
         s_id = self.id_gen()
         self.subtasks[s_id] = {
@@ -171,20 +180,26 @@ class WasmTask(CoreTask):
                                  s_name, s_params, self.REDUNDANCY_FACTOR)
             self.subtasks.append(subtask)
 
-        self.nodes_to_subtasks_map: Dict[str, Tuple[str, Dict]] = {}
         self.nodes_blacklist: Set[str] = set()
 
-    def query_extra_data(self, perf_index: float,
-                         node_id: Optional[str] = None,
-                         node_name: Optional[str] = None) -> Task.ExtraData:
-        assert node_id in self.nodes_to_subtasks_map
+    def query_extra_data(
+            self, perf_index: float,
+            node_id: Optional[str] = None,
+            node_name: Optional[str] = None) -> Task.ExtraData:
+        for s in self.subtasks:
+            if s.is_finished():
+                continue
+            next_subtask = s.new_instance(node_id)
+            if next_subtask:
+                s_id, s_params = next_subtask
+                self.subtasks_given[s_id] = {
+                    'status': SubtaskStatus.starting,
+                    'node_id': node_id
+                }
+                ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
-        s_id, s_params = self.nodes_to_subtasks_map.pop(node_id)
-        self.subtasks_given[s_id] = {'status': SubtaskStatus.starting,
-                                     'node_id': node_id}
-        ctd = self._new_compute_task_def(s_id, s_params, perf_index)
-
-        return Task.ExtraData(ctd=ctd)
+                return Task.ExtraData(ctd=ctd)
+        raise RuntimeError()
 
     def _find_vbrsubtask_by_id(self, subtask_id) -> VbrSubtask:
         for subtask in self.subtasks:
@@ -339,42 +354,19 @@ class WasmTask(CoreTask):
             logger.info("Node %s has been blacklisted for this task", node_id)
             return AcceptClientVerdict.REJECTED
 
-        if node_id in self.nodes_to_subtasks_map:
-            logger.info("Nodes listed for a task")
-            return AcceptClientVerdict.ACCEPTED
-
-        for assigned_node_id in self.nodes_to_subtasks_map:
-            if assigned_node_id in self.nodes_blacklist:
-                orphaned_subtask = self.nodes_to_subtasks_map\
-                    .pop(assigned_node_id)
-                self.nodes_to_subtasks_map[node_id] = orphaned_subtask
-                client = TaskClient.get_or_initialize(node_id,
-                                                      self.counting_nodes)
-                client.start(offer_hash, 1)
-                return AcceptClientVerdict.ACCEPTED
-
         for s in self.subtasks:
-            if s.is_finished():
-                continue
-            next_subtask = s.new_instance(node_id)
-            if next_subtask:
-                self.nodes_to_subtasks_map[node_id] = next_subtask
-                client = TaskClient.get_or_initialize(node_id,
-                                                      self.counting_nodes)
-                client.start(offer_hash, 1)
+            if s.is_allowed_node(node_id):
                 return AcceptClientVerdict.ACCEPTED
 
-        """No subtask has yielded next actor meaning that there is no work
-        to be done at the moment"""
         return AcceptClientVerdict.SHOULD_WAIT
 
     def accept_client(self,
                       node_id: str,
                       offer_hash: str,
                       num_subtasks: int = 1) -> AcceptClientVerdict:
-        """Overriding CoreTask behavior with a stub. This is now handled
-        entirely in `should_accept_client` method."""
-        pass
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
+        client.start(offer_hash, 1)
+        return AcceptClientVerdict.ACCEPTED
 
     def needs_computation(self) -> bool:
         return not self.finished_computation()
@@ -386,7 +378,11 @@ class WasmTask(CoreTask):
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, None)
+        try:
+            subtask.add_result(subtask_id, None)
+        except ValueError:
+            # Handle a case of duplicate call from __remove_old_tasks
+            pass
         if subtask.is_finished():
             self.__resolve_payments(subtask)
 
