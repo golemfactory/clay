@@ -2,12 +2,16 @@ import sys
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock
 
+from ethereum.utils import denoms
+
 from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
     ProviderPerformance
 )
 from golem.marketplace.brass_marketplace import scale_price
+
+GWEI = denoms.szabo
 
 
 class TestScalePrice(TestCase):
@@ -28,12 +32,15 @@ class TestRequestorMarketStrategy(TestCase):
 
     def test_brass_payment_computer(self):
         market_strategy = RequestorBrassMarketStrategy
-        payment_computer = market_strategy.get_payment_computer(None, None)
-        self.assertEqual(payment_computer(1.0), 1.0)
+        task = Mock()
+        task.header = Mock()
+        task.header.subtask_timeout = 10
+        payment_computer = market_strategy.get_payment_computer(task, None)
+        self.assertEqual(payment_computer(1), 10)
 
     def test_wasm_payment_computer(self):
         task = Mock()
-        task.subtask_price = 10000
+        task.subtask_price = 6000 * GWEI
         task.header = Mock()
         task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
@@ -44,16 +51,16 @@ class TestRequestorMarketStrategy(TestCase):
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
         )
-        self.assertEqual(payment_computer(10000), 5000)
+        self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
 
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_B
         )
-        self.assertEqual(payment_computer(10000), 8000)
+        self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
     def test_wasm_payment_computer_budget_exceeded(self):
         task = Mock()
-        task.subtask_price = 6000
+        task.subtask_price = 6000 * GWEI
         task.header = Mock()
         task.header.subtask_timeout = 10
         market_strategy = RequestorWasmMarketStrategy
@@ -64,12 +71,12 @@ class TestRequestorMarketStrategy(TestCase):
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_A
         )
-        self.assertEqual(payment_computer(10000), 5000)
+        self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
 
         payment_computer = market_strategy.get_payment_computer(
             task, self.SUBTASK_B
         )
-        self.assertEqual(payment_computer(10000), 6000)
+        self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
 
 class TestRequestorBrassMarketStrategy(TestCase):
