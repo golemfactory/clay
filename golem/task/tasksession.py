@@ -85,6 +85,12 @@ def check_docker_images(
         ctd: message.ComputeTaskDef,
         env: DockerEnvironment,
 ):
+    logger.info('sleepong')
+    time.sleep(4)
+    logger.info('CHECKING !!!!!!!!!!!!!! for image')
+    reasons = message.tasks.CannotComputeTask.REASON
+    raise exceptions.CannotComputeTask(reason=reasons.WrongDockerImages)
+
     for image_dict in ctd['docker_images']:
         image = DockerImage(**image_dict)
         for env_image in env.docker_images:

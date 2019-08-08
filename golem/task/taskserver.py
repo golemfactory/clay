@@ -25,6 +25,7 @@ from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -906,38 +907,38 @@ class TaskServer(
         logger.debug('provider can be accepted %s', ids)
         return True
 
-    def on_failure(self, task_id, subtask_id, provider_id, error_msg=None):
-        logger.info('Cannot choose provider {} for task {} [subtask_id={}]'
-                    .format(provider_id, task_id, subtask_id))
+    def choose_offer(self, task_id, offer_num):
+        logger.info('Choosing offer {} for task {}'.format(offer_num, task_id))
+        offer = OfferPool.pop_offer(task_id, offer_num)
+        logger.info('Chosen offer is [provider={}, task={}, offer={}'.format(
+            offer.provider_id, task_id, offer))
+        task_session = self.sessions.get(offer.provider_id)
 
-    def nominate_provider(self, task_id, provider_id):
-        logger.info('Nominating provider {} for task {}'.format(task_id, provider_id))
-
-        offers = OfferPool.get_offer_for_provider(task_id, provider_id)
-        logger.info('Offers from provider {} for task {} are {}'.format(provider_id, task_id, offers))
-        assert len(offers) == 1  # TODO
-        task_session = self.sessions.get(provider_id)
+        defer = Deferred()
         if not task_session:
-            self.on_failure(None, None, provider_id, error_msg='No session to provider {}'.format(provider_id))
-            return
+            defer.errback()
+            return defer
+        deferred_ttcs = task_session.offer_chosen(
+            True, offer.want_to_compute_task_msg)
+        deferred_ttcs.addCallback(self.send_to_provider, task_session,
+                                  offer.provider_id, task_id, defer)
+        return defer
 
-        deferred_ttcs = task_session.offer_chosen(True, offers[0][0].want_to_compute_task_msg)
-        deferred_ttcs.addCallback(self.send_to_provider, task_session, provider_id, task_id)
-
-    def on_task_rejected(self, subtask_id):
+    def on_task_rejected(self, subtask_id=None):
         with self.lock:
             logger.info(
                 'on_task_rejected_callback [subtask_id={}]'.format(subtask_id))
             self.task_was_accepted_by_provider[subtask_id] = False
 
-    def on_success(self, task_id, subtask_id, provider_id):
+    def on_timeout_passed(self, task_id, subtask_id, provider_id, defer):
         with self.lock:
             if self.task_was_accepted_by_provider[subtask_id]:
                 logger.info('Task {} [subtask = {}] was accepted by provider {}'.format(task_id, subtask_id, provider_id))
+                defer.callback(subtask_id)
             else:
-                self.on_failure(task_id, subtask_id, provider_id, error_msg='Provider decided to not compute task {} [subtask={}]'.format(provider_id, provider_id, subtask_id))
+                defer.errback()
 
-    def send_to_provider(self, ttcs, task_session, provider_id, task_id):
+    def send_to_provider(self, ttcs, task_session, provider_id, task_id, defer):
         assert len(ttcs) == 1 # We assume that provider wants to compute only one subtask at that moment
         logger.info('Provider is {}'.format(provider_id))
         for ttc, _ in ttcs:
@@ -952,10 +953,11 @@ class TaskServer(
             task.deferLater(
                 reactor,
                 timeout,
-                self.on_success,
+                self.on_timeout_passed,
                 task_id,
                 subtask_id,
-                provider_id
+                provider_id,
+                defer
             )
 
     @classmethod

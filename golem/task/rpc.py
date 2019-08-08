@@ -2,6 +2,7 @@
 
 import copy
 import functools
+import json
 import logging
 import os.path
 import re
@@ -471,33 +472,47 @@ class ClientProvider:
     def task_manager(self):
         return self.client.task_server.task_manager
 
-    @rpc_utils.expose('comp.task.nominate_provider')
+    @rpc_utils.expose('comp.task.choose_offer')
     @safe_run(_unexpected_error)
-    def nominate_provider(self, task_id, provider_node_id):
-        task = self.task_manager.tasks.get(task_id)
-        if not task:
-            return None, 'Task where id is {} does not exist'.format(task_id)
-        if not isinstance(task, ManualTask):
-            return None, 'Provider cannot be nominated manually for task '\
-                .format(task_id)
-        if provider_node_id not in OfferPool.get_declared_providers(task_id):
-            return None, 'Provider {} is not declared to compute task {}'.format(provider_node_id, task_id)
-        self.client.task_server.nominate_provider(task_id, provider_node_id)
-        # self.task_manager.notice_task_updated(task_id)
-        return provider_node_id
+    def choose_offer(self, task_id, offer_num):
+        def on_success(task_id, subtask_id):
+            logger.info('RPC callback success: task = {}, subtask = {}'
+                        .format(task_id, subtask_id))
 
-    @rpc_utils.expose('comp.task.get_declared_providers')
-    @safe_run(_unexpected_error)
-    def get_declared_providers(self, task_id):
+        def on_failure(task_id, offer_num):
+            logger.info('RPC errback, task {} was unsuccessfully assigned to [offer = {}]'
+                        .format(task_id, offer_num))
+
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return None, 'Task where id is {} does not exist'.format(task_id)
         if not isinstance(task, ManualTask):
-            return None, 'Provider for task {} cannot be specified manually'\
+            return None, 'Offer cannot be chosen manually for task '\
                 .format(task_id)
-        declared_providers = OfferPool.get_declared_providers(task_id)
-        logger.info('Declared providers for task {} are: {}'.format(task_id, declared_providers))
-        return declared_providers
+        offer_num = int(offer_num)
+        if offer_num < 0 or offer_num >= len(OfferPool.get_offers(task_id)):
+            return None, 'Offer with id = {} does not exist for task {}'\
+                .format(offer_num, task_id)
+        defer = self.client.task_server.choose_offer(task_id, offer_num)
+        defer.addCallback(on_success, task_id)
+        defer.addErrback(on_failure, task_id, offer_num)
+
+        return offer_num
+
+    @rpc_utils.expose('comp.task.get_offers')
+    @safe_run(_unexpected_error)
+    def get_offers(self, task_id):
+        task = self.task_manager.tasks.get(task_id)
+        if not task:
+            return None, 'Task where id is {} does not exist'.format(task_id)
+        if not isinstance(task, ManualTask):
+            return None, 'Offer for task {} cannot be specified manually'\
+                .format(task_id)
+        offers = OfferPool.get_offers(task_id)
+        logger.info('Offers for task {} are: {}'.format(task_id, offers))
+        return list(map(lambda index_offer: 'Offer {}: {}'
+                        .format(index_offer[0], index_offer[1]),
+                        enumerate(offers)))
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)

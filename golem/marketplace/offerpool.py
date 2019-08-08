@@ -1,5 +1,7 @@
+import json
 import sys
 import logging
+import threading
 from typing import List, Dict, ClassVar, Tuple
 
 from golem_messages.message import WantToComputeTask
@@ -34,10 +36,20 @@ class Offer:
         self.provider_id = provider_id
         self.want_to_compute_task_msg = want_to_compute_task_msg
 
+    def __str__(self):
+        return json.dumps({
+            'provider-node-id': self.provider_id,
+            'reputation': self.reputation,
+            'quality': self.quality,
+            'scaled_price': self.scaled_price
+        }, indent=2)
+
+
 class OfferPool:
 
     _INTERVAL: ClassVar[float] = 15.0  # s
     _pools: ClassVar[Dict[str, List[Tuple[Offer, Deferred]]]] = dict()
+    _lock = threading.Lock()
 
     @classmethod
     def change_interval(cls, interval: float) -> None:
@@ -47,53 +59,61 @@ class OfferPool:
     @classmethod
     def add(cls, task_id: str, offer: Offer, is_provider_chosen_manually=False) \
             -> Deferred:
-        if task_id not in cls._pools:
-            cls._pools[task_id] = []
+        with cls._lock:
+            if task_id not in cls._pools:
+                cls._pools[task_id] = []
 
-            def _on_error(e):
-                logger.error(
-                    "Error while choosing providers for task %s: %r",
-                    task_id,
-                    e,
-                )
-            if not is_provider_chosen_manually:
-                logger.info(
-                    "Will select providers for task %s in %.1f seconds",
-                    task_id,
-                    cls._INTERVAL,
-                )
-                from twisted.internet import reactor
-                task.deferLater(
-                    reactor,
-                    cls._INTERVAL,
-                    cls._choose_offers,
-                    task_id,
-                ).addErrback(_on_error)
-            else:
-                logger.info('Offer {} was added to offer pool [task_id = {}]'.format(offer, task_id))
+                def _on_error(e):
+                    logger.error(
+                        "Error while choosing providers for task %s: %r",
+                        task_id,
+                        e,
+                    )
+                if not is_provider_chosen_manually:
+                    logger.info(
+                        "Will select providers for task %s in %.1f seconds",
+                        task_id,
+                        cls._INTERVAL,
+                    )
+                    from twisted.internet import reactor
+                    task.deferLater(
+                        reactor,
+                        cls._INTERVAL,
+                        cls._choose_offers,
+                        task_id,
+                    ).addErrback(_on_error)
+                else:
+                    logger.info('Offer {} was added to offer pool [task_id = {}]'.format(offer, task_id))
 
-        deferred = Deferred()
-        cls._pools[task_id].append((offer, deferred))
-        return deferred
+            deferred = Deferred()
+            cls._pools[task_id].append((offer, deferred))
+            return deferred
 
     @classmethod
     def _choose_offers(cls, task_id: str) -> None:
-        logger.info("Ordering providers for task: %s", task_id)
-        offers = cls._pools.pop(task_id)
-        order = order_providers(list(map(lambda x: x[0], offers)))
-        for i in order:
-            offers[i][1].callback(True)
+        with cls._lock:
+            logger.info("Ordering providers for task: %s", task_id)
+            offers = cls._pools.pop(task_id)
+            order = order_providers(list(map(lambda x: x[0], offers)))
+            for i in order:
+                offers[i][1].callback(True)
 
     @classmethod
     def get_offers(cls, task_id: str) -> list:
-        return cls._pools.get(task_id, [])
+        with cls._lock:
+            return list(map(lambda offer: offer[0], cls._pools.get(task_id, []))
+                        )
 
     @classmethod
-    def get_declared_providers(cls, task_id: str) -> list:
-        return list(map(lambda offer: offer[0].provider_id,
-                        cls.get_offers(task_id)))
+    def get_offer(cls, task_id: str, num: int) -> Offer:
+            if num < 0 or num > len(cls._pools):
+                raise IndexError('{} is invalid index [size of offer pool '
+                                 'is {}]'.format(num, len(cls._pools)))
+            return cls.get_offers(task_id)[num][0]
 
     @classmethod
-    def get_offer_for_provider(cls, task_id: str, provider_id) -> list:
-        return list(filter(lambda offer: offer[0].provider_id == provider_id,
-                           cls.get_offers(task_id)))
+    def pop_offer(cls, task_id, offer_num):
+        with cls._lock:
+            offer = cls._pools[task_id][offer_num][0]
+            del  cls._pools[task_id][offer_num]
+            return offer
