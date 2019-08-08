@@ -2,7 +2,8 @@ import os
 from unittest import TestCase
 from mock import mock_open, patch
 
-from apps.wasm.task import WasmTaskOptions, WasmTaskBenchmark
+from apps.wasm.task import WasmTaskOptions
+from apps.wasm.benchmark import WasmTaskBenchmark
 
 
 class WasmBenchmarkTestCase(TestCase):
