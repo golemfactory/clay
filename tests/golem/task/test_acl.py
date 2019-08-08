@@ -3,7 +3,7 @@
 from freezegun import freeze_time
 
 from golem.task.acl import get_acl, DENY_LIST_NAME, ALL_EXCEPT_ALLOWED, \
-    DenyReason, AclRule, setup_acl
+    DenyReason, AclRule, setup_acl, _DenyAcl, _AllowAcl
 from golem.testutils import TempDirFixture
 
 
@@ -114,6 +114,18 @@ class TestAcl(TempDirFixture):
         assert acl.is_allowed('Node3') == (False, DenyReason.not_whitelisted)
         assert acl.is_allowed('Node2') == (True, None)
 
+    def test_DenyAcl_no_exceptions(self):
+        acl = _DenyAcl()
+        assert acl.status().default_rule == AclRule.allow
+        assert not acl.status().rules
+        assert acl.is_allowed('Node1') == (True, None)
+
+    def test_AllowAcl_no_exceptions(self):
+        acl = _AllowAcl()
+        assert acl.status().default_rule == AclRule.deny
+        assert not acl.status().rules
+        assert acl.is_allowed('Node1') == (False, DenyReason.not_whitelisted)
+
     def test_deny_max_times(self):
         with freeze_time('2016-09-29 18:18:01') as frozen_time:
             acl = get_acl(self.new_path, max_times=3)
@@ -128,7 +140,14 @@ class TestAcl(TempDirFixture):
             assert acl.is_allowed(node_id) == \
                 (False, DenyReason.temporarily_blocked)
 
+            disallowed_nodes = [r[0] for r in acl.status().rules]
+            self.assertCountEqual(disallowed_nodes, [node_id])
+
             frozen_time.tick(15)
+
+            disallowed_nodes = [r[0] for r in acl.status().rules]
+            self.assertCountEqual(disallowed_nodes, [])
+
             assert acl.is_allowed(node_id) == (True, None)
 
             acl.disallow(node_id, timeout_seconds=30)
@@ -144,33 +163,46 @@ class TestAcl(TempDirFixture):
             assert acl.is_allowed(node_id) == \
                 (False, DenyReason.temporarily_blocked)
 
-    def test_allow(self):
+    def test_allow_allow_dissalow(self):
         self.deny_list_path.write_text(
             "{}\nNode1 \nNode2\nNode3\n\tNode4 ".format(ALL_EXCEPT_ALLOWED))
 
         acl = get_acl(self.new_path)
-        acl.allow('Node5')
+        acl.allow('Node5', persist=True)
+        acl.disallow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
         self.assertCountEqual(
-            allowed_nodes, ["Node1", "Node2", "Node3", "Node4", "Node5"])
+            allowed_nodes, ["Node1", "Node2", "Node3", "Node5"])
+
+        saved_nodes = self.deny_list_path.read_text().split()
+        self.assertCountEqual(
+            saved_nodes,
+            [ALL_EXCEPT_ALLOWED, "Node1", "Node2", "Node3", "Node4", "Node5"]
+        )
 
         self.assertEqual((True, None),
                          acl.is_allowed("Node1"))
         self.assertEqual((False, DenyReason.not_whitelisted),
                          acl.is_allowed("some other node"))
 
-    def test_deny_disallow_persistence(self):
-        self.deny_list_path.touch()
+    def test_deny_disallow_allow_persistence(self):
+        self.deny_list_path.write_text('node_id4')
 
         acl = get_acl(self.new_path)
         acl.disallow('node_id1', persist=True)
         acl.disallow('node_id2', persist=True)
         acl.disallow('node_id1', persist=True)
+        acl.allow('node_id1')
+        acl.allow('node_id4', persist=True)
+
+        disallowed_nodes = [r[0] for r in acl.status().rules]
+        self.assertCountEqual(disallowed_nodes, ['node_id2'])
 
         saved_nodes = self.deny_list_path.read_text().split()
-        self.assertEqual(sorted(saved_nodes), ['node_id1', 'node_id2'])
-        self.assertEqual((False, DenyReason.blacklisted),
+        self.assertCountEqual(saved_nodes, ['node_id1', 'node_id2'])
+
+        self.assertEqual((True, None),
                          acl.is_allowed("node_id1"))
         self.assertEqual((False, DenyReason.blacklisted),
                          acl.is_allowed("node_id2"))
