@@ -179,6 +179,7 @@ class WasmTask(CoreTask):
             total_tasks=total_tasks, task_definition=task_definition,
             root_path=root_path, owner=owner
         )
+        self.task_definition: WasmTaskDefinition = task_definition
         self.options: WasmTaskOptions = task_definition.options
         self.subtasks: List[VbrSubtask] = []
         self.subtasks_given = {}
