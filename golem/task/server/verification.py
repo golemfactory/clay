@@ -93,7 +93,7 @@ class VerificationMixin:
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                payment_computer(task_to_compute.price),
+                payment_computer(task_to_compute.want_to_compute_task.price),
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )

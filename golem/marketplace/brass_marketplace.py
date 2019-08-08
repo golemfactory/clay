@@ -50,4 +50,6 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def get_payment_computer(cls, task: 'Task', subtask_id: str)\
             -> Callable[[int], int]:
-        return lambda price: price
+        def payment_computer(price: int):
+            return price * task.header.subtask_timeout
+        return payment_computer
