@@ -25,7 +25,6 @@ from pydispatch import dispatcher
 from twisted.internet import task
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
-from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -77,6 +76,14 @@ from .tasksession import TaskSession
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
+
+
+class ManualChooseProviderResult:
+    def __init__(self, success: bool, subtask_id: str = None, error_reason: str = None)\
+            :
+        self.success = success
+        self.subtask_id = subtask_id
+        self.error_reason = error_reason
 
 
 def _calculate_price(min_price: int, requestor_id: str) -> int:
@@ -908,15 +915,15 @@ class TaskServer(
         return True
 
     def choose_offer(self, task_id, offer_num):
-        logger.info('Choosing offer {} for task {}'.format(offer_num, task_id))
+        logger.debug('Choosing offer {} for task {}'.format(offer_num, task_id))
         offer = OfferPool.pop_offer(task_id, offer_num)
-        logger.info('Chosen offer is [provider={}, task={}, offer={}'.format(
-            offer.provider_id, task_id, offer))
         task_session = self.sessions.get(offer.provider_id)
 
         defer = Deferred()
         if not task_session:
-            defer.errback()
+            defer.callback(ManualChooseProviderResult(
+                False, None, 'No session to provider {}'.format(
+                    offer.provider_id)))
             return defer
         deferred_ttcs = task_session.offer_chosen(
             True, offer.want_to_compute_task_msg)
@@ -924,41 +931,31 @@ class TaskServer(
                                   offer.provider_id, task_id, defer)
         return defer
 
-    def on_task_rejected(self, subtask_id=None):
-        with self.lock:
-            logger.info(
-                'on_task_rejected_callback [subtask_id={}]'.format(subtask_id))
-            self.task_was_accepted_by_provider[subtask_id] = False
-
     def on_timeout_passed(self, task_id, subtask_id, provider_id, defer):
         with self.lock:
             if self.task_was_accepted_by_provider[subtask_id]:
-                logger.info('Task {} [subtask = {}] was accepted by provider {}'.format(task_id, subtask_id, provider_id))
-                defer.callback(subtask_id)
-            else:
-                defer.errback()
+                defer.callback(ManualChooseProviderResult(True, subtask_id))
 
     def send_to_provider(self, ttcs, task_session, provider_id, task_id, defer):
-        assert len(ttcs) == 1 # We assume that provider wants to compute only one subtask at that moment
-        logger.info('Provider is {}'.format(provider_id))
-        for ttc, _ in ttcs:
-            subtask_id = ttc.compute_task_def['subtask_id']
-            signal = 'golem.taskmanager.task_computation_cancelled.subtask_id={}'.format(subtask_id)
-            logger.info('Registered for {}'.format(signal))
-            dispatcher.connect(self.on_task_rejected, signal)
-            task_session.send_tasks_to_provider([(ttc, _)])
-            timeout = self.config_desc.computation_cancellation_timeout
-            from twisted.internet import reactor
-            logger.info('Deferring with timeout {} for subtask_id = {}, subtask_id = {}, provider_id = {}'.format(timeout, task_id, subtask_id, provider_id))
-            task.deferLater(
-                reactor,
-                timeout,
-                self.on_timeout_passed,
-                task_id,
-                subtask_id,
-                provider_id,
-                defer
-            )
+
+        def on_task_rejected(subtask_id=None):
+            with self.lock:
+                self.task_was_accepted_by_provider[subtask_id] = False
+                defer.callback(ManualChooseProviderResult(
+                    False, subtask_id, 'Task {} was rejected by provider {}'
+                        .format(task_id, provider_id)))
+
+        # We assume that provider wants to compute only one subtask at that moment
+        ttc, _ = ttcs[0]
+        subtask_id = ttc.compute_task_def['subtask_id']
+        signal = 'golem.taskmanager.task_computation_cancelled.subtask_id={}'\
+            .format(subtask_id)
+        dispatcher.connect(on_task_rejected, signal, weak=False)
+        task_session.send_tasks_to_provider([(ttc, _)])
+        timeout = self.config_desc.computation_cancellation_timeout
+        from twisted.internet import reactor
+        task.deferLater(reactor, timeout, self.on_timeout_passed, task_id,
+                        subtask_id, provider_id, defer)
 
     @classmethod
     def notify_provider_rejected(cls, node_id: str, task_id: str,

@@ -2,10 +2,10 @@
 
 import copy
 import functools
-import json
 import logging
 import os.path
 import re
+import time
 import typing
 
 from apps.core.task.manualtask import ManualTask
@@ -26,7 +26,7 @@ from golem.marketplace import OfferPool
 from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import taskbase, taskkeeper, taskstate, tasktester
+from golem.task import taskbase, taskkeeper, taskstate, tasktester, taskserver
 
 if typing.TYPE_CHECKING:
     from golem.client import Client  # noqa pylint: disable=unused-import
@@ -475,13 +475,14 @@ class ClientProvider:
     @rpc_utils.expose('comp.task.choose_offer')
     @safe_run(_unexpected_error)
     def choose_offer(self, task_id, offer_num):
-        def on_success(task_id, subtask_id):
-            logger.info('RPC callback success: task = {}, subtask = {}'
-                        .format(task_id, subtask_id))
 
-        def on_failure(task_id, offer_num):
-            logger.info('RPC errback, task {} was unsuccessfully assigned to [offer = {}]'
-                        .format(task_id, offer_num))
+        def on_success(result: taskserver.ManualChooseProviderResult):
+            if result.success:
+                logger.info('Offer {} was chosen [subtask_id={}]'
+                            .format(offer_num, result.subtask_id))
+            else:
+                logger.info('Offer {} was not chosen [subtask_id={}, reason={}]'
+                            .format(offer_num, result.subtask_id, result.error_reason))
 
         task = self.task_manager.tasks.get(task_id)
         if not task:
@@ -494,10 +495,8 @@ class ClientProvider:
             return None, 'Offer with id = {} does not exist for task {}'\
                 .format(offer_num, task_id)
         defer = self.client.task_server.choose_offer(task_id, offer_num)
-        defer.addCallback(on_success, task_id)
-        defer.addErrback(on_failure, task_id, offer_num)
-
-        return offer_num
+        defer.addCallback(on_success)
+        return offer_num, None
 
     @rpc_utils.expose('comp.task.get_offers')
     @safe_run(_unexpected_error)

@@ -85,12 +85,6 @@ def check_docker_images(
         ctd: message.ComputeTaskDef,
         env: DockerEnvironment,
 ):
-    logger.info('sleepong')
-    time.sleep(4)
-    logger.info('CHECKING !!!!!!!!!!!!!! for image')
-    reasons = message.tasks.CannotComputeTask.REASON
-    raise exceptions.CannotComputeTask(reason=reasons.WrongDockerImages)
-
     for image_dict in ctd['docker_images']:
         image = DockerImage(**image_dict)
         for env_image in env.docker_images:
@@ -333,9 +327,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         d = OfferPool.add(msg.task_id, offer, manual_choose_provider )
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
-        if manual_choose_provider :
-            logger.info('Provider for task {} should be chosen manually so '
-                        'we dont place his offer in pool as for task other type'.format(task.task_definition.task_id))
+        if manual_choose_provider:
+            logger.info('Offer for task {} should be chosen manually so offer'
+                        'was only placed in the offer pool'
+                        .format(task.task_definition.task_id))
             return
 
         d.addCallback(functools.partial(self.offer_chosen, msg=msg))
@@ -817,10 +812,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             send_hello = True
 
         nodeskeeper.store(msg.node_info)
-        logger.info('Notify listeners by dispatcher that node {} is connected '
-                    '[task_session = {}]'.format(self.key_id, self))
-        dispatcher.send(signal='golem.peer.connected',
-                        node_id=self.key_id, task_session=self)
 
         if send_hello:
             self.send_hello()

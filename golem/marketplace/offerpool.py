@@ -82,8 +82,6 @@ class OfferPool:
                         cls._choose_offers,
                         task_id,
                     ).addErrback(_on_error)
-                else:
-                    logger.info('Offer {} was added to offer pool [task_id = {}]'.format(offer, task_id))
 
             deferred = Deferred()
             cls._pools[task_id].append((offer, deferred))
