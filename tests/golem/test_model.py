@@ -6,7 +6,6 @@ from datetime import (
 from peewee import IntegrityError
 
 import golem.model as m
-from golem.task.taskstate import SubtaskOp
 from golem.testutils import DatabaseFixture
 
 from tests.factories import model as m_factory
@@ -55,21 +54,6 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual(0, r.positive_resource)
         self.assertEqual(0, r.negative_resource)
         self.assertEqual((0, 0, 0, 0), r.provider_efficacy.vector)
-
-    def test_update_efficacy(self):
-        # Create new LocalRank database entry with default values.
-        rank, _ = m.LocalRank.get_or_create(node_id="blaa_node")
-        efficacy = rank.provider_efficacy
-
-        # If this assert fails, efficacy was modified by other test.
-        self.assertEqual((0, 0, 0, 0), efficacy.vector)
-
-        # Update efficacy in created entry.
-        efficacy.update(SubtaskOp.FINISHED)
-
-        # Create new LocalRank database entry. It should have default values.
-        rank, _ = m.LocalRank.get_or_create(node_id="blaa_node2")
-        self.assertEqual((0, 0, 0, 0), rank.provider_efficacy.vector)
 
 
 
