@@ -7,9 +7,9 @@ from typing import (
     Any,
     Dict,
     List,
-    Optional,
     Type,
-    TYPE_CHECKING)
+    TYPE_CHECKING,
+)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
@@ -22,6 +22,8 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
+# importing DirManager could be under "if TYPE_CHECKING", but it's needed here
+# for validation by 'enforce'
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict

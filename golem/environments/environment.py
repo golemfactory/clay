@@ -67,10 +67,8 @@ class UnsupportReason(enum.Enum):
 class Environment():
 
     @classmethod
-    def get_id(cls):
-        """ Get Environment unique id
-        :return str:
-        """
+    def get_id(cls) -> str:
+        """ Get Environment unique id """
         return "DEFAULT"
 
     def __init__(self):
@@ -85,17 +83,14 @@ class Environment():
         """
         return SupportStatus.ok()
 
-    def is_accepted(self):
-        """ Check if user wants to compute tasks from this environment
-        :return bool:
-        """
+    def is_accepted(self) -> bool:
+        """ Check if user wants to compute tasks from this environment """
         return self.accept_tasks
 
     @classmethod
-    def get_performance(cls):
+    def get_performance(cls) -> float:
         """ Return performance index associated with the environment. Return
         0.0 if performance is unknown
-        :return float:
         """
         try:
             perf = Performance.get(Performance.environment_id == cls.get_id())
