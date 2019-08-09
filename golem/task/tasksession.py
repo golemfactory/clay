@@ -17,7 +17,7 @@ from pydispatch import dispatcher
 from twisted.internet import defer
 
 import golem
-from apps.core.task.manualtask import ManualTask
+from apps.core.task.chooseoffermanuallytask import ChooseOfferManuallyTask
 from golem.core import common
 from golem.core import golem_async
 from golem.core import variables
@@ -322,7 +322,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             provider_id=self.key_id,
             want_to_compute_task_msg=msg
         )
-        manual_choose_provider = task.is_provider_chosen_manually()
+        manual_choose_provider = task.is_offer_chosen_manually()
 
         d = OfferPool.add(msg.task_id, offer, manual_choose_provider )
         logger.debug("Offer accepted & added to pool. offer=%s", offer)

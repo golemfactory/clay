@@ -857,10 +857,10 @@ class TaskManager(TaskEventListener):
         subtask_state = task_state.subtask_states[subtask_id]
         ban_node = subtask_state.time_started + timeout < time.time()
 
-        logger.info('subtask {} was cancelled by provider. Sending info to dispatcher'.format(subtask_id))
         signal = 'golem.taskmanager.task_computation_cancelled.subtask_id={}'\
             .format(subtask_id)
-        dispatcher.send(signal=signal, sender=dispatcher.Anonymous, subtask_id=subtask_id)
+        dispatcher.send(signal=signal, sender=dispatcher.Anonymous,
+                        subtask_id=subtask_id)
 
         return self.task_computation_failure(
             subtask_id,

@@ -357,5 +357,5 @@ class Task(abc.ABC):
         """
         return None
 
-    def is_provider_chosen_manually(self):
+    def is_offer_chosen_manually(self):
         return False

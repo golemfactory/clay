@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 import golem_messages
 from apps.core.task.coretask import CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefinition, Options, TaskDefaults
-from apps.core.task.manualtask import ManualTask
+from apps.core.task.chooseoffermanuallytask import ChooseOfferManuallyTask
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
@@ -52,7 +52,7 @@ class SimpleTaskVerifier(CoreVerifier):
         return True
 
 
-class SimpleManualTask(ManualTask):
+class SimpleManualTask(ChooseOfferManuallyTask):
     ENVIRONMENT_CLASS = SimpleTaskEnvironment
     VERIFIER_CLASS = SimpleTaskVerifier
 
@@ -64,7 +64,6 @@ class SimpleManualTask(ManualTask):
 
     def initialize(self, dir_manager: DirManager):
         super().initialize(dir_manager)
-        logger.info('self.task_definition.resources = {}'.format(self.task_definition.resources))
         self.task_definition.subtasks_count = len(self.task_definition.resources)
         self.total_tasks = len(self.task_definition.resources)
 

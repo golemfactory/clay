@@ -8,7 +8,7 @@ import re
 import time
 import typing
 
-from apps.core.task.manualtask import ManualTask
+from apps.core.task.chooseoffermanuallytask import ChooseOfferManuallyTask
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages.datastructures import masking
@@ -42,7 +42,7 @@ def safe_run(errback):
             try:
                 result = f(*args, **kwargs)
             except Exception as e:  # pylint: disable=broad-except
-                logger.info('Full traceback', exc_info=e) # TODO
+                logger.debug('Full traceback', exc_info=e)
                 return errback(e, *args, **kwargs)
             return result
         return curry
@@ -487,7 +487,7 @@ class ClientProvider:
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return None, 'Task where id is {} does not exist'.format(task_id)
-        if not isinstance(task, ManualTask):
+        if not isinstance(task, ChooseOfferManuallyTask):
             return None, 'Offer cannot be chosen manually for task '\
                 .format(task_id)
         offer_num = int(offer_num)
@@ -504,7 +504,7 @@ class ClientProvider:
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return None, 'Task where id is {} does not exist'.format(task_id)
-        if not isinstance(task, ManualTask):
+        if not isinstance(task, ChooseOfferManuallyTask):
             return None, 'Offer for task {} cannot be specified manually'\
                 .format(task_id)
         offers = OfferPool.get_offers(task_id)

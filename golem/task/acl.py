@@ -55,7 +55,6 @@ class _DenyAcl(Acl):
         self._list_path = list_path
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        return True, None
         if node_id not in self._deny_deadlines:
             return True, None
 
@@ -118,7 +117,6 @@ class _AllowAcl(Acl):
         self._list_path = list_path
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        return True, None
         if node_id in self._allow_set:
             return True, None
 
