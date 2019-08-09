@@ -426,10 +426,6 @@ def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
     return None, str(e)
 
 
-def _unexpected_error(*args, **_kwargs) -> typing.Tuple[None, str]:
-    return None, 'An unexpected error occurred'
-
-
 def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
         -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
@@ -473,7 +469,6 @@ class ClientProvider:
         return self.client.task_server.task_manager
 
     @rpc_utils.expose('comp.task.choose_offer')
-    @safe_run(_unexpected_error)
     def choose_offer(self, task_id, offer_num):
 
         def on_success(result: taskserver.ManualChooseProviderResult):
@@ -499,18 +494,16 @@ class ClientProvider:
         return offer_num, None
 
     @rpc_utils.expose('comp.task.get_offers')
-    @safe_run(_unexpected_error)
-    def get_offers(self, task_id):
+    def get_offers(self, task_id) -> typing.List[typing.Tuple[str, dict]]:
         task = self.task_manager.tasks.get(task_id)
         if not task:
-            return None, 'Task where id is {} does not exist'.format(task_id)
+            raise ValueError('Task where id is {} does not exist'
+                             .format(task_id))
         if not isinstance(task, ChooseOfferManuallyTask):
-            return None, 'Offer for task {} cannot be specified manually'\
-                .format(task_id)
+            raise ValueError('Offer for task {} cannot be specified manually'
+                             .format(task_id))
         offers = OfferPool.get_offers(task_id)
-        return list(map(lambda index_offer: 'Offer {}: {}'
-                        .format(index_offer[0], index_offer[1]),
-                        enumerate(offers)))
+        return [(index, offer.to_json()) for (index, offer) in enumerate(offers)]
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)

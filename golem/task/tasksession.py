@@ -322,12 +322,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             provider_id=self.key_id,
             want_to_compute_task_msg=msg
         )
-        manual_choose_provider = task.is_offer_chosen_manually()
+        manual_choose_offer = task.is_offer_chosen_manually()
 
-        d = OfferPool.add(msg.task_id, offer, manual_choose_provider )
+        d = OfferPool.add(msg.task_id, offer, manual_choose_offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
-        if manual_choose_provider:
+        if manual_choose_offer:
             logger.info('The offer for task {} should be chosen manually so the'
                         ' offer was only placed in the offer pool'
                         .format(task.task_definition.task_id))

@@ -36,13 +36,13 @@ class Offer:
         self.provider_id = provider_id
         self.want_to_compute_task_msg = want_to_compute_task_msg
 
-    def __str__(self):
-        return json.dumps({
+    def to_json(self) -> dict:
+        return {
             'provider-node-id': self.provider_id,
             'reputation': self.reputation,
             'quality': self.quality,
             'scaled_price': self.scaled_price
-        }, indent=2)
+        }
 
 
 class OfferPool:
@@ -57,7 +57,7 @@ class OfferPool:
         cls._INTERVAL = interval
 
     @classmethod
-    def add(cls, task_id: str, offer: Offer, is_provider_chosen_manually=False) \
+    def add(cls, task_id: str, offer: Offer, is_offer_chosen_manually=False) \
             -> Deferred:
         with cls._lock:
             if task_id not in cls._pools:
@@ -69,7 +69,7 @@ class OfferPool:
                         task_id,
                         e,
                     )
-                if not is_provider_chosen_manually:
+                if not is_offer_chosen_manually:
                     logger.info(
                         "Will select providers for task %s in %.1f seconds",
                         task_id,
