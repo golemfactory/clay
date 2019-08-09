@@ -49,7 +49,6 @@ def calculate_subtasks_count_with_frames(
     return est
 
 
-@rpc_utils.expose('comp.task.subtasks.count')
 def calculate_subtasks_count(
         subtasks_count: int,
         optimize_total: bool,

@@ -11,10 +11,8 @@ from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
     OpenCVError
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
-                                               RenderingTaskBuilderError,
                                                RenderingTaskBuilder,
                                                SUBTASK_MIN_TIMEOUT)
-from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -23,7 +21,6 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
 
 
 def _get_test_exr(alt=False):
@@ -341,30 +338,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
-    def test_build_definition_minimal(self):
-        # given
-        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
-                               Options, RenderingTaskBuilder)
-        tti.output_file_ext = 'txt'
-        task_dict = {
-            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
-            'compute_on': 'cpu',
-            'task_type': 'TESTTASK',
-            'subtasks_count': 1
-        }
 
-        # when
-        definition = RenderingTaskBuilder.build_definition(
-            tti, task_dict, minimal=True)
-
-        # then
-        assert definition.main_scene_file in ['file2.txt', 'file4.txt']
-        assert definition.task_type == "TESTTASK"
-        assert definition.resources == {'file1.png', 'file2.txt',
-                                        'file3.jpg', 'file4.txt'}
-
-
-class TestBuildDefinition(TestDirFixture, LogTestCase):
+class TestBuildDefinition(LogTestCase):
     def setUp(self):
         super().setUp()
         self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
@@ -376,7 +351,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
             'subtasks_count': 1,
-            'options': {'output_path': self.path,
+            'options': {'output_path': "/foo/bar",
                         'format': 'PNG',
                         'resolution': [800, 600]},
             'name': "NAME OF THE TASK",
@@ -455,3 +430,25 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             # and it modifies it on windows
             path.normpath("/path/to/file5.txt"),
         }
+
+    def test_build_definition_minimal(self):
+        # given
+        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                               Options, RenderingTaskBuilder)
+        tti.output_file_ext = 'txt'
+        task_dict = {
+            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
+            'compute_on': 'cpu',
+            'task_type': 'TESTTASK',
+            'subtasks_count': 1
+        }
+
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            tti, task_dict, minimal=True)
+
+        # then
+        assert definition.main_scene_file in ['file2.txt', 'file4.txt']
+        assert definition.task_type == "TESTTASK"
+        assert definition.resources == {'file1.png', 'file2.txt',
+                                        'file3.jpg', 'file4.txt'}
