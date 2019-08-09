@@ -328,8 +328,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
 
         if manual_choose_provider:
-            logger.info('Offer for task {} should be chosen manually so offer'
-                        'was only placed in the offer pool'
+            logger.info('The offer for task {} should be chosen manually so the'
+                        ' offer was only placed in the offer pool'
                         .format(task.task_definition.task_id))
             return
 
@@ -435,7 +435,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def send_tasks_to_provider(self, ttcs):
         for ttc, signed_ttc in ttcs:
-            logger.info('Sending {} to provider {}'.format(ttc, self.key_id))
             self.send(ttc)
             history.add(
                 msg=signed_ttc,

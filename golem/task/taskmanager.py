@@ -32,9 +32,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.marketplace import OfferPool
 from golem.network import nodeskeeper
-from golem.network.transport.communicator import Communicator
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager

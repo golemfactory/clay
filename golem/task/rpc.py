@@ -508,7 +508,6 @@ class ClientProvider:
             return None, 'Offer for task {} cannot be specified manually'\
                 .format(task_id)
         offers = OfferPool.get_offers(task_id)
-        logger.info('Offers for task {} are: {}'.format(task_id, offers))
         return list(map(lambda index_offer: 'Offer {}: {}'
                         .format(index_offer[0], index_offer[1]),
                         enumerate(offers)))
