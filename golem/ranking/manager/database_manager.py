@@ -1,5 +1,6 @@
 import datetime
 import logging
+import copy
 
 from peewee import IntegrityError
 
@@ -233,6 +234,9 @@ def update_provider_efficacy(node_id: str, op: SubtaskOp) -> None:
 
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
+        
+        rank.provider_efficacy = copy.deepcopy(rank.provider_efficacy)
+        
         rank.provider_efficacy.update(op)
         rank.save()
 

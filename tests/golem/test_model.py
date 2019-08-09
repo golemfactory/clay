@@ -56,10 +56,13 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual(0, r.negative_resource)
         self.assertEqual((0, 0, 0, 0), r.provider_efficacy.vector)
 
-    def test_modify_efficacy(self):
+    def test_update_efficacy(self):
         # Create new LocalRank database entry with default values.
         rank, _ = m.LocalRank.get_or_create(node_id="blaa_node")
         efficacy = rank.provider_efficacy
+
+        # If this assert fails, efficacy was modified by other test.
+        self.assertEqual((0, 0, 0, 0), efficacy.vector)
 
         # Update efficacy in created entry.
         efficacy.update(SubtaskOp.FINISHED)
