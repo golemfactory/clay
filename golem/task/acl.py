@@ -284,4 +284,4 @@ def setup_acl(datadir: Optional[Path],
     if default_rule == AclRule.allow:
         return _DenyAcl.new_from_rules(exceptions, deny_list_path)
 
-    raise ValueError('invalid acl default rule: %r' % default_rule)
+    raise ValueError('invalid acl default rule: %r' % default_rule)  # noqa # pragma: no cover # pylint: disable=line-too-long
