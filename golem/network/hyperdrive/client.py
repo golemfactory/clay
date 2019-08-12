@@ -46,7 +46,7 @@ class HyperdriveClient(IClient):
         super().__init__()
         # connection / read timeout
         self.timeout = timeout
-        # default POST request headers
+        # API destination address
         self._url = f'http://{host}:{port}'
 
     def __repr__(self):
