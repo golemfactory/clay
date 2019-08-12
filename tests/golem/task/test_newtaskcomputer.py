@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import asyncio
 import time
 from pathlib import Path
@@ -161,11 +162,14 @@ class TestCompute(NewTaskComputerTestBase):
             uninstall_reactor()  # Because other tests don't clean up
         except AttributeError:
             pass
+        cls.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(cls.loop)
         install_reactor()
 
     @classmethod
     def tearDownClass(cls) -> None:
         uninstall_reactor()
+        asyncio.set_event_loop(None)
 
     def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
