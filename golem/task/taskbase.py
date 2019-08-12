@@ -11,7 +11,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
-from golem.marketplace import RequestorBrassMarketStrategy
+from golem.marketplace import DEFAULT_MARKET_STRATEGY
 
 logger = logging.getLogger("golem.task")
 
@@ -29,7 +29,7 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    MARKET_STRATEGY = RequestorBrassMarketStrategy
+    MARKET_STRATEGY = DEFAULT_MARKET_STRATEGY
 
     def __init__(self,
                  name: str,
