@@ -469,15 +469,16 @@ class ClientProvider:
         return self.client.task_server.task_manager
 
     @rpc_utils.expose('comp.task.choose_offer')
-    def choose_offer(self, task_id, offer_num):
+    def choose_offer(self, task_id, offer_id):
+        offer_id = int(offer_id)
 
         def on_success(result: taskserver.ManualChooseProviderResult):
             if result.success:
                 logger.info('Offer {} was chosen [subtask_id={}]'
-                            .format(offer_num, result.subtask_id))
+                            .format(offer_id, result.subtask_id))
             else:
                 logger.info('Offer {} was not chosen [subtask_id={}, reason={}]'
-                            .format(offer_num, result.subtask_id, result.error_reason))
+                            .format(offer_id, result.subtask_id, result.error_reason))
 
         task = self.task_manager.tasks.get(task_id)
         if not task:
@@ -485,13 +486,9 @@ class ClientProvider:
         if not isinstance(task, ChooseOfferManuallyTask):
             return None, 'Offer cannot be chosen manually for task '\
                 .format(task_id)
-        offer_num = int(offer_num)
-        if offer_num < 0 or offer_num >= len(OfferPool.get_offers(task_id)):
-            return None, 'Offer with id = {} does not exist for task {}'\
-                .format(offer_num, task_id)
-        defer = self.client.task_server.choose_offer(task_id, offer_num)
+        defer = self.client.task_server.choose_offer(task_id, offer_id)
         defer.addCallback(on_success)
-        return offer_num, None
+        return offer_id, None
 
     @rpc_utils.expose('comp.task.get_offers')
     def get_offers(self, task_id) -> typing.List[typing.Tuple[str, dict]]:
@@ -503,7 +500,7 @@ class ClientProvider:
             raise ValueError('Offer for task {} cannot be specified manually'
                              .format(task_id))
         offers = OfferPool.get_offers(task_id)
-        return [(index, offer.to_json()) for (index, offer) in enumerate(offers)]
+        return [offer.to_json() for offer in offers]
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)

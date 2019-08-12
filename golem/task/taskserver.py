@@ -914,9 +914,9 @@ class TaskServer(
         logger.debug('provider can be accepted %s', ids)
         return True
 
-    def choose_offer(self, task_id, offer_num):
-        logger.debug('Choosing offer {} for task {}'.format(offer_num, task_id))
-        offer = OfferPool.pop_offer(task_id, offer_num)
+    def choose_offer(self, task_id, offer_id):
+        logger.debug('Choosing offer {} for task {}'.format(offer_id, task_id))
+        offer = OfferPool.pop_offer(task_id, offer_id)
         task_session = self.sessions.get(offer.provider_id)
 
         defer = Deferred()

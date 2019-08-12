@@ -35,9 +35,11 @@ class Offer:
         self.quality = quality
         self.provider_id = provider_id
         self.want_to_compute_task_msg = want_to_compute_task_msg
+        self.id = None
 
     def to_json(self) -> dict:
         return {
+            'id': self.id,
             'provider-node-id': self.provider_id,
             'reputation': self.reputation,
             'quality': self.quality,
@@ -49,7 +51,8 @@ class OfferPool:
 
     _INTERVAL: ClassVar[float] = 15.0  # s
     _pools: ClassVar[Dict[str, List[Tuple[Offer, Deferred]]]] = dict()
-    _lock = threading.Lock()
+    _lock = threading.RLock()
+    _counter = 0
 
     @classmethod
     def change_interval(cls, interval: float) -> None:
@@ -61,7 +64,7 @@ class OfferPool:
             -> Deferred:
         with cls._lock:
             if task_id not in cls._pools:
-                cls._pools[task_id] = []
+                cls._pools[task_id] = {}
 
                 def _on_error(e):
                     logger.error(
@@ -84,14 +87,16 @@ class OfferPool:
                     ).addErrback(_on_error)
 
             deferred = Deferred()
-            cls._pools[task_id].append((offer, deferred))
+            cls._counter = cls._counter + 1
+            offer.id = cls._counter
+            cls._pools[task_id][offer.id] = (offer, deferred)
             return deferred
 
     @classmethod
     def _choose_offers(cls, task_id: str) -> None:
         with cls._lock:
             logger.info("Ordering providers for task: %s", task_id)
-            offers = cls._pools.pop(task_id)
+            offers = list(cls._pools.pop(task_id).values())
             order = order_providers(list(map(lambda x: x[0], offers)))
             for i in order:
                 offers[i][1].callback(True)
@@ -99,19 +104,21 @@ class OfferPool:
     @classmethod
     def get_offers(cls, task_id: str) -> list:
         with cls._lock:
-            return list(map(lambda offer: offer[0], cls._pools.get(task_id, []))
-                        )
+            return list(map(lambda offer: offer[0], cls._pools.get(task_id, {})
+                            .values()))
 
     @classmethod
-    def get_offer(cls, task_id: str, num: int) -> Offer:
-            if num < 0 or num > len(cls._pools):
-                raise IndexError('{} is invalid index [size of offer pool '
-                                 'is {}]'.format(num, len(cls._pools)))
-            return cls.get_offers(task_id)[num][0]
-
-    @classmethod
-    def pop_offer(cls, task_id, offer_num):
+    def _get_offer(cls, task_id: str, offer_id: int) -> Offer:
         with cls._lock:
-            offer = cls._pools[task_id][offer_num][0]
-            del  cls._pools[task_id][offer_num]
+            try:
+                task_offers = cls._pools[task_id]
+                return task_offers[offer_id][0]
+            except KeyError:
+                raise IndexError('{} id is invalid'.format(offer_id))
+
+    @classmethod
+    def pop_offer(cls, task_id, offer_id):
+        with cls._lock:
+            offer = cls._get_offer(task_id, offer_id)
+            del cls._pools[task_id][offer_id]
             return offer
