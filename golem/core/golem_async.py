@@ -3,7 +3,6 @@ import concurrent.futures
 import datetime
 import functools
 import logging
-import queue
 import threading
 from typing import Callable, Optional
 
@@ -109,6 +108,41 @@ def deferred_run():
 ##
 
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
+
+
+def soon():
+    "Run non-async function in next iteration of event loop"
+    def wrapped(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            loop = asyncio.get_event_loop()
+            loop.call_soon(
+                functools.partial(
+                    f,
+                    *args,
+                    **kwargs,
+                ),
+            )
+            return None
+        return curry
+    return wrapped
+
+
+def taskify():
+    "Run async function as a Task in current loop"
+    def wrapped(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            task = asyncio.ensure_future(
+                functools.partial(
+                    f,
+                    *args,
+                    **kwargs,
+                ),
+            )
+            return task
+        return curry
+    return wrapped
 
 
 def run_at_most_every(delta: datetime.timedelta):

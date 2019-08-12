@@ -37,7 +37,7 @@ class SystemMonitor(object):
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
 
-    @golem_async.in_asyncio()
+    @golem_async.taskify()
     async def p2p_listener(self, *_, event='default', ports=None, **__):
         if event != 'listening':
             return
@@ -89,7 +89,7 @@ class SystemMonitor(object):
         return None
 
     # pylint: disable=unused-argument
-    @golem_async.in_asyncio()
+    @golem_async.taskify()
     @log_error()
     async def dispatch_listener(
             self,
@@ -109,8 +109,7 @@ class SystemMonitor(object):
 
     # Initialization
 
-    @golem_async.in_asyncio()
-    async def start(self):
+    def start(self):
         dispatcher.connect(
             self.dispatch_listener,
             signal='golem.monitor',
