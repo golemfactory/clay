@@ -24,6 +24,8 @@ def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
 
 
+# TODO: Change 'Optional[Union[int, float]]' hint to 'Union[int, float]' and
+#       remove the 'isinstance' check when HyperdriveResourceManager is removed
 def round_timeout(value: Optional[Union[int, float]]) -> int:
     if not isinstance(value, (int, float)) or value <= 0:
         raise ValueError(f"Invalid timeout: {value}")
