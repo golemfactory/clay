@@ -3,7 +3,6 @@ import concurrent.futures
 import datetime
 import functools
 import logging
-import threading
 from typing import Callable, Optional
 
 from twisted.internet import defer
@@ -200,41 +199,3 @@ def locked():
                 return result
         return curry
     return wrapped
-
-
-def asyncio_run(coro):
-    """Simulate asyncio.run() from python3.7"""
-    loop = asyncio.get_event_loop()
-    try:
-        loop.run_until_complete(coro)
-    finally:
-        loop.run_until_complete(loop.shutdown_asyncgens())
-        loop.close()
-
-
-def asyncio_start():
-    global _ASYNCIO_TASKS  # pylint: disable=global-statement
-    _ASYNCIO_RUN.set()
-    logger.info(
-        'ASYNCIO thread started. name=%r',
-        threading.current_thread().name,
-    )
-    loop = asyncio.new_event_loop()
-    _ASYNCIO_TASKS = asyncio.Queue(loop=loop)
-    loop.set_debug(True)
-    asyncio.set_event_loop(loop)
-    asyncio_run(asyncio_main())
-    logger.info("ASYNCIO thread finished")
-
-
-async def asyncio_main():
-    wait_task = asyncio.ensure_future(_asyncio_wait_for_tasks())
-    while _ASYNCIO_RUN.is_set():
-        try:
-            await _asyncio_process_thread_queue()
-        except Exception:  # pylint: disable=broad-except
-            logger.exception("Error in asyncio main loop")
-        await asyncio.sleep(0.1)
-    logger.info('Cleaning up ASYNCIO queue. size=%r', _ASYNCIO_TASKS.qsize())
-    await _ASYNCIO_TASKS.join()
-    wait_task.cancel()
