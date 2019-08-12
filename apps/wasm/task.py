@@ -358,6 +358,8 @@ class WasmTask(CoreTask):
             if s.is_allowed_node(node_id):
                 return AcceptClientVerdict.ACCEPTED
 
+        # No subtask has yielded next actor meaning that there is no work
+        # to be done at the moment
         return AcceptClientVerdict.SHOULD_WAIT
 
     def accept_client(self,
