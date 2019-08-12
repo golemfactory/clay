@@ -1,7 +1,8 @@
 import sys
 import logging
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+from dataclasses import dataclass
 from golem.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
@@ -18,11 +19,11 @@ def scale_price(task_price: float, offered_price: float) -> float:
     return task_price / offered_price
 
 
+@dataclass
 class BrassMarketOffer:
-    def __init__(self, scaled_price, reputation, quality):
-        self.scaled_price = scaled_price
-        self.reputation = reputation
-        self.quality = quality
+    scaled_price: float
+    reputation: float = .0
+    quality: Tuple[float, float, float, float] = (.0, .0, .0, .0)
 
 
 class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
@@ -35,10 +36,10 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
 
         offers = cls._pools.pop(task_id)
 
-        permutation = order_providers(
-            [BrassMarketOffer(scale_price(offer.max_price, offer.price),
-                              offer.reputation, offer.quality)
-             for offer in offers]
-        )
+        permutation = order_providers([
+            BrassMarketOffer(scale_price(offer.max_price, offer.price),
+                             offer.reputation, offer.quality)
+            for offer in offers
+        ])
 
         return [offers[i] for i in permutation]
