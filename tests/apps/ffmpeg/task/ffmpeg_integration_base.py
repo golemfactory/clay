@@ -2,6 +2,7 @@ import logging
 import os
 
 import pytest
+from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, list_supported_frame_rates
 from ffmpeg_tools.validation import InvalidResolution, \
     UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution
@@ -16,6 +17,22 @@ from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
 logger = logging.getLogger(__name__)
+
+
+CODEC_CONTAINER_PAIRS_TO_TEST = [
+    (VideoCodec.FLV1, Container.c_FLV),
+    (VideoCodec.H_264, Container.c_AVI),
+    (VideoCodec.HEVC, Container.c_MP4),
+    (VideoCodec.MJPEG, Container.c_MOV),
+    (VideoCodec.MPEG_1, Container.c_MPEG),
+    (VideoCodec.MPEG_2, Container.c_MPEG),
+    (VideoCodec.MPEG_4, Container.c_MPEGTS),
+    (VideoCodec.THEORA, Container.c_OGG),
+    (VideoCodec.VP8, Container.c_WEBM),
+    (VideoCodec.VP9, Container.c_MATROSKA),
+    (VideoCodec.WMV1, Container.c_ASF),
+    (VideoCodec.WMV2, Container.c_ASF),
+]
 
 
 @ci_skip
