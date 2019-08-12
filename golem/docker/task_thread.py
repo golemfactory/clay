@@ -98,6 +98,7 @@ class DockerTaskThread(TaskThread):
         self.check_mem = check_mem
         self.dir_mapping = dir_mapping
 
+    # pylint:disable=too-many-arguments
     @staticmethod
     def specify_dir_mapping(
             resources: str,
