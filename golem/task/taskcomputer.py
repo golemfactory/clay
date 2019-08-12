@@ -10,7 +10,7 @@ from threading import Lock
 
 from dataclasses import dataclass
 from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
-from golem_task_api import ProviderAppClient
+from golem_task_api import ProviderAppClient, constants as task_api_constants
 from pydispatch import dispatcher
 from twisted.internet import defer
 
@@ -118,6 +118,13 @@ class TaskComputerAdapter:
     def support_direct_computation(self, value: bool) -> None:
         self._old_computer.support_direct_computation = value
 
+    def get_task_resources_dir(self) -> Path:
+        if not self._new_computer.has_assigned_task():
+            raise ValueError(
+                'Task resources directory only available when a task-api task '
+                'is assigned')
+        return self._new_computer.get_task_resources_dir()
+
     def start_computation(self) -> None:
         if self._new_computer.has_assigned_task():
             task_id = self.assigned_task_id
@@ -143,7 +150,7 @@ class TaskComputerAdapter:
             self._task_server.send_results(
                 subtask_id=subtask_id,
                 task_id=task_id,
-                result=[output_file],
+                task_api_result=output_file,
             )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
@@ -264,6 +271,9 @@ class NewTaskComputer:
         if self._assigned_task is None:
             return None
         return self._assigned_task.subtask_id
+
+    def get_task_resources_dir(self) -> Path:
+        return self._get_task_dir() / task_api_constants.NETWORK_RESOURCES_DIR
 
     def _is_computing(self) -> bool:
         return self._computation is not None
