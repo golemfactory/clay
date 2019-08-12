@@ -25,7 +25,7 @@ RUN mkdir /golem \
  && mkdir /golem/resources \
  && mkdir /golem/output
 
-COPY scripts/ /golem/
+COPY core/resources/images/scripts/ /golem/
 RUN chmod +x /golem/install_py_libs.sh
 
 WORKDIR /golem/work/
