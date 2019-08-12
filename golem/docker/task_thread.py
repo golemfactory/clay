@@ -33,27 +33,30 @@ class DockerDirMapping:
 
     def __init__(self,   # pylint: disable=too-many-arguments
                  resources: Path, temporary: Path,
-                 work: Path, output: Path, logs: Path) -> None:
+                 work: Path, output: Path, logs: Path, stats: Path) -> None:
 
         self.resources: Path = resources
         self.temporary: Path = temporary
         self.work: Path = work
         self.output: Path = output
+        self.stats: Path = stats
         self.logs: Path = logs
 
     @classmethod
     def generate(cls, resources: Path, temporary: Path) -> 'DockerDirMapping':
         work = temporary / "work"
         output = temporary / "output"
+        stats = temporary / "stats"
         logs = output
 
-        return cls(resources, temporary, work, output, logs)
+        return cls(resources, temporary, work, output, logs, stats)
 
     def mkdirs(self, exist_ok: bool = True) -> None:
         self.resources.mkdir(parents=True, exist_ok=exist_ok)
         self.temporary.mkdir(parents=True, exist_ok=exist_ok)
         self.work.mkdir(exist_ok=exist_ok)
         self.output.mkdir(exist_ok=exist_ok)
+        self.stats.mkdir(exist_ok=exist_ok)
         self.logs.mkdir(exist_ok=exist_ok)
 
 
@@ -95,11 +98,17 @@ class DockerTaskThread(TaskThread):
         self.check_mem = check_mem
         self.dir_mapping = dir_mapping
 
+    # pylint:disable=too-many-arguments
     @staticmethod
-    def specify_dir_mapping(resources: str, temporary: str, work: str,
-                            output: str, logs: str) -> DockerDirMapping:
-        return DockerDirMapping(Path(resources), Path(temporary),
-                                Path(work), Path(output), Path(logs))
+    def specify_dir_mapping(
+            resources: str,
+            temporary: str,
+            work: str,
+            output: str,
+            logs: str,
+            stats: str) -> DockerDirMapping:
+        return DockerDirMapping(Path(resources), Path(temporary), Path(work),
+                                Path(output), Path(logs), Path(stats))
 
     @staticmethod
     def generate_dir_mapping(resources: str, temporary: str) \
@@ -139,7 +148,8 @@ class DockerTaskThread(TaskThread):
         return [
             DockerBind(self.dir_mapping.work, DockerJob.WORK_DIR),
             DockerBind(self.dir_mapping.resources, DockerJob.RESOURCES_DIR),
-            DockerBind(self.dir_mapping.output, DockerJob.OUTPUT_DIR)
+            DockerBind(self.dir_mapping.output, DockerJob.OUTPUT_DIR),
+            DockerBind(self.dir_mapping.stats, DockerJob.STATS_DIR)
         ]
 
     def _run_docker_job(self) -> Optional[int]:
@@ -151,6 +161,7 @@ class DockerTaskThread(TaskThread):
             WORK_DIR=DockerJob.WORK_DIR,
             RESOURCES_DIR=DockerJob.RESOURCES_DIR,
             OUTPUT_DIR=DockerJob.OUTPUT_DIR,
+            STATS_DIR=DockerJob.STATS_DIR,
         )
 
         assert self.image is not None
@@ -184,6 +195,7 @@ class DockerTaskThread(TaskThread):
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),
             output_dir=str(self.dir_mapping.output),
+            stats_dir=str(self.dir_mapping.stats),
             volumes=volumes,
             environment=environment,
             host_config=host_config
