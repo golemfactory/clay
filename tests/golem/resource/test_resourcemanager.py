@@ -1,4 +1,7 @@
+import datetime
 from unittest import mock
+
+from freezegun import freeze_time
 
 from golem.resource.client import ClientOptions
 from golem.resource.resourcemanager import ResourceManager, ResourceId
@@ -44,10 +47,8 @@ class TestResourceManager(TempDirFixture):
         assert isinstance(response.result, str)
         assert self.resource_manager._cache[sample_path] == response.result
 
-    @mock.patch(
-        'golem.resource.resourcemanager.get_timestamp_utc',
-        return_value=NOW)
-    def test_share_cached(self, _):
+    @freeze_time(datetime.datetime.utcfromtimestamp(NOW))
+    def test_share_cached(self):
         sample_path = self.new_path / "sample.txt"
 
         # First upload
@@ -57,10 +58,8 @@ class TestResourceManager(TempDirFixture):
         self.resource_manager.share(sample_path, self.client_options)
         assert self.client.add_async.call_count == 1
 
-    @mock.patch(
-        'golem.resource.resourcemanager.get_timestamp_utc',
-        return_value=NOW)
-    def test_share_cache_timed_out(self, _):
+    @freeze_time(datetime.datetime.utcfromtimestamp(NOW))
+    def test_share_cache_timed_out(self):
         sample_path = self.new_path / "sample.txt"
 
         self.client.resource_async.return_value = {'validTo': NOW + TIMEOUT - 1}
