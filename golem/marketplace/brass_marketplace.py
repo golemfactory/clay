@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from golem.marketplace import Offer
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
+import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
 
@@ -37,8 +38,10 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         offers = cls._pools.pop(task_id)
 
         permutation = order_providers([
-            BrassMarketOffer(scale_price(offer.max_price, offer.price),
-                             offer.reputation, offer.quality)
+            BrassMarketOffer(  # type: ignore
+                scale_price(offer.max_price, offer.price),
+                dbm.get_provider_efficiency(offer.provider_id),
+                dbm.get_provider_efficacy(offer.provider_id).vector)
             for offer in offers
         ])
 
