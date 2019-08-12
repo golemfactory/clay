@@ -16,7 +16,6 @@ from twisted.python.failure import Failure
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core import golem_async
 from golem.core import variables
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.node import Node, ShutdownResponse
@@ -533,7 +532,6 @@ class MockThread:
         return self._target
 
 
-@patch('golem.core.golem_async.start_asyncio_thread')
 @patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.core.golem_async.async_run', mock_async_run)
@@ -574,7 +572,6 @@ class TestOptNode(TempDirFixture):
     def assertAddSystemEvent(self, reactor):
         reactor.addSystemEventTrigger.assert_has_calls(
             [
-                call('before', 'shutdown', golem_async.asyncio_stop),
                 call('before', 'shutdown', self.node.rpc_router.stop),
                 call('before', 'shutdown', self.node.client.quit),
             ],
@@ -644,7 +641,7 @@ class TestOptNode(TempDirFixture):
             Failure(Exception(error_msg)), 0)
 
         with patch('golem.node.DockerManager.install', return_value=mock_dm), \
-             self.assertLogs('golem.node', level='INFO') as logs:
+                self.assertLogs('golem.node', level='INFO') as logs:
             self.node.start()
             output = "\n".join(logs.output)
 
