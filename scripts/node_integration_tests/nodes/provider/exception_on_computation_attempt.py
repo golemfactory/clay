@@ -10,7 +10,7 @@ import logging
 import mock
 from typing import Union
 
-from golemapp import start
+from golemapp import main
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
@@ -18,6 +18,8 @@ from golem.task.taskstate import TaskStatus
 from golem.model import Performance
 
 logger = logging.getLogger(__name__)
+
+ACCEPTABLE_PERFORMANCE = 500
 
 
 def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
@@ -34,9 +36,10 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
 
     def error_callback(err: Union[str, Exception]):
         logger.error("Unable to run %s benchmark: %s", env_id, str(err))
-        Performance.update_or_create(env_id, 0)
-        if error:
-            error(err)
+        Performance.update_or_create(env_id, ACCEPTABLE_PERFORMANCE)
+        if isinstance(err, str):
+            err = Exception(err)
+        success(ACCEPTABLE_PERFORMANCE)
 
     task_state = TaskDesc()
     task_state.status = TaskStatus.notStarted
@@ -66,4 +69,4 @@ with mock.patch("golem.docker.job.DockerJob.wait",
                 wait_failure), mock.patch('golem.task.benchmarkmanager.'
                                           'BenchmarkManager.run_benchmark',
                                           run_benchmark_error_performance_0):
-    start()
+    main()

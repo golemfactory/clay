@@ -550,7 +550,6 @@ class TestValidateTaskDict(ProviderBase):
             rpc._validate_task_dict(self.client, self.t_dict)
 
 
-@mock.patch('os.path.getsize', return_value=123)
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
 class TestRestartSubtasks(ProviderBase):
     def setUp(self):
@@ -558,7 +557,7 @@ class TestRestartSubtasks(ProviderBase):
         self.task = self.client.task_manager.create_task(self.t_dict)
         with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
-                rpc.enqueue_new_task(self.client, self.task),
+                rpc.enqueue_new_task(self.client, self.task)
             )
 
         self.task_id = self.task.header.task_id
@@ -702,6 +701,41 @@ class TestRestartSubtasks(ProviderBase):
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
         self.assertIsNotNone(error['error_msg'])
         self.assertIsNotNone(error['error_details'])
+
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
+    @mock.patch('golem.client.Client.restart_subtask')
+    @mock.patch('golem.task.rpc.ClientProvider.'
+                '_validate_enough_funds_to_pay_for_task')
+    def test_disable_concent(self, validate_funds_mock, restart_mock, *_):
+        concent_enabled = True
+        ignore_gas_price = fake.pybool()
+        self.t_dict['concent_enabled'] = concent_enabled
+        concent_enabled_task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize', return_value=123):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, concent_enabled_task)
+            )
+        task_id = concent_enabled_task.header.task_id
+        self.provider.task_manager.subtask2task_mapping = \
+            {sub_id: task_id for sub_id in self.subtask_ids}
+
+        self.provider.restart_subtasks(
+            task_id=task_id,
+            subtask_ids=self.subtask_ids,
+            disable_concent=True,
+            ignore_gas_price=ignore_gas_price,
+        )
+
+        validate_funds_mock.assert_called_once_with(
+            concent_enabled_task.subtask_price,
+            len(self.subtask_ids),
+            concent_enabled,
+            ignore_gas_price
+        )
+
+        restart_mock.assert_has_calls(
+            map(lambda subtask_id: call(subtask_id), self.subtask_ids)
+        )
 
 
 class TestRestartFrameSubtasks(ProviderBase):

@@ -108,7 +108,7 @@ main() {
     local names=(
         "pylint main"
         "pylint tests"
-        "pycodestyle"
+        "flake8"
         "mypy"
     )
 

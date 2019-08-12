@@ -715,8 +715,9 @@ class ClientProvider:
                     f'task_id: {task_id}, subtask_id: {sub_id}'
 
         logger.info('Restarting subtasks. task_id=%r', task_id)
-        logger.debug('subtask_ids=%r, ignore_gas_price=%r, disable_concent=%r',
-                     subtask_ids, ignore_gas_price, disable_concent)
+        logger.debug('restart_subtasks. subtask_ids=%r, ignore_gas_price=%r,'
+                     'disable_concent=%r', subtask_ids, ignore_gas_price,
+                     disable_concent)
 
         task_state = self.client.task_manager.tasks_states[task_id]
 
@@ -724,7 +725,7 @@ class ClientProvider:
             self._validate_enough_funds_to_pay_for_task(
                 task.subtask_price,
                 len(subtask_ids),
-                False if disable_concent else task.header.concent_enabled,
+                task.header.concent_enabled,
                 ignore_gas_price
             )
 

@@ -107,3 +107,12 @@ class GolemNodeTest(NodeTestBase):
 
     def test_concent_provider(self):
         self._run_test('golem.concent_provider')
+
+    def test_wasm_vbr_success(self):
+        self._run_test('golem.wasm_vbr_success')
+
+    def test_wasm_vbr_single_failure(self):
+        self._run_test('golem.wasm_vbr_single_failure')
+
+    def test_wasm_vbr_crash_provider_side(self):
+        self._run_test('golem.wasm_vbr_crash_provider_side')

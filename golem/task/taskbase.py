@@ -11,6 +11,7 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
+from golem.marketplace import DEFAULT_MARKET_STRATEGY
 
 logger = logging.getLogger("golem.task")
 
@@ -28,6 +29,7 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
+    MARKET_STRATEGY = DEFAULT_MARKET_STRATEGY
 
     def __init__(self,
                  name: str,
@@ -149,9 +151,10 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float,
-                         node_id: Optional[str] = None,
-                         node_name: Optional[str] = None) -> 'ExtraData':
+    def query_extra_data(
+            self, perf_index: float,
+            node_id: Optional[str] = None,
+            node_name: Optional[str] = None) -> 'ExtraData':
         """ Called when a node asks with given parameters asks for a new
         subtask to compute.
         :param perf_index: performance that given node declares
