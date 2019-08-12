@@ -119,8 +119,10 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             }
             mock_dumps.assert_called_once_with(expected_d, indent=mock.ANY)
 
-        check(self.monitor.on_login, "Login")  # pylint: disable=no-value-for-parameter
-        check(self.monitor.on_logout, "Logout")  # pylint: disable=no-value-for-parameter
+        # pylint: disable=no-value-for-parameter
+        check(self.monitor.on_login, "Login")
+        check(self.monitor.on_logout, "Logout")
+        # pylint: enable=no-value-for-parameter
 
     @mock.patch('requests.post')
     def test_ping_request_success(self, post_mock):
