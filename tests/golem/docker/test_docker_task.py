@@ -105,13 +105,10 @@ class DockerTaskTestCase(
         task.__class__._update_task_preview = lambda self_: ()
         return task
 
-    @patch('golem.core.golem_async.start_asyncio_thread')
-    def _run_task(
-            self,
-            task: Task,
-            *_,
-            timeout: int = 60 * 5,
-        ) -> Optional[DockerTaskThread]:
+    @patch('golem.envs.docker.cpu.deferToThread',
+           lambda f, *args, **kwargs: f(*args, **kwargs))
+    def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
+            -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
         node_id = '0xdeadbeef'
         extra_data = task.query_extra_data(1.0, node_id, 'node_name')
