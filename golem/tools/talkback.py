@@ -1,6 +1,5 @@
 import logging
 from typing import Optional, Dict, cast
-from golem.tools.customloggers import SwitchedSentryHandler
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +11,7 @@ def user() -> Optional[Dict[str, str]]:
 
 
 def update_sentry_user(node_id: str, node_name: Optional[str] = None):
+    from golem.tools.customloggers import SwitchedSentryHandler
     logger_root = logging.getLogger()
     _sentry_user['id'] = node_id
     if node_name is not None:
@@ -26,6 +26,7 @@ def update_sentry_user(node_id: str, node_name: Optional[str] = None):
 
 
 def enable_sentry_logger(value):
+    from golem.tools.customloggers import SwitchedSentryHandler
     talkback_value = bool(value)
     logger_root = logging.getLogger()
     try:
@@ -39,9 +40,6 @@ def enable_sentry_logger(value):
 
             _sentry_user["env"] = env
             _sentry_user["golemVersion"] = golem.__version__
-        else:
-            del _sentry_user['env']
-            del _sentry_user['golemVersion']
 
         sentry_handler = [
             h for h in logger_root.handlers
