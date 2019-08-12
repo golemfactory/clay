@@ -1062,7 +1062,7 @@ class TaskServer(
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result,
-                 last_sending_trial, delay_time, owner, result_path=None,
+                 last_sending_trial, delay_time, owner, stats, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
                  result_size=None, package_path=None):
 
@@ -1079,6 +1079,8 @@ class WaitingTaskResult(object):
         self.package_sha1 = package_sha1
         self.package_path = package_path
         self.result_size = result_size
+
+        self.stats = stats
 
         self.already_sending = False
 # pylint: enable=too-many-arguments, too-many-locals

@@ -13,6 +13,7 @@ from golem.network.transport import msg_queue
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.network.p2p.local_node import LocalNode
+    from golem.task.taskserver import TaskServer, WaitingTaskResult
 
 logger = logging.getLogger(__name__)
 
@@ -102,9 +103,11 @@ def computed_task_reported(
         )
 
 
-def send_report_computed_task(task_server, waiting_task_result) -> None:
-    """ Send task results after finished computations
-    """
+def send_report_computed_task(
+        task_server: 'TaskServer',
+        waiting_task_result: 'WaitingTaskResult') -> None:
+    """ Send task results after finished computations """
+
     task_to_compute = history.get(
         message_class_name='TaskToCompute',
         node_id=waiting_task_result.owner.key,
@@ -143,6 +146,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         multihash=waiting_task_result.result_hash,
         secret=waiting_task_result.result_secret,
         options=client_options.__dict__,
+        stats=waiting_task_result.stats,
     )
 
     signed_report_computed_task = msg_utils.copy_and_sign(
