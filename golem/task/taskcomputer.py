@@ -10,10 +10,7 @@ from threading import Lock
 
 from dataclasses import dataclass
 from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
-from golem_task_api import (
-    ProviderAppClient,
-	constants as task_api_constants
-)
+from golem_task_api import ProviderAppClient, constants as task_api_constants
 from pydispatch import dispatcher
 from twisted.internet import defer
 
