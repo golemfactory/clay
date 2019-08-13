@@ -10,7 +10,7 @@ from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 
 if TYPE_CHECKING:
-    from golem.task.taskbase import Task
+    from golem.task.taskbase import Task  # noqa
 
 ProviderId = str
 SubtaskId = str

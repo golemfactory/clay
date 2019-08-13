@@ -11,7 +11,7 @@ import golem.ranking.manager.database_manager as dbm
 from .rust import order_providers
 
 if TYPE_CHECKING:
-    from golem.task.taskbase import Task
+    from golem.task.taskbase import Task  # noqa
 
 logger = logging.getLogger(__name__)
 

@@ -284,7 +284,7 @@ class WasmTask(CoreTask):
                 subtask_usages.append(
                     (subtask_instance['actor'].uuid,
                      s_id,
-                     self.subtasks_results_metadata[s_id].compute_time)
+                     task_result.stats.cpu_stats.cpu_usage.total_usage)
                 )
             WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
@@ -556,4 +556,4 @@ class WasmTaskTypeInfo(CoreTaskTypeInfo):
         except golem.model.Performance.DoesNotExist:
             perf = 1.0
 
-        self.MARKET_STRATEGY.set_my_usage_benchmark(perf)
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)

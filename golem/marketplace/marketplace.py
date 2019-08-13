@@ -1,10 +1,10 @@
 from abc import ABC, abstractclassmethod
-from typing import Callable, Optional, List, Tuple, TYPE_CHECKING
+from typing import Callable, Optional, List, TYPE_CHECKING
 
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from golem.task.taskbase import Task
+    from golem.task.taskbase import Task  # noqa
 
 
 class ProviderPerformance:

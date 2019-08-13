@@ -1,10 +1,11 @@
 import abc
 import logging
 from enum import Enum
-from typing import Callable, Dict, List, Optional, Type
+from typing import Callable, List, Optional, Type
 
 from dataclasses import dataclass, field
 import golem_messages
+from golem_messages.datastructures import stats as dt_stats
 from golem_messages.datastructures import tasks as dt_tasks
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
@@ -88,7 +89,7 @@ class TaskEventListener(object):
 @dataclass
 class TaskResult:
     files: List[str] = field(default_factory=list)
-    stats: Dict = field(default_factory=dict)
+    stats: dt_stats.ProviderStats = dt_stats.ProviderStats()
 
 
 class Task(abc.ABC):
@@ -105,7 +106,6 @@ class Task(abc.ABC):
                  task_definition: TaskDefinition) -> None:
         self.header = header
         self.task_definition = task_definition
-        self.subtasks_results_metadata: Dict[str, ResultMetadata] = {}
 
         self.listeners = []  # type: List[TaskEventListener]
 

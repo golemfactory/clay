@@ -1,5 +1,6 @@
 import logging
 import typing
+from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -9,6 +10,7 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
@@ -84,12 +86,12 @@ class VerificationMixin:
                 )
 
             task = self.task_manager.tasks[task_id]
-            market_strategy =\
+            market_strategy: Type[RequestorMarketStrategy] =\
                 self.task_manager.get_market_strategy_for_task(task)
-            payment_computer = market_strategy.get_payment_computer(
-                task, subtask_id
-            )
-
+            payment_computer =\
+                market_strategy.get_payment_computer(  # type: ignore
+                    task, subtask_id
+                )
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,

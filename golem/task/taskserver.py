@@ -65,7 +65,7 @@ from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
-from golem.task.taskbase import Task, ResultMetadata
+from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
@@ -1088,14 +1088,6 @@ class TaskServer(
     @staticmethod
     def __get_task_manager_root(datadir):
         return os.path.join(datadir, "ComputerRes")
-
-    def add_subtask_metadata(
-            self, subtask_id: str, result_metadata: ResultMetadata):
-        """Method mocking subtask usage reporting
-        """
-        task_id: str = self.task_manager.subtask2task_mapping[subtask_id]
-        task: Task = self.task_manager.tasks[task_id]
-        task.subtasks_results_metadata[subtask_id] = result_metadata
 
 
 @dataclass
