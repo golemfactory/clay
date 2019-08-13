@@ -689,12 +689,12 @@ class RequestedTask(BaseModel):
     start_time = UTCDateTimeField(null=True)
 
     max_price_per_hour = IntegerField(null=False)
-    estimated_fee = IntegerField(null=True)
 
     max_subtasks = IntegerField(null=False)
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
-    output_file = CharField(null=False)
+    output_directory = CharField(null=False)
+    resources = CharField(null=True)
 
     @property
     def deadline(self) -> Optional[datetime.datetime]:
@@ -703,6 +703,14 @@ class RequestedTask(BaseModel):
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
+
+    def estimated_fee(self) -> Optional[float]:
+
+        return self.max_price_per_hour * (
+            self.subtask_timeout
+            * self.max_subtasks
+            / 60 / 1000  # subtask timeout is miliseconds, convert to hour
+        ),
 
 
 class ComputingNode(BaseModel):

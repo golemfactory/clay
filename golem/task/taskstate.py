@@ -154,6 +154,8 @@ class SubtaskState(datastructures.Container):
 class TaskStatus(Enum):
     creating = "Creating"
     errorCreating = "Error creating"
+    testing = "Testing"
+    errorTesting = "Error testing"
     notStarted = "Not started"
     creatingDeposit = "Creating the deposit"
     sending = "Sending"

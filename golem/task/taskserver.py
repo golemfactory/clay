@@ -155,7 +155,11 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
-        self.requested_task_manager = RequestedTaskManager()
+        self.requested_task_manager = RequestedTaskManager(
+            env_manager=new_env_manager,
+            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            public_key=self.keys_auth.public_key,
+        )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
             config_desc.hyperdrive_rpc_port,
@@ -267,8 +271,13 @@ class TaskServer(
 
     @inlineCallbacks
     def pause(self):
+        logger.debug('pause()')
         super().pause()
+        logger.debug('pause() - after super')
         yield CoreTask.VERIFICATION_QUEUE.pause()
+        logger.debug('pause() - after CoreTask')
+        yield self.requested_task_manager.quit()
+        logger.debug('pause() - after requested_task_manager')
 
     def resume(self):
         super().resume()
@@ -850,9 +859,6 @@ class TaskServer(
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
-
-    def quit(self):
-        self.task_computer.quit()
 
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(

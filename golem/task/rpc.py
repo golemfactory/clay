@@ -1,5 +1,6 @@
 """Task related module with procedures exposed by RPC"""
 
+import asyncio
 import copy
 import functools
 import logging
@@ -19,7 +20,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
 from golem.core import simpleserializer
-from golem.core.deferred import DeferredSeq
+from golem.core.deferred import DeferredSeq, deferred_from_future
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
@@ -517,8 +518,21 @@ class ClientProvider:
         return task_id, None
 
     @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(self, task_params: dict, golem_params: dict):
+    def create_task_api_task(self, golem_params: dict, task_params: dict=None):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        if task_params is None:
+            if 'options' in golem_params:
+                task_params = golem_params['options']
+                del golem_params['options']
+            else:
+                task_params = {}
+
+        if 'app_id' not in golem_params:
+            logger.warning('Please use app_id when making a task.')
+            if 'type' not in golem_params:
+                raise RuntimeError("No type to fall back on")
+            golem_params['app_id'] = golem_params['type']
 
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
@@ -554,12 +568,22 @@ class ClientProvider:
         @defer.inlineCallbacks
         def init_task():
             try:
-                self.requested_task_manager.init_task(task_id)
-            except Exception:
+                logger.debug('init_task()')
+                future = asyncio.ensure_future(
+                    self.requested_task_manager.init_task(task_id)
+                )
+                logger.debug('init_task() - started')
+                yield deferred_from_future(future)
+                logger.debug('init_task() - ended')
+
+            except Exception as e:
+                logger.error('init_task() - exception=%r', e, exc_info=True)
                 self.client.funds_locker.remove_task(task_id)
                 raise
             else:
+                logger.debug('start_task()')
                 self.requested_task_manager.start_task(task_id)
+                logger.debug('start_task() - ended')
             # Dummy yield to make this function work with inlineCallbacks.
             # To be removed when there are other yeilds in this function.
             yield defer.Deferred()

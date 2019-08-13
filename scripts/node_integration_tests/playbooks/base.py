@@ -50,6 +50,7 @@ def catch_and_print_exceptions(f):
 class NodeTestPlaybook:
     INTERVAL = 1
     RECONNECT_COUNTDOWN_INITIAL = 10
+    RPC_TASK_CREATE = 'comp.task.create'
 
     def __init__(self, config: 'TestConfigBase') -> None:
         self.config = config
@@ -98,7 +99,7 @@ class NodeTestPlaybook:
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
         self.has_requested_eth: bool = False
         self.retry_counter = 0
-        self.retry_limit = 128
+        self.retry_limit = 20
 
         self.start_nodes()
         self.started = True
@@ -297,12 +298,17 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            return self.call(node_id, 'comp.task.create', self.config.task_dict,
-                             on_success=on_success)
+            return self.call(
+                node_id,
+                self.RPC_TASK_CREATE,
+                self.config.task_dict,
+                on_success=on_success
+            )
 
     def step_get_task_id(self, node_id: NodeId = NodeId.requestor):
 
         def on_success(result):
+            print('RESULT:', result)
             tasks = set(map(lambda r: r['id'], result))
             new_tasks = tasks - self.known_tasks
             if len(new_tasks) != 1:

@@ -34,14 +34,14 @@ def migrate(migrator, database, fake=False, **kwargs):
         subtask_timeout = pw.IntegerField()
         start_time = pw.UTCDateTimeField(null=True)
         max_price_per_hour = pw.IntegerField()
-        estimated_fee = pw.IntegerField(null=True)
         max_subtasks = pw.IntegerField()
         concent_enabled = pw.BooleanField(default=False)
+        prerequisites = pw.JsonField(default='[]')
         mask = pw.BlobField(
             default=b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                     b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                     b'\x00\x00\x00\x00')
-        output_file = pw.CharField(max_length=255)
+        output_directory = pw.CharField(max_length=255)
 
         class Meta:
             db_table = "requestedtask"
