@@ -54,6 +54,9 @@ class EnvironmentTaskApiService(TaskApiService):
         return self._runtime.get_port_mapping(port)
 
     def running(self) -> bool:
+        """
+        Checks if the service is 'closable' thus needs to be shutdown on errors
+        """
         return self._runtime is not None and self._runtime.status() in [
             RuntimeStatus.CREATED,
             RuntimeStatus.PREPARING,

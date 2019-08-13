@@ -369,9 +369,10 @@ class NewTaskComputer:
             ProviderTimer.finish()
             self._computation = None
             self._assigned_task = None
-            if not success:
-                yield app_client.shutdown()
             self._task_finished_callback()
+            if not success:
+                # Cleanup can throw errors, do this last
+                yield app_client.shutdown()
 
     def _get_task_dir(self) -> Path:
         assert self._assigned_task is not None
