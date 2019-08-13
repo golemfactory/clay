@@ -21,7 +21,7 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.envs import EnvId, Runtime, EnvStatus
+from golem.envs import EnvId, EnvStatus
 from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
@@ -238,11 +238,8 @@ class NewTaskComputer:
         self._work_dir = work_dir
         self._task_finished_callback = task_finished_callback
         self._stats_keeper = stats_keeper or IntStatsKeeper(CompStats)
-        self._app_client = ProviderAppClient()
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
-        # FIXME: Remove when ProviderAppClient implements shutdown
-        self._runtime: Optional[Runtime] = None
 
     @defer.inlineCallbacks
     def prepare(self) -> defer.Deferred:
@@ -301,24 +298,25 @@ class NewTaskComputer:
         assert assigned_task is not None
 
         task_api_service = self._get_task_api_service()
-        compute_future = asyncio.ensure_future(self._app_client.compute(
-            service=task_api_service,
+        app_client = ProviderAppClient(service=task_api_service)
+        compute_future = asyncio.ensure_future(app_client.compute(
             task_id=assigned_task.task_id,
             subtask_id=assigned_task.subtask_id,
             subtask_params=assigned_task.subtask_params
         ))
 
         self._computation = deferred_from_future(compute_future)
-        # FIXME: Remove when ProviderAppClient implements shutdown
-        self._runtime = task_api_service._runtime  # noqa pylint: disable=protected-access
 
         from twisted.internet import reactor
         timeout = int(deadline_to_timeout(assigned_task.deadline))
         self._computation.addTimeout(timeout, reactor)
-        return self._wait_until_computation_ends()
+        return self._wait_until_computation_ends(app_client)
 
     @defer.inlineCallbacks
-    def _wait_until_computation_ends(self) -> defer.Deferred:
+    def _wait_until_computation_ends(
+            self,
+            app_client: ProviderAppClient
+    ) -> defer.Deferred:
         assigned_task = self._assigned_task
         assert assigned_task is not None
         task_dir = self._get_task_dir()
@@ -371,8 +369,10 @@ class NewTaskComputer:
             ProviderTimer.finish()
             self._computation = None
             self._assigned_task = None
-            self._runtime = None
             self._task_finished_callback()
+            if not success:
+                # Cleanup can throw errors, do this last
+                yield app_client.shutdown()
 
     def _get_task_dir(self) -> Path:
         assert self._assigned_task is not None
@@ -401,9 +401,6 @@ class NewTaskComputer:
         assert self.has_assigned_task()
         assert self._computation is not None
         self._computation.cancel()
-        # FIXME: Remove when ProviderAppClient implements shutdown
-        assert self._runtime is not None
-        self._runtime.stop()
 
     def get_current_computing_env(self) -> Optional[EnvId]:
         if self._assigned_task is None:

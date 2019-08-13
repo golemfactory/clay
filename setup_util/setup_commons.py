@@ -215,7 +215,7 @@ def parse_requirements(my_path):
         if line.startswith('-') or line.startswith('#'):
             continue
 
-        m = re.match('.+#egg=(?P<package>.+)$', line)
+        m = re.match('.+#egg=(?P<package>.+?)(?:&.+)?$', line)
         if m:
             requirements.append(m.group('package'))
             dependency_links.append(line)

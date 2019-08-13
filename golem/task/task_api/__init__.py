@@ -5,7 +5,13 @@ from typing import Optional, Tuple, Type
 from golem_task_api import TaskApiService
 
 from golem.core.deferred import sync_wait
-from golem.envs import Environment, Prerequisites, Runtime, RuntimePayload
+from golem.envs import (
+    Environment,
+    Prerequisites,
+    Runtime,
+    RuntimePayload,
+    RuntimeStatus,
+)
 
 
 class TaskApiPayloadBuilder(abc.ABC):
@@ -46,6 +52,18 @@ class EnvironmentTaskApiService(TaskApiService):
         sync_wait(self._runtime.prepare())
         sync_wait(self._runtime.start())
         return self._runtime.get_port_mapping(port)
+
+    def running(self) -> bool:
+        """
+        Checks if the service is 'closable' thus needs to be shutdown on errors
+        """
+        return self._runtime is not None and self._runtime.status() in [
+            RuntimeStatus.CREATED,
+            RuntimeStatus.PREPARING,
+            RuntimeStatus.PREPARED,
+            RuntimeStatus.STARTING,
+            RuntimeStatus.RUNNING,
+        ]
 
     async def wait_until_shutdown_complete(self) -> None:
         assert self._runtime is not None
