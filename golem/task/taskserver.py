@@ -1080,7 +1080,7 @@ class WaitingTaskResult:
     result_secret: Optional[str] = None
     result_sha1: Optional[str] = None
     result_size: int = 0
-    stats: Dict = field(default_factory=lambda: {})
+    stats: Dict = field(default_factory=dict)
 
 
 @dataclass
