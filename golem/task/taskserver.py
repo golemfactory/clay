@@ -82,7 +82,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem_messages.datastructures import p2p as dt_p2p
+    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -1069,18 +1069,18 @@ class WaitingTaskResult:
     last_sending_trial: int
     owner: 'dt_p2p.Node'
     result: Tuple
-    stats: Dict
     subtask_id: str
     task_id: str
 
     already_sending: bool = False
-    package_path: str = None
-    package_sha1: str = None
-    result_hash: str = None
-    result_path: str = None
-    result_secret: str = None
-    result_sha1: str = None
-    result_size: int = None
+    package_path: Optional[str] = None
+    package_sha1: Optional[str] = None
+    result_hash: Optional[str] = None
+    result_path: Optional[str] = None
+    result_secret: Optional[str] = None
+    result_sha1: Optional[str] = None
+    result_size: int = 0
+    stats: Dict = field(default_factory=lambda: {})
 
 
 @dataclass
