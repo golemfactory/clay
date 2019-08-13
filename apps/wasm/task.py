@@ -286,7 +286,7 @@ class WasmTask(CoreTask):
                      s_id,
                      self.subtasks_results_metadata[s_id].compute_time)
                 )
-            WasmTaskTypeInfo.MARKET_STRATEGY.report_subtask_usages(
+            WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
                 subtask_usages
             )
@@ -480,6 +480,8 @@ class WasmTask(CoreTask):
 
     @property
     def subtask_price(self) -> int:
+        """WASM subtask_price is calculated based on user provided budget.
+        """
         sub_price: int = self.task_definition.budget // self.get_total_tasks()
         logger.info("WASM subtask price: %d", sub_price)
         return sub_price
@@ -536,7 +538,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
         RequestorWasmMarketStrategy
 
     def __init__(self) -> None:
