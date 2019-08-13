@@ -529,7 +529,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.add_known_peer(
             self.node_info,
             self.address,
-            self.port,
+            self.listen_port,
             self.metadata
         )
         self.p2p_service.set_suggested_address(
