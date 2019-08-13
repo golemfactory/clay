@@ -113,7 +113,7 @@ def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
                             stdin=source.stdout)
     source.stdout.close()
     stdout, _ = sink.communicate()
-    return stdout.strip()
+    return stdout.strip().decode('utf-8')
 
 
 def get_timestamp_utc():

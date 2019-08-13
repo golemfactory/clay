@@ -3,7 +3,6 @@ import logging
 import subprocess
 
 from typing import List
-from xml.etree import ElementTree
 
 from golem.core.common import is_linux, unix_pipe
 
@@ -48,14 +47,6 @@ def _is_supported(*_) -> bool:
         raise RuntimeError('nouveau driver is not compatible with '
                            'nvidia-docker')
 
-    mod_nvidia = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia'])
-    if not mod_nvidia:
-        raise RuntimeError('nvidia kernel module not loaded')
-
-    dev_nvidia_ctl = unix_pipe(['ls', '/dev'], ['grep', '-i', 'nvidiactl'])
-    if not dev_nvidia_ctl:
-        raise RuntimeError('nvidiactl device not found')
-
     # We will try to use the Unified Memory kernel module to create the devices.
     # Unified Memory is not available on pre-Pascal architectures.
     if not _modprobe(unified_memory=get_unified_memory_enabled()):
@@ -63,6 +54,10 @@ def _is_supported(*_) -> bool:
         logger.debug('Unified memory is not supported')
 
     _assert_driver_version()
+
+    dev_nvidia_ctl = unix_pipe(['ls', '/dev'], ['grep', '-i', 'nvidiactl'])
+    if not dev_nvidia_ctl:
+        raise RuntimeError('nvidiactl device not found')
 
     mod_nvidia_uvm = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
     if not mod_nvidia_uvm:
@@ -93,17 +88,10 @@ def _modprobe(unified_memory: bool) -> bool:
 def _assert_driver_version() -> None:
 
     try:
-        xml_output = subprocess.check_output(['nvidia-smi', '-q', '-x'])
-    except subprocess.CalledProcessError as exc:
+        output = unix_pipe(['modinfo', 'nvidia'], ['grep', '^version'])
+        version = float(output.split(' ')[-1])
+    except (IndexError, TypeError, subprocess.CalledProcessError) as exc:
         raise RuntimeError(f'Unable to read NVIDIA driver version: {str(exc)}')
-
-    try:
-        xml_tree = ElementTree.fromstring(xml_output)
-        version_entry = xml_tree.find('driver_version')
-        version_text = getattr(version_entry, 'text', None)
-        version = float(version_text)
-    except (KeyError, ValueError, TypeError, AttributeError) as exc:
-        raise RuntimeError(f'Unable to parse nvidia-smi output: {str(exc)}')
 
     if version < MIN_DRIVER_VERSION:
         raise RuntimeError(f'The installed NVIDIA driver is too old; '
