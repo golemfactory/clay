@@ -1,7 +1,8 @@
+import json
 import logging
 from pathlib import Path
 from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
-    List, NamedTuple
+    List
 
 import requests
 
@@ -224,12 +225,13 @@ class DockerTaskThread(TaskThread):
         return estm_mem
 
     def _task_computed(self, estm_mem: Optional[int]) -> None:
-        out_files = [
-            str(path) for path in self.dir_mapping.output.glob("*")
-        ]
+        out_files = [str(path) for path in self.dir_mapping.output.glob("*")]
+
         self.result = {
             "data": out_files,
+            "stats": self.get_stats(),
         }
+
         if estm_mem is not None:
             self.result = (self.result, estm_mem)
         self._deferred.callback(self)
@@ -237,6 +239,20 @@ class DockerTaskThread(TaskThread):
     def get_progress(self):
         # TODO: make the container update some status file? Issue #56
         return 0.0
+
+    def get_stats(self) -> Dict:
+        stats_file: Path = self.dir_mapping.stats / DockerJob.STATS_FILE
+
+        if not stats_file.exists():
+            return {}
+
+        try:
+            with stats_file.open() as f:
+                return json.load(f)
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f'Failed to parse stats file: {stats_file}.', exc_info=e)
+            return {}
 
     def end_comp(self):
         try:

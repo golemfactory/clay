@@ -6,6 +6,7 @@ import os
 import shutil
 import time
 import weakref
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -15,6 +16,8 @@ from typing import (
     Optional,
     Union,
     Set,
+    Tuple,
+    TYPE_CHECKING,
 )
 
 from golem_messages import exceptions as msg_exceptions
@@ -78,6 +81,9 @@ from .taskcomputer import TaskComputerAdapter
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
+
+if TYPE_CHECKING:
+    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
 
@@ -1083,36 +1089,29 @@ class TaskServer(
         return os.path.join(datadir, "ComputerRes")
 
 
-# TODO: https://github.com/golemfactory/golem/issues/2633
-#       and remove linter switch offs
-# pylint: disable=too-many-arguments, too-many-locals
-class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result,
-                 last_sending_trial, delay_time, owner, result_path=None,
-                 result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None, package_path=None):
+@dataclass
+class WaitingTaskResult:
+    delay_time: float
+    last_sending_trial: int
+    owner: 'dt_p2p.Node'
+    result: Tuple
+    subtask_id: str
+    task_id: str
 
-        self.task_id = task_id
-        self.subtask_id = subtask_id
-        self.last_sending_trial = last_sending_trial
-        self.delay_time = delay_time
-        self.owner = owner
-
-        self.result = result
-        self.result_path = result_path
-        self.result_hash = result_hash
-        self.result_secret = result_secret
-        self.package_sha1 = package_sha1
-        self.package_path = package_path
-        self.result_size = result_size
-
-        self.already_sending = False
-# pylint: enable=too-many-arguments, too-many-locals
+    already_sending: bool = False
+    package_path: Optional[str] = None
+    package_sha1: Optional[str] = None
+    result_hash: Optional[str] = None
+    result_path: Optional[str] = None
+    result_secret: Optional[str] = None
+    result_sha1: Optional[str] = None
+    result_size: int = 0
+    stats: Dict = field(default_factory=dict)
 
 
-class WaitingTaskFailure(object):
-    def __init__(self, task_id, subtask_id, err_msg, owner):
-        self.task_id = task_id
-        self.subtask_id = subtask_id
-        self.owner = owner
-        self.err_msg = err_msg
+@dataclass
+class WaitingTaskFailure:
+    err_msg: str
+    owner: 'dt_p2p.Node'
+    subtask_id: str
+    task_id: str
