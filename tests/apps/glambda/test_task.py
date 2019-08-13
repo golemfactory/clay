@@ -14,6 +14,7 @@ from apps.glambda.task.glambdatask import (
     GLambdaBenchmarkTask
 )
 from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
@@ -154,7 +155,8 @@ class GLambdaTaskTestCase(TempDirFixture):
         self.task._copy_results = MagicMock()
 
         self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
-        self.task.computation_finished('some_id', results, verif_cb)
+        self.task.computation_finished(
+            'some_id', TaskResult(files=results), verif_cb)
 
         self.assertEqual(self.task.num_tasks_received, 1)
         self.assertEqual(self.task.subtasks_given['some_id']['status'],
@@ -178,7 +180,8 @@ class GLambdaTaskTestCase(TempDirFixture):
         self.task._move_subtask_results_to_task_output_dir = MagicMock()
 
         self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
-        self.task.computation_finished('some_id', results, verif_cb)
+        self.task.computation_finished(
+            'some_id', TaskResult(filles=results), verif_cb)
 
         self.assertEqual(self.task.SUBTASK_CALLBACKS['some_id'],
                          verif_cb)
@@ -207,7 +210,8 @@ class GLambdaTaskTestCase(TempDirFixture):
         self.task.computation_failed = MagicMock()
 
         self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
-        self.task.computation_finished('some_id', results, verif_cb)
+        self.task.computation_finished(
+            'some_id', TaskResult(files=results), verif_cb)
 
         self.assertEqual(self.task.SUBTASK_CALLBACKS['some_id'], verif_cb)
         self.assertEqual(self.task.results['some_id'],

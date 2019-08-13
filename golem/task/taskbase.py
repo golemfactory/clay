@@ -1,11 +1,9 @@
 import abc
 import logging
 from enum import Enum
-from typing import (
-    List,
-    Optional,
-    Type)
+from typing import Callable, Dict, List, Optional, Type
 
+from dataclasses import dataclass
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
 
@@ -85,6 +83,12 @@ class TaskEventListener(object):
 
     def notify_update_task(self, task_id):
         pass
+
+
+@dataclass
+class TaskResult:
+    files: List[str] = []
+    stats: Dict = {}
 
 
 class Task(abc.ABC):
@@ -182,8 +186,8 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
@@ -327,8 +331,8 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def copy_subtask_results(
-            self, subtask_id: int, old_subtask_info: dict, results: List[str]) \
-            -> None:
+            self, subtask_id: str, old_subtask_info: dict,
+            results: TaskResult) -> None:
         """
         Copy results of a single subtask from another task
         """

@@ -5,6 +5,7 @@ import os
 import time
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Optional,
@@ -25,6 +26,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
+from golem.task.taskbase import TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
@@ -198,8 +200,8 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -363,7 +365,9 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, sort=True):
+    def interpret_task_results(
+            self, subtask_id: str, task_results: TaskResult,
+            sort: bool = True) -> None:
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
@@ -374,7 +378,7 @@ class CoreTask(Task):
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
         self.results[subtask_id] = self.filter_task_results(
-            task_results, subtask_id)
+            task_results.files, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
@@ -382,8 +386,9 @@ class CoreTask(Task):
     def result_incoming(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
-                            err_log_ext="err.log"):
+    def filter_task_results(
+            self, task_results: List[str], subtask_id: str,
+            log_ext: str = ".log", err_log_ext: str = "err.log") -> List[str]:
         """ From a list of files received in task_results, return only files
         that don't have extension <log_ext> or <err_log_ext>. File with log_ext
         is saved as stdout for this subtask (only one file is currently
@@ -396,7 +401,7 @@ class CoreTask(Task):
         :return:
         """
 
-        filtered_task_results = []
+        filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
                 self.stderr[subtask_id] = tr
@@ -493,7 +498,9 @@ class CoreTask(Task):
 
         return verdict
 
-    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+    def copy_subtask_results(
+            self, subtask_id: str, old_subtask_info: dict,
+            results: TaskResult) -> None:
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']

@@ -2,6 +2,7 @@ from copy import deepcopy
 from pathlib import Path, PurePath
 from typing import (
     Any,
+    Callable,
     Dict,
     Generator,
     Iterator,
@@ -24,7 +25,7 @@ from apps.core.task.coretask import (
 )
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
@@ -252,17 +253,18 @@ class WasmTask(CoreTask):
                                      subtask.params, subtask.redundancy_factor)
             self.subtasks.append(new_subtask)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None) -> None:
+    def computation_finished(
+            self, subtask_id: str, task_result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
 
-        task_result = self.interpret_task_results(subtask_id, task_result)
+        self.interpret_task_results(subtask_id, task_result)
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, task_result)
+        subtask.add_result(subtask_id, self.results.get(subtask_id))
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
         WasmTask.CALLBACKS[subtask_id] = verification_finished
 
@@ -303,9 +305,11 @@ class WasmTask(CoreTask):
             subtask_id=self.create_subtask_id(), extra_data=next_extra_data
         )
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
-                            err_log_ext="err.log"):
-        filtered_task_results = []
+    def filter_task_results(
+            self, task_results: List[str], subtask_id: str,
+            log_ext: str = ".log",
+            err_log_ext: str = "err.log") -> List[str]:
+        filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
                 self.stderr[subtask_id] = tr
@@ -316,7 +320,9 @@ class WasmTask(CoreTask):
 
         return filtered_task_results
 
-    def interpret_task_results(self, subtask_id, task_results, sort=True):
+    def interpret_task_results(
+            self, subtask_id: str, task_results: TaskResult,
+            sort: bool = True) -> None:
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
@@ -326,11 +332,10 @@ class WasmTask(CoreTask):
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        results = self.filter_task_results(task_results, subtask_id)
+        self.results[subtask_id] = self.filter_task_results(
+            task_results.files, subtask_id)
         if sort:
-            results.sort()
-
-        return results
+            self.results[subtask_id].sort()
 
     def should_accept_client(self,
                              node_id: str,

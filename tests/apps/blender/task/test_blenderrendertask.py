@@ -33,7 +33,7 @@ from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import AcceptClientVerdict
+from golem.task.taskbase import AcceptClientVerdict, TaskResult
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -127,7 +127,8 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [])
+        self.bt.computation_finished(
+            extra_data1.ctd['subtask_id'], TaskResult())
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
             SubtaskStatus.failure
@@ -160,7 +161,7 @@ class TestBlenderFrameTask(TempDirFixture):
                         side_effect=verification_finished1):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
-                [file1],
+                TaskResult(files=[file1]),
                 lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -190,7 +191,7 @@ class TestBlenderFrameTask(TempDirFixture):
                         side_effect=verification_finished2):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
-                [file2],
+                TaskResult(files=[file2]),
                 lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished

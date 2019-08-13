@@ -9,6 +9,7 @@ import uuid
 from functools import partial
 from pathlib import Path
 from typing import (
+    Callable,
     Dict,
     FrozenSet,
     Iterable,
@@ -43,7 +44,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
-    TaskPurpose, AcceptClientVerdict
+    TaskPurpose, AcceptClientVerdict, TaskResult
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -681,7 +682,7 @@ class TaskManager(TaskEventListener):
 
         def after_results_extracted(results):
             new_task.copy_subtask_results(
-                new_subtask_id, old_subtask, results)
+                new_subtask_id, old_subtask, TaskResult(files=results))
 
             self.__set_subtask_state_finished(new_subtask_id)
 
@@ -733,13 +734,15 @@ class TaskManager(TaskEventListener):
         return subtask_state.node_id
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result,
-                               verification_finished):
+    def computed_task_received(
+            self, subtask_id: str, result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         logger.debug("Computed task received. subtask_id=%s", subtask_id)
-        task_id = self.subtask2task_mapping[subtask_id]
+        task_id: str = self.subtask2task_mapping[subtask_id]
 
-        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
-        subtask_status = subtask_state.status
+        subtask_state: SubtaskState =\
+            self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_status: SubtaskStatus = subtask_state.status
 
         if not subtask_status.is_computed():
             logger.warning(
