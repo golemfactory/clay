@@ -536,7 +536,8 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.request_video_codec_change(
                 self.VIDEO_FILES[0]['video_codec'])
             operation.request_container_change(Container.c_OGG)
-            operation.request_resolution_change(self.VIDEO_FILES[0]["resolution"])
+            operation.request_resolution_change(
+                self.VIDEO_FILES[0]["resolution"])
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
