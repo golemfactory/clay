@@ -82,7 +82,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint:disable=unused-import
+    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
 
