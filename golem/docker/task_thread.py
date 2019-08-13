@@ -251,7 +251,7 @@ class DockerTaskThread(TaskThread):
                 return json.load(f)
         except json.JSONDecodeError as e:
             logger.warning(
-                    f'Failed to parse stats file: {stats_file}.', exc_info=e)
+                f'Failed to parse stats file: {stats_file}.', exc_info=e)
             return {}
 
     def end_comp(self):
