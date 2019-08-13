@@ -14,7 +14,6 @@ coverage:
         target: auto
     changes: false
   ignore:
-    - "apps/rendering/resources/taskcollector/*"
     - "golem/database/schemas"
     - "golem/envs/docker/benchmark/minilight/*"
     - "golem/testutils.py"
