@@ -160,3 +160,10 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         # Then
         self.env.run_benchmark.assert_called_once()
         self.assertIsNone(result)
+
+    def test_cached_performance(self):
+        self.assertIsNone(self.manager.get_cached_performance(self.env_id))
+
+        perf = 123.4
+        Performance.update_or_create(self.env_id, perf)
+        self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
