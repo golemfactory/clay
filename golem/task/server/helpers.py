@@ -51,13 +51,6 @@ def computed_task_reported(
             'ForceGetTaskResult',
         )
 
-        task_server.add_subtask_metadata(
-            report_computed_task.subtask_id,
-            ResultMetadata(
-                datetime.datetime.now().timestamp() -
-                report_computed_task.task_to_compute.timestamp
-            )
-        )
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,

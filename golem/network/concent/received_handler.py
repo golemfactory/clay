@@ -511,14 +511,6 @@ class TaskServerMessageHandler():
             logger.debug("Task result extracted %r",
                          extracted_package.__dict__)
 
-            self.task_server.add_subtask_metadata(
-                rct.subtask_id,
-                ResultMetadata(
-                    datetime.datetime.now().timestamp() -
-                    rct.task_to_compute.timestamp
-                )
-            )
-
             # instantiate session and run the tasksession's reaction to
             # received results
             self.task_server.verify_results(
