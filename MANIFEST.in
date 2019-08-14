@@ -3,4 +3,4 @@ include requirements.txt
 include README.md
 include LICENSE.txt
 include loggingconfig.py
-recursive-include apps *.blend
+recursive-include apps *.blend *.txt
