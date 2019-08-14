@@ -1,7 +1,7 @@
 import os
 import logging
 
-from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container, list_matching_resolutions, \
     list_supported_frame_rates
 from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
@@ -12,7 +12,8 @@ from parameterized import parameterized
 import pytest
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
-    ffmpegException, VideoCodecNotSupportedByContainer
+    ffmpegException, VideoCodecNotSupportedByContainer, \
+    AudioCodecNotSupportedByContainer
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
@@ -616,13 +617,30 @@ class TestFfmpegIntegration(TestTaskIntegration):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_unsupported_audio_codec_should_raise_proper_exception(self):
-        with self.assertRaises(UnsupportedAudioCodec):
+        with self.assertRaises(AudioCodecNotSupportedByContainer):
             operation = SimulatedTranscodingOperation(
                 task_executor=self,
                 experiment_name=None,
                 resource_dir=self.RESOURCES,
                 tmp_dir=self.tempdir)
             operation.request_video_codec_change(VideoCodec.H_264)
+            operation.request_audio_codec_change(AudioCodec.AC3)
             operation.request_container_change(Container.c_MP4)
             operation.request_resolution_change((180, 98))
             operation.run("big_buck_bunny_stereo.mp4")
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_task_invalid_audio_params(self):
+        resource_stream = os.path.join(self.RESOURCES,
+                                       'big_buck_bunny_stereo.mp4')
+        result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            audio_options={
+                'codec': 'abcd',
+            })
+        with self.assertRaises(UnsupportedAudioCodec):
+            self.execute_task(task_def)
