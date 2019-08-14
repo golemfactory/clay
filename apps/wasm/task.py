@@ -11,7 +11,6 @@ from typing import (
     Optional,
     Tuple,
     Type,
-    Callable,
     Set
 )
 import logging
