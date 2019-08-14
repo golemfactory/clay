@@ -1,6 +1,7 @@
 import logging
 import time
 from collections import defaultdict
+from dataclasses import dataclass, replace
 from threading import Lock
 from typing import NamedTuple, Optional
 
@@ -222,43 +223,39 @@ class TaskInfo:
         return cnt
 
 
-TaskStats = NamedTuple("TaskStats", [("finished", bool),
-                                     ("total_time", float),
-                                     ("task_failed", bool),
-                                     ("had_failures", bool),
-                                     ("work_offers_cnt", int),
-                                     ("requested_subtasks_cnt", int),
-                                     ("collected_results_cnt", int),
-                                     ("verified_results_cnt", int),
-                                     ("timed_out_subtasks_cnt", int),
-                                     ("not_downloaded_subtasks_cnt", int),
-                                     ("failed_subtasks_cnt", int)])
-TaskStats.__doc__ = """Information about a single task requested by this node
+@dataclass
+class TaskStats:
+    """ Information about a single task requested by this node. Names of fields
+    are mostly self-explanatory. ``not_downloaded_subtasks_cnt`` is the number
+    of tasks that were announced as done by the computing node but were not
+    received. """
+    finished: bool = False
+    total_time: float = 0.0
+    task_failed: bool = False
+    had_failures: bool = False
+    work_offers_cnt: int = 0
+    requested_subtasks_cnt: int = 0
+    collected_results_cnt: int = 0
+    verified_results_cnt: int = 0
+    timed_out_subtasks_cnt: int = 0
+    not_downloaded_subtasks_cnt: int = 0
+    failed_subtasks_cnt: int = 0
 
-Names of fields are mostly self-explanatory.
-``not_downloaded_subtasks_cnt`` is the number of tasks that were
-announced as done by the computing node but were not received.
-"""
 
-EMPTY_TASK_STATS = TaskStats(False, 0.0, False, False, 0, 0, 0, 0, 0, 0, 0)
-
-CurrentStats = NamedTuple("CurrentStats", [
-    ("tasks_cnt", int),
-    ("finished_task_cnt", int),
-    ("requested_subtasks_cnt", int),
-    ("collected_results_cnt", int),
-    ("verified_results_cnt", int),
-    ("timed_out_subtasks_cnt", int),
-    ("not_downloadable_subtasks_cnt", int),
-    ("failed_subtasks_cnt", int),
-    ("work_offers_cnt", int)])
-CurrentStats.__doc__ = """Statistics about a set of tasks
-
-Intended to be used as a summary of information from a set of
-`TaskStats`, this is periodically sent to the monitor.
-"""
-
-EMPTY_CURRENT_STATS = CurrentStats(0, 0, 0, 0, 0, 0, 0, 0, 0)
+@dataclass
+class CurrentStats:
+    """ Statistics about a set of tasks intended to be used as a summary of
+    information from a set of `TaskStats`, this is periodically sent to the
+    monitor. """
+    tasks_cnt: int = 0
+    finished_task_cnt: int = 0
+    requested_subtasks_cnt: int = 0
+    collected_results_cnt: int = 0
+    verified_results_cnt: int = 0
+    timed_out_subtasks_cnt: int = 0
+    not_downloadable_subtasks_cnt: int = 0
+    failed_subtasks_cnt: int = 0
+    work_offers_cnt: int = 0
 
 
 def update_current_stats_with_task(
@@ -277,7 +274,7 @@ def update_current_stats_with_task(
     """
     is_new_task = old is None
     if is_new_task:
-        old = EMPTY_TASK_STATS
+        old = TaskStats()
 
     return CurrentStats(
         tasks_cnt=current.tasks_cnt + (1 if is_new_task else 0),
@@ -309,29 +306,22 @@ def update_current_stats_with_task(
     )
 
 
-FinishedTasksSummary = NamedTuple("FinishedTaskSummary", [
-    ("tasks_cnt", int),
-    ("total_time", float)])
+@dataclass
+class FinishedTasksSummary:
+    tasks_cnt: int = 0
+    total_time: float = 0.0
 
-EMPTY_FINISHED_SUMMARY = FinishedTasksSummary(0, 0.0)
 
-FinishedTasksStats = NamedTuple("FinishedTasksStats", [
-    ("finished_ok", FinishedTasksSummary),
-    ("finished_with_failures", FinishedTasksSummary),
-    ("failed", FinishedTasksSummary)])
-FinishedTasksSummary.__doc__ = """Statistics about finished tasks
-
-Divided into groups depending on the level of success: `finished_ok`
-are tasks that were verified ok and had no problems along the way,
-`finished_with_failures` are tasks that are verified ok in the end but
-there were problems like timeouts or subtasks with errors, and `failed`
-are tasks that did not succeed.
-"""
-
-EMPTY_FINISHED_STATS = FinishedTasksStats(
-    EMPTY_FINISHED_SUMMARY,
-    EMPTY_FINISHED_SUMMARY,
-    EMPTY_FINISHED_SUMMARY)
+@dataclass
+class FinishedTasksStats:
+    """ Statistics about finished tasks divided into groups depending on the
+    level of success: `finished_ok` are tasks that were verified ok and had no
+    problems along the way, `finished_with_failures` are tasks that are verified
+    ok in the end but there were problems like timeouts or subtasks with errors,
+    and `failed` are tasks that did not succeed. """
+    finished_ok: FinishedTasksSummary = FinishedTasksSummary()
+    finished_with_failures: FinishedTasksSummary = FinishedTasksSummary()
+    failed: FinishedTasksSummary = FinishedTasksSummary()
 
 
 def update_finished_stats_with_task(
@@ -341,18 +331,21 @@ def update_finished_stats_with_task(
     mid = finished
     if old and old.finished:
         if old.task_failed:
-            mid = finished._replace(
+            mid = replace(
+                finished,
                 failed=FinishedTasksSummary(
                     tasks_cnt=finished.failed.tasks_cnt - 1,
                     total_time=finished.failed.total_time - old.total_time))
         elif old.had_failures:
-            mid = finished._replace(
+            mid = replace(
+                finished,
                 finished_with_failures=FinishedTasksSummary(
                     tasks_cnt=finished.finished_with_failures.tasks_cnt - 1,
                     total_time=(finished.finished_with_failures.total_time
                                 - old.total_time)))
         else:
-            mid = finished._replace(
+            mid = replace(
+                finished,
                 finished_ok=FinishedTasksSummary(
                     tasks_cnt=finished.finished_ok.tasks_cnt - 1,
                     total_time=(finished.finished_ok.total_time
@@ -360,18 +353,21 @@ def update_finished_stats_with_task(
     ret = mid
     if new.finished:
         if new.task_failed:
-            ret = mid._replace(
+            ret = replace(
+                mid,
                 failed=FinishedTasksSummary(
                     tasks_cnt=mid.failed.tasks_cnt + 1,
                     total_time=mid.failed.total_time + new.total_time))
         elif new.had_failures:
-            ret = mid._replace(
+            ret = replace(
+                mid,
                 finished_with_failures=FinishedTasksSummary(
                     tasks_cnt=mid.finished_with_failures.tasks_cnt + 1,
                     total_time=(mid.finished_with_failures.total_time
                                 + new.total_time)))
         else:
-            ret = mid._replace(
+            ret = replace(
+                mid,
                 finished_ok=FinishedTasksSummary(
                     tasks_cnt=mid.finished_ok.tasks_cnt + 1,
                     total_time=mid.finished_ok.total_time + new.total_time))
@@ -390,8 +386,8 @@ class RequestorTaskStats:
     def __init__(self):
         self.tasks = defaultdict(
             TaskInfo)  # type: DefaultDict[str, TaskInfo]
-        self.stats = EMPTY_CURRENT_STATS
-        self.finished_stats = EMPTY_FINISHED_STATS
+        self.stats = CurrentStats()
+        self.finished_stats = FinishedTasksStats()
 
     def on_message(self,
                    task_id: str,
@@ -416,8 +412,7 @@ class RequestorTaskStats:
             else:
                 the_time = time.time()
                 for s_id in task_state.subtask_states.keys():
-                    subtask_status = (task_state.subtask_states[s_id]
-                                      .status)
+                    subtask_status = task_state.subtask_states[s_id].status
                     self.tasks[task_id].got_subtask_message(
                         s_id,
                         TaskMsg(ts=the_time, op=SubtaskOp.RESTARTED),

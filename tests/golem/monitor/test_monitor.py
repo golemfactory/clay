@@ -15,8 +15,7 @@ from golem.core import variables
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor, SenderThread, Sender
 from golem.monitorconfig import MONITOR_CONFIG
-from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
-    EMPTY_FINISHED_SUMMARY
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from golem.tools.os_info import OSInfo
 
 random = Random(__name__)
@@ -71,10 +70,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             {"node_id": "second node", "port": 3193}])
         self.monitor.on_requestor_stats_snapshot(
             CurrentStats(1, 0, 1, 0, 0, 0, 0, 0, 1),
-            FinishedTasksStats(
-                EMPTY_FINISHED_SUMMARY,
-                EMPTY_FINISHED_SUMMARY,
-                EMPTY_FINISHED_SUMMARY))
+            FinishedTasksStats())
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         client_mock = mock.MagicMock()

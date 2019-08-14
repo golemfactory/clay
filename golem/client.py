@@ -919,8 +919,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         current_stats = tm.requestor_stats_manager.get_current_stats()
         finished_stats = tm.requestor_stats_manager.get_finished_stats()
         return {
-            'current': current_stats._asdict(),
-            'finished': finished_stats._asdict(),
+            'current': current_stats.asdict(),
+            'finished': finished_stats.asdict(),
         }
 
     def get_supported_task_count(self) -> int:

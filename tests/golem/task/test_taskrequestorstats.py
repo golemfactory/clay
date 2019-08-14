@@ -6,9 +6,8 @@ from pydispatch import dispatcher
 
 from golem import testutils
 from golem.task.taskrequestorstats import TaskInfo, TaskMsg, \
-    RequestorTaskStats, logger, CurrentStats, TaskStats, EMPTY_TASK_STATS, \
-    FinishedTasksStats, FinishedTasksSummary, RequestorTaskStatsManager, \
-    EMPTY_CURRENT_STATS, EMPTY_FINISHED_STATS, AggregateTaskStats, \
+    RequestorTaskStats, logger, CurrentStats, TaskStats, FinishedTasksStats, \
+    FinishedTasksSummary, RequestorTaskStatsManager, AggregateTaskStats, \
     RequestorAggregateStatsManager
 from golem.task.taskstate import TaskStatus, Operation, TaskOp, SubtaskOp, \
     OtherOp, SubtaskStatus, TaskState
@@ -293,7 +292,7 @@ class TestRequestorTaskStats(LogTestCase):
                          "task1 should be in progress")
         # are the stats as expected?
         task1_ts = rs.get_task_stats("task1")
-        self.compare_task_stats(task1_ts, EMPTY_TASK_STATS)
+        self.compare_task_stats(task1_ts, TaskStats())
 
         # what about the current stats?
         cs = rs.get_current_stats()
@@ -637,8 +636,8 @@ class TestRequestorTaskStats(LogTestCase):
 class TestRequestorTaskStatsManager(DatabaseFixture):
     def test_empty_stats(self):
         rtsm = RequestorTaskStatsManager()
-        self.assertEqual(rtsm.get_current_stats(), EMPTY_CURRENT_STATS)
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_current_stats(), CurrentStats())
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
     def test_single_task(self):
         # Just a single task, created with one subtask and finished
@@ -660,7 +659,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
         # task created
         self.assertEqual(rtsm.get_current_stats(),
                          CurrentStats(1, 0, 0, 0, 0, 0, 0, 0, 0))
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
         tstate.status = TaskStatus.waiting
         dispatcher.send(
@@ -681,7 +680,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
         # work offer received, but nothing more changed
         self.assertEqual(rtsm.get_current_stats(),
                          CurrentStats(1, 0, 0, 0, 0, 0, 0, 0, 1))
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
         tstate.subtask_states["st1.1"] = taskstate_factory.SubtaskState()
         dispatcher.send(
@@ -695,7 +694,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
         # assigned subtask reflected in stats
         self.assertEqual(rtsm.get_current_stats(),
                          CurrentStats(1, 0, 1, 0, 0, 0, 0, 0, 1))
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
         tstate.subtask_states["st1.1"].status = (
             SubtaskStatus.downloading)
@@ -718,7 +717,7 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
         # subtask finished and verified ok
         self.assertEqual(rtsm.get_current_stats(),
                          CurrentStats(1, 0, 1, 1, 1, 0, 0, 0, 1))
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
         tstate.status = TaskStatus.finished
         dispatcher.send(
@@ -733,12 +732,14 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
         self.assertEqual(rtsm.get_current_stats(),
                          CurrentStats(1, 1, 1, 1, 1, 0, 0, 0, 1))
         # duration of the task is unknown hence the complex compare
-        self.assertEqual(rtsm.get_finished_stats()[0][0], 1)
-        self.assertGreaterEqual(rtsm.get_finished_stats()[0][1], 0.0)
+        self.assertEqual(rtsm.get_finished_stats().finished_ok.tasks_cnt, 1)
+        self.assertGreaterEqual(
+            rtsm.get_finished_stats().finished_ok.total_time, 0.0)
         self.assertEqual(
-            rtsm.get_finished_stats()[1], FinishedTasksSummary(0, 0.0))
+            rtsm.get_finished_stats().finished_with_failures,
+            FinishedTasksSummary(0, 0.0))
         self.assertEqual(
-            rtsm.get_finished_stats()[2], FinishedTasksSummary(0, 0.0))
+            rtsm.get_finished_stats().failed, FinishedTasksSummary(0, 0.0))
 
     def test_bad_message(self):
         # mostly for coverage, message without all necessary fields
@@ -749,8 +750,8 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
             event='task_status_updated',
             task_id=None,
             task_state=TaskState())
-        self.assertEqual(rtsm.get_current_stats(), EMPTY_CURRENT_STATS)
-        self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+        self.assertEqual(rtsm.get_current_stats(), CurrentStats())
+        self.assertEqual(rtsm.get_finished_stats(), FinishedTasksStats())
 
 
 class TestAggregateTaskStats(TestCase):
