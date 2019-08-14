@@ -904,7 +904,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.tasks.stats')
     def get_task_stats(
             self,
-            stats_type: Optional[str] = 'provider'
+            stats_type: Optional[str] = None
     ) -> Dict[str, Any]:
         class StatsType(msg_datastructures.StringEnum):
             provider = enum.auto()

@@ -875,11 +875,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             task_id, single=False
         )
 
-    def test_task_stats(self, *_):
-        c = self.client
-
-        result = c.get_task_stats()
-        expected = {
+    def test_get_task_stats(self, *_):
+        expected_provider = {
             'provider_state': {'status': 'Idle'},
             'in_network': 0,
             'supported': 0,
@@ -890,7 +887,40 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'subtasks_with_timeout': (0, 0)
         }
 
-        self.assertEqual(result, expected)
+        expected_requestor = {
+            'current_tasks_stats': {
+                'collected_results_cnt': 0,
+                'failed_subtasks_cnt': 0,
+                'finished_task_cnt': 0,
+                'not_downloadable_subtasks_cnt': 0,
+                'requested_subtasks_cnt': 0,
+                'tasks_cnt': 0,
+                'timed_out_subtasks_cnt': 0,
+                'verified_results_cnt': 0,
+                'work_offers_cnt': 0
+            },
+            'finished_tasks_stats': {
+                'failed': {'tasks_cnt': 0, 'total_time': 0},
+                'finished_ok': {'tasks_cnt': 0, 'total_time': 0},
+                'finished_with_failures': {'tasks_cnt': 0, 'total_time': 0}
+            },
+            'tasks_in_network_cnt': 0
+        }
+
+        result = self.client.get_task_stats(stats_type='provider')
+        self.assertEqual(result, expected_provider)
+
+        result = self.client.get_task_stats(stats_type='requestor')
+        self.assertEqual(result, expected_requestor)
+
+        result = self.client.get_task_stats()
+        self.assertEqual(
+            result,
+            {
+                'provider': expected_provider,
+                'requestor': expected_requestor
+            }
+        )
 
     def test_connection_status_not_listening(self, *_):
         c = self.client
