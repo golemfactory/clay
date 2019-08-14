@@ -902,7 +902,32 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                                                               single=single)
 
     @rpc_utils.expose('comp.tasks.stats')
-    def get_task_stats(self) -> Dict[str, Any]:
+    def get_task_stats(
+            self,
+            stats_type: Optional[str] = 'provider'
+    ) -> Dict[str, Any]:
+        class StatsType(msg_datastructures.StringEnum):
+            provider = enum.auto()
+            requestor = enum.auto()
+
+        if stats_type:
+            try:
+                stats_type = StatsType(stats_type)
+            except ValueError:
+                logger.error('Invalid stats type: %r', stats_type)
+                return {}
+
+        if stats_type == StatsType.provider:
+            return self.get_provider_stats()
+        elif stats_type == StatsType.requestor:
+            return self.get_requestor_stats()
+
+        return {
+            'provider': self.get_provider_stats(),
+            'requestor': self.get_requestor_stats(),
+        }
+
+    def get_provider_stats(self) -> Dict[str, Any]:
         return {
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
@@ -914,7 +939,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'subtasks_with_timeout': self.get_comp_stat('tasks_with_timeout'),
         }
 
-    @rpc_utils.expose('comp.tasks.requestor_stats')
     def get_requestor_stats(self) -> Dict[str, Any]:
         tm: TaskManager = self.task_manager
         tasks_in_network = len(tm.get_tasks_headers())
