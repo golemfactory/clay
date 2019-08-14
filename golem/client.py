@@ -1,6 +1,7 @@
 # pylint: disable=too-many-lines
 
 import collections
+import dataclasses
 import enum
 import logging
 import sys
@@ -916,11 +917,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.tasks.requestor_stats')
     def get_requestor_stats(self) -> Dict[str, Any]:
         tm: TaskManager = self.task_manager
+        tasks_in_network = len(tm.get_tasks_headers())
         current_stats = tm.requestor_stats_manager.get_current_stats()
         finished_stats = tm.requestor_stats_manager.get_finished_stats()
         return {
-            'current': current_stats.asdict(),
-            'finished': finished_stats.asdict(),
+            'tasks_in_network_cnt': tasks_in_network,
+            'current_tasks_stats': dataclasses.asdict(current_stats),
+            'finished_tasks_stats': dataclasses.asdict(finished_stats),
         }
 
     def get_supported_task_count(self) -> int:
