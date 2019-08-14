@@ -3,7 +3,7 @@ import logging
 from enum import Enum
 from typing import Callable, Dict, List, Optional, Type
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
 
@@ -87,7 +87,7 @@ class TaskEventListener(object):
 
 @dataclass
 class TaskResult:
-    files: List[str] = []
+    files: List[str] = field(default_factory=list)
     stats: Dict = {}
 
 
