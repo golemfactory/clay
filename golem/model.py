@@ -397,6 +397,14 @@ class TaskPayment(BaseModel):
 ##################
 
 
+def provider_efficacy_producer():
+    def producer():
+        return ProviderEfficacy(0., 0., 0., 0.)
+    # peewee-migrate expects a '__self__' attribute
+    producer.__self__ = ProviderEfficacy
+    return producer
+
+
 class LocalRank(BaseModel):
     """ Represent nodes experience with other nodes, number of positive and
     negative interactions.
@@ -416,7 +424,7 @@ class LocalRank(BaseModel):
     requestor_paid_sum = HexIntegerField(default=0)
     provider_efficiency = FloatField(default=1.0)
     provider_efficacy = ProviderEfficacyField(
-        default=ProviderEfficacy(0., 0., 0., 0.))
+        default=provider_efficacy_producer())
 
     class Meta:
         database = db
