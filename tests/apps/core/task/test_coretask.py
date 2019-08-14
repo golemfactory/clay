@@ -17,7 +17,7 @@ from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.environments import environment
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import TaskEventListener
+from golem.task.taskbase import TaskEventListener, TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -186,7 +186,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         files_copy = copy(files)
 
-        task.interpret_task_results(subtask_id, files, False)
+        task.interpret_task_results(subtask_id, TaskResult(files=files), False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -202,7 +202,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                 pass
 
         task.interpret_task_results(
-            subtask_id, files_copy, False)
+            subtask_id, TaskResult(files=files_copy), False)
         self.assertEqual(task.results[subtask_id], [
                          files[0], files[1], files[4]])
         for f in files_copy:
@@ -212,7 +212,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         os.makedirs(files[0])
         with self.assertLogs(logger, level="WARNING"):
             task.interpret_task_results(
-                subtask_id, files_copy, False)
+                subtask_id, TaskResult(files=files_copy), False)
         assert task.results[subtask_id] == [files[1], files[4]]
 
         os.removedirs(files[0])
@@ -238,7 +238,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         self.__dump_file(files[4], "ghi")
         res = files
 
-        task.interpret_task_results(subtask_id, res, False)
+        task.interpret_task_results(subtask_id, TaskResult(files=res), False)
 
         files[0] = outer_dir_path(files[0])
         files[1] = outer_dir_path(files[1])
@@ -270,7 +270,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         shutil.move(files[3], files[3] + "err.log")
         files[3] += "err.log"
 
-        task.interpret_task_results(subtask_id, files)
+        task.interpret_task_results(subtask_id, TaskResult(files=files))
 
         sorted_files = sorted([files[0], files[1], files[4]])
 
