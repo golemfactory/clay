@@ -2,7 +2,7 @@ import os
 import tempfile
 from typing import Any, Dict, Optional, Tuple, Union
 
-from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
@@ -38,6 +38,7 @@ class SimulatedTranscodingOperation:
         self._diff_excludes: FileExcludes = {}
         self._assume_attribute_unchanged_if_missing: bool = False
         self._video_options: Dict[str, Any] = {}
+        self._audio_options: Dict[str, Any] = {}
         self._task_options: Dict[str, Any] = {
             'output_container': None,
             'subtasks_count': 2,
@@ -67,6 +68,10 @@ class SimulatedTranscodingOperation:
     def request_video_codec_change(self, new_codec: VideoCodec):
         self._video_options['codec'] = new_codec.value
         self.set_override('video', 'codec_name', new_codec.value)
+
+    def request_audio_codec_change(self, new_codec: AudioCodec):
+        self._audio_options['codec'] = new_codec.value
+        self.set_override('audio', 'codec_name', new_codec.value)
 
     def request_video_bitrate_change(self, new_bitrate: str):
         self._video_options['bit_rate'] = new_bitrate
@@ -125,6 +130,7 @@ class SimulatedTranscodingOperation:
 
         components = {
             'video_codec': self._video_options.get('codec', None),
+            'audio_codec': self._audio_options.get('codec', None),
             'container': container,
             'resolution': resolution,
             'frame_rate': self._video_options.get('frame_rate', None),
@@ -145,6 +151,7 @@ class SimulatedTranscodingOperation:
                         result_file: str,
                         container: Union[Container, str],
                         video_options: Dict[str, str],
+                        audio_options: Dict[str, str],
                         subtasks_count: int) -> dict:
 
         if isinstance(container, Container):
@@ -162,6 +169,7 @@ class SimulatedTranscodingOperation:
             'resources': [video_file],
             'options': {
                 'output_path': os.path.dirname(result_file),
+                'audio': audio_options if audio_options is not None else {},
                 'video': video_options if video_options is not None else {},
                 'container': container_str,
             }
@@ -225,6 +233,7 @@ class SimulatedTranscodingOperation:
                 output_file,
                 self._task_options['output_container'],
                 self._video_options,
+                self._audio_options,
                 self._task_options['subtasks_count'],
             )
 
