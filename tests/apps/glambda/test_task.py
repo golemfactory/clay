@@ -181,7 +181,7 @@ class GLambdaTaskTestCase(TempDirFixture):
 
         self.task.subtasks_given['some_id'] = {'node_id': 'some_node'}
         self.task.computation_finished(
-            'some_id', TaskResult(filles=results), verif_cb)
+            'some_id', TaskResult(files=results), verif_cb)
 
         self.assertEqual(self.task.SUBTASK_CALLBACKS['some_id'],
                          verif_cb)
