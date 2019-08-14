@@ -159,6 +159,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             result_file,
             container,
             video_options=None,
+            audio_options=None,
             subtasks_count=2,
     ):
         task_def_for_transcoding = {
@@ -172,6 +173,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
+                'audio': audio_options if audio_options is not None else {},
                 'container': container,
             }
         }
