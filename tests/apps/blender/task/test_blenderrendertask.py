@@ -117,6 +117,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
     @mock.patch('apps.core.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
+        verif_cb = mock.MagicMock()
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
 
@@ -128,7 +129,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
         self.bt.computation_finished(
-            extra_data1.ctd['subtask_id'], TaskResult())
+            extra_data1.ctd['subtask_id'], TaskResult(), verif_cb)
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
             SubtaskStatus.failure
