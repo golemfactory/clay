@@ -88,7 +88,7 @@ class TaskEventListener(object):
 @dataclass
 class TaskResult:
     files: List[str] = field(default_factory=list)
-    stats: Dict = {}
+    stats: Dict = field(default_factory=dict)
 
 
 class Task(abc.ABC):
