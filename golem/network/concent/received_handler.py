@@ -1,4 +1,3 @@
-import datetime
 import inspect
 import logging
 
@@ -11,7 +10,6 @@ from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
-from golem.task.taskbase import ResultMetadata
 from golem.task.server import helpers as task_server_helpers
 
 from .filetransfers import ConcentFiletransferService
