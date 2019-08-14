@@ -371,8 +371,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
-        self.p2pservice.add_metadata_provider(
-            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -384,6 +382,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             apps_manager=self.apps_manager,
             task_finished_cb=self._task_finished_cb,
         )
+
+        def get_performance_values():
+            values = self.environments_manager.get_performance_values()
+            new_env_manager = self.task_server.task_keeper.new_env_manager
+            for new_env in new_env_manager.environments():
+                env_id = new_env.metadata().id
+                value = new_env_manager.get_cached_performance(env_id)
+                if value is not None:
+                    values[env_id] = value
+            return values
+        self.p2pservice.add_metadata_provider(
+            'performance', get_performance_values)
 
         # Pause p2p and task sessions to prevent receiving messages before
         # the node is ready
