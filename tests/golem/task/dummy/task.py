@@ -249,7 +249,7 @@ class DummyTask(Task):
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        with open(task_result[0], 'r') as f:
+        with open(task_result.files[0], 'r') as f:
             self.subtask_results[subtask_id] = f.read()
 
         if not self.verify_subtask(subtask_id):
