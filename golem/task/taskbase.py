@@ -149,9 +149,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
-        """Called after adding a new task, may initialize or create some resources
-        or do other required operations.
-        :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
+        """Called after adding a new task, may initialize or create
+        some resources or do other required operations.
+        :param DirManager dir_manager: DirManager instance for accessing
+        temp dir for this task
         """
         raise NotImplementedError
 
@@ -174,8 +175,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def needs_computation(self) -> bool:
-        """ Return information if there are still some subtasks that may be dispended
-        :return bool: True if there are still subtask that should be computed, False otherwise
+        """ Return information if there are still some subtasks
+        that may be dispended
+        :return bool: True if there are still subtask that should be computed,
+        False otherwise
         """
         raise NotImplementedError
 
@@ -274,8 +277,9 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def get_trust_mod(self, subtask_id) -> int:
-        """ Return trust modifier for given subtask. This number may be taken into account during increasing
-        or decreasing trust for given node after successful or failed computation.
+        """ Return trust modifier for given subtask. This number may be taken
+        into account during increasing or decreasing trust for given node
+        after successful or failed computation.
         :param subtask_id:
         :return int:
         """
@@ -289,7 +293,8 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     def get_stdout(self, subtask_id) -> str:
-        """ Return stdout received after computation of subtask_id, if there is no data available
+        """ Return stdout received after computation of subtask_id,
+        if there is no data available
         return empty string
         :param subtask_id:
         :return str:
@@ -297,7 +302,8 @@ class Task(abc.ABC):
         return ""
 
     def get_stderr(self, subtask_id) -> str:
-        """ Return stderr received after computation of subtask_id, if there is no data available
+        """ Return stderr received after computation of subtask_id,
+        if there is no data available
         return emtpy string
         :param subtask_id:
         :return str:

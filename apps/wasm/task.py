@@ -1,5 +1,4 @@
 from copy import deepcopy
-from ethereum.utils import denoms
 from pathlib import Path, PurePath
 from typing import (
     Any,
@@ -14,6 +13,8 @@ from typing import (
     Set
 )
 import logging
+
+from ethereum.utils import denoms
 
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node

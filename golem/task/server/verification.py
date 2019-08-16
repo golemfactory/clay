@@ -160,7 +160,6 @@ class VerificationMixin:
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
 
-
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',
             reason,

@@ -65,7 +65,6 @@ from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
-from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
