@@ -92,6 +92,7 @@ class TaskResult:
     stats: dt_stats.ProviderStats = dt_stats.ProviderStats()
 
 
+# pylint: disable=too-many-public-methods
 class Task(abc.ABC):
 
     class ExtraData(object):
@@ -264,6 +265,7 @@ class Task(abc.ABC):
         """
         raise NotImplementedError
 
+    # pylint: disable=no-self-use
     def get_resources(self) -> list:
         """ Return list of files that are needed to compute this task."""
         return []
@@ -292,6 +294,7 @@ class Task(abc.ABC):
         """
         raise NotImplementedError
 
+    # pylint: disable=no-self-use
     def get_stdout(self, subtask_id) -> str:
         """ Return stdout received after computation of subtask_id,
         if there is no data available
@@ -301,6 +304,7 @@ class Task(abc.ABC):
         """
         return ""
 
+    # pylint: disable=no-self-use
     def get_stderr(self, subtask_id) -> str:
         """ Return stderr received after computation of subtask_id,
         if there is no data available
@@ -310,6 +314,7 @@ class Task(abc.ABC):
         """
         return ""
 
+    # pylint: disable=no-self-use
     def get_results(self, subtask_id) -> List:
         """ Return list of files containing results for subtask with given id
         :param subtask_id:
@@ -317,6 +322,7 @@ class Task(abc.ABC):
         """
         return []
 
+    # pylint: disable=no-self-use
     def result_incoming(self, subtask_id):
         """ Informs that a computed task result is being retrieved
         :param subtask_id:
@@ -324,12 +330,14 @@ class Task(abc.ABC):
         """
         pass
 
+    # pylint: disable=no-self-use
     def get_output_names(self) -> List:
         """ Return list of files containing final import task results
         :return list:
         """
         return []
 
+    # pylint: disable=no-self-use
     def get_output_states(self) -> List:
         """ Return list of states of final task results
         :return list:
