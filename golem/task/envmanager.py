@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, NamedTuple, Type
+from typing import Dict, List, NamedTuple, Type, Optional
 
 from twisted.internet.defer import Deferred, inlineCallbacks
 
@@ -83,11 +83,9 @@ class EnvironmentManager:
         if not self.enabled(env_id):
             raise Exception("Requested performance for disabled environment")
 
-        try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            return perf.value
-        except Performance.DoesNotExist:
-            pass
+        result = self.get_cached_performance(env_id)
+        if result:
+            return result
 
         env = self._envs[env_id].instance
         self._running_benchmark = True
@@ -111,3 +109,10 @@ class EnvironmentManager:
             result
         )
         return result
+
+    @staticmethod
+    def get_cached_performance(env_id: EnvId) -> Optional[float]:
+        try:
+            return Performance.get(Performance.environment_id == env_id).value
+        except Performance.DoesNotExist:
+            return None
