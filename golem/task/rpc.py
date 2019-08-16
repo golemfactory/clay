@@ -471,6 +471,32 @@ class ClientProvider:
         )
         return task_id, None
 
+    @rpc_utils.expose('comp.task.create.dry_run')
+    @safe_run(_create_task_error)
+    def create_task_dry_run(self, task_dict) \
+            -> typing.Tuple[typing.Optional[dict],
+                            typing.Optional[str]]:
+        """
+        Dry run creating a task.
+        This works by creating a TaskDefinition object (like 'comp.taks.create'
+        would to) and dumping it back to dict (like 'comp.task' would do).
+        Golem performs task_dict validation and possibly changes some fields.
+        This task is not passed for computation.
+        :param task_dict: Task description dictionary. The same as for
+                          'comp.task.create'.
+        :return: (task_dict, None) on success; (None, error_message) on failure.
+        """
+        validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
+        task_definition, task_builder_type = \
+            self.task_manager.create_task_definition(task_dict)
+        task_dict = common.update_dict(
+            {'progress': 0.0},
+            taskstate.TaskState().to_dictionary(),
+            task_builder_type.build_dictionary(task_definition),
+        )
+        return task_dict, None
+
     def _validate_enough_funds_to_pay_for_task(
             self,
             subtask_price: int,

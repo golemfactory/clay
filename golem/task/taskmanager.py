@@ -12,6 +12,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
     Type,
     TYPE_CHECKING,
 )
@@ -161,7 +162,8 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
-    def create_task(self, dictionary, minimal=False):
+    def create_task_definition(self, dictionary, minimal=False) \
+            -> 'Tuple[TaskDefinition, Type[TaskBuilder]]':
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
         compute_on = dictionary.get('compute_on', 'cpu').lower()
@@ -178,6 +180,11 @@ class TaskManager(TaskEventListener):
             builder_type.build_definition(task_type, dictionary, minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
+        return definition, builder_type
+
+    def create_task(self, dictionary, minimal=False):
+        definition, builder_type = \
+            self.create_task_definition(dictionary, minimal)
         return builder_type(self.node, definition, self.dir_manager).build()
 
     def get_task_definition_dict(self, task: Task):

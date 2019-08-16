@@ -174,6 +174,31 @@ class TestCreateTask(ProviderBase, TestClientBase):
                                              '0.166667, available: 0.000000\n')
 
 
+class TestCreateTaskDryRun(ProviderBase):
+    def test_success(self):
+        # given
+        self.t_dict['subtasks_count'] = 0
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert error is None
+        assert new_dict['id'] is not None
+        assert new_dict['subtasks_count'] == 10
+
+    def test_failure(self):
+        # given
+        self.t_dict['type'] = "unknown"
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert new_dict is None
+        assert error is not None
+
+
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
 
     def test_validate_lock_funds_possibility_raises_if_not_enough_funds(self):
