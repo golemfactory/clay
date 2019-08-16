@@ -2,6 +2,7 @@ import logging
 import math
 import os
 import typing
+from typing import Callable
 from bisect import insort
 from collections import OrderedDict, defaultdict
 
@@ -20,6 +21,7 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
+from golem.task.taskbase import TaskResult
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 
 logger = logging.getLogger("apps.rendering")
@@ -134,8 +136,9 @@ class FrameRenderingTask(RenderingTask):
             self._update_task_preview()
 
     @CoreTask.handle_key_error
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(
+            self, subtask_id: str, task_result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,

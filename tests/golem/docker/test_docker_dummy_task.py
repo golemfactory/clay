@@ -15,6 +15,7 @@ from golem.core.fileshelper import find_file_with_ext
 from golem.docker.manager import DockerManager
 from golem.resource.dirmanager import symlink_or_copy, \
     rmlink_or_rmtree
+from golem.task.taskbase import TaskResult
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
@@ -126,8 +127,9 @@ class TestDockerDummyTask(
 
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd['subtask_id'], [str(output)],
-                                  verification_finished=success)
+        task.computation_finished(
+            ctd['subtask_id'], TaskResult(files=[str(output)]),
+            verification_finished=success)
 
         sync_wait(d, WAIT_TIMEOUT)
 
@@ -142,8 +144,9 @@ class TestDockerDummyTask(
         # assert bad results - should fail
         bad_output = output.parent / "badfile.result"
         ctd = task.query_extra_data(10000.).ctd
-        task.computation_finished(ctd['subtask_id'], [str(bad_output)],
-                                  verification_finished=failure)
+        task.computation_finished(
+            ctd['subtask_id'], TaskResult(files=[str(bad_output)]),
+            verification_finished=failure)
         sync_wait(b, WAIT_TIMEOUT)
 
     def test_dummytask_TaskTester_should_pass(self):
