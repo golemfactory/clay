@@ -13,7 +13,6 @@ from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
-from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
@@ -66,25 +65,6 @@ def _validate_task_dict(client, task_dict) -> None:
     if 'id' in task_dict:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
-
-    subtasks_count = task_dict.get('subtasks_count', 0)
-    options = task_dict.get('options', {})
-    optimize_total = bool(options.get('optimize_total', False))
-    if subtasks_count and not optimize_total:
-        computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            subtasks_count=subtasks_count,
-            optimize_total=False,
-            use_frames=options.get('frame_count', 1) > 1,
-            frames=[None] * options.get('frame_count', 1),
-        )
-        if computed_subtasks != subtasks_count:
-            raise ValueError(
-                "Subtasks count {:d} is invalid."
-                " Maybe use {:d} instead?".format(
-                    subtasks_count,
-                    computed_subtasks,
-                )
-            )
 
     if task_dict['concent_enabled']:
         if not client.concent_service.enabled:  # `enabled` implies `available`

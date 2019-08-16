@@ -16,18 +16,21 @@ from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
-from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
-from golem.rpc import utils as rpc_utils
 from golem.task.taskstate import SubtaskStatus, TaskStatus
+
+if typing.TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from apps.rendering.task.renderingtaskstate import RendererDefaults
+
 
 logger = logging.getLogger("apps.rendering")
 
 DEFAULT_PADDING = 4
 
 
-def calculate_subtasks_count_with_frames(
+def _calculate_subtasks_count_with_frames(
         subtasks_count: int,
         frames: list) -> int:
     num_frames = len(frames)
@@ -49,19 +52,19 @@ def calculate_subtasks_count_with_frames(
     return est
 
 
-def calculate_subtasks_count(
+def _calculate_subtasks_count(
         subtasks_count: int,
         optimize_total: bool,
         use_frames: bool,
-        frames: list) -> int:
-    defaults = RendererDefaults()
+        frames: list,
+        defaults: 'RendererDefaults') -> int:
     if optimize_total or not subtasks_count:
         if use_frames:
             return len(frames)
         return defaults.default_subtasks
 
     if use_frames:
-        return calculate_subtasks_count_with_frames(
+        return _calculate_subtasks_count_with_frames(
             subtasks_count=subtasks_count,
             frames=frames,
         )
@@ -492,12 +495,14 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
                                                         task_definition,
                                                         dir_manager)
 
-    def _calculate_total(self, defaults):
-        return calculate_subtasks_count(
-            subtasks_count=self.task_definition.subtasks_count,
-            optimize_total=self.task_definition.optimize_total,
-            use_frames=self.task_definition.options.use_frames,
-            frames=self.task_definition.options.frames,
+    @classmethod
+    def _calculate_total(cls, task_definition):
+        task_definition.subtasks_count = _calculate_subtasks_count(
+            subtasks_count=task_definition.subtasks_count,
+            optimize_total=task_definition.optimize_total,
+            use_frames=task_definition.options.use_frames,
+            frames=task_definition.options.frames,
+            defaults=cls.DEFAULTS(),
         )
 
     @classmethod

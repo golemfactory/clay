@@ -16,6 +16,8 @@ from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
 if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from .renderingtaskstate import RenderingTaskDefinition
     from golem.docker.environment import DockerEnvironment
 
 
@@ -266,22 +268,32 @@ class RenderingTaskBuilderError(Exception):
     pass
 
 
+def _calculate_subtasks_count(
+        subtasks_count: int,
+        optimize_total: bool,
+        defaults: RendererDefaults) -> int:
+    if optimize_total:
+        return defaults.default_subtasks
+
+    if defaults.min_subtasks <= subtasks_count <= defaults.max_subtasks:
+        return subtasks_count
+
+    logger.warning("Cannot set total subtasks to %s. Changing to %s",
+                   subtasks_count, defaults.default_subtasks)
+    return defaults.default_subtasks
+
+
 class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
 
-    def _calculate_total(self, defaults):
-        if self.task_definition.optimize_total:
-            return defaults.default_subtasks
-
-        total = self.task_definition.subtasks_count
-
-        if defaults.min_subtasks <= total <= defaults.max_subtasks:
-            return total
-        else:
-            logger.warning("Cannot set total subtasks to {}. Changing to {}"
-                           .format(total, defaults.default_subtasks))
-            return defaults.default_subtasks
+    @classmethod
+    def _calculate_total(cls, task_definition: 'RenderingTaskDefinition'):
+        task_definition.subtasks_count = _calculate_subtasks_count(
+            subtasks_count=task_definition.subtasks_count,
+            optimize_total=task_definition.optimize_total,
+            defaults=cls.DEFAULTS(),
+        )
 
     @staticmethod
     def _scene_file(type, resources):
@@ -295,11 +307,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates.sort(key=len)
         return candidates[0]
 
-    def get_task_kwargs(self, **kwargs):
-        kwargs = super().get_task_kwargs(**kwargs)
-        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
-        return kwargs
-
     @classmethod
     def build_dictionary(cls, definition):
         parent = super(RenderingTaskBuilder, cls)
@@ -310,11 +317,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_minimal_definition(cls, task_type, dictionary):
+    def build_minimal_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
         parent = super(RenderingTaskBuilder, cls)
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
+        cls._calculate_total(definition)
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
@@ -325,7 +334,8 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
+    def build_full_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
         parent = super(RenderingTaskBuilder, cls)
         options = dictionary['options']
 

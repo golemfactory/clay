@@ -527,19 +527,6 @@ class TestValidateTaskDict(ProviderBase):
         with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
-    @mock.patch(
-        "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
-    )
-    def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks_count'] - 1
-        calculate_mock.return_value = computed_subtasks
-        msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks_count'],
-            computed_subtasks,
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            rpc._validate_task_dict(self.client, self.t_dict)
-
 
 @mock.patch('os.path.getsize')
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
