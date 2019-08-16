@@ -598,7 +598,7 @@ class TaskManager(TaskEventListener):
                 = SubtaskStatus.failure
 
         new_task.num_failed_subtasks = \
-            new_task.total_tasks - len(subtasks_to_copy)
+            new_task.get_total_tasks() - len(subtasks_to_copy)
 
         def handle_copy_error(subtask_id, error):
             logger.error(

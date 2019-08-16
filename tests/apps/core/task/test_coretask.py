@@ -43,13 +43,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             pass
 
     @staticmethod
-    def _get_core_task_definition():
+    def _get_core_task_definition(subtasks_count=1):
         task_definition = TaskDefinition()
         task_definition.max_price = 100
         task_definition.task_id = "deadbeef"
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
+        task_definition.subtasks_count = subtasks_count
         return task_definition
 
     def test_instantiation(self):
@@ -82,8 +83,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
 
-    def _get_core_task(self):
-        task_def = TestCoreTask._get_core_task_definition()
+    def _get_core_task(self, *, subtasks_count=1):
+        task_def = TestCoreTask._get_core_task_definition(subtasks_count)
         task = self.CoreTaskDeabstracted(
             task_definition=task_def,
             owner=dt_p2p_factory.Node(),
@@ -344,8 +345,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             os.chmod(files[1], 0o700)
 
     def test_needs_computation(self):
-        c = self._get_core_task()
-        c.total_tasks = 13
+        c = self._get_core_task(subtasks_count=13)
         assert c.needs_computation()
         c.last_task = 4
         assert c.needs_computation()
@@ -365,8 +365,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert c.get_active_tasks() == 27
 
     def test_get_tasks_left(self):
-        c = self._get_core_task()
-        c.total_tasks = 13
+        c = self._get_core_task(subtasks_count=13)
         assert c.get_tasks_left() == 13
         c.last_task = 3
         assert c.get_tasks_left() == 10
@@ -384,9 +383,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c.abort()
 
     def test_get_progress(self):
-        c = self._get_core_task()
-        assert c.get_progress() == 0
-        c.total_tasks = 13
+        c = self._get_core_task(subtasks_count=13)
         assert c.get_progress() == 0
         c.num_tasks_received = 1
         assert abs(c.get_progress() - 0.0769) < 0.01

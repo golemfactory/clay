@@ -1056,9 +1056,9 @@ class TestGetFragments(ProviderBase):
 
     def test_no_subtasks(self, *_):
         task_id = str(uuid.uuid4())
-        subtask_count = 5
+        subtasks_count = 5
         mock_task = Mock(spec=RenderingTask)
-        mock_task.total_tasks = subtask_count
+        mock_task.get_total_tasks.return_value = subtasks_count
         mock_task_state = Mock()
         mock_task_state.subtask_states = None
         tm = self.provider.task_manager
@@ -1067,6 +1067,6 @@ class TestGetFragments(ProviderBase):
 
         task_fragments, error = self.provider.get_fragments(task_id)
 
-        self.assertEqual(len(task_fragments), subtask_count)
+        self.assertEqual(len(task_fragments), subtasks_count)
         subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
         self.assertFalse(subtasks)

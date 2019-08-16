@@ -106,8 +106,7 @@ class CoreTask(Task):
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
                  resource_size=None,
-                 root_path=None,
-                 total_tasks=1):
+                 root_path=None):
         """Create more specific task implementation
         """
 
@@ -143,7 +142,7 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=total_tasks,
+            subtasks_count=task_definition.subtasks_count,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
@@ -152,7 +151,6 @@ class CoreTask(Task):
 
         Task.__init__(self, th, task_definition)
 
-        self.total_tasks = total_tasks
         self.last_task = 0
 
         self.num_tasks_received = 0
@@ -189,11 +187,11 @@ class CoreTask(Task):
                                                           create=True)
 
     def needs_computation(self):
-        return (self.last_task != self.total_tasks) or \
+        return (self.last_task != self.get_total_tasks()) or \
                (self.num_failed_subtasks > 0)
 
     def finished_computation(self):
-        return self.num_tasks_received == self.total_tasks
+        return self.num_tasks_received == self.get_total_tasks()
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
@@ -271,13 +269,14 @@ class CoreTask(Task):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return self.total_tasks
+        return self.task_definition.subtasks_count
 
     def get_active_tasks(self):
         return self.last_task
 
     def get_tasks_left(self):
-        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+        return (self.get_total_tasks() - self.last_task) \
+            + self.num_failed_subtasks
 
     # pylint:disable=unused-argument
     @classmethod
@@ -311,9 +310,9 @@ class CoreTask(Task):
         pass
 
     def get_progress(self):
-        if self.total_tasks == 0:
+        if self.get_total_tasks() == 0:
             return 0.0
-        return self.num_tasks_received / self.total_tasks
+        return self.num_tasks_received / self.get_total_tasks()
 
     def update_task_state(self, task_state):
         pass
@@ -534,7 +533,6 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path

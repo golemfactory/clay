@@ -49,14 +49,14 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    def __init__(self, task_definition, total_tasks, root_path, owner):
+    def __init__(self, task_definition: 'RenderingTaskDefinition', root_path,
+                 owner):
 
         CoreTask.__init__(
             self,
             task_definition=task_definition,
             owner=owner,
-            root_path=root_path,
-            total_tasks=total_tasks)
+            root_path=root_path)
 
         if task_definition.docker_images is None:
             task_definition.docker_images = self.environment.docker_images
@@ -169,10 +169,11 @@ class RenderingTask(CoreTask):
         x = int(round(self.res_x * self.scale_factor))
         y = int(round(self.res_y * self.scale_factor))
         upper = max(0,
-                    int(math.floor(y / self.total_tasks
+                    int(math.floor(y / self.get_total_tasks()
                                    * (subtask['start_task'] - 1))))
         lower = min(
-            int(math.floor(y / self.total_tasks * (subtask['start_task']))),
+            int(math.floor(y / self.get_total_tasks()
+                           * (subtask['start_task']))),
             y,
         )
         for i in range(0, x):
@@ -191,9 +192,9 @@ class RenderingTask(CoreTask):
 
     def _get_next_task(self):
         logger.debug(f"_get_next_task. last_task={self.last_task}, "
-                     f"total_tasks={self.total_tasks}, "
+                     f"total_tasks={self.get_total_tasks()}, "
                      f"num_failed_subtasks={self.num_failed_subtasks}")
-        if self.last_task != self.total_tasks:
+        if self.last_task != self.get_total_tasks():
             self.last_task += 1
             start_task = self.last_task
             return start_task

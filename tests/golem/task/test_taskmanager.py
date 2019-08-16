@@ -1039,6 +1039,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             definition.output_file = os.path.join(self.tempdir, 'somefile')
             definition.main_scene_file = self.path
             definition.options.frames = list(range(i + 1))
+            definition.subtasks_count = n
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
@@ -1052,7 +1053,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                      owner=dt_p2p_factory.Node(
                                          node_name='node',
                                      ),
-                                     total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))
             task.get_total_tasks = Mock()
@@ -1160,7 +1160,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             new_task.last_task += 1
             return Task.ExtraData(ctd=ctd)
 
-        new_task.total_tasks = len(ctds)
+        new_task.get_total_tasks.return_value = len(ctds)
         new_task.needs_computation = lambda: new_task.last_task < len(ctds)
         new_task.query_extra_data = query_extra_data
 
@@ -1221,7 +1221,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
-        new_task.total_tasks = len(new_task.subtasks_given)
+        new_task.get_total_tasks.return_value = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy:
@@ -1265,7 +1265,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
-        new_task.total_tasks = len(new_task.subtasks_given)
+        new_task.get_total_tasks.return_value = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy, \
@@ -1508,12 +1508,12 @@ class TestNeedsComputation(unittest.TestCase):
         #definition.output_file = os.path.join(self.tempdir, 'somefile')
         definition.main_scene_file = dummy_path
         definition.options.frames = [1]
+        definition.subtasks_count = 1
         self.task = BlenderRenderTask(
             task_definition=definition,
             owner=dt_p2p_factory.Node(
                 node_name='node',
             ),
-            total_tasks=1,
             root_path=dummy_path,
         )
         self.tm.tasks[self.task_id] = self.task
@@ -1523,7 +1523,7 @@ class TestNeedsComputation(unittest.TestCase):
         self.assertFalse(self.tm.task_needs_computation(self.task_id))
 
     def test_task_doesnt_need_computation(self, *_):
-        self.task.last_task = self.task.total_tasks
+        self.task.last_task = self.task.get_total_tasks()
         self.assertFalse(self.tm.task_needs_computation(self.task_id))
 
     def test_needs_computation(self, *_):

@@ -1,5 +1,6 @@
 import os
 from os import path, remove
+from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -62,10 +63,10 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
         task_definition.output_format = ".png"
+        task_definition.subtasks_count = 100
 
         task = RenderingTaskMock(
             task_definition=task_definition,
-            total_tasks=100,
             root_path=self.path,
             owner=dt_p2p_factory.Node(),
         )
@@ -113,7 +114,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.preview_file_path = "preview_file"
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_task_file"
-        task.num_tasks_received = task.total_tasks
+        task.num_tasks_received = task.get_total_tasks()
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_file"
         task.preview_file_path = None
@@ -253,7 +254,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
     def test_get_next_task_if_not_tasks(self):
         task = self.task
-        task.total_tasks = 10
+        task.task_definition.subtasks_count = 10
         task.last_task = 10
         assert task._get_next_task() is None
 
@@ -297,46 +298,44 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert logger.exception.called
 
 
-class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
-    def test_calculate_total(self):
+class TestRenderingTaskBuilder(TestCase):
+    @staticmethod
+    def _create_definition(*,
+                           optimize_total=False,
+                           subtasks_count=0):
         definition = RenderingTaskDefinition()
-        definition.optimize_total = True
-        builder = RenderingTaskBuilder(owner=dt_p2p_factory.Node(),
-                                       dir_manager=DirManager(self.path),
-                                       task_definition=definition)
+        definition.optimize_total = optimize_total
+        definition.subtasks_count = subtasks_count
+        return definition
 
-        class Defaults(object):
-            def __init__(self, default_subtasks=13, min_subtasks=3,
-                         max_subtasks=33):
-                self.default_subtasks = default_subtasks
-                self.min_subtasks = min_subtasks
-                self.max_subtasks = max_subtasks
+    def _assert_calculated_subtasks_count_is_equal(
+            self, definition, expected_count):
+        RenderingTaskBuilder._calculate_total(definition)
+        assert definition.subtasks_count == expected_count
 
-        defaults = Defaults()
-        assert builder._calculate_total(defaults) == 13
+    def test_optimize_to_default(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(optimize_total=True), 20)
 
-        defaults.default_subtasks = 17
-        assert builder._calculate_total(defaults) == 17
+    def test_calculate_total(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(subtasks_count=18), 18)
 
-        definition.optimize_total = False
-        definition.subtasks_count = 18
-        assert builder._calculate_total(defaults) == 18
+    def test_subtasks_count_below_min(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(subtasks_count=0), 20)
 
-        definition.subtasks_count = 2
-        with self.assertLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 17
+    def test_subtasks_count_min(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(subtasks_count=1), 1)
 
-        definition.subtasks_count = 3
-        with self.assertNoLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 3
+    def test_subtasks_count_over_max(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(subtasks_count=51), 20)
 
-        definition.subtasks_count = 34
-        with self.assertLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 17
-
-        definition.subtasks_count = 33
-        with self.assertNoLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 33
+    def test_subtasks_count_max(self):
+        self._assert_calculated_subtasks_count_is_equal(
+            self._create_definition(subtasks_count=50), 50)
 
 
 class TestBuildDefinition(LogTestCase):

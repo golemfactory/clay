@@ -915,7 +915,7 @@ class ClientProvider:
 
         fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
 
-        for subtask_index in range(1, task.total_tasks + 1):
+        for subtask_index in range(1, task.get_total_tasks() + 1):
             fragments[subtask_index] = []
 
         for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
