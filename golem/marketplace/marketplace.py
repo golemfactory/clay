@@ -4,7 +4,8 @@ from typing import Callable, Optional, List, TYPE_CHECKING
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
-    from golem.task.taskbase import Task  # noqa
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.task.taskbase import Task
 
 
 class ProviderPerformance:
@@ -49,7 +50,7 @@ class RequestorMarketStrategy(ABC):
         raise NotImplementedError()
 
     @abstractclassmethod
-    def get_payment_computer(cls, task: Task, subtask_id: str)\
+    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
             -> Callable[[int], int]:
         """Returns a function computing payment based on price in TTC.
         Raises:

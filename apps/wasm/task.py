@@ -150,6 +150,7 @@ class WasmTaskOptions(Options):
         return iter(list(self._subtasks()))
 
 
+# pylint: disable=too-many-public-methods
 class WasmTaskDefinition(TaskDefinition):
     def __init__(self) -> None:
         super().__init__()
@@ -314,7 +315,7 @@ class WasmTask(CoreTask):
         if not next_subtask_instance:
             raise ValueError()
 
-        next_subtask_name, next_extra_data = next_subtask_instance
+        _next_subtask_name, next_extra_data = next_subtask_instance
 
         # When the resources are sent through Hyperg, the input directory is
         # copied to RESOURCE_DIR inside the container. But when running the
