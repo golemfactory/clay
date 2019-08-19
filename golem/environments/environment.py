@@ -2,7 +2,7 @@ import enum
 import logging
 
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
-from golem.envs.docker.benchmark.minilight import make_perf_test
+from golem.envs.docker.benchmark.cpu.minilight import make_perf_test
 from golem.model import Performance
 
 
