@@ -1,9 +1,9 @@
 import logging
 import time
+import typing
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from threading import Lock
-from typing import NamedTuple, Optional
 
 from pydispatch import dispatcher
 
@@ -15,7 +15,7 @@ __all__ = ['RequestorTaskStatsManager']
 
 logger = logging.getLogger(__name__)
 
-TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", Operation)])
+TaskMsg = typing.NamedTuple("TaskMsg", [("ts", float), ("op", Operation)])
 
 
 class SubtaskInfo:
@@ -34,11 +34,11 @@ class TaskInfo:
     """
 
     def __init__(self):
-        self.latest_status = TaskStatus.notStarted  # type: TaskStatus
-        self._want_to_compute_count = 0
-        self.messages = []  # type: List[TaskMsg]
-        self.subtasks = defaultdict(
-            SubtaskInfo)  # type: DefaultDict[str, SubtaskInfo]
+        self.latest_status: TaskStatus = TaskStatus.notStarted
+        self._want_to_compute_count: int = 0
+        self.messages: typing.List[TaskMsg] = []
+        self.subtasks: typing.DefaultDict[str, SubtaskInfo] = defaultdict(
+            SubtaskInfo)
 
     def got_want_to_compute(self):
         """Makes note of a received work offer"""
@@ -260,23 +260,20 @@ class CurrentStats:
 
 def update_current_stats_with_task(
         current: CurrentStats,
-        old: Optional[TaskStats],
+        old: typing.Optional[TaskStats],
         new: TaskStats) -> CurrentStats:
-    """Returns new :py:class:`CurrentStats` instance with changes
+    """ Returns new :py:class:`CurrentStats` instance with changes
     between ``old`` and ``new`` incorporated into ``current``
 
     The ``not_downloadable_subtasks_cnt`` is only updated for tasks
     that are finished. Since it includes tasks that are downloaded at
-    a time of a call, it would be misleading to update it earlier.
-
-    Note that ``current`` is a tuple and can't be updated in place so
-    a brand new one is returned.
-    """
+    a time of a call, it would be misleading to update it earlier. """
     is_new_task = old is None
     if is_new_task:
         old = TaskStats()
 
-    return CurrentStats(
+    return replace(
+        current,
         tasks_cnt=current.tasks_cnt + (1 if is_new_task else 0),
         finished_task_cnt=(current.finished_task_cnt
                            - (1 if old.finished else 0)
@@ -326,7 +323,7 @@ class FinishedTasksStats:
 
 def update_finished_stats_with_task(
         finished: FinishedTasksStats,
-        old: Optional[TaskStats],
+        old: typing.Optional[TaskStats],
         new: TaskStats) -> FinishedTasksStats:
     mid = finished
     if old and old.finished:
@@ -384,10 +381,10 @@ class RequestorTaskStats:
     """
 
     def __init__(self):
-        self.tasks = defaultdict(
-            TaskInfo)  # type: DefaultDict[str, TaskInfo]
-        self.stats = CurrentStats()
-        self.finished_stats = FinishedTasksStats()
+        self.tasks: typing.DefaultDict[str, TaskInfo] = defaultdict(
+            TaskInfo)
+        self.stats: CurrentStats = CurrentStats()
+        self.finished_stats: FinishedTasksStats = FinishedTasksStats()
 
     def on_message(self,
                    task_id: str,
@@ -580,7 +577,7 @@ class RequestorTaskStatsManager:
     def cb_message(self,  # pylint: disable=too-many-arguments
                    sender: str,  # pylint: disable=unused-argument
                    signal: str,  # pylint: disable=unused-argument
-                   event: Optional[str],
+                   event: typing.Optional[str],
                    task_id: str,
                    task_state: TaskState,
                    subtask_id: str = None,
