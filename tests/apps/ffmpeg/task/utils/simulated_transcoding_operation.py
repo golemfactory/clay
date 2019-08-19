@@ -42,6 +42,8 @@ class SimulatedTranscodingOperation:
         self._task_options: Dict[str, Any] = {
             'output_container': None,
             'subtasks_count': 2,
+            'strip_unsupported_data_streams': False,
+            'strip_unsupported_subtitle_streams': False,
         }
         self._ffprobe_report_set: Optional[FfprobeReportSet] = None
 
@@ -152,13 +154,14 @@ class SimulatedTranscodingOperation:
                         container: Union[Container, str],
                         video_options: Dict[str, str],
                         audio_options: Dict[str, str],
-                        subtasks_count: int) -> dict:
+                        subtasks_count: int,
+                        strip_unsupported_data_streams: bool,
+                        strip_unsupported_subtitle_streams: bool) -> dict:
 
         if isinstance(container, Container):
             container_str = container.value
         else:
             container_str = container
-
         return {
             'type': 'FFMPEG',
             'name': os.path.splitext(os.path.basename(result_file))[0],
@@ -172,6 +175,9 @@ class SimulatedTranscodingOperation:
                 'audio': audio_options if audio_options is not None else {},
                 'video': video_options if video_options is not None else {},
                 'container': container_str,
+                'strip_unsupported_subtitle_streams':
+                    strip_unsupported_subtitle_streams,
+                'strip_unsupported_data_streams': strip_unsupported_data_streams
             }
         }
 
@@ -235,6 +241,8 @@ class SimulatedTranscodingOperation:
                 self._video_options,
                 self._audio_options,
                 self._task_options['subtasks_count'],
+                self._task_options['strip_unsupported_data_streams'],
+                self._task_options['strip_unsupported_subtitle_streams'],
             )
 
             self._task_executor.execute_task(task_def)

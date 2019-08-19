@@ -53,6 +53,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             video_options=None,
             audio_options=None,
             subtasks_count=2,
+            strip_unsupported_data_streams=False,
+            strip_unsupported_subtitle_streams=False,
     ):
         task_def_for_transcoding = {
             'type': 'FFMPEG',
@@ -67,6 +69,10 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
                 'video': video_options if video_options is not None else {},
                 'audio': audio_options if audio_options is not None else {},
                 'container': container,
+                'strip_unsupported_data_streams':
+                    strip_unsupported_data_streams,
+                'strip_unsupported_subtitle_streams':
+                    strip_unsupported_subtitle_streams,
             }
         }
 
