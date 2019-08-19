@@ -16,13 +16,11 @@ from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
+from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
+from golem.rpc import utils as rpc_utils
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-
-if typing.TYPE_CHECKING:
-    # pylint:disable=unused-import, ungrouped-imports
-    from apps.rendering.task.renderingtaskstate import RendererDefaults
 
 
 logger = logging.getLogger("apps.rendering")
@@ -73,6 +71,23 @@ def _calculate_subtasks_count(
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
         return total
     return defaults.default_subtasks
+
+
+@rpc_utils.expose('comp.task.subtasks.count')
+def legacy_calculate_subtasks_count(
+        subtasks_count: int,
+        optimize_total: bool,
+        use_frames: bool,
+        frames: list) -> int:
+    """
+    TODO: remove this before 0.21
+    """
+    return _calculate_subtasks_count(
+        subtasks_count,
+        optimize_total,
+        use_frames,
+        frames,
+        RendererDefaults())
 
 
 class FrameRendererOptions(Options):
