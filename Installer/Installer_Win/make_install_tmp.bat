@@ -48,6 +48,12 @@ IF NOT EXIST "%golem_repo%\Installer\Installer_Win\deps\OpenSSL" EXIT /B
 XCOPY %golem_repo%\Installer\Installer_Win\deps\OpenSSL\. . /s /e
 
 
+echo "copy golemcli"
+REM golemcli
+IF NOT EXIST "%resource_dir%\golemcli\" EXIT /B
+XCOPY %resource_dir%\golemcli\. . /s /e
+
+
 echo "copy hyperg"
 REM hyperg
 IF NOT EXIST "%resource_dir%\hyperg\" EXIT /B
