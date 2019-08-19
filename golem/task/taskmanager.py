@@ -132,22 +132,6 @@ class TaskManager(TaskEventListener):
             resource_manager
         )
 
-        self.CREATING_STATUS = frozenset([
-            TaskStatus.creating,
-            TaskStatus.errorCreating,
-        ])
-        self.ACTIVE_STATUS = frozenset([
-            TaskStatus.computing,
-            TaskStatus.starting,
-            TaskStatus.waiting,
-        ])
-        self.FINISHED_STATUS = frozenset([
-            TaskStatus.finished,
-            TaskStatus.aborted,
-            TaskStatus.timeout,
-            TaskStatus.restarted,
-        ])
-
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
         )
@@ -401,11 +385,11 @@ class TaskManager(TaskEventListener):
 
     def task_being_created(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.CREATING_STATUS
+        return task_status.is_creating()
 
     def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.FINISHED_STATUS
+        return task_status.is_completed()
 
     def task_needs_computation(self, task_id: str) -> bool:
         if self.task_being_created(task_id) or self.task_finished(task_id):
@@ -699,7 +683,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             status = self.tasks_states[tid].status
-            if task.needs_computation() and status in self.ACTIVE_STATUS:
+            if task.needs_computation() and status.is_active():
                 ret.append(task.header)
 
         return ret
@@ -779,7 +763,7 @@ class TaskManager(TaskEventListener):
 
             verification_finished()
 
-            if self.tasks_states[task_id].status in self.ACTIVE_STATUS:
+            if self.tasks_states[task_id].status.is_active():
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
@@ -895,7 +879,7 @@ class TaskManager(TaskEventListener):
         nodes_with_timeouts = []
         for t in list(self.tasks.values()):
             th = t.header
-            if self.tasks_states[th.task_id].status not in self.ACTIVE_STATUS:
+            if not self.tasks_states[th.task_id].status.is_active():
                 continue
             cur_time = int(get_timestamp_utc())
             # Check subtask timeout
