@@ -51,6 +51,7 @@ class TestFromDict(TestCase):
         }
         config = DockerGPUConfig.from_dict(config_dict)
 
+        self.assertIsInstance(config, DockerGPUConfig)
         self.assertEqual(config.work_dirs, [Path('/tmp/golem')])
         self.assertEqual(config.memory_mb, 2000)
         self.assertEqual(config.cpu_count, 2)

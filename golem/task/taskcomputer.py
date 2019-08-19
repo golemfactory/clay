@@ -23,6 +23,7 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.envs import EnvId, EnvStatus
 from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
+from golem.envs.docker.gpu import DockerGPUConfig, DockerGPUEnvironment
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -244,15 +245,28 @@ class NewTaskComputer:
     @defer.inlineCallbacks
     def prepare(self) -> defer.Deferred:
         # FIXME: Decide when and how to prepare environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_env.prepare()
+        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        yield docker_cpu.prepare()
+
+        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
+            return
+
+        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
+        yield docker_gpu.prepare()
 
     @defer.inlineCallbacks
     def clean_up(self) -> defer.Deferred:
         # FIXME: Decide when and how to clean up environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        if docker_env.status() is not EnvStatus.DISABLED:
-            yield docker_env.clean_up()
+        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        if docker_cpu.status() is not EnvStatus.DISABLED:
+            yield docker_cpu.clean_up()
+
+        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
+            return
+
+        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
+        if docker_gpu.status() is not EnvStatus.DISABLED:
+            yield docker_gpu.clean_up()
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
@@ -416,10 +430,7 @@ class NewTaskComputer:
         assert not self._is_computing()
         self._work_dir = work_dir
 
-        # FIXME: Decide how to properly configure environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_env.clean_up()
-        docker_env.update_config(DockerCPUConfig(
+        config_dict = dict(
             work_dirs=[work_dir],
             cpu_count=config_desc.num_cores,
             memory_mb=scale_memory(
@@ -427,8 +438,21 @@ class NewTaskComputer:
                 unit=MemSize.kibi,
                 to_unit=MemSize.mebi
             )
-        ))
-        yield docker_env.prepare()
+        )
+
+        # FIXME: Decide how to properly configure environments
+        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        yield docker_cpu.clean_up()
+        docker_cpu.update_config(DockerCPUConfig(**config_dict))
+        yield docker_cpu.prepare()
+
+        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
+            return
+
+        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
+        yield docker_gpu.clean_up()
+        docker_gpu.update_config(DockerGPUConfig(**config_dict))
+        yield docker_gpu.prepare()
 
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes

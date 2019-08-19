@@ -39,9 +39,12 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
-from golem.envs import Environment as NewEnv
+from golem.envs import Environment as NewEnv, EnvSupportStatus
 from golem.envs.docker.cpu import DockerCPUConfig
-from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs.docker.non_hypervised import (
+    NonHypervisedDockerCPUEnvironment,
+    NonHypervisedDockerGPUEnvironment,
+)
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
@@ -128,14 +131,25 @@ class TaskServer(
         self.config_desc = config_desc
 
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
-        docker_cpu_config = DockerCPUConfig(
-            work_dirs=[Path(self.get_task_computer_root())])
+
+        docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
+        docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
         docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
             DockerTaskApiPayloadBuilder,
         )
+
+        docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
+        if docker_gpu_status == EnvSupportStatus(True):
+            docker_gpu_env = NonHypervisedDockerGPUEnvironment.default(
+                docker_config_dict)
+            new_env_manager.register_env(
+                docker_gpu_env,
+                DockerTaskApiPayloadBuilder,
+            )
 
         self.node = node
         self.task_archiver = task_archiver
