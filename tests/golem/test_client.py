@@ -598,6 +598,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             )
         self.client.monitor = Mock()
         self.client._update_hw_preset = Mock()
+        self.client.task_server.change_config = Mock()
 
     def test_node(self, *_):
         c = self.client
