@@ -1,6 +1,7 @@
 from pathlib import Path
 from unittest import mock, TestCase
 
+from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.envs import EnvSupportStatus
 from golem.envs.docker import DockerBind
 from golem.envs.docker.gpu import DockerGPUEnvironment, DockerNvidiaGPUConfig, \
@@ -8,6 +9,10 @@ from golem.envs.docker.gpu import DockerGPUEnvironment, DockerNvidiaGPUConfig, \
 from golem.envs.docker.vendor import nvidia
 
 
+@mock.patch(
+    'golem.envs.docker.gpu.DockerGPUEnvironment._get_hypervisor_class',
+    mock.Mock(return_value=DummyHypervisor)
+)
 class TestGPUEnvironment(TestCase):
 
     @mock.patch('golem.envs.docker.gpu.nvidia.is_supported', return_value=True)
@@ -15,7 +20,7 @@ class TestGPUEnvironment(TestCase):
         'golem.envs.docker.gpu.DockerCPUEnvironment.supported',
         return_value=EnvSupportStatus(True)
     )
-    def test_supported(self, mock_super_supported, _):
+    def test_supported(self, mock_super_supported, *_):
         env = DockerGPUEnvironment(DockerNvidiaGPUConfig())
         status = env.supported()
 
@@ -24,7 +29,7 @@ class TestGPUEnvironment(TestCase):
 
     @mock.patch('golem.envs.docker.gpu.nvidia.is_supported', return_value=False)
     @mock.patch('golem.envs.docker.gpu.DockerCPUEnvironment.supported')
-    def test_not_supported(self, mock_super_supported, _):
+    def test_not_supported(self, mock_super_supported, *_):
         env = DockerGPUEnvironment(DockerNvidiaGPUConfig())
         status = env.supported()
         expected_status = EnvSupportStatus(False, "No supported GPU found")
