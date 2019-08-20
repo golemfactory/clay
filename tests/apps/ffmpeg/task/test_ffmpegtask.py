@@ -76,7 +76,9 @@ class TestffmpegTask(TempDirFixture):
                     'bit_rate': 18,
                     'codec': 'mp3'
                 },
-                'container': 'mp4'
+                'container': 'mp4',
+                'strip_unsupported_data_streams': False,
+                'strip_unsupported_subtitle_streams': False,
             }
         }
 
