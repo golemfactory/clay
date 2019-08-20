@@ -1,3 +1,4 @@
+import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
@@ -358,6 +359,14 @@ class RuntimeBase(Runtime, ABC):
     ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
 
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        def _wait_until_stopped():
+            while self.status() == RuntimeStatus.RUNNING:
+                time.sleep(1)
+        return deferToThread(_wait_until_stopped)
+
 
 class EnvMetadata(NamedTuple):
     id: EnvId
@@ -407,9 +416,8 @@ class Environment(ABC):
         """ Get the general performance score for this environment. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def metadata(cls) -> EnvMetadata:
+    def metadata(self) -> EnvMetadata:
         """ Get Environment metadata. """
         raise NotImplementedError
 

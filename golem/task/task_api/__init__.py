@@ -1,10 +1,10 @@
 import abc
+import asyncio
 from pathlib import Path
 from typing import Optional, Tuple, Type
 
 from golem_task_api import TaskApiService
 
-from golem.core.deferred import sync_wait
 from golem.envs import (
     Environment,
     Prerequisites,
@@ -41,7 +41,7 @@ class EnvironmentTaskApiService(TaskApiService):
         self._payload_builder = payload_builder
         self._runtime: Optional[Runtime] = None
 
-    def start(self, command: str, port: int) -> Tuple[str, int]:
+    async def start(self, command: str, port: int) -> Tuple[str, int]:
         runtime_payload = self._payload_builder.create_payload(
             self._prereq,
             self._shared_dir,
@@ -49,8 +49,9 @@ class EnvironmentTaskApiService(TaskApiService):
             port,
         )
         self._runtime = self._env.runtime(runtime_payload)
-        sync_wait(self._runtime.prepare())
-        sync_wait(self._runtime.start())
+        loop = asyncio.get_event_loop()
+        await self._runtime.prepare().asFuture(loop)
+        await self._runtime.start().asFuture(loop)
         return self._runtime.get_port_mapping(port)
 
     def running(self) -> bool:
@@ -67,4 +68,5 @@ class EnvironmentTaskApiService(TaskApiService):
 
     async def wait_until_shutdown_complete(self) -> None:
         assert self._runtime is not None
-        sync_wait(self._runtime.wait_until_stopped())
+        loop = asyncio.get_event_loop()
+        await self._runtime.wait_until_stopped().asFuture(loop)
