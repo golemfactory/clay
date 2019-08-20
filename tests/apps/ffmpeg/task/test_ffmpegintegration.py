@@ -14,7 +14,7 @@ from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
-    AudioCodecNotSupportedByContainer
+    AudioCodecNotSupportedByContainer, ffmpegMergeReplaceError
 from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
@@ -438,4 +438,40 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
                 'codec': 'abcd',
             })
         with self.assertRaises(UnsupportedAudioCodec):
+            self.execute_task(task_def)
+
+    def _prepare_task_def_for_strip_streams(self, strip_streams):
+        resource_stream = os.path.join(
+            self.RESOURCES,
+            "videos/bad/standalone-small[mpeg2video+mp2,560x320,6s,v1a1s0d1,i523p661b509,30fps].mpg")  # noqa pylint: disable=line-too-long
+        result_file = os.path.join(
+            self.root_dir,
+            f'test_standalone_strip_streams_{strip_streams}.mp4')
+        return self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            video_options={
+                'codec': 'hevc',
+                'resolution': [560, 320],
+                'frame_rate': "25",
+            },
+            strip_unsupported_data_streams=strip_streams,
+            strip_unsupported_subtitle_streams=strip_streams,
+        )
+
+    @remove_temporary_dirtree_if_test_passed
+    def test_video_with_unsupported_streams_should_be_transcoded_with_streams_stripped(self):  # noqa pylint: disable=line-too-long
+        task_def = self._prepare_task_def_for_strip_streams(strip_streams=True)
+        task = self.execute_task(task_def)
+        output_file = task.task_definition.output_file
+        self.assertTrue(TestTaskIntegration.check_file_existence(output_file))
+
+    @remove_temporary_dirtree_if_test_passed
+    def test_video_with_unsupported_streams_should_fail_transcode_without_strip_streams(self):  # noqa pylint: disable=line-too-long
+        task_def = self._prepare_task_def_for_strip_streams(strip_streams=False)
+        # We know that if we don't strip subtitles and data streams in this
+        # particular case ffmpeg won't be able to convert them and fail. But it
+        # is not necessarily the case for non-whitelisted streams in general.
+        with self.assertRaises(ffmpegMergeReplaceError):
             self.execute_task(task_def)
