@@ -174,20 +174,27 @@ def do_replace(input_file,
                replacement_source,
                output_file,
                stream_type,
-               container=None):
+               container=None,
+               strip_unsupported_data_streams=False,
+               strip_unsupported_subtitle_streams=False):
 
     commands.replace_streams(
         input_file,
         replacement_source,
         output_file,
         stream_type,
-        container)
+        container,
+        strip_unsupported_data_streams,
+        strip_unsupported_subtitle_streams)
 
 
 def do_merge_and_replace(input_file,
                          chunks,
                          output_file,
-                         container=None):
+                         container=None,
+                         strip_unsupported_data_streams=False,
+                         strip_unsupported_subtitle_streams=False):
+
     output_basename = os.path.basename(output_file)
     [output_stem, output_extension] = os.path.splitext(output_basename)
 
@@ -201,7 +208,9 @@ def do_merge_and_replace(input_file,
         intermediate_file,
         output_file,
         'v',
-        container)
+        container,
+        strip_unsupported_data_streams,
+        strip_unsupported_subtitle_streams)
 
 
 def compute_metric(cmd, function):
@@ -264,13 +273,17 @@ def run_ffmpeg(params):
             params['replacement_source'],
             params['output_file'],
             params['stream_type'],
-            params.get('container'))
+            params.get('container'),
+            params.get('strip_unsupported_data_streams'),
+            params.get('strip_unsupported_subtitle_streams'))
     elif params['command'] == "merge-and-replace":
         do_merge_and_replace(
             params['input_file'],
             params['chunks'],
             params['output_file'],
-            params.get('container'))
+            params.get('container'),
+            params.get('strip_unsupported_data_streams'),
+            params.get('strip_unsupported_subtitle_streams'))
     elif params['command'] == "compute-metrics":
         compute_metrics(
             params["metrics_params"])

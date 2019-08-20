@@ -53,6 +53,8 @@ class TranscodingTaskOptions(Options):
         self.audio_params = TranscodingTaskOptions.AudioParams()
         self.input_stream_path = None
         self.output_container = None
+        self.strip_unsupported_data_streams = False
+        self.strip_unsupported_subtitle_streams = False
 
 
 class TranscodingTaskDefinition(TaskDefinition):
@@ -171,6 +173,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             output_basename,
             self.task_dir,
             self.task_definition.options.output_container,
+            self.task_definition.options.strip_unsupported_data_streams,
+            self.task_definition.options.strip_unsupported_subtitle_streams,
         )
 
         # Move result to desired location.
@@ -291,6 +295,12 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             task_def.options.output_container = output_container
             task_def.options.audio_params = audio_params
             task_def.options.name = dictionary.get('name', '')
+            if 'strip_unsupported_data_streams' in options:
+                task_def.options.strip_unsupported_data_streams = options[
+                    'strip_unsupported_data_streams']
+            if 'strip_unsupported_subtitle_streams' in options:
+                task_def.options.strip_unsupported_subtitle_streams = options[
+                    'strip_unsupported_subtitle_streams']
 
             logger.debug(
                 'Transcoding task definition has been built [definition=%s]',
