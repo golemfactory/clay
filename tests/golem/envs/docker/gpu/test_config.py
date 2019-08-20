@@ -37,7 +37,7 @@ class TestFromDict(TestCase):
         self.assertEqual(config.gpu_vendor, 'TEST')
         self.assertEqual(config.gpu_devices, [])
         self.assertEqual(config.gpu_caps, [])
-        self.assertEqual(config.gpu_requirements, [])
+        self.assertEqual(config.gpu_requirements, {})
 
     def test_custom_values(self):
         config_dict = {
@@ -47,7 +47,7 @@ class TestFromDict(TestCase):
             'gpu_vendor': 'TEST',
             'gpu_devices': ['device_1', 'device_2'],
             'gpu_caps': ['compute'],
-            'gpu_requirements': [('driver', '>=1.0')]
+            'gpu_requirements': {'driver': '>=1.0'}
         }
         config = DockerGPUConfig.from_dict(config_dict)
 
@@ -58,7 +58,7 @@ class TestFromDict(TestCase):
         self.assertEqual(config.gpu_vendor, 'TEST')
         self.assertEqual(config.gpu_devices, ['device_1', 'device_2'])
         self.assertEqual(config.gpu_caps, ['compute'])
-        self.assertEqual(config.gpu_requirements, [('driver', '>=1.0')])
+        self.assertEqual(config.gpu_requirements, {'driver': '>=1.0'})
 
 
 class TestToDict(TestCase):
@@ -71,7 +71,7 @@ class TestToDict(TestCase):
             gpu_vendor='TEST',
             gpu_devices=['device_1', 'device_2'],
             gpu_caps=['compute'],
-            gpu_requirements=[('driver', '>=1.0')],
+            gpu_requirements={'driver': '>=1.0'},
         ).to_dict()
 
         # We cannot assert exact path string because it depends on OS
@@ -83,7 +83,7 @@ class TestToDict(TestCase):
             'gpu_vendor': 'TEST',
             'gpu_devices': ['device_1', 'device_2'],
             'gpu_caps': ['compute'],
-            'gpu_requirements': [('driver', '>=1.0')]
+            'gpu_requirements': {'driver': '>=1.0'}
         })
 
 
@@ -114,10 +114,10 @@ class TestNvidiaConfig(TestCase):
             gpu_vendor=nvidia.VENDOR,
             gpu_devices=['0', '1'],
             gpu_caps=['display', 'video'],
-            gpu_requirements=[
-                ('driver', '>=400.0'),
-                ('brand', 'Tesla'),
-            ]
+            gpu_requirements={
+                'driver': '>=400.0',
+                'brand': 'Tesla',
+            }
         )
         self.assertEqual(config.container_config(), {
             'runtime': 'nvidia',

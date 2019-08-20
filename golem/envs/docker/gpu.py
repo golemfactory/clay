@@ -1,6 +1,6 @@
 from copy import copy
 from logging import getLogger, Logger
-from typing import Any, ClassVar, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional
 
 from dataclasses import dataclass, field
 from twisted.internet.defer import Deferred
@@ -32,7 +32,7 @@ class DockerGPUConfig(DockerCPUConfig):
     # Enabled GPU device capabilities
     gpu_caps: List[str] = field(default_factory=list)
     # GPU device and driver constraints
-    gpu_requirements: List[Tuple[str, str]] = field(default_factory=list)
+    gpu_requirements: Dict[str, str] = field(default_factory=dict)
 
     def validate(self) -> None:
         pass
@@ -50,7 +50,7 @@ class DockerNvidiaGPUConfig(DockerGPUConfig):
         default_factory=lambda: copy(nvidia.DEFAULT_DEVICES))
     gpu_caps: List[str] = field(
         default_factory=lambda: copy(nvidia.DEFAULT_CAPABILITIES))
-    gpu_requirements: List[Tuple[str, str]] = field(
+    gpu_requirements: Dict[str, str] = field(
         default_factory=lambda: copy(nvidia.DEFAULT_REQUIREMENTS))
 
     def validate(self) -> None:
@@ -68,10 +68,10 @@ class DockerNvidiaGPUConfig(DockerGPUConfig):
             'NVIDIA_DRIVER_CAPABILITIES': ','.join(self.gpu_caps),
         }
 
-        # pylint: disable=not-an-iterable
-        for req, val in self.gpu_requirements:
+        # pylint: disable=no-member
+        for req, val in self.gpu_requirements.items():
             environment[f'NVIDIA_REQUIRE_{req.upper()}'] = val
-        # pylint: enable=not-an-iterable
+        # pylint: enable=no-member
 
         return dict(
             runtime='nvidia',

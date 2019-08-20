@@ -130,7 +130,10 @@ class TestValidateCapabilitiesSuccess(TestCase):
 class TestValidateRequirementsFailure(TestCase):
 
     def test_invalid_name(self):
-        reqs = [('cuda', '>=5.0'), ('_invalid', '>=6.0')]
+        reqs = {
+            'cuda': '>=5.0',
+            '_invalid': '>=6.0'
+        }
 
         with self.assertRaises(ValueError) as raised:
             nvidia.validate_requirements(reqs)
@@ -139,7 +142,10 @@ class TestValidateRequirementsFailure(TestCase):
             str(raised.exception))
 
     def test_missing_value(self):
-        reqs = [('cuda', '>=5.0'), ('brand', '')]
+        reqs = {
+            'cuda': '>=5.0',
+            'brand': ''
+        }
 
         with self.assertRaises(ValueError) as raised:
             nvidia.validate_requirements(reqs)
@@ -151,8 +157,10 @@ class TestValidateRequirementsFailure(TestCase):
 class TestValidateRequirementsSuccess(TestCase):
 
     def test_with_no_requirements(self):
-        nvidia.validate_requirements([])
+        nvidia.validate_requirements({})
 
     def test_with_requirements(self):
-        reqs = [('cuda', '>=5.0'), ('brand', 'Tesla')]
-        nvidia.validate_requirements(reqs)
+        nvidia.validate_requirements({
+            'cuda': '>=5.0',
+            'brand': 'Tesla'
+        })

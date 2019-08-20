@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple
+from typing import Dict, List
 
 # FIXME: move the nvgpu module out of the apps folder
 from apps.core import nvgpu
@@ -29,7 +29,7 @@ CAPABILITIES = {
     'display',  # required for leveraging X11 display
 }
 
-DEFAULT_REQUIREMENTS: List[Tuple[str, str]] = list()
+DEFAULT_REQUIREMENTS: Dict[str, str] = dict()
 REQUIREMENTS = {
     'cuda',  # constraint on the CUDA driver version
     'driver',  # constraint on the driver version
@@ -83,9 +83,9 @@ def validate_capabilities(caps: List[str]) -> None:
         raise ValueError(f"Invalid {VENDOR} GPU caps: {caps}")
 
 
-def validate_requirements(requirements: List[Tuple[str, str]]) -> None:
+def validate_requirements(requirements: Dict[str, str]) -> None:
     """ Validate requirement names and check if a value was provided """
-    for name, val in requirements:
+    for name, val in requirements.items():
         if name not in REQUIREMENTS:
             raise ValueError(
                 f"Invalid {VENDOR} GPU requirement name: '{name}'")
