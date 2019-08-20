@@ -149,7 +149,7 @@ class FfmpegIntegrationBase(TestTaskIntegration):
         super().tearDownClass()
         report_file_name = os.path.join(
             cls.root_dir,
-            'ffmpeg-integration-test-transcoding-diffs.md'
+            f'ffmpeg-integration-test-transcoding-diffs-{cls.__name__}.md'
         )
         with open(report_file_name, 'w') as file:
             file.write(cls._ffprobe_report_set.to_markdown())
