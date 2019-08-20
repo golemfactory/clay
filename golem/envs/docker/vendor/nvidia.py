@@ -47,9 +47,9 @@ def validate_devices(devices: List[str]) -> None:
         raise ValueError(f"Missing {VENDOR} GPUs: {devices}")
 
     special_count = sum([d in SPECIAL_DEVICES for d in devices])
-    special_plus_others = special_count > 0 and len(devices) > 1
+    has_mixed_devices = special_count > 0 and len(devices) > 1
 
-    if special_count > 1 or special_plus_others:
+    if special_count > 1 or has_mixed_devices:
         raise ValueError(f"Mixed {VENDOR} GPU devices: {devices}")
     # Only a "special" device name was provided
     if special_count > 0:
@@ -70,9 +70,9 @@ def validate_capabilities(caps: List[str]) -> None:
         raise ValueError(f"Missing {VENDOR} GPU caps: {caps}")
 
     special_count = sum([c in SPECIAL_CAPABILITIES for c in caps])
-    special_plus_others = special_count > 0 and len(caps) > 1
+    has_mixed_caps = special_count > 0 and len(caps) > 1
 
-    if special_count > 1 or special_plus_others:
+    if special_count > 1 or has_mixed_caps:
         raise ValueError(f"Mixed {VENDOR} GPU caps: {caps}")
     # Only a "special" capability was provided
     if special_count > 0:
