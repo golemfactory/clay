@@ -2,9 +2,9 @@ import logging
 import time
 import typing
 from collections import defaultdict
-from dataclasses import dataclass, replace
 from threading import Lock
 
+from dataclasses import dataclass, replace
 from pydispatch import dispatcher
 
 from golem.core.statskeeper import StatsKeeper
