@@ -262,6 +262,7 @@ class WalletOperation(BaseModel):
         confirmed = enum.auto()
         overdue = enum.auto()
         failed = enum.auto()
+        arbitraged_by_concent = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -320,6 +321,7 @@ class WalletOperation(BaseModel):
                 cls.status.not_in([
                     cls.STATUS.confirmed,
                     cls.STATUS.failed,
+                    cls.STATUS.arbitraged_by_concent,
                 ]),
                 cls.tx_hash.is_null(False),
                 cls.direction ==
@@ -354,6 +356,7 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+    charged_from_deposit = BooleanField(null=True)
 
     class Meta:
         database = db
