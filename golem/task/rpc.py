@@ -311,8 +311,7 @@ def add_resources(client, resources, res_id, timeout):
     )
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
-    client_options = client.task_server.get_share_options(res_id, None)
-    client_options.timeout = timeout
+    client_options = client.task_server.get_share_options(timeout=timeout)
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
         res_id,

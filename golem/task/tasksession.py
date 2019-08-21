@@ -426,7 +426,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
-                    ctd['subtask_id'], self.address).__dict__
+                    address=self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             if ttc.concent_enabled:
