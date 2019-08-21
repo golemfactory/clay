@@ -24,12 +24,12 @@ def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
 
 
-def round_timeout(value: Optional[Union[int, float]]) -> Optional[int]:
-    if not isinstance(value, (int, float)):
-        return None
-
-    value_int = int(math.ceil(value))
-    return value_int if value_int > 0 else None
+# TODO: Change 'Optional[Union[int, float]]' hint to 'Union[int, float]' and
+#       remove the 'isinstance' check when HyperdriveResourceManager is removed
+def round_timeout(value: Optional[Union[int, float]]) -> int:
+    if not isinstance(value, (int, float)) or value <= 0:
+        raise ValueError(f"Invalid timeout: {value}")
+    return int(math.ceil(value))
 
 
 class HyperdriveClient(IClient):
@@ -70,22 +70,20 @@ class HyperdriveClient(IClient):
         return addresses
 
     def add(self, files, client_options=None, **kwargs):
-        timeout = client_options.timeout if client_options else None
         response = self._request(
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(timeout)
+            timeout=round_timeout(client_options.timeout)
         )
         return response['hash']
 
     def restore(self, content_hash, client_options=None, **kwargs):
-        timeout = client_options.timeout if client_options else None
         response = self._request(
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(timeout)
+            timeout=round_timeout(client_options.timeout)
         )
         return response['hash']
 
@@ -161,12 +159,11 @@ class HyperdriveAsyncClient(HyperdriveClient):
             client_options: ClientOptions,
             **kwargs
     ):
-        timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(timeout))
+            timeout=round_timeout(client_options.timeout))
 
         return self._async_request(
             params=params,
@@ -178,12 +175,11 @@ class HyperdriveAsyncClient(HyperdriveClient):
             client_options: ClientOptions,
             **kwargs
     ):
-        timeout = client_options.timeout if client_options else None
         params = dict(
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(timeout))
+            timeout=round_timeout(client_options.timeout))
 
         return self._async_request(
             params=params,
