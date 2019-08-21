@@ -123,7 +123,6 @@ class SystemMonitor(object):
     def send(self, model, loop):
         url = self.config['HOST']
         request_timeout = self.config['REQUEST_TIMEOUT']
-        # sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
         proto_ver = self.config['PROTO_VERSION']
         payload = json.dumps(
             {
