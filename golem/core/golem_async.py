@@ -144,7 +144,11 @@ def taskify():
     return wrapped
 
 
-def run_at_most_every(delta: datetime.timedelta):
+def throttle(delta: datetime.timedelta):
+    """Invoke the decorated function only once per `delta`
+
+    All subsequent call will be dropped until delta passes.
+    """
     last_run = datetime.datetime.min
 
     def wrapped(f):
