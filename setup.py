@@ -53,9 +53,6 @@ setup(
         'gui_scripts': [
             'golemapp = golemapp:start',
         ],
-        'console_scripts': [
-            'golemcli = golemcli:start',
-        ]
     },
     rust_extensions=[
         RustExtension(
@@ -67,7 +64,7 @@ setup(
     ],
     data_files=[
         (path.normpath('../../'), [
-            'golemapp.py', 'golemcli.py', 'loggingconfig.py'
+            'golemapp.py', 'loggingconfig.py'
         ]),
         (path.normpath('../../golem/'), [
             path.normpath('golem/CONCENT_TERMS.html'),
