@@ -331,11 +331,11 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
                                    'options': {}}],
             ['promissory_note_sig',
              ttc._get_promissory_note(
-                 getattr(self.ethereum_config, 'deposit_contract_address')
+                 self.ethereum_config.deposit_contract_address
              ).sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc._get_concent_promissory_note(
-                 getattr(self.ethereum_config, 'deposit_contract_address')
+                 self.ethereum_config.deposit_contract_address
              ).sign(self.requestor_keys.raw_privkey)],
         ]
         self.assertCountEqual(ttc.slots(), expected)
@@ -348,10 +348,10 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def test_task_to_compute_promissory_notes(self):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
         self.assertTrue(ttc.verify_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
         self.assertTrue(ttc.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
 
 
@@ -606,7 +606,7 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())

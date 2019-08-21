@@ -62,8 +62,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.generate_ethsig(self.requestor_keys.raw_privkey)
         self.ethereum_config = EthereumConfig()
         self.msg.sign_all_promissory_notes(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.requestor_keys.raw_privkey
         )
         self.msg.sign_message(self.requestor_keys.raw_privkey)  # noqa go home pylint, you're drunk pylint: disable=no-value-for-parameter
@@ -225,8 +225,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_bad_promissory_note_sig(self, send_mock, *_):
         self.msg.sign_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.different_keys.raw_privkey
         )
         self.task_session._react_to_task_to_compute(self.msg)
@@ -237,8 +237,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_bad_concent_promissory_note_sig(self, send_mock, *_):
         self.msg.sign_concent_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.different_keys.raw_privkey
         )
         self.task_session._react_to_task_to_compute(self.msg)
