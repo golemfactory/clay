@@ -271,13 +271,8 @@ class TaskServer(
 
     @inlineCallbacks
     def pause(self):
-        logger.debug('pause()')
         super().pause()
-        logger.debug('pause() - after super')
         yield CoreTask.VERIFICATION_QUEUE.pause()
-        logger.debug('pause() - after CoreTask')
-        yield self.requested_task_manager.quit()
-        logger.debug('pause() - after requested_task_manager')
 
     def resume(self):
         super().resume()

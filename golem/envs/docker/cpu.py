@@ -223,8 +223,8 @@ class DockerCPURuntime(RuntimeBase):
         def _prepare():
             client = local_client()
             result = client.create_container_from_config(self._container_config)
+
             container_id = result.get("Id")
-            logger.debug("got container_id=%r", container_id)
             assert isinstance(container_id, str), "Invalid container ID"
             self._container_id = container_id
 
@@ -234,9 +234,7 @@ class DockerCPURuntime(RuntimeBase):
             sock = client.attach_socket(
                 container_id, params={'stdin': True, 'stream': True}
             )
-            logger.debug("got socket=%r", sock)
             self._stdin_socket = InputSocket(sock)
-            logger.debug("_prepare DONE")
 
         deferred_prepare = deferToThread(_prepare)
         deferred_prepare.addCallback(self._prepared)
@@ -289,12 +287,6 @@ class DockerCPURuntime(RuntimeBase):
         deferred_start.addErrback(self._error_callback(
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
-
-    def wait_until_stopped(self) -> Deferred:
-        def _wait_until_stopped():
-            while self.status() == RuntimeStatus.RUNNING:
-                sleep(1)
-        return deferToThread(_wait_until_stopped)
 
     def stop(self) -> Deferred:
         with self._status_lock:
