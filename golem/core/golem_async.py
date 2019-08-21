@@ -178,8 +178,22 @@ def run_in_thread():
                     f,
                     *args,
                     **kwargs,
-                    loop=asyncio.get_event_loop(),
                 ),
+            )
+        return curry
+    return wrapped
+
+
+def ensure_future():
+    """Ensures awaitable is run in the future. Doesn't return results"""
+    def wrapped(f):
+        assert asyncio.iscoroutinefunction(f)
+
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            asyncio.ensure_future(
+                f(*args, **kwargs),
+                loop=asyncio.get_event_loop(),
             )
         return curry
     return wrapped

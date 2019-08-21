@@ -24,6 +24,7 @@ from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 log = logging.getLogger('golem.monitor')
 
 
+@golem_async.ensure_future()
 @golem_async.run_at_most_every(datetime.timedelta(minutes=10))
 def log_sometimes(msg, d):
     log.warning(msg, d)
@@ -120,7 +121,7 @@ class SystemMonitor(object):
         )
 
     @golem_async.run_in_thread()
-    def send(self, model, loop):
+    def send(self, model):
         url = self.config['HOST']
         request_timeout = self.config['REQUEST_TIMEOUT']
         proto_ver = self.config['PROTO_VERSION']
@@ -143,13 +144,13 @@ class SystemMonitor(object):
             if not result.status_code == 200:
                 log.debug("Monitor request error. result=%r", result)
         except requests.exceptions.RequestException as e:
-            asyncio.ensure_future(log_sometimes(
+            log_sometimes(
                 'Problem sending payload to: %(url)r, because %(e)s',
                 {
                     'url': url,
                     'e': e,
                 },
-            ), loop=loop)
+            )
 
     # handlers
 
