@@ -183,19 +183,3 @@ def run_in_thread():
             )
         return curry
     return wrapped
-
-
-def locked():
-    lock = asyncio.Lock()
-
-    def wrapped(f):
-        @functools.wraps(f)
-        async def curry(*args, **kwargs):
-            nonlocal lock
-            async with lock:
-                result = f(*args, **kwargs)
-                if asyncio.iscoroutine(result):
-                    return await result
-                return result
-        return curry
-    return wrapped
