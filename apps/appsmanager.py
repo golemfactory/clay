@@ -3,7 +3,9 @@ from configparser import ConfigParser
 from collections import OrderedDict
 from importlib import import_module
 
-from golem.config.active import APP_MANAGER_CONFIG_FILES
+from golem.config.active import (
+        APP_MANAGER_CONFIG_FILES, CONCENT_SUPPORTED_APPS
+)
 from golem.core.common import get_golem_path
 from golem.environments.environment import SupportStatus
 
@@ -17,11 +19,16 @@ class App(object):
         self.benchmark = None  # inherit from Benchmark
         self.benchmark_builder = None  # inherit from TaskBuilder
 
+    @property
+    def concent_supported(self):
+        return self.task_type_info().id in CONCENT_SUPPORTED_APPS
+
 
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
     def __init__(self):
         self.apps = OrderedDict()
+        self.task_types = dict()
 
     def load_all_apps(self):
         for config_file in APP_MANAGER_CONFIG_FILES:
@@ -46,6 +53,7 @@ class AppsManager(object):
                 setattr(app, opt, getattr(module, name))
 
             self.apps[section] = app
+            self.task_types[app.task_type_info().id] = app
 
     def get_env_list(self):
         return [app.env() for app in self.apps.values()]
@@ -68,3 +76,6 @@ class AppsManager(object):
     @staticmethod
     def _benchmark_enabled(env):
         return env.check_support() == SupportStatus.ok()
+
+    def get_app(self, task_type_id: str):
+        return self.task_types.get(task_type_id)
