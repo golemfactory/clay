@@ -78,3 +78,12 @@ class GolemNodeTest(NodeTestBase):
             'golem.regular_run_stop_on_reject',
             **{'task-settings': '4-by-3'}
         )
+
+    def test_wasm_vbr_success(self):
+        self._run_test('golem.wasm_vbr_success')
+
+    def test_wasm_vbr_single_failure(self):
+        self._run_test('golem.wasm_vbr_single_failure')
+
+    def test_wasm_vbr_crash_provider_side(self):
+        self._run_test('golem.wasm_vbr_crash_provider_side')

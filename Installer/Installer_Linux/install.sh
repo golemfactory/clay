@@ -523,8 +523,6 @@ function install_golem()
     result=$(( ${result} + $? ))
     check_symlink ${GOLEM_DIR}/golemapp /usr/local/bin/golemapp
     result=$(( ${result} + $? ))
-    check_symlink ${GOLEM_DIR}/golemcli /usr/local/bin/golemcli
-    result=$(( ${result} + $? ))
     [[ ${result} -eq 0 ]] && return 0 || return 1
 }
 

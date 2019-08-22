@@ -159,7 +159,28 @@ _TASK_SETTINGS = {
             'samples': 32,
         }
     },
-
+    'WASM_g_flite': {
+        'type': "wasm",
+        'name': 'my_wasm_g_flite_task',
+        'timeout': "0:15:00",
+        "subtask_timeout": "0:15:00",
+        "bid": 1,
+        "resources": [],
+        'options': {
+            'js_name': 'flite.js',
+            'subtasks': {
+                'subtask0': {
+                    'exec_args': ['in.txt', 'in.wav'],
+                    'output_file_paths': ['in.wav']
+                },
+                'subtask1': {
+                    'exec_args': ['in.txt', 'in.wav'],
+                    'output_file_paths': ['in.wav']
+                }
+            },
+            'wasm_name': 'flite.wasm'
+        },
+    },
 }
 
 
