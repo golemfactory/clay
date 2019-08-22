@@ -164,25 +164,6 @@ _TASK_SETTINGS = {
             'wasm_name': 'flite.wasm'
         },
     },
-    'task_api_blender': {
-        'app_id': "blender",
-        'name': 'test task',
-        'environment': "docker_cpu",
-        'output_directory': "",
-        "resources": [],
-        "max_price_per_hour": 1.0,
-        "max_subtasks": 1,
-        'task_timeout': 600000,  # 00:10:00
-        "subtask_timeout": 590000,  # 00:09:50
-        "options": {
-            "output_path": '',
-            "format": "PNG",
-            "resolution": [
-                320,
-                240
-            ]
-        }
-    },
 }
 
 
