@@ -1,7 +1,7 @@
 import json
 import os
 from enum import Enum
-from typing import Any, Collection, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Collection, Dict, List, Optional, Set, Union
 
 from apps.transcoding.ffmpeg.utils import StreamOperator
 
@@ -71,13 +71,62 @@ def parse_ffprobe_frame_rate(raw_frame_rate: Union[int, float, str, None],
         return value
 
 
+def _diff_attributes(  # pylint: disable=too-many-arguments
+        attributes_to_compare,
+        actual_report,
+        overrides,
+        expected_report,
+        assume_attribute_unchanged_if_missing,
+        excludes,
+        location):
+
+    if overrides is None:
+        overrides = {}
+    if excludes is None:
+        excludes = set()
+
+    differences = []
+    for attribute in attributes_to_compare:
+        actual_value = getattr(actual_report, attribute)
+        expected_value = overrides.get(
+            attribute,
+            getattr(expected_report, attribute),
+        )
+
+        skip_missing_value = (
+            assume_attribute_unchanged_if_missing and (
+                actual_value is None or
+                expected_value is None)
+        )
+
+        if (
+                not skip_missing_value and
+                attribute not in excludes and
+                expected_value != actual_value
+        ):
+            diff_dict = {
+                'location': location,
+                'attribute': attribute,
+                'actual_value': actual_value,
+                'expected_value': expected_value,
+                'reason': DiffReason.DifferentAttributeValues.value,
+            }
+            differences.append(diff_dict)
+
+    return differences
+
+
 class FfprobeFormatReport:
     ATTRIBUTES_TO_COMPARE = {
         'format_name',
         'stream_types',
         'duration',
-        'start_time',
         'program_count',
+
+        # Don't compare start_time. It's better to compare relative_start_time
+        # of individual streams because some encoders seem to use non-zero
+        # start_time while still preserving the relative values.
+        # 'start_time',
     }
 
     def __init__(self, raw_report: dict) -> None:
@@ -85,8 +134,9 @@ class FfprobeFormatReport:
         self._stream_reports = self._create_stream_reports(raw_report)
 
     @classmethod
-    def _create_stream_report(cls, raw_stream_report: dict) -> \
-            'FfprobeStreamReport':
+    def _create_stream_report(cls,
+                              raw_stream_report: dict,
+                              format_report: 'FfprobeFormatReport') -> 'FfprobeStreamReport':  # noqa: E501  # pylint: disable=line-too-long
         codec_type_to_report_class = {
             'video':    FfprobeVideoStreamReport,
             'audio':    FfprobeAudioStreamReport,
@@ -102,16 +152,15 @@ class FfprobeFormatReport:
             )
 
         report_class = codec_type_to_report_class[codec_type]
-        return report_class(raw_stream_report)
+        return report_class(raw_stream_report, format_report)
 
-    @classmethod
-    def _create_stream_reports(cls, raw_report: dict) -> \
+    def _create_stream_reports(self, raw_report: dict) -> \
             List['FfprobeStreamReport']:
         if 'streams' not in raw_report:
             return []
 
         return [
-            cls._create_stream_report(raw_stream_report)
+            self._create_stream_report(raw_stream_report, self)
             for raw_stream_report in raw_report['streams']
         ]
 
@@ -147,7 +196,7 @@ class FfprobeFormatReport:
     def duration(self) -> 'FuzzyDuration':
         return fuzzy_duration_if_possible(
             self._raw_report.get('format', {}).get('duration', None),
-            0.1,
+            1,
         )
 
     @property
@@ -158,10 +207,19 @@ class FfprobeFormatReport:
         )
 
     @property
-    def program_count(self) -> Optional[str]:
-        return number_if_possible(
+    def program_count(self) -> Optional[Any]:
+        result = number_if_possible(
             self._raw_report.get('format', {}).get('nb_programs', None)
         )
+
+        if result == 0:
+            # Most containers formats do not support programs. Only a few do,
+            # like MPEG for example. ffprobe returns zero (rather than no value)
+            # for these containers. Let's treat it as no value to avoid false
+            # positives in diff.
+            return None
+
+        return result
 
     @classmethod
     def _classify_streams(cls,
@@ -183,7 +241,7 @@ class FfprobeFormatReport:
                                 List['FfprobeStreamReport'],
                                 overrides: Optional[FileOverrides] = None,
                                 excludes: Optional[FileExcludes] = None,
-                               ) -> Diff:
+                                assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
         assert len(
             set(r.codec_type for r in actual_stream_reports) |
             set(r.codec_type for r in expected_stream_reports)
@@ -210,6 +268,7 @@ class FfprobeFormatReport:
                         expected_stream_reports[expected_idx].codec_type,
                         set(),
                     ),
+                    assume_attribute_unchanged_if_missing,
                 )
                 assert new_diff is not None
 
@@ -254,6 +313,7 @@ class FfprobeFormatReport:
                       expected_stream_reports: List['FfprobeStreamReport'],
                       overrides: Optional[FileOverrides] = None,
                       excludes: Optional[FileExcludes] = None,
+                      assume_attribute_unchanged_if_missing: bool = False,
                      ) -> Diff:
 
         actual_reports_by_type = cls._classify_streams(
@@ -274,6 +334,7 @@ class FfprobeFormatReport:
                 expected_reports_by_type.get(codec_type, []),
                 overrides,
                 excludes,
+                assume_attribute_unchanged_if_missing,
             )
 
         return stream_differences
@@ -286,36 +347,24 @@ class FfprobeFormatReport:
                          actual_report: 'FfprobeFormatReport',
                          expected_report: 'FfprobeFormatReport',
                          overrides: Optional[StreamOverrides] = None,
-                         excludes: Optional[StreamExcludes] = None) -> Diff:
-        if overrides is None:
-            overrides = {}
-        if excludes is None:
-            excludes = set()
+                         excludes: Optional[StreamExcludes] = None,
+                         assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
 
-        differences = []
-        for attribute in attributes_to_compare:
-            actual_value = getattr(actual_report, attribute)
-            expected_value = overrides.get(
-                attribute,
-                getattr(expected_report, attribute),
-            )
-
-            if attribute not in excludes and expected_value != actual_value:
-                diff_dict = {
-                    'location': 'format',
-                    'attribute': attribute,
-                    'actual_value': actual_value,
-                    'expected_value': expected_value,
-                    'reason': DiffReason.DifferentAttributeValues.value,
-                }
-                differences.append(diff_dict)
-
-        return differences
+        return _diff_attributes(
+            attributes_to_compare=attributes_to_compare,
+            actual_report=actual_report,
+            overrides=overrides,
+            expected_report=expected_report,
+            assume_attribute_unchanged_if_missing=assume_attribute_unchanged_if_missing,  # noqa: E501  # pylint: disable=line-too-long
+            excludes=excludes,
+            location='format',
+        )
 
     def diff(self,
              expected_report: 'FfprobeFormatReport',
              overrides: Optional[FileOverrides] = None,
-             excludes: Optional[FileExcludes] = None) -> Diff:
+             excludes: Optional[FileExcludes] = None,
+             assume_attribute_unchanged_if_missing: bool = False) -> Diff:
 
         format_differences = self._diff_attributes(
             self.ATTRIBUTES_TO_COMPARE,
@@ -323,6 +372,7 @@ class FfprobeFormatReport:
             expected_report,
             overrides.get('format', {}) if overrides is not None else None,
             excludes.get('format', set()) if excludes is not None else None,
+            assume_attribute_unchanged_if_missing,
         )
 
         stream_differences = self._diff_streams(
@@ -330,6 +380,7 @@ class FfprobeFormatReport:
             expected_report.stream_reports,
             overrides,
             excludes,
+            assume_attribute_unchanged_if_missing,
         )
 
         return format_differences + stream_differences
@@ -460,13 +511,21 @@ class FfprobeStreamReport:
     ATTRIBUTES_TO_COMPARE = {
         'codec_type',
         'codec_name',
-        'start_time'
+
+        # Don't compare start_time. It's better to compare relative_start_time
+        # of individual streams because some encoders seem to use non-zero
+        # start_time while still preserving the relative values.
+        # 'start_time',
+        'relative_start_time',
     }
 
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert 'codec_type' in raw_report
 
         self._raw_report = raw_report
+        self._format_report = format_report
 
     @property
     def codec_type(self) -> str:
@@ -484,6 +543,29 @@ class FfprobeStreamReport:
         )
 
     @property
+    def relative_start_time(self) -> Optional[Union[FuzzyDuration, tuple]]:
+        raw_start_time = self._raw_report.get('start_time')
+        raw_format_start_time = self._format_report._raw_report['format'].get(
+            'start_time'
+        )
+        parsed_start_time = number_if_possible(raw_start_time)
+        parsed_format_start_time = number_if_possible(raw_format_start_time)
+
+        if parsed_start_time is None and parsed_format_start_time is None:
+            # This case seems pretty common. If both values are missing we
+            # want to be able to ignore it when diff() gets
+            # assume_attribute_unchanged_if_missing=True.
+            return None
+
+        if (
+                not isinstance(parsed_start_time, (int, float)) or
+                not isinstance(parsed_format_start_time, (int, float))
+        ):
+            return (parsed_start_time, parsed_format_start_time)
+
+        return FuzzyDuration(parsed_start_time - parsed_format_start_time, 0.1)
+
+    @property
     def index(self) -> int:
         return self._raw_report['index']
 
@@ -495,43 +577,26 @@ class FfprobeStreamReport:
                          actual_stream_report: 'FfprobeStreamReport',
                          expected_stream_report: 'FfprobeStreamReport',
                          overrides: Optional[StreamOverrides] = None,
-                         excludes: Optional[StreamExcludes] = None) -> Diff:
-
+                         excludes: Optional[StreamExcludes] = None,
+                         assume_attribute_unchanged_if_missing: bool = False) -> Diff:  # noqa: E501  # pylint: disable=line-too-long
         assert (actual_stream_report.codec_type ==
                 expected_stream_report.codec_type)
 
-        if overrides is None:
-            overrides = {}
-        if excludes is None:
-            excludes = set()
-
-        differences = []
-        for attribute in attributes_to_compare:
-            actual_value = getattr(actual_stream_report, attribute)
-            expected_value = overrides.get(
-                attribute,
-                getattr(expected_stream_report, attribute),
-            )
-
-            if (
-                    attribute not in excludes and
-                    expected_value != actual_value
-            ):
-                diff_dict = {
-                    'location': actual_stream_report.codec_type,
-                    'attribute': attribute,
-                    'actual_value': actual_value,
-                    'expected_value': expected_value,
-                    'reason': DiffReason.DifferentAttributeValues.value,
-                }
-                differences.append(diff_dict)
-
-        return differences
+        return _diff_attributes(
+            attributes_to_compare=attributes_to_compare,
+            actual_report=actual_stream_report,
+            overrides=overrides,
+            expected_report=expected_stream_report,
+            assume_attribute_unchanged_if_missing=assume_attribute_unchanged_if_missing,  # noqa: E501  # pylint: disable=line-too-long
+            excludes=excludes,
+            location=actual_stream_report.codec_type,
+        )
 
     def diff(self,
              expected_stream_report: 'FfprobeStreamReport',
              overrides: Optional[StreamOverrides] = None,
-             excludes: Optional[StreamExcludes] = None) -> Diff:
+             excludes: Optional[StreamExcludes] = None,
+             assume_attribute_unchanged_if_missing: bool = False) -> Diff:
 
         return self._diff_attributes(
             self.ATTRIBUTES_TO_COMPARE,
@@ -539,6 +604,7 @@ class FfprobeStreamReport:
             expected_stream_report,
             overrides,
             excludes,
+            assume_attribute_unchanged_if_missing,
         )
 
     def __eq__(self, other):
@@ -560,7 +626,7 @@ class FfprobeAudioAndVideoStreamReport(FfprobeStreamReport):
 
     @property
     def duration(self) -> FuzzyDuration:
-        return fuzzy_duration_if_possible(self._raw_report.get('duration'), 0.1)
+        return fuzzy_duration_if_possible(self._raw_report.get('duration'), 1)
 
     @property
     def bitrate(self) -> FuzzyInt:
@@ -579,26 +645,28 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
             'frame_rate',
         }
 
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'video'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     @property
-    def resolution(self) -> Union[Collection, Tuple[Collection, Any, Any]]:
+    def resolution(self) -> Union[Collection, list]:
         resolution = self._raw_report.get('resolution', None)
         width = self._raw_report.get('width', None)
         height = self._raw_report.get('height', None)
 
         if resolution is None and width is not None and height is not None:
-            return (width, height)
+            return [width, height]
         if resolution is not None and width is None and height is None:
             return resolution
 
         is_collection = isinstance(resolution, Collection)
-        if is_collection and tuple(resolution) == (width, height):
+        if is_collection and resolution == [width, height]:
             return resolution
 
-        return (resolution, width, height)
+        return [resolution, width, height]
 
     @property
     def pixel_format(self) -> Optional[str]:
@@ -610,9 +678,11 @@ class FfprobeVideoStreamReport(FfprobeAudioAndVideoStreamReport):
 
 
 class FfprobeAudioStreamReport(FfprobeAudioAndVideoStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'audio'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     ATTRIBUTES_TO_COMPARE = \
         FfprobeAudioAndVideoStreamReport.ATTRIBUTES_TO_COMPARE | {
@@ -640,9 +710,11 @@ class FfprobeAudioStreamReport(FfprobeAudioAndVideoStreamReport):
 
 
 class FfprobeSubtitleStreamReport(FfprobeStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'subtitle'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)
 
     ATTRIBUTES_TO_COMPARE = FfprobeStreamReport.ATTRIBUTES_TO_COMPARE | {
         'language',
@@ -654,6 +726,8 @@ class FfprobeSubtitleStreamReport(FfprobeStreamReport):
 
 
 class FfprobeDataStreamReport(FfprobeStreamReport):
-    def __init__(self, raw_report: dict) -> None:
+    def __init__(self,
+                 raw_report: dict,
+                 format_report: FfprobeFormatReport) -> None:
         assert raw_report['codec_type'] == 'data'
-        super().__init__(raw_report)
+        super().__init__(raw_report, format_report)

@@ -3,7 +3,7 @@ import logging
 import os
 from shutil import move
 from threading import Lock
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List, Tuple, Optional, Union
 
 import golem_messages.message
 
@@ -21,7 +21,8 @@ from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
-from .common import is_type_of, TranscodingTaskBuilderException
+from .common import is_type_of, TranscodingTaskBuilderException, \
+    AudioCodecNotSupportedByContainer, VideoCodecNotSupportedByContainer
 
 
 logger = logging.getLogger(__name__)
@@ -39,7 +40,7 @@ class TranscodingTaskOptions(Options):
         def __init__(self,
                      codec: Optional[VideoCodec] = None,
                      bitrate: Optional[str] = None,
-                     frame_rate: Optional[int] = None,
+                     frame_rate: Optional[Union[int, str]] = None,
                      resolution: Optional[Tuple[int, int]] = None) -> None:
             self.codec = codec
             self.bitrate = bitrate
@@ -124,7 +125,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 meta.get_format(video_metadata),
                 meta.get_resolution(video_metadata),
                 meta.get_video_codec(video_metadata),
-                meta.get_audio_codec(video_metadata))
+                meta.get_audio_codec(video_metadata),
+                meta.get_frame_rate(video_metadata))
 
             # Get parameters for example subtasks. All subtasks should have
             # the same conversion parameters which we check here, so it doesn't
@@ -136,7 +138,6 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         except validation.InvalidVideo as e:
             logger.error(e.response_message)
             raise e
-
 
     def accept_results(self, subtask_id, result_files):
         with self.lock:
@@ -310,13 +311,13 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
                                         output_container):
         if audio_codec and \
                 not output_container.is_supported_audio_codec(audio_codec):
-            raise TranscodingTaskBuilderException(
+            raise AudioCodecNotSupportedByContainer(
                 'Container {} does not support {}'.format(
                     output_container.value, audio_codec.value))
 
         if video_codec and \
                 not output_container.is_supported_video_codec(video_codec):
-            raise TranscodingTaskBuilderException(
+            raise VideoCodecNotSupportedByContainer(
                 'Container {} does not support {}'.format(
                     output_container.value, video_codec.value))
 
