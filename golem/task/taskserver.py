@@ -855,6 +855,9 @@ class TaskServer(
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
+    def quit(self):
+        self.task_computer.quit()
+
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())

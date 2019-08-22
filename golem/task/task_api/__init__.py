@@ -1,11 +1,7 @@
 import abc
 import asyncio
-import time
-import contextlib
-import socket
 from pathlib import Path
 from typing import Optional, Tuple, Type
-import logging
 
 from golem_task_api import TaskApiService
 
@@ -16,8 +12,6 @@ from golem.envs import (
     RuntimePayload,
     RuntimeStatus,
 )
-
-logger = logging.getLogger(__name__)
 
 
 class TaskApiPayloadBuilder(abc.ABC):
@@ -31,17 +25,6 @@ class TaskApiPayloadBuilder(abc.ABC):
             port: int,
     ) -> RuntimePayload:
         raise NotImplementedError
-
-
-async def wait_until_socket_open(host: str, port: int, timeout: float = 3.0) -> None:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        with contextlib.closing(
-                socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-            if sock.connect_ex((host, port)) == 0:
-                return
-        await asyncio.sleep(0.05)
-    raise Exception(f'Could not connect to socket ({host}, {port})')
 
 
 class EnvironmentTaskApiService(TaskApiService):
@@ -69,9 +52,7 @@ class EnvironmentTaskApiService(TaskApiService):
         loop = asyncio.get_event_loop()
         await self._runtime.prepare().asFuture(loop)
         await self._runtime.start().asFuture(loop)
-        host, port = self._runtime.get_port_mapping(port)
-        await wait_until_socket_open(host, port, 10.0)
-        return host, port
+        return self._runtime.get_port_mapping(port)
 
     def running(self) -> bool:
         """
@@ -86,8 +67,6 @@ class EnvironmentTaskApiService(TaskApiService):
         ]
 
     async def wait_until_shutdown_complete(self) -> None:
-        logger.debug('wait_until_shutdown_complete() runtime=%r', self._runtime)
         assert self._runtime is not None
         loop = asyncio.get_event_loop()
         await self._runtime.wait_until_stopped().asFuture(loop)
-        logger.debug('done()')

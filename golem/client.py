@@ -841,26 +841,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         task_dict = self.task_server.task_manager.get_task_dict(task_id)
         if not task_dict:
-            # NEW taskmanager
-            logger.debug('get_task(task_id=%r) - NEW', task_id)
-            RequestedTask = model.RequestedTask
-            task = RequestedTask.get(
-                RequestedTask.task_id == task_id
-            )
-            task_dict = {
-                'id': task.task_id,
-                'status': task.status.name,
-            }
-            RequestedSubtask = model.RequestedSubtask
-            query = RequestedSubtask.select(RequestedSubtask.subtask_id) \
-                .where(RequestedSubtask.task_id == task_id)
+            return None
 
-            subtask_ids = [s.subtask_id for s in query]
-        else:
-            # OLD taskmanager
-            logger.debug('get_task(task_id=%r) - OLD', task_id)
-            task_state = self.task_server.task_manager.query_task_state(task_id)
-            subtask_ids = list(task_state.subtask_states.keys())
+        task_state = self.task_server.task_manager.query_task_state(task_id)
+        subtask_ids = list(task_state.subtask_states.keys())
 
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
@@ -897,7 +881,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @rpc_utils.expose('comp.tasks')
     def get_tasks(self, task_id: Optional[str] = None) \
             -> Union[Optional[dict], Iterable[dict]]:
-        logger.debug('get_tasks(task_id=%r)', task_id)
         if not self.task_server:
             return []
 
@@ -905,11 +888,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return self.get_task(task_id)
 
         task_ids = list(self.task_server.task_manager.tasks.keys())
-        logger.debug('task_ids before %r', task_ids)
-        RequestedTask = model.RequestedTask
-        query = RequestedTask.select(RequestedTask.task_id).execute()
-        task_ids += [t.task_id for t in query]
-        logger.debug('task_ids after %r', task_ids)
         tasks = (self.get_task(task_id) for task_id in task_ids)
         # Filter Nones because get_task returns Optional[dict]
         return list(filter(None, tasks))

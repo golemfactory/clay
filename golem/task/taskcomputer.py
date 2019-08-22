@@ -255,18 +255,13 @@ class NewTaskComputer:
         logger.debug('NewTaskComputer.prepare')
         docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
         yield docker_env.prepare()
-        logger.debug('NewTaskComputer.prepare - AFTER')
-        self._env_manager.set_enabled(DockerCPUEnvironment.ENV_ID, True)
 
     @defer.inlineCallbacks
     def clean_up(self) -> defer.Deferred:
         # FIXME: Decide when and how to clean up environments
         docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        logger.debug('NewTaskComputer.clean_up')
         if docker_env.status() is not EnvStatus.DISABLED:
             yield docker_env.clean_up()
-            self._env_manager.set_enabled(DockerCPUEnvironment.ENV_ID, False)
-        logger.debug('NewTaskComputer.clean_up - AFTER')
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
