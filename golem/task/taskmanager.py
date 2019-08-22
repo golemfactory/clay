@@ -12,6 +12,9 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
+    Type,
+    TYPE_CHECKING,
 )
 from zipfile import ZipFile
 
@@ -23,7 +26,6 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from apps.core.task.coretaskstate import TaskDefinition
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -45,6 +47,13 @@ from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
 from golem.task.timer import ProviderComputeTimers
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from apps.appsmanager import App
+    from apps.core.task.coretaskstate import TaskDefinition
+    from golem.task.taskbase import TaskTypeInfo, TaskBuilder
+
 
 logger = logging.getLogger(__name__)
 
@@ -90,10 +99,14 @@ class TaskManager(TaskEventListener):
     ) -> None:
         super().__init__()
 
-        self.apps_manager = apps_manager
-        apps = list(apps_manager.apps.values())
-        task_types = [app.task_type_info() for app in apps]
-        self.task_types = {t.name.lower(): t for t in task_types}
+        self.apps_manager: AppsManager = apps_manager
+        apps: 'List[App]' = list(apps_manager.apps.values())
+        # Ignore type, because these are deriving from TaskTypeInfo and take
+        # no arguments in constructors.
+        task_types: 'List[TaskTypeInfo]' = \
+            [app.task_type_info() for app in apps]  # type: ignore
+        self.task_types: 'Dict[str, TaskTypeInfo]' = \
+            {t.name.lower(): t for t in task_types}
 
         self.node = node
         self.keys_auth = keys_auth
@@ -149,7 +162,8 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
-    def create_task(self, dictionary, minimal=False):
+    def create_task_definition(self, dictionary, minimal=False) \
+            -> 'Tuple[TaskDefinition, Type[TaskBuilder]]':
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
         compute_on = dictionary.get('compute_on', 'cpu').lower()
@@ -158,16 +172,20 @@ class TaskManager(TaskEventListener):
         if type_name == "blender" and is_requesting and compute_on == "gpu":
             type_name = type_name + "_nvgpu"
 
-        task_type = self.task_types[type_name].for_purpose(purpose)
-        builder_type = task_type.task_builder_type
+        task_type: 'TaskTypeInfo' = \
+            self.task_types[type_name].for_purpose(purpose)
+        builder_type: 'Type[TaskBuilder]' = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary,
-                                                   minimal)
+        definition: 'TaskDefinition' = \
+            builder_type.build_definition(task_type, dictionary, minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-        builder = builder_type(self.node, definition, self.dir_manager)
+        return definition, builder_type
 
-        return builder.build()
+    def create_task(self, dictionary, minimal=False):
+        definition, builder_type = \
+            self.create_task_definition(dictionary, minimal)
+        return builder_type(self.node, definition, self.dir_manager).build()
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
@@ -270,7 +288,7 @@ class TaskManager(TaskEventListener):
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
-    def _create_task_output_dir(self, task_def: TaskDefinition):
+    def _create_task_output_dir(self, task_def: 'TaskDefinition'):
         """
         Creates the output directory for a task along with any parents,
         if necessary. The path is obtained from `output_file` field in the
@@ -284,7 +302,7 @@ class TaskManager(TaskEventListener):
             return
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _try_remove_task_output_dir(self, task_def: TaskDefinition):
+    def _try_remove_task_output_dir(self, task_def: 'TaskDefinition'):
         """
         Attempts to remove the output directory from a given task definition.
         This will only succeed if the directory is empty.
@@ -299,7 +317,7 @@ class TaskManager(TaskEventListener):
             pass
 
     @staticmethod
-    def _get_task_output_dir(task_def: TaskDefinition) -> Optional[Path]:
+    def _get_task_output_dir(task_def: 'TaskDefinition') -> Optional[Path]:
         if not task_def.output_file:
             return None
 
@@ -587,7 +605,7 @@ class TaskManager(TaskEventListener):
                 = SubtaskStatus.failure
 
         new_task.num_failed_subtasks = \
-            new_task.total_tasks - len(subtasks_to_copy)
+            new_task.get_total_tasks() - len(subtasks_to_copy)
 
         def handle_copy_error(subtask_id, error):
             logger.error(

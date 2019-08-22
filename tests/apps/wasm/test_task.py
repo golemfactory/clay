@@ -130,7 +130,7 @@ class WasmTaskTestCase(TempDirFixture):
         )
         task_def.task_id = str(uuid4())
         self.task = WasmTask(
-            total_tasks=2, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(),
         )
 
