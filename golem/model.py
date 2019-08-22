@@ -705,13 +705,12 @@ class RequestedTask(BaseModel):
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
 
-    def estimated_fee(self) -> Optional[float]:
-
+    def estimated_fee(self) -> float:
         return self.max_price_per_hour * (
             self.subtask_timeout
             * self.max_subtasks
             / 60 / 1000  # subtask timeout is miliseconds, convert to hour
-        ),
+        )
 
 
 class ComputingNode(BaseModel):

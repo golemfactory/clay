@@ -148,9 +148,11 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         res = yield self._coro_to_def(
             self.rtm.get_next_subtask(task_id, computing_node)
         )
+        row = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == res.subtask_id)
         # then
-        self.assertEqual(res.task_id, task_id)
-        self.assertEqual(res.computing_node, computing_node)
+        self.assertEqual(row.task_id, task_id)
+        self.assertEqual(row.computing_node, computing_node)
         mock_client.next_subtask.assert_called_once_with(task_id)
 
     @inlineCallbacks
@@ -261,6 +263,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     @staticmethod
     def _add_next_subtask_to_client_mock(mock_client):
         result = Mock(spec=Subtask)
+        result.params = '{}'
+        result.resources = '[]'
         f = asyncio.Future()
         f.set_result(result)
         mock_client.next_subtask = Mock(return_value=f)

@@ -1,9 +1,10 @@
 import asyncio
+from datetime import timedelta
 import logging
 from pathlib import Path
 from typing import Any, Dict, List
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from golem_messages import idgenerator
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
@@ -116,7 +117,7 @@ class RequestedTaskManager:
 
         # FIXME: Is RTM responsible for managing test tasks?
 
-        app_client = await self._get_app_client(task.environment)
+        app_client = await self._get_app_client(task.app_id, task.environment)
         logger.debug('init_task(task_id=%r) before creating task', task_id)
         await app_client.create_task(
             task.task_id,
@@ -174,7 +175,7 @@ class RequestedTaskManager:
         as pending again. """
         logger.debug('has_pending_subtasks(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        app_client = await self._get_app_client(task.app_id)
+        app_client = await self._get_app_client(task.app_id, task.environment)
         return await app_client.has_pending_subtasks(task.task_id)
 
     async def get_next_subtask(
@@ -193,19 +194,26 @@ class RequestedTaskManager:
         if not task.status.is_active():
             raise RuntimeError(
                 f"Task not active, can not get_next_subtask. task_id={task_id}")
-        app_client = await self._get_app_client(task.environment)
+        app_client = await self._get_app_client(task.app_id, task.environment)
         result = await app_client.next_subtask(task.task_id)
         subtask = RequestedSubtask.create(
             task=task,
             subtask_id=result.subtask_id,
             status=SubtaskStatus.starting,
-            # payload='{}',
-            # inputs='[]',
+            payload=result.params,
+            inputs=result.resources,
             start_time=default_now(),
             price=task.max_price_per_hour,
             computing_node=computing_node,
         )
-        return subtask
+        deadline = subtask.start_time \
+            + timedelta(milliseconds=task.subtask_timeout)
+        return SubtaskDefinition(
+            subtask_id=subtask.subtask_id,
+            resources=subtask.inputs,
+            params=subtask.payload,
+            deadline=deadline,
+        )
 
     async def verify(self, task_id: TaskId, subtask_id: SubtaskId) -> bool:
         """ Return whether a subtask has been computed corectly. """
@@ -218,7 +226,7 @@ class RequestedTaskManager:
             RequestedSubtask.subtask_id == subtask_id)
         # FIXME, check if subtask_id belongs to task
         assert subtask.task == task
-        app_client = await self._get_app_client(task.app_id)
+        app_client = await self._get_app_client(task.app_id, task.environment)
         subtask.status = SubtaskStatus.verifying
         subtask.save()
         result = await app_client.verify(task.task_id, subtask_id)
@@ -260,26 +268,40 @@ class RequestedTaskManager:
         logger.debug('quit() deferred=%r', deferred)
         return deferred
 
-    async def _get_app_client(self, env_id: EnvId) -> RequestorAppClient:
-        if env_id not in self._app_clients:
-            logger.info('Creating app_client for env_id=%r', env_id)
-            service = self._get_task_api_service(env_id)
-            logger.info('Got service for env=%r, service=%r', env_id, service)
-            self._app_clients[env_id] = await RequestorAppClient.create(service)
+    async def _get_app_client(
+            self,
+            app_id: str,
+            env_id: EnvId
+    ) -> RequestorAppClient:
+        if app_id not in self._app_clients:
+            logger.info('Creating app_client for app_id=%r', app_id)
+            service = self._get_task_api_service(app_id, env_id)
+            logger.info('Got service for env=%r, service=%r', app_id, service)
+            self._app_clients[app_id] = await RequestorAppClient.create(service)
             logger.info(
-                'app_client created for env_id=%r, clients=%r',
-                env_id, self._app_clients[env_id])
-        return self._app_clients[env_id]
+                'app_client created for app_id=%r, clients=%r',
+                app_id, self._app_clients[app_id])
+        return self._app_clients[app_id]
 
-    def _get_task_api_service(self, env_id: EnvId) -> EnvironmentTaskApiService:
+    def _get_task_api_service(
+            self,
+            app_id: str,
+            env_id: EnvId
+    ) -> EnvironmentTaskApiService:
         # FIXME: Stolen from golem/task/taskcomputer.py:_get_task_api_service()
-        logger.info('Creating task_api service for env=%r', env_id)
+        logger.info(
+            'Creating task_api service for env=%r, app=%r',
+            env_id,
+            app_id
+        )
         if not self._env_manager.enabled(env_id):
             raise RuntimeError(
                 f"Error connecting to app: {env_id}. environment not enabled")
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
-        prereq = env.parse_prerequisites({"image": "blenderapp", "tag": "latest"})
+        prereq = env.parse_prerequisites(
+            {"image": "blenderapp", "tag": "latest"}  # FIXME: hardcoded :(
+        )
         shared_dir = self._dir_manager.root_path
 
         return EnvironmentTaskApiService(
