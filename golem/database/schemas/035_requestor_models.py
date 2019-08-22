@@ -42,6 +42,7 @@ def migrate(migrator, database, fake=False, **kwargs):
                     b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                     b'\x00\x00\x00\x00')
         output_directory = pw.CharField(max_length=255)
+        app_params = pw.JsonField(default='{}')
 
         class Meta:
             db_table = "requestedtask"

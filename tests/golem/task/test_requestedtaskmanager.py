@@ -1,6 +1,5 @@
 import asyncio
 
-from dataclasses import asdict
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
 from mock import Mock, patch
@@ -65,16 +64,16 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         mock_client = self._mock_client_create()
         self._add_create_task_to_client_mock(mock_client)
 
-        task_id, golem_params, _ = self._create_task()
+        task_id = self._create_task()
         # when
         yield self._coro_to_def(self.rtm.init_task(task_id))
         row = RequestedTask.get(RequestedTask.task_id == task_id)
         # then
         assert row.status == TaskStatus.creating
         assert mock_client.create_task.called_once_with(
-            task_id,
-            golem_params.max_subtasks,
-            asdict(golem_params)
+            row.task_id,
+            row.max_subtasks,
+            row.app_params
         )
         self.env_manager.enabled.assert_called_once_with(row.environment)
 
@@ -84,7 +83,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         mock_client = self._mock_client_create()
         self._add_create_task_to_client_mock(mock_client)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         # when
         yield self._coro_to_def(self.rtm.init_task(task_id))
         # Start task to change the status
@@ -99,7 +98,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         mock_client = self._mock_client_create()
         self._add_create_task_to_client_mock(mock_client)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         # when
         self.rtm.start_task(task_id)
@@ -108,7 +107,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         assert row.status == TaskStatus.waiting
 
     def test_task_exists(self):
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         self.assertTrue(self.rtm.task_exists(task_id))
 
     def test_task_not_exists(self):
@@ -122,7 +121,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         self._add_create_task_to_client_mock(mock_client)
         self._add_has_pending_subtasks_to_client_mock(mock_client)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
         # when
@@ -138,7 +137,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         self._add_create_task_to_client_mock(mock_client)
         self._add_next_subtask_to_client_mock(mock_client)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
@@ -162,7 +161,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         self._add_next_subtask_to_client_mock(mock_client)
         self._add_verify_to_client_mock(mock_client)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
@@ -194,7 +193,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         self._add_next_subtask_to_client_mock(mock_client)
         self._add_verify_to_client_mock(mock_client, False)
 
-        task_id, _, _ = self._create_task()
+        task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
@@ -236,7 +235,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         golem_params = self._build_golem_params()
         app_params = {}
         task_id = self.rtm.create_task(golem_params, app_params)
-        return task_id, golem_params, app_params
+        return task_id
 
     def _mock_client_create(self):
         mock_client = Mock(spec=RequestorAppClient)

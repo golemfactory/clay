@@ -4,11 +4,11 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from dataclasses import dataclass, asdict
+from golem_messages import idgenerator
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 from twisted.internet.defer import Deferred, succeed
 
-from apps.core.task.coretask import CoreTask
 from golem.core.deferred import deferred_from_future
 from golem.model import (
     ComputingNode,
@@ -69,7 +69,7 @@ class RequestedTaskManager:
                      golem_params, app_params)
 
         task = RequestedTask.create(
-            task_id=CoreTask.create_task_id(self._public_key),
+            task_id=idgenerator.generate_id(self._public_key),
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
@@ -116,25 +116,12 @@ class RequestedTaskManager:
 
         # FIXME: Is RTM responsible for managing test tasks?
 
-        task_params = CreateTaskParams(
-            app_id=task.app_id,
-            name=task.name,
-            environment=task.environment,
-            task_timeout=task.task_timeout,
-            subtask_timeout=task.subtask_timeout,
-            output_directory=task.output_directory,
-            resources=task.resources,
-            # FIXME: This is a separate argument now, delete here?
-            max_subtasks=task.max_subtasks,
-            max_price_per_hour=task.max_price_per_hour,
-            concent_enabled=task.concent_enabled,
-        )
         app_client = await self._get_app_client(task.environment)
         logger.debug('init_task(task_id=%r) before creating task', task_id)
         await app_client.create_task(
             task.task_id,
             task.max_subtasks,
-            asdict(task_params),
+            task.app_params,
         )
         logger.debug('init_task(task_id=%r) after', task_id)
 
