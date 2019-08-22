@@ -91,7 +91,7 @@ class PyInstaller(Command):
             if path.exists(directory):
                 shutil.rmtree(directory)
 
-        for spec in ['golemapp.spec', 'golemcli.spec']:
+        for spec in ['golemapp.spec', ]:
             self.banner("Building {}".format(spec))
             subprocess.check_call([
                 sys.executable, '-m', 'PyInstaller', '--clean',
@@ -160,10 +160,8 @@ class PyInstaller(Command):
 
         if is_windows():
             shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
-            shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
         else:
             shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
-            shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
         return ver_dir
 
