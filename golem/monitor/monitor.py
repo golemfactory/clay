@@ -12,7 +12,6 @@ from pydispatch import dispatcher
 
 from golem.core import golem_async
 from golem.core import variables
-from golem.decorators import log_error
 from golem.task.taskproviderstats import ProviderStats
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     AggregateTaskStats
@@ -90,7 +89,6 @@ class SystemMonitor(object):
 
     # pylint: disable=unused-argument
     @golem_async.taskify()
-    @log_error()
     async def dispatch_listener(
             self,
             sender,

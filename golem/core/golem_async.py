@@ -109,13 +109,21 @@ def deferred_run():
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
 
+def get_event_loop():
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError:  # no event loop in current thread
+        from twisted.internet import reactor
+        return reactor._asyncioEventloop
+
+
 def soon():
     "Run non-async function in next iteration of event loop"
     def wrapped(f):
         @functools.wraps(f)
         def curry(*args, **kwargs):
-            loop = asyncio.get_event_loop()
-            loop.call_soon(
+            loop = get_event_loop()
+            loop.call_soon_threadsafe(
                 functools.partial(
                     f,
                     *args,
@@ -130,14 +138,13 @@ def soon():
 def taskify():
     "Run async function as a Task in current loop"
     def wrapped(f):
+        assert asyncio.iscoroutinefunction(f)
+
         @functools.wraps(f)
         def curry(*args, **kwargs):
             task = asyncio.ensure_future(
-                functools.partial(
-                    f,
-                    *args,
-                    **kwargs,
-                ),
+                f(*args, **kwargs),
+                loop=get_event_loop()
             )
             return task
         return curry
@@ -176,13 +183,14 @@ def run_in_thread():
 
         @functools.wraps(f)
         async def curry(*args, **kwargs):
-            return await asyncio.get_event_loop().run_in_executor(
+            loop = get_event_loop()
+            return await loop.run_in_executor(
                 executor=_ASYNCIO_THREAD_POOL,
                 func=functools.partial(
                     f,
                     *args,
                     **kwargs,
-                    loop=asyncio.get_event_loop(),
+                    loop=loop,
                 ),
             )
         return curry
