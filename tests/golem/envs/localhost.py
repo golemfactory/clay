@@ -1,7 +1,8 @@
 import asyncio
 import logging
+import signal
+from multiprocessing import Process
 from pathlib import Path
-from threading import Thread
 from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 
 from dataclasses import dataclass, asdict
@@ -142,8 +143,8 @@ class LocalhostRuntime(RuntimeBase):
         self._work_dir = payload.shared_dir
         self._app_handler = LocalhostAppHandler(payload.prerequisites)
 
-        self._server_loop = asyncio.new_event_loop()
-        self._server_thread = Thread(target=self._spawn_server, daemon=False)
+        self._server_process = Process(target=self._spawn_server, daemon=True)
+        self._shutdown_deferred: Optional[defer.Deferred] = None
 
     def prepare(self) -> defer.Deferred:
         self._prepared()
@@ -154,35 +155,45 @@ class LocalhostRuntime(RuntimeBase):
         return defer.succeed(None)
 
     def _spawn_server(self) -> None:
-        asyncio.set_event_loop(self._server_loop)
+        server_loop = asyncio.new_event_loop()
+        server_loop.add_signal_handler(signal.SIGTERM, server_loop.stop)
+        asyncio.set_event_loop(server_loop)
+        server_loop.run_until_complete(entrypoint(
+            work_dir=self._work_dir,
+            argv=self._command.split(),
+            requestor_handler=self._app_handler,
+            provider_handler=self._app_handler
+        ))
+
+    def _wait_for_server_shutdown(self):
         try:
-            self._server_loop.run_until_complete(entrypoint(
-                work_dir=self._work_dir,
-                argv=self._command.split(),
-                requestor_handler=self._app_handler,
-                provider_handler=self._app_handler
-            ))
+            self._server_process.join()
+            exit_code = self._server_process.exitcode
+            if exit_code != 0:
+                raise RuntimeError(
+                    f'Server process exited with exit code {exit_code}')
         except Exception as e:  # pylint: disable=broad-except
             self._error_occurred(e, str(e))
         else:
             self._stopped()
 
     def start(self) -> defer.Deferred:
-        self._server_thread.start()
+        self._server_process.start()
+        self._shutdown_deferred = threads.deferToThread(
+            self._wait_for_server_shutdown)
         self._started()
         return defer.succeed(None)
 
     def stop(self) -> defer.Deferred:
-        assert self._server_loop is not None
-        assert self._server_thread is not None
         try:
-            # FIXME: This raises 'Cannot close a running event loop'
-            self._server_loop.call_soon_threadsafe(self._server_loop.stop)
-            self._server_loop.call_soon_threadsafe(self._server_loop.close)
+            self._server_process.terminate()
         except Exception:  # pylint: disable=broad-except
             return defer.fail()
+        return defer.succeed(None)
 
-        return threads.deferToThread(self._server_thread.join, timeout=10)
+    def wait_until_stopped(self) -> defer.Deferred:
+        assert self._shutdown_deferred is not None
+        return self._shutdown_deferred
 
     def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
         raise NotImplementedError
