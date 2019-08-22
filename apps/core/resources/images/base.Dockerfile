@@ -2,7 +2,7 @@
 # Installs python and sets up directories for Golem tasks.
 
 FROM golang:1.12.7 as stats-builder
-RUN git clone https://github.com/golemfactory/docker-cgroups-stats.git /build
+RUN git clone --depth 1 --branch 0.1 https://github.com/golemfactory/docker-cgroups-stats.git /build
 WORKDIR /build
 RUN go build -o docker-cgroups-stats main.go
 
