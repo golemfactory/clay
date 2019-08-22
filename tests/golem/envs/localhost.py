@@ -2,11 +2,10 @@ import asyncio
 import logging
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Dict, Any, Tuple, List
+from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler, entrypoint
-from golem_task_api.server import AppServer
 from golem_task_api.structs import Subtask
 from twisted.internet import defer, threads
 
@@ -40,13 +39,18 @@ class LocalhostConfig(EnvConfig):
         return LocalhostConfig()
 
 
+async def _not_implemented(*_):
+    raise NotImplementedError
+
+
 @dataclass
 class LocalhostPrerequisites(Prerequisites):
-    compute_results: Dict[str, str] = field(default_factory=dict)
-    benchmark_result: float = 0.0
-    subtasks: List[Subtask] = field(default_factory=list)
-    verify_results: Dict[str, Tuple[bool, Optional[str]]] \
-        = field(default_factory=dict)
+    compute: Callable[[str, dict], Awaitable[str]] = _not_implemented
+    run_benchmark: Callable[[], Awaitable[float]] = _not_implemented
+    next_subtask: Callable[[], Awaitable[Subtask]] = _not_implemented
+    has_pending_subtasks: Callable[[], Awaitable[bool]] = _not_implemented
+    verify: Callable[[str], Awaitable[Tuple[bool, Optional[str]]]] = \
+        _not_implemented
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -84,10 +88,7 @@ class LocalhostPayloadBuilder(TaskApiPayloadBuilder):
 class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
 
     def __init__(self, prereq: LocalhostPrerequisites) -> None:
-        self._compute_results = prereq.compute_results
-        self._benchmark_result = prereq.benchmark_result
-        self._subtasks = prereq.subtasks
-        self._verify_results = prereq.verify_results
+        self._prereq = prereq
 
     async def create_task(
             self,
@@ -98,14 +99,14 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
         pass
 
     async def next_subtask(self, task_work_dir: Path) -> Subtask:
-        return self._subtasks.pop(0)
+        return await self._prereq.next_subtask()  # type: ignore
 
     async def verify(
             self,
             task_work_dir: Path,
             subtask_id: str
     ) -> Tuple[bool, Optional[str]]:
-        return self._verify_results[subtask_id]
+        return await self._prereq.verify(subtask_id)  # type: ignore
 
     async def discard_subtasks(
             self,
@@ -115,10 +116,10 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
         return []
 
     async def run_benchmark(self, work_dir: Path) -> float:
-        return self._benchmark_result
+        return await self._prereq.run_benchmark()  # type: ignore
 
     async def has_pending_subtasks(self, task_work_dir: Path) -> bool:
-        return bool(self._subtasks)
+        return await self._prereq.has_pending_subtasks()  # type: ignore
 
     async def compute(
             self,
@@ -126,7 +127,8 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
             subtask_id: str,
             subtask_params: dict
     ) -> str:
-        return self._compute_results[subtask_id]
+        return await self._prereq.compute(  # type: ignore
+            subtask_id, subtask_params)
 
 
 class LocalhostRuntime(RuntimeBase):
@@ -140,9 +142,8 @@ class LocalhostRuntime(RuntimeBase):
         self._work_dir = payload.shared_dir
         self._app_handler = LocalhostAppHandler(payload.prerequisites)
 
-        self._server: Optional[AppServer] = None
-        self._server_loop: Optional[asyncio.AbstractEventLoop] = None
-        self._server_thread: Optional[Thread] = None
+        self._server_loop = asyncio.new_event_loop()
+        self._server_thread = Thread(target=self._spawn_server, daemon=False)
 
     def prepare(self) -> defer.Deferred:
         self._prepared()
@@ -153,7 +154,6 @@ class LocalhostRuntime(RuntimeBase):
         return defer.succeed(None)
 
     def _spawn_server(self) -> None:
-        self._server_loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._server_loop)
         try:
             self._server_loop.run_until_complete(entrypoint(
@@ -168,17 +168,17 @@ class LocalhostRuntime(RuntimeBase):
             self._stopped()
 
     def start(self) -> defer.Deferred:
-        self._server_thread = Thread(target=self._spawn_server, daemon=False)
         self._server_thread.start()
         self._started()
         return defer.succeed(None)
 
     def stop(self) -> defer.Deferred:
-        assert self._server is not None
         assert self._server_loop is not None
         assert self._server_thread is not None
         try:
-            self._server_loop.run_until_complete(self._server.stop())
+            # FIXME: This raises 'Cannot close a running event loop'
+            self._server_loop.call_soon_threadsafe(self._server_loop.stop)
+            self._server_loop.call_soon_threadsafe(self._server_loop.close)
         except Exception:  # pylint: disable=broad-except
             return defer.fail()
 
@@ -263,8 +263,6 @@ class LocalhostEnvironment(EnvironmentBase):
         return self._config
 
     def update_config(self, config: EnvConfig) -> None:
-        assert isinstance(config, LocalhostConfig)
-        self._config = config
         self._config_updated(config)
 
     def runtime(

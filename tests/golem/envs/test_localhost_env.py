@@ -47,13 +47,38 @@ class TestLocalhostEnv(TwistedTestCase):
             shared_dir=Path('whatever')
         )
 
-    # FIXME: https://github.com/golemfactory/golem/issues/4643
-    @unittest.skip('To be fixed')
     @inlineCallbacks
-    def test_compute(self):
-        prereq = LocalhostPrerequisites(
-            compute_results={'test_subtask': 'test_result'}
-        )
+    def test_compute_ok(self):
+        subtask_id = 'test_subtask'
+        subtask_params = {'param': 'value'}
+        result_path = 'test_result'
+
+        async def compute(given_id, given_params):
+            assert given_id == subtask_id
+            assert given_params == subtask_params
+            return result_path
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        service = self._get_service(prereq)
+        client_future = asyncio.ensure_future(ProviderAppClient.create(service))
+        client = yield deferred_from_future(client_future)
+        compute_future = asyncio.ensure_future(client.compute(
+            task_id='test_task',
+            subtask_id=subtask_id,
+            subtask_params=subtask_params
+        ))
+        result = yield deferred_from_future(compute_future)
+        self.assertEqual(result, Path(result_path))
+
+    @unittest.skip('LocalhostRuntime.stop is not working properly')  # FIXME
+    @inlineCallbacks
+    def test_compute_interrupted(self):
+
+        async def compute(_, __):
+            await asyncio.sleep(10)
+            return ''
+
+        prereq = LocalhostPrerequisites(compute=compute)
         service = self._get_service(prereq)
         client_future = asyncio.ensure_future(ProviderAppClient.create(service))
         client = yield deferred_from_future(client_future)
@@ -62,31 +87,44 @@ class TestLocalhostEnv(TwistedTestCase):
             subtask_id='test_subtask',
             subtask_params={'param': 'value'}
         ))
-        result = yield deferred_from_future(compute_future)
-        self.assertEqual(result, Path('test_result'))
+        yield service._runtime.stop()  # pylint: disable=protected-access
+        with self.assertRaises(OSError):
+            yield deferred_from_future(compute_future)
 
-    # FIXME: https://github.com/golemfactory/golem/issues/4643
-    @unittest.skip('To be fixed')
     @inlineCallbacks
     def test_benchmark(self):
-        prereq = LocalhostPrerequisites(benchmark_result=21.37)
+        benchmark_result = 21.37
+
+        async def run_benchmark():
+            return benchmark_result
+
+        prereq = LocalhostPrerequisites(run_benchmark=run_benchmark)
         service = self._get_service(prereq)
         client_future = asyncio.ensure_future(ProviderAppClient.create(service))
         client = yield deferred_from_future(client_future)
         benchmark_future = asyncio.ensure_future(client.run_benchmark())
         result = yield deferred_from_future(benchmark_future)
-        self.assertAlmostEqual(result, 21.37, places=5)
+        self.assertAlmostEqual(result, benchmark_result, places=5)
 
-    # FIXME: https://github.com/golemfactory/golem/issues/4643
-    @unittest.skip('To be fixed')
     @inlineCallbacks
     def test_subtasks(self):
-        exp_subtask = Subtask(
+        subtask = Subtask(
             subtask_id='test_subtask',
             params={'param': 'value'},
             resources=['test_resource']
         )
-        prereq = LocalhostPrerequisites(subtasks=[exp_subtask])
+        subtasks = [subtask]
+
+        async def next_subtask():
+            return subtasks.pop(0)
+
+        async def has_pending_subtasks():
+            return bool(subtasks)
+
+        prereq = LocalhostPrerequisites(
+            next_subtask=next_subtask,
+            has_pending_subtasks=has_pending_subtasks
+        )
         service = self._get_service(prereq)
         client_future = asyncio.ensure_future(
             RequestorAppClient.create(service))
@@ -99,8 +137,8 @@ class TestLocalhostEnv(TwistedTestCase):
         self.assertTrue(pending_subtasks)
 
         subtask_future = asyncio.ensure_future(client.next_subtask('whatever'))
-        subtask = yield deferred_from_future(subtask_future)
-        self.assertEqual(subtask, exp_subtask)
+        result = yield deferred_from_future(subtask_future)
+        self.assertEqual(result, subtask)
 
         pending_subtasks_future = asyncio.ensure_future(
             client.has_pending_subtasks('whatever')
@@ -111,26 +149,30 @@ class TestLocalhostEnv(TwistedTestCase):
         shutdown_future = asyncio.ensure_future(client.shutdown())
         yield deferred_from_future(shutdown_future)
 
-    # FIXME: https://github.com/golemfactory/golem/issues/4643
-    @unittest.skip('To be fixed')
     @inlineCallbacks
     def test_verify(self):
-        prereq = LocalhostPrerequisites(verify_results={
-            'good_subtask': (True, None),
-            'bad_subtask': (False, 'test_error')
-        })
+        good_subtask_id = 'good_subtask'
+        bad_subtask_id = 'bad_subtask'
+
+        async def verify(subtask_id):
+            if subtask_id == good_subtask_id:
+                return True, None
+            elif subtask_id == bad_subtask_id:
+                return False, 'test_error'
+
+        prereq = LocalhostPrerequisites(verify=verify)
         service = self._get_service(prereq)
         client_future = asyncio.ensure_future(
             RequestorAppClient.create(service))
         client = yield deferred_from_future(client_future)
 
         good_verify_future = asyncio.ensure_future(
-            client.verify('test_task', 'good_subtask'))
+            client.verify('test_task', good_subtask_id))
         good_verify_result = yield deferred_from_future(good_verify_future)
         self.assertTrue(good_verify_result)
 
         bad_verify_future = asyncio.ensure_future(
-            client.verify('test_task', 'bad_subtask'))
+            client.verify('test_task', bad_subtask_id))
         bad_verify_result = yield deferred_from_future(bad_verify_future)
         self.assertFalse(bad_verify_result)
 
