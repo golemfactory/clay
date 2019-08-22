@@ -41,7 +41,7 @@ eventlet==0.24.1
 fs==2.4.4
 Golem-Messages==3.11.0
 Golem-Smart-Contracts-Interface==1.10.2
-golem_task_api==0.14.0
+golem_task_api==0.15.1
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0

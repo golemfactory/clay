@@ -272,7 +272,7 @@ class RequestedTaskManager:
             subtask_id=result.subtask_id,
             status=SubtaskStatus.starting,
             payload=result.params,
-            inputs=result.resources,
+            inputs=list(map(str, result.resources)),
             start_time=default_now(),
             price=task.max_price_per_hour,
             computing_node=node,
