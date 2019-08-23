@@ -175,6 +175,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         subtask = yield self._coro_to_def(
             self.rtm.get_next_subtask(task_id, computing_node)
         )
+        # The second call should return false so the client will shut down
+        self._add_has_pending_subtasks_to_client_mock(mock_client, False)
         subtask_id = subtask.subtask_id
         # when
         res = yield self._coro_to_def(

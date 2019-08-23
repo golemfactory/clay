@@ -203,7 +203,7 @@ class RequestedTaskManager:
                 f"Task not active, no next subtask. task_id={task_id}")
 
         # Check should accept provider, raises when waiting on results or banned
-        if self._get_unfinished_subtasks(task_id, computing_node) > 0:
+        if self._get_unfinished_subtasks_for_node(task_id, computing_node) > 0:
             raise RuntimeError(
                 "Provider has unfinished subtasks, no next subtask. "
                 f"task_id={task_id}")
@@ -260,16 +260,11 @@ class RequestedTaskManager:
 
         if result:
             # Check if task completed
-            finished_subtasks = RequestedSubtask.select(
-                fn.Count(RequestedSubtask.subtask_id)
-            ).where(
-                RequestedSubtask.task == task,
-                RequestedSubtask.status == SubtaskStatus.finished
-            )
-            if finished_subtasks >= task.max_subtasks:
-                task.status = TaskStatus.finished
-                task.save()
-                await self._shutdown_app_client(task.app_id)
+            if not await self.has_pending_subtasks(task_id):
+                if not self._get_pending_subtasks(task_id):
+                    task.status = TaskStatus.finished
+                    task.save()
+                    await self._shutdown_app_client(task.app_id)
 
         return result
 
@@ -280,15 +275,7 @@ class RequestedTaskManager:
                 f"Task not active, can not abort. task_id={task_id}")
         task.status = TaskStatus.aborted
         task.save()
-        subtasks = RequestedSubtask.select().where(
-            RequestedSubtask.task == task,
-            # FIXME: duplicate list with SubtaskStatus.is_active()
-            RequestedSubtask.status.in_([
-                SubtaskStatus.starting,
-                SubtaskStatus.downloading,
-                SubtaskStatus.verifying,
-            ])
-        )
+        subtasks = self._get_pending_subtasks(task_id)
         for subtask in subtasks:
             ProviderComputeTimers.finish(subtask.subtask_id)
             subtask.status = SubtaskStatus.cancelled
@@ -364,7 +351,7 @@ class RequestedTaskManager:
         )
 
     @staticmethod
-    def _get_unfinished_subtasks(
+    def _get_unfinished_subtasks_for_node(
             task_id: TaskId,
             computing_node: ComputingNode
     ) -> None:
@@ -377,6 +364,18 @@ class RequestedTaskManager:
         ).scalar()
         logger.debug('unfinished subtasks: %r', unfinished_subtask_count)
         return unfinished_subtask_count
+
+    @staticmethod
+    def _get_pending_subtasks(task_id: TaskId) -> None:
+        return RequestedSubtask.select().where(
+            RequestedSubtask.task_id == task_id,
+            # FIXME: duplicate list with SubtaskStatus.is_active()
+            RequestedSubtask.status.in_([
+                SubtaskStatus.starting,
+                SubtaskStatus.downloading,
+                SubtaskStatus.verifying,
+            ])
+        )
 
     async def _shutdown_app_client(self, app_id) -> None:
         # Check if app completed all tasks
