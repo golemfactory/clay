@@ -307,7 +307,7 @@ class NodeTestPlaybook:
             new_tasks = tasks - self.known_tasks
             if len(new_tasks) != 1:
                 print("Cannot find the new task ({})".format(new_tasks))
-                time.sleep(1)
+                time.sleep(3)
             else:
                 self.task_id = list(new_tasks)[0]
                 print("Task id: {}".format(self.task_id))
