@@ -21,6 +21,8 @@ from golem.resource.dirmanager import DirManager
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.task.task_api import EnvironmentTaskApiService
+from golem.task.timer import ProviderComputeTimers
+
 
 logger = logging.getLogger(__name__)
 
@@ -189,11 +191,27 @@ class RequestedTaskManager:
             task_id,
             computing_node
         )
+        # Check is my requested task
         task = RequestedTask.get(RequestedTask.task_id == task_id)
+
+        # Check not providing for own task
+        if computing_node.node_id == self._public_key:
+            raise RuntimeError(f"No subtasks for self. task_id={task_id}")
 
         if not task.status.is_active():
             raise RuntimeError(
-                f"Task not active, can not get_next_subtask. task_id={task_id}")
+                f"Task not active, no next subtask. task_id={task_id}")
+
+        # Check should accept provider, raises when waiting on results or banned
+        if self._get_unfinished_subtasks(task_id, computing_node) > 0:
+            raise RuntimeError(
+                "Provider has unfinished subtasks, no next subtask. "
+                f"task_id={task_id}")
+
+        if not await self.has_pending_subtasks(task_id):
+            raise RuntimeError(
+                f"Task not pending, no next subtask. task_id={task_id}")
+
         app_client = await self._get_app_client(task.app_id, task.environment)
         result = await app_client.next_subtask(task.task_id)
         subtask = RequestedSubtask.create(
@@ -208,6 +226,8 @@ class RequestedTaskManager:
         )
         deadline = subtask.start_time \
             + timedelta(milliseconds=task.subtask_timeout)
+
+        ProviderComputeTimers.start(subtask.subtask_id)
         return SubtaskDefinition(
             subtask_id=subtask.subtask_id,
             resources=subtask.inputs,
@@ -230,21 +250,53 @@ class RequestedTaskManager:
         subtask.status = SubtaskStatus.verifying
         subtask.save()
         result = await app_client.verify(task.task_id, subtask_id)
+
+        ProviderComputeTimers.finish(subtask_id)
         if result:
             subtask.status = SubtaskStatus.finished
+        else:
+            subtask.status = SubtaskStatus.failure
+        subtask.save()
+
+        if result:
+            # Check if task completed
             finished_subtasks = RequestedSubtask.select(
                 fn.Count(RequestedSubtask.subtask_id)
             ).where(
-                RequestedSubtask.task == task
-                and RequestedSubtask.status == SubtaskStatus.finished
+                RequestedSubtask.task == task,
+                RequestedSubtask.status == SubtaskStatus.finished
             )
             if finished_subtasks >= task.max_subtasks:
                 task.status = TaskStatus.finished
                 task.save()
-        else:
-            subtask.status = SubtaskStatus.failure
-        subtask.save()
+                await self._shutdown_app_client(task.app_id)
+
         return result
+
+    async def abort_task(self, task_id):
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if not task.status.is_active():
+            raise RuntimeError(
+                f"Task not active, can not abort. task_id={task_id}")
+        task.status = TaskStatus.aborted
+        task.save()
+        subtasks = RequestedSubtask.select().where(
+            RequestedSubtask.task == task,
+            # FIXME: duplicate list with SubtaskStatus.is_active()
+            RequestedSubtask.status.in_([
+                SubtaskStatus.starting,
+                SubtaskStatus.downloading,
+                SubtaskStatus.verifying,
+            ])
+        )
+        for subtask in subtasks:
+            ProviderComputeTimers.finish(subtask.subtask_id)
+            subtask.status = SubtaskStatus.cancelled
+            subtask.save()
+
+        # self.notice_task_updated(task_id, op=TaskOp.ABORTED)
+
+        await self._shutdown_app_client(task.app_id)
 
     def quit(self) -> Deferred:
         # FIXME: make async not Deferred?
@@ -310,3 +362,37 @@ class RequestedTaskManager:
             prereq=prereq,
             shared_dir=shared_dir
         )
+
+    @staticmethod
+    def _get_unfinished_subtasks(
+            task_id: TaskId,
+            computing_node: ComputingNode
+    ) -> None:
+        unfinished_subtask_count = RequestedSubtask.select(
+            fn.Count(RequestedSubtask.subtask_id)
+        ).where(
+            RequestedSubtask.computing_node == computing_node,
+            RequestedSubtask.task_id == task_id,
+            RequestedSubtask.status != SubtaskStatus.finished,
+        ).scalar()
+        logger.debug('unfinished subtasks: %r', unfinished_subtask_count)
+        return unfinished_subtask_count
+
+    async def _shutdown_app_client(self, app_id) -> None:
+        # Check if app completed all tasks
+        unfinished_tasks = RequestedTask.select(
+            fn.Count(RequestedTask.task_id)
+        ).where(
+            RequestedTask.app_id == app_id,
+            # FIXME: duplicate list with TaskStatus.is_active()
+            RequestedTask.status.in_([
+                TaskStatus.sending,
+                TaskStatus.waiting,
+                TaskStatus.starting,
+                TaskStatus.computing,
+            ])
+        ).scalar()
+        logger.debug('unfinished tasks: %r', unfinished_tasks)
+        if unfinished_tasks == 0:
+            await self._app_clients[app_id].shutdown()
+            del self._app_clients[app_id]
