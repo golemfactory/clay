@@ -40,10 +40,12 @@ class CreateTaskParams:
     max_price_per_hour: int
     concent_enabled: bool
 
+
 @dataclass
 class ComputingNodeDefenition:
     node_id: str
     name: str
+
 
 @dataclass
 class SubtaskDefinition:
@@ -57,12 +59,12 @@ class DirManager:
     def __init__(self, root_path: Path):
         self._root_path = root_path
 
-    def get_app_dir(self, app_id):
+    def get_app_dir(self, app_id: str) -> Path:
         app_dir = self._root_path / app_id
         app_dir.mkdir(exist_ok=True)
         return app_dir
 
-    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
+    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> None:
         task_dir = self._get_task_dir(app_id, task_id)
         task_dir.mkdir()
         task_resources_dir = task_dir / constants.RESOURCES_DIR
@@ -172,7 +174,8 @@ class RequestedTaskManager:
         )
         logger.debug('init_task(task_id=%r) after', task_id)
 
-    def start_task(self, task_id: TaskId) -> None:
+    @staticmethod
+    def start_task(task_id: TaskId) -> None:
         """ Marks an already initialized task as ready for computation. """
         logger.debug('start_task(task_id=%r)', task_id)
 
@@ -253,7 +256,7 @@ class RequestedTaskManager:
                 f"Task not active, no next subtask. task_id={task_id}")
 
         # Check should accept provider, raises when waiting on results or banned
-        if self._get_unfinished_subtasks_for_node(task_id, computing_node) > 0:
+        if self._get_unfinished_subtasks_for_node(task_id, node) > 0:
             raise RuntimeError(
                 "Provider has unfinished subtasks, no next subtask. "
                 f"task_id={task_id}")
