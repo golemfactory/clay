@@ -135,7 +135,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
             validation.validate_transcoding_params(
                 dst_params,
-                video_metadata
+                video_metadata,
+                self.task_definition.options.strip_unsupported_data_streams,
+                self.task_definition.options.strip_unsupported_subtitle_streams,
             )
 
         except validation.InvalidVideo as e:
