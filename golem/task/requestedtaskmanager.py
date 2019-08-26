@@ -5,6 +5,7 @@ from typing import Any, Dict, List
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
+from golem_task_api import constants
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
@@ -14,7 +15,6 @@ from golem.model import (
     RequestedTask,
     RequestedSubtask,
 )
-from golem.resource.dirmanager import DirManager
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.task.task_api import EnvironmentTaskApiService
@@ -51,6 +51,39 @@ class SubtaskDefinition:
     resources: List[str]
     params: Dict[str, Any]
     deadline: int
+
+
+class DirManager:
+    def __init__(self, root_path: Path):
+        self._root_path = root_path
+
+    def get_app_dir(self, app_id):
+        app_dir = self._root_path / app_id
+        app_dir.mkdir(exist_ok=True)
+        return app_dir
+
+    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
+        task_dir = self._get_task_dir(app_id, task_id)
+        task_dir.mkdir()
+        task_resources_dir = task_dir / constants.RESOURCES_DIR
+        task_resources_dir.mkdir()
+        task_net_resources_dir = self.get_network_resources_dir(app_id, task_id)
+        task_net_resources_dir.mkdir()
+        task_results_dir = task_dir / constants.RESULTS_DIR
+        task_results_dir.mkdir()
+        task_net_results_dir = self.get_network_results_dir(app_id, task_id)
+        task_net_results_dir.mkdir()
+
+    def get_network_resources_dir(self, app_id, task_id):
+        task_dir = self._get_task_dir(app_id, task_id)
+        return task_dir / constants.NETWORK_RESOURCES_DIR
+
+    def get_network_results_dir(self, app_id, task_id):
+        task_dir = self._get_task_dir(app_id, task_id)
+        return task_dir / constants.NETWORK_RESULTS_DIR
+
+    def _get_task_dir(self, app_id, task_id):
+        return self.get_app_dir(app_id) / task_id
 
 
 class RequestedTaskManager:
@@ -121,13 +154,17 @@ class RequestedTaskManager:
 
         # FIXME: Blender creates preview files here
 
-        self._dir_manager.clear_temporary(task_id)
-        work_dir = self._dir_manager.get_task_temporary_dir(task_id)
+        logger.debug(
+            'init_task(task_id=%r) - preparing directories. app_id=%s',
+            task_id,
+            task.app_id,
+        )
+        self._dir_manager.prepare_task_dir(task.app_id, task_id)
 
         # FIXME: Is RTM responsible for managing test tasks?
 
         app_client = await self._get_app_client(task.app_id, task.environment)
-        logger.debug('init_task(task_id=%r) before creating task', task_id)
+        logger.debug('init_task(task_id=%r) - creating task', task_id)
         await app_client.create_task(
             task.task_id,
             task.max_subtasks,
@@ -168,12 +205,14 @@ class RequestedTaskManager:
 
     def get_task_network_resources_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory of the task network resources. """
-        return Path(self._dir_manager.get_task_resource_dir(task_id))
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        return self._dir_manager.get_network_resources_dir(task.app_id, task_id)
 
     def get_subtasks_outputs_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory where subtasks outputs should be
         placed. """
-        return Path(self._dir_manager.get_task_output_dir(task_id))
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        return self._dir_manager.get_network_results_dir(task.app_id, task_id)
 
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
@@ -339,7 +378,7 @@ class RequestedTaskManager:
         prereq = env.parse_prerequisites(
             {"image": "blenderapp", "tag": "latest"}  # FIXME: hardcoded :(
         )
-        shared_dir = self._dir_manager.root_path
+        shared_dir = self._dir_manager.get_app_dir(app_id)
 
         return EnvironmentTaskApiService(
             env=env,
