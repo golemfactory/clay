@@ -26,6 +26,7 @@ from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
+from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.envmanager import EnvironmentManager
 from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
@@ -213,13 +214,9 @@ class TaskComputerAdapter:
             config_desc=config_desc,
             in_background=in_background))
 
-    @defer.inlineCallbacks
-    def quit(self) -> defer.Deferred:
-        yield self._new_computer.clean_up()
+    def quit(self) -> None:
+        sync_wait(self._new_computer.clean_up())
         self._old_computer.quit()
-
-    def resume(self) -> None:
-        sync_wait(self._new_computer.prepare())
 
 
 class NewTaskComputer:
@@ -252,7 +249,6 @@ class NewTaskComputer:
     @defer.inlineCallbacks
     def prepare(self) -> defer.Deferred:
         # FIXME: Decide when and how to prepare environments
-        logger.debug('NewTaskComputer.prepare')
         docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
         yield docker_env.prepare()
 
