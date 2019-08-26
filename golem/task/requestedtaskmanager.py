@@ -53,7 +53,12 @@ class SubtaskDefinition:
 
 
 class RequestedTaskManager:
-    def __init__(self, env_manager: EnvironmentManager, public_key, root_path):
+    def __init__(
+            self,
+            env_manager: EnvironmentManager,
+            public_key: bytes,
+            root_path: Path,
+    ):
         logger.debug('RequestedTaskManager(public_key=%r, root_path=%r)',
                      public_key, root_path)
         self._dir_manager = DirManager(root_path)
@@ -83,7 +88,8 @@ class RequestedTaskManager:
             start_time=default_now(),
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
-            # concent_enabled = BooleanField(null=False, default=False),
+            # Concent is explicitly enabled for task_api for now...
+            concent_enabled=False,
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
             output_directory=golem_params.output_directory,
             # FIXME: Where to move resources?
@@ -156,7 +162,7 @@ class RequestedTaskManager:
         task because the task has finished, e.g. completed successfully, timed
         out, aborted, etc. """
         logger.debug('is_task_finished(task_id=%r)', task_id)
-        task = RequestedTask.get(task_id)
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
 
     def get_task_network_resources_dir(self, task_id: TaskId) -> Path:
@@ -249,7 +255,16 @@ class RequestedTaskManager:
         app_client = await self._get_app_client(task.app_id, task.environment)
         subtask.status = SubtaskStatus.verifying
         subtask.save()
-        result = await app_client.verify(task.task_id, subtask_id)
+        try:
+            result = await app_client.verify(task_id, subtask_id)
+        except Exception as e:
+            logger.warning(
+                "Verification failed. subtask=%s, task=%s, exception=%r",
+                subtask_id,
+                task_id,
+                e
+            )
+            result = False
 
         ProviderComputeTimers.finish(subtask_id)
         if result:
@@ -354,7 +369,7 @@ class RequestedTaskManager:
     def _get_unfinished_subtasks_for_node(
             task_id: TaskId,
             computing_node: ComputingNode
-    ) -> None:
+    ) -> int:
         unfinished_subtask_count = RequestedSubtask.select(
             fn.Count(RequestedSubtask.subtask_id)
         ).where(
@@ -366,7 +381,7 @@ class RequestedTaskManager:
         return unfinished_subtask_count
 
     @staticmethod
-    def _get_pending_subtasks(task_id: TaskId) -> None:
+    def _get_pending_subtasks(task_id: TaskId) -> List[RequestedSubtask]:
         return RequestedSubtask.select().where(
             RequestedSubtask.task_id == task_id,
             # FIXME: duplicate list with SubtaskStatus.is_active()
