@@ -16,6 +16,7 @@ from golem.task.requestedtaskmanager import (
     ComputingNode,
     CreateTaskParams,
     RequestedTaskManager,
+    ComputingNodeDefenition,
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.testutils import DatabaseFixture
@@ -203,7 +204,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
-        computing_node = ComputingNode.create(
+        computing_node = ComputingNodeDefenition(
             node_id='abc',
             name='abc',
         )
@@ -235,7 +236,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
         self.rtm.start_task(task_id)
-        computing_node = ComputingNode.create(
+        computing_node = ComputingNodeDefenition(
             node_id='abc',
             name='abc',
         )

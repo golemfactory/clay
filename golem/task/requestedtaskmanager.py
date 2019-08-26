@@ -40,6 +40,10 @@ class CreateTaskParams:
     max_price_per_hour: int
     concent_enabled: bool
 
+@dataclass
+class ComputingNodeDefenition:
+    node_id: str
+    name: str
 
 @dataclass
 class SubtaskDefinition:
@@ -186,7 +190,7 @@ class RequestedTaskManager:
     async def get_next_subtask(
             self,
             task_id: TaskId,
-            computing_node: ComputingNode
+            computing_node: ComputingNodeDefenition
     ) -> SubtaskDefinition:
         """ Return a set of data required for subtask computation. """
         logger.debug(
@@ -196,9 +200,13 @@ class RequestedTaskManager:
         )
         # Check is my requested task
         task = RequestedTask.get(RequestedTask.task_id == task_id)
+        node, _ = ComputingNode.get_or_create(
+            node_id=computing_node.node_id,
+            name=computing_node.name
+        )
 
         # Check not providing for own task
-        if computing_node.node_id == self._public_key:
+        if node.node_id == self._public_key:
             raise RuntimeError(f"No subtasks for self. task_id={task_id}")
 
         if not task.status.is_active():
@@ -225,7 +233,7 @@ class RequestedTaskManager:
             inputs=result.resources,
             start_time=default_now(),
             price=task.max_price_per_hour,
-            computing_node=computing_node,
+            computing_node=node,
         )
         deadline = subtask.start_time \
             + timedelta(milliseconds=task.subtask_timeout)
