@@ -196,7 +196,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
         self.task_server.send_results.assert_called_once_with(
             task_id='test_task',
             subtask_id='test_subtask',
-            result=[output_file],
+            task_api_result=output_file,
         )
 
     @defer.inlineCallbacks
@@ -357,6 +357,25 @@ class TestChangeConfig(TaskComputerAdapterTestBase):
         self.old_computer.change_config.assert_called_once_with(
             config_desc=config_desc,
             in_background=True
+        )
+
+
+class TestTaskResourcesDir(TaskComputerAdapterTestBase):
+    def test_old_assigned(self):
+        self.new_computer.has_assigned_task.return_value = False
+        self.old_computer.has_assigned_task.return_value = True
+        with self.assertRaisesRegex(
+            ValueError,
+            'Task resources directory only available when a task-api task'
+                ' is assigned'):  # pylint: disable=bad-continuation
+            self.adapter.get_task_resources_dir()
+
+    def test_new_assigned(self):
+        self.new_computer.has_assigned_task.return_value = True
+        self.old_computer.has_assigned_task.return_value = False
+        self.assertEqual(
+            self.new_computer.get_task_resources_dir.return_value,
+            self.adapter.get_task_resources_dir(),
         )
 
 

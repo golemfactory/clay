@@ -200,8 +200,8 @@ class ExtendedVerifierTestEnv():
         # subtasks_num_list = range(1, 4)
         # num_frames = [list(range(1, 2))]
         resolutions_list = [[400, 400]]
-        subtasks_num_list = range(1, 134)
-        num_frames = self._generate_num_frames(1, 37)
+        subtasks_num_list = range(1, 40)
+        num_frames = self._generate_num_frames(1, 2)
 
         return self._generate_combinations(resolutions_list,
                                            subtasks_num_list,

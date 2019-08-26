@@ -358,6 +358,8 @@ class WasmTask(CoreTask):
             if s.is_allowed_node(node_id):
                 return AcceptClientVerdict.ACCEPTED
 
+        # No subtask has yielded next actor meaning that there is no work
+        # to be done at the moment
         return AcceptClientVerdict.SHOULD_WAIT
 
     def accept_client(self,
@@ -378,7 +380,11 @@ class WasmTask(CoreTask):
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, None)
+        try:
+            subtask.add_result(subtask_id, None)
+        except ValueError:
+            # Handle a case of duplicate call from __remove_old_tasks
+            pass
         if subtask.is_finished():
             self.__resolve_payments(subtask)
 

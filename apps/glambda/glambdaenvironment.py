@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 class GLambdaTaskEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/glambda"
-    DOCKER_TAG = "1.5"
+    DOCKER_TAG = "1.6"
     ENV_ID = "glambda"
     SHORT_DESCRIPTION = "GLambda PoC"
 

@@ -33,6 +33,7 @@ from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace import RequestorBrassMarketStrategy
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
@@ -287,6 +288,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
+        ts.task_manager.get_market_strategy_for_task.return_value =\
+            RequestorBrassMarketStrategy
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)

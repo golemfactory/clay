@@ -274,7 +274,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir, temporary=work_dir,
-            resources=resources_dir, logs=work_dir, work=work_dir)
+            resources=resources_dir, logs=work_dir, work=work_dir, stats="/tmp/stats")
 
         dtt = DockerTaskThread(docker_images=[image],
                                extra_data=params,
