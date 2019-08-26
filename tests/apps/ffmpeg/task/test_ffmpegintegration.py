@@ -9,12 +9,12 @@ from ffmpeg_tools.formats import list_supported_frame_rates
 from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
     UnsupportedAudioCodec, UnsupportedVideoCodec, \
-    validate_resolution
+    validate_resolution, UnsupportedStream
 from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
-    AudioCodecNotSupportedByContainer, ffmpegMergeReplaceError
+    AudioCodecNotSupportedByContainer
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
@@ -463,5 +463,5 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         # We know that if we don't strip subtitles and data streams in this
         # particular case ffmpeg won't be able to convert them and fail. But it
         # is not necessarily the case for non-whitelisted streams in general.
-        with self.assertRaises(ffmpegMergeReplaceError):
+        with self.assertRaises(UnsupportedStream):
             self.execute_task(task_def)
