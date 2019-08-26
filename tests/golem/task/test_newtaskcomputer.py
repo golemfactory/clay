@@ -17,15 +17,17 @@ from golem.envs import Runtime
 from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
+from golem.testutils import TempDirFixture
 from golem.tools.testwithreactor import uninstall_reactor
 
 
-class NewTaskComputerTestBase(TwistedTestCase):
+class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
 
     def setUp(self):
+        super().setUp()
         self.env_manager = mock.Mock(spec=EnvironmentManager)
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
-        self.work_dir = Path('test')
+        self.work_dir = self.new_path
         self.task_computer = NewTaskComputer(
             env_manager=self.env_manager,
             work_dir=self.work_dir,
@@ -140,6 +142,7 @@ class TestTaskGiven(NewTaskComputerTestBase):
             self.task_computer.get_current_computing_env(),
             self.env_id)
         provider_timer.start.assert_called_once_with()
+        self.assertTrue(self.task_computer.get_task_resources_dir().exists())
 
     def test_has_assigned_task(self, provider_timer):
         task_header = self._get_task_header()

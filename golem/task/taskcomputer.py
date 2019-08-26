@@ -297,6 +297,7 @@ class NewTaskComputer:
             deadline=min(task_header.deadline, compute_task_def['deadline'])
         )
         ProviderTimer.start()
+        self.get_task_resources_dir().mkdir(parents=True, exist_ok=True)
 
     def compute(self) -> defer.Deferred:
         assigned_task = self._assigned_task
