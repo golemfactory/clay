@@ -1,4 +1,3 @@
-import asyncio
 from datetime import timedelta
 import logging
 from pathlib import Path
@@ -8,9 +7,7 @@ from dataclasses import dataclass
 from golem_messages import idgenerator
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
-from twisted.internet.defer import Deferred, succeed
 
-from golem.core.deferred import deferred_from_future
 from golem.model import (
     ComputingNode,
     default_now,
@@ -299,28 +296,6 @@ class RequestedTaskManager:
         # self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
         await self._shutdown_app_client(task.app_id)
-
-    def quit(self) -> Deferred:
-        # FIXME: make async not Deferred?
-        logger.debug('quit() clients=%r', self._app_clients)
-        if not self._app_clients:
-            logger.debug('No clients to clean up')
-            return succeed(None)
-        shutdown_futures = [
-            app.shutdown() for app in self._app_clients.values()
-        ]
-        logger.debug('quit() futures=%r', shutdown_futures)
-        # FIXME: error when running in another thread.
-        # this fixes it, but is it the right way?
-        try:
-            asyncio.get_event_loop()
-        except Exception:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        future = asyncio.ensure_future(asyncio.wait(shutdown_futures))
-        deferred = deferred_from_future(future)
-        logger.debug('quit() deferred=%r', deferred)
-        return deferred
 
     async def _get_app_client(
             self,
