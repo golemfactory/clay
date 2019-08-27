@@ -452,10 +452,11 @@ class TaskServer(
                     self.task_computer.get_task_resources_dir(),
                     msg.resources_options,
                 ))
-            defer.gatherResults(deferreds).addBoth(
-                lambda _: self.resource_collected(msg.task_id),
-                lambda e: self.resource_failure(msg.task_id, e),
-            )
+            defer.gatherResults(deferreds, consumeErrors=True)\
+                .addCallbacks(
+                    lambda _: self.resource_collected(msg.task_id),
+                    lambda e: self.resource_failure(msg.task_id, e),
+                )
         else:
             self.request_resource(
                 msg.task_id,

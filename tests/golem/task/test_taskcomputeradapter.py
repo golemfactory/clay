@@ -30,15 +30,18 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
         config_desc = ClientConfigDescriptor()
         config_desc.accept_tasks = True
         config_desc.in_shutdown = False
+        self.task_keeper = mock.Mock()
         self.task_server = mock.Mock(
             spec=TaskServer,
             config_desc=config_desc,
-            task_keeper=mock.Mock()
+            task_keeper=self.task_keeper
         )
         self.env_manager = mock.Mock(spec_set=EnvironmentManager)
+        self.finished_callback = mock.Mock()
         self.adapter = TaskComputerAdapter(
             task_server=self.task_server,
-            env_manager=self.env_manager
+            env_manager=self.env_manager,
+            finished_cb=self.finished_callback
         )
 
 
@@ -164,6 +167,7 @@ class TestStartComputation(TaskComputerAdapterTestBase):
 
         self.new_computer.compute.assert_called_once()
         self.old_computer.start_computation.assert_not_called()
+        self.task_keeper.task_started.assert_called_once_with('test_task')
         handle_results.assert_called_once_with(
             'test_task',
             'test_subtask',
@@ -198,6 +202,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
             subtask_id='test_subtask',
             task_api_result=output_file,
         )
+        self.finished_callback.assert_called_once_with()
 
     @defer.inlineCallbacks
     def test_error(self):
@@ -213,6 +218,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
             err_msg='test_error'
         )
         self.task_server.send_results.assert_not_called()
+        self.finished_callback.assert_called_once_with()
 
 
 class TestTaskInterrupted(TaskComputerAdapterTestBase):
