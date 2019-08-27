@@ -48,6 +48,13 @@ class TaskTypeInfo(object):
     def get_preview(cls, task, single=False):
         pass
 
+    @property
+    def id(self) -> str:
+        """
+        normalized task type name
+        """
+        return self.name.lower()
+
 
 class TaskBuilder(abc.ABC):
     def __init__(self):
