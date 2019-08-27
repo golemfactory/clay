@@ -225,8 +225,7 @@ class RequestedTaskManager:
         logger.debug('has_pending_subtasks(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
-            raise RuntimeError(
-                f"Task not active, no next subtask. task_id={task_id}")
+            return False
         app_client = await self._get_app_client(task.app_id, task.environment)
         return await app_client.has_pending_subtasks(task.task_id)
 
