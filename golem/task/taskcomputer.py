@@ -547,9 +547,10 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             assert isinstance(task_thread.result, dict)
             try:
                 self.task_server.send_results(
-                    subtask_id,
-                    subtask['task_id'],
-                    task_thread.result['data'],
+                    subtask_id=subtask_id,
+                    task_id=subtask['task_id'],
+                    result=task_thread.result['data'],
+                    stats=task_thread.stats,
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error("Error sending the results: %r", exc)

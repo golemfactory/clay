@@ -112,10 +112,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.assigned_subtask)
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
-        args = task_server.send_results.call_args[0]
-        self.assertEqual(args[0], "xxyyzz")
-        self.assertEqual(args[1], "xyz")
-        self.assertEqual(args[2], 10000)
+        kwargs = task_server.send_results.call_args[1]
+        self.assertEqual(kwargs['subtask_id'], "xxyyzz")
+        self.assertEqual(kwargs['task_id'], "xyz")
+        self.assertEqual(kwargs['result'], 10000)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
