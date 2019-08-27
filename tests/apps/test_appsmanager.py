@@ -37,3 +37,16 @@ class TestAppsManager(TestCase):
             benchmark, builder_class = benchmark
             assert isinstance(benchmark, CoreBenchmark)
             assert issubclass(builder_class, TaskBuilder)
+
+    def test_concent_supported_blender(self):
+        app_manager = self._get_loaded_app_manger()
+        self.assertTrue(app_manager.get_app('blender').concent_supported)
+        self.assertTrue(app_manager.get_app('blender_nvgpu').concent_supported)
+
+    def test_concent_not_supported_wasm(self):
+        app_manager = self._get_loaded_app_manger()
+        self.assertFalse(app_manager.get_app('wasm').concent_supported)
+
+    def test_concent_not_supported_glambda(self):
+        app_manager = self._get_loaded_app_manger()
+        self.assertFalse(app_manager.get_app('glambda').concent_supported)
