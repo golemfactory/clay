@@ -297,7 +297,6 @@ class RequestedTaskManager:
                 f"Task not active, can not verify. task_id={task_id}")
         subtask = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
-        # FIXME, check if subtask_id belongs to task
         assert subtask.task == task
         app_client = await self._get_app_client(task.app_id, task.environment)
         subtask.status = SubtaskStatus.verifying

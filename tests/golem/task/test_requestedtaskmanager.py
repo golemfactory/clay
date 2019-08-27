@@ -29,11 +29,14 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
             uninstall_reactor()  # Because other tests don't clean up
         except AttributeError:
             pass
+        cls.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(cls.loop)
         install_reactor()
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDownClass(cls) -> None:
         uninstall_reactor()
+        asyncio.set_event_loop(None)
 
     def setUp(self):
         super().setUp()
