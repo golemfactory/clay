@@ -224,6 +224,9 @@ class RequestedTaskManager:
         as pending again. """
         logger.debug('has_pending_subtasks(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if not task.status.is_active():
+            raise RuntimeError(
+                f"Task not active, no next subtask. task_id={task_id}")
         app_client = await self._get_app_client(task.app_id, task.environment)
         return await app_client.has_pending_subtasks(task.task_id)
 
@@ -248,10 +251,6 @@ class RequestedTaskManager:
         # Check not providing for own task
         if node.node_id == self._public_key:
             raise RuntimeError(f"No subtasks for self. task_id={task_id}")
-
-        if not task.status.is_active():
-            raise RuntimeError(
-                f"Task not active, no next subtask. task_id={task_id}")
 
         # Check should accept provider, raises when waiting on results or banned
         if self._get_unfinished_subtasks_for_node(task_id, node) > 0:
