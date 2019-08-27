@@ -30,7 +30,7 @@ class TestAutoSetup(TwistedTestCase):
         self.assertEqual(self.wrapped_cls.supported(), self.env_cls.supported())
 
     def test_metadata(self):
-        self.assertEqual(self.wrapped_cls.metadata(), self.env_cls.metadata())
+        self.assertEqual(self.wrapped_env.metadata(), self.env.metadata())
 
     def test_parse_prerequisites(self):
         prereq_dict = {'key': 'value'}

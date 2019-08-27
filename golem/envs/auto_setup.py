@@ -141,9 +141,8 @@ def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
             finally:
                 yield self._end_usage()
 
-        @classmethod
-        def metadata(cls) -> EnvMetadata:
-            return wrapped.metadata()
+        def metadata(self) -> EnvMetadata:
+            return self._env.metadata()
 
         @classmethod
         def parse_prerequisites(

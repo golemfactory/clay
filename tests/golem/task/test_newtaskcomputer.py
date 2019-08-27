@@ -98,26 +98,6 @@ class NewTaskComputerTestBase(TwistedTestCase):
         self.task_computer.task_given(task_header, compute_task_def)
 
 
-class TestPrepare(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_prepare(self):
-        yield self.task_computer.prepare()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().prepare.assert_called_once()
-
-
-class TestCleanUp(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_clean_up(self):
-        yield self.task_computer.clean_up()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().clean_up.assert_called_once()
-
-
 @mock.patch('golem.task.taskcomputer.ProviderTimer')
 class TestTaskGiven(NewTaskComputerTestBase):
 

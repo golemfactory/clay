@@ -40,6 +40,7 @@ from golem.environments.environment import (
     UnsupportReason,
 )
 from golem.envs import Environment as NewEnv
+from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
 from golem.model import TaskPayment
@@ -131,7 +132,8 @@ class TaskServer(
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
         docker_cpu_config = DockerCPUConfig(
             work_dirs=[Path(self.get_task_computer_root())])
-        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+        docker_cpu_env = auto_setup(NonHypervisedDockerCPUEnvironment)(
+            docker_cpu_config)
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
@@ -671,7 +673,6 @@ class TaskServer(
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
     ) -> Deferred:
-
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed or run_benchmarks:
             self.task_computer.lock_config(True)
