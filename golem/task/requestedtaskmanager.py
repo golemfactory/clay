@@ -42,7 +42,7 @@ class CreateTaskParams:
 
 
 @dataclass
-class ComputingNodeDefenition:
+class ComputingNodeDefinition:
     node_id: str
     name: str
 
@@ -134,6 +134,12 @@ class RequestedTaskManager:
             app_params=app_params,
         )
 
+        logger.debug(
+            'create_task(task_id=%r) - preparing directories. app_id=%s',
+            task.task_id,
+            task.app_id,
+        )
+        self._dir_manager.prepare_task_dir(task.app_id, task.task_id)
         logger.info(
             "Creating task. id=%s, app=%r, env=%r",
             task.task_id,
@@ -155,14 +161,6 @@ class RequestedTaskManager:
             raise RuntimeError(f"Task {task_id} has already been initialized")
 
         # FIXME: Blender creates preview files here
-
-        logger.debug(
-            'init_task(task_id=%r) - preparing directories. app_id=%s',
-            task_id,
-            task.app_id,
-        )
-        self._dir_manager.prepare_task_dir(task.app_id, task_id)
-
         # FIXME: Is RTM responsible for managing test tasks?
 
         app_client = await self._get_app_client(task.app_id, task.environment)
@@ -232,7 +230,7 @@ class RequestedTaskManager:
     async def get_next_subtask(
             self,
             task_id: TaskId,
-            computing_node: ComputingNodeDefenition
+            computing_node: ComputingNodeDefinition
     ) -> SubtaskDefinition:
         """ Return a set of data required for subtask computation. """
         logger.debug(
@@ -277,8 +275,13 @@ class RequestedTaskManager:
             price=task.max_price_per_hour,
             computing_node=node,
         )
-        deadline = subtask.start_time \
-            + timedelta(milliseconds=task.subtask_timeout)
+        task_deadline = task.deadline
+        if task_deadline is None:
+            raise RuntimeError(f"Task not started. task_id={task_id}")
+        deadline = min(
+            subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
+            task_deadline
+        )
 
         ProviderComputeTimers.start(subtask.subtask_id)
         return SubtaskDefinition(
