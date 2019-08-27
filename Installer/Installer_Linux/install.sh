@@ -90,7 +90,7 @@ typeprint () {
 # Info functions
 
 print_banner () {
-  typeprint "Golem Linux Installer version $SCRIPT_VERSION. Golem Factory GmbH 2019"
+  typeprint "Golem Linux Installer version $SCRIPT_VERSION"
 }
 
 # Helper functions
