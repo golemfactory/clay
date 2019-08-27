@@ -501,6 +501,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
+            stats: Dict = {},
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -526,7 +527,8 @@ class TaskServer(
             result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
-            owner=header.task_owner)
+            owner=header.task_owner,
+            stats=stats)
 
         if result:
             self._create_and_set_result_package(wtr)
