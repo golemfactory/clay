@@ -58,12 +58,15 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
-    name = ""
-    if not 'type' in task_dict:
+    task_type = task_dict.get('type')
+    known_task_types = [t for t in client.apps_manager.task_types.keys()]
+    if task_type not in known_task_types:
         raise ValueError(
-            f"Task type must be one of: "
-            f"{[t for t in client.apps_manager.task_types.keys()]}"
+            f"Task type '{task_type}' unrecognized, "
+            f"must be one of: {known_task_types}"
         )
+
+    name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
         name = task_dict['name']
@@ -127,6 +130,7 @@ def validate_client(client):
 
 def prepare_and_validate_task_dict(client, task_dict):
     task_type_id = task_dict.get('type', '').lower()
+    task_dict['type'] = task_type_id
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
