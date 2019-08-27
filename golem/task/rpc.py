@@ -112,7 +112,7 @@ def _validate_task_dict(client, task_dict) -> None:
                 ),
             )
         if not client.apps_manager.get_app(
-                task_dict['type'].lower()
+                task_dict['type']
         ).concent_supported:
             raise CreateTaskError(
                 f"Concent is not supported for {task_dict['type']} tasks."
