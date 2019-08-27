@@ -4,7 +4,7 @@ from collections import OrderedDict
 from importlib import import_module
 
 from golem.config.active import (
-        APP_MANAGER_CONFIG_FILES, CONCENT_SUPPORTED_APPS
+    APP_MANAGER_CONFIG_FILES, CONCENT_SUPPORTED_APPS
 )
 from golem.core.common import get_golem_path
 from golem.environments.environment import SupportStatus
@@ -21,7 +21,7 @@ class App(object):
 
     @property
     def concent_supported(self):
-        return self.task_type_info().id in CONCENT_SUPPORTED_APPS
+        return self.task_type_info().id in CONCENT_SUPPORTED_APPS  # noqa pylint:disable=not-callable
 
 
 class AppsManager(object):
@@ -53,7 +53,7 @@ class AppsManager(object):
                 setattr(app, opt, getattr(module, name))
 
             self.apps[section] = app
-            self.task_types[app.task_type_info().id] = app
+            self.task_types[app.task_type_info().id] = app  # noqa pylint:disable=not-callable
 
     def get_env_list(self):
         return [app.env() for app in self.apps.values()]
