@@ -25,10 +25,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{7DF63B19-3D2F-4400-8BA2-EADE53C68391} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{49439DC0-4BB4-4914-A378-4767817DC307} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.20.1" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.20.2" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -80,7 +80,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
     <ROW Component="AIShRegAnswer" ComponentId="{A5AAAB35-1647-4E0D-9EAD-EA32AC226446}" Directory_="APPDIR" Attributes="260" KeyPath="AIShRegAnswer"/>
-    <ROW Component="AI_CustomARPName" ComponentId="{B811E5AA-DB8A-4089-B011-41A64927007B}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
+    <ROW Component="AI_CustomARPName" ComponentId="{B729ED46-89FD-4BF5-A195-9AAEBCDB4BC4}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
     <ROW Component="AI_ExePath" ComponentId="{E4EBF48B-0937-4467-A8CE-BA9097359940}" Directory_="APPDIR" Attributes="260" KeyPath="AI_ExePath"/>
     <ROW Component="APPDIR" ComponentId="{33DBAA61-0C3E-4C0A-A5B6-FF9575EEB496}" Directory_="APPDIR" Attributes="0"/>
     <ROW Component="CL.command.1.tlog" ComponentId="{0F8E276D-C7B9-45A5-99B9-5A0377CEDD4A}" Directory_="taskcollector.tlog_Dir" Attributes="0" KeyPath="CL.command.1.tlog" Type="0"/>
@@ -249,7 +249,7 @@
     <ROW File="golem_Square150x150Logo.scale400.png" Component_="golem_Square150x150Logo.scale400.png" FileName="GOLEM_~2.PNG|golem_Square150x150Logo.scale-400.png" Attributes="0" SourcePath="Installer\Golem_600x600.png" SelfReg="false" NextFile="bmw27_gpu.blend"/>
     <ROW File="golem_Square70x70Logo.scale400.png" Component_="golem_Square70x70Logo.scale400.png" FileName="GOLEM_~1.PNG|golem_Square70x70Logo.scale-400.png" Attributes="0" SourcePath="Installer\Golem_284x284.png" SelfReg="false" NextFile="resources.pri"/>
     <ROW File="golemapp.exe" Component_="golemapp.exe" FileName="golemapp.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemapp.exe" SelfReg="false" NextFile="golemcli.exe" DigSign="true"/>
-    <ROW File="golemcli.exe" Component_="golemcli.exe" FileName="golemcli.exe" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemcli.exe" SelfReg="false" NextFile="HashInfo.txt" DigSign="true"/>
+    <ROW File="golemcli.exe" Component_="golemcli.exe" FileName="golemcli.exe" Version="65535.65535.65535.65535" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\golemcli.exe" SelfReg="false" NextFile="HashInfo.txt" DigSign="true"/>
     <ROW File="gu.pak" Component_="am.pak" FileName="gu.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\gu.pak" SelfReg="false" NextFile="he.pak"/>
     <ROW File="he.pak" Component_="am.pak" FileName="he.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\he.pak" SelfReg="false" NextFile="hi.pak"/>
     <ROW File="hi.pak" Component_="am.pak" FileName="hi.pak" Attributes="0" SourcePath="Installer\Installer_Win\install_tmp\locales\hi.pak" SelfReg="false" NextFile="hr.pak"/>
