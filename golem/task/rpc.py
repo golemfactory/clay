@@ -59,7 +59,7 @@ class CreateTaskError(Exception):
 
 def _validate_task_dict(client, task_dict) -> None:
     task_type = task_dict.get('type')
-    known_task_types = [t for t in client.apps_manager.task_types.keys()]
+    known_task_types = list(client.apps_manager.task_types.keys())
     if task_type not in known_task_types:
         raise ValueError(
             f"Task type '{task_type}' unrecognized, "

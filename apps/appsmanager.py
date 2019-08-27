@@ -77,5 +77,5 @@ class AppsManager(object):
     def _benchmark_enabled(env):
         return env.check_support() == SupportStatus.ok()
 
-    def get_app(self, task_type_id: str):
+    def get_app(self, task_type_id: str) -> App:
         return self.task_types.get(task_type_id)
