@@ -1,10 +1,12 @@
 from copy import copy
 import logging
+import subprocess
 from threading import Thread
 from typing import Union
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
+from golem.core.common import is_windows
 from golem.core.threads import callback_wrapper
 from golem.environments.environment import Environment as DefaultEnvironment
 
@@ -36,10 +38,13 @@ class BenchmarkManager(object):
         return False
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
-                      error=None):
+                      error=None, retry_on_failure=None):
         logger.info('Running benchmark for %s', env_id)
 
         from golem_messages.datastructures.p2p import Node
+
+        if retry_on_failure is None:
+            retry_on_failure = is_windows()
 
         def success_callback(performance):
             logger.info('%s performance is %.2f', env_id, performance)
@@ -48,11 +53,42 @@ class BenchmarkManager(object):
                 success(performance)
 
         def error_callback(err: Union[str, Exception]):
-            logger.error("Unable to run %s benchmark: %s", env_id, str(err))
-            if error:
-                if isinstance(err, str):
-                    err = Exception(err)
-                error(err)
+            if retry_on_failure and is_windows():
+                logger.error(
+                    "Retrying %s benchmark with a work-around after: %s",
+                    env_id,
+                    str(err)
+                )
+
+                try:
+                    result = subprocess.call([
+                        'docker-machine', '--native-ssh', 'ssh', 'golem',
+                        'sudo /sbin/mount.vboxsf c/Users /c/Users'
+                    ])
+                except Exception as e:
+                    error(e)
+                    return
+
+                if result != 0:
+                    err_msg = "Work-around failed"
+                    logger.error(err_msg)
+                    error(Exception(err_msg))
+                    return
+
+                self.run_benchmark(
+                    benchmark,
+                    task_builder,
+                    env_id,
+                    success,
+                    error,
+                    retry_on_failure=False
+                )
+            else:
+                logger.error("Unable to run %s benchmark: %s", env_id, str(err))
+                if error:
+                    if isinstance(err, str):
+                        err = Exception(err)
+                    error(err)
 
         task_state = TaskDesc()
         task_state.status = TaskStatus.notStarted
