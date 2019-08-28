@@ -132,8 +132,8 @@ class TaskServer(
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
         docker_cpu_config = DockerCPUConfig(
             work_dirs=[Path(self.get_task_computer_root())])
-        docker_cpu_env = auto_setup(NonHypervisedDockerCPUEnvironment)(
-            docker_cpu_config)
+        docker_cpu_env = auto_setup(
+            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
