@@ -19,30 +19,28 @@ class TestAutoSetup(TwistedTestCase):
     # pylint: disable=too-many-public-methods
 
     def setUp(self):
-        self.env_cls = Mock(spec_set=Environment)
+        self.env = Mock(spec_set=Environment)
         self.runtime = Mock(spec_set=Runtime)
-        self.env = self.env_cls()
         self.env.runtime.return_value = self.runtime
-        self.wrapped_cls = auto_setup(self.env_cls)
-        self.wrapped_env = self.wrapped_cls()
+        self.wrapped_env = auto_setup(self.env)
 
     def test_supported(self):
-        self.assertEqual(self.wrapped_cls.supported(), self.env_cls.supported())
+        self.assertEqual(self.wrapped_env.supported(), self.env.supported())
 
     def test_metadata(self):
-        self.assertEqual(self.wrapped_cls.metadata(), self.env_cls.metadata())
+        self.assertEqual(self.wrapped_env.metadata(), self.env.metadata())
 
     def test_parse_prerequisites(self):
         prereq_dict = {'key': 'value'}
-        prereq = self.wrapped_cls.parse_prerequisites(prereq_dict)
-        self.assertEqual(prereq, self.env_cls.parse_prerequisites.return_value)
-        self.env_cls.parse_prerequisites.assert_called_once_with(prereq_dict)
+        prereq = self.wrapped_env.parse_prerequisites(prereq_dict)
+        self.assertEqual(prereq, self.env.parse_prerequisites.return_value)
+        self.env.parse_prerequisites.assert_called_once_with(prereq_dict)
 
     def test_parse_config(self):
         config_dict = {'key': 'value'}
-        config = self.wrapped_cls.parse_config(config_dict)
-        self.assertEqual(config, self.env_cls.parse_config.return_value)
-        self.env_cls.parse_config.assert_called_once_with(config_dict)
+        config = self.wrapped_env.parse_config(config_dict)
+        self.assertEqual(config, self.env.parse_config.return_value)
+        self.env.parse_config.assert_called_once_with(config_dict)
 
     def test_status(self):
         self.assertEqual(self.wrapped_env.status(), self.env.status())

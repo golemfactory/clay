@@ -91,12 +91,11 @@ class RuntimeSetupWrapper(Runtime):
         self._runtime.listen(event_type, listener)
 
 
-def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
+def auto_setup(env: Environment) -> Environment:
 
     class EnvSetupWrapper(Environment):
 
-        def __init__(self, *args, **kwargs) -> None:
-            self._env = wrapped(*args, **kwargs)  # type: ignore
+        def __init__(self) -> None:
             self._num_users = 0
             self._lock = DeferredLock()
 
@@ -105,7 +104,7 @@ def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
             yield self._lock.acquire()
             try:
                 if self._num_users == 0:
-                    yield self._env.prepare()
+                    yield env.prepare()
                 self._num_users += 1
             finally:
                 self._lock.release()
@@ -116,16 +115,16 @@ def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
             try:
                 self._num_users -= 1
                 if self._num_users == 0:
-                    yield self._env.clean_up()
+                    yield env.clean_up()
             finally:
                 self._lock.release()
 
         @classmethod
         def supported(cls) -> EnvSupportStatus:
-            return wrapped.supported()
+            return env.supported()
 
         def status(self) -> EnvStatus:
-            return self._env.status()
+            return env.status()
 
         def prepare(self) -> Deferred:
             raise AttributeError('prepare and clean_up not supported')
@@ -137,20 +136,19 @@ def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
         def run_benchmark(self) -> Deferred:
             yield self._start_usage()
             try:
-                return (yield self._env.run_benchmark())
+                return (yield env.run_benchmark())
             finally:
                 yield self._end_usage()
 
-        @classmethod
-        def metadata(cls) -> EnvMetadata:
-            return wrapped.metadata()
+        def metadata(self) -> EnvMetadata:
+            return env.metadata()
 
         @classmethod
         def parse_prerequisites(
                 cls,
                 prerequisites_dict: Dict[str, Any]
         ) -> Prerequisites:
-            return wrapped.parse_prerequisites(prerequisites_dict)
+            return env.parse_prerequisites(prerequisites_dict)
 
         @inlineCallbacks
         def install_prerequisites(
@@ -159,37 +157,37 @@ def auto_setup(wrapped: Type[Environment]) -> Type[Environment]:
         ) -> Deferred:
             yield self._start_usage()
             try:
-                return (yield self._env.install_prerequisites(prerequisites))
+                return (yield env.install_prerequisites(prerequisites))
             finally:
                 yield self._end_usage()
 
         @classmethod
         def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
-            return wrapped.parse_config(config_dict)
+            return env.parse_config(config_dict)
 
         def config(self) -> EnvConfig:
-            return self._env.config()
+            return env.config()
 
         def update_config(self, config: EnvConfig) -> None:
-            self._env.update_config(config)
+            env.update_config(config)
 
         def listen(
                 self,
                 event_type: EnvEventType,
                 listener: EnvEventListener
         ) -> None:
-            self._env.listen(event_type, listener)
+            env.listen(event_type, listener)
 
         def runtime(
                 self,
                 payload: RuntimePayload,
                 config: Optional[EnvConfig] = None
         ) -> Runtime:
-            runtime = self._env.runtime(payload, config)
+            runtime = env.runtime(payload, config)
             return RuntimeSetupWrapper(
                 runtime=runtime,
                 start_usage=self._start_usage,
                 end_usage=self._end_usage
             )
 
-    return EnvSetupWrapper
+    return EnvSetupWrapper()

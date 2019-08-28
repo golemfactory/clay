@@ -72,7 +72,6 @@ class TaskComputerAdapter:
             work_dir=task_server.get_task_computer_root(),
             stats_keeper=self.stats
         )
-        sync_wait(self._new_computer.prepare())
 
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
@@ -215,7 +214,6 @@ class TaskComputerAdapter:
             in_background=in_background))
 
     def quit(self) -> None:
-        sync_wait(self._new_computer.clean_up())
         self._old_computer.quit()
 
 
@@ -245,19 +243,6 @@ class NewTaskComputer:
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
         self._app_client: Optional[ProviderAppClient] = None
-
-    @defer.inlineCallbacks
-    def prepare(self) -> defer.Deferred:
-        # FIXME: Decide when and how to prepare environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_env.prepare()
-
-    @defer.inlineCallbacks
-    def clean_up(self) -> defer.Deferred:
-        # FIXME: Decide when and how to clean up environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        if docker_env.status() is not EnvStatus.DISABLED:
-            yield docker_env.clean_up()
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
@@ -416,7 +401,6 @@ class NewTaskComputer:
             return None
         return self._assigned_task.env_id
 
-    @defer.inlineCallbacks
     def change_config(
             self,
             config_desc: ClientConfigDescriptor,
@@ -427,7 +411,6 @@ class NewTaskComputer:
 
         # FIXME: Decide how to properly configure environments
         docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_env.clean_up()
         docker_env.update_config(DockerCPUConfig(
             work_dirs=[work_dir],
             cpu_count=config_desc.num_cores,
@@ -437,7 +420,7 @@ class NewTaskComputer:
                 to_unit=MemSize.mebi
             )
         ))
-        yield docker_env.prepare()
+        return defer.succeed(None)
 
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
