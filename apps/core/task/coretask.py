@@ -551,6 +551,8 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
+        if 'optimize_total' in dictionary:
+            definition.optimize_total = bool(dictionary['optimize_total'])
         return definition
 
     @classmethod

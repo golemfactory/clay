@@ -511,16 +511,6 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
                                                         dir_manager)
 
     @classmethod
-    def _calculate_total(cls, task_definition):
-        task_definition.subtasks_count = _calculate_subtasks_count(
-            subtasks_count=task_definition.subtasks_count,
-            optimize_total=task_definition.optimize_total,
-            use_frames=task_definition.options.use_frames,
-            frames=task_definition.options.frames,
-            defaults=cls.DEFAULTS(),
-        )
-
-    @classmethod
     def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
         dictionary = parent.build_dictionary(definition)
@@ -540,6 +530,13 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         definition.options.frames_string = frames_string
         definition.options.frames = frames
         definition.options.use_frames = use_frames
+        definition.subtasks_count = _calculate_subtasks_count(
+            subtasks_count=int(dictionary['subtasks_count']),
+            optimize_total=definition.optimize_total,
+            use_frames=definition.options.use_frames,
+            frames=definition.options.frames,
+            defaults=cls.DEFAULTS(),
+        )
 
         return definition
 

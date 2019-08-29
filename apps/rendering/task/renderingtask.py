@@ -287,14 +287,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
 
-    @classmethod
-    def _calculate_total(cls, task_definition: 'RenderingTaskDefinition'):
-        task_definition.subtasks_count = _calculate_subtasks_count(
-            subtasks_count=task_definition.subtasks_count,
-            optimize_total=task_definition.optimize_total,
-            defaults=cls.DEFAULTS(),
-        )
-
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
@@ -323,7 +315,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        cls._calculate_total(definition)
+        definition.subtasks_count = _calculate_subtasks_count(
+            subtasks_count=int(dictionary['subtasks_count']),
+            optimize_total=definition.optimize_total,
+            defaults=cls.DEFAULTS(),
+        )
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
