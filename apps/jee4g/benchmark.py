@@ -9,7 +9,7 @@ from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 
 
 class Jee4gTaskBenchmark(CoreBenchmark):
-    EXPECTED_OUTPUT = 'Hello test!\n'
+    EXPECTED_OUTPUT = 'Hello test!'
 
     def __init__(self):
         self._normalization_constant = 1000
