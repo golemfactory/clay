@@ -253,14 +253,17 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     def _toolbox_workaround(self, name: str):
         if self._toolbox_workaround_applied:
+            logger.info("Toolbox work-around already applied.")
             return
 
         try:
+            logger.info("Applying toolbox work-around...")
             self.command('execute', args=[
                 name,
                 'sudo /sbin/mount.vboxsf c/Users /c/Users',
             ])
             self._toolbox_workaround_applied = True
+            logger.info("Toolbox work-around applied.")
         except subprocess.CalledProcessError as e:
             logger.warning(
                 "Docker: failed to execute the Docker Toolbox work-around: %r",
