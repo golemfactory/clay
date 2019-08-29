@@ -35,9 +35,9 @@ def enable_sentry_logger(value):
 
         is_mainnet = EthereumConfig().IS_MAINNET
 
-        if talkback_value:
-            env = 'mainnet' if is_mainnet else 'testnet'
+        env = 'mainnet' if is_mainnet else 'testnet'
 
+        if talkback_value:
             _sentry_user["env"] = env
             _sentry_user["golemVersion"] = golem.__version__
 

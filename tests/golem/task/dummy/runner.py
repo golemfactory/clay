@@ -248,7 +248,7 @@ def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
 task_result = None
 
 
-def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
+def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=240,
                    node_failure_times=None):
 
     # We need to pass the PYTHONPATH to the child processes
