@@ -40,6 +40,7 @@ from golem.environments.environment import (
     UnsupportReason,
 )
 from golem.envs import Environment as NewEnv, EnvSupportStatus
+from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
@@ -116,6 +117,7 @@ class TaskServer(
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
+    RESULT_SHARE_TIMEOUT = 3600 * 24 * 7 * 2  # s
 
     def __init__(self,
                  node,
@@ -134,7 +136,8 @@ class TaskServer(
 
         docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
         docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
-        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+        docker_cpu_env = auto_setup(
+            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
 
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
@@ -144,8 +147,8 @@ class TaskServer(
 
         docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
         if docker_gpu_status == EnvSupportStatus(True):
-            docker_gpu_env = NonHypervisedDockerGPUEnvironment.default(
-                docker_config_dict)
+            docker_gpu_env = auto_setup(
+                NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
             new_env_manager.register_env(
                 docker_gpu_env,
                 DockerTaskApiPayloadBuilder,
@@ -465,10 +468,11 @@ class TaskServer(
                     self.task_computer.get_task_resources_dir(),
                     msg.resources_options,
                 ))
-            defer.gatherResults(deferreds).addBoth(
-                lambda _: self.resource_collected(msg.task_id),
-                lambda e: self.resource_failure(msg.task_id, e),
-            )
+            defer.gatherResults(deferreds, consumeErrors=True)\
+                .addCallbacks(
+                    lambda _: self.resource_collected(msg.task_id),
+                    lambda e: self.resource_failure(msg.task_id, e),
+                )
         else:
             self.request_resource(
                 msg.task_id,
@@ -513,6 +517,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
+            stats: Dict = {},
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -538,7 +543,8 @@ class TaskServer(
             result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
-            owner=header.task_owner)
+            owner=header.task_owner,
+            stats=stats)
 
         if result:
             self._create_and_set_result_package(wtr)
@@ -553,17 +559,22 @@ class TaskServer(
 
     def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
+        client_options = self.get_share_options(
+            timeout=self.RESULT_SHARE_TIMEOUT)
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(wtr, wtr.result_secret)
+        result = task_result_manager.create(
+            wtr,
+            client_options,
+            wtr.result_secret)
+
         (
             wtr.result_hash,
             wtr.result_path,
             wtr.package_sha1,
             wtr.result_size,
             wtr.package_path,
-        ) = \
-            result
+        ) = result
 
     def send_task_failed(
             self, subtask_id: str, task_id: str, err_msg: str) -> None:
@@ -678,7 +689,6 @@ class TaskServer(
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
     ) -> Deferred:
-
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed or run_benchmarks:
             self.task_computer.lock_config(True)

@@ -288,12 +288,6 @@ class DockerCPURuntime(RuntimeBase):
             f"Starting container '{self._container_id}' failed."))
         return deferred_start
 
-    def wait_until_stopped(self) -> Deferred:
-        def _wait_until_stopped():
-            while self.status() == RuntimeStatus.RUNNING:
-                sleep(1)
-        return deferToThread(_wait_until_stopped)
-
     def stop(self) -> Deferred:
         with self._status_lock:
             self._assert_status(self._status, RuntimeStatus.RUNNING)
@@ -404,9 +398,6 @@ class DockerCPURuntime(RuntimeBase):
         return self._port_mapper.get_port_mapping(self._container_id, port)
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        raise NotImplementedError
-
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
         raise NotImplementedError
 
 

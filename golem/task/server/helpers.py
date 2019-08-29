@@ -130,8 +130,7 @@ def send_report_computed_task(
 
     my_node: LocalNode = task_server.node
     client_options = task_server.get_share_options(
-        waiting_task_result.task_id,
-        waiting_task_result.owner.prv_addr,
+        address=waiting_task_result.owner.prv_addr,
     )
 
     report_computed_task = message.tasks.ReportComputedTask(

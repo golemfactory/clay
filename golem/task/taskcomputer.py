@@ -61,6 +61,7 @@ class TaskComputerAdapter:
     ) -> None:
         self.stats = IntStatsKeeper(CompStats)
         self._task_server = task_server
+        self._finished_cb = finished_cb
         self._old_computer = TaskComputer(
             task_server=task_server,
             stats_keeper=self.stats,
@@ -70,10 +71,8 @@ class TaskComputerAdapter:
         self._new_computer = NewTaskComputer(
             env_manager=env_manager,
             work_dir=task_server.get_task_computer_root(),
-            task_finished_callback=finished_cb,
             stats_keeper=self.stats
         )
-        sync_wait(self._new_computer.prepare())
 
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
@@ -131,6 +130,7 @@ class TaskComputerAdapter:
             task_id = self.assigned_task_id
             subtask_id = self.assigned_subtask_id
             computation = self._new_computer.compute()
+            self._task_server.task_keeper.task_started(task_id)
             # Fire and forget because it resolves when computation ends
             self._handle_computation_results(task_id, subtask_id, computation)
         elif self._old_computer.has_assigned_task():
@@ -148,17 +148,22 @@ class TaskComputerAdapter:
     ) -> defer.Deferred:
         try:
             output_file = yield computation
-            self._task_server.send_results(
-                subtask_id=subtask_id,
-                task_id=task_id,
-                task_api_result=output_file,
-            )
+            # Output file is None if computation was timed out or cancelled
+            if output_file is not None:
+                self._task_server.send_results(
+                    subtask_id=subtask_id,
+                    task_id=task_id,
+                    task_api_result=output_file,
+                )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
                 subtask_id=subtask_id,
                 task_id=task_id,
                 err_msg=str(e)
             )
+        finally:
+            self._task_server.task_keeper.task_ended(task_id)
+            self._finished_cb()
 
     def task_interrupted(self) -> None:
         if self._new_computer.has_assigned_task():
@@ -210,7 +215,6 @@ class TaskComputerAdapter:
             in_background=in_background))
 
     def quit(self) -> None:
-        sync_wait(self._new_computer.clean_up())
         self._old_computer.quit()
 
 
@@ -232,41 +236,14 @@ class NewTaskComputer:
             self,
             env_manager: EnvironmentManager,
             work_dir: Path,
-            task_finished_callback: Callable[[], Any],
             stats_keeper: Optional[IntStatsKeeper] = None
     ) -> None:
         self._env_manager = env_manager
         self._work_dir = work_dir
-        self._task_finished_callback = task_finished_callback
         self._stats_keeper = stats_keeper or IntStatsKeeper(CompStats)
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
-
-    @defer.inlineCallbacks
-    def prepare(self) -> defer.Deferred:
-        # FIXME: Decide when and how to prepare environments
-        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_cpu.prepare()
-
-        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
-            return
-
-        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
-        yield docker_gpu.prepare()
-
-    @defer.inlineCallbacks
-    def clean_up(self) -> defer.Deferred:
-        # FIXME: Decide when and how to clean up environments
-        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        if docker_cpu.status() is not EnvStatus.DISABLED:
-            yield docker_cpu.clean_up()
-
-        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
-            return
-
-        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
-        if docker_gpu.status() is not EnvStatus.DISABLED:
-            yield docker_gpu.clean_up()
+        self._app_client: Optional[ProviderAppClient] = None
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
@@ -306,31 +283,51 @@ class NewTaskComputer:
             deadline=min(task_header.deadline, compute_task_def['deadline'])
         )
         ProviderTimer.start()
+        self.get_task_resources_dir().mkdir(parents=True, exist_ok=True)
 
     def compute(self) -> defer.Deferred:
         assigned_task = self._assigned_task
         assert assigned_task is not None
 
-        task_api_service = self._get_task_api_service()
-        app_client = ProviderAppClient(service=task_api_service)
-        compute_future = asyncio.ensure_future(app_client.compute(
+        compute_future = asyncio.ensure_future(
+            self._create_client_and_compute())
+        self._computation = deferred_from_future(compute_future)
+
+        # For some reason GRPC future won't get cancelled if timeout is set to
+        # zero (or less) seconds so it has to be at least one second.
+        timeout = max(1, int(deadline_to_timeout(assigned_task.deadline)))
+        from twisted.internet import reactor
+        self._computation.addTimeout(timeout, reactor)
+        return self._wait_until_computation_ends()
+
+    async def _create_client_and_compute(self) -> Path:
+        assigned_task = self._assigned_task
+        assert assigned_task is not None
+
+        env_id = assigned_task.env_id
+        prereq_dict = assigned_task.prereq_dict
+
+        env = self._env_manager.environment(env_id)
+        payload_builder = self._env_manager.payload_builder(env_id)
+        prereq = env.parse_prerequisites(prereq_dict)
+        shared_dir = self._get_task_dir()
+
+        task_api_service = EnvironmentTaskApiService(
+            env=env,
+            payload_builder=payload_builder,
+            prereq=prereq,
+            shared_dir=shared_dir
+        )
+
+        self._app_client = await ProviderAppClient.create(task_api_service)
+        return await self._app_client.compute(
             task_id=assigned_task.task_id,
             subtask_id=assigned_task.subtask_id,
             subtask_params=assigned_task.subtask_params
-        ))
-
-        self._computation = deferred_from_future(compute_future)
-
-        from twisted.internet import reactor
-        timeout = int(deadline_to_timeout(assigned_task.deadline))
-        self._computation.addTimeout(timeout, reactor)
-        return self._wait_until_computation_ends(app_client)
+        )
 
     @defer.inlineCallbacks
-    def _wait_until_computation_ends(
-            self,
-            app_client: ProviderAppClient
-    ) -> defer.Deferred:
+    def _wait_until_computation_ends(self) -> defer.Deferred:
         assigned_task = self._assigned_task
         assert assigned_task is not None
         task_dir = self._get_task_dir()
@@ -368,6 +365,7 @@ class NewTaskComputer:
             self._stats_keeper.increase_stat('tasks_with_errors')
             raise
         finally:
+            ProviderTimer.finish()
             dispatcher.send(
                 signal='golem.monitor',
                 event='computation_time_spent',
@@ -380,36 +378,19 @@ class NewTaskComputer:
                 subtask_id=assigned_task.subtask_id,
                 min_performance=assigned_task.performance,
             )
-            ProviderTimer.finish()
             self._computation = None
             self._assigned_task = None
-            self._task_finished_callback()
-            if not success:
-                # Cleanup can throw errors, do this last
-                yield app_client.shutdown()
+            app_client = self._app_client
+            self._app_client = None
+            if not success and app_client is not None:
+                shutdown_future = asyncio.ensure_future(app_client.shutdown())
+                yield deferred_from_future(shutdown_future)
 
     def _get_task_dir(self) -> Path:
         assert self._assigned_task is not None
         env_id = self._assigned_task.env_id
         task_id = self._assigned_task.task_id
         return self._work_dir / env_id / task_id
-
-    def _get_task_api_service(self) -> EnvironmentTaskApiService:
-        assert self._assigned_task is not None
-        env_id = self._assigned_task.env_id
-        prereq_dict = self._assigned_task.prereq_dict
-
-        env = self._env_manager.environment(env_id)
-        payload_builder = self._env_manager.payload_builder(env_id)
-        prereq = env.parse_prerequisites(prereq_dict)
-        shared_dir = self._get_task_dir()
-
-        return EnvironmentTaskApiService(
-            env=env,
-            payload_builder=payload_builder,
-            prereq=prereq,
-            shared_dir=shared_dir
-        )
 
     def task_interrupted(self) -> None:
         assert self.has_assigned_task()
@@ -421,7 +402,6 @@ class NewTaskComputer:
             return None
         return self._assigned_task.env_id
 
-    @defer.inlineCallbacks
     def change_config(
             self,
             config_desc: ClientConfigDescriptor,
@@ -442,18 +422,15 @@ class NewTaskComputer:
 
         # FIXME: Decide how to properly configure environments
         docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        yield docker_cpu.clean_up()
         docker_cpu.update_config(DockerCPUConfig(**config_dict))
-        yield docker_cpu.prepare()
 
-        if not self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
-            return
+        if self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
+            docker_gpu = self._env_manager.environment(
+                DockerGPUEnvironment.ENV_ID)
+            # TODO: GPU options in config_dict
+            docker_gpu.update_config(DockerGPUConfig(**config_dict))
 
-        docker_gpu = self._env_manager.environment(DockerGPUEnvironment.ENV_ID)
-        yield docker_gpu.clean_up()
-        docker_gpu.update_config(DockerGPUConfig(**config_dict))
-        yield docker_gpu.prepare()
-
+        return defer.succeed(None)
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
     """ TaskComputer is responsible for task computations that take
@@ -562,9 +539,10 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             assert isinstance(task_thread.result, dict)
             try:
                 self.task_server.send_results(
-                    subtask_id,
-                    subtask['task_id'],
-                    task_thread.result['data'],
+                    subtask_id=subtask_id,
+                    task_id=subtask['task_id'],
+                    result=task_thread.result['data'],
+                    stats=task_thread.stats,
                 )
             except Exception as exc:  # pylint: disable=broad-except
                 logger.error("Error sending the results: %r", exc)

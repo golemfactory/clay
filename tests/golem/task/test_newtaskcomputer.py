@@ -1,38 +1,40 @@
+# pylint: disable=protected-access
 import asyncio
 import time
 from pathlib import Path
 from unittest import mock
 
 from golem_messages.message import ComputeTaskDef
-from golem_task_api import TaskApiService
+from golem_task_api import ProviderAppClient, TaskApiService
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import install_reactor
+from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.envs import Runtime
 from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
+from golem.testutils import TempDirFixture
 from golem.tools.testwithreactor import uninstall_reactor
 
 
-class NewTaskComputerTestBase(TwistedTestCase):
+class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
 
     def setUp(self):
         def enabled(env_id):
             return env_id == DockerCPUEnvironment.ENV_ID
 
+        super().setUp()
         self.env_manager = mock.Mock(spec=EnvironmentManager)
         self.env_manager.enabled.side_effect = enabled
-        self.task_finished_callback = mock.Mock()
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
-        self.work_dir = Path('test')
+        self.work_dir = self.new_path
         self.task_computer = NewTaskComputer(
             env_manager=self.env_manager,
             work_dir=self.work_dir,
-            task_finished_callback=self.task_finished_callback,
             stats_keeper=self.stats_keeper
         )
 
@@ -102,26 +104,6 @@ class NewTaskComputerTestBase(TwistedTestCase):
         self.task_computer.task_given(task_header, compute_task_def)
 
 
-class TestPrepare(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_prepare(self):
-        yield self.task_computer.prepare()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().prepare.assert_called_once()
-
-
-class TestCleanUp(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_clean_up(self):
-        yield self.task_computer.clean_up()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().clean_up.assert_called_once()
-
-
 @mock.patch('golem.task.taskcomputer.ProviderTimer')
 class TestTaskGiven(NewTaskComputerTestBase):
 
@@ -144,6 +126,7 @@ class TestTaskGiven(NewTaskComputerTestBase):
             self.task_computer.get_current_computing_env(),
             self.env_id)
         provider_timer.start.assert_called_once_with()
+        self.assertTrue(self.task_computer.get_task_resources_dir().exists())
 
     def test_has_assigned_task(self, provider_timer):
         task_header = self._get_task_header()
@@ -163,30 +146,28 @@ class TestCompute(NewTaskComputerTestBase):
             uninstall_reactor()  # Because other tests don't clean up
         except AttributeError:
             pass
+        cls.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(cls.loop)
         install_reactor()
 
     @classmethod
     def tearDownClass(cls) -> None:
         uninstall_reactor()
+        asyncio.set_event_loop(None)
 
     def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
         self.runtime = mock.Mock(spec_set=Runtime)
-        self.task_api_service = mock.Mock(
-            spec=TaskApiService,
-            _runtime=self.runtime
-        )
+        self.compute_future = asyncio.Future()
         self._patch_async(
-            'NewTaskComputer._get_task_api_service',
-            return_value=self.task_api_service
+            'NewTaskComputer._create_client_and_compute',
+            side_effect=lambda: self.compute_future
         )
         self.task_dir = Path('task_dir')
         self._patch_async(
             'NewTaskComputer._get_task_dir',
             return_value=self.task_dir
         )
-        provider_client_cls = self._patch_async('ProviderAppClient')
-        self.provider_client = provider_client_cls()
         self.provider_timer = self._patch_async('ProviderTimer')
         self.dispatcher = self._patch_async('dispatcher')
         self.logger = self._patch_async('logger')
@@ -199,9 +180,7 @@ class TestCompute(NewTaskComputerTestBase):
     @defer.inlineCallbacks
     def test_ok(self):
         self._assign_task()
-        future = asyncio.Future()
-        future.set_result('result.txt')
-        self.provider_client.compute.return_value = future
+        self.compute_future.set_result('result.txt')
 
         result = yield self.task_computer.compute()
 
@@ -222,13 +201,11 @@ class TestCompute(NewTaskComputerTestBase):
             )
         ), any_order=True)
         self.provider_timer.finish.assert_called_once()
-        self.task_finished_callback.assert_called_once()
         self.assertFalse(self.task_computer.has_assigned_task())
 
     @defer.inlineCallbacks
     def test_task_interrupted(self):
         self._assign_task()
-        self.provider_client.compute.return_value = asyncio.Future()
 
         deferred = self.task_computer.compute()
         self.task_computer.task_interrupted()
@@ -251,14 +228,13 @@ class TestCompute(NewTaskComputerTestBase):
             )
         ), any_order=True)
         self.provider_timer.finish.assert_called_once()
-        self.task_finished_callback.assert_called_once()
         self.assertFalse(self.task_computer.has_assigned_task())
 
     @defer.inlineCallbacks
     def test_task_timed_out(self):
         # Subtask deadline already passed
         self._assign_task(subtask_deadline=time.time())
-        self.provider_client.compute.return_value = asyncio.sleep(10)
+        self.compute_future = asyncio.sleep(10)
 
         result = yield self.task_computer.compute()
 
@@ -280,15 +256,12 @@ class TestCompute(NewTaskComputerTestBase):
             )
         ), any_order=True)
         self.provider_timer.finish.assert_called_once()
-        self.task_finished_callback.assert_called_once()
         self.assertFalse(self.task_computer.has_assigned_task())
 
     @defer.inlineCallbacks
     def test_task_error(self):
         self._assign_task()
-        future = asyncio.Future()
-        future.set_exception(OSError)
-        self.provider_client.compute.return_value = future
+        self.compute_future.set_exception(OSError)
 
         with self.assertRaises(OSError):
             yield self.task_computer.compute()
@@ -310,27 +283,71 @@ class TestCompute(NewTaskComputerTestBase):
             )
         ), any_order=True)
         self.provider_timer.finish.assert_called_once()
-        self.task_finished_callback.assert_called_once()
         self.assertFalse(self.task_computer.has_assigned_task())
 
 
-class TestGetTaskApiService(NewTaskComputerTestBase):
+class TestCreateClientAndCompute(NewTaskComputerTestBase):
 
-    @mock.patch('golem.task.taskcomputer.EnvironmentTaskApiService')
-    def test_get_task_api_service(self, env_task_api_service):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        try:
+            uninstall_reactor()  # Because other tests don't clean up
+        except AttributeError:
+            pass
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        install_reactor()
+
+    @classmethod
+    def tearDownClass(cls):
+        uninstall_reactor()
+        asyncio.set_event_loop(None)
+        super().tearDownClass()
+
+    @defer.inlineCallbacks
+    def test_client_client_and_compute(self):
+        # Given
+        service = mock.Mock(spec_set=TaskApiService)
+        task_api_service_cls = self._patch_async('EnvironmentTaskApiService')
+        task_api_service_cls.return_value = service
+
+        client = mock.Mock(spec_set=ProviderAppClient)
+        result_path = Path('test_result')
+
+        compute_future = asyncio.Future()
+        compute_future.set_result(result_path)
+        client.compute.return_value = compute_future
+
+        client_future = asyncio.Future()
+        client_future.set_result(client)
+        provider_app_client_cls = self._patch_async('ProviderAppClient')
+        provider_app_client_cls.create.return_value = client_future
+
+        # When
         self._assign_task()
-        service = self.task_computer._get_task_api_service()
+        result_future = asyncio.ensure_future(
+            self.task_computer._create_client_and_compute())
+        result = yield deferred_from_future(result_future)
+
+        # Then
+        self.assertEqual(result, result_path)
+
         self.env_manager.environment.assert_called_once_with(self.env_id)
         self.env_manager.payload_builder.assert_called_once_with(self.env_id)
         self.env_manager.environment().parse_prerequisites\
             .assert_called_once_with(self.prereq_dict)
 
-        self.assertEqual(service, env_task_api_service.return_value)
-        env_task_api_service.assert_called_once_with(
+        task_api_service_cls.assert_called_once_with(
             env=self.env_manager.environment(),
             prereq=self.env_manager.environment().parse_prerequisites(),
             shared_dir=self.work_dir / self.env_id / self.task_id,
             payload_builder=self.env_manager.payload_builder()
+        )
+        provider_app_client_cls.create.assert_called_once_with(service)
+        client.compute.assert_called_once_with(
+            task_id=self.task_id,
+            subtask_id=self.subtask_id,
+            subtask_params=self.subtask_params
         )
 
 

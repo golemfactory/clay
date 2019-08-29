@@ -804,7 +804,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION)
 
         client_options = ts.get_download_options(options)
-        assert client_options.peers is None
+        assert not client_options.peers
 
         peers = [
             to_hyperg_peer('127.0.0.1', 3282),
