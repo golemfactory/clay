@@ -715,6 +715,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                    return_value=True), \
                 patch("golem.docker.job.DockerJob.__init__",
                       side_effect=raise_exc), \
+                patch("golem.task.benchmarkmanager.subprocess.call",
+                      return_value=0), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
