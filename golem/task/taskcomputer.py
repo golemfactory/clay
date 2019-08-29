@@ -23,6 +23,7 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.envs import EnvId, EnvStatus
 from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
+from golem.envs.docker.gpu import DockerGPUConfig, DockerGPUEnvironment
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -409,9 +410,7 @@ class NewTaskComputer:
         assert not self._is_computing()
         self._work_dir = work_dir
 
-        # FIXME: Decide how to properly configure environments
-        docker_env = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
-        docker_env.update_config(DockerCPUConfig(
+        config_dict = dict(
             work_dirs=[work_dir],
             cpu_count=config_desc.num_cores,
             memory_mb=scale_memory(
@@ -419,9 +418,19 @@ class NewTaskComputer:
                 unit=MemSize.kibi,
                 to_unit=MemSize.mebi
             )
-        ))
-        return defer.succeed(None)
+        )
 
+        # FIXME: Decide how to properly configure environments
+        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        docker_cpu.update_config(DockerCPUConfig(**config_dict))
+
+        if self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
+            docker_gpu = self._env_manager.environment(
+                DockerGPUEnvironment.ENV_ID)
+            # TODO: GPU options in config_dict
+            docker_gpu.update_config(DockerGPUConfig(**config_dict))
+
+        return defer.succeed(None)
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
     """ TaskComputer is responsible for task computations that take

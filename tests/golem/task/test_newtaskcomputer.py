@@ -24,8 +24,12 @@ from golem.tools.testwithreactor import uninstall_reactor
 class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
 
     def setUp(self):
+        def enabled(env_id):
+            return env_id == DockerCPUEnvironment.ENV_ID
+
         super().setUp()
         self.env_manager = mock.Mock(spec=EnvironmentManager)
+        self.env_manager.enabled.side_effect = enabled
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
         self.work_dir = self.new_path
         self.task_computer = NewTaskComputer(
