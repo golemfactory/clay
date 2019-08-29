@@ -1,8 +1,8 @@
 import logging
 from contextlib import contextmanager
+import subprocess
 from typing import Dict, Optional, ClassVar
 
-from golem.core.common import is_windows
 from golem.docker.config import CONSTRAINT_KEYS, DOCKER_VM_NAME, \
     GetConfigFunction
 from golem.docker.hypervisor import Hypervisor
@@ -239,3 +239,20 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         return VirtualBoxHypervisor(get_config_fn,
                                     VirtualBox(), ISession, LockType,
                                     docker_vm)
+
+    def _set_env(self, retried=False):
+        result = super()._set_env(retried=retried)
+        self._toolbox_workaround(name=self._vm_name)
+        return result
+
+    def _toolbox_workaround(self, name: str):
+        try:
+            self.command('execute', args=[
+                name,
+                'sudo /sbin/mount.vboxsf c/Users /c/Users',
+            ])
+        except subprocess.CalledProcessError as e:
+            logger.warning(
+                "Docker: failed to execute the Docker Toolbox work-around: %r",
+                e
+            )
