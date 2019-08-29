@@ -3,7 +3,6 @@ from logging import getLogger, Logger
 from typing import Any, ClassVar, Dict, List, Optional
 
 from dataclasses import dataclass, field
-from twisted.internet.defer import Deferred
 
 from golem.core.common import update_dict
 from golem.envs import (
@@ -82,9 +81,6 @@ class DockerNvidiaGPUConfig(DockerGPUConfig):
 class DockerGPURuntime(DockerCPURuntime):
 
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        raise NotImplementedError
-
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
         raise NotImplementedError
 
 

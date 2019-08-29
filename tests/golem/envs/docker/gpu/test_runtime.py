@@ -17,7 +17,3 @@ class TestRuntime(TestCase):
     def test_usage_counters(self):
         with self.assertRaises(NotImplementedError):
             self.runtime.usage_counters()
-
-    def test_call(self):
-        with self.assertRaises(NotImplementedError):
-            self.runtime.call('test')
