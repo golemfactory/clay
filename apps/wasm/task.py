@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from copy import deepcopy
 from pathlib import Path, PurePath
 from typing import (
@@ -45,6 +46,13 @@ from .vbr import (
 logger = logging.getLogger("apps.wasm")
 
 
+@dataclass
+class SubtaskInstance:
+    status: SubtaskStatus
+    actor: Actor
+    results: TaskResult
+
+
 class VbrSubtask:
     """Encapsulating subtask handling behavior for Verification by
     Redundancy. This class hides result handling, subtask spawning
@@ -58,7 +66,7 @@ class VbrSubtask:
         self.result = None
         self.redundancy_factor = redundancy_factor
 
-        self.subtasks = {}
+        self.subtasks: Dict[str, SubtaskInstance] = {}
         self.verifier = BucketVerifier(
             redundancy_factor, WasmTask.cmp_results, referee_count=0)
 
@@ -82,25 +90,23 @@ class VbrSubtask:
         self.verifier.add_actor(actor)
 
         s_id = self.id_gen()
-        self.subtasks[s_id] = {
-            "status": SubtaskStatus.starting,
-            "actor": actor,
-            "results": None
-        }
+        self.subtasks[s_id] = SubtaskInstance(
+            SubtaskStatus.starting, actor, TaskResult())
 
         return s_id, deepcopy(self.params)
 
-    def get_instance(self, s_id) -> dict:
+    def get_instance(self, s_id) -> SubtaskInstance:
         return self.subtasks[s_id]
 
     def get_instances(self) -> List[str]:
         return self.subtasks.keys()
 
-    def add_result(self, s_id, task_result):
-        self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
-        self.subtasks[s_id]["results"] = task_result
+    def add_result(self, s_id: str, task_result: TaskResult):
+        self.verifier.add_result(
+            self.subtasks[s_id].actor, task_result.files)
+        self.subtasks[s_id].results = task_result
 
-    def get_result(self):
+    def get_result(self) -> TaskResult:
         return self.result
 
     def is_finished(self) -> bool:
@@ -110,7 +116,7 @@ class VbrSubtask:
         verdicts = []
         for actor, result, verdict in self.verifier.get_verdicts():
             if verdict == VerificationResult.SUCCESS and not self.result:
-                self.result = result
+                self.result = TaskResult(files=result)
 
             verdicts.append((actor, verdict))
 
@@ -234,7 +240,7 @@ class WasmTask(CoreTask):
         for s_id in subtask.get_instances():
             instance = subtask.get_instance(s_id)
             for actor, verdict in verdicts:
-                if actor is not instance['actor']:
+                if actor is not instance.actor:
                     continue
 
                 if verdict == VerificationResult.SUCCESS:
@@ -253,9 +259,9 @@ class WasmTask(CoreTask):
                     self.nodes_blacklist.add(actor.uuid)
 
         # save the results but only if verification was successful
-        result = subtask.get_result()
+        result: TaskResult = subtask.get_result()
         if result is not None:
-            self.save_results(subtask.name, result)
+            self.save_results(subtask.name, result.files)
         else:
             new_subtask = VbrSubtask(self.create_subtask_id, subtask.name,
                                      subtask.params, subtask.redundancy_factor)
@@ -268,11 +274,12 @@ class WasmTask(CoreTask):
             logger.info("Not accepting results for %s", subtask_id)
             return
 
-        self.interpret_task_results(subtask_id, task_result)
+        self.interpret_task_results(subtask_id, task_result.files)
+        task_result.files = self.results[subtask_id]
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, self.results.get(subtask_id))
+        subtask.add_result(subtask_id, task_result)
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
         WasmTask.CALLBACKS[subtask_id] = verification_finished
 
@@ -281,13 +288,15 @@ class WasmTask(CoreTask):
 
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
-                subtask_instance = subtask.get_instance(s_id)
+                s_instance = subtask.get_instance(s_id)
                 subtask_usages.append(
-                    (subtask_instance['actor'].uuid,
+                    (s_instance.actor.uuid,
                      s_id,
-                     task_result.stats.cpu_stats.cpu_usage['total_usage'] / 1e9 )
+                     s_instance.results.stats.
+                     cpu_stats.cpu_usage['total_usage'] / 1e9)
                 )
-            WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
+            strat = WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY  # type: ignore
+            strat.report_subtask_usages(
                 self.task_definition.task_id,
                 subtask_usages
             )
@@ -343,19 +352,13 @@ class WasmTask(CoreTask):
         return filtered_task_results
 
     def interpret_task_results(
-            self, subtask_id: str, task_results: TaskResult,
+            self, subtask_id: str, task_results: List[str],
             sort: bool = True) -> None:
-        """Filter out ".log" files from received results.
-        Log files should represent stdout and stderr from computing machine.
-        Other files should represent subtask results.
-        :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files
-        :param bool sort: *default: True* Sort results, if set to True
-        """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
+        # results field is used here for compatibility with CoreTask
         self.results[subtask_id] = self.filter_task_results(
-            task_results.files, subtask_id)
+            task_results, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
@@ -476,8 +479,8 @@ class WasmTask(CoreTask):
 
     def get_results(self, subtask_id):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        instance = subtask.get_instance(subtask_id)
-        return instance["results"]
+        results = subtask.get_result()
+        return results.files if results else []
 
     @property
     def subtask_price(self) -> int:
@@ -539,8 +542,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
-        RequestorWasmMarketStrategy
+    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
 
     def __init__(self) -> None:
         self._load_requestor_perf()

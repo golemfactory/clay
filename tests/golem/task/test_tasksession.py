@@ -276,7 +276,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ANY,
         )
 
-    @patch("golem.task.taskmanager.TaskManager.get_market_strategy_for_task",
+    @patch("golem.task.taskmanager."
+           "TaskManager.get_requestor_market_strategy_for_task",
            Mock(return_value=RequestorBrassMarketStrategy))
     def _fake_send_ttc(self):
         wtct = self._get_wtct()
@@ -295,7 +296,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
-        ts.task_manager.get_market_strategy_for_task.return_value =\
+        ts.task_manager.get_requestor_market_strategy_for_task.return_value =\
             RequestorBrassMarketStrategy
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \

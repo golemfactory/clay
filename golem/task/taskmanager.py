@@ -33,7 +33,8 @@ from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
-from golem.marketplace import DEFAULT_MARKET_STRATEGY, RequestorMarketStrategy
+from golem.marketplace import (
+    DEFAULT_REQUESTOR_MARKET_STRATEGY, RequestorMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -1302,13 +1303,15 @@ class TaskManager(TaskEventListener):
 
         update_provider_efficiency(node_id, timeout, computation_time)
 
-    def get_market_strategy_for_task(
+    def get_requestor_market_strategy_for_task(
             self, task: Task) -> Type[RequestorMarketStrategy]:
-        market_strategy: Type[RequestorMarketStrategy] = DEFAULT_MARKET_STRATEGY
+        market_strategy: Type[RequestorMarketStrategy] = \
+            DEFAULT_REQUESTOR_MARKET_STRATEGY
 
         try:
-            market_strategy = self.task_types[
-                task.task_definition.task_type.lower()].MARKET_STRATEGY
+            market_strategy =\
+                self.task_types[task.task_definition.task_type.lower()]\
+                    .REQUESTOR_MARKET_STRATEGY
         except KeyError:
             pass
 

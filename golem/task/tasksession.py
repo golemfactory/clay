@@ -330,7 +330,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = self.task_manager.get_market_strategy_for_task(
+        market_strategy =\
+            self.task_manager.get_requestor_market_strategy_for_task(
             current_task
         )
 

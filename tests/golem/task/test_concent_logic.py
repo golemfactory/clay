@@ -482,7 +482,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
-        task_manager.get_market_strategy_for_task.return_value =\
+        task_manager.get_requestor_market_strategy_for_task.return_value =\
             RequestorBrassMarketStrategy
         ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
         ctd["resources"] = []
