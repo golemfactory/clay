@@ -4,8 +4,10 @@ import uuid
 from pathlib import Path
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 
+from apps.core.task.coretask import CoreTaskTypeInfo
+from apps.core.task.coretaskstate import Options
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 from apps.rendering.task.framerenderingtask import get_frame_name, \
     FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions, logger
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -302,77 +304,170 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert len(states) == 2
 
 
-class TestFrameRenderingTaskBuilder(unittest.TestCase):
+class TestBuildDefinition(unittest.TestCase):
+    def setUp(self):
+        self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                                    Options,
+                                    FrameRenderingTaskBuilder)
+        self.tti.output_file_ext = 'txt'
+
     @staticmethod
-    def _create_definition(*,
-                           optimize_total=False,
-                           subtasks_count=12,
-                           use_frames=True):
-        definition = RenderingTaskDefinition()
-        definition.optimize_total = optimize_total
-        definition.subtasks_count = subtasks_count
-        definition.options = FrameRendererOptions()
-        definition.options.use_frames = use_frames
-        definition.options.frames = list(range(1, 7))
-        return definition
+    def _make_dict(
+            *,
+            frame_count: int = 1,
+            subtasks_count: int = 1,
+            optimize_total: bool = False,
+    ):
+        assert frame_count > 0
+        if frame_count == 1:
+            frames = "1"
+        else:
+            frames = f"1-{frame_count}"
 
-    def _assert_calculated_subtasks_count_is_equal(
-            self, definition, expected_count):
-        FrameRenderingTaskBuilder._calculate_total(definition)
-        assert definition.subtasks_count == expected_count
+        return {
+            "bid": 0,
+            "name": "foo",
+            "optimize_total": optimize_total,
+            "options": {
+                "format": "PNG",
+                "frame_count": frame_count,
+                "frames": frames,
+                "output_path": "/tmp/foo",
+                "resolution": [1, 1],
+            },
+            "resources": ["foo.txt"],
+            "subtask_timeout": "0:00:01",
+            "subtasks_count": subtasks_count,
+            "timeout": "0:00:01",
+        }
 
-    def test_more_subtasks_than_frames(self):
-        # use frames count
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(optimize_total=True), 6)
-
-    def test_optimize_to_default(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(optimize_total=True, use_frames=False), 20)
-
-    def test_calculate_total(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(use_frames=False), 12)
-
-    def test_subtasks_count_unknown(self):
-        # use default
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=None, use_frames=False), 20)
-
-    def test_subtasks_count_below_min(self):
-        # use default
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=0, use_frames=False), 20)
-
-    def test_subtasks_count_min(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=1, use_frames=False), 1)
-
-    def test_subtasks_count_over_max(self):
-        # use default
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=51, use_frames=False), 20)
-
-    def test_subtasks_count_max(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=50, use_frames=False), 50)
-
-    def test_subtasks_count_frames(self):
-        for i in [
-                (None, 6),
-                (0, 6),
-                (1, 1),
-                (2, 2),
-                (3, 3),
-                (4, 3),
-                (6, 6),
-                (12, 12),
-                (13, 12),
-                (17, 12),
-                (18, 18)
-        ]:
-            self._assert_calculated_subtasks_count_is_equal(
-                self._create_definition(subtasks_count=i[0]), i[1])
+    def test_subtasks_count(self):
+        # sort tests by (optimize_total, frame_count, subtasks_count)
+        tests = [
+            {
+                "make_dict_kwargs": {
+                    "subtasks_count": 0,
+                },
+                "expected_subtasks_count": 20,
+            },
+            {
+                "make_dict_kwargs": {},
+                "expected_subtasks_count": 1,
+            },
+            {
+                "make_dict_kwargs": {
+                    "subtasks_count": 50,
+                },
+                "expected_subtasks_count": 50,
+            },
+            {
+                "make_dict_kwargs": {
+                    "subtasks_count": 51,
+                },
+                "expected_subtasks_count": 20,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 0,
+                },
+                "expected_subtasks_count": 6,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 1,
+                },
+                "expected_subtasks_count": 1,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 2,
+                },
+                "expected_subtasks_count": 2,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 3,
+                },
+                "expected_subtasks_count": 3,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 4,
+                },
+                "expected_subtasks_count": 3,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 6,
+                },
+                "expected_subtasks_count": 6,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 12,
+                },
+                "expected_subtasks_count": 12,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 13,
+                },
+                "expected_subtasks_count": 12,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 17,
+                },
+                "expected_subtasks_count": 12,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 18,
+                },
+                "expected_subtasks_count": 18,
+            },
+            {
+                "make_dict_kwargs": {
+                    "optimize_total": True,
+                },
+                "expected_subtasks_count": 20,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 12,
+                    "optimize_total": True,
+                },
+                "expected_subtasks_count": 6,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 12,
+                    "optimize_total": True,
+                },
+                "expected_subtasks_count": 6,
+            },
+        ]
+        failures = []
+        for test in tests:
+            task_dict = self._make_dict(**test["make_dict_kwargs"])
+            definition = FrameRenderingTaskBuilder.build_definition(
+                self.tti, task_dict)
+            if definition.subtasks_count != test["expected_subtasks_count"]:
+                test["actual_subtasks_count"] = definition.subtasks_count
+                failures.append(test)
+        assert failures == []
 
 
 class TestFramesConversion(unittest.TestCase):

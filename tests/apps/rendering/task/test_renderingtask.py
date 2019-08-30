@@ -298,46 +298,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert logger.exception.called
 
 
-class TestRenderingTaskBuilder(TestCase):
-    @staticmethod
-    def _create_definition(*,
-                           optimize_total=False,
-                           subtasks_count=0):
-        definition = RenderingTaskDefinition()
-        definition.optimize_total = optimize_total
-        definition.subtasks_count = subtasks_count
-        return definition
-
-    def _assert_calculated_subtasks_count_is_equal(
-            self, definition, expected_count):
-        RenderingTaskBuilder._calculate_total(definition)
-        assert definition.subtasks_count == expected_count
-
-    def test_optimize_to_default(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(optimize_total=True), 20)
-
-    def test_calculate_total(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=18), 18)
-
-    def test_subtasks_count_below_min(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=0), 20)
-
-    def test_subtasks_count_min(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=1), 1)
-
-    def test_subtasks_count_over_max(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=51), 20)
-
-    def test_subtasks_count_max(self):
-        self._assert_calculated_subtasks_count_is_equal(
-            self._create_definition(subtasks_count=50), 50)
-
-
 class TestBuildDefinition(LogTestCase):
     def setUp(self):
         super().setUp()
