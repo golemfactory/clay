@@ -807,10 +807,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 TaskStatus.notStarted,
             )
             self.tm.start_task(t.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states["xyz"].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states["xyz"].status.is_active())
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
         self.assertIs(
@@ -1326,10 +1323,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
 
             self.tm.start_task(task.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states['xyz'].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states['xyz'].status.is_active())
 
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()

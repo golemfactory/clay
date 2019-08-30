@@ -109,6 +109,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.task_manager = Mock(tasks_states={}, tasks={})
         self.task_manager.task_finished.return_value = False
         server = Mock(task_manager=self.task_manager)
+        server.client.task_server = server
         server.get_key_id = lambda: self.provider_key
         server.get_share_options.return_value = None
         self.conn = Mock(server=server)
@@ -180,7 +181,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
                 key=self.requestor_key,
             ),
             subtask_timeout=1,
-            max_price=1, )
+            max_price=1,
+            deadline=int(time.time() + 3600))
         task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 
@@ -280,6 +282,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
         ts.task_server.config_desc.offer_pooling_interval = 0
+        options = HyperdriveClientOptions(
+            "CLI1", 0.3, options=dict(timeout=10., size=1024))
+        ts.task_server.get_share_options.return_value = options
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -295,13 +300,13 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
-        options = HyperdriveClientOptions("CLI1", 0.3)
-        ts.task_server.get_share_options.return_value = options
+
         new_path = os.path.join(self.path, "tempzip")
         zp = ZipPackager()
         _, hash_ = zp.create(new_path, ctd["resources"])
         ts.interpret(wtct)
         started = time.time()
+
         while ts.conn.send_message.call_args is None:
             if time.time() - started > 10:
                 self.fail("Test timed out")
@@ -330,14 +335,15 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ['size', os.path.getsize(new_path)],
             ['ethsig', ttc.ethsig],
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
-                                   'options': {}}],
+                                   'options': dict(timeout=10., size=1024)}],
             ['promissory_note_sig',
-             ttc._get_promissory_note().sign(self.requestor_keys.raw_privkey)],
+             ttc._get_promissory_note(
+                 self.ethereum_config.deposit_contract_address
+             ).sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc._get_concent_promissory_note(
-                 getattr(self.ethereum_config, 'deposit_contract_address')
-             ).sign(
-                 self.requestor_keys.raw_privkey)],
+                 self.ethereum_config.deposit_contract_address
+             ).sign(self.requestor_keys.raw_privkey)],
         ]
         self.assertCountEqual(ttc.slots(), expected)
 
@@ -348,9 +354,11 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
     def test_task_to_compute_promissory_notes(self):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
-        self.assertTrue(ttc.verify_promissory_note())
+        self.assertTrue(ttc.verify_promissory_note(
+            self.ethereum_config.deposit_contract_address
+        ))
         self.assertTrue(ttc.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
 
 
@@ -605,7 +613,7 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())

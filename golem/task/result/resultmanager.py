@@ -77,7 +77,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                             error=error,
                                             async_=async_)
 
-    def create(self, task_result, key_or_secret=None):
+    def create(self, task_result, client_options, key_or_secret=None):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
@@ -96,7 +96,11 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         package_path = packager.package_name(encrypted_package_path)
         package_size = os.path.getsize(package_path)
 
-        self.resource_manager.add_file(path, task_result.task_id)
+        self.resource_manager.add_file(
+            path,
+            task_result.task_id,
+            client_options=client_options)
+
         for resource in self.resource_manager.get_resources(
                 task_result.task_id):
             if file_name in resource.files:

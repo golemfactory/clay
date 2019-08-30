@@ -3,6 +3,4 @@ include requirements.txt
 include README.md
 include LICENSE.txt
 include loggingconfig.py
-include golem/ethereum/genesis_golem.json
-include golem/ethereum/mine_pending_transactions.js
-recursive-include apps *.blend *.jpg *.lxs *.ply *.lxo *.lxm *.lxv *.txt
+recursive-include apps *.blend *.txt
