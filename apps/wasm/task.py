@@ -285,7 +285,7 @@ class WasmTask(CoreTask):
                 subtask_usages.append(
                     (subtask_instance['actor'].uuid,
                      s_id,
-                     task_result.stats.cpu_stats.cpu_usage.total_usage)
+                     task_result.stats.cpu_stats.cpu_usage['total_usage'] / 1e9 )
                 )
             WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
