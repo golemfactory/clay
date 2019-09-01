@@ -24,7 +24,7 @@ class Jee4gTaskBenchmark(CoreBenchmark):
         opts.jar_name = 'test.jar'
         opts.subtasks = {
             'test_subtask': Jee4gTaskOptions.SubtaskOptions(
-                'test_subtask', ['test'], []
+                'test_subtask', ['test']
             )
         }
 

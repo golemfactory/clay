@@ -19,11 +19,9 @@ from golem.task.taskstate import SubtaskStatus
 
 class Jee4gTaskOptions(Options):
     class SubtaskOptions:
-        def __init__(self, name: str, exec_args: List[str],
-                     output_file_paths: List[str]) -> None:
+        def __init__(self, name: str, exec_args: List[str]) -> None:
             self.name: str = name
             self.exec_args: List[str] = exec_args
-            self.output_file_paths: List[str] = output_file_paths
 
     def __init__(self) -> None:
         super().__init__()
@@ -39,7 +37,6 @@ class Jee4gTaskOptions(Options):
                 'jar_name': self.jar_name,
                 'exec_args': subtask_opts.exec_args,
                 'input_dir_name': PurePath(self.input_dir).name,
-                'output_file_paths': subtask_opts.output_file_paths,
             }
 
     def get_subtask_iterator(self) -> Iterator[Tuple[str, Dict[str, Any]]]:
@@ -178,8 +175,7 @@ class Jee4gTaskBuilder(CoreTaskBuilder):
 
         task_def.options.subtasks = {
             name: Jee4gTaskOptions.SubtaskOptions(
-                name, subtask_opts['exec_args'],
-                subtask_opts['output_file_paths']
+                name, subtask_opts['exec_args']
             )
             for name, subtask_opts in options['subtasks'].items()
         }

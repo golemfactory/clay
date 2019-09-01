@@ -49,28 +49,20 @@ CMD="java
 ${JAR}
 ${EXEC_ARGS}"
 
-cp -R "${SUBTASK_INPUT_DIR}"/* .
 MARKER="${PWD}"/.marker
 touch "${MARKER}"
+
+JEE4G_WORKING_DIR=jee4g_working_dir
+mkdir ${JEE4G_WORKING_DIR}
+cd ${JEE4G_WORKING_DIR}
+cp -R "${SUBTASK_INPUT_DIR}"/* .
 
 #main execution
 ${CMD}
 
 #clean up
-#find . -type f ! -newer "${MARKER}" | xargs rm -rf 
-#rm ${MAKER}
-
-echo ---1
-ls -l *
-echo ---2
-find . -type f ! -newer "${MARKER}" | xargs -I {} echo {} 
-find . -type f ! -newer "${MARKER}" | xargs -I {} mv {} ${OUTPUT_DIR}/ 
-echo ---3
-ls -la ${OUTPUT_DIR}/
-echo ---4
-rm -rf *
-echo ---5
-ls -la *
-echo ---6
-ls -la ${OUTPUT_DIR}/
+find . -type f ! -newer "${MARKER}" | xargs -I {} mv {} ${OUTPUT_DIR}/
+cd ..
+rm -rf ${JEE4G_WORKING_DIR}
+rm "${MARKER}"
 
