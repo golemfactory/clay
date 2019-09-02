@@ -1,5 +1,4 @@
 import asyncio
-import unittest
 from pathlib import Path
 
 from golem_task_api import (
@@ -8,6 +7,7 @@ from golem_task_api import (
     RequestorAppClient
 )
 from golem_task_api.structs import Subtask
+from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
@@ -70,12 +70,11 @@ class TestLocalhostEnv(TwistedTestCase):
         result = yield deferred_from_future(compute_future)
         self.assertEqual(result, Path(result_path))
 
-    @unittest.skip('LocalhostRuntime.stop is not working properly')  # FIXME
     @inlineCallbacks
     def test_compute_interrupted(self):
 
         async def compute(_, __):
-            await asyncio.sleep(10)
+            await asyncio.sleep(20)
             return ''
 
         prereq = LocalhostPrerequisites(compute=compute)
@@ -88,7 +87,7 @@ class TestLocalhostEnv(TwistedTestCase):
             subtask_params={'param': 'value'}
         ))
         yield service._runtime.stop()  # pylint: disable=protected-access
-        with self.assertRaises(OSError):
+        with self.assertRaises((OSError, StreamTerminatedError)):
             yield deferred_from_future(compute_future)
 
     @inlineCallbacks
