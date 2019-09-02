@@ -465,7 +465,7 @@ class TaskServer(
             for resource_id in msg.compute_task_def['resources']:
                 deferreds.append(self.new_resource_manager.download(
                     resource_id,
-                    self.task_computer.get_task_resources_dir(),
+                    self.task_computer.get_subtask_inputs_dir(),
                     msg.resources_options,
                 ))
             defer.gatherResults(deferreds, consumeErrors=True)\
