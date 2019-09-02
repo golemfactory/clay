@@ -104,7 +104,7 @@ class TaskManager(TaskEventListener):
         self.apps_manager = apps_manager
         apps = list(apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]
-        self.task_types = {t.name.lower(): t for t in task_types}
+        self.task_types = {t.id: t for t in task_types}
 
         self.node = node
         self.keys_auth = keys_auth

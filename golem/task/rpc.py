@@ -58,6 +58,14 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
+    task_type = task_dict.get('type')
+    known_task_types = list(client.apps_manager.task_types.keys())
+    if task_type not in known_task_types:
+        raise ValueError(
+            f"Task type '{task_type}' unrecognized, "
+            f"must be one of: {known_task_types}"
+        )
+
     name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
@@ -103,6 +111,12 @@ def _validate_task_dict(client, task_dict) -> None:
                     else 'disabled'
                 ),
             )
+        if not client.apps_manager.get_app(
+                task_dict['type']
+        ).concent_supported:
+            raise CreateTaskError(
+                f"Concent is not supported for {task_dict['type']} tasks."
+            )
 
 
 def validate_client(client):
@@ -115,10 +129,13 @@ def validate_client(client):
 
 
 def prepare_and_validate_task_dict(client, task_dict):
+    task_type_id = task_dict.get('type', '').lower()
+    task_dict['type'] = task_type_id
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
-        client.concent_service.enabled,
+        client.concent_service.enabled and
+        client.apps_manager.get_app(task_type_id).concent_supported
     )
     _validate_task_dict(client, task_dict)
 

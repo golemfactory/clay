@@ -39,9 +39,13 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
-from golem.envs import Environment as NewEnv
+from golem.envs import Environment as NewEnv, EnvSupportStatus
+from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig
-from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs.docker.non_hypervised import (
+    NonHypervisedDockerCPUEnvironment,
+    NonHypervisedDockerGPUEnvironment,
+)
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
@@ -129,14 +133,26 @@ class TaskServer(
         self.config_desc = config_desc
 
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
-        docker_cpu_config = DockerCPUConfig(
-            work_dirs=[Path(self.get_task_computer_root())])
-        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+
+        docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
+        docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
+        docker_cpu_env = auto_setup(
+            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
+
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
             DockerTaskApiPayloadBuilder,
         )
+
+        docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
+        if docker_gpu_status == EnvSupportStatus(True):
+            docker_gpu_env = auto_setup(
+                NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
+            new_env_manager.register_env(
+                docker_gpu_env,
+                DockerTaskApiPayloadBuilder,
+            )
 
         self.node = node
         self.task_archiver = task_archiver
@@ -505,6 +521,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
+            stats: Dict = {},
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -530,7 +547,8 @@ class TaskServer(
             result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
-            owner=header.task_owner)
+            owner=header.task_owner,
+            stats=stats)
 
         if result:
             self._create_and_set_result_package(wtr)
@@ -675,7 +693,6 @@ class TaskServer(
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
     ) -> Deferred:
-
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed or run_benchmarks:
             self.task_computer.lock_config(True)

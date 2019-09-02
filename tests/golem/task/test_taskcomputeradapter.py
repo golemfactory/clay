@@ -48,7 +48,6 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
 class TestInit(TaskComputerAdapterTestBase):
 
     def test_init(self):
-        self.new_computer.prepare.aseert_called_once()
         self.assertTrue(self.adapter.compute_tasks)
         self.assertTrue(self.adapter.runnable)
         self.assertIs(self.adapter.stats, self.int_stats_keeper)
@@ -389,5 +388,4 @@ class TestQuit(TaskComputerAdapterTestBase):
 
     def test_quit(self):
         self.adapter.quit()
-        self.new_computer.clean_up.assert_called_once()
         self.old_computer.quit.assert_called_once()

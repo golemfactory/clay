@@ -17,15 +17,21 @@ from golem.envs import Runtime
 from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
+from golem.testutils import TempDirFixture
 from golem.tools.testwithreactor import uninstall_reactor
 
 
-class NewTaskComputerTestBase(TwistedTestCase):
+class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
 
     def setUp(self):
+        def enabled(env_id):
+            return env_id == DockerCPUEnvironment.ENV_ID
+
+        super().setUp()
         self.env_manager = mock.Mock(spec=EnvironmentManager)
+        self.env_manager.enabled.side_effect = enabled
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
-        self.work_dir = Path('test')
+        self.work_dir = self.new_path
         self.task_computer = NewTaskComputer(
             env_manager=self.env_manager,
             work_dir=self.work_dir,
@@ -98,26 +104,6 @@ class NewTaskComputerTestBase(TwistedTestCase):
         self.task_computer.task_given(task_header, compute_task_def)
 
 
-class TestPrepare(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_prepare(self):
-        yield self.task_computer.prepare()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().prepare.assert_called_once()
-
-
-class TestCleanUp(NewTaskComputerTestBase):
-
-    @defer.inlineCallbacks
-    def test_clean_up(self):
-        yield self.task_computer.clean_up()
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
-        self.env_manager.environment().clean_up.assert_called_once()
-
-
 @mock.patch('golem.task.taskcomputer.ProviderTimer')
 class TestTaskGiven(NewTaskComputerTestBase):
 
@@ -140,6 +126,7 @@ class TestTaskGiven(NewTaskComputerTestBase):
             self.task_computer.get_current_computing_env(),
             self.env_id)
         provider_timer.start.assert_called_once_with()
+        self.assertTrue(self.task_computer.get_task_resources_dir().exists())
 
     def test_has_assigned_task(self, provider_timer):
         task_header = self._get_task_header()
