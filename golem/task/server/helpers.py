@@ -10,7 +10,6 @@ from golem import model
 from golem.core import common
 from golem.network import history
 from golem.network.transport import msg_queue
-from golem.task.taskbase import ResultMetadata
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import

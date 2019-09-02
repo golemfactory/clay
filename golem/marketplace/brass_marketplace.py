@@ -73,11 +73,11 @@ class ProviderBrassMarketStrategy(ProviderMarketStrategy):
         """
         r = pricing.price_per_wallclock_h *\
             (1.0 + timer.ProviderTimer.profit_factor)
-        v_paid = get_requestor_paid_sum(requestor_id)
-        v_assigned = get_requestor_assigned_sum(requestor_id)
+        v_paid = dbm.get_requestor_paid_sum(requestor_id)
+        v_assigned = dbm.get_requestor_assigned_sum(requestor_id)
         c = pricing.price_per_wallclock_h
         Q = min(1.0, (pricing.price_per_wallclock_h + 1 + v_paid + c) /
                 (pricing.price_per_wallclock_h + 1 + v_assigned))
-        R = get_requestor_efficiency(requestor_id)
+        R = dbm.get_requestor_efficiency(requestor_id)
         S = Q * R
         return min(max(int(r / S), pricing.price_per_wallclock_h), max_price)
