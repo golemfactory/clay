@@ -50,7 +50,7 @@ logger = logging.getLogger("apps.wasm")
 class SubtaskInstance:
     status: SubtaskStatus
     actor: Actor
-    results: TaskResult
+    results: Optional[TaskResult]
 
 
 class VbrSubtask:
@@ -101,9 +101,10 @@ class VbrSubtask:
     def get_instances(self) -> List[str]:
         return self.subtasks.keys()
 
-    def add_result(self, s_id: str, task_result: TaskResult):
+    def add_result(self, s_id: str, task_result: Optional[TaskResult]):
+        result_files = task_result.files if task_result else None
         self.verifier.add_result(
-            self.subtasks[s_id].actor, task_result.files)
+            self.subtasks[s_id].actor, result_files)
         self.subtasks[s_id].results = task_result
 
     def get_result(self) -> TaskResult:
@@ -289,6 +290,7 @@ class WasmTask(CoreTask):
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
                 s_instance = subtask.get_instance(s_id)
+                assert s_instance.results
                 subtask_usages.append(
                     (s_instance.actor.uuid,
                      s_id,
