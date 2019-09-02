@@ -126,7 +126,7 @@ class TestTaskGiven(NewTaskComputerTestBase):
             self.task_computer.get_current_computing_env(),
             self.env_id)
         provider_timer.start.assert_called_once_with()
-        self.assertTrue(self.task_computer.get_task_resources_dir().exists())
+        self.assertTrue(self.task_computer.get_subtask_inputs_dir().exists())
 
     def test_has_assigned_task(self, provider_timer):
         task_header = self._get_task_header()

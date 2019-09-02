@@ -1316,7 +1316,7 @@ class TestTaskGiven(TaskServerTestBase):
         for resource in ttc.compute_task_def['resources']:  # noqa pylint: disable=unsubscriptable-object
             self.ts.new_resource_manager.download.assert_any_call(
                 resource,
-                self.ts.task_computer.get_task_resources_dir.return_value,
+                self.ts.task_computer.get_subtask_inputs_dir.return_value,
                 ttc.resources_options,
             )
         self.assertEqual(
