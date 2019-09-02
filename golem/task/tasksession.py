@@ -839,8 +839,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_rejected()
             return
 
-        # wait for timeout to trigger force accept, so that the SRR can be
-        # verified independently by the Concent
+        # in case the reason for SRR is neither
+        # a `VerificationNegative` nor `ForcedResourcesFailure`
+        # the SRR is effectively broken so we're ignoring it
+        # instead
+        # we wait for timeout to trigger force accept,
+        # so that the SRR can be verified independently by the Concent
 
     def _trigger_concent_additional_verification(
             self, msg: message.tasks.SubtaskResultsRejected):
