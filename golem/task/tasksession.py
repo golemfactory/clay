@@ -796,57 +796,94 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
-        if msg.task_to_compute.concent_enabled:
-            # if the Concent is enabled for this subtask, as a provider,
-            # knowing that we had done a proper job of computing it,
-            # we are delegating the verification to the Concent so that
-            # we can be paid for this subtask despite the rejection
-
-            amount, expected = msg_helpers.provider_deposit_amount(
-                subtask_price=msg.task_to_compute.price,
-            )
-
-            def ask_for_verification(_):
-                srv = message.concents.SubtaskResultsVerify(
-                    subtask_results_rejected=msg
-                )
-                srv.sign_concent_promissory_note(
-                    deposit_contract_address=self.deposit_contract_address,
-                    private_key=self.my_private_key,
-                )
-
-                self.concent_service.submit_task_message(
-                    subtask_id=msg.subtask_id,
-                    msg=srv,
-                )
-
-            self.task_server.client.transaction_system.\
-                validate_concent_deposit_possibility(
-                    required=amount,
-                    tasks_num=1,
-                )
-            self.task_server.client.transaction_system.concent_deposit(
-                required=amount,
-                expected=expected,
-            ).addCallback(ask_for_verification).addErrback(
-                lambda failure: logger.warning(
-                    "Additional verification deposit failed %s", failure.value,
-                ),
-            )
-
-        else:
+        def subtask_rejected():
             dispatcher.send(
                 signal='golem.message',
                 event='received',
                 message=msg
             )
-
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
 
+        if msg.task_to_compute.concent_enabled:
+            self._handle_srr_with_concent_enabled(msg, subtask_rejected)
+        else:
+            subtask_rejected()
+
         self.dropped()
+
+    def _handle_srr_with_concent_enabled(
+            self, msg: message.tasks.SubtaskResultsRejected,
+            subtask_rejected: Callable[[], None]):
+        if msg.reason == (message.tasks.SubtaskResultsRejected.REASON
+                          .VerificationNegative):
+            logger.debug("_handle_srr_with_concent_enabled: triggering "
+                         "additional verification")
+            self._trigger_concent_additional_verification(msg)
+            return
+
+        fgtrf_msg: message.concents.ForceGetTaskResultFailed = \
+            msg.force_get_task_result_failed
+
+        if msg.reason == (message.tasks.SubtaskResultsRejected.REASON
+                          .ForcedResourcesFailure) \
+                and fgtrf_msg \
+                and self.verify_owners(fgtrf_msg, my_role=Actor.Provider) \
+                and (msg.report_computed_task.task_to_compute.subtask_id ==
+                     fgtrf_msg.task_to_compute.subtask_id):
+            subtask_id = msg.report_computed_task.subtask_id
+            logger.info("Received ForcedResourcesFailure message. "
+                        "subtask_id=%s", subtask_id)
+            subtask_rejected()
+            return
+
+        # in case the reason for SRR is neither
+        # a `VerificationNegative` nor `ForcedResourcesFailure`
+        # the SRR is effectively broken so we're ignoring it
+        # instead
+        # we wait for timeout to trigger force accept,
+        # so that the SRR can be verified independently by the Concent
+
+    def _trigger_concent_additional_verification(
+            self, msg: message.tasks.SubtaskResultsRejected):
+        # if the Concent is enabled for this subtask, as a provider,
+        # knowing that we had done a proper job of computing it,
+        # we are delegating the verification to the Concent so that
+        # we can be paid for this subtask despite the rejection
+
+        amount, expected = msg_helpers.provider_deposit_amount(
+            subtask_price=msg.task_to_compute.price,
+        )
+
+        def ask_for_verification(_):
+            srv = message.concents.SubtaskResultsVerify(
+                subtask_results_rejected=msg
+            )
+            srv.sign_concent_promissory_note(
+                deposit_contract_address=self.deposit_contract_address,
+                private_key=self.my_private_key,
+            )
+
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=srv,
+            )
+
+        self.task_server.client.transaction_system.\
+            validate_concent_deposit_possibility(
+                required=amount,
+                tasks_num=1,
+            )
+        self.task_server.client.transaction_system.concent_deposit(
+            required=amount,
+            expected=expected,
+        ).addCallback(ask_for_verification).addErrback(
+            lambda failure: logger.warning(
+                "Additional verification deposit failed %s", failure.value,
+            ),
+        )
 
     def _react_to_task_failure(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
