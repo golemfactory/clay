@@ -808,7 +808,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         if msg.task_to_compute.concent_enabled:
-            self._handle_srr_with_concent_enabled(msg)
+            self._handle_srr_with_concent_enabled(msg, subtask_rejected)
         else:
             subtask_rejected()
 
