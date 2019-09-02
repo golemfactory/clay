@@ -5,11 +5,13 @@ from multiprocessing import Process
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 
+import dill
 from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler, entrypoint
 from golem_task_api.structs import Subtask
 from twisted.internet import defer, threads
 
+from golem.core.common import is_windows
 from golem.envs import (
     CounterId,
     CounterUsage,
@@ -139,11 +141,12 @@ class LocalhostRuntime(RuntimeBase):
             payload: LocalhostPayload,
     ) -> None:
         super().__init__(logger)
-        self._command = payload.command
-        self._work_dir = payload.shared_dir
-        self._app_handler = LocalhostAppHandler(payload.prerequisites)
 
-        self._server_process = Process(target=self._spawn_server, daemon=True)
+        self._server_process = Process(
+            target=self._spawn_server,
+            args=(dill.dumps(payload),),
+            daemon=True
+        )
         self._shutdown_deferred: Optional[defer.Deferred] = None
 
     def prepare(self) -> defer.Deferred:
@@ -154,15 +157,20 @@ class LocalhostRuntime(RuntimeBase):
         self._torn_down()
         return defer.succeed(None)
 
-    def _spawn_server(self) -> None:
+    @staticmethod
+    def _spawn_server(payload_str: str) -> None:
         server_loop = asyncio.new_event_loop()
-        server_loop.add_signal_handler(signal.SIGTERM, server_loop.stop)
+        if not is_windows():  # Signals don't work on Windows
+            server_loop.add_signal_handler(signal.SIGTERM, server_loop.stop)
         asyncio.set_event_loop(server_loop)
+
+        payload: LocalhostPayload = dill.loads(payload_str)
+        app_handler = LocalhostAppHandler(payload.prerequisites)
         server_loop.run_until_complete(entrypoint(
-            work_dir=self._work_dir,
-            argv=self._command.split(),
-            requestor_handler=self._app_handler,
-            provider_handler=self._app_handler
+            work_dir=payload.shared_dir,
+            argv=payload.command.split(),
+            requestor_handler=app_handler,
+            provider_handler=app_handler
         ))
 
     def _wait_for_server_shutdown(self):

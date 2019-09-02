@@ -5,6 +5,7 @@ certifi==2018.1.18
 chardet==3.0.4
 codecov==2.0.15
 coverage==4.5.1
+dill==0.3.0
 factory-boy==2.9.2
 Faker==0.8.9
 flake8==3.7.7

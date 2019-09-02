@@ -87,7 +87,7 @@ class TestLocalhostEnv(TwistedTestCase):
             subtask_params={'param': 'value'}
         ))
         yield service._runtime.stop()  # pylint: disable=protected-access
-        with self.assertRaises(StreamTerminatedError):
+        with self.assertRaises((OSError, StreamTerminatedError)):
             yield deferred_from_future(compute_future)
 
     @inlineCallbacks
