@@ -728,7 +728,7 @@ main () {
   self_check
   cache_sudo
   retrieve_manifest
-  parse_releases
+  parse_releases "${VERSION_TO_INSTALL}"
   info_msg "Golem has been installed succesfully."
 }
 
