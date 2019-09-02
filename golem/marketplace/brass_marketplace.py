@@ -7,17 +7,13 @@ from golem.marketplace import (Offer, ProviderMarketStrategy, ProviderPricing)
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 from golem.task import timer
-from golem.ranking.manager.database_manager import (
-    get_requestor_efficiency,
-    get_requestor_assigned_sum,
-    get_requestor_paid_sum,
-)
+import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
-    from golem.task.taskbase import Task
+    from golem.task.taskbase import Task  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -47,8 +43,10 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         offers = cls._pools.pop(task_id)
 
         permutation = order_providers([
-            BrassMarketOffer(scale_price(offer.max_price, offer.price),
-                             offer.reputation, offer.quality)
+            BrassMarketOffer(  # type: ignore
+                scale_price(offer.max_price, offer.price),
+                dbm.get_provider_efficiency(offer.provider_id),
+                dbm.get_provider_efficacy(offer.provider_id).vector)
             for offer in offers
         ])
 

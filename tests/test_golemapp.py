@@ -20,7 +20,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
     ]
 
     @mock.patch('golem.node.Node')
-    def test_start_node(self, node_class):
+    def test_start_node(self, node_class, *_):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         assert node_class.called
@@ -35,7 +35,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                     assert not run_start.called
                     assert run_start_cbar.called
 
-    def test_start_crossbar_worker_remove_options(self):
+    def test_start_crossbar_worker_u(self, *_):
         runner = CliRunner()
         args = ['--datadir', self.path, '-u'] + WORKER_PROCESS_STANDALONE_ARGS
 
@@ -89,7 +89,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         assert cert_manager.generate_if_needed.called
 
     @mock.patch('golem.node.Node')
-    def test_accept_terms(self, node_cls):
+    def test_accept_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -99,7 +99,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         node_cls().accept_terms.assert_called_once_with()
 
     @mock.patch('golem.node.Node')
-    def test_accept_concent_terms(self, node_cls):
+    def test_accept_concent_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -109,7 +109,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         node_cls().accept_concent_terms.assert_called_once_with()
 
     @mock.patch('golem.node.Node')
-    def test_accept_all_terms(self, node_cls):
+    def test_accept_all_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -142,11 +142,11 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             catch_exceptions=False,
         )
 
-        args, kwargs = logger.error.call_args
+        args, _kwargs = logger.error.call_args
         assert self.path in args[0]
 
     @mock.patch('golem.node.Node')
-    def test_node_start_called(self, node_cls):
+    def test_node_start_called(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,

@@ -6,6 +6,7 @@ import os
 import shutil
 import time
 import weakref
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -16,12 +17,15 @@ from typing import (
     Type,
     Union,
     Set,
+    Tuple,
+    TYPE_CHECKING,
 )
 
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
+from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
@@ -36,9 +40,13 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
-from golem.envs import Environment as NewEnv
+from golem.envs import Environment as NewEnv, EnvSupportStatus
+from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig
-from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs.docker.non_hypervised import (
+    NonHypervisedDockerCPUEnvironment,
+    NonHypervisedDockerGPUEnvironment,
+)
 from golem.marketplace import ProviderPricing
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
@@ -61,7 +69,7 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
-from golem.task.acl import get_acl, _DenyAcl as DenyAcl
+from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.taskbase import Task, ResultMetadata
 from golem.task.benchmarkmanager import BenchmarkManager
@@ -81,6 +89,9 @@ from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
+if TYPE_CHECKING:
+    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
+
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
@@ -94,6 +105,7 @@ class TaskServer(
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
+    RESULT_SHARE_TIMEOUT = 3600 * 24 * 7 * 2  # s
 
     def __init__(self,
                  node,
@@ -109,14 +121,26 @@ class TaskServer(
         self.config_desc = config_desc
 
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
-        docker_cpu_config = DockerCPUConfig(
-            work_dirs=[Path(self.get_task_computer_root())])
-        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+
+        docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
+        docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
+        docker_cpu_env = auto_setup(
+            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
+
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
             DockerTaskApiPayloadBuilder,
         )
+
+        docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
+        if docker_gpu_status == EnvSupportStatus(True):
+            docker_gpu_env = auto_setup(
+                NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
+            new_env_manager.register_env(
+                docker_gpu_env,
+                DockerTaskApiPayloadBuilder,
+            )
 
         self.node = node
         self.task_archiver = task_archiver
@@ -429,12 +453,26 @@ class TaskServer(
             return False
 
         self.task_computer.task_given(msg.compute_task_def)
-        self.request_resource(
-            msg.task_id,
-            msg.subtask_id,
-            msg.compute_task_def['resources'],
-            msg.resources_options,
-        )
+        if msg.want_to_compute_task.task_header.environment_prerequisites:
+            deferreds = []
+            for resource_id in msg.compute_task_def['resources']:
+                deferreds.append(self.new_resource_manager.download(
+                    resource_id,
+                    self.task_computer.get_task_resources_dir(),
+                    msg.resources_options,
+                ))
+            defer.gatherResults(deferreds, consumeErrors=True)\
+                .addCallbacks(
+                    lambda _: self.resource_collected(msg.task_id),
+                    lambda e: self.resource_failure(msg.task_id, e),
+                )
+        else:
+            self.request_resource(
+                msg.task_id,
+                msg.subtask_id,
+                msg.compute_task_def['resources'],
+                msg.resources_options,
+            )
         self.requested_tasks.clear()
         update_requestor_assigned_sum(msg.requestor_id, msg.price)
         dispatcher.send(
@@ -466,9 +504,16 @@ class TaskServer(
             f'Error downloading resources: {reason}',
         )
 
-    def send_results(self, subtask_id: str, task_id: str, result: List[Path]):
-        if not result:
-            raise ValueError('Not results to send')
+    def send_results(
+            self,
+            subtask_id: str,
+            task_id: str,
+            result: Optional[List[Path]] = None,
+            task_api_result: Optional[Path] = None,
+            stats: Dict = {},
+    ) -> None:
+        if not result and not task_api_result:
+            raise ValueError('No results to send')
 
         if subtask_id in self.results_to_send:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
@@ -488,29 +533,41 @@ class TaskServer(
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result,
+            result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
-            owner=header.task_owner)
+            owner=header.task_owner,
+            stats=stats)
 
-        self._create_and_set_result_package(wtr)
+        if result:
+            self._create_and_set_result_package(wtr)
+        else:
+            resource_id = \
+                sync_wait(self.new_resource_manager.share(task_api_result))
+            wtr.result_hash = resource_id
+
         self.results_to_send[subtask_id] = wtr
 
         Trust.REQUESTED.increase(header.task_owner.key)
 
     def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
+        client_options = self.get_share_options(
+            timeout=self.RESULT_SHARE_TIMEOUT)
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(wtr, wtr.result_secret)
+        result = task_result_manager.create(
+            wtr,
+            client_options,
+            wtr.result_secret)
+
         (
             wtr.result_hash,
             wtr.result_path,
             wtr.package_sha1,
             wtr.result_size,
             wtr.package_path,
-        ) = \
-            result
+        ) = result
 
     def send_task_failed(
             self, subtask_id: str, task_id: str, err_msg: str) -> None:
@@ -625,7 +682,6 @@ class TaskServer(
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
     ) -> Deferred:
-
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed or run_benchmarks:
             self.task_computer.lock_config(True)
@@ -950,13 +1006,41 @@ class TaskServer(
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
-    def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
-            -> None:
+    @rpc_utils.expose('net.peer.disallow')
+    def disallow_node(
+            self,
+            node_id: str,
+            timeout_seconds: int = -1,
+            persist: bool = False
+    ) -> None:
         self.acl.disallow(node_id, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
+    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
         self.acl_ip.disallow(ip, timeout_seconds)
+
+    @rpc_utils.expose('net.peer.allow')
+    def allow_node(self, node_id: str, persist: bool = True) -> None:
+        self.acl.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.allow_ip')
+    def allow_ip(self, node_id: str, persist: bool = True) -> None:
+        self.acl_ip.allow(node_id, persist)
+
+    @rpc_utils.expose('net.peer.acl')
+    def acl_status(self) -> Dict:
+        return self.acl.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl_ip')
+    def acl_ip_status(self) -> Dict:
+        return self.acl_ip.status().to_message()
+
+    @rpc_utils.expose('net.peer.acl.new')
+    def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
+        new_acl = setup_acl(Path(self.client.datadir),
+                            AclRule[default_rule],
+                            exceptions)
+        self.acl = new_acl
 
     def _sync_forwarded_session_requests(self):
         now = time.time()
@@ -1030,36 +1114,29 @@ class TaskServer(
         task.subtasks_results_metadata[subtask_id] = result_metadata
 
 
-# TODO: https://github.com/golemfactory/golem/issues/2633
-#       and remove linter switch offs
-# pylint: disable=too-many-arguments, too-many-locals
-class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result,
-                 last_sending_trial, delay_time, owner, result_path=None,
-                 result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None, package_path=None):
+@dataclass
+class WaitingTaskResult:
+    delay_time: float
+    last_sending_trial: int
+    owner: 'dt_p2p.Node'
+    result: Tuple
+    subtask_id: str
+    task_id: str
 
-        self.task_id = task_id
-        self.subtask_id = subtask_id
-        self.last_sending_trial = last_sending_trial
-        self.delay_time = delay_time
-        self.owner = owner
-
-        self.result = result
-        self.result_path = result_path
-        self.result_hash = result_hash
-        self.result_secret = result_secret
-        self.package_sha1 = package_sha1
-        self.package_path = package_path
-        self.result_size = result_size
-
-        self.already_sending = False
-# pylint: enable=too-many-arguments, too-many-locals
+    already_sending: bool = False
+    package_path: Optional[str] = None
+    package_sha1: Optional[str] = None
+    result_hash: Optional[str] = None
+    result_path: Optional[str] = None
+    result_secret: Optional[str] = None
+    result_sha1: Optional[str] = None
+    result_size: int = 0
+    stats: Dict = field(default_factory=dict)
 
 
-class WaitingTaskFailure(object):
-    def __init__(self, task_id, subtask_id, err_msg, owner):
-        self.task_id = task_id
-        self.subtask_id = subtask_id
-        self.owner = owner
-        self.err_msg = err_msg
+@dataclass
+class WaitingTaskFailure:
+    err_msg: str
+    owner: 'dt_p2p.Node'
+    subtask_id: str
+    task_id: str

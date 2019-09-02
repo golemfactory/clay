@@ -1,6 +1,8 @@
+# pylint: disable=no-value-for-parameter
+import asyncio
+import datetime
+import json
 import logging
-import queue
-import threading
 import time
 from typing import Optional, Dict
 from urllib.parse import urljoin
@@ -8,8 +10,8 @@ from urllib.parse import urljoin
 import requests
 from pydispatch import dispatcher
 
+from golem.core import golem_async
 from golem.core import variables
-from golem.decorators import log_error
 from golem.task.taskproviderstats import ProviderStats
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     AggregateTaskStats
@@ -17,39 +19,13 @@ from .model import statssnapshotmodel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
-from .transport.sender import DefaultJSONSender as Sender
 
 log = logging.getLogger('golem.monitor')
 
 
-class SenderThread(threading.Thread):
-    def __init__(self, node_info, monitor_host, monitor_request_timeout,
-                 monitor_sender_thread_timeout, proto_ver):
-        super(SenderThread, self).__init__()
-        self.queue = queue.Queue()
-        self.stop_request = threading.Event()
-        self.node_info = node_info
-        self.sender = Sender(monitor_host, monitor_request_timeout, proto_ver)
-        self.monitor_sender_thread_timeout = monitor_sender_thread_timeout
-
-    def send(self, o):
-        self.queue.put(o)
-
-    def run(self):
-        while not self.stop_request.isSet():
-            try:
-                msg = self.queue.get(True, self.monitor_sender_thread_timeout)
-                if msg is None:
-                    continue
-                self.sender.send(msg)
-            except queue.Empty:
-                # send ping message
-                self.sender.send(self.node_info)
-
-    def join(self, timeout=None):
-        self.stop_request.set()
-        self.queue.put(None)
-        super(SenderThread, self).join(timeout)
+@golem_async.throttle(datetime.timedelta(minutes=10))
+def log_throttled(msg, d):
+    log.warning(msg, d)
 
 
 class SystemMonitor(object):
@@ -59,35 +35,22 @@ class SystemMonitor(object):
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
-        dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
-        dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
-    @property
-    def sender_thread(self):
-        if not hasattr(self, '_sender_thread'):
-            host = self.config['HOST']
-            request_timeout = self.config['REQUEST_TIMEOUT']
-            sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
-            proto_ver = self.config['PROTO_VERSION']
-            self._sender_thread = SenderThread(
-                self.node_info,
-                host,
-                request_timeout,
-                sender_thread_timeout,
-                proto_ver
-            )
-        return self._sender_thread
-
-    def p2p_listener(self, event='default', ports=None, *_, **__):
+    @golem_async.taskify()
+    async def p2p_listener(self, *_, event='default', ports=None, **__):
         if event != 'listening':
             return
-        result = self.ping_request(ports)
+        await self.ping_request(ports)
+
+    async def ping_request(self, ports) -> None:
+        result = await self.ping_request_io(ports)
         if not result:
             return
 
         port_statuses = result.get('port_statuses')
         if port_statuses:
             for port_status in port_statuses:
+                # This signal will be handled in this functions thread
                 dispatcher.send(
                     signal='golem.p2p',
                     event='open' if port_status['is_open'] else 'unreachable',
@@ -96,13 +59,15 @@ class SystemMonitor(object):
                 )
 
         if result['time_diff'] > variables.MAX_TIME_DIFF:
+            # This signal will be handled in this functions thread
             dispatcher.send(
                 signal='golem.p2p',
                 event='unsynchronized',
                 time_diff=result['time_diff']
             )
 
-    def ping_request(self, ports) -> Optional[Dict]:
+    @golem_async.run_in_thread()
+    def ping_request_io(self, ports, **_kwargs) -> Optional[Dict]:
         timeout = 2.5  # seconds
 
         for host in self.config['PING_ME_HOSTS']:
@@ -122,91 +87,138 @@ class SystemMonitor(object):
                 log.exception('Ping error (%r)', host)
         return None
 
-    @log_error()
-    def dispatch_listener(self, sender, signal, event='default', **kwargs):
+    # pylint: disable=unused-argument
+    @golem_async.taskify()
+    async def dispatch_listener(
+            self,
+            sender,
+            signal,
+            event='default',
+            **kwargs,
+    ):
         """ Main PubSub listener for golem_monitor channel """
         method_name = "on_%s" % (event,)
         if not hasattr(self, method_name):
             log.warning('Unrecognized event received: golem_monitor %s', event)
             return
-        getattr(self, method_name)(**kwargs)
+        result = getattr(self, method_name)(**kwargs)
+        if asyncio.iscoroutine(result):
+            await result
 
     # Initialization
 
     def start(self):
-        self.sender_thread.start()
+        dispatcher.connect(
+            self.dispatch_listener,
+            signal='golem.monitor',
+        )
+        dispatcher.connect(
+            self.p2p_listener,
+            signal='golem.p2p',
+        )
 
-    def shut_down(self):
-        dispatcher.disconnect(self.dispatch_listener, signal='golem.monitor')
-        dispatcher.disconnect(self.p2p_listener, signal='golem.p2p')
-        self.sender_thread.join()
+    @golem_async.run_in_thread()
+    def send(self, model, loop):
+        url = self.config['HOST']
+        request_timeout = self.config['REQUEST_TIMEOUT']
+        proto_ver = self.config['PROTO_VERSION']
+        payload = json.dumps(
+            {
+                'proto_ver': proto_ver,
+                'data': model.dict_repr(),
+            },
+            indent=4,
+        )
+        log.debug('sending payload=%s', payload)
+        try:
+            result = requests.post(
+                url,
+                data=payload,
+                headers={'content-type': 'application/json'},
+                timeout=request_timeout
+            )
+            log.debug("Result %r", result)
+            if not result.status_code == 200:
+                log.debug("Monitor request error. result=%r", result)
+        except requests.exceptions.RequestException as e:
+            asyncio.ensure_future(log_throttled(
+                'Problem sending payload to: %(url)r, because %(e)s',
+                {
+                    'url': url,
+                    'e': e,
+                },
+            ), loop=loop)
 
-    # Public interface
+    # handlers
 
-    def on_shutdown(self):
-        self.on_logout()
-        self.shut_down()
+    async def on_shutdown(self):
+        await self.on_logout()
 
-    def on_login(self):
-        self.sender_thread.send(LoginModel(self.meta_data))
+    async def on_login(self):
+        await self.send(LoginModel(self.meta_data))
 
-    def on_config_update(self, meta_data):
+    async def on_config_update(self, meta_data):
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
-        self.sender_thread.send(LoginModel(self.meta_data))
+        await self.on_login()
 
-    def on_computation_time_spent(self, success, value):
+    async def on_computation_time_spent(self, success, value):
         msg = statssnapshotmodel.ComputationTime(
             self.meta_data,
             success,
             value
         )
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_logout(self):
-        self.sender_thread.send(LogoutModel(self.meta_data))
+    async def on_logout(self):
+        await self.send(LogoutModel(self.meta_data))
 
-    def on_stats_snapshot(self, known_tasks, supported_tasks, stats):
+    async def on_stats_snapshot(self, known_tasks, supported_tasks, stats):
         msg = statssnapshotmodel.StatsSnapshotModel(
             self.meta_data,
             known_tasks,
             supported_tasks,
             stats
         )
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_vm_snapshot(self, vm_data):
+    async def on_vm_snapshot(self, vm_data):
         msg = statssnapshotmodel.VMSnapshotModel(
             self.meta_data.cliid,
             self.meta_data.sessid,
             vm_data
         )
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_peer_snapshot(self, p2p_data):
+    async def on_peer_snapshot(self, p2p_data):
         msg = statssnapshotmodel.P2PSnapshotModel(
             self.meta_data.cliid,
             self.meta_data.sessid,
             p2p_data
         )
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_task_computer_snapshot(self, task_computer):
+    async def on_task_computer_snapshot(self, task_computer):
         msg = TaskComputerSnapshotModel(self.meta_data, task_computer)
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_requestor_stats_snapshot(self,
-                                    current_stats: CurrentStats,
-                                    finished_stats: FinishedTasksStats):
+    async def on_requestor_stats_snapshot(
+            self,
+            current_stats: CurrentStats,
+            finished_stats: FinishedTasksStats,
+    ):
         msg = statssnapshotmodel.RequestorStatsModel(
             self.meta_data, current_stats, finished_stats)
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_requestor_aggregate_stats_snapshot(self, stats: AggregateTaskStats):
+    async def on_requestor_aggregate_stats_snapshot(
+            self,
+            stats: AggregateTaskStats,
+    ):
         msg = statssnapshotmodel.RequestorAggregateStatsModel(
             self.meta_data, stats)
-        self.sender_thread.send(msg)
+        await self.send(msg)
 
-    def on_provider_stats_snapshot(self, stats: ProviderStats):
+    async def on_provider_stats_snapshot(self, stats: ProviderStats):
         msg = statssnapshotmodel.ProviderStatsModel(self.meta_data, stats)
-        self.sender_thread.send(msg)
+        await self.send(msg)

@@ -1,18 +1,29 @@
 import sys
 from unittest import TestCase
-from unittest.mock import MagicMock, Mock
+from unittest.mock import patch, Mock
 
 from ethereum.utils import denoms
 
 from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
-    ProviderPerformance
+    ProviderPerformance,
+    Offer
 )
 from golem.marketplace.brass_marketplace import scale_price
 
 GWEI = denoms.szabo
 HOUR = 3600
+
+
+def _fake_get_efficacy():
+
+    class A:
+
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+
+    return A()
 
 
 class TestScalePrice(TestCase):
@@ -24,6 +35,10 @@ class TestScalePrice(TestCase):
         assert scale_price(5, 0) == sys.float_info.max
 
 
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       Mock(return_value=_fake_get_efficacy()))
 class TestRequestorMarketStrategy(TestCase):
     TASK_A = 'aaa'
     PROVIDER_A = 'provider_a'
@@ -80,6 +95,10 @@ class TestRequestorMarketStrategy(TestCase):
         self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
 
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       Mock(return_value=_fake_get_efficacy()))
 class TestRequestorBrassMarketStrategy(TestCase):
     TASK_A = 'aaa'
 

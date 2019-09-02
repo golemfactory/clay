@@ -424,7 +424,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
-                    ctd['subtask_id'], self.address).__dict__
+                    address=self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             if ttc.concent_enabled:
@@ -432,8 +432,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     f"Signing promissory notes for GNTDeposit at: "
                     f"{self.deposit_contract_address}"
                 )
-                ttc.sign_promissory_note(private_key=self.my_private_key)
-                ttc.sign_concent_promissory_note(
+                ttc.sign_all_promissory_notes(
                     deposit_contract_address=self.deposit_contract_address,
                     private_key=self.my_private_key
                 )
@@ -616,10 +615,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
-            if not (msg.verify_promissory_note() and
-                    msg.verify_concent_promissory_note(
-                        deposit_contract_address=self.deposit_contract_address
-                    )):
+            if not msg.verify_all_promissory_notes(
+                    deposit_contract_address=self.deposit_contract_address):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
                     f"Requestor failed to provide correct promissory"

@@ -9,6 +9,7 @@ import uuid
 from functools import partial
 from pathlib import Path
 from typing import (
+    Callable,
     Dict,
     FrozenSet,
     Iterable,
@@ -37,7 +38,8 @@ from golem.marketplace import (
     ProviderBrassMarketStrategy,
     ProviderWasmMarketStrategy,
     ProviderMarketStrategy
-)
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    RequestorMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -48,7 +50,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
-    TaskPurpose, AcceptClientVerdict
+    TaskPurpose, AcceptClientVerdict, TaskResult
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -108,7 +110,7 @@ class TaskManager(TaskEventListener):
         self.apps_manager = apps_manager
         apps = list(apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]
-        self.task_types = {t.name.lower(): t for t in task_types}
+        self.task_types = {t.id: t for t in task_types}
 
         self.node = node
         self.keys_auth = keys_auth
@@ -135,22 +137,6 @@ class TaskManager(TaskEventListener):
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager
         )
-
-        self.CREATING_STATUS = frozenset([
-            TaskStatus.creating,
-            TaskStatus.errorCreating,
-        ])
-        self.ACTIVE_STATUS = frozenset([
-            TaskStatus.computing,
-            TaskStatus.starting,
-            TaskStatus.waiting,
-        ])
-        self.FINISHED_STATUS = frozenset([
-            TaskStatus.finished,
-            TaskStatus.aborted,
-            TaskStatus.timeout,
-            TaskStatus.restarted,
-        ])
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -405,11 +391,11 @@ class TaskManager(TaskEventListener):
 
     def task_being_created(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.CREATING_STATUS
+        return task_status.is_creating()
 
     def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.FINISHED_STATUS
+        return task_status.is_completed()
 
     def task_needs_computation(self, task_id: str) -> bool:
         if self.task_being_created(task_id) or self.task_finished(task_id):
@@ -686,7 +672,7 @@ class TaskManager(TaskEventListener):
 
         def after_results_extracted(results):
             new_task.copy_subtask_results(
-                new_subtask_id, old_subtask, results)
+                new_subtask_id, old_subtask, TaskResult(files=results))
 
             self.__set_subtask_state_finished(new_subtask_id)
 
@@ -703,7 +689,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             status = self.tasks_states[tid].status
-            if task.needs_computation() and status in self.ACTIVE_STATUS:
+            if task.needs_computation() and status.is_active():
                 ret.append(task.header)
 
         return ret
@@ -738,13 +724,15 @@ class TaskManager(TaskEventListener):
         return subtask_state.node_id
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result,
-                               verification_finished):
+    def computed_task_received(
+            self, subtask_id: str, result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         logger.debug("Computed task received. subtask_id=%s", subtask_id)
-        task_id = self.subtask2task_mapping[subtask_id]
+        task_id: str = self.subtask2task_mapping[subtask_id]
 
-        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
-        subtask_status = subtask_state.status
+        subtask_state: SubtaskState =\
+            self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_status: SubtaskStatus = subtask_state.status
 
         if not subtask_status.is_computed():
             logger.warning(
@@ -781,7 +769,7 @@ class TaskManager(TaskEventListener):
 
             verification_finished()
 
-            if self.tasks_states[task_id].status in self.ACTIVE_STATUS:
+            if self.tasks_states[task_id].status.is_active():
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
@@ -897,7 +885,7 @@ class TaskManager(TaskEventListener):
         nodes_with_timeouts = []
         for t in list(self.tasks.values()):
             th = t.header
-            if self.tasks_states[th.task_id].status not in self.ACTIVE_STATUS:
+            if not self.tasks_states[th.task_id].status.is_active():
                 continue
             cur_time = int(get_timestamp_utc())
             # Check subtask timeout

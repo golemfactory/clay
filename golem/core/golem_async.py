@@ -1,3 +1,6 @@
+import asyncio
+import concurrent.futures
+import datetime
 import functools
 import logging
 from typing import Callable, Optional
@@ -95,5 +98,100 @@ def deferred_run():
                 )
                 execute = defer.execute
             return execute(f, *args, **kwargs)
+        return curry
+    return wrapped
+
+
+##
+# ASYNCIO
+##
+
+_ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
+
+
+def get_event_loop():
+    try:
+        return asyncio.get_event_loop()
+    except RuntimeError:  # no event loop in current thread
+        from twisted.internet import reactor
+        return reactor._asyncioEventloop
+
+
+def soon():
+    "Run non-async function in next iteration of event loop"
+    def wrapped(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            loop = get_event_loop()
+            loop.call_soon_threadsafe(
+                functools.partial(
+                    f,
+                    *args,
+                    **kwargs,
+                ),
+            )
+            return None
+        return curry
+    return wrapped
+
+
+def taskify():
+    "Run async function as a Task in current loop"
+    def wrapped(f):
+        assert asyncio.iscoroutinefunction(f)
+
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            task = asyncio.ensure_future(
+                f(*args, **kwargs),
+                loop=get_event_loop()
+            )
+            return task
+        return curry
+    return wrapped
+
+
+def throttle(delta: datetime.timedelta):
+    """Invoke the decorated function only once per `delta`
+
+    All subsequent call will be dropped until delta passes.
+    """
+    last_run = datetime.datetime.min
+
+    def wrapped(f):
+        @functools.wraps(f)
+        async def curry(*args, **kwargs):
+            nonlocal last_run
+            current_delta = datetime.datetime.now() - last_run
+            if current_delta < delta:
+                return
+            last_run = datetime.datetime.now()
+            result = f(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                return await result
+            return result
+        return curry
+    return wrapped
+
+
+def run_in_thread():
+    # Use for IO bound operations
+    # noqa SEE: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor  pylint: disable=line-too-long
+    def wrapped(f):
+        # No coroutines in a pool
+        assert not asyncio.iscoroutinefunction(f)
+
+        @functools.wraps(f)
+        async def curry(*args, **kwargs):
+            loop = get_event_loop()
+            return await loop.run_in_executor(
+                executor=_ASYNCIO_THREAD_POOL,
+                func=functools.partial(
+                    f,
+                    *args,
+                    **kwargs,
+                    loop=loop,
+                ),
+            )
         return curry
     return wrapped

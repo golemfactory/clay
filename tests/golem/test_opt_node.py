@@ -1,7 +1,13 @@
 # pylint: disable=protected-access
 from os import path
 import unittest
-from unittest.mock import patch, Mock, ANY, MagicMock
+from unittest.mock import (
+    ANY,
+    call,
+    MagicMock,
+    Mock,
+    patch,
+)
 
 from click.testing import CliRunner
 from twisted.internet.defer import Deferred, succeed, FirstError
@@ -22,6 +28,7 @@ from tests.golem.config.utils import mock_config
 concent_disabled = variables.CONCENT_CHOICES['disabled']
 
 
+# pylint: disable=too-many-public-methods
 @ci_skip
 @patch('twisted.internet.asyncioreactor', Mock(), create=True)
 @patch('twisted.internet.reactor', Mock(), create=True)
@@ -562,6 +569,14 @@ class TestOptNode(TempDirFixture):
 
         super().tearDown()
 
+    def assertAddSystemEvent(self, reactor):
+        reactor.addSystemEventTrigger.assert_has_calls(
+            [
+                call('before', 'shutdown', self.node.rpc_router.stop),
+                call('before', 'shutdown', self.node.client.quit),
+            ],
+        )
+
     def test_start_rpc_router(self, reactor, *_):
         # when
         self.node = Node(**self.node_kwargs)
@@ -626,7 +641,7 @@ class TestOptNode(TempDirFixture):
             Failure(Exception(error_msg)), 0)
 
         with patch('golem.node.DockerManager.install', return_value=mock_dm), \
-             self.assertLogs('golem.node', level='INFO') as logs:
+                self.assertLogs('golem.node', level='INFO') as logs:
             self.node.start()
             output = "\n".join(logs.output)
 
@@ -648,11 +663,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.client
         assert self.node.client.datadir == self.path
         assert self.node.client.config_desc == self.node_kwargs['config_desc']
-        assert reactor.addSystemEventTrigger.call_count == 2
-        assert reactor.addSystemEventTrigger.call_args_list[0][0] == (
-            'before', 'shutdown', self.node.rpc_router.stop)
-        assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
-            'before', 'shutdown', self.node.client.quit)
+        self.assertAddSystemEvent(reactor)
 
     @patch('golem.node.gatherResults')
     @patch('golem.node.TransactionSystem')
@@ -688,7 +699,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.rpc_publisher.session == self.node.rpc_session
         assert self.node.rpc_session.connect.called  # pylint: disable=no-member
         assert mock_run.called
-        assert reactor.addSystemEventTrigger.call_count == 2
+        self.assertAddSystemEvent(reactor)
 
     @patch('golem.node.gatherResults')
     def test_start_starts_client(
@@ -725,7 +736,7 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.sync.called
         assert self.node.client.start.call_count == 1
         self.node.client.connect.assert_called_with(parsed_peer[0])
-        assert reactor.addSystemEventTrigger.call_count == 2
+        self.assertAddSystemEvent(reactor)
 
     @patch('golem.node.gatherResults')
     def test_start_prints_exception_message(self, *_):

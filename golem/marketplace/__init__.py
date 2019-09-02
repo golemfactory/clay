@@ -13,3 +13,6 @@ from .wasm_marketplace import (  # noqa
     RequestorWasmMarketStrategy,
     ProviderWasmMarketStrategy
 )
+
+DEFAULT_REQUESTOR_MARKET_STRATEGY = RequestorBrassMarketStrategy
+DEFAULT_PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy

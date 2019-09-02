@@ -15,6 +15,7 @@ from golem.task.taskbase import ResultMetadata
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.network.p2p.local_node import LocalNode
+    from golem.task.taskserver import TaskServer, WaitingTaskResult
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +51,6 @@ def computed_task_reported(
             'ForceGetTaskResult',
         )
 
-        task_server.add_subtask_metadata(
-            report_computed_task.subtask_id,
-            ResultMetadata(
-                datetime.datetime.now().timestamp() -
-                report_computed_task.task_to_compute.timestamp
-            )
-        )
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,
@@ -112,9 +106,11 @@ def computed_task_reported(
         )
 
 
-def send_report_computed_task(task_server, waiting_task_result) -> None:
-    """ Send task results after finished computations
-    """
+def send_report_computed_task(
+        task_server: 'TaskServer',
+        waiting_task_result: 'WaitingTaskResult') -> None:
+    """ Send task results after finished computations """
+
     task_to_compute = history.get(
         message_class_name='TaskToCompute',
         node_id=waiting_task_result.owner.key,
@@ -137,8 +133,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
 
     my_node: LocalNode = task_server.node
     client_options = task_server.get_share_options(
-        waiting_task_result.task_id,
-        waiting_task_result.owner.prv_addr,
+        address=waiting_task_result.owner.prv_addr,
     )
 
     report_computed_task = message.tasks.ReportComputedTask(
@@ -153,6 +148,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         multihash=waiting_task_result.result_hash,
         secret=waiting_task_result.result_secret,
         options=client_options.__dict__,
+        stats=waiting_task_result.stats,
     )
 
     signed_report_computed_task = msg_utils.copy_and_sign(

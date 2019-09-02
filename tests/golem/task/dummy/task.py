@@ -1,7 +1,7 @@
 import random
 from os import path
 from threading import Lock
-from typing import Optional
+from typing import Optional, Callable
 
 from eth_utils import encode_hex
 import faker
@@ -13,7 +13,7 @@ from golem_messages.message import ComputeTaskDef
 import golem
 from golem.appconfig import MIN_PRICE
 from golem.core import common
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 
 
 fake = faker.Faker()
@@ -237,8 +237,8 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         print(
             "Computation finished"
             f" subtask_id: {subtask_id}"
@@ -249,7 +249,7 @@ class DummyTask(Task):
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        with open(task_result[0], 'r') as f:
+        with open(task_result.files[0], 'r') as f:
             self.subtask_results[subtask_id] = f.read()
 
         if not self.verify_subtask(subtask_id):

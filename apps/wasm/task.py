@@ -1,8 +1,10 @@
+from dataclasses import dataclass
 from copy import deepcopy
 from ethereum.utils import denoms
 from pathlib import Path, PurePath
 from typing import (
     Any,
+    Callable,
     Dict,
     Generator,
     Iterator,
@@ -10,10 +12,11 @@ from typing import (
     Optional,
     Tuple,
     Type,
-    Callable,
     Set
 )
 import logging
+
+from ethereum.utils import denoms
 
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
@@ -30,7 +33,7 @@ from golem.marketplace.wasm_marketplace import (
     ProviderWasmMarketStrategy
 )
 import golem.model
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
@@ -43,6 +46,13 @@ from .vbr import (
 )
 
 logger = logging.getLogger("apps.wasm")
+
+
+@dataclass
+class SubtaskInstance:
+    status: SubtaskStatus
+    actor: Actor
+    results: Optional[TaskResult]
 
 
 class VbrSubtask:
@@ -58,7 +68,7 @@ class VbrSubtask:
         self.result = None
         self.redundancy_factor = redundancy_factor
 
-        self.subtasks = {}
+        self.subtasks: Dict[str, SubtaskInstance] = {}
         self.verifier = BucketVerifier(
             redundancy_factor, WasmTask.cmp_results, referee_count=0)
 
@@ -82,25 +92,24 @@ class VbrSubtask:
         self.verifier.add_actor(actor)
 
         s_id = self.id_gen()
-        self.subtasks[s_id] = {
-            "status": SubtaskStatus.starting,
-            "actor": actor,
-            "results": None
-        }
+        self.subtasks[s_id] = SubtaskInstance(
+            SubtaskStatus.starting, actor, TaskResult())
 
         return s_id, deepcopy(self.params)
 
-    def get_instance(self, s_id) -> dict:
+    def get_instance(self, s_id) -> SubtaskInstance:
         return self.subtasks[s_id]
 
     def get_instances(self) -> List[str]:
         return self.subtasks.keys()
 
-    def add_result(self, s_id, task_result):
-        self.verifier.add_result(self.subtasks[s_id]["actor"], task_result)
-        self.subtasks[s_id]["results"] = task_result
+    def add_result(self, s_id: str, task_result: Optional[TaskResult]):
+        result_files = task_result.files if task_result else None
+        self.verifier.add_result(
+            self.subtasks[s_id].actor, result_files)
+        self.subtasks[s_id].results = task_result
 
-    def get_result(self):
+    def get_result(self) -> TaskResult:
         return self.result
 
     def is_finished(self) -> bool:
@@ -110,7 +119,7 @@ class VbrSubtask:
         verdicts = []
         for actor, result, verdict in self.verifier.get_verdicts():
             if verdict == VerificationResult.SUCCESS and not self.result:
-                self.result = result
+                self.result = TaskResult(files=result)
 
             verdicts.append((actor, verdict))
 
@@ -150,6 +159,7 @@ class WasmTaskOptions(Options):
         return iter(list(self._subtasks()))
 
 
+# pylint: disable=too-many-public-methods
 class WasmTaskDefinition(TaskDefinition):
     def __init__(self) -> None:
         super().__init__()
@@ -239,7 +249,7 @@ class WasmTask(CoreTask):
         for s_id in subtask.get_instances():
             instance = subtask.get_instance(s_id)
             for actor, verdict in verdicts:
-                if actor is not instance['actor']:
+                if actor is not instance.actor:
                     continue
 
                 if verdict == VerificationResult.SUCCESS:
@@ -258,21 +268,23 @@ class WasmTask(CoreTask):
                     self.nodes_blacklist.add(actor.uuid)
 
         # save the results but only if verification was successful
-        result = subtask.get_result()
+        result: TaskResult = subtask.get_result()
         if result is not None:
-            self.save_results(subtask.name, result)
+            self.save_results(subtask.name, result.files)
         else:
             new_subtask = VbrSubtask(self.create_subtask_id, subtask.name,
                                      subtask.params, subtask.redundancy_factor)
             self.subtasks.append(new_subtask)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None) -> None:
+    def computation_finished(
+            self, subtask_id: str, task_result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
 
-        task_result = self.interpret_task_results(subtask_id, task_result)
+        self.interpret_task_results(subtask_id, task_result.files)
+        task_result.files = self.results[subtask_id]
 
         # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
@@ -285,11 +297,13 @@ class WasmTask(CoreTask):
 
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
-                subtask_instance = subtask.get_instance(s_id)
+                s_instance = subtask.get_instance(s_id)
+                assert s_instance.results
                 subtask_usages.append(
-                    (subtask_instance['actor'].uuid,
+                    (s_instance.actor.uuid,
                      s_id,
-                     self.subtasks_results_metadata[s_id].compute_time)
+                     s_instance.results.stats.
+                     cpu_stats.cpu_usage['total_usage'] / 1e9)
                 )
             self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
@@ -319,7 +333,7 @@ class WasmTask(CoreTask):
         if not next_subtask_instance:
             raise ValueError()
 
-        next_subtask_name, next_extra_data = next_subtask_instance
+        _next_subtask_name, next_extra_data = next_subtask_instance
 
         # When the resources are sent through Hyperg, the input directory is
         # copied to RESOURCE_DIR inside the container. But when running the
@@ -331,9 +345,11 @@ class WasmTask(CoreTask):
             subtask_id=self.create_subtask_id(), extra_data=next_extra_data
         )
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
-                            err_log_ext="err.log"):
-        filtered_task_results = []
+    def filter_task_results(
+            self, task_results: List[str], subtask_id: str,
+            log_ext: str = ".log",
+            err_log_ext: str = "err.log") -> List[str]:
+        filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
                 self.stderr[subtask_id] = tr
@@ -344,21 +360,16 @@ class WasmTask(CoreTask):
 
         return filtered_task_results
 
-    def interpret_task_results(self, subtask_id, task_results, sort=True):
-        """Filter out ".log" files from received results.
-        Log files should represent stdout and stderr from computing machine.
-        Other files should represent subtask results.
-        :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files
-        :param bool sort: *default: True* Sort results, if set to True
-        """
+    def interpret_task_results(
+            self, subtask_id: str, task_results: List[str],
+            sort: bool = True) -> None:
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        results = self.filter_task_results(task_results, subtask_id)
+        # results field is used here for compatibility with CoreTask
+        self.results[subtask_id] = self.filter_task_results(
+            task_results, subtask_id)
         if sort:
-            results.sort()
-
-        return results
+            self.results[subtask_id].sort()
 
     def should_accept_client(self,
                              node_id: str,
@@ -408,7 +419,11 @@ class WasmTask(CoreTask):
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        subtask.add_result(subtask_id, None)
+        try:
+            subtask.add_result(subtask_id, None)
+        except ValueError:
+            # Handle a case of duplicate call from __remove_old_tasks
+            pass
         if subtask.is_finished():
             self._resolve_payments(subtask)
 
@@ -473,8 +488,16 @@ class WasmTask(CoreTask):
 
     def get_results(self, subtask_id):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
-        instance = subtask.get_instance(subtask_id)
-        return instance["results"]
+        results = subtask.get_result()
+        return results.files if results else []
+
+    @property
+    def subtask_price(self) -> int:
+        """WASM subtask_price is calculated based on user provided budget.
+        """
+        sub_price: int = self.task_definition.budget // self.get_total_tasks()
+        logger.info("WASM subtask price: %d", sub_price)
+        return sub_price
 
     @property
     def subtask_price(self) -> int:
@@ -545,7 +568,21 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
+    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
+
     def __init__(self) -> None:
+        self._load_requestor_perf()
         super().__init__(
             'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder
         )
+
+    def _load_requestor_perf(self):
+        try:
+            perf = golem.model.Performance.get(
+                golem.model.Performance.environment_id ==
+                WasmTaskEnvironment.ENV_ID
+            ).value
+        except golem.model.Performance.DoesNotExist:
+            perf = 1.0
+
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)

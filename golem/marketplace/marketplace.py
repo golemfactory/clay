@@ -1,9 +1,7 @@
 from abc import ABC, abstractclassmethod
-from typing import Callable, Optional, List, Tuple, TYPE_CHECKING
+from typing import Callable, Optional, List, TYPE_CHECKING
 
 from dataclasses import dataclass
-
-import golem.ranking.manager.database_manager as dbm
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -11,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class ProviderPerformance:
-
     def __init__(self, usage_benchmark):
         self.usage_benchmark = usage_benchmark
 
@@ -22,12 +19,6 @@ class Offer:
     provider_performance: ProviderPerformance
     max_price: float
     price: float
-    reputation: float = .0
-    quality: Tuple[float, float, float, float] = (.0, .0, .0, .0)
-
-    def __post_init__(self):
-        self.reputation = dbm.get_provider_efficiency(self.provider_id)
-        self.quality = dbm.get_provider_efficacy(self.provider_id).vector
 
 
 @dataclass

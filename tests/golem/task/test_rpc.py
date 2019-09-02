@@ -117,39 +117,57 @@ class ProviderBase(test_client.TestClientBase):
     ),
 )
 class TestCreateTask(ProviderBase, TestClientBase):
+    @staticmethod
+    def _get_task_dict(**data):
+        task_dict = dummytaskstate.DummyTaskDefinition().to_dict()
+        task_dict['name'] = 'test'
+        task_dict.update(data)
+        return task_dict
+
     @mock.patch(
         'golem.task.rpc.ClientProvider._validate_lock_funds_possibility'
     )
     def test_create_task(self, *_):
-        t = dummytaskstate.DummyTaskDefinition()
-        t.name = "test"
-
         def execute(f, *args, **kwargs):
             return defer.succeed(f(*args, **kwargs))
 
         with mock.patch('golem.core.deferred.deferToThread', execute):
-            result = self.provider.create_task(t.to_dict())
+            result = self.provider.create_task(self._get_task_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
-    def test_create_task_fail_on_empty_dict(self, *_):
-        result = self.provider.create_task({})
+    def test_create_task_fail_no_type(self, *_):
+        task_id, error = self.provider.create_task({})
+        self.assertIsNone(task_id)
+        self.assertIn('must be one of', error)
+
+    def test_create_task_fail_unknown_type(self, *_):
+        task_id, error = self.provider.create_task(
+            self._get_task_dict(**{'type': 'project_2501'})
+        )
+        self.assertIsNone(task_id)
+        self.assertIn('must be one of', error)
+
+    def test_create_task_fail_no_name(self, *_):
+        t = self._get_task_dict()
+        del t['name']
+        result = self.provider.create_task(t)
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_too_long_name(self, *_):
-        result = self.provider.create_task({
-            "name": "This name has 27 characters"
-        })
+        result = self.provider.create_task(
+            self._get_task_dict(name='This name has 27 characters')
+        )
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_illegal_character_in_name(self, *_):
-        result = self.provider.create_task({
-            "name": "Golem task/"
-        })
+        result = self.provider.create_task(
+            self._get_task_dict(name="Golem task/")
+        )
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
@@ -162,10 +180,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
             currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
-        t = dummytaskstate.DummyTaskDefinition()
-        t.name = "test"
-
-        result = self.provider.create_task(t.to_dict())
+        result = self.provider.create_task(self._get_task_dict())
 
         rpc.enqueue_new_task.assert_not_called()
         self.assertIn('validate_lock_funds_possibility', str(mocked))
@@ -514,9 +529,12 @@ class TestRuntTestTask(ProviderBase):
 
 
 class TestValidateTaskDict(ProviderBase):
+    def setUp(self, *args, **kwargs):
+        super().setUp(*args, **kwargs)
+        self.client.concent_service = mock.Mock()
+
     def test_concent_service_disabled(self, *_):
         self.t_dict['concent_enabled'] = True
-        self.client.concent_service = mock.Mock()
         self.client.concent_service.available = False
         self.client.concent_service.enabled = False
 
@@ -527,7 +545,6 @@ class TestValidateTaskDict(ProviderBase):
 
     def test_concent_service_switched_off(self, *_):
         self.t_dict['concent_enabled'] = True
-        self.client.concent_service = mock.Mock()
         self.client.concent_service.available = True
         self.client.concent_service.enabled = False
 
@@ -535,6 +552,45 @@ class TestValidateTaskDict(ProviderBase):
               "Concent Service is switched off"
         with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
+
+    def test_concent_service_switched_on(self):
+        self.t_dict['concent_enabled'] = True
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        self.assertIsNone(rpc._validate_task_dict(self.client, self.t_dict))
+
+    def test_concent_service_switched_on_non_blender_task(self):
+        self.t_dict['concent_enabled'] = True
+        self.t_dict['type'] = 'dummy'
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+
+        msg = "Concent is not supported for .+ tasks"
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
+            rpc._validate_task_dict(self.client, self.t_dict)
+
+    def test_concent_service_default_off_disabled(self):
+        del self.t_dict['concent_enabled']
+        self.client.concent_service.available = False
+        self.client.concent_service.enabled = False
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertFalse(self.t_dict['concent_enabled'])
+
+    def test_concent_service_default_on_enabled_blender(self):
+        del self.t_dict['concent_enabled']
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertTrue(self.t_dict['concent_enabled'])
+
+    def test_concent_service_default_off_enabled_non_blender(self):
+        del self.t_dict['concent_enabled']
+        self.t_dict['type'] = 'dummy'
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertFalse(self.t_dict['concent_enabled'])
+
 
     @mock.patch(
         "apps.rendering.task.framerenderingtask.calculate_subtasks_count",

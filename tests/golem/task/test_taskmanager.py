@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+from typing import Callable
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 
@@ -37,7 +38,7 @@ from golem.core.keysauth import KeysAuth
 from golem.network.p2p.local_node import LocalNode
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, \
-    TaskEventListener, AcceptClientVerdict
+    TaskEventListener, AcceptClientVerdict, TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -428,8 +429,9 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result,
-                                     verification_finished=None):
+            def computation_finished(
+                    self, subtask_id: str, task_result: TaskResult,
+                    verification_finished: Callable[[], None]) -> None:
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
                 verification_finished()
@@ -805,10 +807,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 TaskStatus.notStarted,
             )
             self.tm.start_task(t.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states["xyz"].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states["xyz"].status.is_active())
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
         self.assertIs(
@@ -1324,10 +1323,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
 
             self.tm.start_task(task.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states['xyz'].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states['xyz'].status.is_active())
 
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
@@ -1443,7 +1439,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             results = [str(Path(result)) for result in results]
 
             new_task.copy_subtask_results.assert_called_once_with(
-                'new_subtask_id', old_subtask, results)
+                'new_subtask_id', old_subtask, TaskResult(files=results))
 
             self.assertEqual(new_subtask_state.progress, 1.0)
             self.assertEqual(

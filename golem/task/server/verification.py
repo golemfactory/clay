@@ -1,5 +1,6 @@
 import logging
 import typing
+from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -9,8 +10,10 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
+from golem.task.taskbase import TaskResult
 from golem.task.result.resultmanager import ExtractedPackage
 
 if typing.TYPE_CHECKING:
@@ -134,10 +137,12 @@ class VerificationMixin:
                     verification_failed,
                 )
 
-            result_files = extracted_package.get_full_path_files()
             self.task_manager.computed_task_received(
                 subtask_id,
-                result_files,
+                TaskResult(
+                    files=extracted_package.get_full_path_files(),
+                    stats=report_computed_task.stats
+                ),
                 verification_finished_old,
             )
 
@@ -153,7 +158,6 @@ class VerificationMixin:
         :param str subtask_id: subtask that has wrong result
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
-
 
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',

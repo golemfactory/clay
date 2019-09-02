@@ -70,20 +70,19 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             logger.info(
                 "RWMS: offer from %s, b=%.1f, R=%.3f, price=%d Gwei, a=%g",
                 offer.provider_id[:8],
-                offer.provider_performance.usage_benchmark, usage_factor,
-                offer.price / 10**9, adjusted_price)
+                offer.provider_performance.usage_benchmark,
+                usage_factor,
+                offer.price/10**9,
+                adjusted_price)
             to_sort.append((offer, usage_factor, adjusted_price))
-        offers_sorted = [
-            t[0]
-            for t in sorted(to_sort, key=lambda t: t[2])
-            if t[1] <= max_factor
-        ]
+        offers_sorted = [t[0] for t in sorted(to_sort, key=lambda t: t[2])
+                         if t[1] <= max_factor]
 
         return offers_sorted
 
     @classmethod
-    def report_subtask_usages(cls, _task_id: str,
-                              usages: List[UsageReport]) -> None:
+    def report_subtask_usages(
+        cls, _task_id: str, usages: List[UsageReport]) -> None:
         assert len(usages) > 1
 
         for pid, sid, usage in usages:
@@ -104,8 +103,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for pid, delta in deltas.items():
             r = delta * cls._usage_factors[pid]
-            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f", pid[:8],
-                        cls._usage_factors[pid], r)
+            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f",
+                        pid[:8], cls._usage_factors[pid], r)
             cls._usage_factors[pid] = r
             if r > cls._max_usage_factor:
                 logger.info("RWMS: Provider %s has excessive usage factor: %f",

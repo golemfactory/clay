@@ -15,6 +15,23 @@ from golem.tools.ci import ci_skip
 @ci_skip
 class TestIntegration(TestCase, DatabaseFixture):
 
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+
+        # pylint: disable=protected-access
+        hypervisor_cls = DockerCPUEnvironment._get_hypervisor_class()
+        assert hypervisor_cls is not None, "No supported hypervisor found"
+
+        cls.hypervisor = hypervisor_cls(get_config=lambda: {})
+        cls.vm_was_running = cls.hypervisor.vm_running
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        if cls.vm_was_running:
+            cls.hypervisor.start_vm()
+        super().tearDownClass()
+
     @inlineCallbacks
     def setUp(self):
         DatabaseFixture.setUp(self)
