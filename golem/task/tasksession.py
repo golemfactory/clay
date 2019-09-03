@@ -330,10 +330,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy =\
-            self.task_manager.get_requestor_market_strategy_for_task(
-                current_task
-            )
+        market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):

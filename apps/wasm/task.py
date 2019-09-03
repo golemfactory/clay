@@ -176,6 +176,9 @@ class WasmTask(CoreTask):
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
 
+    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
+
+
     def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
         super().__init__(
@@ -197,6 +200,7 @@ class WasmTask(CoreTask):
             self.subtasks.append(subtask)
 
         self.nodes_blacklist: Set[str] = set()
+        self._load_requestor_perf()
 
     def query_extra_data(
             self, perf_index: float,
@@ -297,8 +301,7 @@ class WasmTask(CoreTask):
                      s_instance.results.stats.
                      cpu_stats.cpu_usage['total_usage'] / 1e9)
                 )
-            strat = WasmTaskTypeInfo.REQUESTOR_MARKET_STRATEGY  # type: ignore
-            strat.report_subtask_usages(
+            self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
                 subtask_usages
             )
@@ -492,6 +495,17 @@ class WasmTask(CoreTask):
         logger.info("WASM subtask price: %d", sub_price)
         return sub_price
 
+    def _load_requestor_perf(self):
+        try:
+            perf = golem.model.Performance.get(
+                golem.model.Performance.environment_id ==
+                WasmTaskEnvironment.ENV_ID
+            ).value
+        except golem.model.Performance.DoesNotExist:
+            perf = 1.0
+
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)
+
 
 class WasmTaskBuilder(CoreTaskBuilder):
     TASK_CLASS: Type[WasmTask] = WasmTask
@@ -544,21 +558,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
-
     def __init__(self) -> None:
-        self._load_requestor_perf()
         super().__init__(
             'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder
         )
-
-    def _load_requestor_perf(self):
-        try:
-            perf = golem.model.Performance.get(
-                golem.model.Performance.environment_id ==
-                WasmTaskEnvironment.ENV_ID
-            ).value
-        except golem.model.Performance.DoesNotExist:
-            perf = 1.0
-
-        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)

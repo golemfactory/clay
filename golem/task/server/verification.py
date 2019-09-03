@@ -87,7 +87,7 @@ class VerificationMixin:
 
             task = self.task_manager.tasks[task_id]
             market_strategy: Type[RequestorMarketStrategy] =\
-                self.task_manager.get_requestor_market_strategy_for_task(task)
+                task.REQUESTOR_MARKET_STRATEGY
             payment_computer =\
                 market_strategy.get_payment_computer(  # type: ignore
                     task, subtask_id
