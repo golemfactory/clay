@@ -9,6 +9,7 @@ from golem_task_api import constants
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
+from golem.app_manager import AppManager
 from golem.model import (
     ComputingNode,
     default_now,
@@ -92,6 +93,7 @@ class RequestedTaskManager:
     def __init__(
             self,
             env_manager: EnvironmentManager,
+            app_manager: AppManager,
             public_key: bytes,
             root_path: Path,
     ):
@@ -99,6 +101,7 @@ class RequestedTaskManager:
                      public_key, root_path)
         self._dir_manager = DirManager(root_path)
         self._env_manager = env_manager
+        self._app_manager = app_manager
         self._public_key: bytes = public_key
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
 
@@ -375,12 +378,16 @@ class RequestedTaskManager:
         )
         if not self._env_manager.enabled(env_id):
             raise RuntimeError(
-                f"Error connecting to app: {env_id}. environment not enabled")
+                "Error connecting to app, environment not enabled."
+                f" env={env_id}, app={app_id}")
+        if not self._app_manager.enabled(app_id):
+            raise RuntimeError(
+                "Error connecting to app, app not enabled."
+                f" env={env_id}, app={app_id}")
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
-        prereq = env.parse_prerequisites(
-            {"image": "blenderapp", "tag": "latest"}  # FIXME: hardcoded :(
-        )
+        app = self._app_manager.app(app_id)
+        prereq = env.parse_prerequisites(app.requestor_prereq)
         shared_dir = self._dir_manager.get_app_dir(app_id)
 
         return EnvironmentTaskApiService(

@@ -8,6 +8,7 @@ import pytest
 from twisted.internet.defer import inlineCallbacks
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
+from golem.app_manager import AppManager
 from golem.core.common import install_reactor
 from golem.tools.testwithreactor import uninstall_reactor
 from golem.core.deferred import deferred_from_future
@@ -42,9 +43,11 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def setUp(self):
         super().setUp()
         self.env_manager = Mock(spec=EnvironmentManager)
+        self.app_manager = Mock(spec=AppManager)
         self.public_key = str.encode('0xdeadbeef')
         self.rtm = RequestedTaskManager(
             env_manager=self.env_manager,
+            app_manager=self.app_manager,
             public_key=self.public_key,
             root_path=self.new_path
         )

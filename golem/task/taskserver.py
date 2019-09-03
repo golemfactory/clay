@@ -30,6 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
@@ -173,6 +174,7 @@ class TaskServer(
         )
         self.requested_task_manager = RequestedTaskManager(
             env_manager=new_env_manager,
+            app_manager=AppManager(),
             root_path=TaskServer.__get_task_manager_root(client.datadir),
             public_key=self.keys_auth.public_key,
         )
