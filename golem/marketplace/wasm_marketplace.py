@@ -82,7 +82,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def report_subtask_usages(
-        cls, _task_id: str, usages: List[UsageReport]) -> None:
+            cls, _task_id: str, usages: List[UsageReport]) -> None:
         assert len(usages) > 1
 
         for pid, sid, usage in usages:

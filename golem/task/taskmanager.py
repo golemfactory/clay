@@ -37,9 +37,7 @@ from golem.core.common import get_timestamp_utc, HandleForwardedError, \
 from golem.marketplace import (
     ProviderBrassMarketStrategy,
     ProviderWasmMarketStrategy,
-    ProviderMarketStrategy,
-    DEFAULT_REQUESTOR_MARKET_STRATEGY,
-    RequestorMarketStrategy)
+    ProviderMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \

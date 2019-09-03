@@ -11,9 +11,9 @@ from golem_messages.datastructures import tasks as dt_tasks
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
 from golem.marketplace import (
-    ProviderMarketStrategy, ProviderBrassMarketStrategy,
-    RequestorMarketStrategy, RequestorBrassMarketStrategy,
-    DEFAULT_REQUESTOR_MARKET_STRATEGY
+    ProviderMarketStrategy, RequestorMarketStrategy,
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    DEFAULT_PROVIDER_MARKET_STRATEGY
 )
 
 logger = logging.getLogger("golem.task")
@@ -32,7 +32,6 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    REQUESTOR_MARKET_STRATEGY = DEFAULT_REQUESTOR_MARKET_STRATEGY
 
     def __init__(self,
                  name: str,
@@ -106,9 +105,9 @@ class TaskResult:
 # pylint: disable=too-many-public-methods
 class Task(abc.ABC):
     REQUESTOR_MARKET_STRATEGY: Type[RequestorMarketStrategy]\
-        = RequestorBrassMarketStrategy
+        = DEFAULT_REQUESTOR_MARKET_STRATEGY
     PROVIDER_MARKET_STRATEGY: Type[ProviderMarketStrategy]\
-        = ProviderBrassMarketStrategy
+        = DEFAULT_PROVIDER_MARKET_STRATEGY
 
     class ExtraData(object):
         def __init__(self, ctd=None, **kwargs):

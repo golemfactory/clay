@@ -16,8 +16,6 @@ from typing import (
 )
 import logging
 
-from ethereum.utils import denoms
-
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
 
@@ -182,6 +180,9 @@ class WasmTask(CoreTask):
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
+
+    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy
+
 
     def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
@@ -496,13 +497,7 @@ class WasmTask(CoreTask):
         """WASM subtask_price is calculated based on user provided budget.
         """
         sub_price: int = self.task_definition.budget // self.get_total_tasks()
-        logger.info("WASM subtask price: %d", sub_price)
-        return sub_price
-
-    @property
-    def subtask_price(self) -> int:
-        sub_price: int = self.task_definition.budget // self.get_total_tasks()
-        logger.info("WASM subtask price: %d", sub_price)
+        logger.debug("WASM subtask price: %d", sub_price)
         return sub_price
 
     def _load_requestor_perf(self):
@@ -568,8 +563,6 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
-    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
-
     def __init__(self) -> None:
         super().__init__(
             'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder

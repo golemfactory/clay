@@ -8,7 +8,6 @@ from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
     ProviderPerformance,
-    Offer
 )
 from golem.marketplace.brass_marketplace import scale_price
 
