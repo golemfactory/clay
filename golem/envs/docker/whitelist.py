@@ -1,7 +1,21 @@
+from typing import List
+
 import golem.model
 
 
+def repository_from_image_name(image_name: str) -> str:
+    return image_name.split('/')[0]
+
+
 class Whitelist:
+
+    @staticmethod
+    def get() -> List[str]:
+        return [
+            whitelisted.repository for whitelisted in
+            golem.model.DockerWhitelist.select().execute()
+        ]
+
     @classmethod
     def add(cls, repository: str) -> bool:
         """
@@ -26,7 +40,7 @@ class Whitelist:
 
     @staticmethod
     def is_whitelisted(image_name: str) -> bool:
-        repository = image_name.split('/')[0]
+        repository = repository_from_image_name(image_name)
         query = \
             golem.model.DockerWhitelist.select().where(
                 golem.model.DockerWhitelist.repository == repository,

@@ -11,9 +11,11 @@ class TestWhitelist(DatabaseFixture):
 
         Whitelist.add(repo)
         assert Whitelist.is_whitelisted(image)
+        assert Whitelist.get() == [repo]
 
         Whitelist.remove(repo)
         assert not Whitelist.is_whitelisted(image)
+        assert not Whitelist.get()
 
     def test_double_add_remove(self):
         repo = 'test_repo'
