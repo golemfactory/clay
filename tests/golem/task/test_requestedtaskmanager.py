@@ -3,7 +3,7 @@ import asyncio
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
-from mock import Mock, patch
+from mock import Mock, patch, MagicMock
 import pytest
 from twisted.internet.defer import inlineCallbacks
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -21,6 +21,11 @@ from golem.task.requestedtaskmanager import (
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.testutils import DatabaseFixture
+
+
+class AsyncMock(MagicMock):
+    async def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
 
 
 class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
@@ -70,7 +75,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_init_task(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
 
         task_id = self._create_task()
         # when
@@ -89,7 +93,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_init_task_wrong_status(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
 
         task_id = self._create_task()
         # when
@@ -104,7 +107,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_start_task(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
 
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
@@ -126,8 +128,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_has_pending_subtasks(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
-        self._add_has_pending_subtasks_to_client_mock(mock_client)
+        mock_client.has_pending_subtasks.return_value = True
 
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
@@ -142,7 +143,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_get_next_subtask(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task()
@@ -167,9 +167,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_verify(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
         self._add_next_subtask_to_client_mock(mock_client)
-        self._add_verify_to_client_mock(mock_client)
+        mock_client.verify.return_value = True
 
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
@@ -182,7 +181,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
             self.rtm.get_next_subtask(task_id, computing_node)
         )
         # The second call should return false so the client will shut down
-        self._add_has_pending_subtasks_to_client_mock(mock_client, False)
+        mock_client.has_pending_subtasks.return_value = False
         subtask_id = subtask.subtask_id
         # when
         res = yield self._coro_to_def(
@@ -202,9 +201,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_verify_failed(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
         self._add_next_subtask_to_client_mock(mock_client)
-        self._add_verify_to_client_mock(mock_client, False)
+        mock_client.verify.return_value = False
 
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
@@ -235,7 +233,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     def test_abort(self):
         # given
         mock_client = self._mock_client_create()
-        self._add_create_task_to_client_mock(mock_client)
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task()
@@ -280,46 +277,19 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         return task_id
 
     def _mock_client_create(self):
-        mock_client = Mock(spec=RequestorAppClient)
+        mock_client = AsyncMock(spec=RequestorAppClient)
         create_f = asyncio.Future()
         create_f.set_result(mock_client)
         self._patch_async(
             'golem.task.requestedtaskmanager.RequestorAppClient.create',
             return_value=create_f)
 
-        shutdown_f = asyncio.Future()
-        shutdown_f.set_result(None)
-        mock_client.shutdown = Mock(return_value=shutdown_f)
         return mock_client
 
-    @staticmethod
-    def _add_create_task_to_client_mock(mock_client):
-        f = asyncio.Future()
-        f.set_result(None)
-        mock_client.create_task = Mock(return_value=f)
-
-    @staticmethod
-    def _add_has_pending_subtasks_to_client_mock(mock_client, result=True):
-        f = asyncio.Future()
-        f.set_result(result)
-        mock_client.has_pending_subtasks = Mock(return_value=f)
-
     def _add_next_subtask_to_client_mock(self, mock_client):
-        result = Mock(spec=Subtask)
-        result.params = {}
-        result.resources = []
-        f = asyncio.Future()
-        f.set_result(result)
-        mock_client.next_subtask = Mock(return_value=f)
-        # next_subtask always also needs pending subtasks
-        self._add_has_pending_subtasks_to_client_mock(mock_client)
-        return result
-
-    @staticmethod
-    def _add_verify_to_client_mock(mock_client, result=True):
-        f = asyncio.Future()
-        f.set_result(result)
-        mock_client.verify = Mock(return_value=f)
+        result = Subtask(subtask_id='', params={}, resources=[])
+        mock_client.next_subtask.return_value = result
+        mock_client.has_pending_subtasks.return_value = True
 
     def _patch_async(self, name, *args, **kwargs):
         patcher = patch(name, *args, **kwargs)
