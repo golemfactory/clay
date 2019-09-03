@@ -45,7 +45,7 @@ class EventPublisher:
     @classmethod
     def publish(cls, alias: str, *args, **kwargs) -> Optional[Deferred]:
         if not cls._initialized:
-            return
+            return None
 
         from twisted.internet import reactor
         deferred = Deferred()

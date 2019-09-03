@@ -59,7 +59,7 @@ class TestAppDiscovered(unittest.TestCase):
             self.app_manager_rpc._app_discovered(str(i))
 
         assert event_publisher.publish.call_count == 0
-        assert len(self.app_manager_rpc._discovered_apps) == 0
+        assert not self.app_manager_rpc._discovered_apps
 
     def test_apps_registered_later_on(self, event_publisher):
         for i in range(MAX_APPS):

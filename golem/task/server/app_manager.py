@@ -26,9 +26,9 @@ class AppManagerRPC:
         self._discovered_apps: List[DiscoveredApp] = list()
 
     def _app_discovered(
-        self,
-        app_name: str,
-        definition: Optional[Dict[str, Any]] = None,
+            self,
+            app_name: str,
+            definition: Optional[Dict[str, Any]] = None,
     ) -> None:
         if self._app_manager.registered(app_name):
             return
@@ -54,7 +54,7 @@ class AppManagerRPC:
     @rpc_utils.expose('apps')
     def _app_manager_apps_definitions(self) -> Dict[str, Any]:
         return {
-            app.name: app.to_dict()
+            app.name: asdict(app)
             for app in self._app_manager.apps()
         }
 
@@ -66,7 +66,7 @@ class AppManagerRPC:
         }
 
     @rpc_utils.expose('apps.discovered')
-    def _app_manager_apps_discovered(self) -> Dict[str, bool]:
+    def _app_manager_apps_discovered(self) -> Dict[str, Dict[str, Any]]:
         self._refresh_discovered_apps()
         return {
             discovered_app.name: asdict(discovered_app)
