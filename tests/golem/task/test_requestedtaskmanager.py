@@ -1,5 +1,6 @@
 import asyncio
 
+from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
 from mock import Mock, patch
@@ -49,20 +50,21 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         )
 
     def tearDown(self):
-        RequestedSubtask.delete().execute()
-        RequestedTask.delete().execute()
         super().tearDown()
 
     def test_create_task(self):
-        # given
-        golem_params = self._build_golem_params()
-        app_params = {}
-        # when
-        task_id = self.rtm.create_task(golem_params, app_params)
-        # then
-        row = RequestedTask.get(RequestedTask.task_id == task_id)
-        assert row.status == TaskStatus.creating
-        assert row.start_time < default_now()
+        with freeze_time() as freezer:
+            # given
+            golem_params = self._build_golem_params()
+            app_params = {}
+            # when
+            task_id = self.rtm.create_task(golem_params, app_params)
+            freezer.tick()
+            # then
+            row = RequestedTask.get(RequestedTask.task_id == task_id)
+            assert row.status == TaskStatus.creating
+            assert row.start_time < default_now()
+            assert (self.new_path / golem_params.app_id / task_id).exists()
 
     @inlineCallbacks
     def test_init_task(self):

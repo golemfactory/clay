@@ -367,7 +367,8 @@ class RequestedTaskManager:
             app_id: str,
             env_id: EnvId
     ) -> EnvironmentTaskApiService:
-        # FIXME: Stolen from golem/task/taskcomputer.py:_get_task_api_service()
+        # FIXME: Stolen from
+        # golem/task/taskcomputer.py:_create_client_and_compute()
         logger.info(
             'Creating task_api service for env=%r, app=%r',
             env_id,
