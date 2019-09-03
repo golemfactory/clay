@@ -57,9 +57,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
             root_path=self.new_path
         )
 
-    def tearDown(self):
-        super().tearDown()
-
     def test_create_task(self):
         with freeze_time() as freezer:
             # given
