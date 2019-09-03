@@ -1,6 +1,7 @@
 from datetime import timedelta
 import logging
 from pathlib import Path
+import shutil
 from typing import Any, Dict, List
 
 from dataclasses import dataclass
@@ -65,7 +66,7 @@ class DirManager:
         app_dir.mkdir(exist_ok=True)
         return app_dir
 
-    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> None:
+    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
         task_dir = self._get_task_dir(app_id, task_id)
         task_dir.mkdir()
         task_inputs_dir = task_dir / constants.TASK_INPUTS_DIR
@@ -76,16 +77,17 @@ class DirManager:
         task_outputs_dir.mkdir()
         subtask_outputs_dir = self.get_subtask_outputs_dir(app_id, task_id)
         subtask_outputs_dir.mkdir()
+        return task_inputs_dir
 
-    def get_subtask_inputs_dir(self, app_id, task_id):
+    def get_subtask_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
         task_dir = self._get_task_dir(app_id, task_id)
         return task_dir / constants.SUBTASK_INPUTS_DIR
 
-    def get_subtask_outputs_dir(self, app_id, task_id):
+    def get_subtask_outputs_dir(self, app_id: str, task_id: TaskId) -> Path:
         task_dir = self._get_task_dir(app_id, task_id)
         return task_dir / constants.SUBTASK_OUTPUTS_DIR
 
-    def _get_task_dir(self, app_id, task_id):
+    def _get_task_dir(self, app_id: str, task_id: TaskId) -> Path:
         return self.get_app_dir(app_id) / task_id
 
 
@@ -131,9 +133,6 @@ class RequestedTaskManager:
             concent_enabled=False,
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
             output_directory=golem_params.output_directory,
-            # FIXME: Where to move resources?
-            resources=golem_params.resources,
-            # FIXME: add app_params?
             app_params=app_params,
         )
 
@@ -142,7 +141,12 @@ class RequestedTaskManager:
             task.task_id,
             task.app_id,
         )
-        self._dir_manager.prepare_task_dir(task.app_id, task.task_id)
+        task_inputs_dir = self._dir_manager.prepare_task_dir(
+            task.app_id,
+            task.task_id)
+        # Move resources to task_inputs_dir
+        for resource in golem_params.resources:
+            shutil.copy2(resource, task_inputs_dir)
         logger.info(
             "Creating task. id=%s, app=%r, env=%r",
             task.task_id,

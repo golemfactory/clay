@@ -694,7 +694,6 @@ class RequestedTask(BaseModel):
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
-    resources = CharField(null=True)
     app_params = JsonField(null=False, default='{}')
 
     @property
