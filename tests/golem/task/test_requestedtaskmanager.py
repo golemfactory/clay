@@ -85,7 +85,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         row = RequestedTask.get(RequestedTask.task_id == task_id)
         # then
         assert row.status == TaskStatus.creating
-        assert mock_client.create_task.called_once_with(
+        mock_client.create_task.assert_called_once_with(
             row.task_id,
             row.max_subtasks,
             row.app_params
@@ -95,7 +95,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     @inlineCallbacks
     def test_init_task_wrong_status(self):
         # given
-        mock_client = self._mock_client_create()
+        self._mock_client_create()
 
         task_id = self._create_task()
         # when
@@ -109,7 +109,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
     @inlineCallbacks
     def test_start_task(self):
         # given
-        mock_client = self._mock_client_create()
+        self._mock_client_create()
 
         task_id = self._create_task()
         yield self._coro_to_def(self.rtm.init_task(task_id))
@@ -289,7 +289,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
 
         return mock_client
 
-    def _add_next_subtask_to_client_mock(self, mock_client):
+    @staticmethod
+    def _add_next_subtask_to_client_mock(mock_client):
         result = Subtask(subtask_id='', params={}, resources=[])
         mock_client.next_subtask.return_value = result
         mock_client.has_pending_subtasks.return_value = True
