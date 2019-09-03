@@ -274,8 +274,7 @@ class RequestedTaskManager:
             computing_node=node,
         )
         task_deadline = task.deadline
-        if task_deadline is None:
-            raise RuntimeError(f"Task not started. task_id={task_id}")
+        assert task_deadline is not None, "No deadline, is start_time empty?"
         deadline = min(
             subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
             task_deadline
