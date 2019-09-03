@@ -173,6 +173,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_add_task(self):
         task_header = self._get_task_header()
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+        self.task_manager.tasks[self.task_id].REQUESTOR_MARKET_STRATEGY =\
+            RequestorBrassMarketStrategy
 
     def _get_task_header(self):
         task_header = dt_tasks_factory.TaskHeaderFactory(
