@@ -373,14 +373,14 @@ class TestTaskResourcesDir(TaskComputerAdapterTestBase):
             ValueError,
             'Task resources directory only available when a task-api task'
                 ' is assigned'):  # pylint: disable=bad-continuation
-            self.adapter.get_task_resources_dir()
+            self.adapter.get_subtask_inputs_dir()
 
     def test_new_assigned(self):
         self.new_computer.has_assigned_task.return_value = True
         self.old_computer.has_assigned_task.return_value = False
         self.assertEqual(
-            self.new_computer.get_task_resources_dir.return_value,
-            self.adapter.get_task_resources_dir(),
+            self.new_computer.get_subtask_inputs_dir.return_value,
+            self.adapter.get_subtask_inputs_dir(),
         )
 
 

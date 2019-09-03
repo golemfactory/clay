@@ -1,5 +1,4 @@
 from unittest import TestCase
-from unittest.mock import Mock
 
 from golem.app_manager import (
     AppDefinition,
@@ -7,7 +6,6 @@ from golem.app_manager import (
     load_app_from_json_file,
     load_apps_from_dir
 )
-from golem.task.envmanager import EnvironmentManager
 from golem.testutils import TempDirFixture
 
 APP_NAME = 'test_app'
@@ -26,8 +24,7 @@ class AppManagerTestBase(TestCase):
 
     def setUp(self):
         super().setUp()
-        self.env_manager = Mock(spec_set=EnvironmentManager)
-        self.app_manager = AppManager(self.env_manager)
+        self.app_manager = AppManager()
 
 
 class TestRegisterApp(AppManagerTestBase):
@@ -50,15 +47,8 @@ class TestSetEnabled(AppManagerTestBase):
         with self.assertRaises(ValueError):
             self.app_manager.set_enabled(APP_NAME, True)
 
-    def test_env_not_enabled(self):
-        self.app_manager.register_app(APP_DEF)
-        self.env_manager.enabled.return_value = False
-        with self.assertRaises(ValueError):
-            self.app_manager.set_enabled(APP_NAME, True)
-
     def test_enable_disable(self):
         self.app_manager.register_app(APP_DEF)
-        self.env_manager.enabled.return_value = True
         self.assertFalse(self.app_manager.enabled(APP_NAME))
         self.app_manager.set_enabled(APP_NAME, True)
         self.assertTrue(self.app_manager.enabled(APP_NAME))
