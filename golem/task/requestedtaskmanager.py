@@ -127,7 +127,7 @@ class RequestedTaskManager:
             start_time=default_now(),
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
-            # Concent is explicitly enabled for task_api for now...
+            # Concent is explicitly disabled for task_api for now...
             concent_enabled=False,
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
             output_directory=golem_params.output_directory,
