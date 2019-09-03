@@ -468,7 +468,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_definition = \
                 self.requested_task_manager.get_next_subtask(task_id)
             task_resources_dir = self.requested_task_manager.\
-                get_task_network_resources_dir(task_id)
+                get_subtasks_inputs_dir(task_id)
             rm = self.task_server.new_resource_manager
             cdn_resources = yield defer.gatherResults([
                 rm.share(task_resources_dir / r)

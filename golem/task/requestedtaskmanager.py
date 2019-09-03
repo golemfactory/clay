@@ -69,18 +69,18 @@ class DirManager:
         task_dir.mkdir()
         task_resources_dir = task_dir / constants.RESOURCES_DIR
         task_resources_dir.mkdir()
-        task_net_resources_dir = self.get_network_resources_dir(app_id, task_id)
+        task_net_resources_dir = self.get_subtasks_inputs_dir(app_id, task_id)
         task_net_resources_dir.mkdir()
         task_results_dir = task_dir / constants.RESULTS_DIR
         task_results_dir.mkdir()
-        task_net_results_dir = self.get_network_results_dir(app_id, task_id)
+        task_net_results_dir = self.get_subtasks_outputs_dir(app_id, task_id)
         task_net_results_dir.mkdir()
 
-    def get_network_resources_dir(self, app_id, task_id):
+    def get_subtasks_inputs_dir(self, app_id, task_id):
         task_dir = self._get_task_dir(app_id, task_id)
         return task_dir / constants.NETWORK_RESOURCES_DIR
 
-    def get_network_results_dir(self, app_id, task_id):
+    def get_subtasks_outputs_dir(self, app_id, task_id):
         task_dir = self._get_task_dir(app_id, task_id)
         return task_dir / constants.NETWORK_RESULTS_DIR
 
@@ -204,16 +204,16 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
 
-    def get_task_network_resources_dir(self, task_id: TaskId) -> Path:
+    def get_subtasks_inputs_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory of the task network resources. """
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_network_resources_dir(task.app_id, task_id)
+        return self._dir_manager.get_subtasks_inputs_dir(task.app_id, task_id)
 
     def get_subtasks_outputs_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory where subtasks outputs should be
         placed. """
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_network_results_dir(task.app_id, task_id)
+        return self._dir_manager.get_subtasks_outputs_dir(task.app_id, task_id)
 
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
