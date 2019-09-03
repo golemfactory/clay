@@ -180,12 +180,12 @@ class TestComputedTaskReportedTaskApiFlow(unittest.TestCase):
         helpers.computed_task_reported(self.task_server, self.rct)
 
         self.rtm.task_exists.assert_called_once_with(self.rct.task_id)
-        self.rtm.get_subtasks_outputs_dir.assert_called_once_with(
+        self.rtm.get_subtask_outputs_dir.assert_called_once_with(
             self.rct.task_id,
         )
         self.task_server.new_resource_manager.download.assert_called_once_with(
             self.rct.multihash,
-            self.rtm.get_subtasks_outputs_dir.return_value,
+            self.rtm.get_subtask_outputs_dir.return_value,
             self.task_server.get_download_options.return_value,
         )
 
