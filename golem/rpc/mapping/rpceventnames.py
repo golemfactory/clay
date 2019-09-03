@@ -3,6 +3,10 @@ class Golem:
     procedures_registered = 'golem.rpc_ready'
 
 
+class Apps:
+    evt_app_discovered = 'evt.app.discovered'
+
+
 class Environment:
     evt_opts_changed = 'evt.env.opts'
 
