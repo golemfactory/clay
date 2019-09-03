@@ -571,18 +571,6 @@ class WasmTaskTypeInfo(CoreTaskTypeInfo):
     REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
 
     def __init__(self) -> None:
-        self._load_requestor_perf()
         super().__init__(
             'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder
         )
-
-    def _load_requestor_perf(self):
-        try:
-            perf = golem.model.Performance.get(
-                golem.model.Performance.environment_id ==
-                WasmTaskEnvironment.ENV_ID
-            ).value
-        except golem.model.Performance.DoesNotExist:
-            perf = 1.0
-
-        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)
