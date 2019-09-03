@@ -30,6 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
@@ -68,6 +69,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.server import app_manager
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
@@ -114,6 +116,7 @@ class TaskServer(
         resources.TaskResourcesMixin,
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
+        app_manager.AppManagerRPC,
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
@@ -128,6 +131,9 @@ class TaskServer(
                  task_archiver=None,
                  apps_manager=AppsManager(),
                  task_finished_cb=None) -> None:
+
+        app_manager.AppManagerRPC.__init__(self, AppManager())
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
