@@ -30,12 +30,43 @@ class Component(object):
     hyperdrive = 'hyperdrive'
 
 
-class StatusPublisher(object):
+class EventPublisher:
+    _initialized: ClassVar[bool] = False
+    _rpc_publisher: ClassVar[Optional[Publisher]] = None
+
+    @classmethod
+    def initialize(cls, rpc_publisher: Publisher) -> bool:
+        if cls._initialized:
+            return False
+        cls._rpc_publisher = rpc_publisher
+        cls._initialized = True
+        return True
+
+    @classmethod
+    def publish(cls, alias: str, *args, **kwargs) -> Optional[Deferred]:
+        if not cls._initialized:
+            return
+
+        from twisted.internet import reactor
+        deferred = Deferred()
+
+        def _publish():
+            maybeDeferred(
+                cls._rpc_publisher.publish,
+                alias,
+                *args,
+                **kwargs
+            ).chainDeferred(deferred)
+
+        reactor.callFromThread(_publish)
+        return deferred
+
+
+class StatusPublisher:
     """
     Publishes method execution stages via RPC.
     """
-    _initialized: ClassVar[bool] = False
-    _rpc_publisher: ClassVar[Optional[Publisher]] = None
+    _event_publisher: ClassVar[EventPublisher] = EventPublisher()
     _last_status: ClassVar[Dict[str, Tuple[str, str, Any]]] = dict()
 
     @classmethod
@@ -54,21 +85,8 @@ class StatusPublisher(object):
                  session is closing or there was an error
         """
         cls._update_status(component, method, stage, data)
-
-        if cls._rpc_publisher:
-            from twisted.internet import reactor
-            deferred = Deferred()
-
-            def _publish():
-                maybeDeferred(
-                    cls._rpc_publisher.publish,
-                    Golem.evt_golem_status,
-                    cls._last_status
-                ).chainDeferred(deferred)
-
-            reactor.callFromThread(_publish)
-            return deferred
-        return None
+        return cls._event_publisher.publish(
+            Golem.evt_golem_status, cls._last_status)
 
     @classmethod
     def last_status(cls):
@@ -76,15 +94,12 @@ class StatusPublisher(object):
 
     @classmethod
     def initialize(cls, rpc_publisher):
-        if cls._initialized:
+        if not cls._event_publisher.initialize(rpc_publisher):
             return
 
         from pydispatch import dispatcher
         dispatcher.connect(cls._publish_listener,
                            signal=Golem.evt_golem_status)
-
-        cls._rpc_publisher = rpc_publisher
-        cls._initialized = True
 
     @classmethod
     def _publish_listener(cls, event: str = 'default', **kwargs) -> None:
