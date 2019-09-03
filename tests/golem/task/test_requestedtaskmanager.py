@@ -306,8 +306,8 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
 
     def _add_next_subtask_to_client_mock(self, mock_client):
         result = Mock(spec=Subtask)
-        result.params = '{}'
-        result.resources = '[]'
+        result.params = {}
+        result.resources = []
         f = asyncio.Future()
         f.set_result(result)
         mock_client.next_subtask = Mock(return_value=f)
