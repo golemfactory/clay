@@ -30,7 +30,9 @@ class AppManagerTestBase(TestCase):
 class TestRegisterApp(AppManagerTestBase):
 
     def test_register_app(self):
+        self.assertFalse(self.app_manager.registered(APP_NAME))
         self.app_manager.register_app(APP_DEF)
+        self.assertTrue(self.app_manager.registered(APP_NAME))
         self.assertEqual(self.app_manager.apps(), [APP_DEF])
         self.assertEqual(self.app_manager.app(APP_NAME), APP_DEF)
         self.assertFalse(self.app_manager.enabled(APP_NAME))

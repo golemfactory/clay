@@ -68,10 +68,14 @@ class AppManager:
         self._state[app.name] = False
         logger.info("Application '%s' registered.", app.name)
 
+    def registered(self, app_name: str) -> bool:
+        """ Check if an application with the given name is registered """
+        return app_name in self._state
+
     def enabled(self, app_name: str) -> bool:
         """ Check if an application with the given name is registered in the
             manager and enabled. """
-        return app_name in self._state and self._state[app_name]
+        return self.registered(app_name) and self._state[app_name]
 
     def set_enabled(self, app_name: str, enabled: bool) -> None:
         """ Enable or disable an application. Raise an error if the application
