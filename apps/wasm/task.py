@@ -244,7 +244,7 @@ class WasmTask(CoreTask):
                     return False
         return True
 
-    def _resolve_payments(self, subtask: VbrSubtask):
+    def _resolve_subtasks_statuses(self, subtask: VbrSubtask):
         verdicts = subtask.get_verdicts()
 
         for s_id in subtask.get_instances():
@@ -294,7 +294,7 @@ class WasmTask(CoreTask):
         WasmTask.CALLBACKS[subtask_id] = verification_finished
 
         if subtask.is_finished():
-            self._resolve_payments(subtask)
+            self._resolve_subtasks_statuses(subtask)
 
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
@@ -426,7 +426,7 @@ class WasmTask(CoreTask):
             # Handle a case of duplicate call from __remove_old_tasks
             pass
         if subtask.is_finished():
-            self._resolve_payments(subtask)
+            self._resolve_subtasks_statuses(subtask)
 
     def verify_task(self):
         return self.finished_computation()
