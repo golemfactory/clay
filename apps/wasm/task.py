@@ -268,6 +268,7 @@ class WasmTask(CoreTask):
                     logger.info("Blacklisting node: %s", actor.uuid)
                     self.nodes_blacklist.add(actor.uuid)
 
+    def _handle_vbr_subtask_result(self, subtask: VbrSubtask):
         # save the results but only if verification was successful
         result: TaskResult = subtask.get_result()
         if result is not None:
@@ -283,18 +284,19 @@ class WasmTask(CoreTask):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
+        # Save the callback and wait for VbrSubtask verdict.
+        WasmTask.CALLBACKS[subtask_id] = verification_finished
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
 
         self.interpret_task_results(subtask_id, task_result.files)
         task_result.files = self.results[subtask_id]
 
-        # find the VbrSubtask that contains subtask_id
         subtask = self._find_vbrsubtask_by_id(subtask_id)
         subtask.add_result(subtask_id, task_result)
-        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
-        WasmTask.CALLBACKS[subtask_id] = verification_finished
 
         if subtask.is_finished():
             self._resolve_subtasks_statuses(subtask)
+            self._handle_vbr_subtask_result(subtask)
 
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
@@ -366,7 +368,7 @@ class WasmTask(CoreTask):
             sort: bool = True) -> None:
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        # results field is used here for compatibility with CoreTask
+
         self.results[subtask_id] = self.filter_task_results(
             task_results, subtask_id)
         if sort:
@@ -427,6 +429,7 @@ class WasmTask(CoreTask):
             pass
         if subtask.is_finished():
             self._resolve_subtasks_statuses(subtask)
+            self._handle_vbr_subtask_result(subtask)
 
     def verify_task(self):
         return self.finished_computation()
