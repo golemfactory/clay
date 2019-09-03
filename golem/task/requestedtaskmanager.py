@@ -166,7 +166,7 @@ class RequestedTaskManager:
         # FIXME: Blender creates preview files here
         # FIXME: Is RTM responsible for managing test tasks?
 
-        app_client = await self._get_app_client(task.app_id, task.environment)
+        app_client = await self._get_app_client(task.app_id)
         logger.debug('init_task(task_id=%r) - creating task', task_id)
         await app_client.create_task(
             task.task_id,
@@ -229,7 +229,7 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
             return False
-        app_client = await self._get_app_client(task.app_id, task.environment)
+        app_client = await self._get_app_client(task.app_id)
         return await app_client.has_pending_subtasks(task.task_id)
 
     async def get_next_subtask(
@@ -264,7 +264,7 @@ class RequestedTaskManager:
             raise RuntimeError(
                 f"Task not pending, no next subtask. task_id={task_id}")
 
-        app_client = await self._get_app_client(task.app_id, task.environment)
+        app_client = await self._get_app_client(task.app_id)
         result = await app_client.next_subtask(task.task_id)
         subtask = RequestedSubtask.create(
             task=task,
@@ -301,7 +301,7 @@ class RequestedTaskManager:
         subtask = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
         assert subtask.task == task
-        app_client = await self._get_app_client(task.app_id, task.environment)
+        app_client = await self._get_app_client(task.app_id)
         subtask.status = SubtaskStatus.verifying
         subtask.save()
         try:
@@ -352,12 +352,11 @@ class RequestedTaskManager:
     async def _get_app_client(
             self,
             app_id: str,
-            env_id: EnvId
     ) -> RequestorAppClient:
         if app_id not in self._app_clients:
             logger.info('Creating app_client for app_id=%r', app_id)
-            service = self._get_task_api_service(app_id, env_id)
-            logger.info('Got service for env=%r, service=%r', app_id, service)
+            service = self._get_task_api_service(app_id)
+            logger.info('Got service for app=%r, service=%r', app_id, service)
             self._app_clients[app_id] = await RequestorAppClient.create(service)
             logger.info(
                 'app_client created for app_id=%r, clients=%r',
@@ -367,26 +366,24 @@ class RequestedTaskManager:
     def _get_task_api_service(
             self,
             app_id: str,
-            env_id: EnvId
     ) -> EnvironmentTaskApiService:
         # FIXME: Stolen from
         # golem/task/taskcomputer.py:_create_client_and_compute()
         logger.info(
-            'Creating task_api service for env=%r, app=%r',
-            env_id,
+            'Creating task_api service for app=%r',
             app_id
         )
+        if not self._app_manager.enabled(app_id):
+            raise RuntimeError(
+                f"Error connecting to app, app not enabled. app={app_id}")
+        app = self._app_manager.app(app_id)
+        env_id = app.requestor_env
         if not self._env_manager.enabled(env_id):
             raise RuntimeError(
                 "Error connecting to app, environment not enabled."
                 f" env={env_id}, app={app_id}")
-        if not self._app_manager.enabled(app_id):
-            raise RuntimeError(
-                "Error connecting to app, app not enabled."
-                f" env={env_id}, app={app_id}")
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
-        app = self._app_manager.app(app_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
         shared_dir = self._dir_manager.get_app_dir(app_id)
 

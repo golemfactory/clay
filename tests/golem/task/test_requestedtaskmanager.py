@@ -90,7 +90,7 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
             row.max_subtasks,
             row.app_params
         )
-        self.env_manager.enabled.assert_called_once_with(row.environment)
+        self.app_manager.enabled.assert_called_once_with(row.app_id)
 
     @inlineCallbacks
     def test_init_task_wrong_status(self):
