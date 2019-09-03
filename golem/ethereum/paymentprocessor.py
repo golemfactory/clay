@@ -156,7 +156,7 @@ class PaymentProcessor:
             value: int,
     ) -> model.TaskPayment:
         log.info(
-            "Adding payment for %s to %s (%.3f GNTB)",
+            "Adding payment for %s to %s (%.8f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
