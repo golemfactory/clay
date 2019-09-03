@@ -33,7 +33,6 @@ SubtaskId = str
 class CreateTaskParams:
     app_id: str
     name: str
-    environment: str
     task_timeout: int
     subtask_timeout: int
     output_directory: Path
@@ -122,7 +121,6 @@ class RequestedTaskManager:
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
-            environment=golem_params.environment,
             # prerequisites='{}',
             task_timeout=golem_params.task_timeout,
             subtask_timeout=golem_params.subtask_timeout,
@@ -148,10 +146,9 @@ class RequestedTaskManager:
         for resource in golem_params.resources:
             shutil.copy2(resource, task_inputs_dir)
         logger.info(
-            "Creating task. id=%s, app=%r, env=%r",
+            "Creating task. id=%s, app=%r",
             task.task_id,
             golem_params.app_id,
-            golem_params.environment,
         )
         logger.debug('raw_task=%r', task)
         return task.task_id

@@ -28,7 +28,6 @@ def migrate(migrator, database, fake=False, **kwargs):
         app_id = pw.CharField(max_length=255)
         name = pw.CharField(max_length=255, null=True)
         status = pw.StringEnumField()
-        environment = pw.CharField(max_length=255)
         prerequisites = pw.JsonField(default='{}')
         task_timeout = pw.IntegerField()
         subtask_timeout = pw.IntegerField()

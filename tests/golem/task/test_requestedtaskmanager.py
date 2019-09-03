@@ -260,7 +260,6 @@ class TestRequestedTaskManager(DatabaseFixture, TwistedTestCase):
         return CreateTaskParams(
             app_id='a',
             name='a',
-            environment='a',
             task_timeout=1,
             subtask_timeout=1,
             output_directory=self.new_path / 'output',

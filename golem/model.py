@@ -681,7 +681,6 @@ class RequestedTask(BaseModel):
     name = CharField(null=True)
     status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
 
-    environment = CharField(null=False)
     prerequisites = JsonField(null=False, default='{}')
 
     task_timeout = IntegerField(null=False)  # milliseconds
