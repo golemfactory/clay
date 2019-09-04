@@ -19,6 +19,8 @@ class TestDiscoveredDockerImage(unittest.TestCase):
         discovered_img = DiscoveredDockerImage(name='golemfactory/test')
         self.assertEqual(discovered_img.name, 'golemfactory/test')
         self.assertEqual(discovered_img.discovery_ts, get_timestamp_utc())
+        self.assertEqual(discovered_img.last_seen_ts, get_timestamp_utc())
+        self.assertEqual(discovered_img.times_seen, 1)
 
 
 @mock.patch(f'{ROOT_PATH}.MAX_DISCOVERED_IMAGES', MAX_IMAGES)
@@ -47,7 +49,10 @@ class TestDiscoveryStorage(TestWithDatabase):
             self.whitelist_rpc._docker_image_discovered(name=f'repo/0')
 
         assert len(self.whitelist_rpc._discovered) == 1
-        assert self.whitelist_rpc._discovered[0].discovery_ts == initial_time
+        discovered = self.whitelist_rpc._discovered[0]
+        assert discovered.discovery_ts == initial_time
+        assert discovered.last_seen_ts == initial_time
+        assert discovered.times_seen == 1
         assert event_publisher.publish.call_count == 1
 
         with freeze_time("2000"):
@@ -55,7 +60,10 @@ class TestDiscoveryStorage(TestWithDatabase):
             self.whitelist_rpc._docker_image_discovered(name=f'repo/0')
 
         assert len(self.whitelist_rpc._discovered) == 1
-        assert self.whitelist_rpc._discovered[0].discovery_ts == update_time
+        discovered = self.whitelist_rpc._discovered[0]
+        assert discovered.discovery_ts == initial_time
+        assert discovered.last_seen_ts == update_time
+        assert discovered.times_seen == 2
         assert event_publisher.publish.call_count == 1
 
     @mock.patch(f'{ROOT_PATH}.Whitelist.is_whitelisted', return_value=True)
@@ -110,10 +118,11 @@ class TestAppManagerRPCMethods(TestWithDatabase):
         assert whitelist.get.call_count == 1
 
     def test_docker_whitelist_add(self, whitelist):
-        self.whitelist_rpc._docker_refresh_discovered = mock.Mock()
+        self.whitelist_rpc._docker_refresh_discovered_images = mock.Mock()
         self.whitelist_rpc._docker_whitelist_add('repo/0')
         assert whitelist.add.call_count == 1
-        assert self.whitelist_rpc._docker_refresh_discovered.call_count == 1
+        assert self.whitelist_rpc._docker_refresh_discovered_images.call_count \
+            == 1
 
     def test_docker_whitelist_remove(self, whitelist):
         self.whitelist_rpc._docker_whitelist_remove('repo/0')
