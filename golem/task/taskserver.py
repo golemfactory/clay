@@ -69,6 +69,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
@@ -115,6 +116,7 @@ class TaskServer(
         resources.TaskResourcesMixin,
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
+        DockerWhitelistRPC,
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
@@ -129,6 +131,8 @@ class TaskServer(
                  task_archiver=None,
                  apps_manager=AppsManager(),
                  task_finished_cb=None) -> None:
+        DockerWhitelistRPC.__init__(self)
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -641,6 +645,11 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
+
+        if task_header.environment_prerequisites:
+            image_name = task_header.environment_prerequisites['image']
+            self._docker_image_discovered(image_name)
+
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
@@ -649,7 +658,7 @@ class TaskServer(
             return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
-            return False
+        return False
 
     @classmethod
     def _verify_header_sig(cls, header: dt_tasks.TaskHeader):
