@@ -9,6 +9,7 @@ from golem_messages.factories.concents import (
 from golem_messages.message.concents import FileTransferToken
 
 from golem import testutils
+from golem import constants as gconst
 from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import filetransfers
@@ -59,6 +60,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         return {
             'Authorization': 'Golem ' + base64.b64encode(
                 file_transfer_token.serialize()).decode(),
+            'X-Golem-Messages': str(gconst.GOLEM_MESSAGES_VERSION),
         }
 
     def tearDown(self):
