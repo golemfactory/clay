@@ -28,6 +28,7 @@ class TaskApiPayloadBuilder(abc.ABC):
 
 
 class EnvironmentTaskApiService(TaskApiService):
+
     def __init__(
             self,
             env: Environment,
@@ -53,6 +54,11 @@ class EnvironmentTaskApiService(TaskApiService):
         await self._runtime.prepare().asFuture(loop)
         await self._runtime.start().asFuture(loop)
         return self._runtime.get_port_mapping(port)
+
+    async def stop(self) -> None:
+        assert self._runtime is not None
+        loop = asyncio.get_event_loop()
+        await self._runtime.stop().asFuture(loop)
 
     def running(self) -> bool:
         """

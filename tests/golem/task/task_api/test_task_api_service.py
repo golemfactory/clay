@@ -23,6 +23,7 @@ class TestTaskApiService(TestCase):
         self.runtime = Mock(spec_set=Runtime)
         self.runtime.prepare.return_value = defer.succeed(None)
         self.runtime.start.return_value = defer.succeed(None)
+        self.runtime.stop.return_value = defer.succeed(None)
         self.runtime.wait_until_stopped.return_value = defer.succeed(None)
         self.env = Mock(spec_set=Environment)
         self.env.runtime.return_value = self.runtime
@@ -54,6 +55,12 @@ class TestTaskApiService(TestCase):
         self.runtime.start.assert_called_once_with()
         self.runtime.get_port_mapping.assert_called_once_with(port)
         self.assertEqual(self.runtime.get_port_mapping(), socket_addr)
+
+    @async_test
+    async def test_stop(self):
+        await self.service.start('cmd', 1234)
+        await self.service.stop()
+        self.runtime.stop.assert_called_once_with()
 
     @async_test
     async def test_wait_until_shutdown_complete(self):
