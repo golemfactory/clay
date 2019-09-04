@@ -53,9 +53,9 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
             assert (self.new_path / golem_params.app_id / task_id).exists()
 
     @pytest.mark.asyncio
-    async def test_init_task(self):
+    async def test_init_task(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
 
         task_id = self._create_task()
         # when
@@ -71,9 +71,9 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         self.app_manager.enabled.assert_called_once_with(row.app_id)
 
     @pytest.mark.asyncio
-    async def test_init_task_wrong_status(self):
+    async def test_init_task_wrong_status(self, monkeypatch):
         # given
-        self._mock_client_create()
+        self._mock_client_create(monkeypatch)
 
         task_id = self._create_task()
         # when
@@ -85,9 +85,9 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
             await self.rtm.init_task(task_id)
 
     @pytest.mark.asyncio
-    async def test_start_task(self):
+    async def test_start_task(self, monkeypatch):
         # given
-        self._mock_client_create()
+        self._mock_client_create(monkeypatch)
 
         task_id = self._create_task()
         await self.rtm.init_task(task_id)
@@ -99,16 +99,16 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
 
     def test_task_exists(self):
         task_id = self._create_task()
-        self.assertTrue(self.rtm.task_exists(task_id))
+        assert self.rtm.task_exists(task_id) is True
 
     def test_task_not_exists(self):
         task_id = 'a'
-        self.assertFalse(self.rtm.task_exists(task_id))
+        assert self.rtm.task_exists(task_id) is False
 
     @pytest.mark.asyncio
-    async def test_has_pending_subtasks(self):
+    async def test_has_pending_subtasks(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
         mock_client.has_pending_subtasks.return_value = True
 
         task_id = self._create_task()
@@ -117,13 +117,13 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         # when
         res = await self.rtm.has_pending_subtasks(task_id)
         # then
-        self.assertTrue(res)
+        assert res is True
         mock_client.has_pending_subtasks.assert_called_once_with(task_id)
 
     @pytest.mark.asyncio
-    async def test_get_next_subtask(self):
+    async def test_get_next_subtask(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task()
@@ -139,14 +139,14 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         row = RequestedSubtask.get(
             RequestedSubtask.subtask_id == res.subtask_id)
         # then
-        self.assertEqual(row.task_id, task_id)
-        self.assertEqual(row.computing_node, computing_node)
+        assert row.task_id == task_id
+        assert row.computing_node == computing_node
         mock_client.next_subtask.assert_called_once_with(task_id)
 
     @pytest.mark.asyncio
-    async def test_verify(self):
+    async def test_verify(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = True
 
@@ -169,16 +169,16 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         subtask_row = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
         # then
-        self.assertTrue(res)
+        assert res is True
         mock_client.verify.assert_called_once_with(task_id, subtask.subtask_id)
         mock_client.shutdown.assert_called_once_with()
-        self.assertTrue(task_row.status.is_completed())
-        self.assertTrue(subtask_row.status.is_finished())
+        assert task_row.status.is_completed() is True
+        assert subtask_row.status.is_finished() is True
 
     @pytest.mark.asyncio
-    async def test_verify_failed(self):
+    async def test_verify_failed(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = False
 
@@ -199,16 +199,16 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         subtask_row = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
         # then
-        self.assertFalse(res)
+        assert res is False
         mock_client.verify.assert_called_once_with(task_id, subtask.subtask_id)
         mock_client.shutdown.assert_not_called()
-        self.assertTrue(task_row.status.is_active())
-        self.assertEqual(subtask_row.status, SubtaskStatus.failure)
+        assert task_row.status.is_active() is True
+        assert subtask_row.status == SubtaskStatus.failure
 
     @pytest.mark.asyncio
-    async def test_abort(self):
+    async def test_abort(self, monkeypatch):
         # given
-        mock_client = self._mock_client_create()
+        mock_client = self._mock_client_create(monkeypatch)
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task()
@@ -250,13 +250,18 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         task_id = self.rtm.create_task(golem_params, app_params)
         return task_id
 
-    def _mock_client_create(self):
+    @staticmethod
+    def _mock_client_create(monkeypatch):
         mock_client = AsyncMock(spec=RequestorAppClient)
-        create_f = asyncio.Future()
-        create_f.set_result(mock_client)
-        self._patch_async(
-            'golem.task.requestedtaskmanager.RequestorAppClient.create',
-            return_value=create_f)
+
+        @asyncio.coroutine
+        def mock_create(*_args, **_kwargs):
+            return mock_client
+
+        monkeypatch.setattr(
+            RequestorAppClient,
+            'create',
+            mock_create)
 
         return mock_client
 
@@ -265,8 +270,3 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
         result = Subtask(subtask_id='', params={}, resources=[])
         mock_client.next_subtask.return_value = result
         mock_client.has_pending_subtasks.return_value = True
-
-    def _patch_async(self, name, *args, **kwargs):
-        patcher = monkeypatch(name, *args, **kwargs)
-        self.addCleanup(patcher.stop)
-        return patcher.start()
