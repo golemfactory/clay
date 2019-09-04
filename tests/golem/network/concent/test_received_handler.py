@@ -603,7 +603,7 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
                 self.requestor_keys.raw_pubkey))
         return msg
 
-    def test_force_get_task_result_download(self, _):
+    def test_force_get_task_result_download(self):
         fgtrd = self._get_correct_message()
 
         library.interpret(fgtrd)
