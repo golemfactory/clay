@@ -1487,10 +1487,11 @@ class TestChangeConfig(TaskServerAsyncTestBase):
         change_pcs_config.assert_called_once_with(self.ts, config_desc)
 
 
+@patch('golem.task.envmanager.Performance.delete')
 class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
 
     @defer.inlineCallbacks
-    def test_config_unchanged_no_benchmarks(self):
+    def test_config_unchanged_no_benchmarks(self, delete_performance):
         change_tc_config = self._patch_ts_async('task_computer').change_config
         change_tc_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1500,9 +1501,10 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         yield self.ts._change_task_computer_config(config_desc, False)
         change_tc_config.assert_called_once_with(config_desc)
         run_benchmarks.assert_not_called()
+        delete_performance.assert_not_called()
 
     @defer.inlineCallbacks
-    def test_config_changed_no_benchmarks(self):
+    def test_config_changed_no_benchmarks(self, delete_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(True)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1520,9 +1522,10 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        assert delete_performance.call_count > 0
 
     @defer.inlineCallbacks
-    def test_config_unchanged_run_benchmarks(self):
+    def test_config_unchanged_run_benchmarks(self, delete_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1540,6 +1543,7 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        delete_performance.assert_not_called()
 
 
 class TestTaskServerConcent(TaskServerAsyncTestBase):
