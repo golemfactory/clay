@@ -30,6 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
@@ -171,7 +172,12 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
-        self.requested_task_manager = RequestedTaskManager()
+        self.requested_task_manager = RequestedTaskManager(
+            env_manager=new_env_manager,
+            app_manager=AppManager(),
+            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            public_key=self.keys_auth.public_key,
+        )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
             config_desc.hyperdrive_rpc_port,

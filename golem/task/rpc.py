@@ -540,7 +540,6 @@ class ClientProvider:
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
             name=golem_params['name'],
-            environment=golem_params['environment'],
             output_directory=Path(golem_params['output_directory']),
             resources=list(map(Path, golem_params['resources'])),
             max_price_per_hour=int(golem_params['max_price_per_hour']),
