@@ -9,6 +9,6 @@ pylint==1.9.2
 pytest-asyncio
 pytest-cov
 pytest-timeout==1.2.1
-pytest==3.6.3
+pytest==5.1.2
 requests==2.21.0
 urllib3==1.24.3
