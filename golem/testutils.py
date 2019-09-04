@@ -181,9 +181,9 @@ def async_test(coro):
 class AsyncDatabaseFixture():
     """ Setups temporary database for tests."""
 
-    def setup_method(self, tmp_path):
+    def setup_method(self, tmpdir):
         self.database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
-                                 db_dir=str(tmp_path))
+                                 db_dir=tmpdir)
 
     def teardown_method(self):
         self.database.db.close()

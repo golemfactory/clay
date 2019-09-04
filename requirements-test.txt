@@ -22,7 +22,7 @@ pylint==1.9.2
 pytest-asyncio==0.10.0
 pytest-cov==2.5.1
 pytest-timeout==1.2.1
-pytest==5.1.2
+pytest==3.6.3
 python-dateutil==2.7.2
 requests==2.21.0
 six==1.12.0

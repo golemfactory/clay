@@ -1,4 +1,5 @@
 import asyncio
+from pathlib import Path
 
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
@@ -27,9 +28,10 @@ class AsyncMock(MagicMock):
 class TestRequestedTaskManager(AsyncDatabaseFixture):
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmp_path):
-        super().setup_method(tmp_path)
-        self.tmp_path = tmp_path
+    def setup_method(self, tmpdir):
+        super().setup_method(tmpdir)
+        # TODO: Replace with tmp_path when pytest is updated to 5.x
+        self.tmp_path = Path(tmpdir)
 
         self.env_manager = Mock(spec=EnvironmentManager)
         self.app_manager = Mock(spec=AppManager)
