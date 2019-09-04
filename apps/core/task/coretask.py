@@ -143,6 +143,7 @@ class CoreTask(Task):
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
+            task_type=task_definition.task_type,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=total_tasks,

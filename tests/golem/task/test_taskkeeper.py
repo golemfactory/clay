@@ -465,6 +465,7 @@ def get_dict_task_header(key_id_seed="kkk"):
             "pub_addr": "10.10.10.10",
             "pub_port": 10101
         },
+        "task_type": "dummy",
         "environment": "DEFAULT",
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
