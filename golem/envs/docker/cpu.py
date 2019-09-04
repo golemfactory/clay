@@ -24,9 +24,19 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
-    EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
-    RuntimeBase, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
-    EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
+    CounterId,
+    CounterUsage,
+    EnvConfig,
+    EnvironmentBase,
+    EnvMetadata,
+    EnvStatus,
+    EnvSupportStatus,
+    Prerequisites,
+    RuntimeBase,
+    RuntimeInput,
+    RuntimeOutput,
+    RuntimePayload,
+    RuntimeStatus
 )
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
@@ -36,6 +46,12 @@ logger = logging.getLogger(__name__)
 # Keys used by hypervisors for memory and CPU constraints
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
+
+DOCKER_CPU_ENV_ID = 'docker_cpu'
+DOCKER_CPU_METADATA = EnvMetadata(
+    id=DOCKER_CPU_ENV_ID,
+    description='Docker environment using CPU'
+)
 
 
 @dataclass
@@ -403,9 +419,6 @@ class DockerCPURuntime(RuntimeBase):
 
 class DockerCPUEnvironment(EnvironmentBase):
 
-    ENV_ID: ClassVar[EnvId] = 'docker_cpu'
-    ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
-
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
@@ -540,15 +553,6 @@ class DockerCPUEnvironment(EnvironmentBase):
             return float(list(stdout)[0])
         finally:
             yield runtime.clean_up()
-
-    @classmethod
-    def metadata(cls) -> EnvMetadata:
-        return EnvMetadata(
-            id=cls.ENV_ID,
-            description=cls.ENV_DESCRIPTION,
-            supported_counters=[],  # TODO: Specify usage counters
-            custom_metadata={}
-        )
 
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \

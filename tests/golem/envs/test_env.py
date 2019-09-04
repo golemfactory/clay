@@ -26,27 +26,24 @@ class TestEmitEvents(TestEnvironmentBase):
     @patch('golem.envs.deferToThread')
     def test_emit_event(self, defer):
         defer.side_effect = lambda f, *args, **kwargs: f(*args, **kwargs)
-        metadata = Mock(id="env_id")
-        with patch.object(self.env, 'metadata', return_value=metadata):
-            enabled_listener1 = Mock()
-            enabled_listener2 = Mock()
-            disabled_listener = Mock()
+        enabled_listener1 = Mock()
+        enabled_listener2 = Mock()
+        disabled_listener = Mock()
 
-            self.env.listen(EnvEventType.ENABLED, enabled_listener1)
-            self.env.listen(EnvEventType.ENABLED, enabled_listener2)
-            self.env.listen(EnvEventType.DISABLED, disabled_listener)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener1)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener2)
+        self.env.listen(EnvEventType.DISABLED, disabled_listener)
 
-            event = EnvEvent(
-                env_id="env_id",
-                type=EnvEventType.ENABLED,
-                details={"key": "value"}
-            )
+        event = EnvEvent(
+            type=EnvEventType.ENABLED,
+            details={"key": "value"}
+        )
 
-            self.env._emit_event(event.type, event.details)
+        self.env._emit_event(event.type, event.details)
 
-            enabled_listener1.assert_called_once_with(event)
-            enabled_listener2.assert_called_once_with(event)
-            disabled_listener.assert_not_called()
+        enabled_listener1.assert_called_once_with(event)
+        enabled_listener2.assert_called_once_with(event)
+        disabled_listener.assert_not_called()
 
     @patch('golem.envs.EnvironmentBase._emit_event')
     def test_env_enabled(self, emit):

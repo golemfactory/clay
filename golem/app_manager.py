@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields as mm_fields
 
-from golem.task.envmanager import EnvironmentManager
-
 logger = logging.getLogger(__name__)
 
 

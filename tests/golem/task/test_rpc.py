@@ -60,7 +60,7 @@ class ProviderBase(test_client.TestClientBase):
     }
 
     @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -68,7 +68,6 @@ class ProviderBase(test_client.TestClientBase):
             return_value=True
         )
         self.client.apps_manager.load_all_apps()
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with mock.patch(
             'golem.network.concent.handlers_library.HandlersLibrary'
             '.register_handler',

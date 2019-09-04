@@ -39,7 +39,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
@@ -54,7 +54,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             )
         client = MagicMock()
         client.datadir = self.path
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -463,7 +462,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def _gen_data_for_test_react_to_remove_task(self, docker_env):
+    def _gen_data_for_test_react_to_remove_task(self, _):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
@@ -471,7 +470,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Unknown task owner
         client = MagicMock()
         client.datadir = self.path
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             task_server = task_server_factory.TaskServer(client=client,)

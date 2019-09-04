@@ -41,7 +41,8 @@ from golem.environments.environment import (
 )
 from golem.envs import Environment as NewEnv, EnvSupportStatus
 from golem.envs.auto_setup import auto_setup
-from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
+from golem.envs.docker.gpu import DOCKER_GPU_METADATA
 from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
@@ -142,6 +143,7 @@ class TaskServer(
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
+            DOCKER_CPU_METADATA,
             DockerTaskApiPayloadBuilder,
         )
 
@@ -151,6 +153,7 @@ class TaskServer(
                 NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
             new_env_manager.register_env(
                 docker_gpu_env,
+                DOCKER_GPU_METADATA,
                 DockerTaskApiPayloadBuilder,
             )
 

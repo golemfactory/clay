@@ -122,7 +122,7 @@ class TaskServerTestBase(LogTestCase,
            '.register_handler')
     @patch('golem.task.taskserver.TaskComputerAdapter')
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env, *_):  # pylint: disable=arguments-differ
+    def setUp(self, *_):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
@@ -131,7 +131,6 @@ class TaskServerTestBase(LogTestCase,
         self.client.concent_service.enabled = False
         self.client.keys_auth.key_id = 'key_id'
         self.client.keys_auth.eth_addr = 'eth_addr'
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         self.ts = TaskServer(
             node=dt_p2p_factory.Node(),
             config_desc=self.ccd,
@@ -176,14 +175,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         'golem.network.concent.handlers_library.HandlersLibrary'
         '.register_handler',
     )
-    @patch('golem.task.taskarchiver.TaskArchiver')
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    @patch('golem.task.taskarchiver.TaskArchiver')
     # pylint: disable=too-many-locals,too-many-statements
-    def test_request(self, docker_env, tar, *_):
+    def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = dt_p2p_factory.Node()
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -1023,7 +1021,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
@@ -1038,7 +1036,6 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(

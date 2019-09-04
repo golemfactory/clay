@@ -16,14 +16,14 @@ from twisted.internet import defer
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future
+from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.envs import EnvId, EnvStatus
-from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
-from golem.envs.docker.gpu import DockerGPUConfig, DockerGPUEnvironment
+from golem.envs import EnvId
+from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_ENV_ID
+from golem.envs.docker.gpu import DockerGPUConfig, DOCKER_GPU_ENV_ID
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -421,16 +421,16 @@ class NewTaskComputer:
         )
 
         # FIXME: Decide how to properly configure environments
-        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        docker_cpu = self._env_manager.environment(DOCKER_CPU_ENV_ID)
         docker_cpu.update_config(DockerCPUConfig(**config_dict))
 
-        if self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
-            docker_gpu = self._env_manager.environment(
-                DockerGPUEnvironment.ENV_ID)
+        if self._env_manager.enabled(DOCKER_GPU_ENV_ID):
+            docker_gpu = self._env_manager.environment(DOCKER_GPU_ENV_ID)
             # TODO: GPU options in config_dict
             docker_gpu.update_config(DockerGPUConfig(**config_dict))
 
         return defer.succeed(None)
+
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
     """ TaskComputer is responsible for task computations that take
