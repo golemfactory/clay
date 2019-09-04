@@ -1,4 +1,5 @@
 # pylint: disable=protected-access, too-many-lines
+import asyncio
 import os
 import time
 from datetime import datetime, timedelta
@@ -6,7 +7,8 @@ import random
 import tempfile
 import uuid
 from math import ceil
-from unittest.mock import Mock, MagicMock, patch, ANY
+from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch, ANY, call
 
 from pydispatch import dispatcher
 import freezegun
@@ -25,6 +27,7 @@ from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
+from golem.core.common import install_reactor
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -39,12 +42,16 @@ from golem.resource import resourcemanager
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.resourcemanager import ResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason, AclRule
+from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import AcceptClientVerdict
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompTaskInfo
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import (
     logger,
     TaskServer,
@@ -53,10 +60,12 @@ from golem.task.taskserver import (
 )
 from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDatabaseWithReactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor, \
+    uninstall_reactor
 
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
-
+from tests.golem.envs.localhost import LocalhostEnvironment, LocalhostConfig, \
+    LocalhostPrerequisites, LocalhostPayloadBuilder
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
 DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
@@ -1687,3 +1696,222 @@ class TestEnvManager(TaskServerAsyncTestBase):
         # Then
         self.ts.get_environment_by_id.assert_called_once()
         self.assertEqual(result, 0.0)
+
+
+class TestNewTaskComputerIntegration(
+        testutils.TestWithClient,
+        testutils.DatabaseFixture,
+        TwistedTestCase
+):
+
+    @classmethod
+    def setUpClass(cls):
+        try:
+            uninstall_reactor()  # Because other tests don't clean up
+        except AttributeError:
+            pass
+        asyncio.set_event_loop(asyncio.new_event_loop())
+        install_reactor()
+
+    @classmethod
+    def cleanUpClass(cls):
+        uninstall_reactor()
+
+    @patch('golem.task.taskserver.TaskHeaderKeeper', spec=TaskHeaderKeeper)
+    @patch('golem.task.taskserver.ResourceManager', spec_set=ResourceManager)
+    @patch('golem.task.taskserver.BenchmarkManager', spec_set=BenchmarkManager)
+    @patch('golem.task.taskserver.TaskManager', spec=TaskManager)
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    @patch(
+        'golem.task.taskserver.DockerTaskApiPayloadBuilder',
+        LocalhostPayloadBuilder
+    )
+    def setUp(  # pylint: disable=too-many-arguments,arguments-differ
+            self,
+            docker_env,
+            task_manager,
+            benchmark_manager,
+            resource_manager,
+            task_header_keeper,
+    ):
+        testutils.TestWithClient.setUp(self)
+        testutils.DatabaseFixture.setUp(self)
+
+        docker_env.return_value = LocalhostEnvironment(
+            config=LocalhostConfig(),
+            env_id=DockerCPUEnvironment.ENV_ID
+        )
+        benchmark_manager().benchmarks_needed.return_value = False
+        self.resource_manager = resource_manager()
+        self.resource_manager.download.return_value = defer.succeed(None)
+        self.task_header_keeper = task_header_keeper()
+        self.comp_task_keeper = Mock(spec=CompTaskKeeper)
+        task_manager.return_value.apps_manager = Mock()
+        task_manager.return_value.comp_task_keeper = self.comp_task_keeper
+
+        trust_patch = patch('golem.task.taskserver.Trust')
+        self.addCleanup(trust_patch.stop)
+        self.trust = trust_patch.start()
+
+        self.task_finished = defer.Deferred()
+        self.task_server = TaskServer(
+            node=dt_p2p_factory.Node(),
+            config_desc=ClientConfigDescriptor(),
+            client=self.client,
+            task_finished_cb=lambda: self.task_finished.callback(None),
+            use_docker_manager=False
+        )
+
+    @property
+    def task_id(self):
+        return 'test_task'
+
+    @property
+    def subtask_id(self):
+        return 'test_subtask'
+
+    @property
+    def subtask_params(self):
+        return {'param': 'value'}
+
+    @property
+    def env_id(self):
+        return DockerCPUEnvironment.ENV_ID
+
+    def _get_task_to_compute(self, prereq):
+        msg = msg_factories.tasks.TaskToComputeFactory()
+        # pylint: disable=unsupported-assignment-operation
+        msg.compute_task_def['task_id'] = self.task_id
+        msg.compute_task_def['subtask_id'] = self.subtask_id
+        msg.compute_task_def['resources'] = ['test_resource']
+        msg.compute_task_def['extra_data'] = self.subtask_params
+        # pylint: enable=unsupported-assignment-operation
+        task_header = msg.want_to_compute_task.task_header
+        task_header.task_id = self.task_id
+        task_header.environment = self.env_id
+        task_header.environment_prerequisites = prereq.to_dict()
+        comp_task_info = CompTaskInfo(task_header, 1.2)
+
+        self.task_header_keeper.task_headers = {self.task_id: task_header}
+        self.comp_task_keeper.get_task_id_for_subtask.return_value = \
+            self.task_id
+        self.comp_task_keeper.get_task_header.return_value = task_header
+        self.comp_task_keeper.get_node_for_task_id.return_value = 'test_node'
+        self.comp_task_keeper.active_tasks = {self.task_id: comp_task_info}
+
+        return msg
+
+    @defer.inlineCallbacks
+    def test_successful_computation(self):
+        # Given
+        result_path = 'test_result'
+        result_hash = 'test_result_hash'
+        self.resource_manager.share.return_value = result_hash
+
+        subtask_id = self.subtask_id
+        subtask_params = self.subtask_params
+
+        async def compute(given_id, given_params):
+            assert given_id == subtask_id
+            assert given_params == subtask_params
+            return result_path
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        task_computer_root = Path(self.task_server.get_task_computer_root())
+        full_result_path = \
+            task_computer_root / self.env_id / self.task_id / result_path
+        self.resource_manager.share.asssert_called_once_with(full_result_path)
+
+        result_to_send = self.task_server.results_to_send[self.subtask_id]
+        self.assertEqual(result_to_send.task_id, self.task_id)
+        self.assertEqual(result_to_send.subtask_id, self.subtask_id)
+        self.assertEqual(result_to_send.result, full_result_path)
+        self.assertEqual(result_to_send.result_hash, result_hash)
+        self.assertNotIn(self.subtask_id, self.task_server.failures_to_send)
+
+        self.trust.REQUESTED.increase.assert_called_once_with(
+            msg.want_to_compute_task.task_header.task_owner.key)
+        self.trust.REQUESTED.decrease.assert_not_called()
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )
+
+    @defer.inlineCallbacks
+    def test_computation_error(self):
+        # Given
+        error_msg = 'computation failed'
+
+        async def compute(_, __):
+            raise OSError(error_msg)
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        self.resource_manager.share.asssert_not_called()
+
+        self.assertNotIn(self.subtask_id, self.task_server.results_to_send)
+        failure_to_send = self.task_server.failures_to_send[self.subtask_id]
+        self.assertEqual(failure_to_send.task_id, self.task_id)
+        self.assertEqual(failure_to_send.subtask_id, self.subtask_id)
+        self.assertEqual(
+            failure_to_send.owner,
+            msg.want_to_compute_task.task_header.task_owner)
+        self.assertIn(error_msg, failure_to_send.err_msg)
+
+        self.trust.REQUESTED.increase.assert_not_called()
+        self.trust.REQUESTED.decrease.assert_called_once_with(
+            msg.want_to_compute_task.task_header.task_owner.key)
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )
+
+    @defer.inlineCallbacks
+    def test_computation_timed_out(self):
+        # Given
+        async def compute(_, __):
+            await asyncio.sleep(10)
+            return ''
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+        msg.want_to_compute_task.task_header.deadline = time.time()
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        self.resource_manager.share.asssert_not_called()
+
+        self.assertNotIn(self.subtask_id, self.task_server.results_to_send)
+        self.assertNotIn(self.subtask_id, self.task_server.failures_to_send)
+
+        self.trust.REQUESTED.increase.assert_not_called()
+        self.trust.REQUESTED.decrease.assert_not_called()
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )
