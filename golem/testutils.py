@@ -182,8 +182,12 @@ class AsyncDatabaseFixture():
     """ Setups temporary database for tests."""
 
     def setup_method(self, tmpdir):
-        self.database = Database(db, fields=DB_FIELDS, models=DB_MODELS,
-                                 db_dir=tmpdir)
+        self.database = Database(
+            db,
+            fields=DB_FIELDS,
+            models=DB_MODELS,
+            db_dir=tmpdir
+        )
 
     def teardown_method(self):
         self.database.db.close()
