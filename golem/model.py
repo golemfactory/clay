@@ -540,6 +540,7 @@ class Performance(BaseModel):
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db
