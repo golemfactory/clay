@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import functools
+import asyncio
 import itertools
 import logging
 import os
@@ -33,7 +34,7 @@ from apps.core.task.coretask import CoreTask
 from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
-from golem.core.deferred import sync_wait
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -296,12 +297,27 @@ class TaskServer(
 
     @inlineCallbacks
     def pause(self):
+        logger.info('TaskServer.pause()')
         super().pause()
+        logger.info('TaskServer.pause() - pause verificatiopn')
         yield CoreTask.VERIFICATION_QUEUE.pause()
+        quit_f = asyncio.ensure_future(self.requested_task_manager.quit())
+        logger.info('TaskServer.pause() - quit rtm')
+        yield deferred_from_future(quit_f)
+        logger.info('TaskServer.pause() - disconnect')
+        self.disconnect()
+        logger.info('TaskServer.pause() - task_computer.quit()')
+        self.task_computer.quit()
 
     def resume(self):
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
+
+    @inlineCallbacks
+    def quit(self):
+        quit_f = asyncio.ensure_future(self.requested_task_manager.quit())
+        yield deferred_from_future(quit_f)
+        self.task_computer.quit()
 
     def get_environment_by_id(
             self,
@@ -893,9 +909,6 @@ class TaskServer(
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
-
-    def quit(self):
-        self.task_computer.quit()
 
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(

@@ -12,6 +12,7 @@ from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
 from golem.app_manager import AppManager
+from golem.envs.auto_setup import auto_setup
 from golem.model import (
     ComputingNode,
     default_now,
@@ -363,6 +364,18 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.save()
 
+    async def quit(self):
+        logger.info('quit()')
+        # Abort active tasks?
+
+        # Shutdown registered app_clients
+        for app_id, app_client in self._app_clients:
+            logger.info('Shutting down app. app_id=%r', app_id)
+            await app_client.Shutdown()
+            del self._app_clients[app_id]
+
+        logger.info('quit() - DONE')
+
     async def _get_app_client(
             self,
             app_id: str,
@@ -396,7 +409,7 @@ class RequestedTaskManager:
             raise RuntimeError(
                 "Error connecting to app, environment not enabled."
                 f" env={env_id}, app={app_id}")
-        env = self._env_manager.environment(env_id)
+        env = auto_setup(self._env_manager.environment(env_id))
         payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
         shared_dir = self._dir_manager.get_app_dir(app_id)

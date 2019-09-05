@@ -27,6 +27,7 @@ from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
+from golem.core.deferred import sync_wait
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -853,22 +854,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert self.ts.get_download_options(
             received_options=Mock(filtered=Mock(side_effect=Exception)),
         ) is built_options
-
-    def test_pause_and_resume(self, *_):
-        from apps.core.task.coretask import CoreTask
-
-        assert not self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.resume()
-
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.pause()
-
-        assert not self.ts.active
-        assert CoreTask.VERIFICATION_QUEUE._paused
 
     def test_add_task_header_invalid_sig(self):
         self.ts._verify_header_sig = lambda _: False
@@ -1919,3 +1904,22 @@ class TestNewTaskComputerIntegration(
                 call.task_ended(self.task_id)
             ]
         )
+
+
+class TestTaskServerAsync(TaskServerTestBase, TwistedAsyncioTestCase):
+    @defer.inlineCallbacks
+    def test_pause_and_resume(self, *_):
+        from apps.core.task.coretask import CoreTask
+
+        assert self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        yield self.ts.pause()
+
+        assert not self.ts.active
+        assert CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
+        assert self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused

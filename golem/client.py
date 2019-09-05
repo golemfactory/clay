@@ -32,6 +32,7 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
+from golem.core.deferred import sync_wait
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -359,7 +360,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.task_computer.quit()
+            sync_wait(self.task_server.quit())
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)
@@ -598,19 +599,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
+        logger.info('services = %r', self._services)
         for service in self._services:
             if service.running:
                 service.stop()
 
         if self.p2pservice:
-            logger.debug("Pausing p2pservice")
+            logger.info("Pausing p2pservice")
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            logger.debug("Pausing task_server")
+            logger.info("Pausing task_server")
             yield self.task_server.pause()
-            self.task_server.disconnect()
-            self.task_server.task_computer.quit()
         logger.info("Paused")
 
     @rpc_utils.expose('ui.start')
