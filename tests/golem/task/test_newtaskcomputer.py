@@ -14,7 +14,10 @@ from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.envs import Runtime
-from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
+from golem.envs.docker.cpu import (
+    DOCKER_CPU_ENV_ID,
+    DockerCPUConfig
+)
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
 from golem.testutils import TempDirFixture
@@ -25,7 +28,7 @@ class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
 
     def setUp(self):
         def enabled(env_id):
-            return env_id == DockerCPUEnvironment.ENV_ID
+            return env_id == DOCKER_CPU_ENV_ID
 
         super().setUp()
         self.env_manager = mock.Mock(spec=EnvironmentManager)
@@ -371,8 +374,7 @@ class TestChangeConfig(NewTaskComputerTestBase):
         yield self.task_computer.change_config(config_desc, work_dir)
 
         self.assertEqual(self.task_computer._work_dir, work_dir)
-        self.env_manager.environment.assert_called_once_with(
-            DockerCPUEnvironment.ENV_ID)
+        self.env_manager.environment.assert_called_once_with(DOCKER_CPU_ENV_ID)
         self.env_manager.environment().update_config.assert_called_once_with(
             DockerCPUConfig(
                 work_dirs=[Path('test_dir')],

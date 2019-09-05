@@ -1,41 +1,45 @@
 import logging
-from typing import Dict, List, NamedTuple, Type, Optional
+from typing import Dict, List, Type, Optional
 
+from dataclasses import dataclass
 from twisted.internet.defer import Deferred, inlineCallbacks
 
-from golem.envs import EnvId, Environment
+from golem.envs import EnvId, Environment, EnvMetadata
 from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
 
 logger = logging.getLogger(__name__)
 
 
-class EnvEntry(NamedTuple):
-    instance: Environment
-    payload_builder: Type[TaskApiPayloadBuilder]
-
-
 class EnvironmentManager:
     """ Manager class for all Environments. """
 
+    @dataclass
+    class EnvEntry:
+        instance: Environment
+        metadata: EnvMetadata
+        payload_builder: Type[TaskApiPayloadBuilder]
+
     def __init__(self):
-        self._envs: Dict[EnvId, EnvEntry] = {}
+        self._envs: Dict[EnvId, EnvironmentManager.EnvEntry] = {}
         self._state: Dict[EnvId, bool] = {}
         self._running_benchmark: bool = False
 
     def register_env(
             self,
             env: Environment,
+            metadata: EnvMetadata,
             payload_builder: Type[TaskApiPayloadBuilder],
     ) -> None:
         """ Register an Environment (i.e. make it visible to manager). """
-        env_id = env.metadata().id
-        if env_id not in self._envs:
-            self._envs[env_id] = EnvEntry(
-                instance=env,
-                payload_builder=payload_builder,
-            )
-            self._state[env_id] = False
+        if metadata.id in self._envs:
+            raise ValueError(f"Environment '{metadata.id}' already registered.")
+        self._envs[metadata.id] = EnvironmentManager.EnvEntry(
+            instance=env,
+            metadata=metadata,
+            payload_builder=payload_builder,
+        )
+        self._state[metadata.id] = False
 
     def state(self) -> Dict[EnvId, bool]:
         """ Get the state (enabled or not) for all registered Environments. """
@@ -59,16 +63,21 @@ class EnvironmentManager:
         if env_id in self._state:
             self._state[env_id] = enabled
 
-    def environments(self) -> List[Environment]:
-        """ Get all registered Environments. """
-        return [entry.instance for entry in self._envs.values()]
+    def environments(self) -> List[EnvId]:
+        """ Get all registered Environment IDs. """
+        return [entry.metadata.id for entry in self._envs.values()]
 
     def environment(self, env_id: EnvId) -> Environment:
         """ Get Environment with the given ID. Assumes such Environment is
             registered. """
         return self._envs[env_id].instance
 
+    def metadata(self, env_id: EnvId) -> EnvMetadata:
+        """ Get metadata for environment with the given ID. """
+        return self._envs[env_id].metadata
+
     def payload_builder(self, env_id: EnvId) -> Type[TaskApiPayloadBuilder]:
+        """ Get payload builder class for environment with the given ID. """
         return self._envs[env_id].payload_builder
 
     @inlineCallbacks
