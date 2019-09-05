@@ -176,10 +176,10 @@ class TaskServer(
             finished_cb=task_finished_cb,
         )
         self.requested_task_manager = RequestedTaskManager(
-            env_manager=new_env_manager,
             app_manager=AppManager(),
-            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
+            root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
