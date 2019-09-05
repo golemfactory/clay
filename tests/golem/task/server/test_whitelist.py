@@ -38,9 +38,8 @@ class TestDiscoveryStorage(TestWithDatabase):
         assert event_publisher.publish.call_count == MAX_IMAGES * 2
         assert len(self.whitelist_rpc._discovered) == MAX_IMAGES
 
-        for i in range(MAX_IMAGES):
-            discovered_app = self.whitelist_rpc._discovered[i]
-            assert discovered_app.name == f'repo/{MAX_IMAGES + i}'
+        for i, name in enumerate(self.whitelist_rpc._discovered.keys()):
+            assert name == f'repo/{MAX_IMAGES + i}'
 
     def test_discovered_twice(self, event_publisher):
 
@@ -49,7 +48,7 @@ class TestDiscoveryStorage(TestWithDatabase):
             self.whitelist_rpc._docker_image_discovered(name=f'repo/0')
 
         assert len(self.whitelist_rpc._discovered) == 1
-        discovered = self.whitelist_rpc._discovered[0]
+        discovered = next(iter(self.whitelist_rpc._discovered.values()))
         assert discovered.discovery_ts == initial_time
         assert discovered.last_seen_ts == initial_time
         assert discovered.times_seen == 1
@@ -60,7 +59,7 @@ class TestDiscoveryStorage(TestWithDatabase):
             self.whitelist_rpc._docker_image_discovered(name=f'repo/0')
 
         assert len(self.whitelist_rpc._discovered) == 1
-        discovered = self.whitelist_rpc._discovered[0]
+        discovered = next(iter(self.whitelist_rpc._discovered.values()))
         assert discovered.discovery_ts == initial_time
         assert discovered.last_seen_ts == update_time
         assert discovered.times_seen == 2
@@ -113,9 +112,9 @@ class TestAppManagerRPCMethods(TestWithDatabase):
             isinstance(key, str) and isinstance(value, dict)
             for key, value in discovered.items())
 
-    def test_docker_whitelist_get(self, whitelist):
-        self.whitelist_rpc._docker_whitelist_get()
-        assert whitelist.get.call_count == 1
+    def test_docker_whitelist_get_all(self, whitelist):
+        self.whitelist_rpc._docker_whitelist_get_all()
+        assert whitelist.get_all.call_count == 1
 
     def test_docker_whitelist_add(self, whitelist):
         self.whitelist_rpc._docker_refresh_discovered_images = mock.Mock()

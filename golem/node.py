@@ -38,8 +38,13 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage, report_calls, \
-    EventPublisher
+from golem.report import (
+    Component,
+    EventPublisher,
+    Stage,
+    StatusPublisher,
+    report_calls,
+)
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter

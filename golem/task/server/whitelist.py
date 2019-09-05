@@ -25,7 +25,7 @@ class DiscoveredDockerImage:
 
 class DockerWhitelistRPC:
     def __init__(self) -> None:
-        self._discovered: List[DiscoveredDockerImage] = list()
+        self._discovered: Dict[str, DiscoveredDockerImage] = dict()
 
     def _docker_image_discovered(
             self,
@@ -33,13 +33,12 @@ class DockerWhitelistRPC:
     ) -> None:
         if Whitelist.is_whitelisted(name):
             return
-        for discovered in self._discovered:
-            if discovered.name == name:
-                discovered.appeared()
-                return
+        if name in self._discovered:
+            self._discovered[name].appeared()
+            return
 
         discovered_image = DiscoveredDockerImage(name)
-        self._discovered.append(discovered_image)
+        self._discovered[name] = discovered_image
         self._docker_refresh_discovered_images()
 
         EventPublisher.publish(
@@ -50,33 +49,34 @@ class DockerWhitelistRPC:
     def _docker_refresh_discovered_images(self) -> None:
         """ Update the internal discovered Docker image collection based on
             Whitelist status and the number of MAX_DISCOVERED_IMAGES stored """
-        self._discovered = [
-            discovered for discovered in self._discovered
-            if not Whitelist.is_whitelisted(
-                repository_from_image_name(discovered.name))
-        ]
-        self._discovered = self._discovered[-MAX_DISCOVERED_IMAGES:]
+        self._discovered = {
+            name: discovered
+            for name, discovered in self._discovered.items()
+            if not Whitelist.is_whitelisted(name)
+        }
+
+        while len(self._discovered) > MAX_DISCOVERED_IMAGES:
+            first_key = next(iter(self._discovered.keys()))
+            del self._discovered[first_key]
 
     @rpc_utils.expose('env.docker.images.discovered')
     def _docker_discovered_get(self) -> Dict[str, Dict[str, Any]]:
         return {
-            discovered.name: asdict(discovered)
-            for discovered in self._discovered
+            key: asdict(value)
+            for key, value in self._discovered.items()
         }
 
     @staticmethod
-    @rpc_utils.expose('env.docker.images.whitelist')
-    def _docker_whitelist_get() -> List[str]:
-        return Whitelist.get()
+    @rpc_utils.expose('env.docker.repos.whitelist')
+    def _docker_whitelist_get_all() -> List[str]:
+        return Whitelist.get_all()
 
-    @rpc_utils.expose('env.docker.images.whitelist.add')
-    def _docker_whitelist_add(self, image_name: str) -> None:
-        repository = repository_from_image_name(image_name)
+    @rpc_utils.expose('env.docker.repos.whitelist.add')
+    def _docker_whitelist_add(self, repository: str) -> None:
         Whitelist.add(repository)
         self._docker_refresh_discovered_images()
 
     @staticmethod
-    @rpc_utils.expose('env.docker.images.whitelist.remove')
-    def _docker_whitelist_remove(image_name: str) -> None:
-        repository = repository_from_image_name(image_name)
+    @rpc_utils.expose('env.docker.repos.whitelist.remove')
+    def _docker_whitelist_remove(repository: str) -> None:
         Whitelist.remove(repository)

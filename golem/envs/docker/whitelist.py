@@ -10,7 +10,7 @@ def repository_from_image_name(image_name: str) -> str:
 class Whitelist:
 
     @staticmethod
-    def get() -> List[str]:
+    def get_all() -> List[str]:
         return [
             whitelisted.repository for whitelisted in
             golem.model.DockerWhitelist.select().execute()
