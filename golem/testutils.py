@@ -10,6 +10,7 @@ from time import sleep
 
 import ethereum.keys
 import pycodestyle
+import pytest
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
@@ -178,16 +179,13 @@ def async_test(coro):
     return wrapper
 
 
-class AsyncDatabaseFixture():
-    """ Setups temporary database for tests."""
-
-    def setup_method(self, tmpdir):
-        self.database = Database(
-            db,
-            fields=DB_FIELDS,
-            models=DB_MODELS,
-            db_dir=tmpdir
-        )
-
-    def teardown_method(self):
-        self.database.db.close()
+@pytest.fixture
+def pytest_database_fixture(tmpdir):
+    database = Database(
+        db,
+        fields=DB_FIELDS,
+        models=DB_MODELS,
+        db_dir=tmpdir
+    )
+    yield database
+    database.db.close()

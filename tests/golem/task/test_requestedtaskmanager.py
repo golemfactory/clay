@@ -20,7 +20,7 @@ from golem.task.requestedtaskmanager import (
     ComputingNodeDefinition,
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
-from golem.testutils import AsyncDatabaseFixture
+from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 
 
 class AsyncMock(MagicMock):
@@ -40,11 +40,11 @@ def mock_client(monkeypatch):
     return _mock_client
 
 
-class TestRequestedTaskManager(AsyncDatabaseFixture):
+@pytest.mark.usefixtures('pytest_database_fixture')
+class TestRequestedTaskManager():
 
     @pytest.fixture(autouse=True)
     def setup_method(self, tmpdir):
-        super().setup_method(tmpdir)
         # TODO: Replace with tmp_path when pytest is updated to 5.x
         self.tmp_path = Path(tmpdir)
 
@@ -77,8 +77,6 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
     @pytest.mark.asyncio
     async def test_init_task(self, mock_client):
         # given
-        # mock_client = self._mock_client_create()
-
         task_id = self._create_task()
         # when
         await self.rtm.init_task(task_id)
@@ -96,7 +94,6 @@ class TestRequestedTaskManager(AsyncDatabaseFixture):
     @pytest.mark.asyncio
     async def test_init_task_wrong_status(self):
         # given
-
         task_id = self._create_task()
         # when
         await self.rtm.init_task(task_id)
