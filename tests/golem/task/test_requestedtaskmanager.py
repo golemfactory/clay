@@ -264,7 +264,7 @@ class TestRequestedTaskManager():
         return task_id
 
     @staticmethod
-    def _add_next_subtask_to_client_mock(_mock_client):
+    def _add_next_subtask_to_client_mock(client_mock):
         result = Subtask(subtask_id='', params={}, resources=[])
-        _mock_client.next_subtask.return_value = result
-        _mock_client.has_pending_subtasks.return_value = True
+        client_mock.next_subtask.return_value = result
+        client_mock.has_pending_subtasks.return_value = True
