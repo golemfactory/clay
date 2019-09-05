@@ -35,7 +35,7 @@ from golem.environments.environment import (
     UnsupportReason,
 )
 from golem.envs import Environment as NewEnv
-from golem.envs.docker.cpu import DockerCPUEnvironment
+from golem.envs.docker.cpu import DOCKER_CPU_ENV_ID
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
@@ -1736,7 +1736,7 @@ class TestNewTaskComputerIntegration(
 
         docker_env.return_value = LocalhostEnvironment(
             config=LocalhostConfig(),
-            env_id=DockerCPUEnvironment.ENV_ID
+            env_id=DOCKER_CPU_ENV_ID,
         )
         benchmark_manager().benchmarks_needed.return_value = False
         self.resource_manager = resource_manager()
@@ -1773,7 +1773,7 @@ class TestNewTaskComputerIntegration(
 
     @property
     def env_id(self):
-        return DockerCPUEnvironment.ENV_ID
+        return DOCKER_CPU_ENV_ID
 
     def _get_task_to_compute(self, prereq):
         msg = msg_factories.tasks.TaskToComputeFactory()
