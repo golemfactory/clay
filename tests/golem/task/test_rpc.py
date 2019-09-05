@@ -194,6 +194,31 @@ class TestCreateTask(ProviderBase, TestClientBase):
                                              '0.166667, available: 0.000000\n')
 
 
+class TestCreateTaskDryRun(ProviderBase):
+    def test_success(self):
+        # given
+        self.t_dict['subtasks_count'] = 0
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert error is None
+        assert new_dict['id'] is not None
+        assert new_dict['subtasks_count'] == 10
+
+    def test_failure(self):
+        # given
+        self.t_dict['type'] = "unknown"
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert new_dict is None
+        assert error is not None
+
+
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
 
     def test_validate_lock_funds_possibility_raises_if_not_enough_funds(self):
@@ -589,20 +614,6 @@ class TestValidateTaskDict(ProviderBase):
         self.client.concent_service.enabled = True
         rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
         self.assertFalse(self.t_dict['concent_enabled'])
-
-
-    @mock.patch(
-        "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
-    )
-    def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks_count'] - 1
-        calculate_mock.return_value = computed_subtasks
-        msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks_count'],
-            computed_subtasks,
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            rpc._validate_task_dict(self.client, self.t_dict)
 
 
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
@@ -1158,9 +1169,9 @@ class TestGetFragments(ProviderBase):
 
     def test_no_subtasks(self, *_):
         task_id = str(uuid.uuid4())
-        subtask_count = 5
+        subtasks_count = 5
         mock_task = Mock(spec=RenderingTask)
-        mock_task.total_tasks = subtask_count
+        mock_task.get_total_tasks.return_value = subtasks_count
         mock_task_state = Mock()
         mock_task_state.subtask_states = None
         tm = self.provider.task_manager
@@ -1169,6 +1180,6 @@ class TestGetFragments(ProviderBase):
 
         task_fragments, error = self.provider.get_fragments(task_id)
 
-        self.assertEqual(len(task_fragments), subtask_count)
+        self.assertEqual(len(task_fragments), subtasks_count)
         subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
         self.assertFalse(subtasks)

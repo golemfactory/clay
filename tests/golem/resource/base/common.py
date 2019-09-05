@@ -112,7 +112,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".register_handler"):
             client.task_server = TaskServer(
                 node=dt_p2p_factory.Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
-                config_desc=mock.Mock(),
+                config_desc=client.config_desc,
                 client=client,
                 use_docker_manager=False,
             )
