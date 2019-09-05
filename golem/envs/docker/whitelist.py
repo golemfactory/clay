@@ -4,7 +4,7 @@ import golem.model
 
 
 def repository_from_image_name(image_name: str) -> str:
-    return image_name.split('/')[0]
+    return image_name.rsplit('/', maxsplit=1)[0]
 
 
 class Whitelist:
