@@ -421,9 +421,6 @@ class WasmTask(CoreTask):
         if not was_failure_before:
             subtask_info['status'] = SubtaskStatus.restarted
 
-    def abort(self):
-        raise NotImplementedError()
-
     def get_progress(self) -> float:
         """
         Returns current progress.
