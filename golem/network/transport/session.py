@@ -19,15 +19,15 @@ class FileSession(Session, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def data_sent(self, extra_data=None):
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def full_data_received(self, extra_data=None):
-        return
+        raise NotImplementedError
 
     @abc.abstractmethod
     def production_failed(self, extra_data=None):
-        return
+        raise NotImplementedError
 
 
 class BasicSession(FileSession):
@@ -41,7 +41,7 @@ class BasicSession(FileSession):
         :param Protocol conn: connection protocol implementation that
                               this session should enhance.
         """
-        Session.__init__(self, conn)
+        Session.__init__(self)
         self.conn = conn
 
         pp = conn.transport.getPeer()

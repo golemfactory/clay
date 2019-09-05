@@ -60,7 +60,7 @@ class GolemVM(IGolemVM):
 
     @abc.abstractmethod
     def _interpret(self):
-        return
+        raise NotImplementedError
 
 
 class PythonVM(GolemVM):

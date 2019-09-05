@@ -1,13 +1,16 @@
 import logging
+import os
+from copy import deepcopy
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
 from threading import Thread, Lock
 from time import sleep
 from typing import Optional, Any, Dict, List, Type, ClassVar, \
-    NamedTuple, Tuple, Iterator, Union, Iterable
+    Tuple, Iterator, Union, Iterable
 
+from dataclasses import dataclass, field, asdict
 from docker.errors import APIError
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
 
@@ -20,12 +23,12 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
-from golem.docker.task_thread import DockerBind
-from golem.envs import Environment, EnvSupportStatus, Payload, EnvConfig, \
-    Runtime, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus, \
-    EnvId, Prerequisites, RuntimeOutput, RuntimeInput
-from golem.envs.docker import DockerPayload, DockerPrerequisites
+from golem.envs import (
+    EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
+    RuntimeBase, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
+    EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
+)
+from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
 logger = logging.getLogger(__name__)
@@ -35,24 +38,23 @@ mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
 
-class DockerCPUConfigData(NamedTuple):
-    work_dir: Path
+@dataclass
+class DockerCPUConfig(EnvConfig):
+    # The directories this environment is allowed to work in
+    work_dirs: List[Path] = field(default_factory=list)
     memory_mb: int = 1024
     cpu_count: int = 1
 
-
-class DockerCPUConfig(DockerCPUConfigData, EnvConfig):
-    """ This exists because NamedTuple must be single superclass """
-
     def to_dict(self) -> Dict[str, Any]:
-        dict_ = self._asdict()
-        dict_['work_dir'] = str(dict_['work_dir'])
+        dict_ = asdict(self)
+        dict_['work_dirs'] = [str(work_dir) for work_dir in dict_['work_dirs']]
         return dict_
 
-    @staticmethod
-    def from_dict(dict_: Dict[str, Any]) -> 'DockerCPUConfig':
-        work_dir = Path(dict_.pop('work_dir'))
-        return DockerCPUConfig(work_dir=work_dir, **dict_)
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'DockerCPUConfig':
+        _work_dirs = data.pop('work_dirs')
+        work_dirs = [Path(work_dir) for work_dir in _work_dirs]
+        return cls(work_dirs=work_dirs, **data)
 
 
 class DockerOutput(RuntimeOutput):
@@ -129,7 +131,15 @@ class DockerInput(RuntimeInput):
         self._sock.close()
 
 
-class DockerCPURuntime(Runtime):
+class ContainerPortMapper:
+    def __init__(self, hypervisor: Hypervisor) -> None:
+        self._hypervisor = hypervisor
+
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        return self._hypervisor.get_port_mapping(container_id, port)
+
+
+class DockerCPURuntime(RuntimeBase):
 
     CONTAINER_RUNNING: ClassVar[List[str]] = ["running"]
     CONTAINER_STOPPED: ClassVar[List[str]] = ["exited", "dead"]
@@ -138,28 +148,21 @@ class DockerCPURuntime(Runtime):
 
     def __init__(
             self,
-            payload: DockerPayload,
-            host_config: Dict[str, Any],
-            volumes: Optional[List[str]]
+            container_config: Dict[str, Any],
+            port_mapper: ContainerPortMapper,
+            runtime_logger: Optional[logging.Logger] = None,
     ) -> None:
-        super().__init__(logger=logger)
+        super().__init__(logger=runtime_logger or logger)
 
-        image = f"{payload.image}:{payload.tag}"
         client = local_client()
 
         self._status_update_thread: Optional[Thread] = None
         self._container_id: Optional[str] = None
         self._stdin_socket: Optional[InputSocket] = None
+        self._port_mapper = port_mapper
+
         self._container_config = client.create_container_config(
-            image=image,
-            volumes=volumes,
-            command=payload.command,
-            user=payload.user,
-            environment=payload.env,
-            working_dir=payload.work_dir,
-            host_config=host_config,
-            stdin_open=True
-        )
+            **container_config)
 
     def _inspect_container(self) -> Tuple[str, int]:
         """ Inspect Docker container associated with this runtime. Returns
@@ -179,7 +182,7 @@ class DockerCPURuntime(Runtime):
             if self._status != RuntimeStatus.RUNNING:
                 return
 
-            logger.debug("Updating runtime status...")
+            self._logger.debug("Updating runtime status...")
 
             try:
                 container_status, exit_code = self._inspect_container()
@@ -188,7 +191,7 @@ class DockerCPURuntime(Runtime):
                 return
 
             if container_status in self.CONTAINER_RUNNING:
-                logger.debug("Container still running, no status update.")
+                self._logger.debug("Container still running, no status update.")
 
             elif container_status in self.CONTAINER_STOPPED:
                 if exit_code == 0:
@@ -208,14 +211,14 @@ class DockerCPURuntime(Runtime):
             self._update_status()
             sleep(self.STATUS_UPDATE_INTERVAL)
 
-        logger.info("Runtime is no longer running. "
-                    "Stopping status update thread.")
+        self._logger.info("Runtime is no longer running. "
+                          "Stopping status update thread.")
 
     def prepare(self) -> Deferred:
         self._change_status(
             from_status=RuntimeStatus.CREATED,
             to_status=RuntimeStatus.PREPARING)
-        logger.info("Preparing runtime...")
+        self._logger.info("Preparing runtime...")
 
         def _prepare():
             client = local_client()
@@ -226,7 +229,7 @@ class DockerCPURuntime(Runtime):
             self._container_id = container_id
 
             for warning in result.get("Warnings") or []:
-                logger.warning("Container creation warning: %s", warning)
+                self._logger.warning("Container creation warning: %s", warning)
 
             sock = client.attach_socket(
                 container_id, params={'stdin': True, 'stream': True}
@@ -243,7 +246,7 @@ class DockerCPURuntime(Runtime):
         self._change_status(
             from_status=[RuntimeStatus.FAILURE, RuntimeStatus.STOPPED],
             to_status=RuntimeStatus.CLEANING_UP)
-        logger.info("Cleaning up runtime...")
+        self._logger.info("Cleaning up runtime...")
 
         def _clean_up():
             client = local_client()
@@ -266,17 +269,17 @@ class DockerCPURuntime(Runtime):
         self._change_status(
             from_status=RuntimeStatus.PREPARED,
             to_status=RuntimeStatus.STARTING)
-        logger.info("Starting container '%s'...", self._container_id)
+        self._logger.info("Starting container '%s'...", self._container_id)
 
         def _start():
             client = local_client()
             client.start(self._container_id)
 
         def _spawn_status_update_thread(_):
-            logger.debug("Spawning status update thread...")
+            self._logger.debug("Spawning status update thread...")
             self._status_update_thread = Thread(target=self._update_status_loop)
             self._status_update_thread.start()
-            logger.debug("Status update thread spawned.")
+            self._logger.debug("Status update thread spawned.")
 
         deferred_start = deferToThread(_start)
         deferred_start.addCallback(self._started)
@@ -288,19 +291,19 @@ class DockerCPURuntime(Runtime):
     def stop(self) -> Deferred:
         with self._status_lock:
             self._assert_status(self._status, RuntimeStatus.RUNNING)
-        logger.info("Stopping container '%s'...", self._container_id)
+        self._logger.info("Stopping container '%s'...", self._container_id)
 
         def _stop():
             client = local_client()
             client.stop(self._container_id)
 
         def _join_status_update_thread(res):
-            logger.debug("Joining status update thread...")
+            self._logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
-                logger.warning("Failed to join status update thread.")
+                self._logger.warning("Failed to join status update thread.")
             else:
-                logger.debug("Status update thread joined.")
+                self._logger.debug("Status update thread joined.")
             return res
 
         def _close_stdin(res):
@@ -336,7 +339,7 @@ class DockerCPURuntime(Runtime):
 
         assert stdout or stderr
         assert self._container_id is not None
-        logger.debug(
+        self._logger.debug(
             "Attaching to output of container '%s'...", self._container_id)
         client = local_client()
 
@@ -344,7 +347,7 @@ class DockerCPURuntime(Runtime):
             raw_output = client.attach(
                 container=self._container_id,
                 stdout=stdout, stderr=stderr, logs=True, stream=stream)
-            logger.debug("Successfully attached to output.")
+            self._logger.debug("Successfully attached to output.")
             # If not using stream the output is a single `bytes` object
             return raw_output if stream else [raw_output]
         except APIError as e:
@@ -378,7 +381,8 @@ class DockerCPURuntime(Runtime):
         # between checking and attaching to the output.
         self._update_status()
         if self.status() not in stream_available:
-            logger.debug("Container no longer running. Getting offline output.")
+            self._logger.debug("Container no longer running. "
+                               "Getting offline output.")
             raw_output = self._get_raw_output(stream=False, **kwargs)
 
         return DockerOutput(raw_output, encoding=encoding)
@@ -389,14 +393,15 @@ class DockerCPURuntime(Runtime):
     def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
         return self._get_output(stderr=True, encoding=encoding)
 
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        assert self._container_id is not None
+        return self._port_mapper.get_port_mapping(self._container_id, port)
+
     def usage_counters(self) -> Dict[CounterId, CounterUsage]:
         raise NotImplementedError
 
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        raise NotImplementedError
 
-
-class DockerCPUEnvironment(Environment):
+class DockerCPUEnvironment(EnvironmentBase):
 
     ENV_ID: ClassVar[EnvId] = 'docker_cpu'
     ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
@@ -404,9 +409,7 @@ class DockerCPUEnvironment(Environment):
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
-    SHARED_DIR_PATH: ClassVar[str] = '/golem'
-
-    NETWORK_MODE: ClassVar[str] = 'none'
+    NETWORK_MODE: ClassVar[str] = 'bridge'
     DNS_SERVERS: ClassVar[List[str]] = []
     DNS_SEARCH_DOMAINS: ClassVar[List[str]] = []
     DROPPED_KERNEL_CAPABILITIES: ClassVar[List[str]] = [
@@ -431,12 +434,12 @@ class DockerCPUEnvironment(Environment):
         'sys_tty_config'
     ]
 
+    BENCHMARK_IMAGE = 'golemfactory/cpu_benchmark:1.0'
+
     @classmethod
     def supported(cls) -> EnvSupportStatus:
-        logger.info('Checking environment support status...')
         if cls._get_hypervisor_class() is None:
             return EnvSupportStatus(False, "No supported hypervisor found")
-        logger.info('Environment supported.')
         return EnvSupportStatus(True)
 
     @classmethod
@@ -451,12 +454,14 @@ class DockerCPUEnvironment(Environment):
         if is_osx():
             if DockerForMac.is_available():
                 return DockerForMac
-            if XhyveHypervisor.is_available():
-                return XhyveHypervisor
         return None
 
-    def __init__(self, config: DockerCPUConfig) -> None:
-        super().__init__(logger=logger)
+    def __init__(
+            self,
+            config: DockerCPUConfig,
+            env_logger: Optional[logging.Logger] = None,
+    ) -> None:
+        super().__init__(logger=env_logger or logger)
         self._validate_config(config)
         self._config = config
 
@@ -464,6 +469,9 @@ class DockerCPUEnvironment(Environment):
         if hypervisor_cls is None:
             raise EnvironmentError("No supported hypervisor found")
         self._hypervisor = hypervisor_cls.instance(self._get_hypervisor_config)
+        self._port_mapper = ContainerPortMapper(self._hypervisor)
+        self._update_work_dirs(config.work_dirs)
+        self._constrain_hypervisor(config)
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
@@ -476,7 +484,7 @@ class DockerCPUEnvironment(Environment):
             raise ValueError(f"Cannot prepare because environment is in "
                              f"invalid state: '{self._status}'")
         self._status = EnvStatus.PREPARING
-        logger.info("Preparing environment...")
+        self._logger.info("Preparing environment...")
 
         def _prepare():
             try:
@@ -493,7 +501,7 @@ class DockerCPUEnvironment(Environment):
             raise ValueError(f"Cannot clean up because environment is in "
                              f"invalid state: '{self._status}'")
         self._status = EnvStatus.CLEANING_UP
-        logger.info("Cleaning up environment...")
+        self._logger.info("Cleaning up environment...")
 
         def _clean_up():
             try:
@@ -504,6 +512,34 @@ class DockerCPUEnvironment(Environment):
             self._env_disabled()
 
         return deferToThread(_clean_up)
+
+    @inlineCallbacks
+    def run_benchmark(self) -> Deferred:
+        image, tag = self.BENCHMARK_IMAGE.split(':')
+        yield self.install_prerequisites(DockerPrerequisites(
+            image=image,
+            tag=tag,
+        ))
+        payload = DockerRuntimePayload(
+            image=image,
+            tag=tag,
+            user=None if is_windows() else str(os.getuid()),
+            env={},
+        )
+        runtime = self.runtime(payload)
+        yield runtime.prepare()
+        # Connect to stdout before starting the runtime because getting if after
+        # the container stops sometimes fails for unclear reasons
+        stdout = runtime.stdout('utf-8')
+        yield runtime.start()
+        yield runtime.wait_until_stopped()
+        try:
+            if runtime.status() == RuntimeStatus.FAILURE:
+                raise RuntimeError('Benchmark run failed.')
+            # Benchmark is supposed to output a single line containing a float
+            return float(list(stdout)[0])
+        finally:
+            yield runtime.clean_up()
 
     @classmethod
     def metadata(cls) -> EnvMetadata:
@@ -524,15 +560,16 @@ class DockerCPUEnvironment(Environment):
         if self._status != EnvStatus.ENABLED:
             raise ValueError(f"Cannot prepare prerequisites because environment"
                              f"is in invalid state: '{self._status}'")
-        logger.info("Preparing prerequisites...")
+        self._logger.info("Preparing prerequisites...")
+
+        if not Whitelist.is_whitelisted(prerequisites.image):
+            self._logger.info(
+                "Docker image '%s' is not whitelisted.",
+                prerequisites.image,
+            )
+            return succeed(False)
 
         def _prepare():
-            if not Whitelist.is_whitelisted(prerequisites.image):
-                logger.info(
-                    "Docker image '%s' is not whitelisted.",
-                    prerequisites.image,
-                )
-                return False
             try:
                 client = local_client()
                 client.pull(
@@ -553,41 +590,56 @@ class DockerCPUEnvironment(Environment):
         return DockerCPUConfig(**config_dict)
 
     def config(self) -> DockerCPUConfig:
-        return DockerCPUConfig(*self._config)
+        return deepcopy(self._config)
 
     def update_config(self, config: EnvConfig) -> None:
         assert isinstance(config, DockerCPUConfig)
         if self._status != EnvStatus.DISABLED:
             raise ValueError(
                 "Config can be updated only when the environment is disabled")
-        logger.info("Updating environment configuration...")
+        self._logger.info("Updating environment configuration...")
 
+        self._logger.info("Validating configuration...")
         self._validate_config(config)
-        if config.work_dir != self._config.work_dir:
-            self._update_work_dir(config.work_dir)
+        self._logger.info("Configuration positively validated.")
+
+        if config.work_dirs != self._config.work_dirs:
+            self._update_work_dirs(config.work_dirs)
         self._constrain_hypervisor(config)
-        self._config = DockerCPUConfig(*config)
+        self._config = self.parse_config(asdict(config))
         self._config_updated(config)
 
     @classmethod
     def _validate_config(cls, config: DockerCPUConfig) -> None:
-        logger.info("Validating configuration...")
-        if not config.work_dir.is_dir():
-            raise ValueError(f"Invalid working directory: '{config.work_dir}'")
+        for work_dir in config.work_dirs:
+            if not work_dir.is_dir():
+                raise ValueError(f"Invalid working directory: '{work_dir}'")
+            # Check for duplicates, not allowed
+            if config.work_dirs.count(work_dir) > 1:
+                raise ValueError(f"Duplicate working directory: '{work_dir}'")
+            # Check for parents, not allowed
+            for check_dir in config.work_dirs:
+                if check_dir == work_dir:
+                    continue
+                if work_dir in check_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{work_dir}', child='{check_dir}'")
+                if check_dir in work_dir.parents:
+                    raise ValueError("Working dir can not be parent: parent="
+                                     f"'{check_dir}', child='{work_dir}'")
         if config.memory_mb < cls.MIN_MEMORY_MB:
             raise ValueError(f"Not enough memory: {config.memory_mb} MB")
         if config.cpu_count < cls.MIN_CPU_COUNT:
             raise ValueError(f"Not enough CPUs: {config.cpu_count}")
-        logger.info("Configuration positively validated.")
 
-    def _update_work_dir(self, work_dir: Path) -> None:
-        logger.info("Updating hypervisor's working directory...")
+    def _update_work_dirs(self, work_dirs: List[Path]) -> None:
+        self._logger.info("Updating hypervisor's working directory...")
         try:
-            self._hypervisor.update_work_dir(work_dir)
+            self._hypervisor.update_work_dirs(work_dirs)
         except Exception as e:
             self._error_occurred(e, "Updating working directory failed.")
             raise
-        logger.info("Working directory successfully updated.")
+        self._logger.info("Working directory successfully updated.")
 
     def _constrain_hypervisor(self, config: DockerCPUConfig) -> None:
         current = self._hypervisor.constraints()
@@ -597,30 +649,25 @@ class DockerCPUEnvironment(Environment):
         }
 
         if target == current:
-            logger.info("No need to reconfigure hypervisor.")
+            self._logger.info("No need to reconfigure hypervisor.")
             return
 
-        logger.info("Hypervisor configuration differs. "
-                    "Reconfiguring hypervisor...")
+        self._logger.info("Hypervisor configuration differs. "
+                          "Reconfiguring hypervisor...")
         try:
             with self._hypervisor.reconfig_ctx():
                 self._hypervisor.constrain(**target)
         except Exception as e:
             self._error_occurred(e, "Reconfiguring hypervisor failed.")
             raise
-        logger.info("Hypervisor successfully reconfigured.")
-
-    @classmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) -> DockerPayload:
-        return DockerPayload.from_dict(payload_dict)
+        self._logger.info("Hypervisor successfully reconfigured.")
 
     def runtime(
             self,
-            payload: Payload,
-            shared_dir: Optional[Path] = None,
+            payload: RuntimePayload,
             config: Optional[EnvConfig] = None
     ) -> DockerCPURuntime:
-        assert isinstance(payload, DockerPayload)
+        assert isinstance(payload, DockerRuntimePayload)
         if not Whitelist.is_whitelisted(payload.image):
             raise RuntimeError(f"Image '{payload.image}' is not whitelisted.")
 
@@ -629,35 +676,67 @@ class DockerCPUEnvironment(Environment):
         else:
             config = self.config()
 
-        host_config = self._create_host_config(config, shared_dir)
-        volumes = [self.SHARED_DIR_PATH] if shared_dir else None
-        return DockerCPURuntime(payload, host_config, volumes)
+        return self._create_runtime(config, payload)
 
     def _create_host_config(
-            self, config: DockerCPUConfig, shared_dir: Optional[Path]) \
-            -> Dict[str, Any]:
-
+            self,
+            config: DockerCPUConfig,
+            payload: DockerRuntimePayload,
+    ) -> Dict[str, Any]:
         cpus = hardware.cpus()[:config.cpu_count]
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
 
-        if shared_dir is not None:
-            binds = self._hypervisor.create_volumes([DockerBind(
-                source=shared_dir,
-                target=self.SHARED_DIR_PATH,
-                mode='rw'
-            )])
-        else:
-            binds = None
+        binds = None
+        if payload.binds is not None:
+            binds = self._hypervisor.create_volumes(payload.binds)
+
+        port_bindings = None
+        if self._hypervisor.requires_ports_publishing() and payload.ports:
+            port_bindings = {port: None for port in payload.ports}
 
         client = local_client()
         return client.create_host_config(
             cpuset_cpus=cpuset_cpus,
             mem_limit=mem_limit,
             binds=binds,
+            port_bindings=port_bindings,
             privileged=False,
             network_mode=self.NETWORK_MODE,
             dns=self.DNS_SERVERS,
             dns_search=self.DNS_SEARCH_DOMAINS,
             cap_drop=self.DROPPED_KERNEL_CAPABILITIES
         )
+
+    def _create_container_config(
+            self,
+            config: DockerCPUConfig,
+            payload: DockerRuntimePayload,
+    ) -> Dict[str, Any]:
+        image = f"{payload.image}:{payload.tag}"
+        volumes = [b.target for b in payload.binds] if payload.binds else None
+        host_config = self._create_host_config(config, payload)
+
+        return dict(
+            image=image,
+            volumes=volumes,
+            command=payload.command,
+            user=payload.user,
+            environment=payload.env,
+            working_dir=payload.work_dir,
+            ports=payload.ports,
+            host_config=host_config,
+            stdin_open=True
+        )
+
+    def _create_runtime(
+            self,
+            config: DockerCPUConfig,
+            payload: DockerRuntimePayload,
+    ) -> DockerCPURuntime:
+        container_config = self._create_container_config(config, payload)
+
+        return DockerCPURuntime(
+            container_config,
+            self._port_mapper,
+            runtime_logger=self._logger)

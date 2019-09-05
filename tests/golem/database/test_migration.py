@@ -1,8 +1,10 @@
 # pylint: disable=protected-access
+import datetime
 import functools
 from contextlib import contextmanager
 from unittest import TestCase
 from unittest.mock import patch
+import uuid
 
 import os
 
@@ -147,7 +149,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
         create_db_data()
 
         # -- Create a schema snapshot (0)
-        create_migration(data_dir, out_dir)
+        create_migration(data_dir, out_dir, migration_name='test_0_init')
         assert len(os.listdir(out_dir)) == 1
 
         # -- Store initial state of the database (0)
@@ -167,7 +169,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
             ExtraTestModel.create_table()
 
             # -- Create a new migration file (1)
-            create_migration(data_dir, out_dir)
+            create_migration(data_dir, out_dir, migration_name='test_1_ETM')
             assert len(os.listdir(out_dir)) == 2
 
             # -- Add a second model, alter other and bump version (2)
@@ -178,7 +180,7 @@ class TestMigrationUpgradeDowngrade(DatabaseFixture):
             SecondExtraTestModel.create_table()
 
             # -- Create a new migration file (2)
-            create_migration(data_dir, out_dir)
+            create_migration(data_dir, out_dir, migration_name='test_2_SETM')
             assert len(os.listdir(out_dir)) == 3
 
             # -- Drop the model table, downgrade version (0)
@@ -312,22 +314,32 @@ class TestSavedMigrations(TempDirFixture):
     def test_18(self, _create_tables_mock):
         with self.database_context() as database:
             database._migrate_schema(6, 17)
+            sender_node = 'adbeef' + 'deadbeef' * 15
+            subtask_id = str(uuid.uuid4())
             database.db.execute_sql(
                 "INSERT INTO income ("
                 "sender_node, subtask, value, created_date, modified_date,"
                 " overdue"
                 ")"
-                " VALUES ('0xdead', '0xdead', 10, datetime('now'),"
-                "         datetime('now'), 0)"
+                f" VALUES (?, ?, 10, datetime('now'),"
+                "           datetime('now'), 0)",
+                (
+                    sender_node,
+                    subtask_id,
+                ),
             )
             database._migrate_schema(17, 18)
             cursor = database.db.execute_sql(
                 "SELECT payer_address FROM income"
-                " WHERE sender_node = '0xdead' AND subtask = '0xdead'"
-                " LIMIT 1"
+                f" WHERE sender_node = ? AND subtask = ?"
+                " LIMIT 1",
+                (
+                    sender_node,
+                    subtask_id,
+                ),
             )
             value = cursor.fetchone()[0]
-            self.assertEqual(value, '0eeA941c1244ADC31F53525D0eC1397ff6951C9C')
+            self.assertEqual(value, 'c106A6f2534E74b9D5890d13C5991A3fB146Ae52')
 
     @patch('golem.database.Database._create_tables')
     def test_20_income_value_received(self, _create_tables_mock):
@@ -350,6 +362,206 @@ class TestSavedMigrations(TempDirFixture):
             )
             value = cursor.fetchone()[0]
             self.assertEqual(value, '10')
+
+    @patch('golem.database.Database._create_tables')
+    def test_30_wallet_operation_alter(self, _create_tables_mock):
+        tx_hash = (
+            '0x8f30cb104c188f612f3492f53c069f65a4c4e2a8d4432a4878b1fd33f36787d3'
+        )
+        with self.database_context() as database:
+            database._migrate_schema(6, 29)
+            cursor = database.db.execute_sql(
+                "INSERT INTO walletoperation"
+                " (tx_hash, direction, operation_type, status,"
+                "  sender_address, recipient_address, gas_cost,"
+                "  amount, currency, created_date, modified_date)"
+                " VALUES"
+                " (?, 'outgoing', 'task_payment', 'awaiting',"
+                "  '', '', 0,"
+                "  1, 'GNT', datetime('now'), datetime('now'))",
+                (
+                    tx_hash,
+                )
+            )
+            wallet_operation_id = cursor.lastrowid
+            # Migration used to fail because of foreign key and
+            # sqlite inability to DROP NOT NULL
+            cursor.execute(
+                "INSERT INTO taskpayment"
+                " (wallet_operation_id, node, task, subtask,"
+                "  accepted_ts, settled_ts,"
+                "  expected_amount, created_date, modified_date)"
+                " VALUES"
+                " (?, '', '', '',"
+                "  datetime('now'), datetime('now'),"
+                "  1, datetime('now'), datetime('now'))",
+                (
+                    wallet_operation_id,
+                )
+            )
+            database._migrate_schema(29, 30)
+            cursor = database.db.execute_sql(
+                "SELECT tx_hash FROM walletoperation"
+                " LIMIT 1"
+            )
+            value = cursor.fetchone()[0]
+            self.assertEqual(value, tx_hash)
+
+    @patch('golem.database.Database._create_tables')
+    def test_31_payments_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 30)
+
+            details = '{"node_info": {"node_name": "Laughing Octopus", "key": "392e54805752937326aa87da97a69c9271f7b4423382fb2563a349d54c44d9a904f38b4f2e3a022572c8257220426d8e5e34198be2cc8971bc149f1a368161e3", "prv_port": 40201, "pub_port": 40201, "p2p_prv_port": 40200, "p2p_pub_port": 40200, "prv_addr": "10.30.8.12", "pub_addr": "194.181.80.91", "prv_addresses": ["10.30.8.12", "172.17.0.1"], "hyperdrive_prv_port": 3282, "hyperdrive_pub_port": 3282, "port_statuses": {"3282": "timeout", "40200": "timeout", "40201": "timeout"}, "nat_type": "Symmetric NAT"}, "fee": 116264444444444, "block_hash": "184575de00b91fdac0ccd1c763d5b56b967898e3a541f400480b01a6dbf1fef9", "block_number": 1937551, "check": null, "tx": "4b9f628f16c82d0fe3f3ab144feef7940a0093107d521b45a8a0bfb5739400be"}'  # noqa pylint: disable=line-too-long
+            database.db.execute_sql(
+                "INSERT INTO payment ("
+                "    subtask, created_date, modified_date, status,"
+                "    payee, value, details)"
+                " VALUES ('0xdead', datetime('now'), datetime('now'), 1,"
+                "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C', 10,"
+                f"        '{details}')"
+            )
+            database._migrate_schema(30, 31)
+
+            # UNIONS don't work here. Do it manually
+            cursor = database.db.execute_sql("SELECT count(*) FROM payment")
+            payment_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
+            tp_count = cursor.fetchone()[0]
+            # Migrated payments shouldn't be removed
+            self.assertEqual(payment_count, 1)
+            self.assertEqual(wo_count, 1)
+            self.assertEqual(tp_count, 1)
+
+    @patch('golem.database.Database._create_tables')
+    def test_31_payments_migration_invalid_node_info(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 30)
+
+            details_null_key = '{"node_info": {"key": null}}'
+            details_null_node = '{"node_info": null}'
+            for cnt, details in enumerate(
+                    (details_null_key, details_null_node),
+            ):
+                database.db.execute_sql(
+                    "INSERT INTO payment ("
+                    "    subtask, created_date, modified_date, status,"
+                    "    payee, value, details)"
+                    " VALUES (?, datetime('now'), datetime('now'), 1,"
+                    "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C', 10,"
+                    "         ?)",
+                    (f"0xdead{cnt}", details, ),
+                )
+            database._migrate_schema(30, 31)
+
+            # UNIONS don't work here. Do it manually
+            cursor = database.db.execute_sql("SELECT count(*) FROM payment")
+            payment_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
+            tp_count = cursor.fetchone()[0]
+            # Migrated payments shouldn't be removed
+            self.assertEqual(payment_count, 2)
+            self.assertEqual(wo_count, 0)
+            self.assertEqual(tp_count, 0)
+
+    @patch('golem.database.Database._create_tables')
+    def test_32_incomes_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 31)
+
+            database.db.execute_sql(
+                "INSERT INTO income ("
+                "    subtask, sender_node, created_date, modified_date,"
+                "    overdue,"
+                "    payer_address, value_received, value)"
+                " VALUES ('0xdead', '0xdead', datetime('now'), datetime('now'),"
+                "         1,"
+                "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C',"
+                "         '1', '2')"
+            )
+            database._migrate_schema(31, 32)
+
+            # UNIONS don't work here. Do it manually
+            cursor = database.db.execute_sql("SELECT count(*) FROM income")
+            income_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
+            tp_count = cursor.fetchone()[0]
+            # Migrated incomes shouldn't be removed
+            self.assertEqual(income_count, 1)
+            self.assertEqual(wo_count, 1)
+            self.assertEqual(tp_count, 1)
+
+    @patch('golem.database.Database._create_tables')
+    def test_33_deposit_payments_migration(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 32)
+
+            tx_hash = (
+                '0xc9d936c0c1a10f19ab2952ccb4901a1118ea9a'
+                '4f78379ee2ebaa7f9e7beb1eb5'
+            )
+            value = 'af7a173aa545c72'
+            status = 2  # sent
+            fee = 'af7a173aa545c71'
+
+            database.db.execute_sql(
+                "INSERT INTO depositpayment ("
+                "    tx, value, status, fee,"
+                "    created_date, modified_date)"
+                " VALUES (?, ?, ?, ?,"
+                "    datetime('now'), datetime('now'))",
+                (
+                    tx_hash, value, status, fee,
+                )
+            )
+            database._migrate_schema(32, 33)
+
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            self.assertEqual(wo_count, 1)
+            cursor.execute(
+                'SELECT tx_hash, status, amount, gas_cost FROM walletoperation',
+            )
+            self.assertCountEqual(
+                cursor.fetchone(),
+                [
+                    tx_hash,
+                    'sent',
+                    value,
+                    fee,
+                ],
+            )
+
+    @patch('golem.database.Database._create_tables')
+    def test_33_deposit_payments_migration_table_missing(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 32)
+
+            database.db.RETRY_TIMEOUT = datetime.timedelta(seconds=0)
+            database.db.execute_sql(
+                "DROP TABLE depositpayment"
+            )
+            database._migrate_schema(32, 33)
+
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            self.assertEqual(wo_count, 0)
 
 
 def generate(start, stop):

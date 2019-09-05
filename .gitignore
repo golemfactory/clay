@@ -66,16 +66,16 @@ yacctab.py
 data/
 
 # Install and build
-apps/rendering/resources/taskcollector/x64/Release/*
-apps/rendering/resources/taskcollector/Release/*
-apps/rendering/resources/taskcollector/taskcollector.vcxproj
 Installer/Installer_Win/deps/*
 Installer/Installer_Win/golem-*
 Installer/Installer_Win/install_tmp
 
 # virtualenv
 venv/*
+
+# various caches
 .mypy_cache/
+.pytest_cache/
 
 # dummy test temp files
 apps/dummy/test_tmp

@@ -10,7 +10,9 @@ from typing import (
     Type,
 )
 
-from golem.config.active import APP_MANAGER_CONFIG_FILES
+from golem.config.active import (
+    APP_MANAGER_CONFIG_FILES, CONCENT_SUPPORTED_APPS
+)
 from golem.core.common import get_golem_path
 from golem.environments.environment import SupportStatus
 
@@ -30,11 +32,16 @@ class App(object):
         self.benchmark: Type['CoreBenchmark'] = None
         self.benchmark_builder: Type['TaskBuilder'] = None
 
+    @property
+    def concent_supported(self):
+        return self.task_type_info().id in CONCENT_SUPPORTED_APPS  # noqa pylint:disable=not-callable
+
 
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
     def __init__(self) -> None:
         self.apps: Dict[str, App] = OrderedDict()
+        self.task_types: Dict[str, App] = dict()
 
     def load_all_apps(self) -> None:
         for config_file in APP_MANAGER_CONFIG_FILES:
@@ -59,6 +66,7 @@ class AppsManager(object):
                 setattr(app, opt, getattr(module, name))
 
             self.apps[section] = app
+            self.task_types[app.task_type_info().id] = app  # noqa pylint:disable=not-callable
 
     def get_env_list(self) -> List['Environment']:
         return [app.env() for app in self.apps.values()]
@@ -82,3 +90,6 @@ class AppsManager(object):
     @staticmethod
     def _benchmark_enabled(env) -> bool:
         return env.check_support() == SupportStatus.ok()
+
+    def get_app(self, task_type_id: str) -> App:
+        return self.task_types.get(task_type_id)

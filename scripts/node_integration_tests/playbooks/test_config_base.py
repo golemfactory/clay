@@ -17,11 +17,14 @@ if TYPE_CHECKING:
     requestor = None
     provider = None
 
+CONCENT_STAGING = 'staging'
+CONCENT_DISABLED = 'disabled'
+
 
 class NodeConfig:
     def __init__(self) -> None:
         self.additional_args: Dict[str, Any] = {}
-        self.concent = 'staging'
+        self.concent = CONCENT_DISABLED
         # if datadir is None it will be automatically created
         self.datadir: Optional[str] = None
         self.log_level: Optional[str] = None
@@ -97,7 +100,7 @@ class TestConfigBase:
             self.nodes[node_id] = make_node_config_from_env(node_id.value, i)
         self._nodes_index = 0
         self.nodes_root: 'Optional[Path]' = None
-        self.task_package = 'test_task_1'
+        self.task_package = 'cubes'
         self.task_settings = task_settings
         self.update_task_dict()
 

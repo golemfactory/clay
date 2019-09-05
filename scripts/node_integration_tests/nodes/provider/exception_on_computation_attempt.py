@@ -10,7 +10,7 @@ import logging
 import mock
 from typing import Union
 
-from golemapp import start
+from golemapp import main
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
@@ -69,4 +69,4 @@ with mock.patch("golem.docker.job.DockerJob.wait",
                 wait_failure), mock.patch('golem.task.benchmarkmanager.'
                                           'BenchmarkManager.run_benchmark',
                                           run_benchmark_error_performance_0):
-    start()
+    main()

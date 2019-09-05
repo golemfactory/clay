@@ -12,6 +12,7 @@ class RenderingVerifier(CoreVerifier):
     def __init__(self, verification_data):
         super().__init__(verification_data)
         self.state = SubtaskVerificationState.WAITING
+        self.resources = verification_data["resources"]
 
     @staticmethod
     def check_size(file_path, resolution_x, resolution_y):

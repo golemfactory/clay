@@ -2,7 +2,6 @@
 import random
 import time
 import uuid
-import unittest
 import unittest.mock as mock
 from os import urandom
 
@@ -13,22 +12,16 @@ from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
 from hexbytes import HexBytes
 
+from golem import model
 from golem.core import variables
 from golem.core.common import timestamp_to_datetime
 from golem.ethereum.paymentprocessor import (
     PaymentProcessor,
     PAYMENT_MAX_DELAY,
 )
-from golem.model import Payment, PaymentStatus, PaymentDetails
 from golem.testutils import DatabaseFixture
 
 from tests.factories import model as model_factory
-
-
-class PaymentStatusTest(unittest.TestCase):
-    def test_status(self):
-        s = PaymentStatus(1)
-        self.assertEqual(s, PaymentStatus.awaiting)
 
 
 class PaymentProcessorBase(DatabaseFixture):
@@ -47,7 +40,9 @@ class PaymentProcessorBase(DatabaseFixture):
         latest_block = mock.Mock(golem_sci.Block)
         latest_block.gas_limit = 10 ** 10
         self.sci.get_latest_confirmed_block.return_value = latest_block
-        self.tx_hash = '0xdead'
+        self.tx_hash = (
+            '0xa1360025847dbf4b02c53f4d62424a1f8b77d76d0278938600fd69cde6ec61f5'
+        )
         self.sci.batch_transfer.return_value = self.tx_hash
 
         self.pp = PaymentProcessor(self.sci)
@@ -63,45 +58,63 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
     def test_load_from_db_awaiting(self):
         self.assertEqual([], self.pp._awaiting)
 
-        value = 10
-        payment = Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=urandom(20),
-            value=value,
+        payment = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
         )
+        payment.wallet_operation.save(force_insert=True)
+        payment.save(force_insert=True)
 
         self.pp.load_from_db()
         expected = [payment]
         self.assertEqual(expected, self.pp._awaiting)
-        self.assertEqual(value, self.pp.reserved_gntb)
+        self.assertEqual(
+            payment.wallet_operation.amount,
+            self.pp.reserved_gntb,
+        )
         self.assertLess(0, self.pp.recipients_count)
 
     def test_load_from_db_sent(self):
         tx_hash1 = encode_hex(urandom(32))
         tx_hash2 = encode_hex(urandom(32))
         value = 10
-        payee = urandom(20)
-        sent_payment11 = Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=payee,
-            value=value,
-            details=PaymentDetails(tx=tx_hash1[2:]),
-            status=PaymentStatus.sent
+        payee = '0x' + 40 * '3'
+        sent_payment11 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__recipient_address=payee,
+            wallet_operation__amount=value,
+            wallet_operation__tx_hash=tx_hash1,
+            wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
-        sent_payment12 = Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=payee,
-            value=value,
-            details=PaymentDetails(tx=tx_hash1[2:]),
-            status=PaymentStatus.sent
+        sent_payment12 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__recipient_address=payee,
+            wallet_operation__amount=value,
+            wallet_operation__tx_hash=tx_hash1,
+            wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
-        sent_payment21 = Payment.create(
-            subtask=str(uuid.uuid4()),
-            payee=payee,
-            value=value,
-            details=PaymentDetails(tx=tx_hash2[2:]),
-            status=PaymentStatus.sent
+        sent_payment21 = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__recipient_address=payee,
+            wallet_operation__amount=value,
+            wallet_operation__tx_hash=tx_hash2,
+            wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
+        for sent_payment in (sent_payment11, sent_payment12, sent_payment21):
+            sent_payment.wallet_operation.save(force_insert=True)
+            sent_payment.save(force_insert=True)
         self.pp.load_from_db()
         self.assertEqual(3 * value, self.pp.reserved_gntb)
         self.assertEqual(0, self.pp.recipients_count)
@@ -143,11 +156,19 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
         assert self.pp.recipients_count == 0
 
         gnt_value = 10**17
-        self.pp.add("test_subtask_id", encode_hex(urandom(20)), gnt_value)
+        self.pp.add(
+            subtask_id="test_subtask_id",
+            eth_addr=urandom(20),
+            value=gnt_value,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
         assert self.pp.reserved_gntb == gnt_value
         assert self.pp.recipients_count == 1
 
-        tx_hash = '0xdead'
+        tx_hash = (
+            '0xa1360025847dbf4b02c53f4d62424a1f8b77d76d0278938600fd69cde6ec61f5'
+        )
         self.sci.batch_transfer.return_value = tx_hash
         assert self.pp.sendout(0)
         assert self.sci.batch_transfer.call_count == 1
@@ -174,11 +195,15 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             threads.deferToThread.call_args[0][0](
                 *threads.deferToThread.call_args[0][1:])
 
-        p = Payment.get()
-        self.assertEqual(p.status, PaymentStatus.confirmed)
-        self.assertEqual(p.details.block_number, tx_block_number)
-        self.assertEqual(p.details.block_hash, 64 * 'f')
-        self.assertEqual(p.details.fee, 55001 * gas_price)
+        p = model.TaskPayment.get()
+        self.assertEqual(
+            p.wallet_operation.status,
+            model.WalletOperation.STATUS.confirmed,
+        )
+        self.assertEqual(
+            p.wallet_operation.gas_cost,
+            55001 * gas_price,
+        )
         self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_failed_transaction(self):
@@ -188,12 +213,19 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
         self.sci.get_gntb_balance.return_value = balance_gntb
 
         gnt_value = 10**17
-        self.pp.add("test_subtask_id", encode_hex(urandom(20)), gnt_value)
+        self.pp.add(
+            subtask_id="test_subtask_id",
+            eth_addr=encode_hex(urandom(20)),
+            value=gnt_value,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
 
         self.pp.CLOSURE_TIME_DELAY = 0
-        tx_hash = '0xdead'
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.sci.batch_transfer.return_value = tx_hash
-        assert self.pp.sendout(0)
+        self.assertTrue(self.pp.sendout(0))
 
         tx_block_number = 1337
         receipt = TransactionReceipt({
@@ -207,20 +239,8 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             self.sci.on_transaction_confirmed.call_args[0][1](receipt)
             threads.deferToThread.call_args[0][0](
                 *threads.deferToThread.call_args[0][1:])
-        assert self.pp.reserved_gntb == gnt_value
-        assert len(self.pp._awaiting) == 1
-
-    def test_payment_timestamp(self):
-        self.sci.get_eth_balance.return_value = denoms.ether
-
-        ts = 7000000
-        with freeze_time(timestamp_to_datetime(ts)):
-            processed_ts = self.pp.add(
-                "test_subtask_id",
-                encode_hex(urandom(20)),
-                1,
-            )
-        self.assertEqual(ts, processed_ts)
+        self.assertEqual(self.pp.reserved_gntb, gnt_value)
+        self.assertEqual(len(self.pp._awaiting), 1)
 
 
 def _add_payment(pp, value=None, ts=None):
@@ -228,8 +248,16 @@ def _add_payment(pp, value=None, ts=None):
     value = value if value else random.randint(1, 10)
     if not ts:
         ts = int(time.time())
-    with freeze_time(timestamp_to_datetime(ts)):
-        pp.add(uuid.uuid4(), payee, value)
+    freezed = timestamp_to_datetime(ts)
+    with freeze_time(freezed):
+        payment = pp.add(
+            subtask_id=uuid.uuid4(),
+            eth_addr=payee,
+            value=value,
+            node_id='0xadbeef' + 'deadbeef' * 15,
+            task_id=str(uuid.uuid4()),
+        )
+        assert payment.created_date == freezed
     return golem_sci.Payment(payee, value)
 
 
@@ -451,7 +479,16 @@ class InteractionWithSmartContractInterfaceTest(PaymentProcessorBase):
 
 class UpdateOverdueTest(PaymentProcessorBase):
     def add_payment(self, processed_ts: int):
-        payment = model_factory.Payment(processed_ts=processed_ts)
+        payment = model_factory.TaskPayment(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            created_date=timestamp_to_datetime(processed_ts),
+            wallet_operation__status=  # noqa
+            model.WalletOperation.STATUS.awaiting,
+        )
+        payment.wallet_operation.save(force_insert=True)
         payment.save(force_insert=True)
         self.pp._awaiting.add(payment)
         return payment
@@ -466,27 +503,40 @@ class UpdateOverdueTest(PaymentProcessorBase):
     def test_no_overdues(self):
         payment = self.add_current_payment()
         self.pp.update_overdue()
-        self.assertIs(payment.refresh().status, PaymentStatus.awaiting)
+        self.assertIs(
+            payment.refresh().wallet_operation.status,
+            model.WalletOperation.STATUS.awaiting,
+        )
 
     def test_one_overdue(self):
         payment = self.add_current_payment()
         payment_overdue = self.add_overdue_payment()
         self.pp.update_overdue()
-        self.assertIs(payment.refresh().status, PaymentStatus.awaiting)
-        self.assertIs(payment_overdue.refresh().status, PaymentStatus.overdue)
+        self.assertIs(
+            payment.refresh().wallet_operation.status,
+            model.WalletOperation.STATUS.awaiting,
+        )
+        self.assertIs(
+            payment_overdue.refresh().wallet_operation.status,
+            model.WalletOperation.STATUS.overdue,
+        )
 
     def test_all_overdues(self):
         payments = [self.add_overdue_payment() for _ in range(10)]
         self.pp.update_overdue()
         for payment_overdue in payments:
             self.assertIs(
-                payment_overdue.refresh().status,
-                PaymentStatus.overdue,
+                payment_overdue.refresh().wallet_operation.status,
+                model.WalletOperation.STATUS.overdue,
             )
 
     def test_already_overdue(self):
         payment_overdue = self.add_overdue_payment()
-        payment_overdue.status = PaymentStatus.overdue
-        payment_overdue.save()
+        payment_overdue.wallet_operation.status = \
+            model.WalletOperation.STATUS.overdue
+        payment_overdue.wallet_operation.save()
         self.pp.update_overdue()
-        self.assertIs(payment_overdue.refresh().status, PaymentStatus.overdue)
+        self.assertIs(
+            payment_overdue.refresh().wallet_operation.status,
+            model.WalletOperation.STATUS.overdue,
+        )

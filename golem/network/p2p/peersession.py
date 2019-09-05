@@ -298,17 +298,6 @@ class PeerSession(BasicSafeSession):
 
         self.node_info = msg.node_info
 
-        if not KeysAuth.is_pubkey_difficult(
-                self.node_info.key,
-                self.p2p_service.key_difficulty):
-            logger.info(
-                "Key from %r (%s:%d) is not difficult enough (%d < %d).",
-                self.node_info.node_name, self.address, self.port,
-                KeysAuth.get_difficulty(self.node_info.key),
-                self.p2p_service.key_difficulty)
-            self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
-            return
-
         self.node_name = msg.node_info.node_name
         self.client_ver = msg.client_ver
         self.listen_port = msg.port
@@ -546,7 +535,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.add_known_peer(
             self.node_info,
             self.address,
-            self.port,
+            self.listen_port,
             self.metadata
         )
         self.p2p_service.set_suggested_address(

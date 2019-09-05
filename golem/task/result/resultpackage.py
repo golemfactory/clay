@@ -72,19 +72,19 @@ class Packager(object):
 
     @abc.abstractmethod
     def extract(self, input_path, output_dir=None):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def generator(self, output_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def package_name(self, file_path):
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def write_disk_file(self, package_file, src_path, target_path):
-        pass
+        raise NotImplementedError
 
 
 class ZipPackager(Packager):

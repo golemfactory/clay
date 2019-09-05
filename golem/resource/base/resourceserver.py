@@ -46,13 +46,12 @@ class BaseResourceServer:
     def sync_network(self):
         self._download_resources()
 
-    def add_resources(self, pkg_path, pkg_sha1, res_id, pkg_size,  # noqa pylint:disable=too-many-arguments
-                 client_options=None) -> Deferred:
+    def add_resources(self, pkg_path, res_id, client_options=None) -> Deferred:
         _result = Deferred()
         _result.addErrback(self._add_res_error)
 
         def callback(r):
-            value = r, pkg_path, pkg_sha1, pkg_size
+            value = r, pkg_path
             _result.callback(value)
 
         _deferred = self.resource_manager.add_resources(
@@ -164,12 +163,3 @@ class BaseResourceServer:
             lambda _: self.client.resource_collected(res_id),
             lambda e: self._download_error(e, resource, res_id)
         )
-
-    def start_accepting(self):
-        pass
-
-    def add_files_to_send(self, *args):
-        pass
-
-    def change_config(self, config_desc):
-        pass

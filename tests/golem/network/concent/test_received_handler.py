@@ -160,6 +160,8 @@ class TestOnForceReportComputedTaskResponseReject(FrctResponseTestBase):
 class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
+    @mock.patch('golem.envs.docker.cpu.deferToThread',
+                lambda f, *args, **kwargs: f(*args, **kwargs))
     def setUp(self):
         # Avoid warnings caused by previous tests leaving handlers
         library._handlers = {}
@@ -410,11 +412,12 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
 
         library.interpret(msg)
         self.client.transaction_system.expect_income.assert_called_once_with(
-            msg.task_to_compute.requestor_id,
-            msg.subtask_id,
-            msg.task_to_compute.requestor_ethereum_address,
-            msg.task_to_compute.price,
-            msg.subtask_results_accepted.payment_ts,
+            sender_node=msg.task_to_compute.requestor_id,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            payer_address=msg.task_to_compute.requestor_ethereum_address,
+            value=msg.task_to_compute.price,
+            accepted_ts=msg.subtask_results_accepted.payment_ts,
         )
 
         add_mock.assert_called_once_with(
@@ -691,6 +694,44 @@ class ForceSubtaskResultsTest(TaskServerMessageHandlerTestBase):
             .ack_report_computed_task
             .report_computed_task,
         )
+
+    @mock.patch('golem.network.history.get')
+    @mock.patch(
+        'golem.network.concent.received_handler'
+        '.TaskServerMessageHandler.'
+        '_after_ack_report_computed_task')
+    def test_no_sra_nor_srr_but_has_fgtrf(self, last_resort_mock, get_mock):
+        fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory(
+            task_to_compute__subtask_id=self.msg.subtask_id,
+        )
+
+        def history_get(*, message_class_name, **_kwargs):
+            if message_class_name == 'ForceGetTaskResultFailed':
+                return fgtrf
+            return None
+
+        get_mock.side_effect = history_get
+
+        library.interpret(self.msg)
+
+        last_resort_mock.assert_not_called()
+        self.task_server.client.concent_service.submit_task_message \
+            .assert_called_once_with(
+                self.msg.subtask_id,
+                message.concents.ForceSubtaskResultsResponse(
+                    subtask_results_accepted=None,
+                    subtask_results_rejected=(
+                        message.tasks.SubtaskResultsRejected(
+                            report_computed_task=(
+                                self.msg.ack_report_computed_task
+                                .report_computed_task),
+                            force_get_task_result_failed=fgtrf,
+                            reason=(message.tasks.SubtaskResultsRejected.REASON
+                                    .ForcedResourcesFailure),
+                        )
+                    ),
+                )
+            )
 
     @mock.patch('golem.network.history.get')
     @mock.patch(

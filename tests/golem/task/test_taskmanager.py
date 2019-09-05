@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+from typing import Callable
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 
@@ -37,7 +38,7 @@ from golem.core.keysauth import KeysAuth
 from golem.network.p2p.local_node import LocalNode
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, \
-    TaskEventListener, AcceptClientVerdict
+    TaskEventListener, AcceptClientVerdict, TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -75,6 +76,21 @@ class TaskMock(Task):
     def __reduce__(self):
         return (Mock, ())
 
+    def abort(self):
+        pass
+
+    def computation_failed(self, *_, **__):
+        pass
+
+    def get_active_tasks(self) -> int:
+        return 0
+
+    def needs_computation(self) -> bool:
+        return True
+
+    def update_task_state(self, task_state: TaskState):
+        pass
+
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
@@ -97,7 +113,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             keys_auth,
             root_path=self.path,
             config_desc=ClientConfigDescriptor(),
-            task_persistence=True,
             finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
@@ -193,6 +208,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         dtb = DummyTaskBuilder(dt_p2p_factory.Node(node_name="MyNode"), tdd, dm)
 
         dummy_task = dtb.build()
+        dummy_task.initialize(dtb.dir_manager)
+
         header = self._get_task_header(task_id=task_id, timeout=120,
                                        subtask_timeout=120)
         dummy_task.header = header
@@ -210,8 +227,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
-                                  config_desc=ClientConfigDescriptor(),
-                                  task_persistence=True)
+                                  config_desc=ClientConfigDescriptor(),)
 
             temp_tm.key_id = "KEYID"
 
@@ -226,8 +242,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 dt_p2p_factory.Node(),
                 keys_auth=Mock(),
                 root_path=self.path,
-                config_desc=ClientConfigDescriptor(),
-                task_persistence=True)
+                config_desc=ClientConfigDescriptor(),)
 
             assert any(
                 "SEARCHING FOR TASKS TO RESTORE" in log for log in log.output)
@@ -323,8 +338,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             cached_node.node_field.node_name
         )
 
-        task_state.status = self.tm.activeStatus[0]
-
+        task_state.status = TaskStatus.computing
         assert self.tm.is_my_task("xyz")
         assert self.tm.get_next_subtask("DEF", "xyz", 1000, 10, 'oh') is None
 
@@ -406,11 +420,18 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def get_total_tasks(self):
                 return 0
 
+            def get_active_tasks(self) -> int:
+                return 0
+
+            def computation_failed(self, *_, **__):
+                pass
+
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result,
-                                     verification_finished=None):
+            def computation_finished(
+                    self, subtask_id: str, task_result: TaskResult,
+                    verification_finished: Callable[[], None]) -> None:
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
                 verification_finished()
@@ -750,13 +771,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def test_resource_send(self, *_):
         # pylint: disable=abstract-class-instantiated
         from pydispatch import dispatcher
-        self.tm.task_persistence = True
-        owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            pub_addr="10.10.10.10",
-            pub_port=1023,
-            key="abcde",
-        )
         t = TaskMock(
             header=dt_tasks_factory.TaskHeaderFactory(
                 task_id="xyz",
@@ -793,10 +807,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 TaskStatus.notStarted,
             )
             self.tm.start_task(t.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states["xyz"].status,
-                self.tm.activeStatus,
-            )
+            self.assertTrue(self.tm.tasks_states["xyz"].status.is_active())
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
         self.assertIs(
@@ -1312,10 +1323,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
 
             self.tm.start_task(task.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states['xyz'].status,
-                self.tm.activeStatus,
-            )
+            self.assertTrue(self.tm.tasks_states['xyz'].status.is_active())
 
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
@@ -1359,8 +1367,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',
-            config_desc=ClientConfigDescriptor(),
-            task_persistence=False
+            config_desc=ClientConfigDescriptor()
         )
 
         zip_patch = patch('golem.task.taskmanager.ZipFile')
@@ -1432,7 +1439,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             results = [str(Path(result)) for result in results]
 
             new_task.copy_subtask_results.assert_called_once_with(
-                'new_subtask_id', old_subtask, results)
+                'new_subtask_id', old_subtask, TaskResult(files=results))
 
             self.assertEqual(new_subtask_state.progress, 1.0)
             self.assertEqual(
@@ -1463,7 +1470,6 @@ class TestTaskFinished(unittest.TestCase):
                 keys_auth=MagicMock(spec=KeysAuth),
                 root_path='/tmp',
                 config_desc=ClientConfigDescriptor(),
-                task_persistence=False
             )
         self.task_id = str(uuid.uuid4())
         self.tm.tasks_states[self.task_id] = TaskState()
@@ -1490,7 +1496,6 @@ class TestNeedsComputation(unittest.TestCase):
                 keys_auth=MagicMock(spec=KeysAuth),
                 root_path='/tmp',
                 config_desc=ClientConfigDescriptor(),
-                task_persistence=False
             )
         dummy_path = '/fiu/bzdziu'
         self.task_id = str(uuid.uuid4())
@@ -1505,7 +1510,6 @@ class TestNeedsComputation(unittest.TestCase):
         definition.max_price = 1 * 10 ** 18
         definition.resolution = [1920, 1080]
         definition.resources = [str(uuid.uuid4()) for _ in range(5)]
-        #definition.output_file = os.path.join(self.tempdir, 'somefile')
         definition.main_scene_file = dummy_path
         definition.options.frames = [1]
         definition.subtasks_count = 1
@@ -1526,5 +1530,14 @@ class TestNeedsComputation(unittest.TestCase):
         self.task.last_task = self.task.get_total_tasks()
         self.assertFalse(self.tm.task_needs_computation(self.task_id))
 
-    def test_needs_computation(self, *_):
+    def test_needs_computation_while_creating(self, *_):
+        self.assertFalse(self.tm.task_needs_computation(self.task_id))
+
+    def test_needs_computation_when_added(self, *_):
+        keys_auth = Mock()
+        keys_auth._private_key = b'a' * 32
+        keys_auth.sign.return_value = 'sig'
+
+        self.tm.keys_auth = keys_auth
+        self.tm.add_new_task(self.task)
         self.assertTrue(self.tm.task_needs_computation(self.task_id))

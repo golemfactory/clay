@@ -43,7 +43,7 @@ class TestBlenderVerifier(TempDirFixture):
         dm.update_config(
             status_callback=mock.Mock(),
             done_callback=mock.Mock(),
-            work_dir=self.new_path,
+            work_dirs=[self.new_path],
             in_background=True)
         self.resources = [
             os.path.join(

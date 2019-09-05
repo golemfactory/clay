@@ -1,7 +1,7 @@
 import random
 from os import path
 from threading import Lock
-from typing import Optional
+from typing import Optional, Callable
 
 from eth_utils import encode_hex
 import faker
@@ -13,7 +13,7 @@ from golem_messages.message import ComputeTaskDef
 import golem
 from golem.appconfig import MIN_PRICE
 from golem.core import common
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 
 
 fake = faker.Faker()
@@ -235,8 +235,8 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         print(
             "Computation finished"
             f" subtask_id: {subtask_id}"
@@ -247,7 +247,7 @@ class DummyTask(Task):
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        with open(task_result[0], 'r') as f:
+        with open(task_result.files[0], 'r') as f:
             self.subtask_results[subtask_id] = f.read()
 
         if not self.verify_subtask(subtask_id):
@@ -265,8 +265,11 @@ class DummyTask(Task):
         self.resource_parts = resource_parts
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        print('DummyTask.computation_failed called')
-        self.computation_finished(subtask_id, None)
+        print(f'DummyTask.computation_failed called. subtask_id: {subtask_id}')
+        with self._lock:
+            if subtask_id in self.assigned_subtasks:
+                node_id = self.assigned_subtasks.pop(subtask_id, None)
+                self.assigned_nodes.pop(node_id, None)
 
     def restart(self):
         print('DummyTask.restart called')

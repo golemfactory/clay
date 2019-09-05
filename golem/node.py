@@ -14,6 +14,7 @@ from typing import (
     TypeVar,
 )
 
+from autobahn.wamp import ApplicationError
 from fs.tempfs import TempFS
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred, succeed, fail, \
@@ -164,7 +165,6 @@ class Node(HardwarePresetsMixin):
         self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
-
         HardwarePresets.initialize(self._datadir)
         HardwarePresets.update_config(self._config_desc.hardware_preset_name,
                                       self._config_desc)
@@ -179,15 +179,21 @@ class Node(HardwarePresetsMixin):
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             def on_start_error(failure: FirstError):
-                sub_failure: Failure = failure.value.subFailure
-                sub_failure.trap(EnvironmentError)
+                exception = failure.value
+
+                if isinstance(exception, ApplicationError):
+                    error_message = exception.error_message()
+                else:
+                    sub_failure: Failure = exception.subFailure
+                    sub_failure.trap(EnvironmentError)
+                    error_message = sub_failure.getErrorMessage()
 
                 logger.error(
                     """
-                    There was a problem setting up the environment: {}
+                    There was a problem setting up the environment: %s
                     Golem will run with limited functionality to support
                     communication with local clients.
-                    """.format(sub_failure.getErrorMessage())
+                    """, error_message
                 )
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
@@ -224,7 +230,6 @@ class Node(HardwarePresetsMixin):
                 datadir=self._datadir,
                 private_key_name=PRIVATE_KEY,
                 password=password,
-                difficulty=self._config_desc.key_difficulty,
             )
             # When Golem is ready to use different Ethereum account for
             # payments and identity this should be called only when
@@ -433,7 +438,7 @@ class Node(HardwarePresetsMixin):
             logger.debug('_is_task_in_progress? False: task_computer=None')
             return False
 
-        task_provider_progress = task_server.task_computer.assigned_subtask
+        task_provider_progress = task_server.task_computer.has_assigned_task()
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
         return bool(task_provider_progress)
@@ -547,6 +552,8 @@ class Node(HardwarePresetsMixin):
         # pylint: disable=no-member
         self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
             rpc_ready,
+        ).addErrback(
+            self._error('Registering RPC procedures failed')
         )
         # pylint: enable=no-member
 

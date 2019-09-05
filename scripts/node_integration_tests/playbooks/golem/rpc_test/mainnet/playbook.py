@@ -1,5 +1,5 @@
-from ..no_concent.playbook import Playbook as PlaybookBase
+from ..playbook import Playbook as NodeTestPlaybook
 
 
-class Playbook(PlaybookBase):
+class Playbook(NodeTestPlaybook):
     pass

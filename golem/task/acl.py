@@ -31,7 +31,7 @@ class AclStatus:
         self.default_rule = default_rule
         self.rules = rules
 
-    def to_message(self):
+    def to_message(self) -> Dict:
         return {
             'default_rule': self.default_rule.value,
             'rules': [
@@ -50,20 +50,20 @@ class DenyReason(Enum):
 class Acl(abc.ABC):
     @abc.abstractmethod
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def disallow(self, node_id: str, timeout_seconds: int, persist: bool) \
             -> None:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def allow(self, node_id: str, persist: bool) -> None:
-        pass
+        raise NotImplementedError
 
     @abc.abstractmethod
     def status(self) -> AclStatus:
-        pass
+        raise NotImplementedError
 
 
 class _DenyAcl(Acl):
@@ -142,7 +142,7 @@ class _DenyAcl(Acl):
             if node_id not in deny_set:
                 _write_set_to_file(self._list_path, deny_set | {node_id})
 
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -228,7 +228,7 @@ class _AllowAcl(Acl):
             if node_id in allow_set:
                 _write_set_to_file(self._list_path, allow_set - {node_id})
 
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -283,4 +283,5 @@ def setup_acl(datadir: Optional[Path],
         return _AllowAcl.new_from_rules(exceptions, deny_list_path)
     if default_rule == AclRule.allow:
         return _DenyAcl.new_from_rules(exceptions, deny_list_path)
-    raise ValueError('invalid acl default %r' % default_rule)
+
+    raise ValueError('invalid acl default rule: %r' % default_rule)  # noqa # pragma: no cover # pylint: disable=line-too-long

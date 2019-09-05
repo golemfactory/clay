@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = 'golemfactory/blender_verifier'
-    DOCKER_TAG = '1.6'
+    DOCKER_TAG = '1.8'
 
     def __init__(self, verification_data, docker_task_cls: Type) -> None:
         super().__init__(verification_data)
@@ -96,21 +96,20 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addErrback(failure)
 
         root_dir = Path(os.path.dirname(
-            self.verification_data['results'][0])).parent
+            self.results[0])).parent
+
         work_dir = os.path.join(root_dir, 'work')
         os.makedirs(work_dir, exist_ok=True)
+
         res_dir = os.path.join(root_dir, 'resources')
         os.makedirs(res_dir, exist_ok=True)
         tmp_dir = os.path.join(root_dir, "tmp")
 
-        resources = self.verification_data['resources']
-        results = self.verification_data['results']
+        assert self.resources
+        assert self.results
 
-        assert resources
-        assert results
-
-        self._copy_files_with_directory_hierarchy(resources, res_dir)
-        self._copy_files_with_directory_hierarchy(results, work_dir)
+        self._copy_files_with_directory_hierarchy(self.resources, res_dir)
+        self._copy_files_with_directory_hierarchy(self.results, work_dir)
 
         dir_mapping = self.docker_task_cls.specify_dir_mapping(
             resources=res_dir,
@@ -118,6 +117,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             work=work_dir,
             output=os.path.join(root_dir, "output"),
             logs=os.path.join(root_dir, "logs"),
+            stats=os.path.join(root_dir, "stats")
         )
 
         extra_data = dict(
