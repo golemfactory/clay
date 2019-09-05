@@ -44,6 +44,7 @@ from golem.task.acl import Acl
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskmanager import TaskManager
+from golem.testutils import DatabaseFixture
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
@@ -127,7 +128,7 @@ def make_client(*_, **kwargs):
     return client
 
 
-class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+class TestClientBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()

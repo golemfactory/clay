@@ -18,7 +18,6 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
-from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -27,6 +26,7 @@ from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
 from golem.task.rpc import ClientProvider
+from golem.tools.testwithasyncio import TwistedAsyncioTestCase
 from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
 

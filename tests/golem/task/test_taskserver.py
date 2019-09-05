@@ -1911,6 +1911,11 @@ class TestTaskServerAsync(TaskServerTestBase, TwistedAsyncioTestCase):
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
+        assert not self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
@@ -1918,8 +1923,3 @@ class TestTaskServerAsync(TaskServerTestBase, TwistedAsyncioTestCase):
 
         assert not self.ts.active
         assert CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.resume()
-
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused

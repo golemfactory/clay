@@ -32,7 +32,6 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
-from golem.core.deferred import sync_wait
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -349,6 +348,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.debug('Started client services')
 
     @report_calls(Component.client, 'stop', stage=Stage.post)
+    @inlineCallbacks
     def stop(self):
         logger.debug('Stopping client services ...')
         self.stop_network()
@@ -360,7 +360,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            sync_wait(self.task_server.quit())
+            yield self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)
@@ -658,9 +658,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
+    @inlineCallbacks
     def quit(self):
         logger.info('Shutting down ...')
-        self.stop()
+        yield self.stop()
 
         self.transaction_system.stop()
         if self.diag_service:
