@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from queue import Queue, Empty
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -6,6 +7,8 @@ from twisted.internet import defer
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
+
+logger = logging.getLogger(__name__)
 
 
 class DeferredSeq:
@@ -55,6 +58,7 @@ def sync_wait(deferred: defer.Deferred,
         raise defer.TimeoutError("Command timed out")
 
     if isinstance(result, Failure):
+        logger.error('ERROR %r', result, exc_info=True)
         result.raiseException()
     return result
 

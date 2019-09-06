@@ -3,7 +3,7 @@
 import copy
 import functools
 import logging
-import os.path
+import os
 import re
 import typing
 from pathlib import Path
@@ -302,12 +302,15 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
 def add_resources(client, resources, res_id, timeout):
     files = copy.copy(list(resources))
 
+    logger.info('files=%r', files)
     packager_result = yield client.resource_server.create_resource_package(
         files,
         res_id
     )
+    logger.info('packager_result=%r', packager_result)
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
+    logger.info('resource_size=%r', resource_size)
     client_options = client.task_server.get_share_options(timeout=timeout)
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
@@ -331,16 +334,20 @@ def _setup_task_resources(client, task):
     else:
         task.header.mask = masking.Mask()
 
+    logger.info('Masking checked')
     estimated_fee = client.transaction_system.eth_for_batch_payment(
         task.get_total_tasks())
+    logger.info('fee checked')
     client.task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
+    logger.info('task manager added')
     resource_server_result = yield add_resources(
         client,
         task.get_resources(),
         task_id,
         common.deadline_to_timeout(task.header.deadline)
     )
+    logger.info('resources added')
 
     return resource_server_result
 
@@ -376,7 +383,7 @@ def enqueue_new_task(client, task, force=False) \
         task.subtask_price,
         task.get_total_tasks(),
     )
-    logger.debug('Enqueue new task. task_id=%r', task)
+    logger.info('Enqueue new task. task_id=%r', task)
 
     resource_server_result = yield _setup_task_resources(
         client=client,
