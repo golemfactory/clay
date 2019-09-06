@@ -296,7 +296,8 @@ class WasmTask(CoreTask):
             subtask_usages: List[UsageReport] = []
             for s_id in subtask.get_instances():
                 s_instance = subtask.get_instance(s_id)
-                assert s_instance.results
+                if not s_instance.results:
+                    continue
                 subtask_usages.append(
                     (s_instance.actor.uuid,
                      s_id,
