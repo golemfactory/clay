@@ -47,9 +47,12 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     def test_benchmarks_not_needed_when_results_saved(self):
         # given
         for env_id in self.b.benchmarks:
-            Performance.update_or_create(env_id, 100)
+            Performance(environment_id=env_id, value=100).upsert()
 
-        Performance.update_or_create(DefaultEnvironment.get_id(), 3)
+        Performance(
+            environment_id=DefaultEnvironment.get_id(),
+            value=3
+        ).upsert()
 
         # then
         assert not self.b.benchmarks_needed()
@@ -66,7 +69,9 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
             br_mock.assert_called()
             success_callback = br_mock.call_args[1].get('success_callback')
             assert callable(success_callback)
-            return success_callback(br_mock.call_count * 100)
+            return success_callback(Performance(
+                environment_id='test-env',
+                value=br_mock.call_count * 100))
         br_mock.return_value.run.side_effect = _run
 
         # when
@@ -85,7 +90,10 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_non_default_benchmarks(self, br_mock, mpt_mock, *_):
         # given
-        Performance.update_or_create(DefaultEnvironment.get_id(), -7)
+        Performance(
+            environment_id=DefaultEnvironment.get_id(),
+            value=-7
+        ).upsert()
 
         def _run():
             # call success callback with performance = call_count * 100

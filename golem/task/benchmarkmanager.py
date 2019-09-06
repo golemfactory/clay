@@ -41,11 +41,12 @@ class BenchmarkManager(object):
 
         from golem_messages.datastructures.p2p import Node
 
-        def success_callback(performance):
-            logger.info('%s performance is %.2f', env_id, performance)
-            Performance.update_or_create(env_id, performance)
+        def success_callback(result: Performance):
+            logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
+                        env_id, result.value, result.cpu_usage)
+            result.upsert()
             if success:
-                success(performance)
+                success(result.value)
 
         def error_callback(err: Union[str, Exception]):
             logger.error("Unable to run %s benchmark: %s", env_id, str(err))
@@ -69,7 +70,8 @@ class BenchmarkManager(object):
             root_path=self.dir_manager.root_path,
             success_callback=success_callback,
             error_callback=error_callback,
-            benchmark=benchmark
+            benchmark=benchmark,
+            env_id=env_id
         )
         br.run()
 

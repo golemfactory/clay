@@ -548,15 +548,17 @@ class Performance(BaseModel):
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    def upsert(self):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            env_id = self.environment_id
+            Performance.get(Performance.environment_id == env_id)
+
+            Performance.update(
+                value=self.value,
+                cpu_usage=self.cpu_usage
+            ).where(Performance.environment_id == env_id).execute()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            self.save()
 
 
 class DockerWhitelist(BaseModel):

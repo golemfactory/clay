@@ -140,7 +140,7 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         perf = 300.0
         self.manager.set_enabled(self.env_id, True)
 
-        Performance.update_or_create(self.env_id, perf)
+        Performance(environment_id=self.env_id, value=perf).upsert()
 
         # When
         result = yield self.manager.get_performance(self.env_id)
@@ -170,7 +170,7 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         self.assertIsNone(self.manager.get_cached_performance(self.env_id))
 
         perf = 123.4
-        Performance.update_or_create(self.env_id, perf)
+        Performance(environment_id=self.env_id, value=perf).upsert()
         self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
 
     def test_remove_cached_performance(self):

@@ -90,7 +90,8 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
+    from golem.model import Performance  # noqa pylint: disable=unused-import,ungrouped-imports
+    from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
 
@@ -397,7 +398,7 @@ class TaskServer(
                 return None
 
             # Check performance
-            performance = None
+            performance: 'Optional[Performance]' = None
             if isinstance(env, OldEnv):
                 performance = env.get_performance()
             else:  # NewEnv
@@ -436,9 +437,9 @@ class TaskServer(
             )
             price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price, performance=performance)
+                theader=theader, price=price, performance=performance.value)
             wtct = message.tasks.WantToComputeTask(
-                perf_index=performance,
+                perf_index=performance.value,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,

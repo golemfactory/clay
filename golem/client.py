@@ -1175,7 +1175,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'id': env_id,
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
-            'performance': env.get_performance(),
+            'performance': env.get_performance().value,
+            'cpu_usage': env.get_performance().cpu_usage,
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env_id, env in envs.items()]

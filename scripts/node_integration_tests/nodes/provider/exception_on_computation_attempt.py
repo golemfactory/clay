@@ -28,17 +28,23 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
 
     from golem_messages.datastructures.p2p import Node
 
-    def success_callback(performance):
-        logger.info('%s performance is %.2f', env_id, performance)
-        Performance.update_or_create(env_id, performance)
+    def success_callback(performance: Performance):
+        logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
+                    env_id, performance.value, performance.cpu_usage)
+        performance.upsert()
         if success:
-            success(performance)
+            success(performance.value)
 
     def error_callback(err: Union[str, Exception]):
         logger.error("Unable to run %s benchmark: %s", env_id, str(err))
-        Performance.update_or_create(env_id, ACCEPTABLE_PERFORMANCE)
+        Performance(
+            environment_id=env_id,
+            value=ACCEPTABLE_PERFORMANCE
+        ).upsert()
+
         if isinstance(err, str):
             err = Exception(err)
+
         success(ACCEPTABLE_PERFORMANCE)
 
     task_state = TaskDesc()
@@ -56,7 +62,8 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
         root_path=self.dir_manager.root_path,
         success_callback=success_callback,
         error_callback=error_callback,
-        benchmark=benchmark
+        benchmark=benchmark,
+        env_id=env_id
     )
     br.run()
 
