@@ -30,6 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
@@ -41,7 +42,8 @@ from golem.environments.environment import (
 )
 from golem.envs import Environment as NewEnv, EnvSupportStatus
 from golem.envs.auto_setup import auto_setup
-from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
+from golem.envs.docker.gpu import DOCKER_GPU_METADATA
 from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
@@ -142,6 +144,7 @@ class TaskServer(
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
+            DOCKER_CPU_METADATA,
             DockerTaskApiPayloadBuilder,
         )
 
@@ -151,6 +154,7 @@ class TaskServer(
                 NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
             new_env_manager.register_env(
                 docker_gpu_env,
+                DOCKER_GPU_METADATA,
                 DockerTaskApiPayloadBuilder,
             )
 
@@ -171,7 +175,12 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
-        self.requested_task_manager = RequestedTaskManager()
+        self.requested_task_manager = RequestedTaskManager(
+            env_manager=new_env_manager,
+            app_manager=AppManager(),
+            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            public_key=self.keys_auth.public_key,
+        )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
             config_desc.hyperdrive_rpc_port,
@@ -465,7 +474,7 @@ class TaskServer(
             for resource_id in msg.compute_task_def['resources']:
                 deferreds.append(self.new_resource_manager.download(
                     resource_id,
-                    self.task_computer.get_task_resources_dir(),
+                    self.task_computer.get_subtask_inputs_dir(),
                     msg.resources_options,
                 ))
             defer.gatherResults(deferreds, consumeErrors=True)\

@@ -13,7 +13,7 @@ requests the Concent's assistance in reaching out to the Provider so that the
 Provider can upload the results to the Concent's storage whereupon
 the Requestor will be able to download them from the Concent.
 
-* **UC3:** **`force_report`** - Force Accept scenario where, having
+* **UC3:** **`force_accept`** - Force Accept scenario where, having
 acknowledged reception of the task results, the Requestor doesn't respond
 with either `SubtaskResultsAccepted` or `SubtaskResultsRejected` message.
 In this case, the Provider seeks the Concent's mediation to acquire

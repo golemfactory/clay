@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields as mm_fields
 
-from golem.task.envmanager import EnvironmentManager
-
 logger = logging.getLogger(__name__)
 
 
@@ -56,8 +54,7 @@ def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
 class AppManager:
     """ Manager class for applications using Task API. """
 
-    def __init__(self, env_manager: EnvironmentManager) -> None:
-        self._env_manager = env_manager
+    def __init__(self) -> None:
         self._apps: Dict[str, AppDefinition] = {}
         self._state: Dict[str, bool] = {}
 
@@ -80,9 +77,6 @@ class AppManager:
             is not available. """
         if app_name not in self._apps:
             raise ValueError(f"Application '{app_name}' not registered.")
-        env_id = self._apps[app_name].requestor_env
-        if not self._env_manager.enabled(env_id):
-            raise ValueError(f"Environment '{env_id}' not available.")
         self._state[app_name] = enabled
         logger.info(
             "Application '%s' %s.",

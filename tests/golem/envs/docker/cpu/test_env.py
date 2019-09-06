@@ -260,15 +260,6 @@ class TestCleanup(TestDockerCPUEnv):
         return deferred
 
 
-class TestMetadata(TestCase):
-
-    def test_metadata(self):
-        metadata = DockerCPUEnvironment.metadata()
-        self.assertEqual(metadata.id, DockerCPUEnvironment.ENV_ID)
-        self.assertEqual(
-            metadata.description, DockerCPUEnvironment.ENV_DESCRIPTION)
-
-
 class TestInstallPrerequisites(TestDockerCPUEnv):
 
     def test_wrong_type(self):

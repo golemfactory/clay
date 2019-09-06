@@ -26,7 +26,8 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def _get_new_dummy(self):
         td = DummyTaskDefinition(DummyTaskDefaults())
         td.task_id = str(uuid.uuid4())
-        dt = DummyTask(5, td, "root/path", dt_p2p_factory.Node())
+        td.subtasks_count = 5
+        dt = DummyTask(td, "root/path", dt_p2p_factory.Node())
         return dt, td
 
     def test_constants(self):

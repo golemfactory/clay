@@ -140,9 +140,6 @@ def auto_setup(env: Environment) -> Environment:
             finally:
                 yield self._end_usage()
 
-        def metadata(self) -> EnvMetadata:
-            return env.metadata()
-
         @classmethod
         def parse_prerequisites(
                 cls,

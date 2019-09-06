@@ -5,7 +5,7 @@ from ipaddress import AddressValueError, ip_address
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import collections
-
+import golem.tools.talkback
 import requests
 from requests import HTTPError
 
@@ -112,7 +112,8 @@ class HyperdriveClient(IClient):
             dest=path,
             peers=peers or [],
             size=size,
-            timeout=timeout
+            timeout=timeout,
+            user=golem.tools.talkback.user(),
         )
 
     def cancel(self, content_hash):
@@ -129,6 +130,8 @@ class HyperdriveClient(IClient):
     ) -> Dict:
         if endpoint and endpoint[0] == '/':
             endpoint = endpoint[1:]
+        if 'user' not in data:
+            data['user'] = golem.tools.talkback.user()
 
         response = requests.post(url=f'{self._url}/{endpoint}',
                                  headers=self.HEADERS,
@@ -163,8 +166,9 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(client_options.timeout))
-
+            timeout=round_timeout(client_options.timeout),
+            user=golem.tools.talkback.user(),
+        )
         return self._async_request(
             params=params,
             parser=lambda res: res['hash'])
@@ -179,8 +183,9 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(client_options.timeout))
-
+            timeout=round_timeout(client_options.timeout),
+            user=golem.tools.talkback.user(),
+        )
         return self._async_request(
             params=params,
             parser=lambda res: res['hash'])

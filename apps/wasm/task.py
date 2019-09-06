@@ -179,10 +179,10 @@ class WasmTask(CoreTask):
     REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
 
 
-    def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
+    def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
         super().__init__(
-            total_tasks=total_tasks, task_definition=task_definition,
+            task_definition=task_definition,
             root_path=root_path, owner=owner
         )
         self.task_definition: WasmTaskDefinition = task_definition

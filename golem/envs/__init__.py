@@ -8,6 +8,7 @@ from threading import RLock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set, Tuple
 
+from dataclasses import dataclass, field
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
@@ -49,7 +50,6 @@ class EnvEventType(Enum):
 
 class EnvEvent(NamedTuple):
     type: EnvEventType
-    env_id: EnvId
     details: Optional[Dict[str, Any]] = None
 
 
@@ -363,11 +363,12 @@ class RuntimeBase(Runtime, ABC):
         return deferToThread(_wait_until_stopped)
 
 
-class EnvMetadata(NamedTuple):
+@dataclass
+class EnvMetadata:
     id: EnvId
-    description: str
-    supported_counters: List[CounterId]
-    custom_metadata: Dict[str, Any]
+    description: str = ''
+    supported_counters: List[CounterId] = field(default_factory=list)
+    custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class EnvStatus(Enum):
@@ -409,11 +410,6 @@ class Environment(ABC):
     @abstractmethod
     def run_benchmark(self) -> Deferred:
         """ Get the general performance score for this environment. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def metadata(self) -> EnvMetadata:
-        """ Get Environment metadata. """
         raise NotImplementedError
 
     @classmethod
@@ -486,7 +482,6 @@ class EnvironmentBase(Environment, ABC):
             every listener registered for this type of events. """
 
         event = EnvEvent(
-            env_id=self.metadata().id,
             type=event_type,
             details=details
         )

@@ -1,6 +1,6 @@
 from copy import copy
 from logging import getLogger, Logger
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass, field
 
@@ -8,7 +8,7 @@ from golem.core.common import update_dict
 from golem.envs import (
     CounterId,
     CounterUsage,
-    EnvId,
+    EnvMetadata,
     EnvSupportStatus
 )
 from golem.envs.docker import DockerRuntimePayload
@@ -20,6 +20,13 @@ from golem.envs.docker.cpu import (
 from golem.envs.docker.vendor import nvidia
 
 logger = getLogger(__name__)
+
+
+DOCKER_GPU_ENV_ID = 'docker_gpu'
+DOCKER_GPU_METADATA = EnvMetadata(
+    id=DOCKER_GPU_ENV_ID,
+    description='Docker environment using GPU'
+)
 
 
 @dataclass
@@ -85,9 +92,6 @@ class DockerGPURuntime(DockerCPURuntime):
 
 
 class DockerGPUEnvironment(DockerCPUEnvironment):
-
-    ENV_ID: ClassVar[EnvId] = 'docker_gpu'
-    ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using GPU'
 
     BENCHMARK_IMAGE = 'golemfactory/gpu_benchmark:1.0'
 

@@ -138,6 +138,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             key=self.keys_auth.key_id,
         )
 
+        pub_key = self.keys_auth.key_id
+        pub_key_short = pub_key[:16] + '...' + pub_key[-16:]
+
+        golem.tools.talkback.update_sentry_user(
+            node_id=pub_key_short,
+            node_name=self.config_desc.node_name)
+
         self.p2pservice = None
         self.diag_service = None
 
@@ -387,8 +394,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         def get_performance_values():
             values = self.environments_manager.get_performance_values()
             new_env_manager = self.task_server.task_keeper.new_env_manager
-            for new_env in new_env_manager.environments():
-                env_id = new_env.metadata().id
+            for env_id in new_env_manager.environments():
                 value = new_env_manager.get_cached_performance(env_id)
                 if value is not None:
                     values[env_id] = value

@@ -81,7 +81,7 @@ def computed_task_reported(
     if requested_task_manager.task_exists(task_id):
         deferred = task_server.new_resource_manager.download(
             report_computed_task.multihash,
-            requested_task_manager.get_subtasks_outputs_dir(task_id),
+            requested_task_manager.get_subtask_outputs_dir(task_id),
             client_options,
         )
         deferred.addCallback(on_success)
