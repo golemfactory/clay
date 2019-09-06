@@ -12,13 +12,13 @@ from twisted.internet.defer import inlineCallbacks
 
 from golem.core.deferred import deferred_from_future
 from golem.task.task_api import EnvironmentTaskApiService
-from golem.tools.testwithasyncio import TwistedAsyncioTestCase
 from tests.golem.envs.localhost import (
     LocalhostEnvironment,
     LocalhostConfig,
     LocalhostPrerequisites,
     LocalhostPayloadBuilder
 )
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 
 class TestLocalhostEnv(TwistedAsyncioTestCase):

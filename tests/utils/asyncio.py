@@ -1,4 +1,5 @@
 import asyncio
+from mock import MagicMock
 
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
@@ -6,7 +7,19 @@ from golem.core.common import install_reactor
 from golem.tools.testwithreactor import uninstall_reactor
 
 
+class AsyncMock(MagicMock):
+    """
+    Extended MagicMock where all mocked calls are async
+    """
+    async def __call__(self, *args, **kwargs):
+        return super().__call__(*args, **kwargs)
+
+
 class TwistedAsyncioTestCase(TwistedTestCase):
+    """
+    A wrapper for TwistedTestCase to ensure it works with asyncio
+    Replace with @pytest.mark.asyncio when removing twisted from these tests
+    """
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

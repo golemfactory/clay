@@ -5,7 +5,6 @@ import os.path
 import shutil
 import tempfile
 import unittest
-from mock import MagicMock
 from pathlib import Path
 from time import sleep
 
@@ -178,11 +177,6 @@ def async_test(coro):
         loop = asyncio.new_event_loop()
         return loop.run_until_complete(coro(*args, **kwargs))
     return wrapper
-
-
-class AsyncMock(MagicMock):
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
 
 
 @pytest.fixture

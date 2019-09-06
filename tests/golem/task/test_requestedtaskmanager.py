@@ -20,10 +20,8 @@ from golem.task.requestedtaskmanager import (
     ComputingNodeDefinition,
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
-from golem.testutils import (  # noqa pylint: disable=unused-import
-    AsyncMock,
-    pytest_database_fixture,
-)
+from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
+from tests.utils.asyncio import AsyncMock
 
 
 @pytest.fixture

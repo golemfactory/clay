@@ -19,7 +19,7 @@ from golem.envs.docker.cpu import (
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
 from golem.testutils import TempDirFixture
-from golem.tools.testwithasyncio import TwistedAsyncioTestCase
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 
 class NewTaskComputerTestBase(TwistedAsyncioTestCase, TempDirFixture):

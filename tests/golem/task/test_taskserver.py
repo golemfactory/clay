@@ -58,13 +58,17 @@ from golem.task.taskserver import (
     WaitingTaskResult,
 )
 from golem.task.taskstate import TaskState, TaskOp, TaskStatus
-from golem.tools.testwithasyncio import TwistedAsyncioTestCase
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
-from tests.golem.envs.localhost import LocalhostEnvironment, LocalhostConfig, \
-    LocalhostPrerequisites, LocalhostPayloadBuilder
+from tests.golem.envs.localhost import (
+    LocalhostEnvironment,
+    LocalhostConfig,
+    LocalhostPrerequisites,
+    LocalhostPayloadBuilder,
+)
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
 DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
