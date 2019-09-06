@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, too-many-ancestors
 import asyncio
 import time
 from pathlib import Path
