@@ -3,6 +3,11 @@ import logging
 from enum import Enum
 from typing import Callable, Dict, List, Optional, Type, TYPE_CHECKING
 
+from dataclasses import dataclass, field
+from golem_messages.datastructures import stats as dt_stats
+
+from golem.marketplace import DEFAULT_REQUESTOR_MARKET_STRATEGY
+
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
     import golem_messages
@@ -10,10 +15,6 @@ if TYPE_CHECKING:
 
     from apps.core.task.coretaskstate import TaskDefinition, Options
     from golem.task.taskstate import TaskState
-
-from dataclasses import dataclass, field
-from golem.marketplace import DEFAULT_REQUESTOR_MARKET_STRATEGY
-from golem_messages.datastructures.stats import ProviderStats
 
 logger = logging.getLogger("golem.task")
 
