@@ -2,9 +2,11 @@ import abc
 import logging
 
 from apps.core.task.coretaskstate import TaskDefinition
+from golem.model import Performance
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
 from golem.task.taskthread import TaskThread
+from golem_messages.datastructures import stats as dt_stats
 
 
 logger = logging.getLogger("apps.core")
@@ -32,7 +34,7 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
     def __init__(self, task: Task, root_path, success_callback, error_callback,
-                 benchmark: CoreBenchmark) -> None:
+                 benchmark: CoreBenchmark, env_id: str) -> None:
         def get_compute_task_def():
             return task.query_extra_data(10000).ctd
 
@@ -46,6 +48,7 @@ class BenchmarkRunner(LocalComputer):
                          resources=task.get_resources())
         # probably this could be done differently
         self.benchmark = benchmark
+        self.env_id = env_id
 
     def _get_task_thread(self, ctd):
         if not ctd['docker_images']:
@@ -66,11 +69,18 @@ class BenchmarkRunner(LocalComputer):
         return self.benchmark.verify_result(res["data"])
 
     def computation_success(self, task_thread: TaskThread) -> None:
-        res, _ = task_thread.result
+        provider_stats = dt_stats.ProviderStats(**task_thread.stats)
+        cpu_usage: int = provider_stats.cpu_stats.cpu_usage['total_usage']
+
         try:
             benchmark_value = self.benchmark.normalization_constant / self._get_time_spent()
             if benchmark_value < 0:
                 raise ZeroDivisionError
         except ZeroDivisionError:
             benchmark_value = self.benchmark.normalization_constant / 1e-10
-        self.success_callback(benchmark_value)
+
+        self.success_callback(Performance(
+            environment_id=self.env_id,
+            value=benchmark_value,
+            cpu_usage=cpu_usage)
+        )

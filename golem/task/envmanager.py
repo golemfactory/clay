@@ -75,8 +75,8 @@ class EnvironmentManager:
     def get_performance(self, env_id) -> Deferred:
         """ Gets the performance for the given environment
             Checks the database first, if not found it starts a benchmark
-            Return value Deferred resulting in a float
-            or None when the benchmark is already running. """
+            :return Deferred resulting in a Performance object or None
+            when the benchmark is already running. """
         if self._running_benchmark:
             return None
 
@@ -102,17 +102,19 @@ class EnvironmentManager:
         finally:
             self._running_benchmark = False
 
-        Performance.update_or_create(env_id, result)
+        result.upsert()
         logger.info(
-            'Finshed running benchmark. env=%r, score=%r',
+            'Finished running benchmark. env=%r, score=%r, cpu_usage=%r',
             env_id,
-            result
+            result.value,
+            result.cpu_usage
         )
+
         return result
 
     @staticmethod
-    def get_cached_performance(env_id: EnvId) -> Optional[float]:
+    def get_cached_performance(env_id: EnvId) -> 'Optional[Performance]':
         try:
-            return Performance.get(Performance.environment_id == env_id).value
+            return Performance.get(Performance.environment_id == env_id)
         except Performance.DoesNotExist:
             return None

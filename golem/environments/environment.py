@@ -88,16 +88,17 @@ class Environment():
         return self.accept_tasks
 
     @classmethod
-    def get_performance(cls):
-        """ Return performance index associated with the environment. Return
-        0.0 if performance is unknown
-        :return float:
+    def get_performance(cls) -> Performance:
+        """ Return performance info associated with the environment. Return
+        0 as performance and usage if benchmark hasn't been run yet.
+        :return Performance:
         """
         try:
             perf = Performance.get(Performance.environment_id == cls.get_id())
         except Performance.DoesNotExist:
-            return 0.0
-        return perf.value
+            return Performance(environment_id=cls.get_id())
+
+        return perf
 
     @classmethod
     def get_min_accepted_performance(cls) -> float:
@@ -119,6 +120,14 @@ class Environment():
         logger.info('Running benchmark for %s', cls.get_id())
         performance = make_perf_test()
         logger.info('%s performance is %.2f', cls.get_id(), performance)
+
+        result = Performance(
+            environment_id=cls.get_id(),
+            value=performance,
+            cpu_usage=0
+        )
+
         if save:
-            Performance.update_or_create(cls.get_id(), performance)
-        return performance
+            result.upsert()
+
+        return result
