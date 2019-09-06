@@ -112,10 +112,20 @@ class VbrSubtask:
         return verdicts
 
     def get_subtask_count(self) -> int:
+        """Returns a number of subtasks that will be computed
+        within this VbrSubtask instance. This is a dynamic value
+        that will change if referee is called into action.
+        """
         instances_cnt = len(self.get_instances())
         if instances_cnt < self.redundancy_factor + 1:
             instances_cnt = self.redundancy_factor + 1
         return instances_cnt
+
+    def get_tasks_left(self) -> int:
+        return self.get_subtask_count() - len(
+            [s for s in self.subtasks.values()
+             if s['status'] != SubtaskStatus.finished]
+        )
 
 
 class WasmTaskOptions(Options):
@@ -408,9 +418,7 @@ class WasmTask(CoreTask):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        total = sum([s.get_subtask_count() for s in self.subtasks])
-        logger.info("Total tasks: %d", total)
-        return total
+        return sum([s.get_subtask_count() for s in self.subtasks])
 
     def get_active_tasks(self):
         return sum(
@@ -456,7 +464,6 @@ class WasmTask(CoreTask):
         assert num_total >= tasks_left
 
         progress = (num_total - tasks_left) / num_total
-        logger.info("progress: %d", progress)
 
         return progress
 
