@@ -3,7 +3,7 @@ from typing import Any, Dict, List
 from dataclasses import dataclass, field, asdict
 
 from golem.core.common import get_timestamp_utc
-from golem.envs.docker.whitelist import Whitelist, repository_from_image_name
+from golem.envs.docker.whitelist import Whitelist
 from golem.report import EventPublisher
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Environment
