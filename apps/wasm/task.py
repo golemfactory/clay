@@ -459,8 +459,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1)\
-            * len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 
