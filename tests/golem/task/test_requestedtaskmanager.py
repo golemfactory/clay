@@ -7,7 +7,7 @@ from pathlib import Path
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
-from mock import Mock, MagicMock
+from mock import Mock
 import pytest
 
 from golem.app_manager import AppManager
@@ -21,11 +21,7 @@ from golem.task.requestedtaskmanager import (
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
-
-
-class AsyncMock(MagicMock):
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
+from tests.utils.asyncio import AsyncMock
 
 
 @pytest.fixture

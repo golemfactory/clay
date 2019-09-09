@@ -27,7 +27,6 @@ from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
-from golem.core.common import install_reactor
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -60,12 +59,16 @@ from golem.task.taskserver import (
 )
 from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDatabaseWithReactor, \
-    uninstall_reactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
-from tests.golem.envs.localhost import LocalhostEnvironment, LocalhostConfig, \
-    LocalhostPrerequisites, LocalhostPayloadBuilder
+from tests.golem.envs.localhost import (
+    LocalhostEnvironment,
+    LocalhostConfig,
+    LocalhostPrerequisites,
+    LocalhostPayloadBuilder,
+)
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
 DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
@@ -1715,22 +1718,8 @@ class TestEnvManager(TaskServerAsyncTestBase):
 class TestNewTaskComputerIntegration(
         testutils.TestWithClient,
         testutils.DatabaseFixture,
-        TwistedTestCase
+        TwistedAsyncioTestCase
 ):
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        install_reactor()
-
-    @classmethod
-    def cleanUpClass(cls):
-        uninstall_reactor()
-
     @patch('golem.task.taskserver.TaskHeaderKeeper', spec=TaskHeaderKeeper)
     @patch('golem.task.taskserver.ResourceManager', spec_set=ResourceManager)
     @patch('golem.task.taskserver.BenchmarkManager', spec_set=BenchmarkManager)

@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access, too-many-ancestors
 import asyncio
 import time
 from pathlib import Path
@@ -7,10 +7,8 @@ from unittest import mock
 from golem_messages.message import ComputeTaskDef
 from golem_task_api import ProviderAppClient, TaskApiService
 from twisted.internet import defer
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.envs import Runtime
@@ -21,10 +19,10 @@ from golem.envs.docker.cpu import (
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
 from golem.testutils import TempDirFixture
-from golem.tools.testwithreactor import uninstall_reactor
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 
-class NewTaskComputerTestBase(TwistedTestCase, TempDirFixture):
+class NewTaskComputerTestBase(TwistedAsyncioTestCase, TempDirFixture):
 
     def setUp(self):
         def enabled(env_id):
@@ -142,21 +140,6 @@ class TestTaskGiven(NewTaskComputerTestBase):
 
 
 class TestCompute(NewTaskComputerTestBase):
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        cls.loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(cls.loop)
-        install_reactor()
-
-    @classmethod
-    def tearDownClass(cls) -> None:
-        uninstall_reactor()
-        asyncio.set_event_loop(None)
 
     def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
@@ -290,23 +273,6 @@ class TestCompute(NewTaskComputerTestBase):
 
 
 class TestCreateClientAndCompute(NewTaskComputerTestBase):
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        install_reactor()
-
-    @classmethod
-    def tearDownClass(cls):
-        uninstall_reactor()
-        asyncio.set_event_loop(None)
-        super().tearDownClass()
-
     @defer.inlineCallbacks
     def test_client_client_and_compute(self):
         # Given
