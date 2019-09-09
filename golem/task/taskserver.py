@@ -295,14 +295,15 @@ class TaskServer(
             logger.debug('TASK SERVER TASKS STATES: %r',
                          self.task_manager.tasks_states)
 
+    @inlineCallbacks
     def pause(self):
         logger.info('TaskServer.pause()')
         super().pause()
         logger.info('TaskServer.pause() - pause verificatiopn')
-        CoreTask.VERIFICATION_QUEUE.pause()
+        yield CoreTask.VERIFICATION_QUEUE.pause()
         quit_f = asyncio.ensure_future(self.requested_task_manager.quit())
         logger.info('TaskServer.pause() - # quit rtm')
-        deferred_from_future(quit_f)
+        yield deferred_from_future(quit_f)
         logger.info('TaskServer.pause() - disconnect')
         self.disconnect()
         logger.info('TaskServer.pause() - task_computer.quit()')

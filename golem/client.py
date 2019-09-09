@@ -595,6 +595,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.port_mapper.quit()
 
     @rpc_utils.expose('ui.stop')
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         logger.info('services = %r', self._services)
@@ -608,7 +609,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.p2pservice.disconnect()
         if self.task_server:
             logger.info("Pausing task_server")
-            self.task_server.pause()
+            yield self.task_server.pause()
         logger.info("Paused")
 
     @rpc_utils.expose('ui.start')

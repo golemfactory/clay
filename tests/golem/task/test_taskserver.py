@@ -153,12 +153,13 @@ class TaskServerTestBase(LogTestCase,
         )
         self.ts.resource_manager.storage.get_dir.return_value = self.tempdir
 
+    @defer.inlineCallbacks
     def tearDown(self):
-        LogTestCase.tearDown(self)
-        testutils.DatabaseFixture.tearDown(self)
-
         if hasattr(self, "ts") and self.ts:
-            self.ts.quit()
+            yield self.ts.quit()
+
+        for parent in TaskServerTestBase.__bases__:
+            parent.tearDown(self)
 
     def _prepare_handshake(self, task_owner_key, task_id):
         self.ts.start_handshake(
@@ -1906,7 +1907,7 @@ class TestNewTaskComputerIntegration(
         )
 
 
-class TestTaskServerAsync(TaskServerTestBase, TwistedAsyncioTestCase):
+class TestTaskServerAsync(TaskServerAsyncTestBase):
     @defer.inlineCallbacks
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask

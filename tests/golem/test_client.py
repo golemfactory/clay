@@ -134,8 +134,9 @@ class TestClientBase(DatabaseFixture):
         super().setUp()
         self.client = make_client(datadir=self.path)
 
+    @inlineCallbacks
     def tearDown(self):
-        self.client.quit()
+        yield self.client.quit()
         super().tearDown()
 
 
@@ -283,7 +284,7 @@ class TestClient(TestClientBase):
         assert self.client.p2pservice.active
         assert self.client.task_server.active
 
-        self.client.pause()
+        sync_wait(self.client.pause())
 
         assert not self.client.p2pservice.active
         assert not self.client.task_server.active
