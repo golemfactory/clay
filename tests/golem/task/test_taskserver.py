@@ -799,6 +799,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_new_connection(self, *_):
         ts = self.ts
+        ts.resume()
         tss = tasksession.TaskSession(Mock())
         ts.new_connection(tss)
         assert len(ts.task_sessions_incoming) == 1
@@ -856,6 +857,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
+        assert not self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
@@ -863,11 +869,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert not self.ts.active
         assert CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.resume()
-
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
 
     def test_add_task_header_invalid_sig(self):
         self.ts._verify_header_sig = lambda _: False

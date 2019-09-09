@@ -402,9 +402,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.p2pservice.add_metadata_provider(
             'performance', get_performance_values)
 
-        # Pause p2p and task sessions to prevent receiving messages before
-        # the node is ready
-        self.pause()
         self._restore_locks()
 
         monitoring_publisher_service = MonitoringPublisherService(
