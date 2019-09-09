@@ -1031,16 +1031,25 @@ class TaskServer(
         self.acl.disallow(node_id, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
-        self.acl_ip.disallow(ip, timeout_seconds)
+    def disallow_ip(self, ip: Union[str, list], timeout_seconds: int = -1) -> None:
+        if isinstance(ip, str):
+                ip = [ip]
+        for item in ip:
+            self.acl_ip.disallow(ip, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
-    def allow_node(self, node_id: str, persist: bool = True) -> None:
-        self.acl.allow(node_id, persist)
+    def allow_node(self, node_id: Union[str, list], persist: bool = True) -> None:
+        if isinstance(node_id, str):
+                node_id = [node_id]
+        for item in node_id:
+            self.acl.allow(node_id, persist)
 
     @rpc_utils.expose('net.peer.allow_ip')
-    def allow_ip(self, node_id: str, persist: bool = True) -> None:
-        self.acl_ip.allow(node_id, persist)
+    def allow_ip(self, node_id: Union[str, list], persist: bool = True) -> None:
+        if isinstance(node_id, str):
+                node_id = [node_id]
+        for item in node_id:
+            self.acl_ip.allow(node_id, persist)
 
     @rpc_utils.expose('net.peer.acl')
     def acl_status(self) -> Dict:
