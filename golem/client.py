@@ -598,17 +598,16 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
-        logger.info('services = %r', self._services)
         for service in self._services:
             if service.running:
                 service.stop()
 
         if self.p2pservice:
-            logger.info("Pausing p2pservice")
+            logger.debug("Pausing p2pservice")
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            logger.info("Pausing task_server")
+            logger.debugs("Pausing task_server")
             yield self.task_server.pause()
         logger.info("Paused")
 
