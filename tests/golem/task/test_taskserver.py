@@ -881,25 +881,31 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         task_header = get_example_task_header(keys_auth_2.public_key)
+        task_header.environment_prerequisites = dict(image='test/0')
 
         self.assertFalse(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 0)
+        self.assertEqual(ts._docker_image_discovered.call_count, 0)
 
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
     def test_add_task_header_past_deadline(self):
         keys_auth_2 = KeysAuth(
@@ -909,12 +915,15 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         with freezegun.freeze_time(datetime.utcnow() - timedelta(hours=2)):
             task_header = get_example_task_header(keys_auth_2.public_key)
+            task_header.environment_prerequisites = dict(image='test/0')
             task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertFalse(ts.add_task_header(task_header))
+        self.assertFalse(ts._docker_image_discovered.called)
 
 
 class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):

@@ -38,7 +38,13 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage, report_calls
+from golem.report import (
+    Component,
+    EventPublisher,
+    Stage,
+    StatusPublisher,
+    report_calls,
+)
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
@@ -316,6 +322,7 @@ class Node(HardwarePresetsMixin):
             methods = self.get_rpc_mapping()
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
+            EventPublisher.initialize(self._rpc_publisher)
             StatusPublisher.initialize(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
