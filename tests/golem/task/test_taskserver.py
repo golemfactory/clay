@@ -129,7 +129,8 @@ def _assert_log_msg(logger_mock, msg):
 
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
-                         testutils.TestWithClient):
+                         testutils.TestWithClient,
+                         TwistedAsyncioTestCase):
 
     @patch('golem.network.concent.handlers_library.HandlersLibrary'
            '.register_handler')
@@ -181,6 +182,16 @@ class TaskServerTestBase(LogTestCase,
         env.get_min_accepted_performance.return_value = min_accepted_perf
         env.get_performance = Mock(return_value=0.0)
         self.ts.get_environment_by_id = Mock(return_value=env)
+
+    def _patch_async(self, *args, **kwargs):
+        patcher = patch(*args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_ts_async(self, *args, **kwargs):
+        patcher = patch.object(self.ts, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
 
 
 class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
@@ -856,6 +867,23 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             received_options=Mock(filtered=Mock(side_effect=Exception)),
         ) is built_options
 
+    @defer.inlineCallbacks
+    def test_pause_and_resume(self, *_):
+        from apps.core.task.coretask import CoreTask
+
+        assert not self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
+        assert self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        yield self.ts.pause()
+
+        assert not self.ts.active
+        assert CoreTask.VERIFICATION_QUEUE._paused
+
     def test_add_task_header_invalid_sig(self):
         self.ts._verify_header_sig = lambda _: False
         result = self.ts.add_task_header(Mock())
@@ -1453,20 +1481,7 @@ class TestRequestRandomTask(TaskServerTestBase):
         request_task.assert_called_once_with(task_header)
 
 
-class TaskServerAsyncTestBase(TaskServerTestBase, TwistedTestCase):
-
-    def _patch_async(self, *args, **kwargs):
-        patcher = patch(*args, **kwargs)
-        self.addCleanup(patcher.stop)
-        return patcher.start()
-
-    def _patch_ts_async(self, *args, **kwargs):
-        patcher = patch.object(self.ts, *args, **kwargs)
-        self.addCleanup(patcher.stop)
-        return patcher.start()
-
-
-class TestChangeConfig(TaskServerAsyncTestBase):
+class TestChangeConfig(TaskServerTestBase):
 
     @defer.inlineCallbacks
     def test(self):
@@ -1487,7 +1502,7 @@ class TestChangeConfig(TaskServerAsyncTestBase):
 
 
 @patch('golem.task.envmanager.EnvironmentManager.remove_cached_performance')
-class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
+class ChangeTaskComputerConfig(TaskServerTestBase):
 
     @defer.inlineCallbacks
     def test_config_unchanged_no_benchmarks(self, remove_performance):
@@ -1549,7 +1564,7 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         remove_performance.assert_not_called()
 
 
-class TestTaskServerConcent(TaskServerAsyncTestBase):
+class TestTaskServerConcent(TaskServerTestBase):
 
     def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
@@ -1603,7 +1618,7 @@ class TestTaskServerConcent(TaskServerAsyncTestBase):
         )
 
 
-class TestEnvManager(TaskServerAsyncTestBase):
+class TestEnvManager(TaskServerTestBase):
     def test_get_environment_by_id(self):
         # Given
         env_manager = self.ts.task_keeper.new_env_manager
@@ -1905,22 +1920,3 @@ class TestNewTaskComputerIntegration(
                 call.task_ended(self.task_id)
             ]
         )
-
-
-class TestTaskServerAsync(TaskServerAsyncTestBase):
-    @defer.inlineCallbacks
-    def test_pause_and_resume(self, *_):
-        from apps.core.task.coretask import CoreTask
-
-        assert not self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.resume()
-
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
-
-        yield self.ts.pause()
-
-        assert not self.ts.active
-        assert CoreTask.VERIFICATION_QUEUE._paused
