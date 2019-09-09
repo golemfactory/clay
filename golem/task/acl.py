@@ -189,9 +189,12 @@ class _DenyAcl(Acl):
         del self._deny_deadlines[node_id]
 
         if persist:
-            deny_list = ACLDeniedNodes.select().execute()
+            try:
+                existNode = ACLDeniedNodes.get(node_id=node_id)
+            except ACLDeniedNodes.DoesNotExist:
+                existNode = None
 
-            if node_id in list(deny_list):
+            if existNode:
                 ACLDeniedNodes \
                     .delete() \
                     .where(ACLDeniedNodes.node_id == node_id) \
