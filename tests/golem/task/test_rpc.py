@@ -27,7 +27,6 @@ from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
 from golem.task.rpc import ClientProvider
-from golem.tools.testwithasyncio import TwistedAsyncioTestCase
 from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
 

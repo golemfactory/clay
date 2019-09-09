@@ -13,7 +13,6 @@ from unittest.mock import Mock, MagicMock, patch, ANY, call
 from pydispatch import dispatcher
 import freezegun
 from twisted.internet import defer
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -27,7 +26,6 @@ from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
-from golem.core.deferred import sync_wait
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import (
     Environment as OldEnv,
