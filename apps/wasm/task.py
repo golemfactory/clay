@@ -429,28 +429,6 @@ class WasmTask(CoreTask):
     def get_tasks_left(self):
         return self.get_active_tasks()
 
-    def restart(self):
-        for subtask_id in list(self.subtasks_given.keys()):
-            self.restart_subtask(subtask_id)
-
-    def restart_subtask(self, subtask_id):
-        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
-
-        subtask_info = self.subtasks_given[subtask_id]
-        was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
-                                                        SubtaskStatus.resent]
-
-        if subtask_info['status'].is_active():
-            # TODO Restarted tasks that were waiting for verification should
-            # cancel it. Issue #2423
-            self._mark_subtask_failed(subtask_id)
-        elif subtask_info['status'] == SubtaskStatus.finished:
-            self._mark_subtask_failed(subtask_id)
-            self.num_tasks_received -= 1
-
-        if not was_failure_before:
-            subtask_info['status'] = SubtaskStatus.restarted
-
     def abort(self):
         raise NotImplementedError()
 
