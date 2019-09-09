@@ -9,7 +9,7 @@ from golem.tools.testwithreactor import uninstall_reactor
 
 class AsyncMock(MagicMock):
     """
-    Extended MagicMock where all mocked calls are async
+    Extended MagicMock to keep async calls async
     """
     async def __call__(self, *args, **kwargs):
         return super().__call__(*args, **kwargs)
