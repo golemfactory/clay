@@ -224,9 +224,8 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.acl = get_acl(Path(client.datadir),
-                           max_times=config_desc.disallow_id_max_times)
-        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
+        self.acl = get_acl(self.client, max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl(self.client, max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
@@ -1053,7 +1052,7 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.acl.new')
     def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
-        new_acl = setup_acl(Path(self.client.datadir),
+        new_acl = setup_acl(self.client,
                             AclRule[default_rule],
                             exceptions)
         self.acl = new_acl

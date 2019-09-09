@@ -561,6 +561,31 @@ class DockerWhitelist(BaseModel):
     class Meta:
         database = db
 
+class ACLAllowedNodes(BaseModel):
+    node_name = CharField(null=True)
+    node_id = CharField(null=False, index=True, unique=True)
+
+    def to_dict(self):
+        return {
+            'node_name': str(self.node_name),
+            'node_id': self.node_id
+        }
+
+    class Meta:
+        database = db
+
+class ACLDeniedNodes(BaseModel):
+    node_name = CharField(null=True)
+    node_id = CharField(null=False, index=True, unique=True)
+
+    def to_dict(self):
+        return {
+            'node_name': str(self.node_name),
+            'node_id': self.node_id
+        }
+
+    class Meta:
+        database = db
 
 ##################
 # MESSAGE MODELS #
