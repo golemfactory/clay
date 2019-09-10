@@ -2,7 +2,7 @@
 # pylint: disable=unused-argument
 from golem import model
 
-SCHEMA_VERSION = 35
+SCHEMA_VERSION = 36
 
 
 def migrate(migrator, database, fake=False, **kwargs):

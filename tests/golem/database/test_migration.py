@@ -564,11 +564,11 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(wo_count, 0)
 
     @patch('golem.database.Database._create_tables')
-    def test_35_charged_from_deposit(self, *_args):
+    def test_36_charged_from_deposit(self, *_args):
         with self.database_context() as database:
-            database._migrate_schema(6, 34)
+            database._migrate_schema(6, 35)
             database.db.RETRY_TIMEOUT = datetime.timedelta(seconds=0)
-            database._migrate_schema(34, 35)
+            database._migrate_schema(35, 36)
 
 
 def generate(start, stop):
