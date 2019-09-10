@@ -178,7 +178,7 @@ class TaskServerTestBase(LogTestCase,
             -> None:
         env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
-        env.get_performance = BenchmarkResult()
+        env.get_benchmark_result = BenchmarkResult()
         self.ts.get_environment_by_id = Mock(return_value=env)
 
 
@@ -218,7 +218,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self._prepare_handshake(task_owner_key, task_id)
 
         env_mock = Mock(spec=OldEnv)
-        env_mock.get_performance = lambda: BenchmarkResult()
+        env_mock.get_benchmark_result = lambda: BenchmarkResult()
         self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
@@ -1598,7 +1598,7 @@ class TestTaskServerConcent(TaskServerAsyncTestBase):
         self.ts.client.concent_service.required_as_provider = False
 
         env = Mock(spec=OldEnv)
-        env.get_performance.return_value = BenchmarkResult()
+        env.get_benchmark_result.return_value = BenchmarkResult()
         self._patch_ts_async('get_environment_by_id', return_value=env)
 
         task_header = get_example_task_header('test')
@@ -1661,7 +1661,7 @@ class TestEnvManager(TaskServerAsyncTestBase):
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
         mock_get = Mock(spec=BenchmarkResult)
-        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+        self.ts.task_keeper.new_env_manager.get_benchmark_result = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
@@ -1689,7 +1689,7 @@ class TestEnvManager(TaskServerAsyncTestBase):
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
         mock_get = Mock(return_value=performance)
-        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+        self.ts.task_keeper.new_env_manager.get_benchmark_result = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)

@@ -400,10 +400,10 @@ class TaskServer(
             # Check performance
             benchmark_result: 'Optional[BenchmarkResult]' = None
             if isinstance(env, OldEnv):
-                benchmark_result = env.get_performance()
+                benchmark_result = env.get_benchmark_result()
             else:  # NewEnv
                 env_mgr = self.task_keeper.new_env_manager
-                benchmark_result = yield env_mgr.get_performance(env_id)
+                benchmark_result = yield env_mgr.get_benchmark_result(env_id)
             if benchmark_result is None:
                 logger.debug("Not requesting task, benchmark is in progress.")
                 return None

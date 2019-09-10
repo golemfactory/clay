@@ -85,8 +85,8 @@ class Environment():
         return self.accept_tasks
 
     @classmethod
-    def get_performance(cls) -> BenchmarkResult:
-        """ Return performance info associated with the environment. Return
+    def get_benchmark_result(cls) -> BenchmarkResult:
+        """ Return benchmark result associated with the environment. Return
         0 as performance and usage if benchmark hasn't been run yet.
         :return BenchmarkResult:
         """

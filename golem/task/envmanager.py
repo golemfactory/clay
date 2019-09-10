@@ -82,7 +82,7 @@ class EnvironmentManager:
         return self._envs[env_id].payload_builder
 
     @inlineCallbacks
-    def get_performance(self, env_id) -> Deferred:
+    def get_benchmark_result(self, env_id) -> Deferred:
         """ Gets the performance for the given environment
             Checks the database first, if not found it starts a benchmark
             :return Deferred resulting in a BenchmarkResult object or None
@@ -93,7 +93,7 @@ class EnvironmentManager:
         if not self.enabled(env_id):
             raise Exception("Requested performance for disabled environment")
 
-        result = self.get_cached_performance(env_id)
+        result = self.get_cached_benchmark_result(env_id)
         if result:
             return result
 
@@ -128,7 +128,8 @@ class EnvironmentManager:
         return result
 
     @staticmethod
-    def get_cached_performance(env_id: EnvId) -> 'Optional[BenchmarkResult]':
+    def get_cached_benchmark_result(env_id: EnvId) \
+            -> 'Optional[BenchmarkResult]':
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             return BenchmarkResult.from_performance(perf)

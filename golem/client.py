@@ -395,7 +395,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             values = self.environments_manager.get_performance_values()
             new_env_manager = self.task_server.task_keeper.new_env_manager
             for env_id in new_env_manager.environments():
-                value = new_env_manager.get_cached_performance(env_id)
+                value = new_env_manager \
+                    .get_cached_benchmark_result(env_id).performance
                 if value is not None:
                     values[env_id] = value
             return values
@@ -1175,8 +1176,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'id': env_id,
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
-            'performance': env.get_performance().performance,
-            'cpu_usage': env.get_performance().cpu_usage,
+            'performance': env.get_benchmark_result().performance,
+            'cpu_usage': env.get_benchmark_result().cpu_usage,
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env_id, env in envs.items()]

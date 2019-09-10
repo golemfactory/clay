@@ -75,12 +75,17 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         self.b.run_all_benchmarks()
 
         # then
-        assert mpt_mock.call_count == 1
-        assert DefaultEnvironment.get_performance() == BenchmarkResult(314.15)
-        assert br_mock.call_count == len(self.b.benchmarks)
+        self.assertEqual(mpt_mock.call_count, 1)
+        self.assertEqual(
+            DefaultEnvironment.get_benchmark_result(),
+            BenchmarkResult(314.15)
+        )
+        self.assertEqual(br_mock.call_count, len(self.b.benchmarks))
         for idx, env_id in enumerate(reversed(list(self.b.benchmarks))):
-            assert (1 + idx) * 100 == \
-                   Performance.get(Performance.environment_id == env_id).value
+            self.assertEqual(
+                (1 + idx) * 100,
+                Performance.get(Performance.environment_id == env_id).value
+            )
 
     @patch("golem.task.benchmarkmanager.Thread", MockThread)
     @patch("golem.environments.environment.make_perf_test")
