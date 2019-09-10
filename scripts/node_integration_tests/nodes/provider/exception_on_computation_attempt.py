@@ -31,7 +31,7 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
 
     def success_callback(result: BenchmarkResult):
         logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
-                    env_id, result.value, result.cpu_usage)
+                    env_id, result.performance, result.cpu_usage)
 
         Performance.update_or_create(
             env_id=env_id,

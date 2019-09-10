@@ -128,8 +128,7 @@ class EnvironmentManager:
         return result
 
     @staticmethod
-    def get_cached_benchmark_result(env_id: EnvId) \
-            -> 'Optional[BenchmarkResult]':
+    def get_cached_benchmark_result(env_id: EnvId):
         try:
             perf = Performance.get(Performance.environment_id == env_id)
             return BenchmarkResult.from_performance(perf)

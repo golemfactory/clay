@@ -5,7 +5,6 @@ from golem_messages.datastructures import stats as dt_stats
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.envs import BenchmarkResult
-from golem.model import Performance
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
 from golem.task.taskthread import TaskThread
@@ -70,6 +69,7 @@ class BenchmarkRunner(LocalComputer):
         return self.benchmark.verify_result(res["data"])
 
     def computation_success(self, task_thread: TaskThread) -> None:
+        # pylint: disable=no-member
         provider_stats = dt_stats.ProviderStats(**task_thread.stats)
         cpu_usage: int = provider_stats.cpu_stats.cpu_usage['total_usage'] \
             if provider_stats.cpu_stats else 0
