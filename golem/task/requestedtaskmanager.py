@@ -358,6 +358,11 @@ class RequestedTaskManager:
 
         await self._shutdown_app_client(task.app_id)
 
+    async def restart_task(self, task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        task.status = TaskStatus.waiting
+        task.save()
+
     async def _get_app_client(
             self,
             app_id: str,
