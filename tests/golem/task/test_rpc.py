@@ -106,6 +106,7 @@ class ProviderBase(test_client.TestClientBase):
         self.client.task_server.task_manager.add_new_task = add_new_task
 
 
+@mock.patch('golem.task.taskserver.TaskServer.quit')
 @mock.patch('signal.signal')
 @mock.patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 @mock.patch('golem.task.rpc.enqueue_new_task')
@@ -115,7 +116,7 @@ class ProviderBase(test_client.TestClientBase):
         header=mock.MagicMock(task_id='task_id'),
     ),
 )
-class TestCreateTask(ProviderBase, TestClientBase):
+class TestCreateTask(ProviderBase, TestClientBase, TwistedTestCase):
     @staticmethod
     def _get_task_dict(**data):
         task_dict = dummytaskstate.DummyTaskDefinition().to_dict()

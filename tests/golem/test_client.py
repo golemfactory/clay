@@ -134,9 +134,13 @@ class TestClientBase(DatabaseFixture):
         super().setUp()
         self.client = make_client(datadir=self.path)
 
-    @inlineCallbacks
     def tearDown(self):
-        yield self.client.quit()
+        # Only call taskcomputer.quit, TaskServer.quit now requires asyncio
+        # FIXME: Only keep self.client.quit() when it works with asyncio
+        if self.client.task_server is not None:
+            self.client.task_server.task_computer.quit()
+        with patch('golem.task.taskserver.TaskServer.quit'):
+            self.client.quit()
         super().tearDown()
 
 
@@ -214,9 +218,11 @@ class TestClient(TestClientBase):
 
         task_cleaner.assert_called()
 
-    def test_collect_gossip(self, *_):
+    @patch('golem.network.transport.tcpserver.TCPServer.start_accepting')
+    def test_collect_gossip(self, gossip_mock, *_):
         self.client.start_network()
         self.client.collect_gossip()
+        assert gossip_mock.call_count == 2
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
@@ -252,6 +258,7 @@ class TestClient(TestClientBase):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.task.taskserver.TaskServer.quit')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -277,14 +284,15 @@ class TestClient(TestClientBase):
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
-    @patch('golem.client.P2PService.connect_to_network')
+    @patch('golem.network.p2p.p2pservice.P2PService.start_accepting')
+    @patch('golem.task.taskserver.TaskServer.quit')
     def test_pause_resume(self, *_):
         self.client.start()
 
         assert self.client.p2pservice.active
         assert self.client.task_server.active
 
-        sync_wait(self.client.pause())
+        self.client.pause()
 
         assert not self.client.p2pservice.active
         assert not self.client.task_server.active
