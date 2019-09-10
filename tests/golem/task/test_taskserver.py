@@ -21,6 +21,7 @@ from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from requests import HTTPError
 
 from golem import testutils
@@ -34,7 +35,6 @@ from golem.environments.environment import (
     UnsupportReason,
 )
 from golem.envs import Environment as NewEnv
-from golem.envs.docker.cpu import DOCKER_CPU_ENV_ID
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager

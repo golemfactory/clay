@@ -1,4 +1,5 @@
 import asyncio
+import json
 from datetime import timedelta
 import logging
 from pathlib import Path
@@ -122,7 +123,6 @@ class RequestedTaskManager:
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
-            # prerequisites='{}',
             task_timeout=golem_params.task_timeout,
             subtask_timeout=golem_params.subtask_timeout,
             start_time=default_now(),
@@ -177,11 +177,14 @@ class RequestedTaskManager:
 
         app_client = await self._get_app_client(task.app_id)
         logger.debug('init_task(task_id=%r) - creating task', task_id)
-        await app_client.create_task(
+        reply = await app_client.create_task(
             task.task_id,
             task.max_subtasks,
             task.app_params,
         )
+        task.env_id = reply.env_id
+        task.prerequisites = json.loads(reply.prerequisites_json)
+        task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
     @staticmethod
