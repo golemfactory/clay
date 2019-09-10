@@ -1,3 +1,4 @@
+import asyncio
 from datetime import timedelta
 import logging
 from pathlib import Path
@@ -132,6 +133,13 @@ class RequestedTaskManager:
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
             output_directory=golem_params.output_directory,
             app_params=app_params,
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.call_at(
+            loop.time() + golem_params.task_timeout,
+            self._check_task_timeout,
+            task.task_id,
         )
 
         logger.debug(
@@ -394,6 +402,14 @@ class RequestedTaskManager:
             prereq=prereq,
             shared_dir=shared_dir
         )
+
+    @staticmethod
+    def _check_task_timeout(task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if task.status != TaskStatus.finished:
+            logger.info("Task %r timed out", task_id)
+            task.status = TaskStatus.timeout
+            task.save()
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(

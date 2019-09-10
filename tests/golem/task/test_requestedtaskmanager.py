@@ -240,11 +240,24 @@ class TestRequestedTaskManager():
         assert task_row.status == TaskStatus.aborted
         assert subtask_row.status == SubtaskStatus.cancelled
 
-    def _build_golem_params(self) -> CreateTaskParams:
+    @pytest.mark.asyncio
+    async def test_task_timeout(self, mock_client):
+        task_timeout = 0.1
+        task_id = self._create_task(task_timeout=task_timeout)
+        await self.rtm.init_task(task_id)
+        self.rtm.start_task(task_id)
+        assert not self.rtm.is_task_finished(task_id)
+
+        # Unfortunately feezegun doesn't mock asyncio's time
+        # and can't be used here
+        await asyncio.sleep(task_timeout)
+        assert self.rtm.is_task_finished(task_id)
+
+    def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
-            task_timeout=1,
+            task_timeout=task_timeout,
             subtask_timeout=1,
             output_directory=self.tmp_path / 'output',
             resources=[],
@@ -253,8 +266,8 @@ class TestRequestedTaskManager():
             concent_enabled=False,
         )
 
-    def _create_task(self):
-        golem_params = self._build_golem_params()
+    def _create_task(self, **golem_params):
+        golem_params = self._build_golem_params(**golem_params)
         app_params = {}
         task_id = self.rtm.create_task(golem_params, app_params)
         return task_id
