@@ -33,9 +33,9 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
+from golem.envs import BenchmarkResult
 from golem.envs import Environment as NewEnv
 from golem.envs.docker.cpu import DOCKER_CPU_ENV_ID
-from golem.model import Performance
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
@@ -178,7 +178,7 @@ class TaskServerTestBase(LogTestCase,
             -> None:
         env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
-        env.get_performance = Performance(OldEnv.get_id())
+        env.get_performance = BenchmarkResult()
         self.ts.get_environment_by_id = Mock(return_value=env)
 
 
@@ -218,7 +218,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self._prepare_handshake(task_owner_key, task_id)
 
         env_mock = Mock(spec=OldEnv)
-        env_mock.get_performance = lambda: Performance(OldEnv.get_id())
+        env_mock.get_performance = lambda: BenchmarkResult()
         self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
@@ -1598,7 +1598,7 @@ class TestTaskServerConcent(TaskServerAsyncTestBase):
         self.ts.client.concent_service.required_as_provider = False
 
         env = Mock(spec=OldEnv)
-        env.get_performance.return_value = Performance(OldEnv.get_id())
+        env.get_performance.return_value = BenchmarkResult()
         self._patch_ts_async('get_environment_by_id', return_value=env)
 
         task_header = get_example_task_header('test')
@@ -1660,7 +1660,7 @@ class TestEnvManager(TaskServerAsyncTestBase):
         mock_env = Mock(spec=NewEnv)
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
-        mock_get = Mock(spec=Performance)
+        mock_get = Mock(spec=BenchmarkResult)
         self.ts.task_keeper.new_env_manager.get_performance = mock_get
 
         mock_handshake = Mock()

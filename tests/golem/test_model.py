@@ -134,22 +134,24 @@ class TestPerformance(DatabaseFixture):
         perf3 = m.Performance(environment_id="ENV3", value=138.18)
         perf3.save()
 
-    def test_upsert(self):
+    def test_update_or_create(self):
         env_id = "test_env"
-        m.Performance(
-            environment_id=env_id,
-            value=100,
+        m.Performance.update_or_create(
+            env_id=env_id,
+            performance=100.0,
             cpu_usage=1000
-        ).upsert()
+        )
 
         stored = m.Performance.get(m.Performance.environment_id == env_id)
-        self.assertEqual(stored.value, 100)
+        self.assertEqual(stored.value, 100.0)
         self.assertEqual(stored.cpu_usage, 1000)
 
-        stored.value = 200
-        stored.cpu_usage = 2000
-        stored.upsert()
+        m.Performance.update_or_create(
+            env_id=env_id,
+            performance=200.0,
+            cpu_usage=2000
+        )
 
         stored = m.Performance.get(m.Performance.environment_id == env_id)
-        self.assertEqual(stored.value, 200)
+        self.assertEqual(stored.value, 200.0)
         self.assertEqual(stored.cpu_usage, 2000)

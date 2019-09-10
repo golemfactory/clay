@@ -140,14 +140,14 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         perf = 300.0
         self.manager.set_enabled(self.env_id, True)
 
-        Performance(environment_id=self.env_id, value=perf).upsert()
+        Performance.update_or_create(self.env_id, perf, 0)
 
         # When
         result = yield self.manager.get_performance(self.env_id)
 
         # Then
         self.env.run_benchmark.assert_not_called()
-        self.assertEqual(result, perf)
+        self.assertEqual(result.performance, perf)
 
     @inlineCallbacks
     def test_get_performance_benchmark_error(self):
@@ -170,12 +170,18 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         self.assertIsNone(self.manager.get_cached_performance(self.env_id))
 
         perf = 123.4
-        Performance(environment_id=self.env_id, value=perf).upsert()
-        self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
+        Performance.update_or_create(self.env_id, perf, 0)
+        self.assertEqual(
+            perf,
+            self.manager.get_cached_performance(self.env_id).performance
+        )
 
     def test_remove_cached_performance(self):
         perf = 123.4
-        Performance.update_or_create(self.env_id, perf)
-        self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
+        Performance.update_or_create(self.env_id, perf, 0)
+        self.assertEqual(
+            perf,
+            self.manager.get_cached_performance(self.env_id).performance
+        )
         self.manager.remove_cached_performance(self.env_id)
         self.assertIsNone(self.manager.get_cached_performance(self.env_id))

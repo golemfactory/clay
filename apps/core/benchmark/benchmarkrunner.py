@@ -4,6 +4,7 @@ import logging
 from golem_messages.datastructures import stats as dt_stats
 
 from apps.core.task.coretaskstate import TaskDefinition
+from golem.envs import BenchmarkResult
 from golem.model import Performance
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
@@ -35,7 +36,7 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
     def __init__(self, task: Task, root_path, success_callback, error_callback,
-                 benchmark: CoreBenchmark, env_id: str) -> None:
+                 benchmark: CoreBenchmark) -> None:
         def get_compute_task_def():
             return task.query_extra_data(10000).ctd
 
@@ -49,7 +50,6 @@ class BenchmarkRunner(LocalComputer):
                          resources=task.get_resources())
         # probably this could be done differently
         self.benchmark = benchmark
-        self.env_id = env_id
 
     def _get_task_thread(self, ctd):
         if not ctd['docker_images']:
@@ -82,7 +82,4 @@ class BenchmarkRunner(LocalComputer):
         except ZeroDivisionError:
             benchmark_value = self.benchmark.normalization_constant / 1e-10
 
-        self.success_callback(Performance(
-            environment_id=self.env_id,
-            value=benchmark_value,
-            cpu_usage=cpu_usage))
+        self.success_callback(BenchmarkResult(benchmark_value, cpu_usage))

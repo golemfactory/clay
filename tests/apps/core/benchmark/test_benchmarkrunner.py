@@ -96,7 +96,6 @@ class BenchmarkRunnerFixture(TempDirFixture):
             success_callback=self._success,
             error_callback=self._error,
             benchmark=self.benchmark,
-            env_id='test-environment'
         )
 
 
@@ -275,7 +274,6 @@ class BenchmarkRunnerWrongTaskTest(TempDirFixture):
             success_callback=mock.Mock(),
             error_callback=mock.Mock(),
             benchmark=benchmark,
-            env_id='test-environment'
         )
         instance.run()
         instance.success_callback.assert_not_called()

@@ -8,6 +8,7 @@ from apps.core.task.coretaskstate import TaskDesc
 from golem.core.threads import callback_wrapper
 from golem.environments.environment import Environment as DefaultEnvironment
 
+from golem.envs import BenchmarkResult
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import TaskStatus
@@ -41,12 +42,18 @@ class BenchmarkManager(object):
 
         from golem_messages.datastructures.p2p import Node
 
-        def success_callback(result: Performance):
+        def success_callback(result: BenchmarkResult):
             logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
-                        env_id, result.value, result.cpu_usage)
-            result.upsert()
+                        env_id, result.performance, result.cpu_usage)
+
+            Performance.update_or_create(
+                env_id=env_id,
+                performance=result.performance,
+                cpu_usage=result.cpu_usage
+            )
+
             if success:
-                success(result.value)
+                success(result.performance)
 
         def error_callback(err: Union[str, Exception]):
             logger.error("Unable to run %s benchmark: %s", env_id, str(err))
@@ -70,8 +77,7 @@ class BenchmarkManager(object):
             root_path=self.dir_manager.root_path,
             success_callback=success_callback,
             error_callback=error_callback,
-            benchmark=benchmark,
-            env_id=env_id
+            benchmark=benchmark
         )
         br.run()
 

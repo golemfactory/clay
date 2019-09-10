@@ -14,6 +14,7 @@ from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
+from golem.model import Performance
 
 CounterId = str
 CounterUsage = Any
@@ -76,6 +77,16 @@ class EnvSupportStatus(NamedTuple):
     """ Is the environment supported? If not, why? """
     supported: bool
     nonsupport_reason: Optional[str] = None
+
+
+@dataclass
+class BenchmarkResult:
+    performance: float = 0.0
+    cpu_usage: int = 0
+
+    @classmethod
+    def from_performance(cls, performance: Performance):
+        return BenchmarkResult(performance.value, performance.cpu_usage)
 
 
 class RuntimeStatus(Enum):

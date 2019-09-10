@@ -103,9 +103,9 @@ class EnvironmentsManager:
 
     @rpc_utils.expose('comp.environment.performance')
     def get_performance_values(self) -> Dict[str, float]:
-        perf_values = {env_id: env.get_performance().value
+        perf_values = {env_id: env.get_performance().performance
                        for env_id, env in self.environments.items()}
         if Environment.get_id() not in perf_values:
             perf_values[Environment.get_id()] = \
-                Environment.get_performance().value
+                Environment.get_performance().performance
         return perf_values
