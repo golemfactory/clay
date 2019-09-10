@@ -331,11 +331,11 @@ class TransactionSystem(LoopingCallService):
             )
 
         if self.deposit_contract_available:
+            self._schedule_concent_withdraw()
             self._subscribe_to_concent_events(from_block)
 
     @sci_required()
     def _subscribe_to_concent_events(self, from_block):
-        self._schedule_concent_withdraw()
         # As a provider
         self._sci.subscribe_to_forced_subtask_payments(
             None,
