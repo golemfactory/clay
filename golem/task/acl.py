@@ -95,16 +95,16 @@ class _DenyAcl(Acl):
 
     @classmethod
     def new_from_rules(cls, client, deny_coll: List[str]) -> '_DenyAcl':
-        if len(deny_coll) > 0:
+        if deny_coll:
             deny_list = []
 
             for key in deny_coll:
                 node = _get_node_info(client, key)
-                
+
                 if node:
                     deny_list.append(
                         {'node_id': key, 'node_name': node['node_name']})
-            if len(deny_list) > 0:
+            if deny_list:
                 ACLDeniedNodes.insert_many(deny_list).execute()
 
         return cls(client)
@@ -114,7 +114,7 @@ class _DenyAcl(Acl):
         :param max_times: how many times node_id must be disallowed to be
                           actually disallowed
         """
-        self._deny_list = [] # type: List[ACLDeniedNodes]
+        self._deny_list = []  # type: List[ACLDeniedNodes]
         self._client = client
         self._max_times = max_times
         self._read_list()
@@ -241,21 +241,21 @@ class _AllowAcl(Acl):
 
     @classmethod
     def new_from_rules(cls, client, allow_coll: List[str]) -> '_AllowAcl':
-        if len(allow_coll) > 0:
+        if allow_coll:
             allow_list = []
             for key in allow_coll:
                 node = _get_node_info(client, key)
                 if node:
                     allow_list.append(
                         {'node_id': key, 'node_name': node['node_name']})
-            if len(allow_list) > 0:
+            if allow_list:
                 ACLAllowedNodes.insert_many(allow_list).execute()
 
         return cls(client)
 
     def __init__(self, client) -> None:
 
-        self._allow_list = [] # type: List[ACLAllowedNodes]
+        self._allow_list = []  # type: List[ACLAllowedNodes]
         self._client = client
         self._read_list()
 
@@ -340,7 +340,7 @@ def get_acl(client, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
 def setup_acl(client, default_rule: AclRule,
               exceptions: List[str]) -> Union[_DenyAcl, _AllowAcl]:
 
-    if not default_rule in AclRule.__members__.values():
+    if default_rule not in AclRule.__members__.values():
         raise ValueError('invalid acl default %r' % default_rule)
 
     entry, _ = GenericKeyValue.get_or_create(key=ACL_MODE_KEY)
@@ -362,9 +362,9 @@ def _get_node_info(client, key: str) -> Dict:
     except ValueError:
         node = peers[key] if key in peers else {
             'node_id': key, 'node_name': None}
-        pass
 
     return node
+
 
 def migrate_txt(datadir):
 
@@ -376,7 +376,7 @@ def migrate_txt(datadir):
             return set()
 
     def _remove_file(path: Path) -> None:
-        if(path.exists()):
+        if path.exists():
             path.unlink()
 
     DENY_LIST_NAME = "deny.txt"
@@ -385,7 +385,7 @@ def migrate_txt(datadir):
 
     deny_list_path = datadir / DENY_LIST_NAME
     nodes_ids = _read_set_from_file(deny_list_path)
-    if(len(nodes_ids) > 0):
+    if nodes_ids:
         if ALL_EXCEPT_ALLOWED in nodes_ids:
             nodes_ids.remove(ALL_EXCEPT_ALLOWED)
             nodes = [{'node_id': node_id, 'node_name': None}

@@ -89,7 +89,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
+    from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
 
@@ -224,8 +224,10 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.acl = get_acl(self.client, max_times=config_desc.disallow_id_max_times)
-        self.acl_ip = DenyAcl(self.client, max_times=config_desc.disallow_ip_max_times)
+        self.acl = get_acl(
+            self.client, max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl(
+            self.client, max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
@@ -479,8 +481,7 @@ class TaskServer(
             defer.gatherResults(deferreds, consumeErrors=True)\
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id),
-                    lambda e: self.resource_failure(msg.task_id, e),
-                )
+                    lambda e: self.resource_failure(msg.task_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -1031,23 +1032,25 @@ class TaskServer(
         self.acl.disallow(node_id, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: Union[str, list], timeout_seconds: int = -1) -> None:
+    def disallow_ip(self, ip: Union[str, list],
+                    timeout_seconds: int = -1) -> None:
         if isinstance(ip, str):
-                ip = [ip]
+            ip = [ip]
         for item in ip:
             self.acl_ip.disallow(item, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
-    def allow_node(self, node_id: Union[str, list], persist: bool = True) -> None:
+    def allow_node(self, node_id: Union[str, list],
+                   persist: bool = True) -> None:
         if isinstance(node_id, str):
-                node_id = [node_id]
+            node_id = [node_id]
         for item in node_id:
             self.acl.allow(item, persist)
 
     @rpc_utils.expose('net.peer.allow_ip')
     def allow_ip(self, ip: Union[str, list], persist: bool = True) -> None:
         if isinstance(ip, str):
-                ip = [ip]
+            ip = [ip]
         for item in ip:
             self.acl_ip.allow(item, persist)
 

@@ -303,16 +303,14 @@ class WalletOperation(BaseModel):
         return cls.select() \
             .where(
                 WalletOperation.operation_type
-                == WalletOperation.TYPE.deposit_transfer,
-            )
+                == WalletOperation.TYPE.deposit_transfer)
 
     @classmethod
     def transfers(cls):
         return cls.select() \
             .where(
                 WalletOperation.operation_type
-                == WalletOperation.TYPE.transfer,
-            )
+                == WalletOperation.TYPE.transfer)
 
     @classmethod
     def unconfirmed_payments(cls):
@@ -328,8 +326,7 @@ class WalletOperation(BaseModel):
                 cls.operation_type.in_([
                     cls.TYPE.transfer,
                     cls.TYPE.deposit_transfer,
-                ]),
-            )
+                ]))
 
     def on_confirmed(self, gas_cost: int):
         if self.operation_type not in (
@@ -374,8 +371,7 @@ class TaskPayment(BaseModel):
                 WalletOperation.operation_type
                 == WalletOperation.TYPE.task_payment,
                 WalletOperation.direction
-                == WalletOperation.DIRECTION.incoming,
-            )
+                == WalletOperation.DIRECTION.incoming)
 
     @classmethod
     def payments(cls):
@@ -385,8 +381,7 @@ class TaskPayment(BaseModel):
                 WalletOperation.operation_type
                 == WalletOperation.TYPE.task_payment,
                 WalletOperation.direction
-                == WalletOperation.DIRECTION.outgoing,
-            )
+                == WalletOperation.DIRECTION.outgoing)
 
     @property
     def missing_amount(self):
@@ -561,6 +556,7 @@ class DockerWhitelist(BaseModel):
     class Meta:
         database = db
 
+
 class ACLAllowedNodes(BaseModel):
     node_name = CharField(null=True)
     node_id = CharField(null=False, index=True, unique=True)
@@ -573,6 +569,7 @@ class ACLAllowedNodes(BaseModel):
 
     class Meta:
         database = db
+
 
 class ACLDeniedNodes(BaseModel):
     node_name = CharField(null=True)
@@ -600,6 +597,7 @@ class Actor(enum.Enum):
 
 class ActorField(StringEnumField):
     """ Database field that stores Actor objects as strings. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, enum_type=Actor, **kwargs)
 

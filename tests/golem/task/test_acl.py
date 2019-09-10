@@ -5,7 +5,7 @@ from freezegun import freeze_time
 
 from golem.task.acl import get_acl, \
     DenyReason, AclRule, setup_acl, _DenyAcl, _AllowAcl
-from golem.model import ACLAllowedNodes, ACLDeniedNodes, GenericKeyValue
+from golem.model import ACLAllowedNodes, ACLDeniedNodes
 from golem.testutils import DatabaseFixture
 
 
@@ -15,11 +15,31 @@ class TestAcl(DatabaseFixture):
         super().setUp()
         self.client = unittest.mock.MagicMock()
         self.client.p2pservice.incoming_peers = {
-            'Node1': { 'node_id': 'Node1', 'node_name': 'Node1', 'address': '34.107.145.130'},
-            'Node2': { 'node_id': 'Node2', 'node_name': 'Node2', 'address': '122.32.144.197'},
-            'Node3': { 'node_id': 'Node3', 'node_name': 'Node3', 'address': '175.5.104.123'},
-            'Node4': { 'node_id': 'Node4', 'node_name': 'Node4', 'address': '92.212.33.20'},
-            'Node5': { 'node_id': 'Node5', 'node_name': 'Node5', 'address': '23.62.179.16'}
+            'Node1': {
+                'node_id': 'Node1',
+                'node_name': 'Node1',
+                'address': '34.107.145.130'
+            },
+            'Node2': {
+                'node_id': 'Node2',
+                'node_name': 'Node2',
+                'address': '122.32.144.197'
+            },
+            'Node3': {
+                'node_id': 'Node3',
+                'node_name': 'Node3',
+                'address': '175.5.104.123'
+            },
+            'Node4': {
+                'node_id': 'Node4',
+                'node_name': 'Node4',
+                'address': '92.212.33.20'
+            },
+            'Node5': {
+                'node_id': 'Node5',
+                'node_name': 'Node5',
+                'address': '23.62.179.16'
+            }
         }
 
     def test_no_file(self):
@@ -144,7 +164,8 @@ class TestAcl(DatabaseFixture):
             assert acl.is_allowed(node_id) == \
                 (False, DenyReason.temporarily_blocked)
             disallowed_nodes = [r[0] for r in acl.status().rules]
-            self.assertCountEqual([node['node_id'] for node in disallowed_nodes], [node_id])
+            self.assertCountEqual([node['node_id']
+                                   for node in disallowed_nodes], [node_id])
 
             frozen_time.tick(15)
 
@@ -181,7 +202,9 @@ class TestAcl(DatabaseFixture):
 
         allowed_nodes = [r[0] for r in acl.status().rules]
         self.assertCountEqual(
-            [node.node_id for node in allowed_nodes], ["Node1", "Node2", "Node3", "Node5"])
+            [node.node_id for node in allowed_nodes],
+            ["Node1", "Node2", "Node3", "Node5"]
+        )
 
         saved_nodes = ACLAllowedNodes.select().execute()
         self.assertCountEqual(
@@ -206,10 +229,12 @@ class TestAcl(DatabaseFixture):
         acl.allow('Node4', persist=True)
 
         disallowed_nodes = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node['node_id'] for node in disallowed_nodes], ['Node2'])
+        self.assertCountEqual([node['node_id']
+                               for node in disallowed_nodes], ['Node2'])
 
         saved_nodes = ACLDeniedNodes.select()
-        self.assertCountEqual([node.node_id for node in saved_nodes], ['Node1', 'Node2'])
+        self.assertCountEqual(
+            [node.node_id for node in saved_nodes], ['Node1', 'Node2'])
 
         self.assertEqual((True, None),
                          acl.is_allowed("Node1"))
@@ -228,13 +253,15 @@ class TestAcl(DatabaseFixture):
         acl.allow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_id for node in allowed_nodes], ['Node2', 'Node4'])
+        self.assertCountEqual(
+            [node.node_id for node in allowed_nodes], ['Node2', 'Node4'])
 
-        #Node which is not in p2pservice incoming peer list
+        # Node which is not in p2pservice incoming peer list
         acl.allow('Node6')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_id for node in allowed_nodes], ['Node2', 'Node4', 'Node6'])
+        self.assertCountEqual([node.node_id for node in allowed_nodes],
+                              ['Node2', 'Node4', 'Node6'])
 
         saved_allowed_nodes = ACLAllowedNodes.select().execute()
         self.assertCountEqual([node.node_id for node in saved_allowed_nodes],
@@ -251,21 +278,25 @@ class TestAcl(DatabaseFixture):
 
     def test_allow_disallow_ip_persistence(self):
         # Test for IP which  is exist in p2pservice incoming peer list
-        acl = setup_acl(self.client, AclRule.deny, ['122.32.144.197', '34.107.145.130'])
+        acl = setup_acl(self.client, AclRule.deny,
+                        ['122.32.144.197', '34.107.145.130'])
         self.assertEqual((True, None),
                          acl.is_allowed("34.107.145.130"))
         allowed_ips = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_name for node in allowed_ips], ['Node1', 'Node2'])
+        self.assertCountEqual(
+            [node.node_name for node in allowed_ips], ['Node1', 'Node2'])
         # Test for IP which doesn't exist in p2pservice incoming peer list
         acl.allow('4.247.45.93', persist=True)
         allowed_ips = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_name for node in allowed_ips], ['Node1', 'Node2', None])
+        self.assertCountEqual([node.node_name for node in allowed_ips],
+                              ['Node1', 'Node2', None])
         # Remove uknown IP
         acl.disallow('4.247.45.93', persist=True)
         allowed_ips = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_name for node in allowed_ips], ['Node1', 'Node2'])
+        self.assertCountEqual(
+            [node.node_name for node in allowed_ips], ['Node1', 'Node2'])
         # Remove known IP
         acl.disallow('34.107.145.130', persist=True)
         allowed_ips = [r[0] for r in acl.status().rules]
-        self.assertCountEqual([node.node_name for node in allowed_ips], ['Node2'])
-
+        self.assertCountEqual(
+            [node.node_name for node in allowed_ips], ['Node2'])
