@@ -41,12 +41,18 @@ def make_node_configs(node_names: typing.Iterable[str],
         for i, node_name in enumerate(node_names)
     }
 
-    for node_name, datadir in override_datadirs.items():
-        node_id = NodeId(node_name)
-        if node_id not in node_configs:
-            raise Exception("can't override datadir for undefined node"
-                            f" '{node_name}'")
-        node_configs[node_id].datadir = datadir
+    if override_datadirs:
+        for node_name, datadir in override_datadirs.items():
+            node_id = NodeId(node_name)
+            if node_id not in node_configs:
+                raise Exception("can't override datadir for an undefined node"
+                                f" '{node_name}'")
+            node_configs[node_id].datadir = datadir
+
+    for node_id, node_config in node_configs.items():
+        if not node_config.datadir:
+            node_config.datadir = helpers.mkdatadir(node_id.value)
+        print(f"Launching node `{node_id.value}`: {node_config}")
 
     return node_configs
 
