@@ -308,8 +308,7 @@ class TaskServer(
 
     @inlineCallbacks
     def quit(self):
-        quit_f = asyncio.ensure_future(self.requested_task_manager.quit())
-        yield deferred_from_future(quit_f)
+        yield deferred_from_future(self.requested_task_manager.quit())
         self.task_computer.quit()
 
     def get_environment_by_id(
