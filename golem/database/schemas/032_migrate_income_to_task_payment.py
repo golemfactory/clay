@@ -49,6 +49,10 @@ def migrate_income(database, db_row):
 
 
 def migrate(migrator, database, fake=False, **kwargs):
+    if 'income' not in database.get_tables():
+        logger.info('income table not in DB. Skipping this migration.')
+        return
+
     cursor = database.execute_sql(
         'SELECT "transaction", payer_address, value, value_received, subtask,'
         '       created_date,'
@@ -56,6 +60,7 @@ def migrate(migrator, database, fake=False, **kwargs):
         '       overdue, sender_node'
         ' FROM income'
     )
+
     for db_row in cursor.fetchall():
         dict_row = {
             'transaction': db_row[0],

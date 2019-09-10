@@ -13,7 +13,10 @@ from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.envs import EnvStatus
 from golem.envs.docker import DockerPrerequisites, DockerRuntimePayload
-from golem.envs.docker.cpu import DockerCPUEnvironment, DockerCPUConfig
+from golem.envs.docker.cpu import (
+    DockerCPUEnvironment,
+    DockerCPUConfig,
+)
 
 cpu = CONSTRAINT_KEYS['cpu']
 mem = CONSTRAINT_KEYS['mem']
@@ -153,7 +156,7 @@ class TestDockerCPUEnv(TestCase):
     @patch_env('_get_hypervisor_class')
     def setUp(self, get_hypervisor, *_):  # pylint: disable=arguments-differ
         self.hypervisor = Mock(spec=Hypervisor)
-        self.config = DockerCPUConfig(work_dirs=[Mock()])
+        self.config = DockerCPUConfig(work_dirs=[Path('test')])
         get_hypervisor.return_value.instance.return_value = self.hypervisor
         self.logger = Mock(spec=Logger)
         with patch_cpu('logger', self.logger):
@@ -255,15 +258,6 @@ class TestCleanup(TestDockerCPUEnv):
             env_disabled.assert_called_once_with()
         deferred.addCallback(_check)
         return deferred
-
-
-class TestMetadata(TestCase):
-
-    def test_metadata(self):
-        metadata = DockerCPUEnvironment.metadata()
-        self.assertEqual(metadata.id, DockerCPUEnvironment.ENV_ID)
-        self.assertEqual(
-            metadata.description, DockerCPUEnvironment.ENV_DESCRIPTION)
 
 
 class TestInstallPrerequisites(TestDockerCPUEnv):
@@ -369,7 +363,7 @@ class TestUpdateConfig(TestDockerCPUEnv):
     def test_config_changed(
             self, constrain, validate, config_updated, update_work_dirs):
         config = DockerCPUConfig(
-            work_dirs=[Mock()],
+            work_dirs=[Path('test_2')],
             memory_mb=2137,
             cpu_count=12
         )
@@ -528,60 +522,17 @@ class TestRuntime(TestDockerCPUEnv):
         is_whitelisted.assert_called_once_with(payload.image)
 
     @patch_cpu('Whitelist.is_whitelisted', return_value=True)
-    @patch_cpu('DockerCPURuntime')
-    @patch_env('_create_host_config')
-    def test_default_config(self, create_host_config, runtime_mock, _):
-        payload = mock_docker_runtime_payload()
-        runtime = self.env.runtime(payload)
+    @patch_cpu('local_client')
+    def test_container_config_passed(self, local_client, _):
+        local_client.return_value = local_client
+        method = '_create_container_config'
+        return_value = {'custom_key': 'custom_value'}
 
-        create_host_config.assert_called_once_with(self.config, payload)
-        runtime_mock.assert_called_once_with(
-            payload, create_host_config(), None, ANY)
-        self.assertEqual(runtime, runtime_mock())
+        with patch.object(self.env, method, return_value=return_value):
+            self.env._create_runtime(Mock(), Mock())
 
-    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
-    @patch_cpu('DockerCPURuntime')
-    @patch_env('_create_host_config')
-    def test_custom_config(self, create_host_config, runtime_mock, _):
-        payload = mock_docker_runtime_payload()
-        config = Mock(spec=DockerCPUConfig)
-        runtime = self.env.runtime(payload, config=config)
-
-        create_host_config.assert_called_once_with(config, payload)
-        runtime_mock.assert_called_once_with(
-            payload, create_host_config(), None, ANY)
-        self.assertEqual(runtime, runtime_mock())
-
-    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
-    @patch_cpu('DockerCPURuntime')
-    @patch_env('_create_host_config')
-    def test_shared_dir(self, create_host_config, runtime_mock, _):
-        target_dir = '/foo'
-        docker_bind = Mock(spec=DockerBind, target=target_dir)
-        payload = mock_docker_runtime_payload(binds=[docker_bind])
-        runtime = self.env.runtime(payload)
-
-        create_host_config.assert_called_once_with(self.config, payload)
-        runtime_mock.assert_called_once_with(
-            payload,
-            create_host_config(),
-            [target_dir],
-            ANY)
-        self.assertEqual(runtime, runtime_mock())
-
-    @patch_cpu('Whitelist.is_whitelisted', return_value=True)
-    @patch_cpu('DockerCPURuntime')
-    def test_port_mapping(self, runtime_mock, _):
-        port = 4444
-        payload = mock_docker_runtime_payload(ports=[port])
-        runtime = self.env.runtime(payload)
-        runtime_mock.assert_called_once_with(
-            payload,
-            ANY,
-            ANY,
-            self.env._port_mapper,
-        )
-        self.assertEqual(runtime, runtime_mock())
+        local_client.create_container_config.assert_called_once_with(
+            **return_value)
 
 
 class TestCreateHostConfig(TestDockerCPUEnv):
@@ -679,3 +630,38 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cap_drop=ANY,
         )
         self.assertEqual(host_config, local_client().create_host_config())
+
+
+class TestCreateContainerConfig(TestDockerCPUEnv):
+
+    @patch_cpu('local_client')
+    @patch_cpu('DockerCPURuntime')
+    def test_custom_config(self, runtime, _):
+        payload = DockerRuntimePayload(
+            image='repo/img',
+            tag='1.0',
+            command='cmd',
+            env={'key': 'val'},
+            user='user',
+            work_dir='/test',
+            binds=[DockerBind(source=Path('/test'), target='/test')],
+        )
+
+        with patch.object(self.env, '_create_host_config', return_value={}):
+            self.env._create_runtime(self.config, payload)
+
+        container_config = dict(
+            image='repo/img:1.0',
+            command='cmd',
+            volumes=['/test'],
+            environment={'key': 'val'},
+            ports=None,
+            user='user',
+            working_dir='/test',
+            host_config={},
+            stdin_open=True)
+
+        runtime.assert_called_once_with(
+            container_config,
+            ANY,
+            runtime_logger=ANY)

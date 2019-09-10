@@ -138,6 +138,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             key=self.keys_auth.key_id,
         )
 
+        pub_key = self.keys_auth.key_id
+        pub_key_short = pub_key[:16] + '...' + pub_key[-16:]
+
+        golem.tools.talkback.update_sentry_user(
+            node_id=pub_key_short,
+            node_name=self.config_desc.node_name)
+
         self.p2pservice = None
         self.diag_service = None
 
@@ -354,7 +361,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
-            self.stop_monitor()
+            self.diag_service.stop()
+            # This effectively removes monitor dispatcher connections (weakrefs)
             self.monitor = None
         logger.debug('Stopped client services')
 
@@ -386,8 +394,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         def get_performance_values():
             values = self.environments_manager.get_performance_values()
             new_env_manager = self.task_server.task_keeper.new_env_manager
-            for new_env in new_env_manager.environments():
-                env_id = new_env.metadata().id
+            for env_id in new_env_manager.environments():
                 value = new_env_manager.get_cached_performance(env_id)
                 if value is not None:
                     values[env_id] = value
@@ -395,9 +402,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.p2pservice.add_metadata_provider(
             'performance', get_performance_values)
 
-        # Pause p2p and task sessions to prevent receiving messages before
-        # the node is ready
-        self.pause()
         self._restore_locks()
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -508,9 +512,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.task_computer.register_listener(listener)
 
             if self.monitor:
-                self.diag_service.register(self.p2pservice,
-                                           self.monitor.on_peer_snapshot)
-                self.monitor.on_login()
+                self.diag_service.register(
+                    self.p2pservice,
+                    lambda data: dispatcher.send(
+                        signal="golem.monitor",
+                        event="peer_snapshot",
+                        p2p_data=data,
+                    ),
+                )
+                dispatcher.send(
+                    signal="golem.monitor",
+                    event="login",
+                )
 
             StatusPublisher.publish(Component.client, 'start',
                                     stage=Stage.post)
@@ -622,14 +635,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
             VMDiagnosticsProvider(),
-            self.monitor.on_vm_snapshot
+            lambda data: dispatcher.send(
+                signal="golem.monitor",
+                event="vm_snapshot",
+                vm_data=data,
+            ),
         )
         self.diag_service.start()
-
-    def stop_monitor(self):
-        logger.debug("Stopping monitor ...")
-        self.monitor.shut_down()
-        self.diag_service.stop()
 
     @rpc_utils.expose('net.peer.connect')
     def connect(self, socket_address):

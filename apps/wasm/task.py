@@ -162,10 +162,10 @@ class WasmTask(CoreTask):
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
 
-    def __init__(self, total_tasks: int, task_definition: WasmTaskDefinition,
+    def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
         super().__init__(
-            total_tasks=total_tasks, task_definition=task_definition,
+            task_definition=task_definition,
             root_path=root_path, owner=owner
         )
         self.options: WasmTaskOptions = task_definition.options

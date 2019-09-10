@@ -40,47 +40,48 @@ from golem.tools.assertlogs import LogTestCase
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
-
-    def test_compositing(self):
+    def _get_blender_task(self,
+                          *,
+                          subtasks_count=6,
+                          compositing=True,
+                          use_frames=True) \
+                          -> BlenderRenderTask:
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
-        task_definition.options.use_frames = True
+        task_definition.options.use_frames = use_frames
         task_definition.options.frames = [7, 8, 10]
+        task_definition.options.compositing = compositing
         task_definition.main_scene_file = self.temp_file_name("example.blend")
         task_definition.output_file = self.temp_file_name('output')
         task_definition.output_format = 'PNG'
         task_definition.resolution = [2, 300]
+        task_definition.subtasks_count = subtasks_count
         task_definition.task_id = "ABC"
 
-        def _get_blender_task(task_definition, total_tasks=6):
-            return BlenderRenderTask(
-                owner=dt_p2p_factory.Node(),
-                task_definition=task_definition,
-                total_tasks=total_tasks,
-                root_path=self.tempdir,
-            )
+        return BlenderRenderTask(
+            owner=dt_p2p_factory.Node(),
+            task_definition=task_definition,
+            root_path=self.tempdir,
+        )
 
-        # Compostiting set to False
-        task_definition.options.compositing = False
-        bt = _get_blender_task(task_definition)
+    def test_compositing_false(self):
+        bt = self._get_blender_task(compositing=False)
         assert not bt.compositing
 
-        # Compositing True, use frames, more subtasks than frames
-        task_definition.options.compositing = True
-        bt = _get_blender_task(task_definition)
+    def test_more_subtasks_than_frames(self):
+        bt = self._get_blender_task()
         assert not bt.compositing
 
-        # Compositing True, use frames, as many subtasks as frames
-        bt = _get_blender_task(task_definition, 3)
+    def test_as_many_subtasks_as_frames(self):
+        bt = self._get_blender_task(subtasks_count=3)
         assert not bt.compositing
 
-        # Compositing True, use frames, less subtasks than frames
-        bt = _get_blender_task(task_definition, 1)
+    def test_less_subtasks_than_frames(self):
+        bt = self._get_blender_task(subtasks_count=1)
         assert not bt.compositing
 
-        # Compositing True, use frames is False, as many extra_data as frames
-        task_definition.options.use_frames = False
-        bt = _get_blender_task(task_definition, 3)
+    def test_no_frames_as_many_subtasks_as_frames(self):
+        bt = self._get_blender_task(subtasks_count=3, use_frames=False)
         assert not bt.compositing
 
 
@@ -98,11 +99,11 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.output_format = 'PNG'
         task_definition.resolution = [200, 300]
         task_definition.task_id = str(uuid.uuid4())
+        task_definition.subtasks_count = 6
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
             owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
-            total_tasks=6,
             root_path=self.tempdir,
         )
 
@@ -119,7 +120,7 @@ class TestBlenderFrameTask(TempDirFixture):
     def test_computation_failed_or_finished(self, mock_dtt):
         verif_cb = mock.MagicMock()
         mock_dtt.return_value = 1.0
-        assert self.bt.total_tasks == 6
+        assert self.bt.get_total_tasks() == 6
 
         # Failed compuation stays failed
         extra_data1 = self.bt.query_extra_data(1000, "ABC", "abc")
@@ -207,7 +208,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         # If num frames == num subtask, make sure that
         # blender script describe whole frame
-        self.bt.total_tasks = 3
+        self.bt.task_definition.subtasks_count = 3
         extra_data = self.bt.query_extra_data(100, node_id="node1",
                                               node_name="node11")
         assert extra_data.ctd is not None
@@ -251,10 +252,10 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
+        task_definition.subtasks_count = total_tasks
         bt = BlenderRenderTask(
             owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
-            total_tasks=total_tasks,
             root_path=self.tempdir)
         bt.initialize(DirManager(self.tempdir))
         return bt
@@ -351,7 +352,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.accept_client("ABC", 'offer hash')
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
-        self.bt.last_task = self.bt.total_tasks
+        self.bt.last_task = self.bt.get_total_tasks()
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
         assert self.bt.should_accept_client("ABC", 'offer hash') != \
             AcceptClientVerdict.ACCEPTED
@@ -359,13 +360,13 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
     def test_get_min_max_y(self):
         self.assertEqual(self.bt.res_x, 2)
         self.assertEqual(self.bt.res_y, 300)
-        self.assertEqual(self.bt.total_tasks, 7)
+        self.assertEqual(self.bt.get_total_tasks(), 7)
         for tasks in [1, 6, 7, 20, 60]:
-            self.bt.total_tasks = tasks
+            self.bt.task_definition.subtasks_count = tasks
             for yres in range(1, 100):
                 self.bt.res_y = yres
                 cur_max_y = self.bt.res_y
-                for i in range(1, self.bt.total_tasks + 1):
+                for i in range(1, self.bt.get_total_tasks() + 1):
                     min_y, max_y = self.bt.get_subtask_y_border(i)
                     min_y = int(float(self.bt.res_y) * min_y)
                     max_y = int(float(self.bt.res_y) * max_y)
@@ -375,7 +376,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         self.bt.use_frames = True
         self.bt.frames = [4, 5, 10, 11, 12]
-        self.bt.total_tasks = 20
+        self.bt.task_definition.subtasks_count = 20
         self.bt.res_y = 300
         assert self.bt.get_subtask_y_border(2) == (0.5, 0.75)
 

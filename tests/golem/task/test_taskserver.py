@@ -1,4 +1,5 @@
 # pylint: disable=protected-access, too-many-lines
+import asyncio
 import os
 import time
 from datetime import datetime, timedelta
@@ -6,7 +7,8 @@ import random
 import tempfile
 import uuid
 from math import ceil
-from unittest.mock import Mock, MagicMock, patch, ANY
+from pathlib import Path
+from unittest.mock import Mock, MagicMock, patch, ANY, call
 
 from pydispatch import dispatcher
 import freezegun
@@ -32,19 +34,23 @@ from golem.environments.environment import (
     UnsupportReason,
 )
 from golem.envs import Environment as NewEnv
-from golem.envs.docker.cpu import DockerCPUEnvironment
+from golem.envs.docker.cpu import DOCKER_CPU_ENV_ID
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
+from golem.resource.resourcemanager import ResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason, AclRule
+from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import AcceptClientVerdict
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompTaskInfo
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import (
     logger,
     TaskServer,
@@ -56,7 +62,13 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
-
+from tests.golem.envs.localhost import (
+    LocalhostEnvironment,
+    LocalhostConfig,
+    LocalhostPrerequisites,
+    LocalhostPayloadBuilder,
+)
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
 DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
@@ -122,7 +134,7 @@ class TaskServerTestBase(LogTestCase,
            '.register_handler')
     @patch('golem.task.taskserver.TaskComputerAdapter')
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env, *_):  # pylint: disable=arguments-differ
+    def setUp(self, *_):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
@@ -131,7 +143,6 @@ class TaskServerTestBase(LogTestCase,
         self.client.concent_service.enabled = False
         self.client.keys_auth.key_id = 'key_id'
         self.client.keys_auth.eth_addr = 'eth_addr'
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         self.ts = TaskServer(
             node=dt_p2p_factory.Node(),
             config_desc=self.ccd,
@@ -176,14 +187,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         'golem.network.concent.handlers_library.HandlersLibrary'
         '.register_handler',
     )
-    @patch('golem.task.taskarchiver.TaskArchiver')
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    @patch('golem.task.taskarchiver.TaskArchiver')
     # pylint: disable=too-many-locals,too-many-statements
-    def test_request(self, docker_env, tar, *_):
+    def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
         n = dt_p2p_factory.Node()
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -789,6 +799,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_new_connection(self, *_):
         ts = self.ts
+        ts.resume()
         tss = tasksession.TaskSession(Mock())
         ts.new_connection(tss)
         assert len(ts.task_sessions_incoming) == 1
@@ -804,7 +815,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                                           HyperdriveClient.VERSION)
 
         client_options = ts.get_download_options(options)
-        assert client_options.peers is None
+        assert not client_options.peers
 
         peers = [
             to_hyperg_peer('127.0.0.1', 3282),
@@ -846,6 +857,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
+        assert not self.ts.active
+        assert not CoreTask.VERIFICATION_QUEUE._paused
+
+        self.ts.resume()
+
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
@@ -853,11 +869,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         assert not self.ts.active
         assert CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.resume()
-
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
 
     def test_add_task_header_invalid_sig(self):
         self.ts._verify_header_sig = lambda _: False
@@ -874,25 +885,31 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         task_header = get_example_task_header(keys_auth_2.public_key)
+        task_header.environment_prerequisites = dict(image='test/0')
 
         self.assertFalse(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 0)
+        self.assertEqual(ts._docker_image_discovered.call_count, 0)
 
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
     def test_add_task_header_past_deadline(self):
         keys_auth_2 = KeysAuth(
@@ -902,12 +919,15 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         with freezegun.freeze_time(datetime.utcnow() - timedelta(hours=2)):
             task_header = get_example_task_header(keys_auth_2.public_key)
+            task_header.environment_prerequisites = dict(image='test/0')
             task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertFalse(ts.add_task_header(task_header))
+        self.assertFalse(ts._docker_image_discovered.called)
 
 
 class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
@@ -1023,7 +1043,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                            testutils.TestWithClient):
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
@@ -1038,7 +1058,6 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_resources=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
@@ -1316,7 +1335,7 @@ class TestTaskGiven(TaskServerTestBase):
         for resource in ttc.compute_task_def['resources']:  # noqa pylint: disable=unsubscriptable-object
             self.ts.new_resource_manager.download.assert_any_call(
                 resource,
-                self.ts.task_computer.get_task_resources_dir.return_value,
+                self.ts.task_computer.get_subtask_inputs_dir.return_value,
                 ttc.resources_options,
             )
         self.assertEqual(
@@ -1481,10 +1500,11 @@ class TestChangeConfig(TaskServerAsyncTestBase):
         change_pcs_config.assert_called_once_with(self.ts, config_desc)
 
 
+@patch('golem.task.envmanager.EnvironmentManager.remove_cached_performance')
 class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
 
     @defer.inlineCallbacks
-    def test_config_unchanged_no_benchmarks(self):
+    def test_config_unchanged_no_benchmarks(self, remove_performance):
         change_tc_config = self._patch_ts_async('task_computer').change_config
         change_tc_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1494,13 +1514,15 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         yield self.ts._change_task_computer_config(config_desc, False)
         change_tc_config.assert_called_once_with(config_desc)
         run_benchmarks.assert_not_called()
+        remove_performance.assert_not_called()
 
     @defer.inlineCallbacks
-    def test_config_changed_no_benchmarks(self):
+    def test_config_changed_no_benchmarks(self, remove_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(True)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
             .run_all_benchmarks
+        env_manager = self.ts.task_keeper.new_env_manager
 
         def _check(callback, _):
             task_computer.lock_config.assert_called_once_with(True)
@@ -1514,9 +1536,13 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        remove_performance.assert_has_calls(
+            [call(env_id) for env_id in env_manager.environments()],
+            any_order=True
+        )
 
     @defer.inlineCallbacks
-    def test_config_unchanged_run_benchmarks(self):
+    def test_config_unchanged_run_benchmarks(self, remove_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1534,6 +1560,7 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        remove_performance.assert_not_called()
 
 
 class TestTaskServerConcent(TaskServerAsyncTestBase):
@@ -1687,3 +1714,208 @@ class TestEnvManager(TaskServerAsyncTestBase):
         # Then
         self.ts.get_environment_by_id.assert_called_once()
         self.assertEqual(result, 0.0)
+
+
+class TestNewTaskComputerIntegration(
+        testutils.TestWithClient,
+        testutils.DatabaseFixture,
+        TwistedAsyncioTestCase
+):
+    @patch('golem.task.taskserver.TaskHeaderKeeper', spec=TaskHeaderKeeper)
+    @patch('golem.task.taskserver.ResourceManager', spec_set=ResourceManager)
+    @patch('golem.task.taskserver.BenchmarkManager', spec_set=BenchmarkManager)
+    @patch('golem.task.taskserver.TaskManager', spec=TaskManager)
+    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    @patch(
+        'golem.task.taskserver.DockerTaskApiPayloadBuilder',
+        LocalhostPayloadBuilder
+    )
+    def setUp(  # pylint: disable=too-many-arguments,arguments-differ
+            self,
+            docker_env,
+            task_manager,
+            benchmark_manager,
+            resource_manager,
+            task_header_keeper,
+    ):
+        testutils.TestWithClient.setUp(self)
+        testutils.DatabaseFixture.setUp(self)
+
+        docker_env.return_value = LocalhostEnvironment(
+            config=LocalhostConfig(),
+            env_id=DOCKER_CPU_ENV_ID,
+        )
+        benchmark_manager().benchmarks_needed.return_value = False
+        self.resource_manager = resource_manager()
+        self.resource_manager.download.return_value = defer.succeed(None)
+        self.task_header_keeper = task_header_keeper()
+        self.comp_task_keeper = Mock(spec=CompTaskKeeper)
+        task_manager.return_value.apps_manager = Mock()
+        task_manager.return_value.comp_task_keeper = self.comp_task_keeper
+
+        trust_patch = patch('golem.task.taskserver.Trust')
+        self.addCleanup(trust_patch.stop)
+        self.trust = trust_patch.start()
+
+        self.task_finished = defer.Deferred()
+        self.task_server = TaskServer(
+            node=dt_p2p_factory.Node(),
+            config_desc=ClientConfigDescriptor(),
+            client=self.client,
+            task_finished_cb=lambda: self.task_finished.callback(None),
+            use_docker_manager=False
+        )
+
+    @property
+    def task_id(self):
+        return 'test_task'
+
+    @property
+    def subtask_id(self):
+        return 'test_subtask'
+
+    @property
+    def subtask_params(self):
+        return {'param': 'value'}
+
+    @property
+    def env_id(self):
+        return DOCKER_CPU_ENV_ID
+
+    def _get_task_to_compute(self, prereq):
+        msg = msg_factories.tasks.TaskToComputeFactory()
+        # pylint: disable=unsupported-assignment-operation
+        msg.compute_task_def['task_id'] = self.task_id
+        msg.compute_task_def['subtask_id'] = self.subtask_id
+        msg.compute_task_def['resources'] = ['test_resource']
+        msg.compute_task_def['extra_data'] = self.subtask_params
+        # pylint: enable=unsupported-assignment-operation
+        task_header = msg.want_to_compute_task.task_header
+        task_header.task_id = self.task_id
+        task_header.environment = self.env_id
+        task_header.environment_prerequisites = prereq.to_dict()
+        comp_task_info = CompTaskInfo(task_header, 1.2)
+
+        self.task_header_keeper.task_headers = {self.task_id: task_header}
+        self.comp_task_keeper.get_task_id_for_subtask.return_value = \
+            self.task_id
+        self.comp_task_keeper.get_task_header.return_value = task_header
+        self.comp_task_keeper.get_node_for_task_id.return_value = 'test_node'
+        self.comp_task_keeper.active_tasks = {self.task_id: comp_task_info}
+
+        return msg
+
+    @defer.inlineCallbacks
+    def test_successful_computation(self):
+        # Given
+        result_path = 'test_result'
+        result_hash = 'test_result_hash'
+        self.resource_manager.share.return_value = result_hash
+
+        subtask_id = self.subtask_id
+        subtask_params = self.subtask_params
+
+        async def compute(given_id, given_params):
+            assert given_id == subtask_id
+            assert given_params == subtask_params
+            return result_path
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        task_computer_root = Path(self.task_server.get_task_computer_root())
+        full_result_path = \
+            task_computer_root / self.env_id / self.task_id / result_path
+        self.resource_manager.share.asssert_called_once_with(full_result_path)
+
+        result_to_send = self.task_server.results_to_send[self.subtask_id]
+        self.assertEqual(result_to_send.task_id, self.task_id)
+        self.assertEqual(result_to_send.subtask_id, self.subtask_id)
+        self.assertEqual(result_to_send.result, full_result_path)
+        self.assertEqual(result_to_send.result_hash, result_hash)
+        self.assertNotIn(self.subtask_id, self.task_server.failures_to_send)
+
+        self.trust.REQUESTED.increase.assert_called_once_with(
+            msg.want_to_compute_task.task_header.task_owner.key)
+        self.trust.REQUESTED.decrease.assert_not_called()
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )
+
+    @defer.inlineCallbacks
+    def test_computation_error(self):
+        # Given
+        error_msg = 'computation failed'
+
+        async def compute(_, __):
+            raise OSError(error_msg)
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        self.resource_manager.share.asssert_not_called()
+
+        self.assertNotIn(self.subtask_id, self.task_server.results_to_send)
+        failure_to_send = self.task_server.failures_to_send[self.subtask_id]
+        self.assertEqual(failure_to_send.task_id, self.task_id)
+        self.assertEqual(failure_to_send.subtask_id, self.subtask_id)
+        self.assertEqual(
+            failure_to_send.owner,
+            msg.want_to_compute_task.task_header.task_owner)
+        self.assertIn(error_msg, failure_to_send.err_msg)
+
+        self.trust.REQUESTED.increase.assert_not_called()
+        self.trust.REQUESTED.decrease.assert_called_once_with(
+            msg.want_to_compute_task.task_header.task_owner.key)
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )
+
+    @defer.inlineCallbacks
+    def test_computation_timed_out(self):
+        # Given
+        async def compute(_, __):
+            await asyncio.sleep(10)
+            return ''
+
+        prereq = LocalhostPrerequisites(compute=compute)
+        msg = self._get_task_to_compute(prereq)
+        msg.want_to_compute_task.task_header.deadline = time.time()
+
+        # When
+        self.task_server.task_given(msg)
+        yield self.task_finished  # Wait for the task to finish
+
+        # Then
+        self.resource_manager.share.asssert_not_called()
+
+        self.assertNotIn(self.subtask_id, self.task_server.results_to_send)
+        self.assertNotIn(self.subtask_id, self.task_server.failures_to_send)
+
+        self.trust.REQUESTED.increase.assert_not_called()
+        self.trust.REQUESTED.decrease.assert_not_called()
+
+        self.assertEqual(
+            self.task_header_keeper.method_calls, [
+                call.task_started(self.task_id),
+                call.task_ended(self.task_id)
+            ]
+        )

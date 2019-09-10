@@ -45,12 +45,14 @@ def create_package(result_manager, node_name, task_id):
     files = [out_file, out_dir_file]
     rm.add_files(files, task_id)
 
+    client_options = Mock(size=1024, timeout=10.)
     secret = result_manager.gen_secret()
     result = result_manager.create(
         task_result=MockTaskResult(
             task_id,
             [rm.storage.relative_path(f, task_id) for f in files]
         ),
+        client_options=client_options,
         key_or_secret=secret
     )
 

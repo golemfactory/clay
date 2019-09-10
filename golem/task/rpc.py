@@ -14,7 +14,6 @@ from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
-from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
@@ -58,6 +57,14 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
+    task_type = task_dict.get('type')
+    known_task_types = list(client.apps_manager.task_types.keys())
+    if task_type not in known_task_types:
+        raise ValueError(
+            f"Task type '{task_type}' unrecognized, "
+            f"must be one of: {known_task_types}"
+        )
+
     name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
@@ -74,25 +81,6 @@ def _validate_task_dict(client, task_dict) -> None:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
 
-    subtasks_count = task_dict.get('subtasks_count', 0)
-    options = task_dict.get('options', {})
-    optimize_total = bool(options.get('optimize_total', False))
-    if subtasks_count and not optimize_total:
-        computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            subtasks_count=subtasks_count,
-            optimize_total=False,
-            use_frames=options.get('frame_count', 1) > 1,
-            frames=[None] * options.get('frame_count', 1),
-        )
-        if computed_subtasks != subtasks_count:
-            raise ValueError(
-                "Subtasks count {:d} is invalid."
-                " Maybe use {:d} instead?".format(
-                    subtasks_count,
-                    computed_subtasks,
-                )
-            )
-
     if task_dict['concent_enabled']:
         if not client.concent_service.enabled:  # `enabled` implies `available`
             raise CreateTaskError(
@@ -102,6 +90,12 @@ def _validate_task_dict(client, task_dict) -> None:
                     'switched off' if client.concent_service.available
                     else 'disabled'
                 ),
+            )
+        if not client.apps_manager.get_app(
+                task_dict['type']
+        ).concent_supported:
+            raise CreateTaskError(
+                f"Concent is not supported for {task_dict['type']} tasks."
             )
 
 
@@ -115,10 +109,13 @@ def validate_client(client):
 
 
 def prepare_and_validate_task_dict(client, task_dict):
+    task_type_id = task_dict.get('type', '').lower()
+    task_dict['type'] = task_type_id
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
-        client.concent_service.enabled,
+        client.concent_service.enabled and
+        client.apps_manager.get_app(task_type_id).concent_supported
     )
     _validate_task_dict(client, task_dict)
 
@@ -311,8 +308,7 @@ def add_resources(client, resources, res_id, timeout):
     )
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
-    client_options = client.task_server.get_share_options(res_id, None)
-    client_options.timeout = timeout
+    client_options = client.task_server.get_share_options(timeout=timeout)
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
         res_id,
@@ -517,6 +513,32 @@ class ClientProvider:
 
         return task_id, None
 
+    @rpc_utils.expose('comp.task.create.dry_run')
+    @safe_run(_create_task_error)
+    def create_task_dry_run(self, task_dict) \
+            -> typing.Tuple[typing.Optional[dict],
+                            typing.Optional[str]]:
+        """
+        Dry run creating a task.
+        This works by creating a TaskDefinition object (like 'comp.taks.create'
+        would to) and dumping it back to dict (like 'comp.task' would do).
+        Golem performs task_dict validation and possibly changes some fields.
+        This task is not passed for computation.
+        :param task_dict: Task description dictionary. The same as for
+                          'comp.task.create'.
+        :return: (task_dict, None) on success; (None, error_message) on failure.
+        """
+        validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
+        task_definition, task_builder_type = \
+            self.task_manager.create_task_definition(task_dict)
+        task_dict = common.update_dict(
+            {'progress': 0.0},
+            taskstate.TaskState().to_dictionary(),
+            task_builder_type.build_dictionary(task_definition),
+        )
+        return task_dict, None
+
     @rpc_utils.expose('comp.task_api.create')
     def create_task_api_task(self, task_params: dict, golem_params: dict):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
@@ -524,7 +546,6 @@ class ClientProvider:
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
             name=golem_params['name'],
-            environment=golem_params['environment'],
             output_directory=Path(golem_params['output_directory']),
             resources=list(map(Path, golem_params['resources'])),
             max_price_per_hour=int(golem_params['max_price_per_hour']),
@@ -993,7 +1014,7 @@ class ClientProvider:
 
         fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
 
-        for subtask_index in range(1, task.total_tasks + 1):
+        for subtask_index in range(1, task.get_total_tasks() + 1):
             fragments[subtask_index] = []
 
         for subtask in self.task_manager.get_subtasks_dict(task_id) or []:

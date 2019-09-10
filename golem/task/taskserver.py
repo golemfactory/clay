@@ -30,6 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait
@@ -39,9 +40,14 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
-from golem.envs import Environment as NewEnv
-from golem.envs.docker.cpu import DockerCPUConfig
-from golem.envs.docker.non_hypervised import NonHypervisedDockerCPUEnvironment
+from golem.envs import Environment as NewEnv, EnvSupportStatus
+from golem.envs.auto_setup import auto_setup
+from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
+from golem.envs.docker.gpu import DOCKER_GPU_METADATA
+from golem.envs.docker.non_hypervised import (
+    NonHypervisedDockerCPUEnvironment,
+    NonHypervisedDockerGPUEnvironment,
+)
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
@@ -64,6 +70,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
@@ -110,9 +117,11 @@ class TaskServer(
         resources.TaskResourcesMixin,
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
+        DockerWhitelistRPC,
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
+    RESULT_SHARE_TIMEOUT = 3600 * 24 * 7 * 2  # s
 
     def __init__(self,
                  node,
@@ -123,19 +132,35 @@ class TaskServer(
                  task_archiver=None,
                  apps_manager=AppsManager(),
                  task_finished_cb=None) -> None:
+        DockerWhitelistRPC.__init__(self)
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
         os.makedirs(self.get_task_computer_root(), exist_ok=True)
-        docker_cpu_config = DockerCPUConfig(
-            work_dirs=[Path(self.get_task_computer_root())])
-        docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+
+        docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
+        docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
+        docker_cpu_env = auto_setup(
+            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
+
         new_env_manager = EnvironmentManager()
         new_env_manager.register_env(
             docker_cpu_env,
+            DOCKER_CPU_METADATA,
             DockerTaskApiPayloadBuilder,
         )
+
+        docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
+        if docker_gpu_status == EnvSupportStatus(True):
+            docker_gpu_env = auto_setup(
+                NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
+            new_env_manager.register_env(
+                docker_gpu_env,
+                DOCKER_GPU_METADATA,
+                DockerTaskApiPayloadBuilder,
+            )
 
         self.node = node
         self.task_archiver = task_archiver
@@ -154,7 +179,12 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
-        self.requested_task_manager = RequestedTaskManager()
+        self.requested_task_manager = RequestedTaskManager(
+            env_manager=new_env_manager,
+            app_manager=AppManager(),
+            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            public_key=self.keys_auth.public_key,
+        )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
             config_desc.hyperdrive_rpc_port,
@@ -448,13 +478,14 @@ class TaskServer(
             for resource_id in msg.compute_task_def['resources']:
                 deferreds.append(self.new_resource_manager.download(
                     resource_id,
-                    self.task_computer.get_task_resources_dir(),
+                    self.task_computer.get_subtask_inputs_dir(),
                     msg.resources_options,
                 ))
-            defer.gatherResults(deferreds).addBoth(
-                lambda _: self.resource_collected(msg.task_id),
-                lambda e: self.resource_failure(msg.task_id, e),
-            )
+            defer.gatherResults(deferreds, consumeErrors=True)\
+                .addCallbacks(
+                    lambda _: self.resource_collected(msg.task_id),
+                    lambda e: self.resource_failure(msg.task_id, e),
+                )
         else:
             self.request_resource(
                 msg.task_id,
@@ -499,6 +530,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
+            stats: Dict = {},
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -524,7 +556,8 @@ class TaskServer(
             result=result or task_api_result,
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
-            owner=header.task_owner)
+            owner=header.task_owner,
+            stats=stats)
 
         if result:
             self._create_and_set_result_package(wtr)
@@ -539,17 +572,22 @@ class TaskServer(
 
     def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
+        client_options = self.get_share_options(
+            timeout=self.RESULT_SHARE_TIMEOUT)
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(wtr, wtr.result_secret)
+        result = task_result_manager.create(
+            wtr,
+            client_options,
+            wtr.result_secret)
+
         (
             wtr.result_hash,
             wtr.result_path,
             wtr.package_sha1,
             wtr.result_size,
             wtr.package_path,
-        ) = \
-            result
+        ) = result
 
     def send_task_failed(
             self, subtask_id: str, task_id: str, err_msg: str) -> None:
@@ -610,6 +648,11 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
+
+        if task_header.environment_prerequisites:
+            image_name = task_header.environment_prerequisites['image']
+            self._docker_image_discovered(image_name)
+
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
@@ -618,7 +661,7 @@ class TaskServer(
             return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
-            return False
+        return False
 
     @classmethod
     def _verify_header_sig(cls, header: dt_tasks.TaskHeader):
@@ -664,16 +707,23 @@ class TaskServer(
             config_desc: ClientConfigDescriptor,
             run_benchmarks: bool,
     ) -> Deferred:
-
         config_changed = yield self.task_computer.change_config(config_desc)
-        if config_changed or run_benchmarks:
-            self.task_computer.lock_config(True)
-            deferred = Deferred()
-            self.benchmark_manager.run_all_benchmarks(
-                deferred.callback, deferred.errback
-            )
-            yield deferred
-            self.task_computer.lock_config(False)
+        if config_changed:
+            self._remove_env_performance_scores()
+        elif not run_benchmarks:
+            return
+
+        self.task_computer.lock_config(True)
+        deferred = Deferred()
+        self.benchmark_manager.run_all_benchmarks(
+            deferred.callback, deferred.errback)
+        yield deferred
+        self.task_computer.lock_config(False)
+
+    def _remove_env_performance_scores(self) -> None:
+        env_manager = self.task_keeper.new_env_manager
+        for env_id in env_manager.environments():
+            env_manager.remove_cached_performance(env_id)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")

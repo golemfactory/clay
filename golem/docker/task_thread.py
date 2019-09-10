@@ -229,8 +229,9 @@ class DockerTaskThread(TaskThread):
 
         self.result = {
             "data": out_files,
-            "stats": self.get_stats(),
         }
+
+        self.stats = self.get_stats()
 
         if estm_mem is not None:
             self.result = (self.result, estm_mem)

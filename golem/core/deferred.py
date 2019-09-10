@@ -64,7 +64,8 @@ def call_later(delay: int, fn, *args, **kwargs) -> None:
     deferLater(reactor, delay, fn, *args, **kwargs)
 
 
-def deferred_from_future(future: asyncio.Future) -> defer.Deferred:
+def deferred_from_future(future_like) -> defer.Deferred:
+    future = asyncio.ensure_future(future_like)
     # This is a workaround for a bug in Deferred.fromFuture()
     # FIXME: Remove when https://twistedmatrix.com/trac/ticket/9679 is fixed
     def adapt(result):

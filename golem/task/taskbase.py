@@ -1,14 +1,17 @@
 import abc
 import logging
 from enum import Enum
-from typing import Callable, Dict, List, Optional, Type
+from typing import Callable, Dict, List, Optional, Type, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    import golem_messages
+    from golem_messages.datastructures.tasks import TaskHeader
+
+    from apps.core.task.coretaskstate import TaskDefinition, Options
+    from golem.task.taskstate import TaskState
 
 from dataclasses import dataclass, field
-import golem_messages
-from golem_messages.datastructures import tasks as dt_tasks
-
-from apps.core.task.coretaskstate import TaskDefinition, Options
-from golem.task.taskstate import TaskState
 from golem.marketplace import DEFAULT_MARKET_STRATEGY
 
 logger = logging.getLogger("golem.task")
@@ -31,8 +34,8 @@ class TaskTypeInfo(object):
 
     def __init__(self,
                  name: str,
-                 definition: Type[TaskDefinition],
-                 options: Type[Options],
+                 definition: 'Type[TaskDefinition]',
+                 options: 'Type[Options]',
                  task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
         self.options = options
@@ -48,6 +51,13 @@ class TaskTypeInfo(object):
     def get_preview(cls, task, single=False):
         pass
 
+    @property
+    def id(self) -> str:
+        """
+        normalized task type name
+        """
+        return self.name.lower()
+
 
 class TaskBuilder(abc.ABC):
     def __init__(self):
@@ -60,7 +70,7 @@ class TaskBuilder(abc.ABC):
     @classmethod
     @abc.abstractmethod
     def build_definition(cls, task_type: TaskTypeInfo, dictionary,
-                         minimal=False):
+                         minimal=False) -> 'TaskDefinition':
         """ Build task defintion from dictionary with described options.
         :param dict dictionary: described all options need to build a task
         :param bool minimal: if this option is set too True, then only minimal
@@ -73,7 +83,7 @@ class TaskBuilder(abc.ABC):
     # move to overriding their own TaskDefinitions instead of
     # overriding `build_dictionary. Issue #2424`
     @staticmethod
-    def build_dictionary(definition: TaskDefinition) -> dict:
+    def build_dictionary(definition: 'TaskDefinition') -> dict:
         return definition.to_dict()
 
 
@@ -101,8 +111,8 @@ class Task(abc.ABC):
                 setattr(self, key, value)
 
     def __init__(self,
-                 header: dt_tasks.TaskHeader,
-                 task_definition: TaskDefinition) -> None:
+                 header: 'TaskHeader',
+                 task_definition: 'TaskDefinition') -> None:
         self.header = header
         self.task_definition = task_definition
 
@@ -168,7 +178,8 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
+    def query_extra_data_for_test_task(self) \
+            -> 'golem_messages.message.ComputeTaskDef':
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -265,8 +276,8 @@ class Task(abc.ABC):
         return []
 
     @abc.abstractmethod
-    def update_task_state(self, task_state: TaskState):
-        """Update some task information taking into account new state.
+    def update_task_state(self, task_state: 'TaskState'):
+        """ Update some task information taking into account new state.
         :param TaskState task_state:
         """
         raise NotImplementedError

@@ -67,7 +67,7 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
 
     def test_offer_chosen(self):
         random_dir = Path(tempfile.gettempdir())
-        self.rtm.get_task_network_resources_dir.return_value = random_dir
+        self.rtm.get_subtask_inputs_dir.return_value = random_dir
         subtask_def = requestedtaskmanager.SubtaskDefinition(
             subtask_id='test_subtask_id',
             resources=['res1', 'res2'],

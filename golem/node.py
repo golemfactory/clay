@@ -38,7 +38,13 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage, report_calls
+from golem.report import (
+    Component,
+    EventPublisher,
+    Stage,
+    StatusPublisher,
+    report_calls,
+)
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
@@ -316,6 +322,7 @@ class Node(HardwarePresetsMixin):
             methods = self.get_rpc_mapping()
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
+            EventPublisher.initialize(self._rpc_publisher)
             StatusPublisher.initialize(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
@@ -438,7 +445,7 @@ class Node(HardwarePresetsMixin):
             logger.debug('_is_task_in_progress? False: task_computer=None')
             return False
 
-        task_provider_progress = task_server.task_computer.assigned_subtask
+        task_provider_progress = task_server.task_computer.has_assigned_task()
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
         return bool(task_provider_progress)

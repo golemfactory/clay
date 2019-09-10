@@ -34,6 +34,7 @@ from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import RequestorBrassMarketStrategy
+from golem.model import Actor
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
@@ -109,6 +110,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.task_manager = Mock(tasks_states={}, tasks={})
         self.task_manager.task_finished.return_value = False
         server = Mock(task_manager=self.task_manager)
+        server.client.task_server = server
         server.get_key_id = lambda: self.provider_key
         server.get_share_options.return_value = None
         self.conn = Mock(server=server)
@@ -180,7 +182,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
                 key=self.requestor_key,
             ),
             subtask_timeout=1,
-            max_price=1, )
+            max_price=1,
+            deadline=int(time.time() + 3600))
         task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 
@@ -278,6 +281,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         wtct = self._get_wtct()
         ts = self._get_requestor_tasksession(accept_provider=True)
         ts.task_server.config_desc.offer_pooling_interval = 0
+        options = HyperdriveClientOptions(
+            "CLI1", 0.3, options=dict(timeout=10., size=1024))
+        ts.task_server.get_share_options.return_value = options
         ts.task_server.get_resources.return_value = \
             self.additional_dir_content([5, [2], [4]])
         self._fake_add_task()
@@ -293,13 +299,13 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
-        options = HyperdriveClientOptions("CLI1", 0.3)
-        ts.task_server.get_share_options.return_value = options
+
         new_path = os.path.join(self.path, "tempzip")
         zp = ZipPackager()
         _, hash_ = zp.create(new_path, ctd["resources"])
         ts.interpret(wtct)
         started = time.time()
+
         while ts.conn.send_message.call_args is None:
             if time.time() - started > 10:
                 self.fail("Test timed out")
@@ -328,14 +334,15 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ['size', os.path.getsize(new_path)],
             ['ethsig', ttc.ethsig],
             ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
-                                   'options': {}}],
+                                   'options': dict(timeout=10., size=1024)}],
             ['promissory_note_sig',
-             ttc._get_promissory_note().sign(self.requestor_keys.raw_privkey)],
+             ttc._get_promissory_note(
+                 self.ethereum_config.deposit_contract_address
+             ).sign(self.requestor_keys.raw_privkey)],
             ['concent_promissory_note_sig',
              ttc._get_concent_promissory_note(
-                 getattr(self.ethereum_config, 'deposit_contract_address')
-             ).sign(
-                 self.requestor_keys.raw_privkey)],
+                 self.ethereum_config.deposit_contract_address
+             ).sign(self.requestor_keys.raw_privkey)],
         ]
         self.assertCountEqual(ttc.slots(), expected)
 
@@ -346,9 +353,11 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
 
     def test_task_to_compute_promissory_notes(self):
         ttc, _, __, ___, ____ = self._fake_send_ttc()
-        self.assertTrue(ttc.verify_promissory_note())
+        self.assertTrue(ttc.verify_promissory_note(
+            self.ethereum_config.deposit_contract_address
+        ))
         self.assertTrue(ttc.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
 
 
@@ -365,7 +374,8 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
         self.task_session = TaskSession(self.conn)
-        self.task_session.key_id = 'deadbeef'
+        self.peer_keys = cryptography.ECCx(None)
+        self.task_session.key_id = encode_hex(self.peer_keys.raw_pubkey)
         self.task_session.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
         self.keys = KeysAuth(
@@ -379,6 +389,8 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
             return_value = False
         self.task_session.task_server.sessions = {}
         self.task_session.task_manager.task_finished.return_value = False
+        self.task_session.task_manager.comp_task_keeper.get_node_for_task_id\
+            .return_value = self.task_session.key_id
         self.pubkey = self.keys.public_key
         self.privkey = self.keys._private_key
         self.ethereum_config = EthereumConfig()
@@ -518,6 +530,12 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
 
 
 class TestTaskSession(TaskSessionTestBase):
+    def setUp(self):
+        super().setUp()
+        self.concent_keys = cryptography.ECCx(None)
+        self.task_session.task_server.client.concent_service.variant = {
+            'pubkey': self.concent_keys.raw_pubkey}
+
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock, *_):
         self.task_session.conn.server.get_key_id.return_value = \
@@ -539,20 +557,57 @@ class TestTaskSession(TaskSessionTestBase):
         msg = send_mock.call_args[0][0]
         self.assertCountEqual(msg.slots(), expected)
 
-    def _get_srr(self, key2=None, concent=False):
-        key1 = 'known'
-        key2 = key2 or key1
-        srr = msg_factories.tasks.SubtaskResultsRejectedFactory(**{
-            'report_computed_task__task_to_compute__concent_enabled': concent,
-            'report_computed_task__'
-            'task_to_compute__'
-            'want_to_compute_task__'
-            'provider_public_key': encode_hex(self.pubkey)
-        })
-        srr._fake_sign()
-        ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = key1
-        self.task_session.key_id = key2
+    def _get_srr(self, concent=False,
+                 reason: message.tasks.SubtaskResultsRejected.REASON = None,
+                 has_force_get_task_result_failed=False,
+                 mismatch_subtask_id=False):
+        requestor_keys = self.peer_keys
+        provider_keys = self.keys.ecc
+        concent_keys = self.concent_keys
+
+        # make ReportComputedTask
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute=msg_factories.tasks.TaskToComputeFactory
+            .with_signed_nested_messages(
+                requestor_keys=requestor_keys,
+                provider_keys=provider_keys,
+                concent_enabled=concent,
+            ),
+            sign__privkey=provider_keys.raw_privkey,
+        )
+
+        # make ForceGetTaskResultFailed
+        fgtrf = None
+        if has_force_get_task_result_failed:
+            fgtrf_factory_kwargs = {
+                'task_to_compute': rct.task_to_compute,
+                'sign__privkey': concent_keys.raw_privkey,
+            }
+            if mismatch_subtask_id:
+                fgtrf_factory_kwargs['task_to_compute'] = \
+                    msg_factories.tasks.TaskToComputeFactory\
+                                       .with_signed_nested_messages(
+                                           requestor_keys=requestor_keys,
+                                           provider_keys=provider_keys,
+                                           concent_enabled=concent,
+                                       )
+
+            fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory(
+                **fgtrf_factory_kwargs)
+
+        # make SubtaskResultsRejected
+        srr_factory_kwargs = {
+            'report_computed_task': rct,
+            'force_get_task_result_failed': fgtrf,
+            'sign__privkey': requestor_keys.raw_privkey,
+        }
+        if reason:
+            srr_factory_kwargs['reason'] = reason
+        srr = msg_factories.tasks.SubtaskResultsRejectedFactory(
+            **srr_factory_kwargs)
+
+        assert srr.task_id == rct.task_id
+        assert self.task_session.verify_owners(srr, my_role=Actor.Provider)
         return srr
 
     def __call_react_to_srr(self, srr):
@@ -580,11 +635,13 @@ class TestTaskSession(TaskSessionTestBase):
         )
 
     def test_result_rejected_with_wrong_key(self, *_):
-        srr = self._get_srr(key2='notmine')
+        srr = self._get_srr()
+        self.task_session.key_id = encode_hex(
+            cryptography.ECCx(None).raw_pubkey)
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_not_called()
 
-    def test_result_rejected_with_concent(self, *_):
+    def test_result_rejected_concent_verification_negative(self, *_):
         srr = self._get_srr(concent=True)
 
         def concent_deposit(**_):
@@ -603,8 +660,35 @@ class TestTaskSession(TaskSessionTestBase):
         self.assertIsInstance(srv, message.concents.SubtaskResultsVerify)
         self.assertEqual(srv.subtask_results_rejected, srr)
         self.assertTrue(srv.verify_concent_promissory_note(
-            getattr(self.ethereum_config, 'deposit_contract_address')
+            self.ethereum_config.deposit_contract_address
         ))
+
+    def test_result_rejected_concent_forced_resources_failure(self, *_):
+        srr = self._get_srr(concent=True,
+                            reason=message.tasks.SubtaskResultsRejected.REASON
+                            .ForcedResourcesFailure,
+                            has_force_get_task_result_failed=True)
+        self.__call_react_to_srr(srr)
+
+        self.task_session.task_server.subtask_rejected.assert_called_once_with(
+            sender_node_id=self.task_session.key_id,
+            subtask_id=srr.report_computed_task.subtask_id,
+        )
+        self.task_session.concent_service.submit_task_message\
+                                         .assert_not_called()
+
+    def test_result_rejected_concent_forced_resources_failure_invalid_msg(
+            self, *_):
+        srr = self._get_srr(concent=True,
+                            reason=message.tasks.SubtaskResultsRejected.REASON
+                            .ForcedResourcesFailure,
+                            has_force_get_task_result_failed=True,
+                            mismatch_subtask_id=True)
+        self.__call_react_to_srr(srr)
+
+        self.task_session.task_server.subtask_rejected.assert_not_called()
+        self.task_session.concent_service.submit_task_message\
+                                         .assert_not_called()
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self, *_):

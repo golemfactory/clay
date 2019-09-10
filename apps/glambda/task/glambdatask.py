@@ -70,13 +70,11 @@ class GLambdaTask(CoreTask):
                  owner: dt_p2p.Node,
                  dir_manager: DirManager,
                  resource_size=None,
-                 root_path: Optional[str] = None,
-                 total_tasks=1) -> None:
+                 root_path: Optional[str] = None) -> None:
         super().__init__(task_definition,
                          owner,
                          resource_size,
-                         root_path,
-                         total_tasks)
+                         root_path)
         self.method = task_definition.options.method
         self.args = task_definition.options.args
         self.verification_metadata = task_definition.options.verification
