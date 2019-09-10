@@ -314,11 +314,11 @@ class PaymentProcessor:
 
     def sent_forced_subtask_payment(
             self,
-            tx_hash,
-            receiver,
-            subtask_id,
-            amount,
-    ):
+            tx_hash: str,
+            receiver: str,
+            subtask_id: str,
+            amount: int,
+    ) -> None:
         for awaiting_payment in self._awaiting[:]:
             if awaiting_payment.subtask == subtask_id:
                 self._awaiting.remove(awaiting_payment)
@@ -370,11 +370,11 @@ class PaymentProcessor:
 
     def sent_forced_payment(
             self,
-            tx_hash,
-            receiver,
+            tx_hash: str,
+            receiver: str,
             amount: int,
             closure_time: int,
-    ):
+    ) -> None:
         closure_dt = common.timestamp_to_datetime(closure_time)
         for awaiting_payment in self._awaiting[:]:
             if awaiting_payment.created_date <= closure_dt:
