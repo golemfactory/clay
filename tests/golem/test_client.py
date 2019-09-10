@@ -1141,6 +1141,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', -1, True)
+        self.client.block_node(['node_id_1', 'node_id_2'])
+        self.client.task_server.acl.disallow.assert_called_with(
+            'node_id_2', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):

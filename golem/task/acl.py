@@ -2,6 +2,7 @@ import abc
 import logging
 import operator
 import time
+import ipaddress
 from enum import Enum
 from typing import Dict, Union, Iterable, Optional, Tuple, List, cast
 from sortedcontainers import SortedList
@@ -94,14 +95,14 @@ class _DenyAcl(Acl):
     @classmethod
     def new_from_rules(cls, client, deny_coll: List[str]) -> '_DenyAcl':
         if len(deny_coll) > 0:
-            peers = client.p2pservice.incoming_peers or dict()
             deny_list = []
 
             for key in deny_coll:
-                node = peers[key]
+                node = _get_node_info(client, key)
+                
                 if node:
-                    deny_list.append(ACLDeniedNodes(
-                        {'node_id': key, 'node_name': node.name}))
+                    deny_list.append(
+                        {'node_id': key, 'node_name': node['node_name']})
             if len(deny_list) > 0:
                 ACLDeniedNodes.insert_many(deny_list).execute()
 
@@ -115,14 +116,14 @@ class _DenyAcl(Acl):
         self._deny_list = []
         self._client = client
         self._max_times = max_times
-        self.read_list()
+        self._read_list()
 
         self._deny_deadlines = dict((item.node_id, self._always)
                                     for item in self._deny_list)
 
-    def read_list(self) -> None:
+    def _read_list(self) -> None:
         nodes = ACLDeniedNodes.select().execute()
-        self._deny_list = list(nodes)
+        self._deny_list = list(set(self._deny_list + list(nodes)))
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
         if node_id not in self._deny_deadlines:
@@ -186,7 +187,8 @@ class _DenyAcl(Acl):
             common.short_node_id(node_id),
             persist,
         )
-        del self._deny_deadlines[node_id]
+        if node_id in self._deny_deadlines:
+            del self._deny_deadlines[node_id]
 
         if persist:
             try:
@@ -204,16 +206,12 @@ class _DenyAcl(Acl):
         _always = self._always
         now = time.time()
 
-        self.read_list()
+        self._read_list()
 
         def decode_deadline(deadline):
             if deadline is _always:
                 return None
             return deadline[0]
-
-        def get_node_by_id(node_id):
-            return next((node for node in self._deny_list
-                         if node.node_id == node_id), None)
 
         rules_to_remove = []
         for (identity, deadlines) in self._deny_deadlines.items():
@@ -227,7 +225,7 @@ class _DenyAcl(Acl):
             del self._deny_deadlines[identity]
 
         rules = [
-            (get_node_by_id(identity),
+            (_get_node_info(self._client, identity),
              AclRule.deny,
              decode_deadline(deadline), )
             for (identity, deadline) in self._deny_deadlines.items()]
@@ -243,16 +241,12 @@ class _AllowAcl(Acl):
     @classmethod
     def new_from_rules(cls, client, allow_coll: List[str]) -> '_AllowAcl':
         if len(allow_coll) > 0:
-            peers = client.p2pservice.incoming_peers or dict()
             allow_list = []
-
             for key in allow_coll:
-                node = peers[key]
-
+                node = _get_node_info(client, key)
                 if node:
-                    allow_list.append(ACLAllowedNodes(
-                        {'node_id': key, 'node_name': node.name}))
-
+                    allow_list.append(
+                        {'node_id': key, 'node_name': node['node_name']})
             if len(allow_list) > 0:
                 ACLAllowedNodes.insert_many(allow_list).execute()
 
@@ -262,14 +256,14 @@ class _AllowAcl(Acl):
 
         self._allow_list = []
         self._client = client
-        self.read_list()
+        self._read_list()
 
-    def read_list(self) -> None:
+    def _read_list(self) -> None:
         nodes = ACLAllowedNodes.select().execute()
-        self._allow_list = list(nodes)
+        self._allow_list = list(set(self._allow_list + list(nodes)))
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        if any(node for node in self._allow_list if node == node_id):
+        if any(node for node in self._allow_list if node.node_id == node_id):
             return True, None
 
         return False, DenyReason.not_whitelisted
@@ -283,8 +277,8 @@ class _AllowAcl(Acl):
             timeout_seconds,
             persist,
         )
-        self._allow_list = [x for x in self._allow_list if not (
-            node_id == x.get('node_id'))]
+        self._allow_list = [node for node in self._allow_list if not (
+            node_id == node.node_id)]
 
         if persist:
             try:
@@ -304,8 +298,8 @@ class _AllowAcl(Acl):
             common.short_node_id(node_id),
             persist,
         )
-        peers = self._client.p2pservice.incoming_peers or dict()
-        node = peers[node_id]
+        node = node = _get_node_info(self._client, node_id)
+
         node_model = ACLAllowedNodes(
             node_id=node_id, node_name=node['node_name'])
         self._allow_list.append(node_model)
@@ -320,7 +314,7 @@ class _AllowAcl(Acl):
                 node_model.save()
 
     def status(self) -> AclStatus:
-        self.read_list()
+        self._read_list()
         rules = [
             (identity,
              AclRule.allow,
@@ -337,7 +331,7 @@ def get_acl(client, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
     except GenericKeyValue.DoesNotExist:
         value = DEFAULT
 
-    if value == AclRule.allow:
+    if value == AclRule.deny:
         return _AllowAcl(client)
     return _DenyAcl(client, max_times)
 
@@ -355,3 +349,18 @@ def setup_acl(client, default_rule: AclRule,
     if default_rule == AclRule.deny:
         return _AllowAcl.new_from_rules(client, exceptions)
     return _DenyAcl.new_from_rules(client, exceptions)
+
+
+def _get_node_info(client, key: str) -> Dict:
+    peers = client.p2pservice.incoming_peers or dict()
+    try:
+        ipaddress.ip_address(key)
+        node = next((peers[node] for node in peers
+                     if peers[node]['address'] == key),
+                    {'node_id': key, 'node_name': None})
+    except ValueError:
+        node = peers[key] if key in peers else {
+            'node_id': key, 'node_name': None}
+        pass
+
+    return node

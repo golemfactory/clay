@@ -1045,11 +1045,11 @@ class TaskServer(
             self.acl.allow(node_id, persist)
 
     @rpc_utils.expose('net.peer.allow_ip')
-    def allow_ip(self, node_id: Union[str, list], persist: bool = True) -> None:
-        if isinstance(node_id, str):
-                node_id = [node_id]
-        for item in node_id:
-            self.acl_ip.allow(node_id, persist)
+    def allow_ip(self, ip: Union[str, list], persist: bool = True) -> None:
+        if isinstance(ip, str):
+                ip = [ip]
+        for item in ip:
+            self.acl_ip.allow(ip, persist)
 
     @rpc_utils.expose('net.peer.acl')
     def acl_status(self) -> Dict:
