@@ -33,9 +33,10 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def make_node_configs(node_names: typing.Iterable[str],
-                      override_datadirs: typing.Dict[str, str]) \
-        -> typing.Dict[NodeId, 'NodeConfig']:
+def make_node_configs(
+        node_names: typing.Iterable[str],
+        override_datadirs: typing.Optional[typing.Dict[str, str]]
+) -> typing.Dict[NodeId, 'NodeConfig']:
     node_configs: typing.Dict[NodeId, 'NodeConfig'] = {
         NodeId(node_name): make_node_config_from_env(node_name, i)
         for i, node_name in enumerate(node_names)
@@ -52,7 +53,6 @@ def make_node_configs(node_names: typing.Iterable[str],
     for node_id, node_config in node_configs.items():
         if not node_config.datadir:
             node_config.datadir = helpers.mkdatadir(node_id.value)
-        print(f"Launching node `{node_id.value}`: {node_config}")
 
     return node_configs
 
@@ -66,6 +66,9 @@ def main():
         extend_enum(NodeId, node_name, node_name)
 
     node_configs = make_node_configs(args.nodes, args.datadir)
+
+    for node_id, node_config in node_configs.items():
+        print(f"Launching node `{node_id.value}`: {node_config}")
 
     nodes = {
         node_id: helpers.run_golem_node(node_config.script,
