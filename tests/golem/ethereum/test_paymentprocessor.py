@@ -573,9 +573,13 @@ class SentForcedSubtaskPaymentTest(ForcedPaymentBase):
         )
 
     def test_found_in_db(self):
-        self.payment.wallet_operation.save(force_insert=True)
-        self.payment.save(force_insert=True)
-        self.pp._awaiting.add(self.payment)
+        self.payment = self.pp.add(
+            node_id=self.payment.node,
+            task_id=self.payment.task,
+            subtask_id=self.payment.subtask,
+            eth_addr=self.payment.wallet_operation.recipient_address,
+            value=self.payment.wallet_operation.amount,
+        )
         self.pp.sent_forced_subtask_payment(
             tx_hash=self.payment.wallet_operation.tx_hash,
             receiver=self.payment.wallet_operation.recipient_address,
@@ -609,9 +613,13 @@ class SentForcedPayment(ForcedPaymentBase):
         )
 
     def test_found_in_db(self):
-        self.payment.wallet_operation.save(force_insert=True)
-        self.payment.save(force_insert=True)
-        self.pp._awaiting.add(self.payment)
+        self.payment = self.pp.add(
+            node_id=self.payment.node,
+            task_id=self.payment.task,
+            subtask_id=self.payment.subtask,
+            eth_addr=self.payment.wallet_operation.recipient_address,
+            value=self.payment.wallet_operation.amount,
+        )
         self.pp.sent_forced_payment(
             tx_hash=self.payment.wallet_operation.tx_hash,
             receiver=self.payment.wallet_operation.recipient_address,
