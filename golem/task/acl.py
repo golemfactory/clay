@@ -113,7 +113,7 @@ class _DenyAcl(Acl):
         :param max_times: how many times node_id must be disallowed to be
                           actually disallowed
         """
-        self._deny_list = []
+        self._deny_list = [] # type: List[ACLDeniedNodes]
         self._client = client
         self._max_times = max_times
         self._read_list()
@@ -254,7 +254,7 @@ class _AllowAcl(Acl):
 
     def __init__(self, client) -> None:
 
-        self._allow_list = []
+        self._allow_list = [] # type: List[ACLAllowedNodes]
         self._client = client
         self._read_list()
 
