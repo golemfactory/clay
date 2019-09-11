@@ -360,7 +360,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            sync_wait(self.task_server.quit())
+            self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)

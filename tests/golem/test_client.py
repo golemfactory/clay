@@ -218,11 +218,9 @@ class TestClient(TestClientBase):
 
         task_cleaner.assert_called()
 
-    @patch('golem.network.transport.tcpserver.TCPServer.start_accepting')
     def test_collect_gossip(self, gossip_mock, *_):
         self.client.start_network()
         self.client.collect_gossip()
-        assert gossip_mock.call_count == 2
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
@@ -284,7 +282,6 @@ class TestClient(TestClientBase):
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
-    @patch('golem.network.p2p.p2pservice.P2PService.start_accepting')
     @patch('golem.task.taskserver.TaskServer.quit')
     def test_pause_resume(self, *_):
         self.client.start()

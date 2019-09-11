@@ -152,13 +152,15 @@ class TaskServerTestBase(LogTestCase,
         )
         self.ts.resource_manager.storage.get_dir.return_value = self.tempdir
 
-    @defer.inlineCallbacks
     def tearDown(self):
-        if hasattr(self, "ts") and self.ts:
-            yield self.ts.quit()
+        LogTestCase.tearDown(self)
+        testutils.DatabaseFixture.tearDown(self)
 
-        for parent in TaskServerTestBase.__bases__:
-            parent.tearDown(self)
+        if hasattr(self, "ts") and self.ts:
+            # Hack to not call the asycio call RTM.quit()
+            # Uncomment when this test works with asyncio
+            # self.ts.quit()
+            self.ts.task_computer.quit()
 
     def _prepare_handshake(self, task_owner_key, task_id):
         self.ts.start_handshake(
@@ -877,7 +879,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
-        yield self.ts.pause()
+        with patch('golem.task.taskserver.TaskServer.quit'):
+            yield self.ts.pause()
 
         assert not self.ts.active
         assert CoreTask.VERIFICATION_QUEUE._paused
