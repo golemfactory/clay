@@ -84,8 +84,8 @@ class BenchmarkResult:
     performance: float = 0.0
     cpu_usage: int = 0
 
-    @classmethod
-    def from_performance(cls, performance: Performance):
+    @staticmethod
+    def from_performance(performance: Performance):
         return BenchmarkResult(performance.value, performance.cpu_usage)
 
 

@@ -548,8 +548,8 @@ class Performance(BaseModel):
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id: str, performance: float, cpu_usage: int):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
             stored = Performance.get(Performance.environment_id == env_id)
             stored.value = performance
