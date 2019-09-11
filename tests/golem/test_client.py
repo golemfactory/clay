@@ -218,7 +218,7 @@ class TestClient(TestClientBase):
 
         task_cleaner.assert_called()
 
-    def test_collect_gossip(self, gossip_mock, *_):
+    def test_collect_gossip(self, *_):
         self.client.start_network()
         self.client.collect_gossip()
 

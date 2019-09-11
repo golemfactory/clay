@@ -115,7 +115,7 @@ class ProviderBase(test_client.TestClientBase):
         header=mock.MagicMock(task_id='task_id'),
     ),
 )
-class TestCreateTask(ProviderBase, TestClientBase, TwistedTestCase):
+class TestCreateTask(ProviderBase, TestClientBase):
     @staticmethod
     def _get_task_dict(**data):
         task_dict = dummytaskstate.DummyTaskDefinition().to_dict()
