@@ -563,7 +563,7 @@ class ACLAllowedNodes(BaseModel):
 
     def to_dict(self):
         return {
-            'node_name': str(self.node_name),
+            'node_name': self.node_name,
             'node_id': self.node_id
         }
 
@@ -577,7 +577,7 @@ class ACLDeniedNodes(BaseModel):
 
     def to_dict(self):
         return {
-            'node_name': str(self.node_name),
+            'node_name': self.node_name,
             'node_id': self.node_id
         }
 

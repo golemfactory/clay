@@ -4,8 +4,7 @@ import operator
 import time
 import ipaddress
 from enum import Enum
-from pathlib import Path
-from typing import Dict, Set, Union, Iterable, Optional, Tuple, List, cast
+from typing import Dict, Union, Optional, Tuple, List, cast
 from sortedcontainers import SortedList
 from golem.model import ACLAllowedNodes, ACLDeniedNodes, GenericKeyValue
 
@@ -49,8 +48,8 @@ class AclStatus:
             'default_rule': self.default_rule.value,
             'rules': [
                 {
-                    'node_id': identity.node_id,
-                    'node_name': identity.node_name,
+                    'node_id': identity['node_id'],
+                    'node_name': identity['node_name'] or "",
                     'rule': rule.value,
                     'deadline': deadline
                 }
@@ -226,9 +225,13 @@ class _DenyAcl(Acl):
             del self._deny_deadlines[identity]
 
         rules = [
-            (_get_node_info(self._client, identity),
+            ({
+                'node_id': identity,
+                'node_name': _get_node_info(
+                    self._client, identity)['node_name']
+            },
              AclRule.deny,
-             decode_deadline(deadline), )
+             decode_deadline(deadline))
             for (identity, deadline) in self._deny_deadlines.items()]
         return AclStatus(AclRule.allow, rules)
 
@@ -299,7 +302,7 @@ class _AllowAcl(Acl):
             common.short_node_id(node_id),
             persist,
         )
-        node = node = _get_node_info(self._client, node_id)
+        node = _get_node_info(self._client, node_id)
 
         node_model = ACLAllowedNodes(
             node_id=node_id, node_name=node['node_name'])
@@ -317,7 +320,7 @@ class _AllowAcl(Acl):
     def status(self) -> AclStatus:
         self._read_list()
         rules = [
-            (identity,
+            (identity.to_dict(),
              AclRule.allow,
              cast(Optional[int], None))
             for identity in self._allow_list]
@@ -326,13 +329,11 @@ class _AllowAcl(Acl):
 
 
 def get_acl(client, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
-
     try:
-        value = GenericKeyValue.get(key=ACL_MODE_KEY)
+        acl_key = GenericKeyValue.get(key=ACL_MODE_KEY).value
     except GenericKeyValue.DoesNotExist:
-        value = DEFAULT
-
-    if value == AclRule.deny:
+        acl_key = DEFAULT
+    if acl_key == AclRule.deny.value:
         return _AllowAcl(client)
     return _DenyAcl(client, max_times)
 
@@ -364,34 +365,3 @@ def _get_node_info(client, key: str) -> Dict:
             'node_id': key, 'node_name': None}
 
     return node
-
-
-def migrate_txt(datadir):
-
-    def _read_set_from_file(path: Path) -> Set[str]:
-        try:
-            with path.open() as f:
-                return set(line.strip() for line in f)
-        except OSError:
-            return set()
-
-    def _remove_file(path: Path) -> None:
-        if path.exists():
-            path.unlink()
-
-    DENY_LIST_NAME = "deny.txt"
-    ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
-    nodes_ids = []
-
-    deny_list_path = datadir / DENY_LIST_NAME
-    nodes_ids = _read_set_from_file(deny_list_path)
-    if nodes_ids:
-        if ALL_EXCEPT_ALLOWED in nodes_ids:
-            nodes_ids.remove(ALL_EXCEPT_ALLOWED)
-            nodes = [{'node_id': node_id, 'node_name': None}
-                     for node_id in nodes_ids]
-            ACLAllowedNodes.insert_many(nodes).execute()
-        nodes = [{'node_id': node_id, 'node_name': None}
-                 for node_id in nodes_ids]
-        ACLDeniedNodes.insert_many(nodes).execute()
-    _remove_file(deny_list_path)

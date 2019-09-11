@@ -49,7 +49,6 @@ from golem.rpc.session import (
 from golem import terms
 from golem.tools.uploadcontroller import UploadController
 from golem.tools.remotefs import RemoteFS
-from golem.task.acl import migrate_txt
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import
@@ -136,9 +135,6 @@ class Node(HardwarePresetsMixin):
         # Initialize database
         self._db = Database(
             db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
-
-        # ACL txt migration
-        migrate_txt(Path(datadir))
 
         self.client: Optional[Client] = None
 
