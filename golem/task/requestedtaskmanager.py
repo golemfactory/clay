@@ -364,20 +364,20 @@ class RequestedTaskManager:
         task.save()
 
     async def quit(self):
-        logger.info('quit()')
+        logger.debug('quit()')
         # Abort active tasks?
 
         # Shutdown registered app_clients
-        for app_id, app_client in self._app_clients:
+        for app_id, app_client in self._app_clients.items():
             logger.info('Shutting down app. app_id=%r', app_id)
             try:
                 await app_client.shutdown()
             except Exception:  # pylint: disable=broad-except
                 logger.warning("Failed to shutdown app. app_id=%r", app_id)
-            finally:
-                del self._app_clients[app_id]
 
-        logger.info('quit() - DONE')
+        self._app_clients.clear()
+
+        logger.debug('quit() - DONE')
 
     async def _get_app_client(
             self,
