@@ -52,8 +52,9 @@ class AddGetResources(TempDirFixture, LogTestCase):
             async_=False)
 
     def tearDown(self):
-        self.client_1.quit()
-        self.client_2.quit()
+        with mock.patch('golem.task.taskserver.TaskServer.quit'):
+            self.client_1.quit()
+            self.client_2.quit()
 
         LogTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
