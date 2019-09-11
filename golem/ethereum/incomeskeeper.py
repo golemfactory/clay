@@ -40,7 +40,9 @@ class IncomesKeeper:
             tx_hash: str,
             sender: str,
             amount: int,
-            closure_time: int) -> None:
+            closure_time: int,
+            charged_from_deposit: bool = False,
+    ) -> None:
 
         expected = model.TaskPayment.incomes().where(
             model.WalletOperation.sender_address == sender,
@@ -70,6 +72,8 @@ class IncomesKeeper:
             e.wallet_operation.tx_hash = tx_hash
             e.wallet_operation.status = model.WalletOperation.STATUS.confirmed
             e.wallet_operation.save()
+            e.charged_from_deposit = charged_from_deposit
+            e.save()
 
             if e.missing_amount == 0:
                 dispatcher.send(
@@ -94,6 +98,7 @@ class IncomesKeeper:
             sender=sender,
             amount=amount,
             closure_time=closure_time,
+            charged_from_deposit=True,
         )
 
     @staticmethod
@@ -176,6 +181,7 @@ class IncomesKeeper:
             task="",
             subtask=subtask_id,
             expected_amount=value,
+            charged_from_deposit=True,
         )
 
     @staticmethod
