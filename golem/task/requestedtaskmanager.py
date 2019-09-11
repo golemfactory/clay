@@ -407,7 +407,7 @@ class RequestedTaskManager:
     def _check_task_timeout(task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if task.status != TaskStatus.finished:
-            logger.info("Task %r timed out", task_id)
+            logger.info("Task timed out. task_id=%r", task_id)
             task.status = TaskStatus.timeout
             task.save()
 
