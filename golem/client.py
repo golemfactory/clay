@@ -395,10 +395,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             values = self.environments_manager.get_performance_values()
             new_env_manager = self.task_server.task_keeper.new_env_manager
             for env_id in new_env_manager.environments():
-                value = new_env_manager \
-                    .get_cached_benchmark_result(env_id).performance
-                if value is not None:
-                    values[env_id] = value
+                benchmark_result = new_env_manager \
+                    .get_cached_benchmark_result(env_id)
+                if benchmark_result is not None:
+                    values[env_id] = benchmark_result.performance
             return values
         self.p2pservice.add_metadata_provider(
             'performance', get_performance_values)

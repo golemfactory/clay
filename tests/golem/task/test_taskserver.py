@@ -178,7 +178,7 @@ class TaskServerTestBase(LogTestCase,
             -> None:
         env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
-        env.get_benchmark_result = BenchmarkResult()
+        env.get_benchmark_result = Mock(return_value=BenchmarkResult())
         self.ts.get_environment_by_id = Mock(return_value=env)
 
 
