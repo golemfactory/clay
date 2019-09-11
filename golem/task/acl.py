@@ -48,7 +48,7 @@ class AclStatus:
             'default_rule': self.default_rule.value,
             'rules': [
                 {
-                    'node_id': identity['node_id'],
+                    'identity': identity['node_id'],
                     'node_name': identity['node_name'] or "",
                     'rule': rule.value,
                     'deadline': deadline
