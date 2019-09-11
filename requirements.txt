@@ -127,7 +127,7 @@ tabulate==0.8.2
 token-bucket==0.2.0
 toolz==0.9.0
 treq==17.8.0
-Twisted==19.2.1
+Twisted==19.7.0
 txaio==18.8.1
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
