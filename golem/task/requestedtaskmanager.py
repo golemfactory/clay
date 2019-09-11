@@ -3,23 +3,27 @@ import json
 from datetime import timedelta
 import logging
 import os
-from pathlib import Path
 import shutil
+import time
+from pathlib import Path
 from typing import Any, Dict, List
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
+from golem_messages.datastructures.tasks import TaskHeader
 from golem_task_api import constants
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
 from golem.app_manager import AppManager
+from golem import constants as gconst
 from golem.model import (
     ComputingNode,
     default_now,
     RequestedTask,
     RequestedSubtask,
 )
+from golem.network.p2p.local_node import LocalNode
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.task.task_api import EnvironmentTaskApiService
@@ -102,15 +106,15 @@ class RequestedTaskManager:
             self,
             env_manager: EnvironmentManager,
             app_manager: AppManager,
-            public_key: bytes,
+            node: LocalNode,
             root_path: Path,
     ):
-        logger.debug('RequestedTaskManager(public_key=%r, root_path=%r)',
-                     public_key, root_path)
+        logger.debug('RequestedTaskManager(node=%r, root_path=%r)',
+                     node, root_path)
         self._dir_manager = DirManager(root_path)
         self._env_manager = env_manager
         self._app_manager = app_manager
-        self._public_key: bytes = public_key
+        self._node: LocalNode = node
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
 
     def create_task(
@@ -124,7 +128,7 @@ class RequestedTaskManager:
                      golem_params, app_params)
 
         task = RequestedTask.create(
-            task_id=idgenerator.generate_id(self._public_key),
+            task_id=idgenerator.generate_id(self._node.node_id),
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
@@ -208,6 +212,55 @@ class RequestedTaskManager:
         # FIXME: add self.notice_task_updated(task_id, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
+    def get_task_headers(self):
+        pending_tasks = RequestedTask.select().where(
+            # FIXME: duplicate list with TaskStatus.is_active()
+            RequestedTask.status.in_([
+                TaskStatus.sending,
+                TaskStatus.waiting,
+                TaskStatus.starting,
+                TaskStatus.computing,
+            ])
+        ).execute()
+        # filter out Task.needs_computation() ??
+
+        def _make_task_header(db_task: RequestedTask) -> TaskHeader:
+            return TaskHeader(
+                min_version=str(gconst.GOLEM_MIN_VERSION),
+                task_id=db_task.task_id,
+                # FIXME: use value from database after #4707 is mergeds
+                # environment=db_task.env_id,
+                environment='docker_cpu',
+                task_owner=self._node,
+                deadline=int(db_task.deadline.timestamp()),
+                subtask_timeout=db_task.subtask_timeout,
+                subtasks_count=db_task.max_subtasks,
+                # estimated_memory=task_definition.estimated_memory,
+                max_price=db_task.max_price_per_hour,
+                # Concent Disabled for task-api
+                concent_enabled=False,
+                timestamp=int(time.time()),
+            )
+
+        return [_make_task_header(task) for task in pending_tasks]
+
+    def got_wants_to_compute(self, task_id: str):
+        """
+        Updates number of offers to compute task.
+
+        For statistical purposes only, real processing of the offer is done
+        elsewhere. Silently ignores wrong task ids.
+
+        :param str task_id: id of the task in the offer
+        :return: Nothing
+        :rtype: None
+        """
+        if self.task_exists(self.tasks):
+            logger.debug('Got compute offer')
+            # self.notice_task_updated(task_id,
+            #                         op=TaskOp.WORK_OFFER_RECEIVED,
+            #                         persist=False)
+
     @staticmethod
     def task_exists(task_id: TaskId) -> bool:
         """ Return whether task of a given task_id exists. """
@@ -269,7 +322,7 @@ class RequestedTaskManager:
         )
 
         # Check not providing for own task
-        if node.node_id == self._public_key:
+        if node.node_id == self._node.node_id:
             raise RuntimeError(f"No subtasks for self. task_id={task_id}")
 
         # Check should accept provider, raises when waiting on results or banned

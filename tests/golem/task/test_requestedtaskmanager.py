@@ -13,6 +13,7 @@ import pytest
 
 from golem.app_manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
+from golem.network.p2p.local_node import LocalNode
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import (
     ComputingNode,
@@ -52,13 +53,14 @@ class TestRequestedTaskManager():
 
         self.env_manager = Mock(spec=EnvironmentManager)
         self.app_manager = Mock(spec=AppManager)
-        self.public_key = str.encode('0xdeadbeef')
+        self.node = Mock(spec=LocalNode)
+        self.node.node_id = str.encode('0xdeadbeef')
         self.rtm_path = self.tmp_path / 'rtm'
         self.rtm_path.mkdir()
         self.rtm = RequestedTaskManager(
             env_manager=self.env_manager,
             app_manager=self.app_manager,
-            public_key=self.public_key,
+            node=self.node,
             root_path=self.rtm_path
         )
 
@@ -237,8 +239,9 @@ class TestRequestedTaskManager():
         assert task_row.status == TaskStatus.aborted
         assert subtask_row.status == SubtaskStatus.cancelled
 
+    @pytest.mark.usefixtures('mock_client')
     @pytest.mark.asyncio
-    async def test_task_timeout(self, mock_client):
+    async def test_task_timeout(self):
         task_timeout = 0.1
         task_id = self._create_task(task_timeout=task_timeout)
         await self.rtm.init_task(task_id)
@@ -324,6 +327,22 @@ class TestRequestedTaskManager():
         # then
         mock_client.shutdown.assert_called_once_with()
         assert not self.rtm._app_clients
+
+    @pytest.mark.usefixtures('mock_client')
+    @pytest.mark.asyncio
+    async def test_get_task_headers(self):
+        # given
+        task_id = self._create_task()
+        await self.rtm.init_task(task_id)
+        self.rtm.start_task(task_id)
+
+        # when
+
+        result = self.rtm.get_task_headers()
+
+        # then
+
+        assert result[0].task_id == task_id
 
     def _build_golem_params(
             self,

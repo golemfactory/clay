@@ -190,8 +190,8 @@ class TaskServer(
         self.requested_task_manager = RequestedTaskManager(
             env_manager=new_env_manager,
             app_manager=app_mgr,
-            root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
-            public_key=self.keys_auth.public_key,
+            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            node=self.node,
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
@@ -646,7 +646,9 @@ class TaskServer(
                 logger.error("Error closing session: %s", exc)
 
     def get_own_tasks_headers(self):
-        return self.task_manager.get_tasks_headers()
+        old_headers = self.task_manager.get_tasks_headers()
+        new_headers = self.requested_task_manager.get_task_headers()
+        return old_headers + new_headers
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
