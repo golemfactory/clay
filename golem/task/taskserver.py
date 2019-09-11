@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 import functools
-import asyncio
 import itertools
 import logging
 import os
@@ -307,7 +306,9 @@ class TaskServer(
         CoreTask.VERIFICATION_QUEUE.resume()
 
     def quit(self):
-        defer_rtm_quit = deferred_from_future(self.requested_task_manager.quit())
+        defer_rtm_quit = deferred_from_future(
+            self.requested_task_manager.quit()
+        )
         sync_wait(defer_rtm_quit)
         self.task_computer.quit()
 

@@ -1124,7 +1124,7 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
 
 class TestGetFragments(ProviderBase, TwistedTestCase):
     @defer.inlineCallbacks
-    def _create_task(self) -> taskbase.Task:
+    def _create_task(self) -> defer.Deferred:
         task = self.client.task_manager.create_task(self.t_dict)
         with mock.patch('os.path.getsize', return_value=123):
             result = yield rpc._prepare_task(self.client, task, force=False)
