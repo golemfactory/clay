@@ -181,7 +181,7 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         Performance.update_or_create(self.env_id, perf, 0)
         self.assertEqual(
             perf,
-            self.manager.get_cached_performance(self.env_id).performance
+            self.manager.get_cached_benchmark_result(self.env_id).performance
         )
         self.manager.remove_cached_performance(self.env_id)
-        self.assertIsNone(self.manager.get_cached_performance(self.env_id))
+        self.assertIsNone(self.manager.get_cached_benchmark_result(self.env_id))
