@@ -303,10 +303,12 @@ class _AllowAcl(Acl):
             persist,
         )
         node = _get_node_info(self._client, node_id)
-
         node_model = ACLAllowedNodes(
             node_id=node_id, node_name=node['node_name'])
-        self._allow_list.append(node_model)
+
+        if not any(node for node in self._allow_list if (
+                node.node_id == node_id)):
+            self._allow_list.append(node_model)
 
         if persist:
             try:
