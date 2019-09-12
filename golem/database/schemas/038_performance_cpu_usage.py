@@ -2,7 +2,7 @@
 # pylint: disable=unused-argument
 import peewee as pw
 
-SCHEMA_VERSION = 37
+SCHEMA_VERSION = 38
 
 
 def migrate(migrator, database, fake=False, **kwargs):
