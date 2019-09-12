@@ -543,19 +543,24 @@ class Performance(BaseModel):
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            stored = Performance.get(Performance.environment_id == env_id)
+            stored.value = performance
+            stored.cpu_usage = cpu_usage
+            stored.save()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            Performance(
+                environment_id=env_id,
+                value=performance,
+                cpu_usage=cpu_usage
+            ).save()
 
 
 class DockerWhitelist(BaseModel):

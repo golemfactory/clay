@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from peewee import PeeweeException
 from twisted.internet.defer import Deferred, inlineCallbacks
 
-from golem.envs import EnvId, Environment, EnvMetadata
+from golem.envs import BenchmarkResult, EnvId, Environment, EnvMetadata
 from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
 
@@ -82,18 +82,18 @@ class EnvironmentManager:
         return self._envs[env_id].payload_builder
 
     @inlineCallbacks
-    def get_performance(self, env_id) -> Deferred:
+    def get_benchmark_result(self, env_id) -> Deferred:
         """ Gets the performance for the given environment
             Checks the database first, if not found it starts a benchmark
-            Return value Deferred resulting in a float
-            or None when the benchmark is already running. """
+            :return Deferred resulting in a BenchmarkResult object or None
+            when the benchmark is already running. """
         if self._running_benchmark:
             return None
 
         if not self.enabled(env_id):
             raise Exception("Requested performance for disabled environment")
 
-        result = self.get_cached_performance(env_id)
+        result = self.get_cached_benchmark_result(env_id)
         if result:
             return result
 
@@ -112,18 +112,26 @@ class EnvironmentManager:
         finally:
             self._running_benchmark = False
 
-        Performance.update_or_create(env_id, result)
-        logger.info(
-            'Finshed running benchmark. env=%r, score=%r',
-            env_id,
-            result
+        Performance.update_or_create(
+            env_id=env_id,
+            performance=result.performance,
+            cpu_usage=result.cpu_usage
         )
+
+        logger.info(
+            'Finished running benchmark. env=%r, score=%r, cpu_usage=%r',
+            env_id,
+            result.performance,
+            result.cpu_usage
+        )
+
         return result
 
     @staticmethod
-    def get_cached_performance(env_id: EnvId) -> Optional[float]:
+    def get_cached_benchmark_result(env_id: EnvId):
         try:
-            return Performance.get(Performance.environment_id == env_id).value
+            perf = Performance.get(Performance.environment_id == env_id)
+            return BenchmarkResult.from_performance(perf)
         except Performance.DoesNotExist:
             return None
 

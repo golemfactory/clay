@@ -112,7 +112,7 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         self.manager._running_benchmark = True
 
         # When
-        result = yield self.manager.get_performance(self.env_id)
+        result = yield self.manager.get_benchmark_result(self.env_id)
 
         # Then
         self.env.run_benchmark.assert_not_called()
@@ -129,7 +129,7 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
             Exception,
             'Requested performance for disabled environment'
         ):
-            yield self.manager.get_performance(self.env_id)
+            yield self.manager.get_benchmark_result(self.env_id)
 
         # Then
         self.env.run_benchmark.assert_not_called()
@@ -140,14 +140,14 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         perf = 300.0
         self.manager.set_enabled(self.env_id, True)
 
-        Performance.update_or_create(self.env_id, perf)
+        Performance.update_or_create(self.env_id, perf, 0)
 
         # When
-        result = yield self.manager.get_performance(self.env_id)
+        result = yield self.manager.get_benchmark_result(self.env_id)
 
         # Then
         self.env.run_benchmark.assert_not_called()
-        self.assertEqual(result, perf)
+        self.assertEqual(result.performance, perf)
 
     @inlineCallbacks
     def test_get_performance_benchmark_error(self):
@@ -160,22 +160,28 @@ class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         # When
         result = None
         with self.assertRaisesRegex(Exception, error_msg):
-            result = yield self.manager.get_performance(self.env_id)
+            result = yield self.manager.get_benchmark_result(self.env_id)
 
         # Then
         self.env.run_benchmark.assert_called_once()
         self.assertIsNone(result)
 
     def test_cached_performance(self):
-        self.assertIsNone(self.manager.get_cached_performance(self.env_id))
+        self.assertIsNone(self.manager.get_cached_benchmark_result(self.env_id))
 
         perf = 123.4
-        Performance.update_or_create(self.env_id, perf)
-        self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
+        Performance.update_or_create(self.env_id, perf, 0)
+        self.assertEqual(
+            perf,
+            self.manager.get_cached_benchmark_result(self.env_id).performance
+        )
 
     def test_remove_cached_performance(self):
         perf = 123.4
-        Performance.update_or_create(self.env_id, perf)
-        self.assertEqual(perf, self.manager.get_cached_performance(self.env_id))
+        Performance.update_or_create(self.env_id, perf, 0)
+        self.assertEqual(
+            perf,
+            self.manager.get_cached_benchmark_result(self.env_id).performance
+        )
         self.manager.remove_cached_performance(self.env_id)
-        self.assertIsNone(self.manager.get_cached_performance(self.env_id))
+        self.assertIsNone(self.manager.get_cached_benchmark_result(self.env_id))
