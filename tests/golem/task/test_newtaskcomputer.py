@@ -6,16 +6,14 @@ from unittest import mock
 
 from golem_messages.message import ComputeTaskDef
 from golem_task_api import ProviderAppClient, TaskApiService
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from twisted.internet import defer
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.envs import Runtime
-from golem.envs.docker.cpu import (
-    DOCKER_CPU_ENV_ID,
-    DockerCPUConfig
-)
+from golem.envs.docker.cpu import DockerCPUConfig
 from golem.task.envmanager import EnvironmentManager
 from golem.task.taskcomputer import NewTaskComputer
 from golem.testutils import TempDirFixture

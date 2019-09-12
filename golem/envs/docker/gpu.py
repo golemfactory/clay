@@ -3,6 +3,7 @@ from logging import getLogger, Logger
 from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass, field
+from golem_task_api.envs import DOCKER_GPU_ENV_ID
 
 from golem.core.common import update_dict
 from golem.envs import (
@@ -22,7 +23,6 @@ from golem.envs.docker.vendor import nvidia
 logger = getLogger(__name__)
 
 
-DOCKER_GPU_ENV_ID = 'docker_gpu'
 DOCKER_GPU_METADATA = EnvMetadata(
     id=DOCKER_GPU_ENV_ID,
     description='Docker environment using GPU'

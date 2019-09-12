@@ -2,6 +2,7 @@
 # ^^ Pytest fixtures in the same file require the same name
 
 import asyncio
+import json
 from pathlib import Path
 
 from freezegun import freeze_time
@@ -26,14 +27,19 @@ from tests.utils.asyncio import AsyncMock
 
 @pytest.fixture
 def mock_client(monkeypatch):
-    _mock_client = AsyncMock(spec=RequestorAppClient)
+    client_mock = AsyncMock(spec=RequestorAppClient)
 
     @asyncio.coroutine
     def mock_create(*_args, **_kwargs):
-        return _mock_client
+        return client_mock
 
     monkeypatch.setattr(RequestorAppClient, 'create', mock_create)
-    return _mock_client
+
+    client_mock.create_task.return_value = Mock(
+        env_id='env_id',
+        prerequisites_json='null'
+    )
+    return client_mock
 
 
 @pytest.mark.usefixtures('pytest_database_fixture')
@@ -74,11 +80,19 @@ class TestRequestedTaskManager():
     async def test_init_task(self, mock_client):
         # given
         task_id = self._create_task()
+        env_id = 'test_env'
+        prerequisites = {'key': 'value'}
+        mock_client.create_task.return_value = Mock(
+            env_id=env_id,
+            prerequisites_json=json.dumps(prerequisites)
+        )
         # when
         await self.rtm.init_task(task_id)
         row = RequestedTask.get(RequestedTask.task_id == task_id)
         # then
         assert row.status == TaskStatus.creating
+        assert row.env_id == env_id
+        assert row.prerequisites == prerequisites
         mock_client.create_task.assert_called_once_with(
             row.task_id,
             row.max_subtasks,
@@ -86,9 +100,8 @@ class TestRequestedTaskManager():
         )
         self.app_manager.enabled.assert_called_once_with(row.app_id)
 
-    @pytest.mark.usefixtures('mock_client')
     @pytest.mark.asyncio
-    async def test_init_task_wrong_status(self):
+    async def test_init_task_wrong_status(self, mock_client):
         # given
         task_id = self._create_task()
         # when
@@ -99,9 +112,8 @@ class TestRequestedTaskManager():
         with pytest.raises(RuntimeError):
             await self.rtm.init_task(task_id)
 
-    @pytest.mark.usefixtures('mock_client')
     @pytest.mark.asyncio
-    async def test_start_task(self):
+    async def test_start_task(self, mock_client):
         # given
         task_id = self._create_task()
         await self.rtm.init_task(task_id)
