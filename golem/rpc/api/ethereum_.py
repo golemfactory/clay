@@ -80,7 +80,8 @@ class ETSProvider:
     @rpc_utils.expose('pay.operations')
     @staticmethod
     def get_operations(
-            operation_type: typing.Optional[str],
+            operation_type: typing.Optional[str] = None,
+            direction: typing.Optional[str] = None,
             page_num: int = 1,
             per_page: int = 20,
     ):
@@ -92,14 +93,34 @@ class ETSProvider:
         # joined models.
         query = model.WalletOperation.select() \
             .order_by(model.WalletOperation.id.desc())
-        if operation_type:
+
+        def _parse_enum(enum_, value):
             try:
-                operation_type = model.WalletOperation.TYPE(operation_type)
+                return enum_(value)
             except ValueError:
-                logger.error('Invalid operation type: %r', operation_type)
-                return []
+                logger.error(
+                    'Invalid %s type: %r not in %s',
+                    enum_.__name__,
+                    value,
+                    ', '.join(k for k in enum_.__members__),
+                )
+            return None
+
+        operation_type = _parse_enum(
+            model.WalletOperation.TYPE,
+            operation_type,
+        )
+        if operation_type:
             query = query.where(
                 model.WalletOperation.operation_type == operation_type,
+            )
+        direction = _parse_enum(
+            model.WalletOperation.DIRECTION,
+            direction,
+        )
+        if direction:
+            query = query.where(
+                model.WalletOperation.direction == direction,
             )
         query = query.paginate(page_num, per_page)
         tp_query = model.TaskPayment.select() \
