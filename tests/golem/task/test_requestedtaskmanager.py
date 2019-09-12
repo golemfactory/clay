@@ -123,10 +123,8 @@ class TestRequestedTaskManager():
     async def test_has_pending_subtasks(self, mock_client):
         # given
         mock_client.has_pending_subtasks.return_value = True
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         # when
         res = await self.rtm.has_pending_subtasks(task_id)
         # then
@@ -137,10 +135,8 @@ class TestRequestedTaskManager():
     async def test_get_next_subtask(self, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
             node_id='abc',
             name='abc',
@@ -160,10 +156,8 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = True
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
             node_id='abc',
             name='abc',
@@ -192,9 +186,7 @@ class TestRequestedTaskManager():
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = False
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
+        task_id = await self._start_task()
         computing_node = ComputingNodeDefinition(
             node_id='abc',
             name='abc',
@@ -220,9 +212,7 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
+        task_id = await self._start_task()
         computing_node = ComputingNodeDefinition(
             node_id='abc',
             name='abc',
@@ -252,6 +242,23 @@ class TestRequestedTaskManager():
         # and can't be used here
         await asyncio.sleep(task_timeout)
         assert self.rtm.is_task_finished(task_id)
+
+    @pytest.mark.asyncio
+    async def test_restart_task(self, mock_client):
+        task_timeout = 0.1
+        task_id = await self._start_task(task_timeout=task_timeout)
+        # Wait for the task to timeout
+        await asyncio.sleep(task_timeout)
+        assert self.rtm.is_task_finished(task_id)
+
+        await self.rtm.restart_task(task_id)
+        assert not self.rtm.is_task_finished(task_id)
+
+    async def _start_task(self, **golem_params):
+        task_id = self._create_task(**golem_params)
+        await self.rtm.init_task(task_id)
+        self.rtm.start_task(task_id)
+        return task_id
 
     def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
         return CreateTaskParams(
