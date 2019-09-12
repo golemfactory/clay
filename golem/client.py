@@ -9,6 +9,7 @@ import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from unittest import mock
 
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
@@ -72,6 +73,55 @@ from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
+
+
+def create_mock_transaction_system():
+    from datetime import datetime
+    from golem.model import TaskPayment
+
+    def mock_fn(return_value):
+        return mock.Mock(return_value=return_value)
+
+    balance = {
+        'gnt_available': 1000 * 10 ** 18,
+        'gnt_locked': 0,
+        'gnt_nonconverted': 0,
+        'eth_available': 1000 * 10 ** 18,
+        'eth_locked': 0,
+        'block_number': 0,
+        'gnt_update_time': 0,
+        'eth_update_time': 0,
+    }
+
+    mock_payment = mock.Mock(auto_spec=TaskPayment)
+    mock_payment.created_date = datetime.now()
+
+    return mock.Mock(
+        gas_price=mock_fn(0),
+        gas_price_limit=mock_fn(0),
+        contract_addresses=mock_fn([]),
+        deposit_contract_available=mock_fn(False),
+        deposit_contract_address=mock_fn(None),
+        add_payment_info=mock_fn(mock_payment),
+        get_payment_address=mock_fn('0' * 40),
+        get_payments_list=mock_fn([]),
+        get_deposit_payments_list=mock_fn([]),
+        get_subtasks_payments=mock_fn([]),
+        get_incomes_list=mock_fn([]),
+        get_available_eth=mock_fn(balance['eth_available']),
+        get_locked_eth=mock_fn(balance['eth_locked']),
+        get_available_gnt=mock_fn(balance['gnt_available']),
+        get_locked_gnt=mock_fn(balance['gnt_locked']),
+        get_balance=mock_fn(balance),
+        eth_for_batch_payment=mock_fn(0),
+        eth_for_deposit=mock_fn(0),
+        get_withdraw_gas_cost=mock_fn(0),
+        withdraw=mock_fn('0' * 20),
+        concent_balance=mock_fn(1000),
+        concent_timelock=mock_fn(0),
+        concent_deposit=mock_fn('0' * 20),
+    )
+
 
 
 class ClientTaskComputerEventListener(object):
@@ -183,11 +233,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = transaction_system
-        self.transaction_system.start()
-
-        self.funds_locker = FundsLocker(self.transaction_system)
-        self._services.append(self.funds_locker)
+        self.transaction_system = create_mock_transaction_system()
+        self.funds_locker = mock.Mock()
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
