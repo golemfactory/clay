@@ -363,10 +363,8 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.save()
 
-    async def quit(self):
-        logger.debug('quit()')
-        # Abort active tasks?
-
+    async def stop(self):
+        logger.debug('stop()')
         # Shutdown registered app_clients
         for app_id, app_client in self._app_clients.items():
             logger.info('Shutting down app. app_id=%r', app_id)
@@ -377,7 +375,7 @@ class RequestedTaskManager:
 
         self._app_clients.clear()
 
-        logger.debug('quit() - DONE')
+        logger.debug('stop() - DONE')
 
     async def _get_app_client(
             self,

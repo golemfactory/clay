@@ -261,13 +261,13 @@ class TestRequestedTaskManager():
         return task_id
 
     @pytest.mark.asyncio
-    async def test_quit(self, mock_client):
+    async def test_stop(self, mock_client):
         # given
         task_id = self._create_task()
         await self.rtm.init_task(task_id)
 
         # when
-        await self.rtm.quit()
+        await self.rtm.stop()
 
         # then
         mock_client.shutdown.assert_called_once_with()

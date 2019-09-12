@@ -307,7 +307,7 @@ class TaskServer(
 
     def quit(self):
         defer_rtm_quit = deferred_from_future(
-            self.requested_task_manager.quit()
+            self.requested_task_manager.stop()
         )
         sync_wait(defer_rtm_quit)
         self.task_computer.quit()
