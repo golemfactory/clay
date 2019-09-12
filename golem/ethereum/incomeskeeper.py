@@ -169,7 +169,7 @@ class IncomesKeeper:
             wallet_operation=model.WalletOperation.create(
                 tx_hash=tx_hash,
                 direction=model.WalletOperation.DIRECTION.incoming,
-                operation_type=model.WalletOperation.TYPE.deposit_payment,
+                operation_type=model.WalletOperation.TYPE.task_payment,
                 status=model.WalletOperation.STATUS.confirmed,
                 sender_address=sender_addr,
                 recipient_address="",
