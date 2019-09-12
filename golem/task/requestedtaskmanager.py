@@ -128,7 +128,7 @@ class RequestedTaskManager:
                      golem_params, app_params)
 
         task = RequestedTask.create(
-            task_id=idgenerator.generate_id(self._node.node_id),
+            task_id=idgenerator.generate_id(str.encode(self._node.key)),
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
@@ -255,7 +255,7 @@ class RequestedTaskManager:
         :return: Nothing
         :rtype: None
         """
-        if self.task_exists(self.tasks):
+        if self.task_exists(task_id):
             logger.debug('Got compute offer')
             # self.notice_task_updated(task_id,
             #                         op=TaskOp.WORK_OFFER_RECEIVED,
@@ -322,7 +322,7 @@ class RequestedTaskManager:
         )
 
         # Check not providing for own task
-        if node.node_id == self._node.node_id:
+        if node.node_id == self._node.key:
             raise RuntimeError(f"No subtasks for self. task_id={task_id}")
 
         # Check should accept provider, raises when waiting on results or banned

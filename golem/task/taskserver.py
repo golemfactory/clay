@@ -190,7 +190,7 @@ class TaskServer(
         self.requested_task_manager = RequestedTaskManager(
             env_manager=new_env_manager,
             app_manager=app_mgr,
-            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
             node=self.node,
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(

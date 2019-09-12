@@ -54,7 +54,7 @@ class TestRequestedTaskManager():
         self.env_manager = Mock(spec=EnvironmentManager)
         self.app_manager = Mock(spec=AppManager)
         self.node = Mock(spec=LocalNode)
-        self.node.node_id = str.encode('0xdeadbeef')
+        self.node.key = '0xdeadbeef'
         self.rtm_path = self.tmp_path / 'rtm'
         self.rtm_path.mkdir()
         self.rtm = RequestedTaskManager(
@@ -335,13 +335,9 @@ class TestRequestedTaskManager():
         task_id = self._create_task()
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
-
         # when
-
         result = self.rtm.get_task_headers()
-
         # then
-
         assert result[0].task_id == task_id
 
     def _build_golem_params(

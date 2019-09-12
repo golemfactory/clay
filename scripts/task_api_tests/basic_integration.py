@@ -11,6 +11,7 @@ import time
 from golem import app_manager as appmanager, database, model
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
+from golem.network.p2p.local_node import LocalNode
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 from golem.task.task_api import docker
 from golem.envs.auto_setup import auto_setup
@@ -60,7 +61,7 @@ async def test_task(
     rtm = requestedtaskmanager.RequestedTaskManager(
         env_manager,
         app_manager,
-        public_key=b'',
+        node=LocalNode(node_name='id', key='0x0000000000000000000000000000000000000000'),
         root_path=rtm_work_dir,
     )
 
