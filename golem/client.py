@@ -30,7 +30,6 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
-from golem.core.deferred import sync_wait
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -596,6 +595,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.port_mapper.quit()
 
     @rpc_utils.expose('ui.stop')
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -608,7 +608,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.p2pservice.disconnect()
         if self.task_server:
             logger.debug("Pausing task_server")
-            sync_wait(self.task_server.pause())
+            yield self.task_server.pause()
         logger.info("Paused")
 
     @rpc_utils.expose('ui.start')
