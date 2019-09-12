@@ -97,7 +97,7 @@ class WasmTaskBuilderTestCase(TestCase):
         task_def = WasmTaskBuilder.build_full_definition(
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
         )
-        self.assertEqual(task_def.subtasks_count, 4)
+        self.assertEqual(task_def.subtasks_count, 2)
 
         opts: WasmTaskOptions = task_def.options
         self.assertEqual(opts.input_dir, '/input/dir')

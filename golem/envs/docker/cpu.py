@@ -68,6 +68,7 @@ class DockerCPUConfig(EnvConfig):
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DockerCPUConfig':
+        data = data.copy()
         _work_dirs = data.pop('work_dirs')
         work_dirs = [Path(work_dir) for work_dir in _work_dirs]
         return cls(work_dirs=work_dirs, **data)
