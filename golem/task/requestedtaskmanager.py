@@ -366,6 +366,20 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.save()
 
+    async def stop(self):
+        logger.debug('stop()')
+        # Shutdown registered app_clients
+        for app_id, app_client in self._app_clients.items():
+            logger.info('Shutting down app. app_id=%r', app_id)
+            try:
+                await app_client.shutdown()
+            except Exception:  # pylint: disable=broad-except
+                logger.warning("Failed to shutdown app. app_id=%r", app_id)
+
+        self._app_clients.clear()
+
+        logger.debug('stop() - DONE')
+
     async def _get_app_client(
             self,
             app_id: str,

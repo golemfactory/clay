@@ -359,7 +359,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.task_computer.quit()
+            self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)
@@ -610,8 +610,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server:
             logger.debug("Pausing task_server")
             yield self.task_server.pause()
-            self.task_server.disconnect()
-            self.task_server.task_computer.quit()
         logger.info("Paused")
 
     @rpc_utils.expose('ui.start')

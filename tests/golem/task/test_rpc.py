@@ -11,6 +11,7 @@ from ethereum.utils import denoms
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from mock import call, Mock
 from twisted.internet import defer
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.dummy.task import dummytaskstate
 from apps.dummy.task.dummytask import DummyTask
@@ -18,7 +19,6 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
-from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -1122,17 +1122,19 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
         )
 
 
-class TestGetFragments(ProviderBase):
-    def _create_task(self) -> taskbase.Task:
+class TestGetFragments(ProviderBase, TwistedTestCase):
+    @defer.inlineCallbacks
+    def _create_task(self) -> defer.Deferred:
         task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc._prepare_task(self.client, task, force=False)
-        return golem_deferred.sync_wait(deferred)
+        with mock.patch('os.path.getsize', return_value=123):
+            result = yield rpc._prepare_task(self.client, task, force=False)
+            return result
 
-    @mock.patch('os.path.getsize', return_value=123)
     @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
+    @defer.inlineCallbacks
     def test_get_fragments(self, *_):
         tm = self.client.task_manager
-        task = self._create_task()
+        task = yield self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
         tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, '')

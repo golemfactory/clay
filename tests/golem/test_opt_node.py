@@ -563,7 +563,8 @@ class TestOptNode(TempDirFixture):
     def tearDown(self):
         if self.node:
             if self.node.client:
-                self.node.client.quit()
+                with patch('golem.task.taskserver.TaskServer.quit'):
+                    self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
 

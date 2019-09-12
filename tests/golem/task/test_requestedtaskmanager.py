@@ -272,6 +272,19 @@ class TestRequestedTaskManager():
         self.rtm.start_task(task_id)
         return task_id
 
+    @pytest.mark.asyncio
+    async def test_stop(self, mock_client):
+        # given
+        task_id = self._create_task()
+        await self.rtm.init_task(task_id)
+
+        # when
+        await self.rtm.stop()
+
+        # then
+        mock_client.shutdown.assert_called_once_with()
+        assert not self.rtm._app_clients
+
     def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',

@@ -33,7 +33,7 @@ from apps.core.task.coretask import CoreTask
 from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
-from golem.core.deferred import sync_wait
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -299,10 +299,19 @@ class TaskServer(
     def pause(self):
         super().pause()
         yield CoreTask.VERIFICATION_QUEUE.pause()
+        self.disconnect()
+        self.quit()
 
     def resume(self):
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
+
+    def quit(self):
+        defer_rtm_quit = deferred_from_future(
+            self.requested_task_manager.stop()
+        )
+        sync_wait(defer_rtm_quit)
+        self.task_computer.quit()
 
     def get_environment_by_id(
             self,
@@ -896,9 +905,6 @@ class TaskServer(
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
-
-    def quit(self):
-        self.task_computer.quit()
 
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(
