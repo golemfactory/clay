@@ -30,7 +30,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from golem.app_manager import AppManager
+from golem import app_manager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait, deferred_from_future
@@ -180,10 +180,17 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
+
+        app_mgr = app_manager.AppManager()
+        app_dir = self.get_app_dir()
+        os.makedirs(app_dir, exist_ok=True)
+        for app_id, app_def in app_manager.load_apps_from_dir(app_dir):
+            app_mgr.register_app(app_id, app_def)
+
         self.requested_task_manager = RequestedTaskManager(
             env_manager=new_env_manager,
-            app_manager=AppManager(),
-            root_path=TaskServer.__get_task_manager_root(client.datadir),
+            app_manager=app_mgr,
+            root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
             public_key=self.keys_auth.public_key,
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
@@ -739,6 +746,11 @@ class TaskServer(
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
+
+    def get_app_dir(self) -> Path:
+        """ Get path to the directory where definitions for Task API apps are
+            stored. """
+        return Path(self.client.datadir) / "apps"
 
     def subtask_rejected(self, sender_node_id, subtask_id):
         """My (providers) results were rejected"""
