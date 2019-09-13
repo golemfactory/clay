@@ -257,7 +257,8 @@ class WasmTask(CoreTask):
                     self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
                     TaskClient.get_or_initialize(actor.uuid,
                                                  self.counting_nodes).reject()
-                    logger.info("Blacklisting node: %s", actor.uuid)
+                    logger.info("Blacklisting node: %s for this task",
+                                actor.uuid)
                     self.nodes_blacklist.add(actor.uuid)
 
         # save the results but only if verification was successful
@@ -265,6 +266,8 @@ class WasmTask(CoreTask):
         if result is not None:
             self.save_results(subtask.name, result)
         else:
+            logger.warning("Verification by redundancy failed,\
+                all results differ. Restarting subtask.")
             new_subtask = VbrSubtask(self.create_subtask_id, subtask.name,
                                      subtask.params, subtask.redundancy_factor)
             self.subtasks.append(new_subtask)
