@@ -353,7 +353,7 @@ class PaymentProcessor:
                 wallet_operation=model.WalletOperation.create(
                     tx_hash=tx_hash,
                     direction=model.WalletOperation.DIRECTION.outgoing,
-                    operation_type=model.WalletOperation.TYPE.task_payment,
+                    operation_type=model.WalletOperation.TYPE.deposit_payment,
                     sender_address=self._sci.get_eth_address(),
                     recipient_address=receiver,
                     currency=model.WalletOperation.CURRENCY.GNT,
@@ -411,7 +411,7 @@ class PaymentProcessor:
                 wallet_operation=model.WalletOperation.create(
                     tx_hash=tx_hash,
                     direction=model.WalletOperation.DIRECTION.outgoing,
-                    operation_type=model.WalletOperation.TYPE.task_payment,
+                    operation_type=model.WalletOperation.TYPE.deposit_payment,
                     sender_address=self._sci.get_eth_address(),
                     recipient_address=receiver,
                     currency=model.WalletOperation.CURRENCY.GNT,
