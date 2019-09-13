@@ -228,9 +228,7 @@ class RequestedTaskManager:
             return TaskHeader(
                 min_version=str(gconst.GOLEM_MIN_VERSION),
                 task_id=db_task.task_id,
-                # FIXME: use value from database after #4707 is mergeds
-                # environment=db_task.env_id,
-                environment='docker_cpu',
+                environment=db_task.env_id,
                 task_owner=self._node,
                 deadline=int(db_task.deadline.timestamp()),
                 subtask_timeout=db_task.subtask_timeout,
