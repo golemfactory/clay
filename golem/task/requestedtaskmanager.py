@@ -1,3 +1,5 @@
+import asyncio
+import json
 from datetime import timedelta
 import logging
 from pathlib import Path
@@ -121,7 +123,6 @@ class RequestedTaskManager:
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
-            # prerequisites='{}',
             task_timeout=golem_params.task_timeout,
             subtask_timeout=golem_params.subtask_timeout,
             start_time=default_now(),
@@ -132,6 +133,13 @@ class RequestedTaskManager:
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
             output_directory=golem_params.output_directory,
             app_params=app_params,
+        )
+
+        loop = asyncio.get_event_loop()
+        loop.call_at(
+            loop.time() + golem_params.task_timeout,
+            self._check_task_timeout,
+            task.task_id,
         )
 
         logger.debug(
@@ -169,11 +177,14 @@ class RequestedTaskManager:
 
         app_client = await self._get_app_client(task.app_id)
         logger.debug('init_task(task_id=%r) - creating task', task_id)
-        await app_client.create_task(
+        reply = await app_client.create_task(
             task.task_id,
             task.max_subtasks,
             task.app_params,
         )
+        task.env_id = reply.env_id
+        task.prerequisites = json.loads(reply.prerequisites_json)
+        task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
     @staticmethod
@@ -272,7 +283,7 @@ class RequestedTaskManager:
             subtask_id=result.subtask_id,
             status=SubtaskStatus.starting,
             payload=result.params,
-            inputs=result.resources,
+            inputs=list(map(str, result.resources)),
             start_time=default_now(),
             price=task.max_price_per_hour,
             computing_node=node,
@@ -350,6 +361,25 @@ class RequestedTaskManager:
 
         await self._shutdown_app_client(task.app_id)
 
+    async def restart_task(self, task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        task.status = TaskStatus.waiting
+        task.save()
+
+    async def stop(self):
+        logger.debug('stop()')
+        # Shutdown registered app_clients
+        for app_id, app_client in self._app_clients.items():
+            logger.info('Shutting down app. app_id=%r', app_id)
+            try:
+                await app_client.shutdown()
+            except Exception:  # pylint: disable=broad-except
+                logger.warning("Failed to shutdown app. app_id=%r", app_id)
+
+        self._app_clients.clear()
+
+        logger.debug('stop() - DONE')
+
     async def _get_app_client(
             self,
             app_id: str,
@@ -394,6 +424,14 @@ class RequestedTaskManager:
             prereq=prereq,
             shared_dir=shared_dir
         )
+
+    @staticmethod
+    def _check_task_timeout(task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if task.status.is_active():
+            logger.info("Task timed out. task_id=%r", task_id)
+            task.status = TaskStatus.timeout
+            task.save()
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(

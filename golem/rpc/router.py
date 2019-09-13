@@ -17,17 +17,10 @@ from golem.rpc.session import WebSocketAddress
 logger = logging.getLogger('golem.rpc.crossbar')
 
 
-@enum.unique
-class SerializerType(enum.Enum):
-    def _generate_next_value_(name, *_):  # pylint: disable=no-self-argument
-        return name
-
-    json = enum.auto()
-    msgpack = enum.auto()
-
-
 # pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
+    serializers = ['msgpack']
+
     @enum.unique
     class CrossbarRoles(enum.Enum):
         admin = enum.auto()
@@ -40,8 +33,8 @@ class CrossbarRouter(object):
                  port: Optional[int] = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  ssl: bool = True,
-                 generate_secrets: bool = False,
-                 crossbar_serializer: Optional[SerializerType] = None) -> None:
+                 generate_secrets: bool = False) -> None:
+
         self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
@@ -58,11 +51,8 @@ class CrossbarRouter(object):
         self.pubkey = None
         self.personality_cls = Personality
 
-        if crossbar_serializer is None:
-            crossbar_serializer = SerializerType.msgpack
-
         self.config = self._build_config(address=self.address,
-                                         serializers=[crossbar_serializer.name],
+                                         serializers=self.serializers,
                                          cert_manager=self.cert_manager)
 
         check_config(self.personality_cls, self.config)

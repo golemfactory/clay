@@ -5,6 +5,7 @@ class Golem:
 
 class Environment:
     evt_opts_changed = 'evt.env.opts'
+    evt_prereq_discovered = 'evt.env.prereq.discovered'
 
 
 class Network:

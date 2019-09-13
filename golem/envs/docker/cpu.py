@@ -10,6 +10,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
 
 from dataclasses import dataclass, field, asdict
 from docker.errors import APIError
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
@@ -47,7 +48,6 @@ logger = logging.getLogger(__name__)
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
-DOCKER_CPU_ENV_ID = 'docker_cpu'
 DOCKER_CPU_METADATA = EnvMetadata(
     id=DOCKER_CPU_ENV_ID,
     description='Docker environment using CPU'
@@ -68,6 +68,7 @@ class DockerCPUConfig(EnvConfig):
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DockerCPUConfig':
+        data = data.copy()
         _work_dirs = data.pop('work_dirs')
         work_dirs = [Path(work_dir) for work_dir in _work_dirs]
         return cls(work_dirs=work_dirs, **data)

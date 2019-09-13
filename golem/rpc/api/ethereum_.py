@@ -116,6 +116,7 @@ class ETSProvider:
                 'node': lru_node(o.node),
                 'task_id': o.task,
                 'subtask_id': o.subtask,
+                'charged_from_deposit': o.charged_from_deposit,
                 'accepted_ts': str(o.accepted_ts) if o.accepted_ts else None,
                 'settled_ts': str(o.settled_ts) if o.settled_ts else None,
                 'missing_amount': str(o.missing_amount),
