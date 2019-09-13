@@ -318,7 +318,7 @@ class WasmTask(CoreTask):
                     (s_instance.actor.uuid,
                      s_id,
                      s_instance.results.stats.
-                     cpu_stats.cpu_usage['total_usage'] / 1e9)
+                     cpu_stats.cpu_usage['total_usage'])
                 )
             self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
@@ -491,14 +491,14 @@ class WasmTask(CoreTask):
 
     def _load_requestor_perf(self):
         try:
-            perf = golem.model.Performance.get(
+            cpu_usage: float = golem.model.Performance.get(
                 golem.model.Performance.environment_id ==
                 WasmTaskEnvironment.ENV_ID
-            ).value
+            ).cpu_usage
         except golem.model.Performance.DoesNotExist:
-            perf = 1.0
+            cpu_usage: float = 1.0
 
-        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(perf)
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(cpu_usage)
 
 
 class WasmTaskBuilder(CoreTaskBuilder):

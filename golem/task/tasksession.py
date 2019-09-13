@@ -348,7 +348,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer = OfferWithCallback(
             self.key_id,
-            ProviderPerformance(msg.perf_index),
+            ProviderPerformance(msg.cpu_usage),
             current_task.header.max_price,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)

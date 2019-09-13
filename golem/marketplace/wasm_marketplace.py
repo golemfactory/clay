@@ -33,6 +33,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def set_my_usage_benchmark(cls, benchmark: float) -> None:
+        benchmark = benchmark / 1e9
+
         logger.info("RWMS: set_my_usage_benchmark %.3f", benchmark)
         cls._my_usage_benchmark = benchmark
 
@@ -84,7 +86,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         assert len(usages) > 1
 
         for pid, sid, usage in usages:
-            cls._usages[sid] = usage
+            cls._usages[sid] = usage / 1e9
 
         ds: Dict[str, float] = dict()
         deltas: Dict[str, float] = dict()
