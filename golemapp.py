@@ -12,6 +12,8 @@ import psutil
 from cpuinfo import get_cpu_info
 from ethereum import slogging
 from portalocker import Lock, LockException
+# TODO: Try to remove this import below. See discussion at #4656
+import twisted.internet.reactor  # noqa
 
 # Export pbr version for peewee_migrate user
 
