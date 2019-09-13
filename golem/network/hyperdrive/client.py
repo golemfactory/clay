@@ -11,7 +11,6 @@ from requests import HTTPError
 
 from golem_messages import helpers as msg_helpers
 from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import readBody
 from twisted.web.http_headers import Headers
 
 from golem.core.golem_async import AsyncHTTPRequest
@@ -244,6 +243,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
             params: Optional[Dict] = None,
             parser: Optional[Callable[[Dict], Any]] = None,
     ):
+        # Imports the reactor
+        from twisted.web.client import readBody
         body = None
 
         if endpoint and endpoint[0] == '/':
