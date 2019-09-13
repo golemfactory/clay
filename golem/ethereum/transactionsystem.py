@@ -903,6 +903,17 @@ class TransactionSystem(LoopingCallService):
             return
         tx_hash = self._sci.withdraw_deposit()
         self._concent_withdraw_requested = True
+        model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.incoming,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.deposit_contract_address,
+            recipient_address=self._sci.get_eth_address(),
+            amount=self._sci.get_deposit_value(),
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
+        )
 
         def on_confirmed(receipt) -> None:
             self._concent_withdraw_requested = False
