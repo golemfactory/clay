@@ -9,8 +9,8 @@ if TYPE_CHECKING:
 
 
 class ProviderPerformance:
-    def __init__(self, usage_benchmark):
-        self.usage_benchmark = usage_benchmark
+    def __init__(self, usage_benchmark: float):
+        self.usage_benchmark: float = usage_benchmark / 1e9
 
 
 @dataclass
