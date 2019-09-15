@@ -889,7 +889,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def get_tasks(
             self,
             task_id: Optional[str] = None,
-            return_created_tasks: bool = False,
+            return_created_tasks_only: bool = False,
     ) -> Union[Optional[dict], Iterable[dict]]:
         if not self.task_server:
             return []
@@ -901,7 +901,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         tasks = (self.get_task(task_id) for task_id in task_keys)
         filter_fn = None
 
-        if return_created_tasks:
+        if return_created_tasks_only:
             filter_fn = self._filter_task_created_status
 
         return list(filter(filter_fn, tasks))
@@ -909,8 +909,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:
         return bool(task) and task['status'] not in (
-            TaskStatus.creating,
-            TaskStatus.errorCreating)
+            TaskStatus.creating.value,
+            TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \

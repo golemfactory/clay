@@ -386,7 +386,7 @@ class TestGetTasks(TestClientBase):
 
     def test_get_created_tasks(self):
         self.client.get_task = lambda task_id: self.tasks[task_id]
-        retrieved_tasks = self.client.get_tasks(return_created_tasks=True)
+        retrieved_tasks = self.client.get_tasks(return_created_tasks_only=True)
         assert isinstance(retrieved_tasks, list)
         assert len(retrieved_tasks) == 4
 
@@ -399,12 +399,12 @@ class TestGetTasks(TestClientBase):
     @staticmethod
     def _create_dict_of_tasks_with_status():
         return {
-            'task_1': {'status': TaskStatus.creating},
-            'task_2': {'status': TaskStatus.errorCreating},
-            'task_3': {'status': TaskStatus.aborted},
-            'task_4': {'status': TaskStatus.computing},
-            'task_5': {'status': TaskStatus.finished},
-            'task_6': {'status': TaskStatus.creatingDeposit},
+            'task_1': {'status': TaskStatus.creating.value},
+            'task_2': {'status': TaskStatus.errorCreating.value},
+            'task_3': {'status': TaskStatus.aborted.value},
+            'task_4': {'status': TaskStatus.computing.value},
+            'task_5': {'status': TaskStatus.finished.value},
+            'task_6': {'status': TaskStatus.creatingDeposit.value},
         }
 
 
