@@ -890,7 +890,9 @@ class TaskServer(
 
     def disallow_node(self, node_id: str, timeout_seconds: int, persist: bool) \
             -> None:
-        self.acl.disallow(node_id, timeout_seconds, persist)
+        # TEMPORARY: Disable baning nodes after fails.
+        #self.acl.disallow(node_id, timeout_seconds, persist)
+        pass
 
     @rpc_utils.expose('net.peer.block_ip')
     def disallow_ip(self, ip: str, timeout_seconds: int) -> None:
