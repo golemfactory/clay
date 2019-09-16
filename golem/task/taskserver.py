@@ -184,8 +184,8 @@ class TaskServer(
         app_mgr = app_manager.AppManager()
         app_dir = self.get_app_dir()
         os.makedirs(app_dir, exist_ok=True)
-        for app_id, app_def in app_manager.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_id, app_def)
+        for app_def in app_manager.load_apps_from_dir(app_dir):
+            app_mgr.register_app(app_def)
 
         self.requested_task_manager = RequestedTaskManager(
             env_manager=new_env_manager,

@@ -1,5 +1,4 @@
 import hashlib
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Iterator, Tuple
@@ -19,8 +18,6 @@ class AppDefinition:
     name: str
     requestor_env: str
     requestor_prereq: Dict[str, Any] = field(metadata=config(
-        encoder=json.dumps,
-        decoder=json.loads,
         mm_field=mm_fields.Dict(keys=mm_fields.Str())
     ))
     max_benchmark_score: float
@@ -28,6 +25,13 @@ class AppDefinition:
     description: str = ''
     author: str = ''
     license: str = ''
+
+    @property
+    def id(self) -> AppId:
+        return hashlib.blake2b(  # pylint: disable=no-member
+            self.to_json().encode('utf-8'),
+            digest_size=16
+        ).hexdigest()
 
     @classmethod
     def from_json(cls, json_str: str) -> 'AppDefinition':
@@ -37,20 +41,19 @@ class AppDefinition:
         raise NotImplementedError  # A stub to silence the linters
 
 
-def load_app_from_json_file(json_file: Path) -> Tuple[AppId, AppDefinition]:
+def load_app_from_json_file(json_file: Path) -> AppDefinition:
     """ Parse application definition from the given JSON file. Raise ValueError
         if the given file doesn't contain a valid definition. """
     try:
         app_json = json_file.read_text(encoding='utf-8')
-        app_id = hashlib.md5(app_json.encode('utf-8')).hexdigest()
-        return app_id, AppDefinition.from_json(app_json)
+        return AppDefinition.from_json(app_json)
     except (OSError, ValueError, KeyError):
         msg = f"Error parsing app definition from file '{json_file}'."
         logger.exception(msg)
         raise ValueError(msg)
 
 
-def load_apps_from_dir(app_dir: Path) -> Iterator[Tuple[AppId, AppDefinition]]:
+def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
     """ Read every file in the given directory and attempt to parse it. Ignore
         files which don't contain valid app definitions. """
     for json_file in app_dir.iterdir():
@@ -67,8 +70,9 @@ class AppManager:
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state: Dict[AppId, bool] = {}
 
-    def register_app(self, app_id: AppId, app: AppDefinition) -> None:
+    def register_app(self, app: AppDefinition) -> None:
         """ Register an application in the manager. """
+        app_id = app.id
         if app_id in self._apps:
             raise ValueError(
                 f"Application already registered. "

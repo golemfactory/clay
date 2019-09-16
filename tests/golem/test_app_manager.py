@@ -1,4 +1,3 @@
-import hashlib
 from unittest import TestCase
 
 from golem.app_manager import (
@@ -18,7 +17,7 @@ APP_DEF = AppDefinition(
     },
     max_benchmark_score=1.0
 )
-APP_ID = hashlib.md5(APP_DEF.to_json().encode('utf-8')).hexdigest()
+APP_ID = APP_DEF.id
 
 
 class AppManagerTestBase(TestCase):
@@ -31,15 +30,15 @@ class AppManagerTestBase(TestCase):
 class TestRegisterApp(AppManagerTestBase):
 
     def test_register_app(self):
-        self.app_manager.register_app(APP_ID, APP_DEF)
+        self.app_manager.register_app(APP_DEF)
         self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
         self.assertEqual(self.app_manager.app(APP_ID), APP_DEF)
         self.assertFalse(self.app_manager.enabled(APP_ID))
 
     def test_re_register(self):
-        self.app_manager.register_app(APP_ID, APP_DEF)
+        self.app_manager.register_app(APP_DEF)
         with self.assertRaises(ValueError):
-            self.app_manager.register_app(APP_ID, APP_DEF)
+            self.app_manager.register_app(APP_DEF)
 
 
 class TestSetEnabled(AppManagerTestBase):
@@ -49,7 +48,7 @@ class TestSetEnabled(AppManagerTestBase):
             self.app_manager.set_enabled(APP_ID, True)
 
     def test_enable_disable(self):
-        self.app_manager.register_app(APP_ID, APP_DEF)
+        self.app_manager.register_app(APP_DEF)
         self.assertFalse(self.app_manager.enabled(APP_ID))
         self.app_manager.set_enabled(APP_ID, True)
         self.assertTrue(self.app_manager.enabled(APP_ID))
@@ -62,8 +61,8 @@ class TestLoadAppFromJSONFile(TempDirFixture):
     def test_ok(self):
         json_file = self.new_path / 'test_app.json'
         json_file.write_text(APP_DEF.to_json(), encoding='utf-8')
-        app_id, app_def = load_app_from_json_file(json_file)
-        self.assertEqual(app_id, APP_ID)
+        app_def = load_app_from_json_file(json_file)
+        self.assertEqual(app_def.id, APP_ID)
         self.assertEqual(app_def, APP_DEF)
 
     def test_file_missing(self):
@@ -77,6 +76,32 @@ class TestLoadAppFromJSONFile(TempDirFixture):
         with self.assertRaises(ValueError):
             load_app_from_json_file(json_file)
 
+    def test_formatting_invariant(self):
+        app_json_1 = '''{
+            "name":               "app",
+            "requestor_env":      "env",
+            "requestor_prereq":   {
+                "x": "y"
+            },
+            "max_benchmark_score": 0.0
+        }'''
+        json_file1 = self.new_path / 'app1.json'
+        json_file1.write_text(app_json_1, encoding='utf-8')
+
+        app_json_2 = '''{
+            "name": "app",
+            "max_benchmark_score": 0.0,
+            "requestor_env": "env",
+            "requestor_prereq": {"x": "y"}
+        }'''
+        json_file2 = self.new_path / 'app2.json'
+        json_file2.write_text(app_json_2)
+
+        app1 = load_app_from_json_file(json_file1)
+        app2 = load_app_from_json_file(json_file2)
+        self.assertEqual(app1, app2)
+        self.assertEqual(app1.id, app2.id)
+
 
 class TestLoadAppsFromDir(TempDirFixture):
 
@@ -86,4 +111,4 @@ class TestLoadAppsFromDir(TempDirFixture):
         app_file.write_text(APP_DEF.to_json(), encoding='utf-8')
         bogus_file.write_text('(╯°□°）╯︵ ┻━┻', encoding='utf-8')
         loaded_apps = list(load_apps_from_dir(self.new_path))
-        self.assertEqual(loaded_apps, [(APP_ID, APP_DEF)])
+        self.assertEqual(loaded_apps, [APP_DEF])
