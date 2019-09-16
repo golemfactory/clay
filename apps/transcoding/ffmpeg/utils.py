@@ -30,6 +30,9 @@ VIDEO_ONLY_CONTAINER_SUFFIX = '[video-only]'
 
 logger = logging.getLogger(__name__)
 
+from threading import Lock
+split_lock = Lock()
+
 
 class Commands(enum.Enum):
     EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
@@ -56,7 +59,7 @@ class StreamOperator:
             # FIXME: This is a path on the host but docker will create it in
             # the container. It's unlikely that there's anything there but
             # it's not guaranteed.
-            host_dirs['tmp'],
+            "/{}/".format(task_id),
             input_file_basename)
 
         # FIXME: The environment is stored globally. Changing it will affect
@@ -77,13 +80,16 @@ class StreamOperator:
             'Running video stream extraction and splitting '
             '[params = %s]',
             extra_data)
-        try:
-            result = self._do_job_in_container(
-                self._get_dir_mapping(dir_manager, task_id),
-                extra_data,
-                env)
-        except ffmpegException as exception:
-            raise ffmpegExtractSplitError(str(exception)) from exception
+
+        with split_lock:
+            try:
+                result = self._do_job_in_container(
+                    self._get_dir_mapping(dir_manager, task_id),
+                    extra_data,
+                    env)
+            except ffmpegException as exception:
+                raise ffmpegExtractSplitError( "Splitting error in docker "\
+                    "container: {}".format(str(exception))) from exception
 
         split_result_file = os.path.join(host_dirs['output'],
                                          Commands.EXTRACT_AND_SPLIT.value[1])
@@ -203,13 +209,14 @@ class StreamOperator:
             container_files['in'],
             'ro')])
 
-        try:
-            self._do_job_in_container(
-                DockerTaskThread.specify_dir_mapping(**host_dirs),
-                extra_data,
-                env)
-        except ffmpegException as exception:
-            raise ffmpegMergeReplaceError(str(exception)) from exception
+        with split_lock:
+            try:
+                self._do_job_in_container(
+                    DockerTaskThread.specify_dir_mapping(**host_dirs),
+                    extra_data,
+                    env)
+            except ffmpegException as exception:
+                raise ffmpegMergeReplaceError(str(exception)) from exception
 
         return os.path.join(host_dirs['output'], output_file_basename)
 
