@@ -266,6 +266,30 @@ class TestRequestedTaskManager():
         await self.rtm.restart_task(task_id)
         assert not self.rtm.is_task_finished(task_id)
 
+    @pytest.mark.asyncio
+    async def test_duplicate_task(self, mock_client):
+        resources_dir = self.tmp_path / 'resources'
+        resources_dir.mkdir()
+        resource = resources_dir / 'file'
+        resource.touch()
+        task_id = await self._start_task(resources=[resource])
+        new_output_dir = self.tmp_path / 'dup_output'
+
+        duplicated_task_id = \
+            await self.rtm.duplicate_task(task_id, new_output_dir)
+
+        assert duplicated_task_id != task_id
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        duplicated_task = RequestedTask.get(
+            RequestedTask.task_id == duplicated_task_id)
+        assert task.app_params == duplicated_task.app_params
+        assert task.task_timeout == duplicated_task.task_timeout
+        assert task.subtask_timeout == duplicated_task.subtask_timeout
+        assert task.max_subtasks == duplicated_task.max_subtasks
+        assert task.max_price_per_hour == duplicated_task.max_price_per_hour
+        assert task.concent_enabled == duplicated_task.concent_enabled
+        assert Path(duplicated_task.output_directory) == new_output_dir
+
     async def _start_task(self, **golem_params):
         task_id = self._create_task(**golem_params)
         await self.rtm.init_task(task_id)
@@ -285,14 +309,18 @@ class TestRequestedTaskManager():
         mock_client.shutdown.assert_called_once_with()
         assert not self.rtm._app_clients
 
-    def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
+    def _build_golem_params(
+            self,
+            resources=[],
+            task_timeout=1,
+    ) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
             task_timeout=task_timeout,
             subtask_timeout=1,
             output_directory=self.tmp_path / 'output',
-            resources=[],
+            resources=resources,
             max_subtasks=1,
             max_price_per_hour=1,
             concent_enabled=False,
