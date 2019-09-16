@@ -55,7 +55,7 @@ class VbrSubtask:
 
         self.subtasks = {}
         self.verifier = BucketVerifier(
-            redundancy_factor, WasmTask.cmp_results, referee_count=0)
+            redundancy_factor, WasmTask.cmp_results, referee_count=1)
 
     def contains(self, s_id) -> bool:
         return s_id in self.subtasks
@@ -110,6 +110,22 @@ class VbrSubtask:
             verdicts.append((actor, verdict))
 
         return verdicts
+
+    def get_subtask_count(self) -> int:
+        """Returns a number of subtasks that will be computed
+        within this VbrSubtask instance. This is a dynamic value
+        that will change if referee is called into action.
+        """
+        instances_cnt = len(self.get_instances())
+        if instances_cnt < self.redundancy_factor + 1:
+            instances_cnt = self.redundancy_factor + 1
+        return instances_cnt
+
+    def get_tasks_left(self) -> int:
+        return self.get_subtask_count() - len(
+            [s for s in self.subtasks.values()
+             if s['status'] != SubtaskStatus.finished]
+        )
 
 
 class WasmTaskOptions(Options):
@@ -271,7 +287,12 @@ class WasmTask(CoreTask):
         if subtask.is_finished():
             self.__resolve_payments(subtask)
             for s_id in subtask.get_instances():
-                WasmTask.CALLBACKS.pop(s_id)()
+                try:
+                    WasmTask.CALLBACKS.pop(s_id)()
+                except KeyError:
+                    # For cases with referee there will be a subtask instance
+                    # that failed and therefore not delivered results.
+                    pass
 
     def save_results(self, name: str, result_files: List[str]) -> None:
         output_dir_path = Path(self.options.output_dir, name)
@@ -397,60 +418,29 @@ class WasmTask(CoreTask):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return (WasmTask.REDUNDANCY_FACTOR + 1) * len(self.subtasks)
+        return sum([s.get_subtask_count() for s in self.subtasks])
 
     def get_active_tasks(self):
         return sum(
-            [0 if subtask.is_finished() else (WasmTask.REDUNDANCY_FACTOR + 1)
-             for subtask in self.subtasks]
+            [0 if s.is_finished() else s.get_subtask_count()
+             for s in self.subtasks]
         )
 
     def get_tasks_left(self):
-        num_finished = len(list(filter(lambda x: x.is_finished(),
-                                       self.subtasks)))
-        return self.get_total_tasks() - num_finished
-
-    def restart(self):
-        for subtask_id in list(self.subtasks_given.keys()):
-            self.restart_subtask(subtask_id)
-
-    def restart_subtask(self, subtask_id):
-        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
-
-        subtask_info = self.subtasks_given[subtask_id]
-        was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
-                                                        SubtaskStatus.resent]
-
-        if subtask_info['status'].is_active():
-            # TODO Restarted tasks that were waiting for verification should
-            # cancel it. Issue #2423
-            self._mark_subtask_failed(subtask_id)
-        elif subtask_info['status'] == SubtaskStatus.finished:
-            self._mark_subtask_failed(subtask_id)
-            self.num_tasks_received -= 1
-
-        if not was_failure_before:
-            subtask_info['status'] = SubtaskStatus.restarted
-
-    def abort(self):
-        raise NotImplementedError()
+        return self.get_active_tasks()
 
     def get_progress(self) -> float:
-        """
-        Returns current progress.
-
-        Instead of tracking some aux variables, it polls VbrSubtasks
-        directly for their current state; i.e., whether they are finished,
-        or not.
-        """
         num_total = self.get_total_tasks()
         if num_total == 0:
             return 0.0
 
-        num_finished = len(list(filter(lambda x: x.is_finished(),
-                                       self.subtasks)))
+        tasks_left = self.get_tasks_left()
 
-        return (WasmTask.REDUNDANCY_FACTOR + 1) * num_finished / num_total
+        assert num_total >= tasks_left
+
+        progress = (num_total - tasks_left) / num_total
+
+        return progress
 
     def get_results(self, subtask_id):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
@@ -469,8 +459,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         # Output is determined from 'output_dir' later on.
         dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = (WasmTask.REDUNDANCY_FACTOR + 1)\
-            * len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
 
         task_def = super().build_full_definition(task_type, dictionary)
 
