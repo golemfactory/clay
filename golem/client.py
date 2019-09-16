@@ -68,6 +68,7 @@ from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -885,18 +886,31 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return task_dict
 
     @rpc_utils.expose('comp.tasks')
-    def get_tasks(self, task_id: Optional[str] = None) \
-            -> Union[Optional[dict], Iterable[dict]]:
+    def get_tasks(
+            self,
+            task_id: Optional[str] = None,
+            return_created_tasks_only: bool = False,
+    ) -> Union[Optional[dict], Iterable[dict]]:
         if not self.task_server:
             return []
 
         if task_id:
             return self.get_task(task_id)
 
-        task_ids = list(self.task_server.task_manager.tasks.keys())
-        tasks = (self.get_task(task_id) for task_id in task_ids)
-        # Filter Nones because get_task returns Optional[dict]
-        return list(filter(None, tasks))
+        task_keys = self.task_server.task_manager.tasks.keys()
+        tasks = (self.get_task(task_id) for task_id in task_keys)
+        filter_fn = None
+
+        if return_created_tasks_only:
+            filter_fn = self._filter_task_created_status
+
+        return list(filter(filter_fn, tasks))
+
+    @staticmethod
+    def _filter_task_created_status(task: Dict) -> bool:
+        return bool(task) and task['status'] not in (
+            TaskStatus.creating.value,
+            TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
