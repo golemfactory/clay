@@ -892,27 +892,21 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         result = self.ts.add_task_header(Mock())
         self.assertFalse(result)
 
-    @patch('golem.task.taskserver.dt_tasks.TaskHeader.sign')
-    def test_get_own_task_headers(self, mock_sign):
+    @patch('golem.task.taskserver.RequestedTaskManager.get_started_tasks')
+    @patch('golem.task.taskserver.dt_tasks.TaskHeader')
+    def test_get_own_task_headers(self, mock_header, mock_get_tasks):
         # given
-        task_id = 'abc'
-        RequestedTask.create(
-            task_id=task_id,
-            app_id="test",
-            status=TaskStatus.waiting,
-            task_timeout=10,
-            subtask_timeout=10,
-            max_price_per_hour=1,
-            max_subtasks=1,
-            output_directory=Path(self.tempdir) / 'output',
-            start_time=default_now(),
-        )
-        self.ts.keys_auth._private_key = b'123'
+        mock_db_task = Mock()
+        mock_db_task.start_time.timestamp.return_value = 1
+        mock_db_task.deadline.timestamp.return_value = 1
+        task_list = [mock_db_task]
+        mock_get_tasks.return_value = task_list
         # when
         result = self.ts.get_own_tasks_headers()
         # then
-        assert task_id == result[0].task_id
-        mock_sign.assert_called_once()
+        mock_get_tasks.assert_called_once()
+        assert len(result) == len(task_list)
+        mock_header.sign.assert_called_once()
 
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):

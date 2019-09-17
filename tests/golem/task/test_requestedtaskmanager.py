@@ -251,6 +251,21 @@ class TestRequestedTaskManager():
         assert self.rtm.is_task_finished(task_id)
 
     @pytest.mark.asyncio
+    async def test_get_started_tasks(self, mock_client):
+        # given
+        task_id = self._create_task()
+        await self.rtm.init_task(task_id)
+        # when
+        results = self.rtm.get_started_tasks()
+        assert not results
+        self.rtm.start_task(task_id)
+        results = self.rtm.get_started_tasks()
+        # then
+        assert results
+        assert len(results) == 1
+        assert list(results)[0].task_id == task_id
+
+    @pytest.mark.asyncio
     async def test_restart_task(self, mock_client):
         task_timeout = 0.1
         task_id = await self._start_task(task_timeout=task_timeout)
