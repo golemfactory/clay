@@ -3,7 +3,6 @@ import base64
 import calendar
 import datetime
 import functools
-import logging
 import os
 import sys
 import tempfile
@@ -12,6 +11,9 @@ import typing
 import unittest
 
 from pathlib import Path
+
+# this must be before any other ethereum imports
+from .fix_logging import logging
 
 from ethereum.utils import denoms
 import golem_messages
@@ -67,8 +69,6 @@ class ConcentBaseTest(unittest.TestCase):
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
-        from golem.core import common
-        common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
