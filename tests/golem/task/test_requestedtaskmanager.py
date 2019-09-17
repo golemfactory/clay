@@ -63,18 +63,16 @@ class TestRequestedTaskManager():
         )
 
     def test_create_task(self):
-        with freeze_time() as freezer:
-            # given
-            golem_params = self._build_golem_params()
-            app_params = {}
-            # when
-            task_id = self.rtm.create_task(golem_params, app_params)
-            freezer.tick()
-            # then
-            row = RequestedTask.get(RequestedTask.task_id == task_id)
-            assert row.status == TaskStatus.creating
-            assert row.start_time < default_now()
-            assert (self.rtm_path / golem_params.app_id / task_id).exists()
+        # given
+        golem_params = self._build_golem_params()
+        app_params = {}
+        # when
+        task_id = self.rtm.create_task(golem_params, app_params)
+        # then
+        row = RequestedTask.get(RequestedTask.task_id == task_id)
+        assert row.status == TaskStatus.creating
+        assert row.start_time is None
+        assert (self.rtm_path / golem_params.app_id / task_id).exists()
 
     @pytest.mark.asyncio
     async def test_init_task(self, mock_client):
@@ -114,14 +112,17 @@ class TestRequestedTaskManager():
 
     @pytest.mark.asyncio
     async def test_start_task(self, mock_client):
-        # given
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        # when
-        self.rtm.start_task(task_id)
-        # then
-        row = RequestedTask.get(RequestedTask.task_id == task_id)
-        assert row.status == TaskStatus.waiting
+        with freeze_time() as freezer:
+            # given
+            task_id = self._create_task()
+            await self.rtm.init_task(task_id)
+            # when
+            self.rtm.start_task(task_id)
+            freezer.tick()
+            # then
+            row = RequestedTask.get(RequestedTask.task_id == task_id)
+            assert row.status == TaskStatus.waiting
+            assert row.start_time < default_now()
 
     def test_task_exists(self):
         task_id = self._create_task()

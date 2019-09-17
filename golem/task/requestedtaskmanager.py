@@ -125,7 +125,7 @@ class RequestedTaskManager:
             status=TaskStatus.creating,
             task_timeout=golem_params.task_timeout,
             subtask_timeout=golem_params.subtask_timeout,
-            start_time=default_now(),
+            start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
             # Concent is explicitly disabled for task_api for now...
@@ -198,6 +198,7 @@ class RequestedTaskManager:
             raise RuntimeError(f"Task {task_id} has already been started")
 
         task.status = TaskStatus.waiting
+        task.start_time = default_now()
         task.save()
         # FIXME: add self.notice_task_updated(task_id, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
