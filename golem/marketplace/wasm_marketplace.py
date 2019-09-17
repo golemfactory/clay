@@ -22,10 +22,12 @@ logger = logging.getLogger(__name__)
 
 
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
+    DEFAULT_USAGE_BENCHMARK: float = 1.0
+
     _usages: ClassVar[Dict[str, float]] = dict()
     _usage_factors: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
-    _my_usage_benchmark: ClassVar[float] = 1.0
+    _my_usage_benchmark: ClassVar[float] = DEFAULT_USAGE_BENCHMARK
 
     @classmethod
     def get_my_usage_benchmark(cls) -> float:
@@ -111,6 +113,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def reset(cls) -> None:
         cls._usage_factors = dict()
+        cls._my_usage_benchmark = DEFAULT_USAGE_BENCHMARK
 
     @classmethod
     def _get_subtask_usage(cls, subtask_id: str) -> float:

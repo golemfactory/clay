@@ -166,6 +166,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _get_wtct(self):
         msg = msg_factories.tasks.WantToComputeTaskFactory(
             concent_enabled=self.use_concent,
+            cpu_usage=int(1e9),
             **self._get_task_parameters(),
         )
         msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member, no-value-for-parameter
