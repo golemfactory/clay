@@ -2,6 +2,7 @@ import asyncio
 import json
 from datetime import timedelta
 import logging
+import os
 from pathlib import Path
 import shutil
 from typing import Any, Dict, List
@@ -70,7 +71,7 @@ class DirManager:
     def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
         task_dir = self._get_task_dir(app_id, task_id)
         task_dir.mkdir()
-        task_inputs_dir = task_dir / constants.TASK_INPUTS_DIR
+        task_inputs_dir = self.get_task_inputs_dir(app_id, task_id)
         task_inputs_dir.mkdir()
         subtask_inputs_dir = self.get_subtask_inputs_dir(app_id, task_id)
         subtask_inputs_dir.mkdir()
@@ -79,6 +80,10 @@ class DirManager:
         subtask_outputs_dir = self.get_subtask_outputs_dir(app_id, task_id)
         subtask_outputs_dir.mkdir()
         return task_inputs_dir
+
+    def get_task_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
+        task_dir = self._get_task_dir(app_id, task_id)
+        return task_dir / constants.TASK_INPUTS_DIR
 
     def get_subtask_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
         task_dir = self._get_task_dir(app_id, task_id)
@@ -365,6 +370,24 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         task.status = TaskStatus.waiting
         task.save()
+
+    async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        inputs_dir = self._dir_manager.get_task_inputs_dir(task.app_id, task_id)
+        resources = list(map(lambda f: inputs_dir / f, os.listdir(inputs_dir)))
+        golem_params = CreateTaskParams(
+            app_id=task.app_id,
+            name=f'{task.name} copy',
+            task_timeout=task.task_timeout,
+            subtask_timeout=task.subtask_timeout,
+            output_directory=output_dir,
+            resources=resources,
+            max_subtasks=task.max_subtasks,
+            max_price_per_hour=task.max_price_per_hour,
+            concent_enabled=task.concent_enabled,
+        )
+        app_params = task.app_params
+        return self.create_task(golem_params, app_params)
 
     async def stop(self):
         logger.debug('stop()')
