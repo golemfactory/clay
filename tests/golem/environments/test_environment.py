@@ -21,12 +21,13 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
         perf.save()
 
         # then
-        self.assertEqual(self.env.get_performance(), perf_value)
+        self.assertEqual(self.env.get_benchmark_result().performance,
+                         perf_value)
 
     def test_run_default_benchmark(self):
-        assert Environment.get_performance() == 0.0
-        assert Environment.run_default_benchmark(save=True) > 0.0
-        assert Environment.get_performance() > 0.0
+        assert Environment.get_benchmark_result().performance == 0.0
+        assert Environment.run_default_benchmark(save=True).performance > 0.0
+        assert Environment.get_benchmark_result().performance > 0.0
 
     def test_get_min_accepted_performance_default(self):
         self.assertEqual(MinPerformanceMultiplier.get(), 0.0)

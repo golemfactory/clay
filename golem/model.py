@@ -263,6 +263,7 @@ class WalletOperation(BaseModel):
         confirmed = enum.auto()
         overdue = enum.auto()
         failed = enum.auto()
+        arbitraged_by_concent = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -319,6 +320,7 @@ class WalletOperation(BaseModel):
                 cls.status.not_in([
                     cls.STATUS.confirmed,
                     cls.STATUS.failed,
+                    cls.STATUS.arbitraged_by_concent,
                 ]),
                 cls.tx_hash.is_null(False),
                 cls.direction ==
@@ -352,6 +354,7 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+    charged_from_deposit = BooleanField(null=True)
 
     class Meta:
         database = db
@@ -535,19 +538,24 @@ class Performance(BaseModel):
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            stored = Performance.get(Performance.environment_id == env_id)
+            stored.value = performance
+            stored.cpu_usage = cpu_usage
+            stored.save()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            Performance(
+                environment_id=env_id,
+                value=performance,
+                cpu_usage=cpu_usage
+            ).save()
 
 
 class DockerWhitelist(BaseModel):
@@ -704,6 +712,7 @@ class RequestedTask(BaseModel):
     name = CharField(null=True)
     status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
 
+    env_id = CharField(null=True)
     prerequisites = JsonField(null=False, default='{}')
 
     task_timeout = IntegerField(null=False)  # milliseconds

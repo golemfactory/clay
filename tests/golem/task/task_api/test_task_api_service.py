@@ -25,6 +25,7 @@ class TestTaskApiService(TestCase):
         self.runtime.start.return_value = defer.succeed(None)
         self.runtime.stop.return_value = defer.succeed(None)
         self.runtime.wait_until_stopped.return_value = defer.succeed(None)
+        self.runtime.clean_up.return_value = defer.succeed(None)
         self.env = Mock(spec_set=Environment)
         self.env.runtime.return_value = self.runtime
         self.prereq = Mock(spec_set=Prerequisites)
@@ -67,3 +68,4 @@ class TestTaskApiService(TestCase):
         await self.service.start('cmd', 1234)
         await self.service.wait_until_shutdown_complete()
         self.runtime.wait_until_stopped.assert_called_once_with()
+        self.runtime.clean_up.assert_called_once_with()

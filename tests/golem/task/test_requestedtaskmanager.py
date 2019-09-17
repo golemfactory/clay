@@ -2,12 +2,13 @@
 # ^^ Pytest fixtures in the same file require the same name
 
 import asyncio
+import json
 from pathlib import Path
 
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
-from mock import Mock, MagicMock
+from mock import Mock
 import pytest
 
 from golem.app_manager import AppManager
@@ -21,23 +22,24 @@ from golem.task.requestedtaskmanager import (
 )
 from golem.task.taskstate import TaskStatus, SubtaskStatus
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
-
-
-class AsyncMock(MagicMock):
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
+from tests.utils.asyncio import AsyncMock
 
 
 @pytest.fixture
 def mock_client(monkeypatch):
-    _mock_client = AsyncMock(spec=RequestorAppClient)
+    client_mock = AsyncMock(spec=RequestorAppClient)
 
     @asyncio.coroutine
     def mock_create(*_args, **_kwargs):
-        return _mock_client
+        return client_mock
 
     monkeypatch.setattr(RequestorAppClient, 'create', mock_create)
-    return _mock_client
+
+    client_mock.create_task.return_value = Mock(
+        env_id='env_id',
+        prerequisites_json='null'
+    )
+    return client_mock
 
 
 @pytest.mark.usefixtures('pytest_database_fixture')
@@ -78,11 +80,19 @@ class TestRequestedTaskManager():
     async def test_init_task(self, mock_client):
         # given
         task_id = self._create_task()
+        env_id = 'test_env'
+        prerequisites = {'key': 'value'}
+        mock_client.create_task.return_value = Mock(
+            env_id=env_id,
+            prerequisites_json=json.dumps(prerequisites)
+        )
         # when
         await self.rtm.init_task(task_id)
         row = RequestedTask.get(RequestedTask.task_id == task_id)
         # then
         assert row.status == TaskStatus.creating
+        assert row.env_id == env_id
+        assert row.prerequisites == prerequisites
         mock_client.create_task.assert_called_once_with(
             row.task_id,
             row.max_subtasks,
@@ -90,9 +100,8 @@ class TestRequestedTaskManager():
         )
         self.app_manager.enabled.assert_called_once_with(row.app_id)
 
-    @pytest.mark.usefixtures('mock_client')
     @pytest.mark.asyncio
-    async def test_init_task_wrong_status(self):
+    async def test_init_task_wrong_status(self, mock_client):
         # given
         task_id = self._create_task()
         # when
@@ -103,9 +112,8 @@ class TestRequestedTaskManager():
         with pytest.raises(RuntimeError):
             await self.rtm.init_task(task_id)
 
-    @pytest.mark.usefixtures('mock_client')
     @pytest.mark.asyncio
-    async def test_start_task(self):
+    async def test_start_task(self, mock_client):
         # given
         task_id = self._create_task()
         await self.rtm.init_task(task_id)
@@ -127,10 +135,8 @@ class TestRequestedTaskManager():
     async def test_has_pending_subtasks(self, mock_client):
         # given
         mock_client.has_pending_subtasks.return_value = True
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         # when
         res = await self.rtm.has_pending_subtasks(task_id)
         # then
@@ -141,10 +147,8 @@ class TestRequestedTaskManager():
     async def test_get_next_subtask(self, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
             node_id='abc',
             name='abc',
@@ -164,10 +168,8 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = True
+        task_id = await self._start_task()
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
         computing_node = ComputingNode.create(
             node_id='abc',
             name='abc',
@@ -196,9 +198,7 @@ class TestRequestedTaskManager():
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = False
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
+        task_id = await self._start_task()
         computing_node = ComputingNodeDefinition(
             node_id='abc',
             name='abc',
@@ -224,9 +224,7 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
 
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        self.rtm.start_task(task_id)
+        task_id = await self._start_task()
         computing_node = ComputingNodeDefinition(
             node_id='abc',
             name='abc',
@@ -244,11 +242,54 @@ class TestRequestedTaskManager():
         assert task_row.status == TaskStatus.aborted
         assert subtask_row.status == SubtaskStatus.cancelled
 
-    def _build_golem_params(self) -> CreateTaskParams:
+    @pytest.mark.asyncio
+    async def test_task_timeout(self, mock_client):
+        task_timeout = 0.1
+        task_id = self._create_task(task_timeout=task_timeout)
+        await self.rtm.init_task(task_id)
+        self.rtm.start_task(task_id)
+        assert not self.rtm.is_task_finished(task_id)
+
+        # Unfortunately feezegun doesn't mock asyncio's time
+        # and can't be used here
+        await asyncio.sleep(task_timeout)
+        assert self.rtm.is_task_finished(task_id)
+
+    @pytest.mark.asyncio
+    async def test_restart_task(self, mock_client):
+        task_timeout = 0.1
+        task_id = await self._start_task(task_timeout=task_timeout)
+        # Wait for the task to timeout
+        await asyncio.sleep(task_timeout)
+        assert self.rtm.is_task_finished(task_id)
+
+        await self.rtm.restart_task(task_id)
+        assert not self.rtm.is_task_finished(task_id)
+
+    async def _start_task(self, **golem_params):
+        task_id = self._create_task(**golem_params)
+        await self.rtm.init_task(task_id)
+        self.rtm.start_task(task_id)
+        return task_id
+
+    @pytest.mark.asyncio
+    async def test_stop(self, mock_client):
+        # given
+        task_id = self._create_task()
+        await self.rtm.init_task(task_id)
+
+        # when
+        await self.rtm.stop()
+
+        # then
+        mock_client.shutdown.assert_called_once_with()
+        assert not self.rtm._app_clients
+
+    def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
-            task_timeout=1,
+            task_timeout=task_timeout,
             subtask_timeout=1,
             output_directory=self.tmp_path / 'output',
             resources=[],
@@ -257,8 +298,8 @@ class TestRequestedTaskManager():
             concent_enabled=False,
         )
 
-    def _create_task(self):
-        golem_params = self._build_golem_params()
+    def _create_task(self, **golem_params):
+        golem_params = self._build_golem_params(**golem_params)
         app_params = {}
         task_id = self.rtm.create_task(golem_params, app_params)
         return task_id

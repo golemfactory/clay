@@ -33,7 +33,7 @@ from apps.core.task.coretask import CoreTask
 from golem.app_manager import AppManager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
-from golem.core.deferred import sync_wait
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -70,6 +70,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
@@ -89,6 +90,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
+    from golem.envs import BenchmarkResult  # noqa pylint: disable=unused-import,ungrouped-imports
     from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
@@ -116,6 +118,7 @@ class TaskServer(
         resources.TaskResourcesMixin,
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
+        DockerWhitelistRPC,
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
@@ -130,6 +133,8 @@ class TaskServer(
                  task_archiver=None,
                  apps_manager=AppsManager(),
                  task_finished_cb=None) -> None:
+        DockerWhitelistRPC.__init__(self)
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -295,10 +300,19 @@ class TaskServer(
     def pause(self):
         super().pause()
         yield CoreTask.VERIFICATION_QUEUE.pause()
+        self.disconnect()
+        self.quit()
 
     def resume(self):
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
+
+    def quit(self):
+        defer_rtm_quit = deferred_from_future(
+            self.requested_task_manager.stop()
+        )
+        sync_wait(defer_rtm_quit)
+        self.task_computer.quit()
 
     def get_environment_by_id(
             self,
@@ -394,13 +408,13 @@ class TaskServer(
                 return None
 
             # Check performance
-            performance = None
+            benchmark_result: 'Optional[BenchmarkResult]' = None
             if isinstance(env, OldEnv):
-                performance = env.get_performance()
+                benchmark_result = env.get_benchmark_result()
             else:  # NewEnv
                 env_mgr = self.task_keeper.new_env_manager
-                performance = yield env_mgr.get_performance(env_id)
-            if performance is None:
+                benchmark_result = yield env_mgr.get_benchmark_result(env_id)
+            if benchmark_result is None:
                 logger.debug("Not requesting task, benchmark is in progress.")
                 return None
 
@@ -433,9 +447,11 @@ class TaskServer(
             )
             price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price, performance=performance)
+                theader=theader, price=price,
+                performance=benchmark_result.performance
+            )
             wtct = message.tasks.WantToComputeTask(
-                perf_index=performance,
+                perf_index=benchmark_result.performance,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
@@ -644,6 +660,11 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
+
+        if task_header.environment_prerequisites:
+            image_name = task_header.environment_prerequisites['image']
+            self._docker_image_discovered(image_name)
+
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
@@ -652,7 +673,7 @@ class TaskServer(
             return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
-            return False
+        return False
 
     @classmethod
     def _verify_header_sig(cls, header: dt_tasks.TaskHeader):
@@ -699,14 +720,22 @@ class TaskServer(
             run_benchmarks: bool,
     ) -> Deferred:
         config_changed = yield self.task_computer.change_config(config_desc)
-        if config_changed or run_benchmarks:
-            self.task_computer.lock_config(True)
-            deferred = Deferred()
-            self.benchmark_manager.run_all_benchmarks(
-                deferred.callback, deferred.errback
-            )
-            yield deferred
-            self.task_computer.lock_config(False)
+        if config_changed:
+            self._remove_env_performance_scores()
+        elif not run_benchmarks:
+            return
+
+        self.task_computer.lock_config(True)
+        deferred = Deferred()
+        self.benchmark_manager.run_all_benchmarks(
+            deferred.callback, deferred.errback)
+        yield deferred
+        self.task_computer.lock_config(False)
+
+    def _remove_env_performance_scores(self) -> None:
+        env_manager = self.task_keeper.new_env_manager
+        for env_id in env_manager.environments():
+            env_manager.remove_cached_performance(env_id)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -876,9 +905,6 @@ class TaskServer(
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
-
-    def quit(self):
-        self.task_computer.quit()
 
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(
