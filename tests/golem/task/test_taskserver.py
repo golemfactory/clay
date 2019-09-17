@@ -35,6 +35,7 @@ from golem.environments.environment import (
 )
 from golem.envs import BenchmarkResult
 from golem.envs import Environment as NewEnv
+from golem.model import RequestedTask, default_now
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
@@ -890,6 +891,27 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts._verify_header_sig = lambda _: False
         result = self.ts.add_task_header(Mock())
         self.assertFalse(result)
+
+    def test_get_own_task_headers(self):
+        # given
+        task_id = 'abc'
+        RequestedTask.create(
+            task_id=task_id,
+            app_id="test",
+            status=TaskStatus.waiting,
+            task_timeout=10,
+            subtask_timeout=10,
+            max_price_per_hour=1,
+            max_subtasks=1,
+            output_directory=Path(self.tempdir) / 'output',
+            start_time=default_now(),
+        )
+        self.ts.keys_auth._private_key = b'123'
+        # when
+        result = self.ts.get_own_tasks_headers()
+        print(result)
+        # then
+        assert task_id == result[0].task_id
 
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):

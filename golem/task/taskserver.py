@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import functools
 import itertools
+import json
 import logging
 import os
 import shutil
@@ -30,6 +31,7 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from golem import constants as gconst
 from golem import app_manager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
@@ -48,7 +50,7 @@ from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
 )
-from golem.model import TaskPayment
+from golem.model import TaskPayment, RequestedTask
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -77,7 +79,7 @@ from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.task.taskstate import TaskOp
+from golem.task.taskstate import TaskOp, TASK_STATUS_ACTIVE
 from golem.utils import decode_hex
 from .server import concent
 from .server import helpers
@@ -188,10 +190,10 @@ class TaskServer(
             app_mgr.register_app(app_def)
 
         self.requested_task_manager = RequestedTaskManager(
-            env_manager=new_env_manager,
             app_manager=app_mgr,
+            env_manager=new_env_manager,
+            public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
-            node=self.node,
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
@@ -647,8 +649,36 @@ class TaskServer(
 
     def get_own_tasks_headers(self):
         old_headers = self.task_manager.get_tasks_headers()
-        new_headers = self.requested_task_manager.get_task_headers()
+        new_headers = self._get_and_sign_headers()
         return old_headers + new_headers
+
+    def _get_and_sign_headers(self):
+
+        pending_tasks = RequestedTask.select().where(
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE)
+        ).execute()
+        # filter out Task.needs_computation() ??
+        logger.debug('pending_tasks=%r', pending_tasks)
+
+        def _make_task_header(db_task: RequestedTask) -> dt_tasks.TaskHeader:
+            task_header = dt_tasks.TaskHeader(
+                min_version=str(gconst.GOLEM_MIN_VERSION),
+                task_id=db_task.task_id,
+                environment=db_task.env_id,
+                environment_prerequisites=json.loads(db_task.prerequisites),
+                task_owner=self.node,
+                deadline=int(db_task.deadline.timestamp()),
+                subtask_timeout=db_task.subtask_timeout,
+                subtasks_count=db_task.max_subtasks,
+                # estimated_memory=task_definition.estimated_memory,
+                max_price=db_task.max_price_per_hour,
+                concent_enabled=db_task.concent_enabled,
+                timestamp=int(db_task.start_time.timestamp()),
+            )
+            task_header.sign(private_key=self.keys_auth._private_key)
+            return task_header
+
+        return [_make_task_header(task) for task in pending_tasks]
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()

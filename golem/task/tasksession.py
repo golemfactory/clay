@@ -295,7 +295,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if is_old_task:
             self.task_manager.got_wants_to_compute(msg.task_id)
         else:
-            self.requested_task_manager.got_wants_to_compute(msg.task_id)
+            logger.debug('FIXME: ping external components about WTC')
 
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         if not self.task_server.should_accept_provider(
