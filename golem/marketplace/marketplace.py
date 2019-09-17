@@ -10,7 +10,11 @@ if TYPE_CHECKING:
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark: float):
-        self.usage_benchmark: float = usage_benchmark / 1e9
+        """
+        Arguments:
+            usage_benchmark {float} -- Use benchmark in seconds
+        """
+        self.usage_benchmark: float = usage_benchmark
 
 
 @dataclass

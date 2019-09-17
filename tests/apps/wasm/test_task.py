@@ -15,9 +15,10 @@ from apps.wasm.task import (
 
 def _fake_performance():
     class FakePerformance:
-        def __init__(self, value):
+        def __init__(self, value, cpu_usage):
             self.value = value
-    return FakePerformance(1.0)
+            self.cpu_usage = cpu_usage
+    return FakePerformance(1.0, 1)
 
 
 class WasmTaskOptionsTestCase(TestCase):
