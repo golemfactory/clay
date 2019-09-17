@@ -659,8 +659,10 @@ class TaskServer(
         ).execute()
         # filter out Task.needs_computation() ??
         logger.debug('pending_tasks=%r', pending_tasks)
-
-        def _make_task_header(db_task: RequestedTask) -> dt_tasks.TaskHeader:
+        signed_headers = []
+        for db_task in pending_tasks:
+            if db_task.start_time is None or db_task.deadline is None:
+                continue
             task_header = dt_tasks.TaskHeader(
                 min_version=str(gconst.GOLEM_MIN_VERSION),
                 task_id=db_task.task_id,
@@ -676,9 +678,9 @@ class TaskServer(
                 timestamp=int(db_task.start_time.timestamp()),
             )
             task_header.sign(private_key=self.keys_auth._private_key)
-            return task_header
+            signed_headers.append(task_header)
 
-        return [_make_task_header(task) for task in pending_tasks]
+        return signed_headers
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
