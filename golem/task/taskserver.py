@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import functools
 import itertools
-import json
 import logging
 import os
 import shutil
@@ -660,7 +659,7 @@ class TaskServer(
                 min_version=str(gconst.GOLEM_MIN_VERSION),
                 task_id=db_task.task_id,
                 environment=db_task.env_id,
-                environment_prerequisites=json.loads(db_task.prerequisites),
+                environment_prerequisites=db_task.prerequisites,
                 task_owner=self.node,
                 deadline=int(db_task.deadline.timestamp()),
                 subtask_timeout=db_task.subtask_timeout,
