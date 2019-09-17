@@ -713,7 +713,7 @@ class RequestedTask(BaseModel):
     status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
 
     env_id = CharField(null=True)
-    prerequisites = JsonField(null=False, default={})
+    prerequisites = JsonField(null=False, default=dict)
 
     task_timeout = IntegerField(null=False)  # milliseconds
     subtask_timeout = IntegerField(null=False)  # milliseconds
@@ -725,7 +725,7 @@ class RequestedTask(BaseModel):
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
-    app_params = JsonField(null=False, default={})
+    app_params = JsonField(null=False, default=dict)
 
     @property
     def deadline(self) -> Optional[datetime.datetime]:
@@ -753,8 +753,8 @@ class RequestedSubtask(BaseModel):
     subtask_id = CharField(null=False)
     status = StringEnumField(enum_type=taskstate.SubtaskStatus, null=False)
 
-    payload = JsonField(null=False, default='{}')
-    inputs = JsonField(null=False, default='[]')
+    payload = JsonField(null=False, default=dict)
+    inputs = JsonField(null=False, default=list)
     start_time = UTCDateTimeField(null=True)
     price = IntegerField(null=True)
     computing_node = ForeignKeyField(
