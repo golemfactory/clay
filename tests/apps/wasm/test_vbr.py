@@ -250,3 +250,48 @@ def test_r1_result_already_added_value_error():
 
     with pytest.raises(ValueError):
         verifier.add_result(actors[1], 1)
+
+
+def test_r1_with_referee_all_different():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[2], 2)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], 3)
+
+    assert verifier.get_verdicts() is not None
+
+
+def test_r1_with_referee_all_different_with_none():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[2], None)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], 3)
+
+    assert verifier.get_verdicts() is not None
+
+
+def test_r1_with_referee_none_result():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], None)
+    verifier.add_result(actors[2], 2)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], None)
+
+    assert verifier.get_verdicts() is not None
