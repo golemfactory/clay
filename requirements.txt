@@ -1,3 +1,4 @@
+#git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2
@@ -38,7 +39,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
-git+https://github.com/golemfactory/golem-messages@mplebanski/add_usage_to_wtct#egg=golem-messages
+Golem-Messages==3.11.0
 Golem-Smart-Contracts-Interface==1.10.2
 golem_task_api==0.16.1
 greenlet==0.4.15
