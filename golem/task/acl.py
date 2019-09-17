@@ -2,17 +2,15 @@ import abc
 import logging
 import operator
 import time
+import ipaddress
 from enum import Enum
-from pathlib import Path
-from typing import Dict, Set, Union, Iterable, Optional, Tuple, List, cast
+from typing import Dict, Union, Optional, Tuple, List, cast
 from sortedcontainers import SortedList
+from golem.model import ACLAllowedNodes, ACLDeniedNodes, GenericKeyValue
 
 from golem.core import common
 
 logger = logging.getLogger(__name__)
-
-DENY_LIST_NAME = "deny.txt"
-ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
 
 
 class AclRule(Enum):
@@ -20,13 +18,27 @@ class AclRule(Enum):
     deny = "deny"
 
 
+ACL_MODE_KEY = "ACL_MODE"
+DEFAULT = AclRule.allow
+
+
 class AclStatus:
     default_rule: AclRule
-    rules: List[Tuple[str, AclRule, Optional[int]]]
+    rules: List[
+        Tuple[
+            Union[ACLAllowedNodes, ACLDeniedNodes],
+            AclRule, Optional[int]
+        ]
+    ]
 
     def __init__(self,
                  default_rule: AclRule,
-                 rules: List[Tuple[str, AclRule, Optional[int]]]) \
+                 rules: List[
+                     Tuple[
+                         Union[ACLAllowedNodes, ACLDeniedNodes],
+                         AclRule, Optional[int]
+                     ]
+                 ]) \
             -> None:
         self.default_rule = default_rule
         self.rules = rules
@@ -35,8 +47,13 @@ class AclStatus:
         return {
             'default_rule': self.default_rule.value,
             'rules': [
-                (ident, rule.value, deadline)
-                for (ident, rule, deadline) in self.rules
+                {
+                    'identity': identity['node_id'],
+                    'node_name': identity['node_name'] or "",
+                    'rule': rule.value,
+                    'deadline': deadline
+                }
+                for (identity, rule, deadline) in self.rules
             ]
         }
 
@@ -74,27 +91,39 @@ class _DenyAcl(Acl):
     _max_times: int
     # SortedList of floats = deadlines
     _deny_deadlines: Dict[str, Union[_Always, SortedList]]
-    _list_path: Optional[Path]
 
     @classmethod
-    def new_from_rules(cls, deny_coll: List[str],
-                       list_path: Optional[Path]) -> '_DenyAcl':
-        deny_set = set(deny_coll)
-        if list_path is not None:
-            _write_set_to_file(list_path, deny_set)
-        return cls(deny_coll, list_path)
+    def new_from_rules(cls, client, deny_coll: List[str]) -> '_DenyAcl':
+        if deny_coll:
+            deny_list = []
 
-    def __init__(self, deny_coll: Optional[Iterable[str]] = None,
-                 list_path: Optional[Path] = None, max_times: int = 1) -> None:
+            for key in deny_coll:
+                node = _get_node_info(client, key)
+
+                if node:
+                    deny_list.append(
+                        {'node_id': key, 'node_name': node['node_name']})
+            if deny_list:
+                ACLDeniedNodes.insert_many(deny_list).execute()
+
+        return cls(client)
+
+    def __init__(self, client, max_times: int = 1) -> None:
         """
         :param max_times: how many times node_id must be disallowed to be
                           actually disallowed
         """
-        if deny_coll is None:
-            deny_coll = []
+        self._deny_list = []  # type: List[ACLDeniedNodes]
+        self._client = client
         self._max_times = max_times
-        self._deny_deadlines = dict((key, self._always) for key in deny_coll)
-        self._list_path = list_path
+        self._read_list()
+
+        self._deny_deadlines = dict((item.node_id, self._always)
+                                    for item in self._deny_list)
+
+    def _read_list(self) -> None:
+        nodes = ACLDeniedNodes.select().execute()
+        self._deny_list = list(set(self._deny_list + list(nodes)))
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
         if node_id not in self._deny_deadlines:
@@ -126,21 +155,31 @@ class _DenyAcl(Acl):
             timeout_seconds,
             persist,
         )
+
         if timeout_seconds < 0:
             self._deny_deadlines[node_id] = self._always
         else:
             if node_id not in self._deny_deadlines:
                 self._deny_deadlines[node_id] = SortedList(key=operator.neg)
             node_deadlines = self._deny_deadlines[node_id]
+
             if node_deadlines is self._always:
                 return
+
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
 
-        if persist and timeout_seconds == -1 and self._list_path:
-            deny_set = _read_set_from_file(self._list_path)
-            if node_id not in deny_set:
-                _write_set_to_file(self._list_path, deny_set | {node_id})
+        if persist and timeout_seconds == -1:
+            try:
+                existNode = ACLDeniedNodes.get(node_id=node_id)
+            except ACLDeniedNodes.DoesNotExist:
+                existNode = None
+            if not existNode:
+                peers = self._client.p2pservice.incoming_peers or dict()
+                node = peers[node_id]
+                node_db = ACLDeniedNodes(
+                    node_id=node_id, node_name=node['node_name'])
+                node_db.save()
 
     def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
@@ -148,15 +187,26 @@ class _DenyAcl(Acl):
             common.short_node_id(node_id),
             persist,
         )
-        del self._deny_deadlines[node_id]
-        if persist and self._list_path:
-            deny_set = _read_set_from_file(self._list_path)
-            if node_id in deny_set:
-                _write_set_to_file(self._list_path, deny_set - {node_id})
+        if node_id in self._deny_deadlines:
+            del self._deny_deadlines[node_id]
+
+        if persist:
+            try:
+                existNode = ACLDeniedNodes.get(node_id=node_id)
+            except ACLDeniedNodes.DoesNotExist:
+                existNode = None
+
+            if existNode:
+                ACLDeniedNodes \
+                    .delete() \
+                    .where(ACLDeniedNodes.node_id == node_id) \
+                    .execute()
 
     def status(self) -> AclStatus:
         _always = self._always
         now = time.time()
+
+        self._read_list()
 
         def decode_deadline(deadline):
             if deadline is _always:
@@ -175,9 +225,13 @@ class _DenyAcl(Acl):
             del self._deny_deadlines[identity]
 
         rules = [
-            (identity,
+            ({
+                'node_id': identity,
+                'node_name': _get_node_info(
+                    self._client, identity)['node_name']
+            },
              AclRule.deny,
-             decode_deadline(deadline), )
+             decode_deadline(deadline))
             for (identity, deadline) in self._deny_deadlines.items()]
         return AclStatus(AclRule.allow, rules)
 
@@ -189,25 +243,31 @@ class _DenyAcl(Acl):
 class _AllowAcl(Acl):
 
     @classmethod
-    def new_from_rules(cls, allow_coll: List[str],
-                       list_path: Optional[Path]) -> '_AllowAcl':
-        allow_set = set(allow_coll) | {ALL_EXCEPT_ALLOWED}
-        if list_path is not None:
-            _write_set_to_file(list_path, allow_set)
-        return cls(set(allow_coll), list_path)
+    def new_from_rules(cls, client, allow_coll: List[str]) -> '_AllowAcl':
+        if allow_coll:
+            allow_list = []
+            for key in allow_coll:
+                node = _get_node_info(client, key)
+                if node:
+                    allow_list.append(
+                        {'node_id': key, 'node_name': node['node_name']})
+            if allow_list:
+                ACLAllowedNodes.insert_many(allow_list).execute()
 
-    def __init__(
-            self,
-            allow_set: Optional[Set[str]] = None,
-            list_path: Optional[Path] = None,
-    ) -> None:
-        if allow_set is None:
-            allow_set = set()
-        self._allow_set = allow_set
-        self._list_path = list_path
+        return cls(client)
+
+    def __init__(self, client) -> None:
+
+        self._allow_list = []  # type: List[ACLAllowedNodes]
+        self._client = client
+        self._read_list()
+
+    def _read_list(self) -> None:
+        nodes = ACLAllowedNodes.select().execute()
+        self._allow_list = list(set(self._allow_list + list(nodes)))
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
-        if node_id in self._allow_set:
+        if any(node for node in self._allow_list if node.node_id == node_id):
             return True, None
 
         return False, DenyReason.not_whitelisted
@@ -221,12 +281,20 @@ class _AllowAcl(Acl):
             timeout_seconds,
             persist,
         )
-        self._allow_set.discard(node_id)
+        self._allow_list = [node for node in self._allow_list if not (
+            node_id == node.node_id)]
 
-        if persist and self._list_path:
-            allow_set = _read_set_from_file(self._list_path)
-            if node_id in allow_set:
-                _write_set_to_file(self._list_path, allow_set - {node_id})
+        if persist:
+            try:
+                existNode = ACLAllowedNodes.get(node_id=node_id)
+            except ACLAllowedNodes.DoesNotExist:
+                existNode = None
+
+            if existNode:
+                ACLAllowedNodes \
+                    .delete() \
+                    .where(ACLAllowedNodes.node_id == node_id) \
+                    .execute()
 
     def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
@@ -234,54 +302,68 @@ class _AllowAcl(Acl):
             common.short_node_id(node_id),
             persist,
         )
-        self._allow_set.add(node_id)
-        if persist and self._list_path:
-            allow_set = _read_set_from_file(self._list_path)
-            if node_id not in allow_set:
-                _write_set_to_file(self._list_path, allow_set | {node_id})
+        node = _get_node_info(self._client, node_id)
+        node_model = ACLAllowedNodes(
+            node_id=node_id, node_name=node['node_name'])
+
+        if not any(node for node in self._allow_list if (
+                node.node_id == node_id)):
+            self._allow_list.append(node_model)
+
+        if persist:
+            try:
+                existNode = ACLAllowedNodes.get(node_id=node_id)
+            except ACLAllowedNodes.DoesNotExist:
+                existNode = None
+
+            if not existNode:
+                node_model.save()
 
     def status(self) -> AclStatus:
+        self._read_list()
         rules = [
-            (identity,
+            (identity.to_dict(),
              AclRule.allow,
              cast(Optional[int], None))
-            for identity in self._allow_set]
+            for identity in self._allow_list]
 
         return AclStatus(AclRule.deny, rules)
 
 
-def _read_set_from_file(path: Path) -> Set[str]:
+def get_acl(client, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
     try:
-        with path.open() as f:
-            return set(line.strip() for line in f)
-    except OSError:
-        return set()
+        acl_key = GenericKeyValue.get(key=ACL_MODE_KEY).value
+    except GenericKeyValue.DoesNotExist:
+        acl_key = DEFAULT
+    if acl_key == AclRule.deny.value:
+        return _AllowAcl(client)
+    return _DenyAcl(client, max_times)
 
 
-def _write_set_to_file(path: Path, node_set: Set[str]):
-    with path.open('w') as f:
-        for node_id in sorted(node_set):
-            f.write(node_id + '\n')
-
-
-def get_acl(datadir: Path, max_times: int = 1) -> Union[_DenyAcl, _AllowAcl]:
-    deny_list_path = datadir / DENY_LIST_NAME
-    nodes_ids = _read_set_from_file(deny_list_path)
-
-    if ALL_EXCEPT_ALLOWED in nodes_ids:
-        nodes_ids.remove(ALL_EXCEPT_ALLOWED)
-        return _AllowAcl(nodes_ids, deny_list_path)
-
-    return _DenyAcl(nodes_ids, deny_list_path, max_times)
-
-
-def setup_acl(datadir: Optional[Path],
-              default_rule: AclRule,
+def setup_acl(client, default_rule: AclRule,
               exceptions: List[str]) -> Union[_DenyAcl, _AllowAcl]:
-    deny_list_path = datadir / DENY_LIST_NAME if datadir is not None else None
-    if default_rule == AclRule.deny:
-        return _AllowAcl.new_from_rules(exceptions, deny_list_path)
-    if default_rule == AclRule.allow:
-        return _DenyAcl.new_from_rules(exceptions, deny_list_path)
 
-    raise ValueError('invalid acl default rule: %r' % default_rule)  # noqa # pragma: no cover # pylint: disable=line-too-long
+    if default_rule not in AclRule.__members__.values():
+        raise ValueError('invalid acl default %r' % default_rule)
+
+    entry, _ = GenericKeyValue.get_or_create(key=ACL_MODE_KEY)
+    entry.value = default_rule.value
+    entry.save()
+
+    if default_rule == AclRule.deny:
+        return _AllowAcl.new_from_rules(client, exceptions)
+    return _DenyAcl.new_from_rules(client, exceptions)
+
+
+def _get_node_info(client, key: str) -> Dict:
+    peers = client.p2pservice.incoming_peers or dict()
+    try:
+        ipaddress.ip_address(key)
+        node = next((peers[node] for node in peers
+                     if peers[node]['address'] == key),
+                    {'node_id': key, 'node_name': None})
+    except ValueError:
+        node = peers[key] if key in peers else {
+            'node_id': key, 'node_name': None}
+
+    return node
