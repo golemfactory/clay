@@ -389,6 +389,23 @@ class RequestedTaskManager:
         app_params = task.app_params
         return self.create_task(golem_params, app_params)
 
+    async def discard_subtasks(
+            self,
+            task_id: TaskId,
+            subtask_ids: List[SubtaskId],
+    ) -> List[SubtaskId]:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        app_client = await self._get_app_client(task.app_id)
+        for subtask in RequestedSubtask.select().where(
+                RequestedSubtask.subtask_id.in_(subtask_ids)):
+            assert subtask.task_id == task_id
+        discarded_subtask_ids = await app_client.discard_subtasks(subtask_ids)
+        for subtask_id in RequestedSubtask.select().where(
+                RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
+            subtask.status = SubtaskStatus.cancelled
+            subtask.save()
+        return discarded_subtask_ids
+
     async def stop(self):
         logger.debug('stop()')
         # Shutdown registered app_clients

@@ -148,11 +148,8 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         task_id = await self._start_task()
+        computing_node = self._get_computing_node()
 
-        computing_node = ComputingNode.create(
-            node_id='abc',
-            name='abc',
-        )
         # when
         res = await self.rtm.get_next_subtask(task_id, computing_node)
 
@@ -160,7 +157,8 @@ class TestRequestedTaskManager():
             RequestedSubtask.subtask_id == res.subtask_id)
         # then
         assert row.task_id == task_id
-        assert row.computing_node == computing_node
+        assert row.computing_node.node_id == computing_node.node_id
+        assert row.computing_node.name == computing_node.name
         mock_client.next_subtask.assert_called_once_with(task_id)
 
     @pytest.mark.asyncio
@@ -170,11 +168,10 @@ class TestRequestedTaskManager():
         mock_client.verify.return_value = True
         task_id = await self._start_task()
 
-        computing_node = ComputingNode.create(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         # The second call should return false so the client will shut down
         mock_client.has_pending_subtasks.return_value = False
@@ -199,11 +196,9 @@ class TestRequestedTaskManager():
         mock_client.verify.return_value = False
 
         task_id = await self._start_task()
-        computing_node = ComputingNodeDefinition(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id, self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         subtask_id = subtask.subtask_id
         # when
@@ -225,11 +220,10 @@ class TestRequestedTaskManager():
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = await self._start_task()
-        computing_node = ComputingNodeDefinition(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         subtask_id = subtask.subtask_id
         # when
@@ -290,6 +284,27 @@ class TestRequestedTaskManager():
         assert task.concent_enabled == duplicated_task.concent_enabled
         assert Path(duplicated_task.output_directory) == new_output_dir
 
+    @pytest.mark.asyncio
+    async def test_discard_subtasks(self, mock_client):
+        self._add_next_subtask_to_client_mock(mock_client)
+        task_id = await self._start_task()
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
+        )
+        subtask_ids = [subtask.subtask_id]
+        mock_client.discard_subtasks.return_value = subtask_ids
+
+        discarded_subtask_ids = await self.rtm.discard_subtasks(
+            task_id,
+            subtask_ids,
+        )
+
+        assert discarded_subtask_ids == subtask_ids
+        row = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == discarded_subtask_ids[0])
+        assert row.status == SubtaskStatus.cancelled
+
     async def _start_task(self, **golem_params):
         task_id = self._create_task(**golem_params)
         await self.rtm.init_task(task_id)
@@ -334,6 +349,13 @@ class TestRequestedTaskManager():
 
     @staticmethod
     def _add_next_subtask_to_client_mock(client_mock):
-        result = Subtask(subtask_id='', params={}, resources=[])
+        result = Subtask(subtask_id='testsubtaskid', params={}, resources=[])
         client_mock.next_subtask.return_value = result
         client_mock.has_pending_subtasks.return_value = True
+
+    @staticmethod
+    def _get_computing_node() -> ComputingNodeDefinition:
+        return ComputingNodeDefinition(
+            node_id='testnodeid',
+            name='testnodename',
+        )
