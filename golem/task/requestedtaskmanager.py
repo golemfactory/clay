@@ -368,6 +368,13 @@ class RequestedTaskManager:
 
         await self._shutdown_app_client(task.app_id)
 
+    @staticmethod
+    def get_started_tasks():
+        return RequestedTask.select().where(
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE),
+            RequestedTask.start_time is not None
+        ).execute()
+
     async def restart_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         task.status = TaskStatus.waiting

@@ -50,7 +50,7 @@ from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
 )
-from golem.model import TaskPayment, RequestedTask
+from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -79,7 +79,7 @@ from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
-from golem.task.taskstate import TaskOp, TASK_STATUS_ACTIVE
+from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
 from .server import concent
 from .server import helpers
@@ -653,16 +653,9 @@ class TaskServer(
         return old_headers + new_headers
 
     def _get_and_sign_headers(self):
-
-        pending_tasks = RequestedTask.select().where(
-            RequestedTask.status.in_(TASK_STATUS_ACTIVE)
-        ).execute()
-        # filter out Task.needs_computation() ??
-        logger.debug('pending_tasks=%r', pending_tasks)
+        started_tasks = self.requested_task_manager.get_started_tasks()
         signed_headers = []
-        for db_task in pending_tasks:
-            if db_task.start_time is None or db_task.deadline is None:
-                continue
+        for db_task in started_tasks:
             task_header = dt_tasks.TaskHeader(
                 min_version=str(gconst.GOLEM_MIN_VERSION),
                 task_id=db_task.task_id,

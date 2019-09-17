@@ -892,7 +892,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         result = self.ts.add_task_header(Mock())
         self.assertFalse(result)
 
-    def test_get_own_task_headers(self):
+    @patch('golem.task.taskserver.dt_tasks.TaskHeader.sign')
+    def test_get_own_task_headers(self, mock_sign):
         # given
         task_id = 'abc'
         RequestedTask.create(
@@ -909,9 +910,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.keys_auth._private_key = b'123'
         # when
         result = self.ts.get_own_tasks_headers()
-        print(result)
         # then
         assert task_id == result[0].task_id
+        mock_sign.assert_called_once()
 
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):
