@@ -78,6 +78,17 @@ class TaskResourcesMixin:
                            timeout: Optional[int] = None):
 
         options = self.get_share_options(timeout=timeout)
+        logger.debug(
+            "Restoring resources. "
+            "files=%s, task_id=%s, resource_hash=%s, timeout=%s",
+            files, task_id, resource_hash, timeout
+        )
+        if timeout and timeout <= 0:
+            logger.warning(
+                "Timeout negative, skipping resource restore. task_id=%s",
+                task_id
+            )
+            return None
 
         try:
             resource_hash, _ = self.resource_manager.add_resources(
