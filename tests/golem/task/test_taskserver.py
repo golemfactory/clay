@@ -894,8 +894,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     @patch('golem.task.taskserver.RequestedTaskManager.get_started_tasks')
     @patch('golem.task.taskserver.dt_tasks.TaskHeader')
-    def test_get_own_task_headers(self, mock_header, mock_get_tasks):
+    def test_get_own_task_headers(self, mock_task_header, mock_get_tasks):
         # given
+        mock_th_instance = Mock()
+        mock_task_header.return_value = mock_th_instance
         mock_db_task = Mock()
         mock_db_task.start_time.timestamp.return_value = 1
         mock_db_task.deadline.timestamp.return_value = 1
@@ -906,7 +908,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         mock_get_tasks.assert_called_once()
         assert len(result) == len(task_list)
-        mock_header.sign.assert_called_once()
+        mock_th_instance.sign.assert_called_once()
 
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):
