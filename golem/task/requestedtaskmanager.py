@@ -3,8 +3,8 @@ import json
 from datetime import timedelta
 import logging
 import os
-from pathlib import Path
 import shutil
+from pathlib import Path
 from typing import Any, Dict, List
 
 from dataclasses import dataclass
@@ -21,7 +21,7 @@ from golem.model import (
     RequestedSubtask,
 )
 from golem.task.envmanager import EnvironmentManager, EnvId
-from golem.task.taskstate import TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskStatus, SubtaskStatus, TASK_STATUS_ACTIVE
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
 
@@ -367,6 +367,13 @@ class RequestedTaskManager:
 
         await self._shutdown_app_client(task.app_id)
 
+    @staticmethod
+    def get_started_tasks():
+        return RequestedTask.select().where(
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE),
+            RequestedTask.start_time is not None
+        ).execute()
+
     async def restart_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         task.status = TaskStatus.waiting
@@ -507,13 +514,7 @@ class RequestedTaskManager:
             fn.Count(RequestedTask.task_id)
         ).where(
             RequestedTask.app_id == app_id,
-            # FIXME: duplicate list with TaskStatus.is_active()
-            RequestedTask.status.in_([
-                TaskStatus.sending,
-                TaskStatus.waiting,
-                TaskStatus.starting,
-                TaskStatus.computing,
-            ])
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE)
         ).scalar()
         logger.debug('unfinished tasks: %r', unfinished_tasks)
         if unfinished_tasks == 0:
