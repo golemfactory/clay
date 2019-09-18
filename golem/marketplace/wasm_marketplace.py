@@ -113,7 +113,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def reset(cls) -> None:
         cls._usage_factors = dict()
-        cls._my_usage_benchmark = DEFAULT_USAGE_BENCHMARK
+        cls._my_usage_benchmark = cls.DEFAULT_USAGE_BENCHMARK
 
     @classmethod
     def _get_subtask_usage(cls, subtask_id: str) -> float:

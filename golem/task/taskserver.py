@@ -30,7 +30,8 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from golem.app_manager import AppManager
+from golem import constants as gconst
+from golem import app_manager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait, deferred_from_future
@@ -180,11 +181,18 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
+
+        app_mgr = app_manager.AppManager()
+        app_dir = self.get_app_dir()
+        os.makedirs(app_dir, exist_ok=True)
+        for app_def in app_manager.load_apps_from_dir(app_dir):
+            app_mgr.register_app(app_def)
+
         self.requested_task_manager = RequestedTaskManager(
+            app_manager=app_mgr,
             env_manager=new_env_manager,
-            app_manager=AppManager(),
-            root_path=TaskServer.__get_task_manager_root(client.datadir),
             public_key=self.keys_auth.public_key,
+            root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
             config_desc.hyperdrive_rpc_address,
@@ -229,9 +237,10 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.acl = get_acl(Path(client.datadir),
-                           max_times=config_desc.disallow_id_max_times)
-        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
+        self.acl = get_acl(
+            self.client, max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl(
+            self.client, max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
@@ -497,8 +506,7 @@ class TaskServer(
             defer.gatherResults(deferreds, consumeErrors=True)\
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id),
-                    lambda e: self.resource_failure(msg.task_id, e),
-                )
+                    lambda e: self.resource_failure(msg.task_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -640,7 +648,32 @@ class TaskServer(
                 logger.error("Error closing session: %s", exc)
 
     def get_own_tasks_headers(self):
-        return self.task_manager.get_tasks_headers()
+        old_headers = self.task_manager.get_tasks_headers()
+        new_headers = self._get_and_sign_headers()
+        return old_headers + new_headers
+
+    def _get_and_sign_headers(self):
+        started_tasks = self.requested_task_manager.get_started_tasks()
+        signed_headers = []
+        for db_task in started_tasks:
+            task_header = dt_tasks.TaskHeader(
+                min_version=str(gconst.GOLEM_MIN_VERSION),
+                task_id=db_task.task_id,
+                environment=db_task.env_id,
+                environment_prerequisites=db_task.prerequisites,
+                task_owner=self.node,
+                deadline=int(db_task.deadline.timestamp()),
+                subtask_timeout=db_task.subtask_timeout,
+                subtasks_count=db_task.max_subtasks,
+                # estimated_memory=task_definition.estimated_memory,
+                max_price=db_task.max_price_per_hour,
+                concent_enabled=db_task.concent_enabled,
+                timestamp=int(db_task.start_time.timestamp()),
+            )
+            task_header.sign(private_key=self.keys_auth._private_key)
+            signed_headers.append(task_header)
+
+        return signed_headers
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
@@ -740,6 +773,11 @@ class TaskServer(
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
+
+    def get_app_dir(self) -> Path:
+        """ Get path to the directory where definitions for Task API apps are
+            stored. """
+        return Path(self.client.datadir) / "apps"
 
     def subtask_rejected(self, sender_node_id, subtask_id):
         """My (providers) results were rejected"""
@@ -1052,23 +1090,37 @@ class TaskServer(
     @rpc_utils.expose('net.peer.disallow')
     def disallow_node(
             self,
-            node_id: str,
+            node_id: Union[str, list],
             timeout_seconds: int = -1,
             persist: bool = False
     ) -> None:
-        self.acl.disallow(node_id, timeout_seconds, persist)
+        if isinstance(node_id, str):
+            node_id = [node_id]
+        for item in node_id:
+            self.acl.disallow(item, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
-        self.acl_ip.disallow(ip, timeout_seconds)
+    def disallow_ip(self, ip: Union[str, list],
+                    timeout_seconds: int = -1) -> None:
+        if isinstance(ip, str):
+            ip = [ip]
+        for item in ip:
+            self.acl_ip.disallow(item, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
-    def allow_node(self, node_id: str, persist: bool = True) -> None:
-        self.acl.allow(node_id, persist)
+    def allow_node(self, node_id: Union[str, list],
+                   persist: bool = True) -> None:
+        if isinstance(node_id, str):
+            node_id = [node_id]
+        for item in node_id:
+            self.acl.allow(item, persist)
 
     @rpc_utils.expose('net.peer.allow_ip')
-    def allow_ip(self, node_id: str, persist: bool = True) -> None:
-        self.acl_ip.allow(node_id, persist)
+    def allow_ip(self, ip: Union[str, list], persist: bool = True) -> None:
+        if isinstance(ip, str):
+            ip = [ip]
+        for item in ip:
+            self.acl_ip.allow(item, persist)
 
     @rpc_utils.expose('net.peer.acl')
     def acl_status(self) -> Dict:
@@ -1080,7 +1132,7 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.acl.new')
     def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
-        new_acl = setup_acl(Path(self.client.datadir),
+        new_acl = setup_acl(self.client,
                             AclRule[default_rule],
                             exceptions)
         self.acl = new_acl

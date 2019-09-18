@@ -63,18 +63,16 @@ class TestRequestedTaskManager():
         )
 
     def test_create_task(self):
-        with freeze_time() as freezer:
-            # given
-            golem_params = self._build_golem_params()
-            app_params = {}
-            # when
-            task_id = self.rtm.create_task(golem_params, app_params)
-            freezer.tick()
-            # then
-            row = RequestedTask.get(RequestedTask.task_id == task_id)
-            assert row.status == TaskStatus.creating
-            assert row.start_time < default_now()
-            assert (self.rtm_path / golem_params.app_id / task_id).exists()
+        # given
+        golem_params = self._build_golem_params()
+        app_params = {}
+        # when
+        task_id = self.rtm.create_task(golem_params, app_params)
+        # then
+        row = RequestedTask.get(RequestedTask.task_id == task_id)
+        assert row.status == TaskStatus.creating
+        assert row.start_time is None
+        assert (self.rtm_path / golem_params.app_id / task_id).exists()
 
     @pytest.mark.asyncio
     async def test_init_task(self, mock_client):
@@ -114,14 +112,17 @@ class TestRequestedTaskManager():
 
     @pytest.mark.asyncio
     async def test_start_task(self, mock_client):
-        # given
-        task_id = self._create_task()
-        await self.rtm.init_task(task_id)
-        # when
-        self.rtm.start_task(task_id)
-        # then
-        row = RequestedTask.get(RequestedTask.task_id == task_id)
-        assert row.status == TaskStatus.waiting
+        with freeze_time() as freezer:
+            # given
+            task_id = self._create_task()
+            await self.rtm.init_task(task_id)
+            # when
+            self.rtm.start_task(task_id)
+            freezer.tick()
+            # then
+            row = RequestedTask.get(RequestedTask.task_id == task_id)
+            assert row.status == TaskStatus.waiting
+            assert row.start_time < default_now()
 
     def test_task_exists(self):
         task_id = self._create_task()
@@ -148,11 +149,8 @@ class TestRequestedTaskManager():
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         task_id = await self._start_task()
+        computing_node = self._get_computing_node()
 
-        computing_node = ComputingNode.create(
-            node_id='abc',
-            name='abc',
-        )
         # when
         res = await self.rtm.get_next_subtask(task_id, computing_node)
 
@@ -160,7 +158,8 @@ class TestRequestedTaskManager():
             RequestedSubtask.subtask_id == res.subtask_id)
         # then
         assert row.task_id == task_id
-        assert row.computing_node == computing_node
+        assert row.computing_node.node_id == computing_node.node_id
+        assert row.computing_node.name == computing_node.name
         mock_client.next_subtask.assert_called_once_with(task_id)
 
     @pytest.mark.asyncio
@@ -170,11 +169,10 @@ class TestRequestedTaskManager():
         mock_client.verify.return_value = True
         task_id = await self._start_task()
 
-        computing_node = ComputingNode.create(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         # The second call should return false so the client will shut down
         mock_client.has_pending_subtasks.return_value = False
@@ -199,11 +197,9 @@ class TestRequestedTaskManager():
         mock_client.verify.return_value = False
 
         task_id = await self._start_task()
-        computing_node = ComputingNodeDefinition(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id, self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         subtask_id = subtask.subtask_id
         # when
@@ -225,11 +221,10 @@ class TestRequestedTaskManager():
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = await self._start_task()
-        computing_node = ComputingNodeDefinition(
-            node_id='abc',
-            name='abc',
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
         )
-        subtask = await self.rtm.get_next_subtask(task_id, computing_node)
 
         subtask_id = subtask.subtask_id
         # when
@@ -256,6 +251,21 @@ class TestRequestedTaskManager():
         assert self.rtm.is_task_finished(task_id)
 
     @pytest.mark.asyncio
+    async def test_get_started_tasks(self, mock_client):
+        # given
+        task_id = self._create_task()
+        await self.rtm.init_task(task_id)
+        # when
+        results = self.rtm.get_started_tasks()
+        assert not results
+        self.rtm.start_task(task_id)
+        results = self.rtm.get_started_tasks()
+        # then
+        assert results
+        assert len(results) == 1
+        assert list(results)[0].task_id == task_id
+
+    @pytest.mark.asyncio
     async def test_restart_task(self, mock_client):
         task_timeout = 0.1
         task_id = await self._start_task(task_timeout=task_timeout)
@@ -265,6 +275,51 @@ class TestRequestedTaskManager():
 
         await self.rtm.restart_task(task_id)
         assert not self.rtm.is_task_finished(task_id)
+
+    @pytest.mark.asyncio
+    async def test_duplicate_task(self, mock_client):
+        resources_dir = self.tmp_path / 'resources'
+        resources_dir.mkdir()
+        resource = resources_dir / 'file'
+        resource.touch()
+        task_id = await self._start_task(resources=[resource])
+        new_output_dir = self.tmp_path / 'dup_output'
+
+        duplicated_task_id = \
+            await self.rtm.duplicate_task(task_id, new_output_dir)
+
+        assert duplicated_task_id != task_id
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        duplicated_task = RequestedTask.get(
+            RequestedTask.task_id == duplicated_task_id)
+        assert task.app_params == duplicated_task.app_params
+        assert task.task_timeout == duplicated_task.task_timeout
+        assert task.subtask_timeout == duplicated_task.subtask_timeout
+        assert task.max_subtasks == duplicated_task.max_subtasks
+        assert task.max_price_per_hour == duplicated_task.max_price_per_hour
+        assert task.concent_enabled == duplicated_task.concent_enabled
+        assert Path(duplicated_task.output_directory) == new_output_dir
+
+    @pytest.mark.asyncio
+    async def test_discard_subtasks(self, mock_client):
+        self._add_next_subtask_to_client_mock(mock_client)
+        task_id = await self._start_task()
+        subtask = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(),
+        )
+        subtask_ids = [subtask.subtask_id]
+        mock_client.discard_subtasks.return_value = subtask_ids
+
+        discarded_subtask_ids = await self.rtm.discard_subtasks(
+            task_id,
+            subtask_ids,
+        )
+
+        assert discarded_subtask_ids == subtask_ids
+        row = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == discarded_subtask_ids[0])
+        assert row.status == SubtaskStatus.cancelled
 
     async def _start_task(self, **golem_params):
         task_id = self._create_task(**golem_params)
@@ -285,14 +340,18 @@ class TestRequestedTaskManager():
         mock_client.shutdown.assert_called_once_with()
         assert not self.rtm._app_clients
 
-    def _build_golem_params(self, task_timeout=1) -> CreateTaskParams:
+    def _build_golem_params(
+            self,
+            resources=[],
+            task_timeout=1,
+    ) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
             task_timeout=task_timeout,
             subtask_timeout=1,
             output_directory=self.tmp_path / 'output',
-            resources=[],
+            resources=resources,
             max_subtasks=1,
             max_price_per_hour=1,
             concent_enabled=False,
@@ -306,6 +365,13 @@ class TestRequestedTaskManager():
 
     @staticmethod
     def _add_next_subtask_to_client_mock(client_mock):
-        result = Subtask(subtask_id='', params={}, resources=[])
+        result = Subtask(subtask_id='testsubtaskid', params={}, resources=[])
         client_mock.next_subtask.return_value = result
         client_mock.has_pending_subtasks.return_value = True
+
+    @staticmethod
+    def _get_computing_node() -> ComputingNodeDefinition:
+        return ComputingNodeDefinition(
+            node_id='testnodeid',
+            name='testnodename',
+        )

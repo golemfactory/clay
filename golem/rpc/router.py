@@ -5,7 +5,6 @@ import os
 from typing import Iterable, Optional
 
 from crossbar.common.checkconfig import check_config
-from crossbar.personality import Personality
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc import cert
@@ -34,6 +33,8 @@ class CrossbarRouter(object):
                  realm: str = CROSSBAR_REALM,
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
+        # Imports the reactor
+        from crossbar.personality import Personality
 
         self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
