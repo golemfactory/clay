@@ -35,7 +35,6 @@ from golem.environments.environment import (
 )
 from golem.envs import BenchmarkResult
 from golem.envs import Environment as NewEnv
-from golem.model import RequestedTask, default_now
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
@@ -898,6 +897,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # given
         mock_th_instance = Mock()
         mock_task_header.return_value = mock_th_instance
+
         mock_db_task = Mock()
         mock_db_task.start_time.timestamp.return_value = 1
         mock_db_task.deadline.timestamp.return_value = 1
