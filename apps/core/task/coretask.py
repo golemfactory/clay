@@ -199,8 +199,6 @@ class CoreTask(Task):
         return self.num_tasks_received == self.total_tasks
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        # TEMPORARY: Disable baning nodes after fails.
-        ban_node = False
         self._mark_subtask_failed(subtask_id, ban_node)
 
     def computation_finished(self, subtask_id, task_result,
@@ -453,6 +451,9 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id: str, ban_node: bool = True):
         logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
+
+        # TEMPORARY: Disable baning nodes after fails.
+        ban_node = False
 
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']
