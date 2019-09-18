@@ -10,8 +10,6 @@ from scripts.node_integration_tests import helpers
 
 extend_enum(NodeId, 'provider2', 'provider2')
 extend_enum(NodeId, 'provider3', 'provider3')
-extend_enum(NodeId, 'provider4', 'provider4')
-extend_enum(NodeId, 'provider5', 'provider5')
 
 THIS_DIR: Path = Path(__file__).resolve().parent
 
@@ -31,12 +29,6 @@ class TestConfig(TestConfigBase):
 
         self.nodes[NodeId.provider3] = make_node_config_from_env(
             NodeId.provider3.value, 3
-        )
-        self.nodes[NodeId.provider4] = make_node_config_from_env(
-            NodeId.provider4.value, 4
-        )
-        self.nodes[NodeId.provider5] = make_node_config_from_env(
-            NodeId.provider5.value, 5
         )
 
     def update_task_dict(self):
