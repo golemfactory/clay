@@ -6,7 +6,7 @@ from golem_task_api import (
     TaskApiService,
     RequestorAppClient
 )
-from golem_task_api.structs import Subtask
+from golem_task_api.structs import Subtask, Task
 from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
 
@@ -92,6 +92,27 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
         self.assertAlmostEqual(result, benchmark_result, places=5)
 
     @inlineCallbacks
+    def test_create_task(self):
+        task = Task(
+            env_id='test_env',
+            prerequisites={'key': 'value'}
+        )
+
+        async def create_task():
+            return task
+
+        prereq = LocalhostPrerequisites(create_task=create_task)
+        service = self._get_service(prereq)
+        client = yield deferred_from_future(RequestorAppClient.create(service))
+        result = yield deferred_from_future(client.create_task(
+            task_id='whatever',
+            max_subtasks_count=0,
+            task_params={},
+        ))
+        self.assertEqual(result, task)
+        yield deferred_from_future(client.shutdown())
+
+    @inlineCallbacks
     def test_subtasks(self):
         subtask = Subtask(
             subtask_id='test_subtask',
@@ -121,7 +142,8 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
         pending_subtasks = yield deferred_from_future(pending_subtasks_future)
         self.assertTrue(pending_subtasks)
 
-        subtask_future = asyncio.ensure_future(client.next_subtask('whatever'))
+        subtask_future = asyncio.ensure_future(client.next_subtask(
+            'whatever', 'whatever'))
         result = yield deferred_from_future(subtask_future)
         self.assertEqual(result, subtask)
 
