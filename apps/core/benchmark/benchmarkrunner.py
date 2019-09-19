@@ -66,9 +66,9 @@ class BenchmarkRunner(LocalComputer):
         return self.benchmark.verify_result(res["data"])
 
     def computation_success(self, task_thread: TaskThread) -> None:
-        res, _ = task_thread.result
         try:
-            benchmark_value = self.benchmark.normalization_constant / self._get_time_spent()
+            benchmark_value = \
+                self.benchmark.normalization_constant / self._get_time_spent()
             if benchmark_value < 0:
                 raise ZeroDivisionError
         except ZeroDivisionError:

@@ -5,13 +5,13 @@ from ipaddress import AddressValueError, ip_address
 from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import collections
+from twisted.web.client import readBody
 import golem.tools.talkback
 import requests
 from requests import HTTPError
 
 from golem_messages import helpers as msg_helpers
 from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import readBody
 from twisted.web.http_headers import Headers
 
 from golem.core.golem_async import AsyncHTTPRequest
