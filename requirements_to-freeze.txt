@@ -19,7 +19,7 @@ enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==3.11.0
-Golem-Smart-Contracts-Interface==1.10.2
+Golem-Smart-Contracts-Interface==1.10.3
 golem_task_api==0.14.0
 html2text==2018.1.9
 humanize==0.5.1
