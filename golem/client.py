@@ -29,6 +29,7 @@ from golem.core.common import (
     node_info_str,
     string_to_timeout,
     to_unicode,
+    deferred_from_future,
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
@@ -66,7 +67,6 @@ from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
@@ -416,7 +416,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         if self.config_desc.net_masking_enabled:
             mask_udpate_service = MaskUpdateService(
-                task_manager=self.task_server.task_manager,
+                task_server=self.task_server,
                 interval_seconds=self.config_desc.mask_update_interval,
                 update_num_bits=self.config_desc.mask_update_num_bits
             )
@@ -1548,30 +1548,50 @@ class MaskUpdateService(LoopingCallService):
 
     def __init__(
             self,
-            task_manager: TaskManager,
+            task_server: TaskServer,
             interval_seconds: int,
             update_num_bits: int
     ) -> None:
-        self._task_manager: TaskManager = task_manager
+        self._task_server: TaskServer = task_server
         self._update_num_bits = update_num_bits
         self._interval = interval_seconds
         super().__init__(interval_seconds)
 
+    @inlineCallbacks
     def _run(self) -> None:
         logger.info('Updating masks')
+        old_task_manager = self._task_server.task_manager
         # Using list() because tasks could be changed by another thread
-        for task_id, task in list(self._task_manager.tasks.items()):
-            if not self._task_manager.task_needs_computation(task_id):
+        for task_id, task in list(old_task_manager.tasks.items()):
+            if not old_task_manager.task_needs_computation(task_id):
                 continue
-            task_state = self._task_manager.query_task_state(task_id)
+            task_state = old_task_manager.query_task_state(task_id)
             if task_state.elapsed_time < self._interval:
                 continue
 
-            self._task_manager.decrease_task_mask(
+            old_task_manager.decrease_task_mask(
                 task_id=task_id,
                 num_bits=self._update_num_bits)
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
+
+        requested_task_manager = self._task_server.requested_task_manager
+        started_tasks = requested_task_manager.get_started_tasks
+        # Using list() because tasks could be changed by another thread
+        for db_task in list(started_tasks):
+            has_subtask = yield deferred_from_future(
+                requested_task_manager.has_pending_subtasks(db_task.task_id)
+            )
+            if not has_subtask:
+                continue
+            if db_task.elapsed_seconds < self._interval:
+                continue
+
+            requested_task_manager.decrease_task_mask(
+                task_id=task_id,
+                num_bits=self._update_num_bits)
+            logger.info('Updating mask. task_id=%r, new_mask_size=%r',
+                        task_id, db_task.mask.num_bits)
 
 
 class DailyJobsService(LoopingCallService):

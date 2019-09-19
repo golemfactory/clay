@@ -427,6 +427,20 @@ class RequestedTaskManager:
 
         logger.debug('stop() - DONE')
 
+    def decrease_task_mask(self, task_id: TaskId, num_bits: int = 1) -> None:
+        """ Decrease mask for given task i.e. make it less restrictive """
+        logger.debug(
+            'decrease_task_mask(task_id=%r, num_bits=%d)',
+            task_id,
+            num_bits
+        )
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        try:
+            task.mask.decrease(num_bits)
+            task.save()
+        except ValueError:
+            logger.exception('Wrong number of bits for mask decrease')
+
     async def _get_app_client(
             self,
             app_id: str,
