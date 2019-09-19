@@ -50,6 +50,9 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
                     db_model.msg_data,
                 )
                 continue
+            # Silence Payment timestamp is too far in the past.
+            except msg_exceptions.ValidationError:
+                continue
             except msg_exceptions.MessageError:
                 logger.info(
                     'Invalid message in queue.'
