@@ -1,9 +1,9 @@
 import asyncio
 import hashlib
-from datetime import timedelta
 import logging
 import os
 import shutil
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -12,7 +12,8 @@ from golem_messages import idgenerator
 from golem_task_api.dirutils import RequestorDir, RequestorTaskDir
 from golem_task_api.enums import VerifyResult
 from golem_task_api.client import RequestorAppClient
-from peewee import fn
+from peewee import fn, DoesNotExist
+from pydispatch import dispatcher
 
 from golem.app_manager import AppManager, AppId
 from golem.model import (
@@ -22,7 +23,14 @@ from golem.model import (
     RequestedSubtask,
 )
 from golem.task.envmanager import EnvironmentManager, EnvId
-from golem.task.taskstate import TaskStatus, SubtaskStatus, TASK_STATUS_ACTIVE
+from golem.task.taskstate import (
+    Operation,
+    SubtaskOp,
+    SubtaskStatus,
+    TaskOp,
+    TaskStatus,
+    TASK_STATUS_ACTIVE,
+)
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
 
@@ -143,21 +151,23 @@ class RequestedTaskManager:
         )
 
         logger.debug(
-            'create_task(task_id=%r) - preparing directories. app_id=%s',
+            'create_task(task_id=%r) - prepare directories. app_id=%s',
             task.task_id,
             task.app_id,
         )
         task_dir = self._task_dir(task.task_id)
         task_dir.prepare()
         # Move resources to task_inputs_dir
+        logger.debug('create_task(task_id=%r) - copy resources', task.task_id)
         for resource in golem_params.resources:
             shutil.copy2(resource, task_dir.task_inputs_dir)
         logger.info(
-            "Creating task. id=%s, app=%r",
+            "Created task. id=%s, app=%r",
             task.task_id,
             golem_params.app_id,
         )
         logger.debug('raw_task=%r', task)
+        self._notice_task_updated(task, op=TaskOp.CREATED)
         return task.task_id
 
     async def init_task(self, task_id: TaskId) -> None:
@@ -186,8 +196,7 @@ class RequestedTaskManager:
         task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
-    @staticmethod
-    def start_task(task_id: TaskId) -> None:
+    def start_task(self, task_id: TaskId) -> None:
         """ Marks an already initialized task as ready for computation. """
         logger.debug('start_task(task_id=%r)', task_id)
 
@@ -199,7 +208,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.start_time = default_now()
         task.save()
-        # FIXME: add self.notice_task_updated(task_id, op=TaskOp.STARTED)
+        self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
     @staticmethod
@@ -276,10 +285,11 @@ class RequestedTaskManager:
                 "Application refused to assign subtask to provider node. "
                 "task_id=%r, node_id=%r", task_id, node.node_id)
             return None
+        subtask_id = result.subtask_id
 
         subtask = RequestedSubtask.create(
             task=task,
-            subtask_id=result.subtask_id,
+            subtask_id=subtask_id,
             status=SubtaskStatus.starting,
             payload=result.params,
             inputs=list(map(str, result.resources)),
@@ -294,9 +304,16 @@ class RequestedTaskManager:
             task_deadline
         )
 
-        ProviderComputeTimers.start(subtask.subtask_id)
+        self._notice_task_updated(
+            task,
+            subtask_id=subtask_id,
+            op=SubtaskOp.ASSIGNED
+        )
+        task.status = TaskStatus.computing
+        task.save()
+        ProviderComputeTimers.start(subtask_id)
         return SubtaskDefinition(
-            subtask_id=subtask.subtask_id,
+            subtask_id=subtask_id,
             resources=subtask.inputs,
             params=subtask.payload,
             deadline=deadline,
@@ -315,6 +332,11 @@ class RequestedTaskManager:
         app_client = await self._get_app_client(task.app_id)
         subtask.status = SubtaskStatus.verifying
         subtask.save()
+        self._notice_task_updated(
+            task,
+            subtask_id=subtask_id,
+            op=SubtaskOp.VERIFYING
+        )
         try:
             result, _ = await app_client.verify(task_id, subtask_id)
         except Exception as e:
@@ -328,18 +350,28 @@ class RequestedTaskManager:
 
         ProviderComputeTimers.finish(subtask_id)
         if result is VerifyResult.SUCCESS:
+            subtask_op = SubtaskOp.FINISHED
             subtask.status = SubtaskStatus.finished
         elif result is VerifyResult.FAILURE:
+            subtask_op = SubtaskOp.NOT_ACCEPTED
             subtask.status = SubtaskStatus.failure
         else:
             # TODO: Handle other results
             raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
 
+        self._notice_task_updated(
+            task,
+            subtask_id=subtask.subtask_id,
+            op=subtask_op)
+
         if result is VerifyResult.SUCCESS:
             # Check if task completed
             if not await self.has_pending_subtasks(task_id):
                 if not self._get_pending_subtasks(task_id):
+                    self._notice_task_updated(
+                        task,
+                        op=TaskOp.FINISHED)
                     task.status = TaskStatus.finished
                     task.save()
                     await self._shutdown_app_client(task.app_id)
@@ -359,7 +391,7 @@ class RequestedTaskManager:
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
 
-        # self.notice_task_updated(task_id, op=TaskOp.ABORTED)
+        self._notice_task_updated(task_id, op=TaskOp.ABORTED)
 
         await self._shutdown_app_client(task.app_id)
 
@@ -440,6 +472,29 @@ class RequestedTaskManager:
             task.save()
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
+
+    def work_offer_received(self, task_id: TaskId):
+        logger.debug('received_work_offer(task_id=%r)', task_id)
+        try:
+            task = RequestedTask.get(RequestedTask.task_id == task_id)
+            self._notice_task_updated(task, op=TaskOp.WORK_OFFER_RECEIVED)
+        except DoesNotExist:
+            raise RuntimeError(
+                f'Can not accept work offer, not my task. task_id={task_id}'
+            )
+
+    async def work_offer_canceled(self, task_id: TaskId, subtask_id: SubtaskId):
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == subtask_id
+        )
+        assert subtask.task == task
+        await self.discard_subtasks(task_id, [subtask_id])
+        self._notice_task_updated(
+            task,
+            subtask_id=subtask_id,
+            op=SubtaskOp.FAILED
+        )
 
     async def _get_app_client(
             self,
@@ -533,3 +588,25 @@ class RequestedTaskManager:
         if unfinished_tasks == 0:
             await self._app_clients[app_id].shutdown()
             del self._app_clients[app_id]
+
+    def _notice_task_updated(
+            self,
+            db_task,
+            subtask_id: Optional[str] = None,
+            op: Optional[Operation] = None,
+    ):
+
+        logger.debug(
+            "Notice task updated. task_id=%s, subtask_id=%s, op=%s",
+            db_task.task_id, subtask_id, op,
+        )
+
+        dispatcher.send(
+            signal='golem.taskmanager',
+            event='task_status_updated',
+            task_id=db_task.task_id,
+            # FIXME: Fake the old task_state or update monitor for new values
+            task_status=db_task.status,
+            subtask_id=subtask_id,
+            op=op,
+        )

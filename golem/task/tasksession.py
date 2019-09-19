@@ -25,7 +25,9 @@ from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import (
-    Offer, ProviderPerformance
+    DEFAULT_MARKET_STRATEGY,
+    Offer,
+    ProviderPerformance,
 )
 from golem.model import Actor
 from golem.network import history
@@ -274,8 +276,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.ConcentDisabled)
             return
 
+        is_new_task = self.requested_task_manager.task_exists(task_id)
         if not self.task_manager.is_my_task(task_id) and \
-                not self.requested_task_manager.task_exists(task_id):
+                not is_new_task:
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
@@ -289,7 +292,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id, common.short_node_id(self.key_id))
         logger.info("Received offer to compute. %s", task_node_info)
 
-        self.task_manager.got_wants_to_compute(msg.task_id)
+        if is_new_task:
+            self.requested_task_manager.work_offer_received(msg.task_id)
+        else:
+            self.task_manager.got_wants_to_compute(msg.task_id)
 
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         if not self.task_server.should_accept_provider(
@@ -298,7 +304,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        if self.requested_task_manager.task_exists(task_id):
+        if is_new_task:
             if not self.requested_task_manager.has_pending_subtasks(task_id):
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
@@ -330,10 +336,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = self.task_manager.get_market_strategy_for_task(
-            current_task
-        )
+        if is_new_task:
+            market_strategy = DEFAULT_MARKET_STRATEGY
+        else:
+            current_task = self.task_manager.tasks[msg.task_id]
+            market_strategy = self.task_manager.get_market_strategy_for_task(
+                current_task
+            )
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
