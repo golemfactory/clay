@@ -122,6 +122,7 @@ class ETSProvider:
             query = query.where(
                 model.WalletOperation.direction == direction,
             )
+        total = query.count()
         query = query.paginate(page_num, per_page)
         tp_query = model.TaskPayment.select() \
             .where(
@@ -160,7 +161,7 @@ class ETSProvider:
                 'created': common.datetime_to_timestamp_utc(o.created_date),
                 'modified': common.datetime_to_timestamp_utc(o.modified_date),
             }
-        return [operation(o) for o in query]
+        return total, [operation(o) for o in query]
 
     @rpc_utils.expose('pay.gas_price')
     def get_gas_price(self) -> typing.Dict[str, str]:
