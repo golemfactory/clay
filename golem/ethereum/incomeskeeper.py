@@ -180,7 +180,6 @@ class IncomesKeeper:
 
     @staticmethod
     def get_list_of_all_incomes():
-        # TODO: pagination. issue #2402
         return model.TaskPayment.incomes(
         ).order_by(model.TaskPayment.created_date.desc())
 
