@@ -2,20 +2,18 @@
 # ^^ Pytest fixtures in the same file require the same name
 
 import asyncio
-import json
 from pathlib import Path
 
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.structs import Subtask
-from mock import Mock
+from mock import ANY, Mock
 import pytest
 
 from golem.app_manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import (
-    ComputingNode,
     CreateTaskParams,
     RequestedTaskManager,
     ComputingNodeDefinition,
@@ -37,7 +35,7 @@ def mock_client(monkeypatch):
 
     client_mock.create_task.return_value = Mock(
         env_id='env_id',
-        prerequisites_json='null'
+        prerequisites={}
     )
     return client_mock
 
@@ -82,7 +80,7 @@ class TestRequestedTaskManager():
         prerequisites = {'key': 'value'}
         mock_client.create_task.return_value = Mock(
             env_id=env_id,
-            prerequisites_json=json.dumps(prerequisites)
+            prerequisites=prerequisites
         )
         # when
         await self.rtm.init_task(task_id)
@@ -160,7 +158,10 @@ class TestRequestedTaskManager():
         assert row.task_id == task_id
         assert row.computing_node.node_id == computing_node.node_id
         assert row.computing_node.name == computing_node.name
-        mock_client.next_subtask.assert_called_once_with(task_id)
+        mock_client.next_subtask.assert_called_once_with(
+            task_id=task_id,
+            opaque_node_id=ANY
+        )
 
     @pytest.mark.asyncio
     async def test_verify(self, mock_client):
