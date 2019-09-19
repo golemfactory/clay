@@ -40,7 +40,7 @@ ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
 Golem-Messages==3.11.0
-Golem-Smart-Contracts-Interface==1.10.2
+Golem-Smart-Contracts-Interface==1.10.3
 golem_task_api==0.14.0
 greenlet==0.4.15
 h2==3.0.1
