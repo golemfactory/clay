@@ -13,7 +13,6 @@ from unittest.mock import Mock, MagicMock, patch, ANY, call
 from pydispatch import dispatcher
 import freezegun
 from twisted.internet import defer
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -21,21 +20,21 @@ from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from requests import HTTPError
 
 from golem import testutils
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
-from golem.core.common import install_reactor
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import (
     Environment as OldEnv,
     SupportStatus,
     UnsupportReason,
 )
+from golem.envs import BenchmarkResult
 from golem.envs import Environment as NewEnv
-from golem.envs.docker.cpu import DOCKER_CPU_ENV_ID
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.resource import resourcemanager
@@ -60,12 +59,16 @@ from golem.task.taskserver import (
 )
 from golem.task.taskstate import TaskState, TaskOp, TaskStatus
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDatabaseWithReactor, \
-    uninstall_reactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
-from tests.golem.envs.localhost import LocalhostEnvironment, LocalhostConfig, \
-    LocalhostPrerequisites, LocalhostPayloadBuilder
+from tests.golem.envs.localhost import (
+    LocalhostEnvironment,
+    LocalhostConfig,
+    LocalhostPrerequisites,
+    LocalhostPayloadBuilder,
+)
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 DEFAULT_RESOURCE_SIZE: int = 2 * 1024
 DEFAULT_MAX_RESOURCE_SIZE_KB: int = 3
@@ -125,7 +128,8 @@ def _assert_log_msg(logger_mock, msg):
 
 class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
-                         testutils.TestWithClient):
+                         testutils.TestWithClient,
+                         TwistedAsyncioTestCase):
 
     @patch('golem.network.concent.handlers_library.HandlersLibrary'
            '.register_handler')
@@ -154,7 +158,10 @@ class TaskServerTestBase(LogTestCase,
         testutils.DatabaseFixture.tearDown(self)
 
         if hasattr(self, "ts") and self.ts:
-            self.ts.quit()
+            # Hack to not call the asycio call RTM.quit()
+            # Uncomment when this test works with asyncio
+            # self.ts.quit()
+            self.ts.task_computer.quit()
 
     def _prepare_handshake(self, task_owner_key, task_id):
         self.ts.start_handshake(
@@ -174,8 +181,18 @@ class TaskServerTestBase(LogTestCase,
             -> None:
         env = Mock(spec=OldEnv)
         env.get_min_accepted_performance.return_value = min_accepted_perf
-        env.get_performance = Mock(return_value=0.0)
+        env.get_benchmark_result = Mock(return_value=BenchmarkResult())
         self.ts.get_environment_by_id = Mock(return_value=env)
+
+    def _patch_async(self, *args, **kwargs):
+        patcher = patch(*args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def _patch_ts_async(self, *args, **kwargs):
+        patcher = patch.object(self.ts, *args, **kwargs)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
 
 
 class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
@@ -214,7 +231,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self._prepare_handshake(task_owner_key, task_id)
 
         env_mock = Mock(spec=OldEnv)
-        env_mock.get_performance = Mock(return_value=0.0)
+        env_mock.get_benchmark_result = lambda: BenchmarkResult()
         self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
@@ -796,6 +813,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_new_connection(self, *_):
         ts = self.ts
+        ts.resume()
         tss = tasksession.TaskSession(Mock())
         ts.new_connection(tss)
         assert len(ts.task_sessions_incoming) == 1
@@ -850,26 +868,47 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             received_options=Mock(filtered=Mock(side_effect=Exception)),
         ) is built_options
 
+    @defer.inlineCallbacks
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
-        assert self.ts.active
-        assert not CoreTask.VERIFICATION_QUEUE._paused
-
-        self.ts.pause()
-
         assert not self.ts.active
-        assert CoreTask.VERIFICATION_QUEUE._paused
+        assert not CoreTask.VERIFICATION_QUEUE._paused
 
         self.ts.resume()
 
         assert self.ts.active
         assert not CoreTask.VERIFICATION_QUEUE._paused
 
+        with patch('golem.task.taskserver.TaskServer.quit'):
+            yield self.ts.pause()
+
+        assert not self.ts.active
+        assert CoreTask.VERIFICATION_QUEUE._paused
+
     def test_add_task_header_invalid_sig(self):
         self.ts._verify_header_sig = lambda _: False
         result = self.ts.add_task_header(Mock())
         self.assertFalse(result)
+
+    @patch('golem.task.taskserver.RequestedTaskManager.get_started_tasks')
+    @patch('golem.task.taskserver.dt_tasks.TaskHeader')
+    def test_get_own_task_headers(self, mock_task_header, mock_get_tasks):
+        # given
+        mock_th_instance = Mock()
+        mock_task_header.return_value = mock_th_instance
+
+        mock_db_task = Mock()
+        mock_db_task.start_time.timestamp.return_value = 1
+        mock_db_task.deadline.timestamp.return_value = 1
+        task_list = [mock_db_task]
+        mock_get_tasks.return_value = task_list
+        # when
+        result = self.ts.get_own_tasks_headers()
+        # then
+        mock_get_tasks.assert_called_once()
+        assert len(result) == len(task_list)
+        mock_th_instance.sign.assert_called_once()
 
 
 class TaskServerTaskHeaderTest(TaskServerTestBase):
@@ -881,25 +920,31 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         task_header = get_example_task_header(keys_auth_2.public_key)
+        task_header.environment_prerequisites = dict(image='test/0')
 
         self.assertFalse(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 0)
+        self.assertEqual(ts._docker_image_discovered.call_count, 0)
 
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
         task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
+        self.assertEqual(ts._docker_image_discovered.call_count, 1)
 
     def test_add_task_header_past_deadline(self):
         keys_auth_2 = KeysAuth(
@@ -909,12 +954,15 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         )
 
         ts = self.ts
+        ts._docker_image_discovered = Mock()
 
         with freezegun.freeze_time(datetime.utcnow() - timedelta(hours=2)):
             task_header = get_example_task_header(keys_auth_2.public_key)
+            task_header.environment_prerequisites = dict(image='test/0')
             task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertFalse(ts.add_task_header(task_header))
+        self.assertFalse(ts._docker_image_discovered.called)
 
 
 class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
@@ -1454,20 +1502,7 @@ class TestRequestRandomTask(TaskServerTestBase):
         request_task.assert_called_once_with(task_header)
 
 
-class TaskServerAsyncTestBase(TaskServerTestBase, TwistedTestCase):
-
-    def _patch_async(self, *args, **kwargs):
-        patcher = patch(*args, **kwargs)
-        self.addCleanup(patcher.stop)
-        return patcher.start()
-
-    def _patch_ts_async(self, *args, **kwargs):
-        patcher = patch.object(self.ts, *args, **kwargs)
-        self.addCleanup(patcher.stop)
-        return patcher.start()
-
-
-class TestChangeConfig(TaskServerAsyncTestBase):
+class TestChangeConfig(TaskServerTestBase):
 
     @defer.inlineCallbacks
     def test(self):
@@ -1487,10 +1522,11 @@ class TestChangeConfig(TaskServerAsyncTestBase):
         change_pcs_config.assert_called_once_with(self.ts, config_desc)
 
 
-class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
+@patch('golem.task.envmanager.EnvironmentManager.remove_cached_performance')
+class ChangeTaskComputerConfig(TaskServerTestBase):
 
     @defer.inlineCallbacks
-    def test_config_unchanged_no_benchmarks(self):
+    def test_config_unchanged_no_benchmarks(self, remove_performance):
         change_tc_config = self._patch_ts_async('task_computer').change_config
         change_tc_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1500,13 +1536,15 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         yield self.ts._change_task_computer_config(config_desc, False)
         change_tc_config.assert_called_once_with(config_desc)
         run_benchmarks.assert_not_called()
+        remove_performance.assert_not_called()
 
     @defer.inlineCallbacks
-    def test_config_changed_no_benchmarks(self):
+    def test_config_changed_no_benchmarks(self, remove_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(True)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
             .run_all_benchmarks
+        env_manager = self.ts.task_keeper.new_env_manager
 
         def _check(callback, _):
             task_computer.lock_config.assert_called_once_with(True)
@@ -1520,9 +1558,13 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        remove_performance.assert_has_calls(
+            [call(env_id) for env_id in env_manager.environments()],
+            any_order=True
+        )
 
     @defer.inlineCallbacks
-    def test_config_unchanged_run_benchmarks(self):
+    def test_config_unchanged_run_benchmarks(self, remove_performance):
         task_computer = self._patch_ts_async('task_computer')
         task_computer.change_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
@@ -1540,9 +1582,10 @@ class ChangeTaskComputerConfig(TaskServerAsyncTestBase):
         task_computer.change_config.assert_called_once_with(config_desc)
         task_computer.lock_config.assert_called_once_with(False)
         run_benchmarks.assert_called_once()
+        remove_performance.assert_not_called()
 
 
-class TestTaskServerConcent(TaskServerAsyncTestBase):
+class TestTaskServerConcent(TaskServerTestBase):
 
     def setUp(self):  # pylint: disable=arguments-differ
         super().setUp()
@@ -1576,7 +1619,7 @@ class TestTaskServerConcent(TaskServerAsyncTestBase):
         self.ts.client.concent_service.required_as_provider = False
 
         env = Mock(spec=OldEnv)
-        env.get_performance.return_value = 0
+        env.get_benchmark_result.return_value = BenchmarkResult()
         self._patch_ts_async('get_environment_by_id', return_value=env)
 
         task_header = get_example_task_header('test')
@@ -1596,7 +1639,7 @@ class TestTaskServerConcent(TaskServerAsyncTestBase):
         )
 
 
-class TestEnvManager(TaskServerAsyncTestBase):
+class TestEnvManager(TaskServerTestBase):
     def test_get_environment_by_id(self):
         # Given
         env_manager = self.ts.task_keeper.new_env_manager
@@ -1638,8 +1681,8 @@ class TestEnvManager(TaskServerAsyncTestBase):
         mock_env = Mock(spec=NewEnv)
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
-        mock_get = Mock(return_value=300.0)
-        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+        mock_get = Mock(spec=BenchmarkResult)
+        self.ts.task_keeper.new_env_manager.get_benchmark_result = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
@@ -1667,7 +1710,7 @@ class TestEnvManager(TaskServerAsyncTestBase):
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
         mock_get = Mock(return_value=performance)
-        self.ts.task_keeper.new_env_manager.get_performance = mock_get
+        self.ts.task_keeper.new_env_manager.get_benchmark_result = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
@@ -1698,22 +1741,8 @@ class TestEnvManager(TaskServerAsyncTestBase):
 class TestNewTaskComputerIntegration(
         testutils.TestWithClient,
         testutils.DatabaseFixture,
-        TwistedTestCase
+        TwistedAsyncioTestCase
 ):
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        asyncio.set_event_loop(asyncio.new_event_loop())
-        install_reactor()
-
-    @classmethod
-    def cleanUpClass(cls):
-        uninstall_reactor()
-
     @patch('golem.task.taskserver.TaskHeaderKeeper', spec=TaskHeaderKeeper)
     @patch('golem.task.taskserver.ResourceManager', spec_set=ResourceManager)
     @patch('golem.task.taskserver.BenchmarkManager', spec_set=BenchmarkManager)

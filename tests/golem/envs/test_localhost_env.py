@@ -9,33 +9,19 @@ from golem_task_api import (
 from golem_task_api.structs import Subtask
 from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
-from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.task.task_api import EnvironmentTaskApiService
-from golem.tools.testwithreactor import uninstall_reactor
 from tests.golem.envs.localhost import (
     LocalhostEnvironment,
     LocalhostConfig,
     LocalhostPrerequisites,
     LocalhostPayloadBuilder
 )
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 
-class TestLocalhostEnv(TwistedTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        install_reactor()
-
-    @classmethod
-    def tearDownClass(cls):
-        uninstall_reactor()
+class TestLocalhostEnv(TwistedAsyncioTestCase):
 
     @staticmethod
     def _get_service(prereq: LocalhostPrerequisites) -> TaskApiService:
