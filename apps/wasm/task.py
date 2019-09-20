@@ -146,6 +146,13 @@ class WasmTaskOptions(Options):
             self.exec_args: List[str] = exec_args
             self.output_file_paths: List[str] = output_file_paths
 
+        def to_dict(self) -> dict:
+            return {
+                'name': self.name,
+                'exec_args': self.exec_args,
+                'output_file_paths': self.output_file_paths
+            }
+
     def __init__(self) -> None:
         super().__init__()
         self.js_name: str = ''
@@ -180,6 +187,16 @@ class WasmTaskDefinition(TaskDefinition):
     def add_to_resources(self) -> None:
         self.resources = [self.options.input_dir]
 
+    def to_dict(self) -> dict:
+        dictionary = super().to_dict()
+        dictionary['options']['js_name'] = self.options.js_name
+        dictionary['options']['wasm_name'] = self.options.wasm_name
+        dictionary['options']['input_dir'] = self.options.input_dir
+        dictionary['options']['output_dir'] = self.options.output_dir
+        dictionary['options']['subtasks'] = {
+            k: v.to_dict() for k, v in self.options.subtasks.items()
+        }
+        return dictionary
 
 class WasmTask(CoreTask):
     ENVIRONMENT_CLASS = WasmTaskEnvironment
