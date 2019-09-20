@@ -1576,7 +1576,7 @@ class MaskUpdateService(LoopingCallService):
                         task_id, task.header.mask.num_bits)
 
         requested_task_manager = self._task_server.requested_task_manager
-        started_tasks = requested_task_manager.get_started_tasks
+        started_tasks = requested_task_manager.get_started_tasks()
         # Using list() because tasks could be changed by another thread
         for db_task in list(started_tasks):
             has_subtask = yield deferred_from_future(
