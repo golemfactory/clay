@@ -418,7 +418,7 @@ class RequestedTaskManager:
                 RequestedSubtask.subtask_id.in_(subtask_ids)):
             assert subtask.task_id == task_id
         discarded_subtask_ids = await app_client.discard_subtasks(subtask_ids)
-        for subtask_id in RequestedSubtask.select().where(
+        for subtask in RequestedSubtask.select().where(
                 RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
