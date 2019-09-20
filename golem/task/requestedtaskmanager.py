@@ -1,11 +1,11 @@
 import asyncio
-import json
+import hashlib
 from datetime import timedelta
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -188,7 +188,7 @@ class RequestedTaskManager:
             task.app_params,
         )
         task.env_id = reply.env_id
-        task.prerequisites = json.loads(reply.prerequisites_json)
+        task.prerequisites = reply.prerequisites
         task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
@@ -254,7 +254,7 @@ class RequestedTaskManager:
             self,
             task_id: TaskId,
             computing_node: ComputingNodeDefinition
-    ) -> SubtaskDefinition:
+    ) -> Optional[SubtaskDefinition]:
         """ Return a set of data required for subtask computation. """
         logger.debug(
             'get_next_subtask(task_id=%r, computing_node=%r)',
@@ -265,7 +265,7 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         node, _ = ComputingNode.get_or_create(
             node_id=computing_node.node_id,
-            name=computing_node.name
+            defaults={'name': computing_node.name}
         )
 
         # Check not providing for own task
@@ -283,7 +283,17 @@ class RequestedTaskManager:
                 f"Task not pending, no next subtask. task_id={task_id}")
 
         app_client = await self._get_app_client(task.app_id)
-        result = await app_client.next_subtask(task.task_id)
+        result = await app_client.next_subtask(
+            task_id=task.task_id,
+            opaque_node_id=hashlib.sha3_256(node.node_id.encode()).hexdigest()  # noqa pylint: disable=no-member
+        )
+
+        if result is None:
+            logger.info(
+                "Application refused to assign subtask to provider node. "
+                "task_id=%r, node_id=%r", task_id, node.node_id)
+            return None
+
         subtask = RequestedSubtask.create(
             task=task,
             subtask_id=result.subtask_id,
@@ -408,7 +418,7 @@ class RequestedTaskManager:
                 RequestedSubtask.subtask_id.in_(subtask_ids)):
             assert subtask.task_id == task_id
         discarded_subtask_ids = await app_client.discard_subtasks(subtask_ids)
-        for subtask_id in RequestedSubtask.select().where(
+        for subtask in RequestedSubtask.select().where(
                 RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
