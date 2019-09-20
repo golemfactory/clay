@@ -33,6 +33,11 @@ from golem.task.taskstate import (
 )
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
+from golem.task.taskkeeper import compute_subtask_value
+from golem.ranking.manager.database_manager import (
+    update_provider_efficiency,
+    update_provider_efficacy,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -311,6 +316,13 @@ class RequestedTaskManager:
         )
         task.status = TaskStatus.computing
         task.save()
+
+        loop = asyncio.get_event_loop()
+        loop.call_at(
+            loop.time() + task.subtask_timeout,
+            self._check_subtask_timeout,
+            subtask.subtask_id,
+        )
         ProviderComputeTimers.start(subtask_id)
         return SubtaskDefinition(
             subtask_id=subtask_id,
@@ -348,7 +360,6 @@ class RequestedTaskManager:
             )
             result, _ = VerifyResult.FAILURE, str(e)
 
-        ProviderComputeTimers.finish(subtask_id)
         if result is VerifyResult.SUCCESS:
             subtask_op = SubtaskOp.FINISHED
             subtask.status = SubtaskStatus.finished
@@ -359,11 +370,7 @@ class RequestedTaskManager:
             # TODO: Handle other results
             raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
-
-        self._notice_task_updated(
-            task,
-            subtask_id=subtask.subtask_id,
-            op=subtask_op)
+        self._finish_subtask(subtask, subtask_op)
 
         if result is VerifyResult.SUCCESS:
             # Check if task completed
@@ -376,7 +383,7 @@ class RequestedTaskManager:
 
         return result is VerifyResult.SUCCESS
 
-    async def abort_task(self, task_id):
+    async def abort_task(self, task_id: TaskId):
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
             raise RuntimeError(
@@ -385,9 +392,9 @@ class RequestedTaskManager:
         task.save()
         subtasks = self._get_pending_subtasks(task_id)
         for subtask in subtasks:
-            ProviderComputeTimers.finish(subtask.subtask_id)
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
+            self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
         self._notice_task_updated(task, op=TaskOp.ABORTED)
 
@@ -503,7 +510,7 @@ class RequestedTaskManager:
             raise RuntimeError(
                 "Can not receive results for subtask, expected "
                 f"status 'starting' found '{subtask.status}'. "
-                f"subtas_id={subtask_id}"
+                f"subtask_id={subtask_id}"
             )
         subtask.status = SubtaskStatus.downloading
         subtask.save()
@@ -515,7 +522,7 @@ class RequestedTaskManager:
         )
 
     @staticmethod
-    def get_node_id_for_subtask(subtask_id) -> Optional[str]:
+    def get_node_id_for_subtask(subtask_id: SubtaskId) -> Optional[str]:
         try:
             subtask = RequestedSubtask.get(
                 RequestedSubtask.subtask_id == subtask_id
@@ -577,6 +584,20 @@ class RequestedTaskManager:
             task.save()
             self._notice_task_updated(task, op=TaskOp.TIMEOUT)
 
+    def _check_subtask_timeout(self, subtask_id: SubtaskId) -> None:
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == subtask_id
+        )
+        if subtask.status.is_active():
+            logger.info(
+                "Subtask timed out. task_id=%r, subtask_id=%r",
+                subtask.task_id,
+                subtask.subtask_id
+            )
+            subtask.status = SubtaskStatus.timeout
+            subtask.save()
+            self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
+
     @staticmethod
     def _get_unfinished_subtasks_for_node(
             task_id: TaskId,
@@ -619,13 +640,12 @@ class RequestedTaskManager:
 
     @staticmethod
     def _notice_task_updated(
-            db_task,
+            db_task: RequestedTask,
             subtask_id: Optional[str] = None,
             op: Optional[Operation] = None,
     ):
-
         logger.debug(
-            "Notice task updated. task_id=%s, subtask_id=%s, op=%s",
+            "_notice_task_updated(task_id=%s, subtask_id=%s, op=%s)",
             db_task.task_id, subtask_id, op,
         )
 
@@ -638,3 +658,28 @@ class RequestedTaskManager:
             subtask_id=subtask_id,
             op=op,
         )
+
+    def _finish_subtask(self, subtask: RequestedSubtask, op: Operation):
+        logger.debug('_finish_subtask(subtask=%r, op=%r)', subtask, op)
+        subtask_id = subtask.subtask_id
+        ProviderComputeTimers.finish(subtask_id)
+        self._notice_task_updated(subtask.task, subtask_id=subtask_id, op=op)
+        node_id = subtask.computing_node.node_id
+        subtask_timeout = subtask.task.subtask_timeout
+        comp_time = ProviderComputeTimers.time(subtask_id)
+        comp_price = compute_subtask_value(
+            subtask.task.max_price_per_hour,
+            comp_time
+        )
+        update_provider_efficacy(node_id, op)
+        update_provider_efficiency(node_id, subtask_timeout, comp_time)
+        dispatcher.send(
+            signal='golem.subtask',
+            event='finished',
+            timed_out=(op == SubtaskOp.TIMEOUT),
+            subtask_count=subtask.task.max_subtasks,
+            subtask_timeout=subtask_timeout,
+            subtask_price=comp_price,
+            subtask_computation_time=int(round(comp_time)),
+        )
+        ProviderComputeTimers.remove(subtask_id)
