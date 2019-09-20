@@ -127,6 +127,16 @@ class VbrSubtask:
              if s['status'] != SubtaskStatus.finished]
         )
 
+    def restart_subtask(self, subtask_id: str):
+        subtask = self.subtasks[subtask_id]
+        if subtask['status'] != SubtaskStatus.starting:
+            raise ValueError("Cannot restart subtask with status: " +
+                             str(subtask['status']))
+        if subtask['results'] is not None:
+            raise ValueError("Cannot restart computed VbR subtask")
+        self.verifier.remove_actor(subtask['actor'])
+        subtask['status'] = SubtaskStatus.restarted
+
 
 class WasmTaskOptions(Options):
     class SubtaskOptions:
@@ -446,6 +456,14 @@ class WasmTask(CoreTask):
         subtask = self._find_vbrsubtask_by_id(subtask_id)
         instance = subtask.get_instance(subtask_id)
         return instance["results"]
+
+    def restart_subtask(self, subtask_id: str):
+        for vbr_subtask in self.subtasks:
+            try:
+                vbr_subtask.restart_subtask(subtask_id)
+            except KeyError:
+                pass
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
 
 class WasmTaskBuilder(CoreTaskBuilder):

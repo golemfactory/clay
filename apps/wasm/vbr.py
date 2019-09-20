@@ -32,6 +32,10 @@ class UnknownActorError(Exception):
     pass
 
 
+class AlreadyFinished(Exception):
+    pass
+
+
 class VerificationByRedundancy(ABC):
     def __init__(self, redundancy_factor: int,
                  comparator: Callable[[Any, Any], bool],
@@ -153,6 +157,13 @@ class BucketVerifier(VerificationByRedundancy):
         self.actors.append(actor)
         if len(self.actors) >= self.redundancy_factor + 1:
             self.more_actors_needed = False
+
+    def remove_actor(self, actor):
+        if self.verdicts is not None or actor in self.results.keys():
+            raise AlreadyFinished
+        self.actors.remove(actor)
+        if len(self.actors) < self.redundancy_factor + 1:
+            self.more_actors_needed = True
 
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
         if actor not in self.actors:
