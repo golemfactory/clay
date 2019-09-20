@@ -418,7 +418,7 @@ class RequestedTaskManager:
                 RequestedSubtask.subtask_id.in_(subtask_ids)):
             assert subtask.task_id == task_id
         discarded_subtask_ids = await app_client.discard_subtasks(subtask_ids)
-        for subtask_id in RequestedSubtask.select().where(
+        for subtask in RequestedSubtask.select().where(
                 RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
@@ -483,13 +483,16 @@ class RequestedTaskManager:
             shared_dir=shared_dir
         )
 
-    @staticmethod
-    def _check_task_timeout(task_id: TaskId) -> None:
+    def _check_task_timeout(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if task.status.is_active():
             logger.info("Task timed out. task_id=%r", task_id)
             task.status = TaskStatus.timeout
             task.save()
+            pending_subtasks = self._get_pending_subtasks(task_id)
+            for subtask in pending_subtasks:
+                subtask.status = SubtaskStatus.failed
+                subtask.save()
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(
