@@ -369,11 +369,9 @@ class RequestedTaskManager:
             # Check if task completed
             if not await self.has_pending_subtasks(task_id):
                 if not self._get_pending_subtasks(task_id):
-                    self._notice_task_updated(
-                        task,
-                        op=TaskOp.FINISHED)
                     task.status = TaskStatus.finished
                     task.save()
+                    self._notice_task_updated(task, op=TaskOp.FINISHED)
                     await self._shutdown_app_client(task.app_id)
 
         return result is VerifyResult.SUCCESS
@@ -391,7 +389,7 @@ class RequestedTaskManager:
             subtask.status = SubtaskStatus.cancelled
             subtask.save()
 
-        self._notice_task_updated(task_id, op=TaskOp.ABORTED)
+        self._notice_task_updated(task, op=TaskOp.ABORTED)
 
         await self._shutdown_app_client(task.app_id)
 
@@ -516,6 +514,16 @@ class RequestedTaskManager:
             op=SubtaskOp.RESULT_DOWNLOADING
         )
 
+    @staticmethod
+    def get_node_id_for_subtask(subtask_id) -> Optional[str]:
+        try:
+            subtask = RequestedSubtask.get(
+                RequestedSubtask.subtask_id == subtask_id
+            )
+            return subtask.computing_node.node_id
+        except DoesNotExist:
+            return None
+
     async def _get_app_client(
             self,
             app_id: str,
@@ -609,8 +617,8 @@ class RequestedTaskManager:
             await self._app_clients[app_id].shutdown()
             del self._app_clients[app_id]
 
+    @staticmethod
     def _notice_task_updated(
-            self,
             db_task,
             subtask_id: Optional[str] = None,
             op: Optional[Operation] = None,

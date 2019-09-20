@@ -1054,7 +1054,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def check_provider_for_subtask(self, subtask_id) -> bool:
-        node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
+        node_id = self.requested_task_manager.get_node_id_for_subtask(
+            subtask_id
+        )
+        if node_id is None:
+            node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         if node_id != self.key_id:
             logger.warning('Received message about subtask %r from different '
                            'node %r than expected %r', subtask_id,
