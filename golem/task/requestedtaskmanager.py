@@ -459,7 +459,8 @@ class RequestedTaskManager:
 
         logger.debug('stop() - DONE')
 
-    def decrease_task_mask(self, task_id: TaskId, num_bits: int = 1) -> None:
+    @staticmethod
+    def decrease_task_mask(task_id: TaskId, num_bits: int = 1) -> None:
         """ Decrease mask for given task i.e. make it less restrictive """
         logger.debug(
             'decrease_task_mask(task_id=%r, num_bits=%d)',
@@ -494,6 +495,25 @@ class RequestedTaskManager:
             task,
             subtask_id=subtask_id,
             op=SubtaskOp.FAILED
+        )
+
+    def task_result_incoming(self, subtask_id: SubtaskId):
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == subtask_id
+        )
+        if subtask.status != SubtaskStatus.starting:
+            raise RuntimeError(
+                "Can not receive results for subtask, expected "
+                f"status 'starting' found '{subtask.status}'. "
+                f"subtas_id={subtask_id}"
+            )
+        subtask.status = SubtaskStatus.downloading
+        subtask.save()
+
+        self._notice_task_updated(
+            subtask.task_id,
+            subtask_id=subtask.subtask_id,
+            op=SubtaskOp.RESULT_DOWNLOADING
         )
 
     async def _get_app_client(
@@ -541,13 +561,13 @@ class RequestedTaskManager:
             shared_dir=shared_dir
         )
 
-    @staticmethod
-    def _check_task_timeout(task_id: TaskId) -> None:
+    def _check_task_timeout(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if task.status.is_active():
             logger.info("Task timed out. task_id=%r", task_id)
             task.status = TaskStatus.timeout
             task.save()
+            self._notice_task_updated(task, op=TaskOp.TIMEOUT)
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(
