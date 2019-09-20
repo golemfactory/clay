@@ -70,7 +70,7 @@ MAX_TIME_DIFF = 10
 MESSAGE_QUEUE_MAX_AGE = dateutil.relativedelta.relativedelta(months=6)
 
 # How long should peer be banned when failing on resources (seconds)
-ACL_BLOCK_TIMEOUT_RESOURCE = 2 * 3600  # s
+ACL_BLOCK_TIMEOUT_RESOURCE = 10  # s
 
 
 ###############
