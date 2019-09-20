@@ -483,16 +483,13 @@ class RequestedTaskManager:
             shared_dir=shared_dir
         )
 
-    def _check_task_timeout(self, task_id: TaskId) -> None:
+    @staticmethod
+    def _check_task_timeout(task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if task.status.is_active():
             logger.info("Task timed out. task_id=%r", task_id)
             task.status = TaskStatus.timeout
             task.save()
-            pending_subtasks = self._get_pending_subtasks(task_id)
-            for subtask in pending_subtasks:
-                subtask.status = SubtaskStatus.failed
-                subtask.save()
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(

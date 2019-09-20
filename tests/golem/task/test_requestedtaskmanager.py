@@ -309,7 +309,12 @@ class TestRequestedTaskManager():
             task_id,
             self._get_computing_node(),
         )
-        subtask_ids = [subtask.subtask_id]
+        self._add_next_subtask_to_client_mock(mock_client, subtask_id='123')
+        subtask2 = await self.rtm.get_next_subtask(
+            task_id,
+            self._get_computing_node(node_id='testnodeid2'),
+        )
+        subtask_ids = [subtask.subtask_id, subtask2.subtask_id]
         mock_client.discard_subtasks.return_value = subtask_ids
 
         discarded_subtask_ids = await self.rtm.discard_subtasks(
@@ -318,9 +323,10 @@ class TestRequestedTaskManager():
         )
 
         assert discarded_subtask_ids == subtask_ids
-        row = RequestedSubtask.get(
-            RequestedSubtask.subtask_id == discarded_subtask_ids[0])
-        assert row.status == SubtaskStatus.cancelled
+        for subtask_id in discarded_subtask_ids:
+            row = RequestedSubtask.get(
+                RequestedSubtask.subtask_id == subtask_id)
+            assert row.status == SubtaskStatus.cancelled
 
     async def _start_task(self, **golem_params):
         task_id = self._create_task(**golem_params)
@@ -365,14 +371,14 @@ class TestRequestedTaskManager():
         return task_id
 
     @staticmethod
-    def _add_next_subtask_to_client_mock(client_mock):
-        result = Subtask(subtask_id='testsubtaskid', params={}, resources=[])
+    def _add_next_subtask_to_client_mock(client_mock, subtask_id='testsubtaskid'):
+        result = Subtask(subtask_id=subtask_id, params={}, resources=[])
         client_mock.next_subtask.return_value = result
         client_mock.has_pending_subtasks.return_value = True
 
     @staticmethod
-    def _get_computing_node() -> ComputingNodeDefinition:
+    def _get_computing_node(node_id='testnodeid') -> ComputingNodeDefinition:
         return ComputingNodeDefinition(
-            node_id='testnodeid',
+            node_id=node_id,
             name='testnodename',
         )
