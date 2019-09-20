@@ -18,7 +18,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
 from golem.core import simpleserializer
-from golem.core.deferred import DeferredSeq
+from golem.core.deferred import DeferredSeq, deferred_from_future
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
@@ -576,15 +576,13 @@ class ClientProvider:
         @defer.inlineCallbacks
         def init_task():
             try:
-                self.requested_task_manager.init_task(task_id)
+                yield deferred_from_future(
+                    self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
-            # Dummy yield to make this function work with inlineCallbacks.
-            # To be removed when there are other yeilds in this function.
-            yield defer.Deferred()
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
