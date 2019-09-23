@@ -18,7 +18,6 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
-from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
