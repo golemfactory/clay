@@ -29,10 +29,9 @@ from golem.core.common import (
     node_info_str,
     string_to_timeout,
     to_unicode,
-    deferred_from_future,
 )
+from golem.core.deferred import deferred_from_future
 from golem.core.fileshelper import du
-from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -40,10 +39,11 @@ from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.transactionsystem import TransactionSystem
+from golem.hardware.presets import HardwarePresets
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
