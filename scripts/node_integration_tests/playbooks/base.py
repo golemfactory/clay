@@ -21,6 +21,7 @@ from golem.rpc.cert import CertificateError
 from .test_config_base import NodeId
 
 if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
     from queue import Queue
     from subprocess import Popen
     from .test_config_base import TestConfigBase, NodeConfig
@@ -42,7 +43,7 @@ def catch_and_print_exceptions(f):
     def wrapper(*args, **kwargs):
         try:
             f(*args, **kwargs)
-        except:
+        except:  # noqa pylint: disable=bare-except
             traceback.print_exc()
     return wrapper
 

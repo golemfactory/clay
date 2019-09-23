@@ -95,6 +95,8 @@ class ETSProvider:
             .order_by(model.WalletOperation.id.desc())
 
         def _parse_enum(enum_, value):
+            if value is None:
+                return None
             try:
                 return enum_(value)
             except ValueError:
@@ -128,7 +130,7 @@ class ETSProvider:
             .where(
                 model.TaskPayment.wallet_operation.in_(query),
             )
-        task_payments_map = {tp.id: tp for tp in tp_query}
+        task_payments_map = {tp.wallet_operation_id: tp for tp in tp_query}
 
         def payment(wallet_operation_id: int) -> typing.Optional[dict]:
             if wallet_operation_id not in task_payments_map:
