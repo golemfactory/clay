@@ -75,4 +75,7 @@ class EnvironmentTaskApiService(TaskApiService):
     async def wait_until_shutdown_complete(self) -> None:
         assert self._runtime is not None
         loop = asyncio.get_event_loop()
-        await self._runtime.wait_until_stopped().asFuture(loop)
+        try:
+            await self._runtime.wait_until_stopped().asFuture(loop)
+        finally:
+            await self._runtime.clean_up().asFuture(loop)

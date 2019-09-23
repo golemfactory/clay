@@ -1,7 +1,10 @@
 import abc
 import logging
 
+from golem_messages.datastructures import stats as dt_stats
+
 from apps.core.task.coretaskstate import TaskDefinition
+from golem.envs import BenchmarkResult
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
 from golem.task.taskthread import TaskThread
@@ -66,6 +69,11 @@ class BenchmarkRunner(LocalComputer):
         return self.benchmark.verify_result(res["data"])
 
     def computation_success(self, task_thread: TaskThread) -> None:
+        # pylint: disable=no-member
+        provider_stats = dt_stats.ProviderStats(**task_thread.stats)
+        cpu_usage: int = provider_stats.cpu_stats.cpu_usage['total_usage'] \
+            if provider_stats.cpu_stats else 0
+
         try:
             benchmark_value = \
                 self.benchmark.normalization_constant / self._get_time_spent()
@@ -73,4 +81,5 @@ class BenchmarkRunner(LocalComputer):
                 raise ZeroDivisionError
         except ZeroDivisionError:
             benchmark_value = self.benchmark.normalization_constant / 1e-10
-        self.success_callback(benchmark_value)
+
+        self.success_callback(BenchmarkResult(benchmark_value, cpu_usage))

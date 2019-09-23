@@ -11,6 +11,7 @@ from threading import Lock
 from dataclasses import dataclass
 from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
 from golem_task_api import ProviderAppClient, constants as task_api_constants
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet import defer
 
@@ -22,8 +23,8 @@ from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.envs import EnvId
-from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_ENV_ID
-from golem.envs.docker.gpu import DockerGPUConfig, DOCKER_GPU_ENV_ID
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.gpu import DockerGPUConfig
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager

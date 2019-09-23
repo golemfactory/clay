@@ -55,6 +55,20 @@ def default_now():
 default_now.__self__ = datetime.datetime  # type: ignore
 
 
+def default_dict():
+    return {}
+
+
+default_dict.__self__ = dict  # type: ignore
+
+
+def default_list():
+    return []
+
+
+default_list.__self__ = list  # type: ignore
+
+
 class UTCDateTimeField(DateTimeField):
     formats = DateTimeField.formats + [
         '%Y-%m-%d %H:%M:%S+00:00',
@@ -263,6 +277,7 @@ class WalletOperation(BaseModel):
         confirmed = enum.auto()
         overdue = enum.auto()
         failed = enum.auto()
+        arbitraged_by_concent = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -319,6 +334,7 @@ class WalletOperation(BaseModel):
                 cls.status.not_in([
                     cls.STATUS.confirmed,
                     cls.STATUS.failed,
+                    cls.STATUS.arbitraged_by_concent,
                 ]),
                 cls.tx_hash.is_null(False),
                 cls.direction ==
@@ -352,6 +368,7 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+    charged_from_deposit = BooleanField(null=True)
 
     class Meta:
         database = db
@@ -535,19 +552,24 @@ class Performance(BaseModel):
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            stored = Performance.get(Performance.environment_id == env_id)
+            stored.value = performance
+            stored.cpu_usage = cpu_usage
+            stored.save()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            Performance(
+                environment_id=env_id,
+                value=performance,
+                cpu_usage=cpu_usage
+            ).save()
 
 
 class DockerWhitelist(BaseModel):
@@ -704,7 +726,8 @@ class RequestedTask(BaseModel):
     name = CharField(null=True)
     status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
 
-    prerequisites = JsonField(null=False, default='{}')
+    env_id = CharField(null=True)
+    prerequisites = JsonField(null=False, default=default_dict())
 
     task_timeout = IntegerField(null=False)  # milliseconds
     subtask_timeout = IntegerField(null=False)  # milliseconds
@@ -716,7 +739,7 @@ class RequestedTask(BaseModel):
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
-    app_params = JsonField(null=False, default='{}')
+    app_params = JsonField(null=False, default=default_dict())
 
     @property
     def deadline(self) -> Optional[datetime.datetime]:
@@ -744,8 +767,8 @@ class RequestedSubtask(BaseModel):
     subtask_id = CharField(null=False)
     status = StringEnumField(enum_type=taskstate.SubtaskStatus, null=False)
 
-    payload = JsonField(null=False, default='{}')
-    inputs = JsonField(null=False, default='[]')
+    payload = JsonField(null=False, default=default_dict())
+    inputs = JsonField(null=False, default=default_list())
     start_time = UTCDateTimeField(null=True)
     price = IntegerField(null=True)
     computing_node = ForeignKeyField(

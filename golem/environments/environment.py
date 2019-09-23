@@ -2,6 +2,7 @@ import enum
 import logging
 
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.envs import BenchmarkResult
 from golem.envs.docker.benchmark.cpu.minilight import make_perf_test
 from golem.model import Performance
 
@@ -84,15 +85,17 @@ class Environment():
         return self.accept_tasks
 
     @classmethod
-    def get_performance(cls) -> float:
-        """ Return performance index associated with the environment. Return
-        0.0 if performance is unknown
+    def get_benchmark_result(cls) -> BenchmarkResult:
+        """ Return benchmark result associated with the environment. Return
+        0 as performance and usage if benchmark hasn't been run yet.
+        :return BenchmarkResult:
         """
         try:
             perf = Performance.get(Performance.environment_id == cls.get_id())
         except Performance.DoesNotExist:
-            return 0.0
-        return perf.value
+            return BenchmarkResult()
+
+        return BenchmarkResult.from_performance(perf)
 
     @classmethod
     def get_min_accepted_performance(cls) -> float:
@@ -109,11 +112,13 @@ class Environment():
         return step * MinPerformanceMultiplier.get()
 
     @classmethod
-    def run_default_benchmark(cls, save=False):
+    def run_default_benchmark(cls, save=False) -> BenchmarkResult:
         logger = logging.getLogger('golem.task.benchmarkmanager')
         logger.info('Running benchmark for %s', cls.get_id())
         performance = make_perf_test()
         logger.info('%s performance is %.2f', cls.get_id(), performance)
+
         if save:
-            Performance.update_or_create(cls.get_id(), performance)
-        return performance
+            Performance.update_or_create(cls.get_id(), performance, 0)
+
+        return BenchmarkResult(performance, 0)

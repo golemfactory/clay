@@ -37,6 +37,7 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -465,8 +466,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.requested_task_manager.task_exists(task_id):
             if not self.requested_task_manager.has_pending_subtasks(task_id):
                 return None
-            subtask_definition = \
-                self.requested_task_manager.get_next_subtask(task_id)
+            subtask_definition = yield deferred.deferred_from_future(
+                self.requested_task_manager.get_next_subtask(
+                    task_id=task_id,
+                    computing_node=ComputingNodeDefinition(
+                        name='',  # FIXME: Provide proper node name
+                        node_id=self.key_id
+                    )
+                ))
+            if subtask_definition is None:
+                # Application refused to assign subtask to provider node
+                return None
             task_resources_dir = self.requested_task_manager.\
                 get_subtask_inputs_dir(task_id)
             rm = self.task_server.new_resource_manager

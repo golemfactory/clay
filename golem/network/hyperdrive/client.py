@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 import collections
 
 from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import readBody
 from twisted.web.http_headers import Headers
 
 from golem_messages import helpers as msg_helpers
@@ -246,6 +245,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
             params: Optional[Dict] = None,
             parser: Optional[Callable[[Dict], Any]] = None,
     ):
+        # Imports the reactor
+        from twisted.web.client import readBody
         body = None
 
         if endpoint and endpoint[0] == '/':

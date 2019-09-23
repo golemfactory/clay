@@ -8,7 +8,7 @@ from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 import dill
 from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler, entrypoint
-from golem_task_api.structs import Subtask
+from golem_task_api.structs import Subtask, Task
 from twisted.internet import defer, threads
 
 from golem.core.common import is_windows
@@ -27,6 +27,7 @@ from golem.envs import (
     RuntimeOutput,
     RuntimePayload
 )
+from golem.envs import BenchmarkResult
 from golem.task.task_api import TaskApiPayloadBuilder
 
 logger = logging.getLogger(__name__)
@@ -50,7 +51,8 @@ async def _not_implemented(*_):
 class LocalhostPrerequisites(Prerequisites):
     compute: Callable[[str, dict], Awaitable[str]] = _not_implemented
     run_benchmark: Callable[[], Awaitable[float]] = _not_implemented
-    next_subtask: Callable[[], Awaitable[Subtask]] = _not_implemented
+    create_task: Callable[[], Awaitable[Task]] = _not_implemented
+    next_subtask: Callable[[], Awaitable[Optional[Subtask]]] = _not_implemented
     has_pending_subtasks: Callable[[], Awaitable[bool]] = _not_implemented
     verify: Callable[[str], Awaitable[Tuple[bool, Optional[str]]]] = \
         _not_implemented
@@ -98,10 +100,14 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
             task_work_dir: Path,
             max_subtasks_count: int,
             task_params: dict
-    ) -> None:
-        pass
+    ) -> Task:
+        return await self._prereq.create_task()  # type: ignore
 
-    async def next_subtask(self, task_work_dir: Path) -> Subtask:
+    async def next_subtask(
+            self,
+            task_work_dir: Path,
+            opaque_node_id: str
+    ) -> Optional[Subtask]:
         return await self._prereq.next_subtask()  # type: ignore
 
     async def verify(
@@ -250,7 +256,7 @@ class LocalhostEnvironment(EnvironmentBase):
         return defer.succeed(None)
 
     def run_benchmark(self) -> defer.Deferred:
-        return defer.succeed(1.0)
+        return defer.succeed(BenchmarkResult(1.0, 1))
 
     def metadata(self) -> EnvMetadata:
         return EnvMetadata(

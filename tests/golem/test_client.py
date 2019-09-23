@@ -45,6 +45,7 @@ from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import TaskStatus
+from golem.testutils import DatabaseFixture
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
@@ -128,14 +129,19 @@ def make_client(*_, **kwargs):
     return client
 
 
-class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+class TestClientBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
         self.client = make_client(datadir=self.path)
 
     def tearDown(self):
-        self.client.quit()
+        # Only call taskcomputer.quit, TaskServer.quit now requires asyncio
+        # FIXME: Only keep self.client.quit() when it works with asyncio
+        if self.client.task_server is not None:
+            self.client.task_server.task_computer.quit()
+        with patch('golem.task.taskserver.TaskServer.quit'):
+            self.client.quit()
         super().tearDown()
 
 
@@ -251,6 +257,7 @@ class TestClient(TestClientBase):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.task.taskserver.TaskServer.quit')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -276,7 +283,7 @@ class TestClient(TestClientBase):
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
-    @patch('golem.client.P2PService.connect_to_network')
+    @patch('golem.task.taskserver.TaskServer.quit')
     def test_pause_resume(self, *_):
         self.client.start()
 

@@ -29,7 +29,8 @@ class TCPServer:
         """
         self.config_desc = config_desc
         self.network = network
-        self.active = True
+        # Start inactive to prevent receiving messages before the node is ready
+        self.active = False
         self.cur_port = 0  # current listening port
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ipv4_networks()

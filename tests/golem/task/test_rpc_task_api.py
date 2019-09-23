@@ -113,7 +113,6 @@ class TestTaskApiCreate(unittest.TestCase):
         )
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
-        self.requested_task_manager.start_task.assert_called_once_with(task_id)
 
     def test_failed_init(self):
         self.requested_task_manager.init_task.side_effect = Exception

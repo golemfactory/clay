@@ -20,7 +20,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==3.11.0
 Golem-Smart-Contracts-Interface==1.10.3
-golem_task_api==0.14.0
+golem_task_api==0.18.3
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
@@ -56,7 +56,7 @@ setuptools>=36.0.1,<39.0.0
 six==1.12.0
 tabulate
 token_bucket==0.2.0
-Twisted==19.2.1
+Twisted==19.7.0
 txaio==18.8.1
 ujson==1.35
 urllib3==1.24.3
