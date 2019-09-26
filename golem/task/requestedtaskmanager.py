@@ -392,7 +392,7 @@ class RequestedTaskManager:
         task.save()
         subtasks = self._get_pending_subtasks(task_id)
         for subtask in subtasks:
-            subtask.status = SubtaskStatus.cancelled
+            subtask.status = SubtaskStatus.cancelled  # type: ignore
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
@@ -594,7 +594,8 @@ class RequestedTaskManager:
                 subtask.task_id,
                 subtask.subtask_id
             )
-            subtask.status = SubtaskStatus.timeout
+            # TODO: Add SubtaskStatus.timeout?
+            subtask.status = SubtaskStatus.failure
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
 
@@ -659,27 +660,34 @@ class RequestedTaskManager:
             op=op,
         )
 
-    def _finish_subtask(self, subtask: RequestedSubtask, op: Operation):
+    def _finish_subtask(self, subtask: RequestedSubtask, op: SubtaskOp):
         logger.debug('_finish_subtask(subtask=%r, op=%r)', subtask, op)
         subtask_id = subtask.subtask_id
         ProviderComputeTimers.finish(subtask_id)
         self._notice_task_updated(subtask.task, subtask_id=subtask_id, op=op)
         node_id = subtask.computing_node.node_id
         subtask_timeout = subtask.task.subtask_timeout
-        comp_time = ProviderComputeTimers.time(subtask_id)
+        raw_time = ProviderComputeTimers.time(subtask_id)
+        if raw_time is None:
+            logger.warning(
+                'Empty compute timer, can not update monitor and LocalRank'
+            )
+            return
+        comp_time = int(round(raw_time))
         comp_price = compute_subtask_value(
             subtask.task.max_price_per_hour,
             comp_time
         )
         update_provider_efficacy(node_id, op)
-        update_provider_efficiency(node_id, subtask_timeout, comp_time)
-        dispatcher.send(
-            signal='golem.subtask',
-            event='finished',
-            timed_out=(op == SubtaskOp.TIMEOUT),
-            subtask_count=subtask.task.max_subtasks,
-            subtask_timeout=subtask_timeout,
-            subtask_price=comp_price,
-            subtask_computation_time=int(round(comp_time)),
-        )
+        if subtask_timeout is not None:
+            update_provider_efficiency(node_id, subtask_timeout, comp_time)
+            dispatcher.send(
+                signal='golem.subtask',
+                event='finished',
+                timed_out=(op == SubtaskOp.TIMEOUT),
+                subtask_count=subtask.task.max_subtasks,
+                subtask_timeout=subtask_timeout,
+                subtask_price=comp_price,
+                subtask_computation_time=comp_time,
+            )
         ProviderComputeTimers.remove(subtask_id)

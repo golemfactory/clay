@@ -1558,7 +1558,7 @@ class MaskUpdateService(LoopingCallService):
         super().__init__(interval_seconds)
 
     @inlineCallbacks
-    def _run(self) -> None:
+    def _run(self) -> Deferred:
         logger.info('Updating masks')
         old_task_manager = self._task_server.task_manager
         # Using list() because tasks could be changed by another thread
