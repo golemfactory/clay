@@ -1,5 +1,4 @@
 import datetime
-from functools import partial
 import re
 import time
 
@@ -56,7 +55,7 @@ class Playbook(ConcentTestPlaybook):
             match = log_match.group(0)
             if any([t in match for t in concent_fail_triggers]):
                 self.fail("Provider<->Concent comms failure: %s " % match)
-                return
+                return None
             if any([t in match and 'Concent Message received' in match
                     for t in ack_rct_trigger]):
                 print("AckReportComputedTask received.")
@@ -65,13 +64,13 @@ class Playbook(ConcentTestPlaybook):
         if self.task_finished and self.ack_rct_received:
             print("Task finished and ARTC received, great! :)")
             self.next()
-            return
+            return None
 
         if ((not self.ack_rct_received) and
                 self.ack_rct_deadline and
                 datetime.datetime.now() > self.ack_rct_deadline):
             self.fail("ARCT timeout...")
-            return
+            return None
 
         if not self.task_finished:
             return self.call(
@@ -79,6 +78,8 @@ class Playbook(ConcentTestPlaybook):
                 'comp.task', self.task_id,
                 on_success=on_success,
             )
+
+        return None
 
     steps = ConcentTestPlaybook.initial_steps + (
         ConcentTestPlaybook.step_create_task,

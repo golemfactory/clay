@@ -152,6 +152,13 @@ def send_report_computed_task(
         msg=report_computed_task,
         private_key=task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
     )
+    logger.error(
+        'SIGNING KEYS:\n'
+        'prv: %r\n'
+        'pub: %r',
+        task_server.keys_auth._private_key,  # noqa pylint: disable=protected-access
+        task_server.keys_auth.public_key,
+    )
 
     msg_queue.put(
         waiting_task_result.owner.key,
@@ -193,6 +200,17 @@ def send_report_computed_task(
         report_computed_task=signed_report_computed_task,
         result_hash='sha1:' + waiting_task_result.package_sha1
     )
+    logger.error(
+        '[CONCENT] verify_owners: %r',
+        signed_report_computed_task.verify_owners(
+            provider_public_key=task_server.keys_auth.public_key,
+            requestor_public_key=None,
+            concent_public_key=task_server.client.concent_service.variant[
+                'pubkey'
+            ],
+        ),
+    )
+
     logger.debug('[CONCENT] ForceReport: %s', delayed_forcing_msg)
 
     task_server.client.concent_service.submit_task_message(

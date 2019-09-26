@@ -1,6 +1,5 @@
 import calendar
 import datetime
-from functools import partial
 import time
 
 from golem_messages import helpers as msg_helpers
