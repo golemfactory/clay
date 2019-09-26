@@ -6,6 +6,7 @@ from golem_task_api import (
     TaskApiService,
     RequestorAppClient
 )
+from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Task
 from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
@@ -163,25 +164,20 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
 
         async def verify(subtask_id):
             if subtask_id == good_subtask_id:
-                return True, None
+                return VerifyResult.SUCCESS, None
             elif subtask_id == bad_subtask_id:
-                return False, 'test_error'
+                return VerifyResult.FAILURE, 'error'
 
         prereq = LocalhostPrerequisites(verify=verify)
         service = self._get_service(prereq)
-        client_future = asyncio.ensure_future(
-            RequestorAppClient.create(service))
-        client = yield deferred_from_future(client_future)
+        client = yield deferred_from_future(RequestorAppClient.create(service))
 
-        good_verify_future = asyncio.ensure_future(
+        good_verify_result = yield deferred_from_future(
             client.verify('test_task', good_subtask_id))
-        good_verify_result = yield deferred_from_future(good_verify_future)
-        self.assertTrue(good_verify_result)
+        self.assertEqual(good_verify_result, (VerifyResult.SUCCESS, ''))
 
-        bad_verify_future = asyncio.ensure_future(
+        bad_verify_result = yield deferred_from_future(
             client.verify('test_task', bad_subtask_id))
-        bad_verify_result = yield deferred_from_future(bad_verify_future)
-        self.assertFalse(bad_verify_result)
+        self.assertEqual(bad_verify_result, (VerifyResult.FAILURE, 'error'))
 
-        shutdown_future = asyncio.ensure_future(client.shutdown())
-        yield deferred_from_future(shutdown_future)
+        yield deferred_from_future(client.shutdown())

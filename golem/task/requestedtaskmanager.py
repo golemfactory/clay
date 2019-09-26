@@ -9,11 +9,12 @@ from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
-from golem_task_api import constants
+from golem_task_api.dirutils import RequestorDir, RequestorTaskDir
+from golem_task_api.enums import VerifyResult
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
-from golem.app_manager import AppManager
+from golem.app_manager import AppManager, AppId
 from golem.model import (
     ComputingNode,
     default_now,
@@ -24,7 +25,6 @@ from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TASK_STATUS_ACTIVE
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
-
 
 logger = logging.getLogger(__name__)
 
@@ -59,59 +59,54 @@ class SubtaskDefinition:
     deadline: int
 
 
-class DirManager:
-    def __init__(self, root_path: Path):
-        self._root_path = root_path
-
-    def get_app_dir(self, app_id: str) -> Path:
-        app_dir = self._root_path / app_id
-        app_dir.mkdir(exist_ok=True)
-        return app_dir
-
-    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        task_dir.mkdir()
-        task_inputs_dir = self.get_task_inputs_dir(app_id, task_id)
-        task_inputs_dir.mkdir()
-        subtask_inputs_dir = self.get_subtask_inputs_dir(app_id, task_id)
-        subtask_inputs_dir.mkdir()
-        task_outputs_dir = task_dir / constants.TASK_OUTPUTS_DIR
-        task_outputs_dir.mkdir()
-        subtask_outputs_dir = self.get_subtask_outputs_dir(app_id, task_id)
-        subtask_outputs_dir.mkdir()
-        return task_inputs_dir
-
-    def get_task_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        return task_dir / constants.TASK_INPUTS_DIR
-
-    def get_subtask_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        return task_dir / constants.SUBTASK_INPUTS_DIR
-
-    def get_subtask_outputs_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        return task_dir / constants.SUBTASK_OUTPUTS_DIR
-
-    def _get_task_dir(self, app_id: str, task_id: TaskId) -> Path:
-        return self.get_app_dir(app_id) / task_id
-
-
 class RequestedTaskManager:
+
     def __init__(
             self,
             env_manager: EnvironmentManager,
             app_manager: AppManager,
             public_key: bytes,
             root_path: Path,
-    ):
+    ) -> None:
         logger.debug('RequestedTaskManager(public_key=%r, root_path=%r)',
                      public_key, root_path)
-        self._dir_manager = DirManager(root_path)
+        self._root_path = root_path
         self._env_manager = env_manager
         self._app_manager = app_manager
         self._public_key: bytes = public_key
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
+
+    def _app_dir(self, app_id: AppId) -> RequestorDir:
+        app_dir = RequestorDir(self._root_path / app_id)
+        app_dir.mkdir(exist_ok=True)
+        return app_dir
+
+    def _task_dir(self, task_id: TaskId) -> RequestorTaskDir:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        return self._app_dir(task.app_id).task_dir(task_id)
+
+    def get_task_inputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory where task resources should be
+            placed. """
+        return self._task_dir(task_id).task_inputs_dir
+
+    def get_task_outputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory where task results should be
+            placed. """
+        return self._task_dir(task_id).task_outputs_dir
+
+    def get_subtask_inputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory of the task network resources. """
+        return self._task_dir(task_id).subtask_inputs_dir
+
+    def get_subtask_outputs_dir(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> Path:
+        """ Return a path to the directory where subtasks outputs should be
+            placed. """
+        return self._task_dir(task_id).subtask_outputs_dir(subtask_id)
 
     def create_task(
             self,
@@ -152,12 +147,11 @@ class RequestedTaskManager:
             task.task_id,
             task.app_id,
         )
-        task_inputs_dir = self._dir_manager.prepare_task_dir(
-            task.app_id,
-            task.task_id)
+        task_dir = self._task_dir(task.task_id)
+        task_dir.prepare()
         # Move resources to task_inputs_dir
         for resource in golem_params.resources:
-            shutil.copy2(resource, task_inputs_dir)
+            shutil.copy2(resource, task_dir.task_inputs_dir)
         logger.info(
             "Creating task. id=%s, app=%r",
             task.task_id,
@@ -224,17 +218,6 @@ class RequestedTaskManager:
         logger.debug('is_task_finished(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
-
-    def get_subtask_inputs_dir(self, task_id: TaskId) -> Path:
-        """ Return a path to the directory of the task network resources. """
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_subtask_inputs_dir(task.app_id, task_id)
-
-    def get_subtask_outputs_dir(self, task_id: TaskId) -> Path:
-        """ Return a path to the directory where subtasks outputs should be
-        placed. """
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_subtask_outputs_dir(task.app_id, task_id)
 
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
@@ -333,7 +316,7 @@ class RequestedTaskManager:
         subtask.status = SubtaskStatus.verifying
         subtask.save()
         try:
-            result = await app_client.verify(task_id, subtask_id)
+            result, _ = await app_client.verify(task_id, subtask_id)
         except Exception as e:
             logger.warning(
                 "Verification failed. subtask=%s, task=%s, exception=%r",
@@ -341,16 +324,19 @@ class RequestedTaskManager:
                 task_id,
                 e
             )
-            result = False
+            result, _ = VerifyResult.FAILURE, str(e)
 
         ProviderComputeTimers.finish(subtask_id)
-        if result:
+        if result is VerifyResult.SUCCESS:
             subtask.status = SubtaskStatus.finished
-        else:
+        elif result is VerifyResult.FAILURE:
             subtask.status = SubtaskStatus.failure
+        else:
+            # TODO: Handle other results
+            raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
 
-        if result:
+        if result is VerifyResult.SUCCESS:
             # Check if task completed
             if not await self.has_pending_subtasks(task_id):
                 if not self._get_pending_subtasks(task_id):
@@ -358,7 +344,7 @@ class RequestedTaskManager:
                     task.save()
                     await self._shutdown_app_client(task.app_id)
 
-        return result
+        return result is VerifyResult.SUCCESS
 
     async def abort_task(self, task_id):
         task = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -391,7 +377,7 @@ class RequestedTaskManager:
 
     async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        inputs_dir = self._dir_manager.get_task_inputs_dir(task.app_id, task_id)
+        inputs_dir = self.get_task_inputs_dir(task_id)
         resources = list(map(lambda f: inputs_dir / f, os.listdir(inputs_dir)))
         golem_params = CreateTaskParams(
             app_id=task.app_id,
@@ -417,7 +403,10 @@ class RequestedTaskManager:
         for subtask in RequestedSubtask.select().where(
                 RequestedSubtask.subtask_id.in_(subtask_ids)):
             assert subtask.task_id == task_id
-        discarded_subtask_ids = await app_client.discard_subtasks(subtask_ids)
+        discarded_subtask_ids = await app_client.discard_subtasks(
+            task_id,
+            subtask_ids
+        )
         for subtask in RequestedSubtask.select().where(
                 RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
             subtask.status = SubtaskStatus.cancelled
@@ -474,7 +463,7 @@ class RequestedTaskManager:
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
-        shared_dir = self._dir_manager.get_app_dir(app_id)
+        shared_dir = self._app_dir(app_id)
 
         return EnvironmentTaskApiService(
             env=env,

@@ -126,7 +126,7 @@ async def test_task(
         result_path = await task_computer.compute()
         shutil.copy2(
             result_path,
-            rtm.get_subtask_outputs_dir(task_id),
+            rtm.get_subtask_outputs_dir(task_id, subtask_def.subtask_id),
         )
         print('Starting verification')
         verdict = await deferred_from_future(rtm.verify(
