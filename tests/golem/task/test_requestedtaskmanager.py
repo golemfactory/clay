@@ -6,6 +6,7 @@ from pathlib import Path
 
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
+from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask
 from mock import ANY, Mock
 import pytest
@@ -167,7 +168,7 @@ class TestRequestedTaskManager():
     async def test_verify(self, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
-        mock_client.verify.return_value = True
+        mock_client.verify.return_value = (VerifyResult.SUCCESS, '')
         task_id = await self._start_task()
 
         subtask = await self.rtm.get_next_subtask(

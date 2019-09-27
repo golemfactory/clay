@@ -8,6 +8,7 @@ from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 import dill
 from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler, entrypoint
+from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Task
 from twisted.internet import defer, threads
 
@@ -54,7 +55,7 @@ class LocalhostPrerequisites(Prerequisites):
     create_task: Callable[[], Awaitable[Task]] = _not_implemented
     next_subtask: Callable[[], Awaitable[Optional[Subtask]]] = _not_implemented
     has_pending_subtasks: Callable[[], Awaitable[bool]] = _not_implemented
-    verify: Callable[[str], Awaitable[Tuple[bool, Optional[str]]]] = \
+    verify: Callable[[str], Awaitable[Tuple[VerifyResult, Optional[str]]]] = \
         _not_implemented
 
     def to_dict(self) -> dict:
@@ -114,7 +115,7 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
             self,
             task_work_dir: Path,
             subtask_id: str
-    ) -> Tuple[bool, Optional[str]]:
+    ) -> Tuple[VerifyResult, Optional[str]]:
         return await self._prereq.verify(subtask_id)  # type: ignore
 
     async def discard_subtasks(

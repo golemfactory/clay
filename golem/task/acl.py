@@ -275,16 +275,16 @@ class _AllowAcl(Acl):
     def disallow(self, node_id: str,
                  timeout_seconds: int = 0,
                  persist: bool = False) -> None:
-        logger.info(
-            'Banned node. node_id=%s, timeout=%ds, persist=%s',
-            common.short_node_id(node_id),
-            timeout_seconds,
-            persist,
-        )
-        self._allow_list = [node for node in self._allow_list if not (
-            node_id == node.node_id)]
 
         if persist:
+            logger.info(
+                'Banned node. node_id=%s, timeout=%ds, persist=%s',
+                common.short_node_id(node_id),
+                timeout_seconds,
+                persist,
+            )
+            self._allow_list = [node for node in self._allow_list if not (
+                node_id == node.node_id)]
             try:
                 existNode = ACLAllowedNodes.get(node_id=node_id)
             except ACLAllowedNodes.DoesNotExist:

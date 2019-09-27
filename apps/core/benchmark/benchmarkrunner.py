@@ -75,8 +75,8 @@ class BenchmarkRunner(LocalComputer):
             if provider_stats.cpu_stats else 0
 
         try:
-            benchmark_value = self.benchmark.normalization_constant / \
-                              self._get_time_spent()
+            benchmark_value = \
+                self.benchmark.normalization_constant / self._get_time_spent()
             if benchmark_value < 0:
                 raise ZeroDivisionError
         except ZeroDivisionError:

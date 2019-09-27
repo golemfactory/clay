@@ -139,6 +139,16 @@ class VbrSubtask:
              if s['status'] != SubtaskStatus.finished]
         )
 
+    def restart_subtask(self, subtask_id: str):
+        subtask = self.subtasks[subtask_id]
+        if subtask['status'] != SubtaskStatus.starting:
+            raise ValueError("Cannot restart subtask with status: " +
+                             str(subtask['status']))
+        if subtask['results'] is not None:
+            raise ValueError("Cannot restart computed VbR subtask")
+        self.verifier.remove_actor(subtask['actor'])
+        subtask['status'] = SubtaskStatus.restarted
+
 
 class WasmTaskOptions(Options):
     class SubtaskOptions:
@@ -147,6 +157,13 @@ class WasmTaskOptions(Options):
             self.name: str = name
             self.exec_args: List[str] = exec_args
             self.output_file_paths: List[str] = output_file_paths
+
+        def to_dict(self) -> dict:
+            return {
+                'name': self.name,
+                'exec_args': self.exec_args,
+                'output_file_paths': self.output_file_paths
+            }
 
     def __init__(self) -> None:
         super().__init__()
@@ -184,6 +201,16 @@ class WasmTaskDefinition(TaskDefinition):
     def add_to_resources(self) -> None:
         self.resources = [self.options.input_dir]
 
+    def to_dict(self) -> dict:
+        dictionary = super().to_dict()
+        dictionary['options']['js_name'] = self.options.js_name
+        dictionary['options']['wasm_name'] = self.options.wasm_name
+        dictionary['options']['input_dir'] = self.options.input_dir
+        dictionary['options']['output_dir'] = self.options.output_dir
+        dictionary['options']['subtasks'] = {
+            k: v.to_dict() for k, v in self.options.subtasks.items()
+        }
+        return dictionary
 
 class WasmTask(CoreTask):
     ENVIRONMENT_CLASS = WasmTaskEnvironment
@@ -499,6 +526,14 @@ class WasmTask(CoreTask):
             cpu_usage: float = 1.0 * 1e9
 
         self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(cpu_usage / 1e9)
+
+    def restart_subtask(self, subtask_id: str):
+        for vbr_subtask in self.subtasks:
+            try:
+                vbr_subtask.restart_subtask(subtask_id)
+            except KeyError:
+                pass
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
 
 
 class WasmTaskBuilder(CoreTaskBuilder):
