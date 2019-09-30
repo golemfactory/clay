@@ -116,7 +116,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
-        accept_all_terms, version, log_level, enable_talkback,
+        accept_all_terms, version, log_level, enable_talkback: bool,
         hyperdrive_port, hyperdrive_rpc_port, crossbar_serializer
 ):
     if version:
