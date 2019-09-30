@@ -192,7 +192,6 @@ class WasmTaskOptions(Options):
         return iter(list(self._subtasks()))
 
 
-# pylint: disable=too-many-public-methods
 class WasmTaskDefinition(TaskDefinition):
     def __init__(self) -> None:
         super().__init__()
@@ -214,7 +213,7 @@ class WasmTaskDefinition(TaskDefinition):
         }
         return dictionary
 
-class WasmTask(CoreTask):
+class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
@@ -527,7 +526,8 @@ class WasmTask(CoreTask):
         except golem.model.Performance.DoesNotExist:
             cpu_usage: float = 1.0 / NANOSECOND
 
-        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(cpu_usage * NANOSECOND)
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(
+            cpu_usage * NANOSECOND)
 
     def restart_subtask(self, subtask_id: str):
         for vbr_subtask in self.subtasks:
