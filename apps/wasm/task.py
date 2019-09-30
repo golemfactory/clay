@@ -514,7 +514,7 @@ class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
         """WASM subtask_price is calculated based on user provided budget.
         """
         sub_price: int = self.task_definition.budget // self.get_total_tasks()
-        logger.debug("WASM subtask price: %d", sub_price)
+        logger.debug("subtask price: %d", sub_price)
         return sub_price
 
     def _load_requestor_perf(self):
