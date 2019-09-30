@@ -519,10 +519,11 @@ class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
 
     def _load_requestor_perf(self):
         try:
-            cpu_usage: float = float(golem.model.Performance.get(
+            cpu_usage_str = golem.model.Performance.get(
                 golem.model.Performance.environment_id ==
                 WasmTaskEnvironment.ENV_ID
-            ).cpu_usage)
+            ).cpu_usage
+            cpu_usage: float = float(cpu_usage_str)
         except golem.model.Performance.DoesNotExist:
             cpu_usage: float = 1.0 / NANOSECOND
 
