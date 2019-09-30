@@ -43,6 +43,8 @@ from .vbr import (
     MissingResultsError
 )
 
+NANOSECOND = 1e-9
+
 logger = logging.getLogger("apps.wasm")
 
 
@@ -345,7 +347,7 @@ class WasmTask(CoreTask):
                     (s_instance.actor.uuid,
                      s_id,
                      s_instance.results.stats.
-                     cpu_stats.cpu_usage['total_usage'] / 1e9)
+                     cpu_stats.cpu_usage['total_usage'] * NANOSECOND)
                 )
             self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
                 self.task_definition.task_id,
@@ -523,9 +525,9 @@ class WasmTask(CoreTask):
                 WasmTaskEnvironment.ENV_ID
             ).cpu_usage)
         except golem.model.Performance.DoesNotExist:
-            cpu_usage: float = 1.0 * 1e9
+            cpu_usage: float = 1.0 / NANOSECOND
 
-        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(cpu_usage / 1e9)
+        self.REQUESTOR_MARKET_STRATEGY.set_my_usage_benchmark(cpu_usage * NANOSECOND)
 
     def restart_subtask(self, subtask_id: str):
         for vbr_subtask in self.subtasks:
