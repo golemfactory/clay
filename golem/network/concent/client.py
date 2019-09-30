@@ -11,6 +11,7 @@ from pydispatch import dispatcher
 import requests
 import golem_messages
 from golem_messages import message
+from golem_messages import utils
 from golem_messages import datastructures as msg_datastructures
 from golem_messages.constants import MSG_DELAYS
 
@@ -104,6 +105,20 @@ def send_to_concent(
     msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
+
+    if msg.__class__ == message.concents.ForceReportComputedTask:
+        rct = msg.report_computed_task
+        provider_public_key = utils.decode_hex(rct.task_to_compute.provider_public_key)
+        logger.debug(
+            "qqq rct: %r, keyhex: %r, key: %r, keyhexback: %r, msghash: %r, sig verification: %r",
+            rct,
+            rct.task_to_compute.provider_public_key,
+            provider_public_key,
+            utils.encode_hex(provider_public_key),
+            rct.get_short_hash(),
+            rct.verify_signature(provider_public_key),
+        )
+
     # if signature already exists, it must be set to None explicitly
     if msg.sig is not None:
         msg.sig = None
