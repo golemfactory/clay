@@ -80,7 +80,8 @@ class ETSProvider:
     @rpc_utils.expose('pay.operations')
     @staticmethod
     def get_operations(
-            operation_type: typing.Optional[str],
+            operation_type: typing.Optional[str] = None,
+            direction: typing.Optional[str] = None,
             page_num: int = 1,
             per_page: int = 20,
     ):
@@ -92,21 +93,44 @@ class ETSProvider:
         # joined models.
         query = model.WalletOperation.select() \
             .order_by(model.WalletOperation.id.desc())
-        if operation_type:
+
+        def _parse_enum(enum_, value):
+            if value is None:
+                return None
             try:
-                operation_type = model.WalletOperation.TYPE(operation_type)
+                return enum_(value)
             except ValueError:
-                logger.error('Invalid operation type: %r', operation_type)
-                return []
+                logger.error(
+                    'Invalid %s type: %r not in %s',
+                    enum_.__name__,
+                    value,
+                    ', '.join(k for k in enum_.__members__),
+                )
+            return None
+
+        operation_type = _parse_enum(
+            model.WalletOperation.TYPE,
+            operation_type,
+        )
+        if operation_type:
             query = query.where(
                 model.WalletOperation.operation_type == operation_type,
             )
+        direction = _parse_enum(
+            model.WalletOperation.DIRECTION,
+            direction,
+        )
+        if direction:
+            query = query.where(
+                model.WalletOperation.direction == direction,
+            )
+        total = query.count()
         query = query.paginate(page_num, per_page)
         tp_query = model.TaskPayment.select() \
             .where(
                 model.TaskPayment.wallet_operation.in_(query),
             )
-        task_payments_map = {tp.id: tp for tp in tp_query}
+        task_payments_map = {tp.wallet_operation_id: tp for tp in tp_query}
 
         def payment(wallet_operation_id: int) -> typing.Optional[dict]:
             if wallet_operation_id not in task_payments_map:
@@ -116,6 +140,7 @@ class ETSProvider:
                 'node': lru_node(o.node),
                 'task_id': o.task,
                 'subtask_id': o.subtask,
+                'charged_from_deposit': o.charged_from_deposit,
                 'accepted_ts': str(o.accepted_ts) if o.accepted_ts else None,
                 'settled_ts': str(o.settled_ts) if o.settled_ts else None,
                 'missing_amount': str(o.missing_amount),
@@ -138,7 +163,7 @@ class ETSProvider:
                 'created': common.datetime_to_timestamp_utc(o.created_date),
                 'modified': common.datetime_to_timestamp_utc(o.modified_date),
             }
-        return [operation(o) for o in query]
+        return total, [operation(o) for o in query]
 
     @rpc_utils.expose('pay.gas_price')
     def get_gas_price(self) -> typing.Dict[str, str]:

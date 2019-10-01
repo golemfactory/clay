@@ -1,13 +1,14 @@
 import functools
 import logging
 
-from golem import model
 
 log = logging.getLogger('golem.decorators')
 
 
 def run_with_db():
     """Run only when DB is active"""
+    from golem import model
+
     def wrapped(f):
         @functools.wraps(f)
         def curry(*args, **kwargs):
@@ -19,5 +20,16 @@ def run_with_db():
                 )
                 return None
             return f(*args, **kwargs)
+        return curry
+    return wrapped
+
+
+def locked(lock):
+    """Run under a threadsafe lock"""
+    def wrapped(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            with lock:
+                return f(*args, **kwargs)
         return curry
     return wrapped

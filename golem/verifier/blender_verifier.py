@@ -9,9 +9,8 @@ from typing import Type
 import numpy
 from twisted.internet.defer import Deferred
 
-from golem.verifier.subtask_verification_state import SubtaskVerificationState
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
-
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +23,7 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def __init__(self, verification_data, docker_task_cls: Type) -> None:
         super().__init__(verification_data)
+        self.verification_data = verification_data
         self.finished = Deferred()
         self.docker_task_cls = docker_task_cls
         self.timeout = 0
@@ -103,7 +103,6 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         res_dir = os.path.join(root_dir, 'resources')
         os.makedirs(res_dir, exist_ok=True)
-
         tmp_dir = os.path.join(root_dir, "tmp")
 
         assert self.resources

@@ -6,7 +6,8 @@ from apps.wasm.vbr import (
     BucketVerifier,
     NotAllowedError,
     UnknownActorError,
-    MissingResultsError
+    MissingResultsError,
+    AlreadyFinished
 )
 
 actors = [Actor(str(i)) for i in range(20)]
@@ -250,3 +251,129 @@ def test_r1_result_already_added_value_error():
 
     with pytest.raises(ValueError):
         verifier.add_result(actors[1], 1)
+
+
+def test_r1_with_referee_all_different():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[2], 2)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], 3)
+
+    assert verifier.get_verdicts() is not None
+
+
+def test_r1_with_referee_all_different_with_none():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[2], None)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], 3)
+
+    assert verifier.get_verdicts() is not None
+
+
+def test_r1_with_referee_none_result():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], None)
+    verifier.add_result(actors[2], 2)
+
+    verifier.add_actor(actors[3])
+    verifier.add_result(actors[3], None)
+
+    assert verifier.get_verdicts() is not None
+
+
+def test_r1_actor_removal():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.remove_actor(actors[2])
+    verifier.add_actor(actors[3])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[3], 1)
+
+    verdicts = verifier.get_verdicts()
+    assert verdicts is not None
+
+    for actor, _, verdict in verdicts:
+        assert actor in (actors[1], actors[3])
+        assert verdict == VerificationResult.SUCCESS
+
+
+def test_r1_actor_removal2():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.remove_actor(actors[1])
+    verifier.remove_actor(actors[2])
+    verifier.add_actor(actors[3])
+    verifier.add_actor(actors[4])
+
+    verifier.add_result(actors[3], 1)
+    verifier.add_result(actors[4], 1)
+
+    verdicts = verifier.get_verdicts()
+    assert verdicts is not None
+
+    for actor, _, verdict in verdicts:
+        assert actor in (actors[3], actors[4])
+        assert verdict == VerificationResult.SUCCESS
+
+
+def test_r1_actor_remove_already_finished():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_result(actors[1], 1)
+
+    verifier.add_actor(actors[2])
+
+    with pytest.raises(AlreadyFinished):
+        verifier.remove_actor(actors[1])
+
+    verifier.add_result(actors[2], 1)
+
+    verdicts = verifier.get_verdicts()
+
+    for actor, _, verdict in verdicts:
+        assert actor in (actors[1], actors[2])
+        assert verdict == VerificationResult.SUCCESS
+
+
+def test_r1_actor_removal_raises_finished():
+    verifier = BucketVerifier(1, SimpleComparator(), 1)
+
+    verifier.add_actor(actors[1])
+    verifier.add_actor(actors[2])
+
+    verifier.add_result(actors[1], 1)
+    verifier.add_result(actors[2], 1)
+
+    verdicts = verifier.get_verdicts()
+    assert verdicts is not None
+
+    with pytest.raises(AlreadyFinished):
+        verifier.remove_actor(actors[1])
+
+    for _, _, verdict in verdicts:
+        assert verdict == VerificationResult.SUCCESS

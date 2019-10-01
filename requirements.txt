@@ -1,4 +1,3 @@
-#git+https://github.com/golemfactory/golem-messages@<branchname>#egg=golem-messages
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2
@@ -39,9 +38,9 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fs==2.4.4
-Golem-Messages==3.11.0
-Golem-Smart-Contracts-Interface==1.10.2
-golem_task_api==0.12.0
+git+https://github.com/golemfactory/golem-messages@master#egg=golem-messages
+Golem-Smart-Contracts-Interface==1.10.3
+golem_task_api==0.20.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -127,7 +126,7 @@ tabulate==0.8.2
 token-bucket==0.2.0
 toolz==0.9.0
 treq==17.8.0
-Twisted==19.2.1
+Twisted==19.7.0
 txaio==18.8.1
 txtorcon==0.20.0
 u-msgpack-python==2.5.0

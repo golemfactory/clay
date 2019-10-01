@@ -27,9 +27,6 @@ class TestAutoSetup(TwistedTestCase):
     def test_supported(self):
         self.assertEqual(self.wrapped_env.supported(), self.env.supported())
 
-    def test_metadata(self):
-        self.assertEqual(self.wrapped_env.metadata(), self.env.metadata())
-
     def test_parse_prerequisites(self):
         prereq_dict = {'key': 'value'}
         prereq = self.wrapped_env.parse_prerequisites(prereq_dict)

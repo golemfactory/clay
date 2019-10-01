@@ -103,17 +103,17 @@ class TestGetOperations(testutils.DatabaseFixture, EthereumBase):
         instance = model_factory.TaskPayment()
         instance.wallet_operation.save(force_insert=True)
         instance.save(force_insert=True)
-        result = self.ets_provider.get_operations(operation_type=None)
+        count, _result = self.ets_provider.get_operations(operation_type=None)
         self.assertEqual(
-            len(result),
+            count,
             1,
         )
 
     def test_wallet_operation(self):
         instance = model_factory.WalletOperation()
         instance.save(force_insert=True)
-        result = self.ets_provider.get_operations(operation_type=None)
+        count, _result = self.ets_provider.get_operations(operation_type=None)
         self.assertEqual(
-            len(result),
+            count,
             1,
         )

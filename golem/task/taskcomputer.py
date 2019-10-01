@@ -11,19 +11,20 @@ from threading import Lock
 from dataclasses import dataclass
 from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
 from golem_task_api import ProviderAppClient, constants as task_api_constants
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet import defer
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future
+from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.envs import EnvId, EnvStatus
-from golem.envs.docker.cpu import DockerCPUConfig, DockerCPUEnvironment
-from golem.envs.docker.gpu import DockerGPUConfig, DockerGPUEnvironment
+from golem.envs import EnvId
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.gpu import DockerGPUConfig
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -118,12 +119,12 @@ class TaskComputerAdapter:
     def support_direct_computation(self, value: bool) -> None:
         self._old_computer.support_direct_computation = value
 
-    def get_task_resources_dir(self) -> Path:
+    def get_subtask_inputs_dir(self) -> Path:
         if not self._new_computer.has_assigned_task():
             raise ValueError(
                 'Task resources directory only available when a task-api task '
                 'is assigned')
-        return self._new_computer.get_task_resources_dir()
+        return self._new_computer.get_subtask_inputs_dir()
 
     def start_computation(self) -> None:
         if self._new_computer.has_assigned_task():
@@ -260,8 +261,8 @@ class NewTaskComputer:
             return None
         return self._assigned_task.subtask_id
 
-    def get_task_resources_dir(self) -> Path:
-        return self._get_task_dir() / task_api_constants.NETWORK_RESOURCES_DIR
+    def get_subtask_inputs_dir(self) -> Path:
+        return self._get_task_dir() / task_api_constants.SUBTASK_INPUTS_DIR
 
     def _is_computing(self) -> bool:
         return self._computation is not None
@@ -283,7 +284,7 @@ class NewTaskComputer:
             deadline=min(task_header.deadline, compute_task_def['deadline'])
         )
         ProviderTimer.start()
-        self.get_task_resources_dir().mkdir(parents=True, exist_ok=True)
+        self.get_subtask_inputs_dir().mkdir(parents=True, exist_ok=True)
 
     def compute(self) -> defer.Deferred:
         assigned_task = self._assigned_task
@@ -421,16 +422,16 @@ class NewTaskComputer:
         )
 
         # FIXME: Decide how to properly configure environments
-        docker_cpu = self._env_manager.environment(DockerCPUEnvironment.ENV_ID)
+        docker_cpu = self._env_manager.environment(DOCKER_CPU_ENV_ID)
         docker_cpu.update_config(DockerCPUConfig(**config_dict))
 
-        if self._env_manager.enabled(DockerGPUEnvironment.ENV_ID):
-            docker_gpu = self._env_manager.environment(
-                DockerGPUEnvironment.ENV_ID)
+        if self._env_manager.enabled(DOCKER_GPU_ENV_ID):
+            docker_gpu = self._env_manager.environment(DOCKER_GPU_ENV_ID)
             # TODO: GPU options in config_dict
             docker_gpu.update_config(DockerGPUConfig(**config_dict))
 
         return defer.succeed(None)
+
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
     """ TaskComputer is responsible for task computations that take

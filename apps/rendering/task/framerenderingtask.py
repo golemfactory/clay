@@ -24,12 +24,13 @@ from golem.rpc import utils as rpc_utils
 from golem.task.taskbase import TaskResult
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 
+
 logger = logging.getLogger("apps.rendering")
 
 DEFAULT_PADDING = 4
 
 
-def calculate_subtasks_count_with_frames(
+def _calculate_subtasks_count_with_frames(
         subtasks_count: int,
         frames: list) -> int:
     num_frames = len(frames)
@@ -51,20 +52,19 @@ def calculate_subtasks_count_with_frames(
     return est
 
 
-@rpc_utils.expose('comp.task.subtasks.count')
-def calculate_subtasks_count(
+def _calculate_subtasks_count(
         subtasks_count: int,
         optimize_total: bool,
         use_frames: bool,
-        frames: list) -> int:
-    defaults = RendererDefaults()
+        frames: list,
+        defaults: 'RendererDefaults') -> int:
     if optimize_total or not subtasks_count:
         if use_frames:
             return len(frames)
         return defaults.default_subtasks
 
     if use_frames:
-        return calculate_subtasks_count_with_frames(
+        return _calculate_subtasks_count_with_frames(
             subtasks_count=subtasks_count,
             frames=frames,
         )
@@ -73,6 +73,23 @@ def calculate_subtasks_count(
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
         return total
     return defaults.default_subtasks
+
+
+@rpc_utils.expose('comp.task.subtasks.count')
+def legacy_calculate_subtasks_count(
+        subtasks_count: int,
+        optimize_total: bool,
+        use_frames: bool,
+        frames: list) -> int:
+    """
+    TODO: remove this before 0.21
+    """
+    return _calculate_subtasks_count(
+        subtasks_count,
+        optimize_total,
+        use_frames,
+        frames,
+        RendererDefaults())
 
 
 class FrameRendererOptions(Options):
@@ -109,7 +126,7 @@ class FrameRenderingTask(RenderingTask):
         self.use_frames = task_definition.options.use_frames
         self.frames = task_definition.options.frames
 
-        parts = max(1, int(self.total_tasks / len(self.frames)))
+        parts = max(1, int(self.get_total_tasks() / len(self.frames)))
 
         self.frames_given = {}
         self.frames_state = {}
@@ -193,14 +210,15 @@ class FrameRenderingTask(RenderingTask):
         for result_file in result_files:
             if not self.use_frames:
                 self._collect_image_part(num_start, result_file)
-            elif self.total_tasks <= len(self.frames):
+            elif self.get_total_tasks() <= len(self.frames):
                 frames = self._collect_frames(num_start, result_file, frames)
             else:
                 self._collect_frame_part(num_start, result_file, parts)
 
         self.num_tasks_received += 1
 
-        if self.num_tasks_received == self.total_tasks and not self.use_frames:
+        if self.num_tasks_received == \
+                self.get_total_tasks() and not self.use_frames:
             self._put_image_together()
 
     def get_frames_to_subtasks(self):
@@ -253,7 +271,7 @@ class FrameRenderingTask(RenderingTask):
             if not final:
                 img_pasted = self._paste_new_chunk(
                     img, self._get_preview_file_path(num), part,
-                    int(self.total_tasks / len(self.frames))
+                    int(self.get_total_tasks() / len(self.frames))
                 )
                 resize_and_save(img_pasted)
             else:
@@ -272,7 +290,7 @@ class FrameRenderingTask(RenderingTask):
         state = self.frames_state[frame_key]
         subtask_ids = self.frames_subtasks[frame_key]
 
-        parts = max(1, int(self.total_tasks / len(self.frames)))
+        parts = max(1, int(self.get_total_tasks() / len(self.frames)))
         counters = defaultdict(lambda: 0, dict())
 
         # Count the number of occurrences of each subtask state
@@ -356,7 +374,7 @@ class FrameRenderingTask(RenderingTask):
             upper_y = 0
             lower_y = int(round(self.res_y * self.scale_factor))
         else:
-            parts = max(1, int(self.total_tasks / len(self.frames)))
+            parts = max(1, int(self.get_total_tasks() / len(self.frames)))
             part_height = self.res_y / parts * self.scale_factor
             upper_y = int(math.ceil(part_height) * ((subtask['start_task'] - 1) % parts))
             lower_y = int(math.floor(part_height) * ((subtask['start_task'] - 1) % parts + 1))
@@ -431,7 +449,7 @@ class FrameRenderingTask(RenderingTask):
         return ((start_num - 1) % parts) + 1
 
     def __full_frames(self):
-        return self.total_tasks <= len(self.frames)
+        return self.get_total_tasks() <= len(self.frames)
 
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
@@ -488,14 +506,6 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
                                                         task_definition,
                                                         dir_manager)
 
-    def _calculate_total(self, defaults):
-        return calculate_subtasks_count(
-            subtasks_count=self.task_definition.subtasks_count,
-            optimize_total=self.task_definition.optimize_total,
-            use_frames=self.task_definition.options.use_frames,
-            frames=self.task_definition.options.frames,
-        )
-
     @classmethod
     def build_dictionary(cls, definition):
         parent = super(FrameRenderingTaskBuilder, cls)
@@ -516,6 +526,13 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         definition.options.frames_string = frames_string
         definition.options.frames = frames
         definition.options.use_frames = use_frames
+        definition.subtasks_count = _calculate_subtasks_count(
+            subtasks_count=int(dictionary['subtasks_count']),
+            optimize_total=definition.optimize_total,
+            use_frames=definition.options.use_frames,
+            frames=definition.options.frames,
+            defaults=cls.DEFAULTS(),
+        )
 
         return definition
 

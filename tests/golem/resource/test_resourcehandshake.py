@@ -20,7 +20,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
 from golem.task.acl import get_acl
-from golem.testutils import TempDirFixture
+from golem.testutils import DatabaseFixture, TempDirFixture
 
 
 class TestResourceHandshake(TempDirFixture):
@@ -73,7 +73,7 @@ class TestResourceHandshake(TempDirFixture):
 
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
-class TestResourceHandshakeSessionMixin(TempDirFixture):
+class TestResourceHandshakeSessionMixin(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
@@ -371,7 +371,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         self.task_server = Mock(
             client=Mock(datadir=data_dir),
             node=Mock(key=str(uuid.uuid4())),
-            acl=get_acl(Path(data_dir)),
+            acl=get_acl(Mock()),
             resource_handshakes=dict(),
             get_key_id=lambda: None,
             task_manager=Mock(

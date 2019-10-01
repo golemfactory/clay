@@ -10,6 +10,7 @@ from golem_messages.message.concents import (
     FileTransferToken, ClientAuthorization
 )
 
+from golem import constants as gconst
 from golem.core import keysauth
 from golem.core.service import LoopingCallService
 
@@ -147,6 +148,7 @@ class ConcentFiletransferService(LoopingCallService):
         return {
             'Authorization': 'Golem ' + auth_key,
             'Concent-Auth': auth_data,
+            'X-Golem-Messages': str(gconst.GOLEM_MESSAGES_VERSION),
         }
 
     def upload(self, request: ConcentFileRequest):

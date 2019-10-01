@@ -63,10 +63,15 @@ def migrate_payment(database, db_row):
 
 
 def migrate(migrator, database, fake=False, **kwargs):
+    if 'payment' not in database.get_tables():
+        logger.info('payment table not in DB. Skipping this migration.')
+        return
+
     cursor = database.execute_sql(
         'SELECT details, status, payee, value, subtask, created_date'
         ' FROM payment'
     )
+
     for db_row in cursor.fetchall():
         dict_row = {
             'details': db_row[0],

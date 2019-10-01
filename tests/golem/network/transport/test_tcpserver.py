@@ -147,6 +147,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         def final_failure(*args, **kwargs):
             final_failure_called[0] = True
 
+        server.resume()
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
@@ -201,6 +202,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         def final_failure(*args, **kwargs):
             final_failure_called[0] = True
 
+        server.resume()
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure

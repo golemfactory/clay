@@ -145,8 +145,7 @@ class TestNode(TestWithDatabase):
                                      ],
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None,
-                                     crossbar_serializer=None)
+                                     password=None)
 
     @patch('golem.node.TransactionSystem')
     def test_geth_address_should_be_passed_to_transaction_system(
@@ -221,8 +220,7 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None,
-                                     crossbar_serializer=None)
+                                     password=None)
 
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
@@ -271,8 +269,7 @@ class TestNode(TestWithDatabase):
             concent_variant=variables.CONCENT_CHOICES['test'],
             use_monitor=None,
             use_talkback=None,
-            password=None,
-            crossbar_serializer=None,
+            password=None
         )
 
     @patch('golem.node.Node')
@@ -300,8 +297,7 @@ class TestNode(TestWithDatabase):
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
                                      use_talkback=None,
-                                     password=None,
-                                     crossbar_serializer=None)
+                                     password=None)
 
     @patch('golem.node.Node')
     def test_config_change(self, *_):
@@ -563,7 +559,8 @@ class TestOptNode(TempDirFixture):
     def tearDown(self):
         if self.node:
             if self.node.client:
-                self.node.client.quit()
+                with patch('golem.task.taskserver.TaskServer.quit'):
+                    self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
 
@@ -898,7 +895,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={})
-        mock_tc.assigned_subtask = None
+        mock_tc.has_assigned_task = Mock(return_value=False)
 
         result = self.node._is_task_in_progress()
 
@@ -933,7 +930,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={'a': 'a'})
-        mock_tc.assigned_subtask = {'a': 'a'}
+        mock_tc.has_assigned_task = Mock(return_value=True)
 
         result = self.node._is_task_in_progress()
 

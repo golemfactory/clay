@@ -417,7 +417,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg = factories.tasks.WantToComputeTaskFactory(
+            price=10 ** 18, cpu_usage=int(1e9))
         self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())

@@ -15,6 +15,7 @@ class TestOfferChoice(TestCase):
 
     def setUp(self):
         super().setUp()
+        RequestorWasmMarketStrategy.reset()
         mock_offer_1 = Mock()
         mock_offer_1.provider_id = self.PROVIDER_1
         mock_offer_1.quality = (.0, .0, .0, .0)
@@ -32,7 +33,6 @@ class TestOfferChoice(TestCase):
         self.mock_offer_2 = mock_offer_2
 
     def test_get_usage_benchmark(self):
-        RequestorWasmMarketStrategy.reset()
         self.assertEqual(
             RequestorWasmMarketStrategy.get_my_usage_benchmark(), 1.0
         )
@@ -42,7 +42,6 @@ class TestOfferChoice(TestCase):
         )
 
     def test_resolution_length_correct(self):
-        RequestorWasmMarketStrategy.reset()
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
         self.assertEqual(
@@ -51,7 +50,6 @@ class TestOfferChoice(TestCase):
         self.assertEqual(len(result), 2)
 
     def test_adjusted_prices(self):
-        RequestorWasmMarketStrategy.reset()
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
         self.assertEqual(
@@ -61,7 +59,6 @@ class TestOfferChoice(TestCase):
         self.assertEqual(result[0].provider_id, self.PROVIDER_2)
 
     def test_usage_adjustment(self):
-        RequestorWasmMarketStrategy.reset()
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
         self.assertEqual(

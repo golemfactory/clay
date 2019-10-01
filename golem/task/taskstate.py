@@ -180,8 +180,15 @@ class TaskStatus(Enum):
         )
 
     def is_active(self) -> bool:
-        return self in [self.sending, self.waiting,
-                        self.starting, self.computing]
+        return self in TASK_STATUS_ACTIVE
+
+
+TASK_STATUS_ACTIVE = [
+    TaskStatus.sending,
+    TaskStatus.waiting,
+    TaskStatus.starting,
+    TaskStatus.computing
+]
 
 
 class TaskTestStatus(Enum):

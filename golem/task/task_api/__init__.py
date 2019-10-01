@@ -28,6 +28,7 @@ class TaskApiPayloadBuilder(abc.ABC):
 
 
 class EnvironmentTaskApiService(TaskApiService):
+
     def __init__(
             self,
             env: Environment,
@@ -54,6 +55,11 @@ class EnvironmentTaskApiService(TaskApiService):
         await self._runtime.start().asFuture(loop)
         return self._runtime.get_port_mapping(port)
 
+    async def stop(self) -> None:
+        assert self._runtime is not None
+        loop = asyncio.get_event_loop()
+        await self._runtime.stop().asFuture(loop)
+
     def running(self) -> bool:
         """
         Checks if the service is 'closable' thus needs to be shutdown on errors
@@ -69,4 +75,7 @@ class EnvironmentTaskApiService(TaskApiService):
     async def wait_until_shutdown_complete(self) -> None:
         assert self._runtime is not None
         loop = asyncio.get_event_loop()
-        await self._runtime.wait_until_stopped().asFuture(loop)
+        try:
+            await self._runtime.wait_until_stopped().asFuture(loop)
+        finally:
+            await self._runtime.clean_up().asFuture(loop)

@@ -15,9 +15,10 @@ from apps.wasm.task import (
 
 def _fake_performance():
     class FakePerformance:
-        def __init__(self, value):
+        def __init__(self, value, cpu_usage):
             self.value = value
-    return FakePerformance(1.0)
+            self.cpu_usage = cpu_usage
+    return FakePerformance(1.0, 1)
 
 
 class WasmTaskOptionsTestCase(TestCase):
@@ -106,7 +107,7 @@ class WasmTaskBuilderTestCase(TestCase):
         task_def = WasmTaskBuilder.build_full_definition(
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
         )
-        self.assertEqual(task_def.subtasks_count, 4)
+        self.assertEqual(task_def.subtasks_count, 2)
 
         opts: WasmTaskOptions = task_def.options
         self.assertEqual(opts.input_dir, '/input/dir')
@@ -141,7 +142,7 @@ class WasmTaskTestCase(TempDirFixture):
         )
         task_def.task_id = str(uuid4())
         self.task = WasmTask(
-            total_tasks=2, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(),
         )
 

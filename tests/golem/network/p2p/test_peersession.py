@@ -9,6 +9,7 @@ from unittest import TestCase
 from unittest.mock import patch, Mock, MagicMock, ANY
 
 import semantic_version
+from golem_messages import factories as msg_factories
 from golem_messages import message
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
@@ -39,7 +40,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
@@ -54,7 +55,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             )
         client = MagicMock()
         client.datadir = self.path
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -295,6 +295,30 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         )
         listener.reset_mock()
 
+    def test_react_to_hello_new_version_partial(self):
+        "Sometimes we'll get partial version from bootstrap node"
+        listener = MagicMock()
+        dispatcher.connect(listener, signal='golem.p2p')
+        self.peer_session.p2p_service.seeds = {
+            (host, random.randint(0, 65535))
+            for host in
+            ipaddress.ip_network('192.0.2.0/29').hosts()
+        }
+        version = semantic_version.Version(golem.__version__)
+        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        self.peer_session.address = chosen_seed[0]
+        msg = msg_factories.base.HelloFactory(
+            client_ver=f"{version.major}.{version.next_minor().minor}",
+            port=chosen_seed[1],
+        )
+        self.peer_session._react_to_hello(msg)
+        listener.assert_called_once_with(
+            signal='golem.p2p',
+            event='new_version',
+            version=version.next_minor(),  # Full version here
+            sender=ANY,
+        )
+
     def test_disconnect(self):
         conn = MagicMock()
         peer_session = PeerSession(conn)
@@ -463,7 +487,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
     @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def _gen_data_for_test_react_to_remove_task(self, docker_env):
+    def _gen_data_for_test_react_to_remove_task(self, _):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth
@@ -471,7 +495,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Unknown task owner
         client = MagicMock()
         client.datadir = self.path
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             task_server = task_server_factory.TaskServer(client=client,)

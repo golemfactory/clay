@@ -26,10 +26,12 @@ logger = logging.getLogger(__name__)
 
 
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
+    DEFAULT_USAGE_BENCHMARK: float = 1.0
+
     _usages: ClassVar[Dict[str, float]] = dict()
     _usage_factors: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
-    _my_usage_benchmark: ClassVar[float] = 1.0
+    _my_usage_benchmark: ClassVar[float] = DEFAULT_USAGE_BENCHMARK
 
     @classmethod
     def get_my_usage_benchmark(cls) -> float:
@@ -113,6 +115,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     @classmethod
     def reset(cls) -> None:
         cls._usage_factors = dict()
+        cls._my_usage_benchmark = cls.DEFAULT_USAGE_BENCHMARK
 
     @classmethod
     def _get_subtask_usage(cls, subtask_id: str) -> float:
@@ -123,9 +126,10 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return cls._usages.pop(subtask_id)
 
     @classmethod
-    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
-            -> Callable[[int], int]:
-
+    def get_payment_computer(
+            cls, task: 'Task',
+            subtask_id: str
+    ) -> Callable[[int], int]:
         def payment_computer(price: int) -> int:
             subtask_usage: float = cls._get_subtask_usage(subtask_id)
             return min(int(price * subtask_usage / 3600), task.subtask_price)

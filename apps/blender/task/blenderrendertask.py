@@ -322,9 +322,9 @@ class BlenderRenderTask(FrameRenderingTask):
         super(BlenderRenderTask, self).initialize(dir_manager)
 
         if self.use_frames:
-            parts = int(self.total_tasks / len(self.frames))
+            parts = int(self.get_total_tasks() / len(self.frames))
         else:
-            parts = self.total_tasks
+            parts = self.get_total_tasks()
         expected_offsets = generate_expected_offsets(parts, self.res_x,
                                                      self.res_y)
         preview_y = expected_offsets[parts + 1]
@@ -364,7 +364,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task,
-                                                self.total_tasks)
+                                                self.get_total_tasks())
         else:
             frames = self.frames or [1]
             parts = 1
@@ -385,7 +385,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "output_format": self.output_format,
                       "path_root": self.main_scene_dir,
                       "start_task": start_task,
-                      "total_tasks": self.total_tasks,
+                      "total_tasks": self.get_total_tasks(),
                       "crops": crops,
                       "entrypoint":
                           "python3 /golem/entrypoints/render_entrypoint.py",
@@ -445,7 +445,7 @@ class BlenderRenderTask(FrameRenderingTask):
         return total_tasks
 
     def get_subtask_y_border(self, start_task):
-        parts_in_frame = self.get_parts_in_frame(self.total_tasks)
+        parts_in_frame = self.get_parts_in_frame(self.get_total_tasks())
         if not self.use_frames:
             return get_min_max_y(start_task, parts_in_frame, self.res_y)
         elif parts_in_frame > 1:
@@ -569,13 +569,13 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             self.mark_part_on_preview(subtask['start_task'], img_task, color,
                                       self.preview_updater)
-        elif self.total_tasks <= len(self.frames):
+        elif self.get_total_tasks() <= len(self.frames):
             for i in range(0, int(math.floor(self.res_x * self.scale_factor))):
                 for j in range(0,
                                int(math.floor(self.res_y * self.scale_factor))):
                     img_task.set_pixel((i, j), color)
         else:
-            parts = int(self.total_tasks / len(self.frames))
+            parts = int(self.get_total_tasks() / len(self.frames))
             pu = self.preview_updaters[frame_index]
             part = (subtask['start_task'] - 1) % parts + 1
             self.mark_part_on_preview(part, img_task, color, pu)

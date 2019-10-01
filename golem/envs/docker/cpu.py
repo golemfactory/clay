@@ -10,6 +10,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
 
 from dataclasses import dataclass, field, asdict
 from docker.errors import APIError
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
@@ -24,9 +25,19 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
-    EnvironmentBase, EnvSupportStatus, RuntimePayload, EnvConfig,
-    RuntimeBase, EnvMetadata, EnvStatus, CounterId, CounterUsage, RuntimeStatus,
-    EnvId, Prerequisites, RuntimeOutput, RuntimeInput,
+    CounterId,
+    CounterUsage,
+    EnvConfig,
+    EnvironmentBase,
+    EnvMetadata,
+    EnvStatus,
+    EnvSupportStatus,
+    Prerequisites,
+    RuntimeBase,
+    RuntimeInput,
+    RuntimeOutput,
+    RuntimePayload,
+    RuntimeStatus
 )
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
@@ -36,6 +47,11 @@ logger = logging.getLogger(__name__)
 # Keys used by hypervisors for memory and CPU constraints
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
+
+DOCKER_CPU_METADATA = EnvMetadata(
+    id=DOCKER_CPU_ENV_ID,
+    description='Docker environment using CPU'
+)
 
 
 @dataclass
@@ -52,6 +68,7 @@ class DockerCPUConfig(EnvConfig):
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'DockerCPUConfig':
+        data = data.copy()
         _work_dirs = data.pop('work_dirs')
         work_dirs = [Path(work_dir) for work_dir in _work_dirs]
         return cls(work_dirs=work_dirs, **data)
@@ -403,9 +420,6 @@ class DockerCPURuntime(RuntimeBase):
 
 class DockerCPUEnvironment(EnvironmentBase):
 
-    ENV_ID: ClassVar[EnvId] = 'docker_cpu'
-    ENV_DESCRIPTION: ClassVar[str] = 'Docker environment using CPU'
-
     MIN_MEMORY_MB: ClassVar[int] = 1024
     MIN_CPU_COUNT: ClassVar[int] = 1
 
@@ -540,15 +554,6 @@ class DockerCPUEnvironment(EnvironmentBase):
             return float(list(stdout)[0])
         finally:
             yield runtime.clean_up()
-
-    @classmethod
-    def metadata(cls) -> EnvMetadata:
-        return EnvMetadata(
-            id=cls.ENV_ID,
-            description=cls.ENV_DESCRIPTION,
-            supported_counters=[],  # TODO: Specify usage counters
-            custom_metadata={}
-        )
 
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \

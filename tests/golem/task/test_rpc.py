@@ -11,6 +11,7 @@ from ethereum.utils import denoms
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from mock import call, Mock
 from twisted.internet import defer
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.dummy.task import dummytaskstate
 from apps.dummy.task.dummytask import DummyTask
@@ -18,7 +19,6 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
-from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -60,7 +60,7 @@ class ProviderBase(test_client.TestClientBase):
     }
 
     @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env):  # pylint: disable=arguments-differ
+    def setUp(self, _):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -68,7 +68,6 @@ class ProviderBase(test_client.TestClientBase):
             return_value=True
         )
         self.client.apps_manager.load_all_apps()
-        docker_env().metadata.return_value.id = DockerCPUEnvironment.ENV_ID
         with mock.patch(
             'golem.network.concent.handlers_library.HandlersLibrary'
             '.register_handler',
@@ -193,6 +192,31 @@ class TestCreateTask(ProviderBase, TestClientBase):
         self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
                                              'Required GNT: '
                                              '0.166667, available: 0.000000\n')
+
+
+class TestCreateTaskDryRun(ProviderBase):
+    def test_success(self):
+        # given
+        self.t_dict['subtasks_count'] = 0
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert error is None
+        assert new_dict['id'] is not None
+        assert new_dict['subtasks_count'] == 10
+
+    def test_failure(self):
+        # given
+        self.t_dict['type'] = "unknown"
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert new_dict is None
+        assert error is not None
 
 
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
@@ -590,20 +614,6 @@ class TestValidateTaskDict(ProviderBase):
         self.client.concent_service.enabled = True
         rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
         self.assertFalse(self.t_dict['concent_enabled'])
-
-
-    @mock.patch(
-        "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
-    )
-    def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks_count'] - 1
-        calculate_mock.return_value = computed_subtasks
-        msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks_count'],
-            computed_subtasks,
-        )
-        with self.assertRaisesRegex(ValueError, msg):
-            rpc._validate_task_dict(self.client, self.t_dict)
 
 
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
@@ -1112,17 +1122,19 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
         )
 
 
-class TestGetFragments(ProviderBase):
-    def _create_task(self) -> taskbase.Task:
+class TestGetFragments(ProviderBase, TwistedTestCase):
+    @defer.inlineCallbacks
+    def _create_task(self) -> defer.Deferred:
         task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc._prepare_task(self.client, task, force=False)
-        return golem_deferred.sync_wait(deferred)
+        with mock.patch('os.path.getsize', return_value=123):
+            result = yield rpc._prepare_task(self.client, task, force=False)
+            return result
 
-    @mock.patch('os.path.getsize', return_value=123)
     @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
+    @defer.inlineCallbacks
     def test_get_fragments(self, *_):
         tm = self.client.task_manager
-        task = self._create_task()
+        task = yield self._create_task()
         subtasks_given = 4
         # Create first subtask with start_task = 1
         tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, '')
@@ -1159,9 +1171,9 @@ class TestGetFragments(ProviderBase):
 
     def test_no_subtasks(self, *_):
         task_id = str(uuid.uuid4())
-        subtask_count = 5
+        subtasks_count = 5
         mock_task = Mock(spec=RenderingTask)
-        mock_task.total_tasks = subtask_count
+        mock_task.get_total_tasks.return_value = subtasks_count
         mock_task_state = Mock()
         mock_task_state.subtask_states = None
         tm = self.provider.task_manager
@@ -1170,6 +1182,6 @@ class TestGetFragments(ProviderBase):
 
         task_fragments, error = self.provider.get_fragments(task_id)
 
-        self.assertEqual(len(task_fragments), subtask_count)
+        self.assertEqual(len(task_fragments), subtasks_count)
         subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
         self.assertFalse(subtasks)
