@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from copy import deepcopy
-from ethereum.utils import denoms
 from pathlib import Path, PurePath
 from typing import (
     Any,
@@ -29,8 +28,9 @@ from apps.core.task.coretask import (
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
-    RequestorWasmMarketStrategy, UsageReport,
-    ProviderWasmMarketStrategy
+    ProviderWasmMarketStrategy,
+    RequestorWasmMarketStrategy,
+    UsageReport
 )
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
@@ -227,7 +227,6 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
-
 
     def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:

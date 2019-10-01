@@ -68,8 +68,12 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
 class ProviderBrassMarketStrategy(ProviderMarketStrategy):
 
     @classmethod
-    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
-                        requestor_id: str) -> int:
+    def calculate_price(
+            cls,
+            pricing: ProviderPricing,
+            max_price: int,
+            requestor_id: str
+    ) -> int:
         """
         Provider's subtask price function as proposed in
         https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
