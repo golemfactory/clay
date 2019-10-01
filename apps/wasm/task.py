@@ -28,7 +28,9 @@ from apps.core.task.coretask import (
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
-    RequestorWasmMarketStrategy, UsageReport
+    ProviderWasmMarketStrategy,
+    RequestorWasmMarketStrategy,
+    UsageReport
 )
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
@@ -215,13 +217,16 @@ class WasmTaskDefinition(TaskDefinition):
 
 
 class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
+        RequestorWasmMarketStrategy
+    PROVIDER_MARKET_STRATEGY: Type[ProviderWasmMarketStrategy] =\
+        ProviderWasmMarketStrategy
+
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
-
-    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
 
     def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:

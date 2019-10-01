@@ -6,7 +6,13 @@ from typing import Callable, Dict, List, Optional, Type, TYPE_CHECKING
 from dataclasses import dataclass, field
 from golem_messages.datastructures import stats as dt_stats
 
-from golem.marketplace import DEFAULT_REQUESTOR_MARKET_STRATEGY
+from apps.core.task.coretaskstate import TaskDefinition, Options
+from golem.task.taskstate import TaskState
+from golem.marketplace import (
+    ProviderMarketStrategy, RequestorMarketStrategy,
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    DEFAULT_PROVIDER_MARKET_STRATEGY
+)
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -104,7 +110,10 @@ class TaskResult:
 
 # pylint: disable=too-many-public-methods
 class Task(abc.ABC):
-    REQUESTOR_MARKET_STRATEGY = DEFAULT_REQUESTOR_MARKET_STRATEGY
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorMarketStrategy]\
+        = DEFAULT_REQUESTOR_MARKET_STRATEGY
+    PROVIDER_MARKET_STRATEGY: Type[ProviderMarketStrategy]\
+        = DEFAULT_PROVIDER_MARKET_STRATEGY
 
     class ExtraData(object):
         def __init__(self, ctd=None, **kwargs):

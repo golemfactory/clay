@@ -25,6 +25,12 @@ class Offer:
     price: float
 
 
+@dataclass
+class ProviderPricing:
+    price_per_wallclock_h: int
+    price_per_cpu_h: int
+
+
 class RequestorMarketStrategy(ABC):
 
     @abstractclassmethod
@@ -63,4 +69,12 @@ class RequestorMarketStrategy(ABC):
         Returns:
             Callable[[int], int] -- Function computing payment
         """
+        raise NotImplementedError()
+
+
+class ProviderMarketStrategy(ABC):
+
+    @abstractclassmethod
+    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
+                        requestor_id: str) -> int:
         raise NotImplementedError()

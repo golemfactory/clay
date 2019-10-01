@@ -28,11 +28,17 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
+from golem.marketplace import (
+    ProviderBrassMarketStrategy,
+    ProviderWasmMarketStrategy,
+    ProviderMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -1318,3 +1324,11 @@ class TaskManager(TaskEventListener):
             return
 
         update_provider_efficiency(node_id, timeout, computation_time)
+
+    @staticmethod
+    def get_provider_market_strategy_for_env(
+            env_id: str) -> Type[ProviderMarketStrategy]:
+        # NOTE This assumes ENV_ID == App Type
+        if env_id == WasmTaskEnvironment.ENV_ID:
+            return ProviderWasmMarketStrategy
+        return ProviderBrassMarketStrategy

@@ -1,6 +1,6 @@
 import sys
 from unittest import TestCase
-from unittest.mock import patch, Mock
+from unittest.mock import patch, Mock, MagicMock
 
 from ethereum.utils import denoms
 
@@ -8,7 +8,6 @@ from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
     ProviderPerformance,
-    Offer
 )
 from golem.marketplace.brass_marketplace import scale_price
 
@@ -104,12 +103,20 @@ class TestRequestorBrassMarketStrategy(TestCase):
 
     @staticmethod
     def _mock_offer():
-        return Offer(
-            provider_id='provider_1',
-            provider_performance=ProviderPerformance(100),
-            max_price=5000,
-            price=5000
-        )
+        mock_offer = MagicMock(spec_set=[
+            'provider_id',
+            'provider_performance',
+            'max_price',
+            'price',
+            'reputation',
+            'quality',
+        ])
+        mock_offer.provider_id = 'provider_1'
+        mock_offer.provider_performance = ProviderPerformance(100)
+        mock_offer.max_price = 5000
+        mock_offer.reputation = 1.0
+        mock_offer.quality = (1.0, 1.0, 1.0, 1.0)
+        return mock_offer
 
     def test_choose_from_empty_pool(self):
         offers = RequestorBrassMarketStrategy.resolve_task_offers(self.TASK_A)

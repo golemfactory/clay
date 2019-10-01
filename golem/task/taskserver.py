@@ -14,6 +14,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Type,
     Union,
     Set,
     Tuple,
@@ -49,6 +50,7 @@ from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
 )
+from golem.marketplace import ProviderPricing
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
@@ -73,6 +75,7 @@ from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
+from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
@@ -97,21 +100,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
-
-
-def _calculate_price(min_price: int, requestor_id: str) -> int:
-    """
-    Provider's subtask price function as proposed in
-    https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
-    """
-    r = min_price * (1.0 + timer.ProviderTimer.profit_factor)
-    v_paid = get_requestor_paid_sum(requestor_id)
-    v_assigned = get_requestor_assigned_sum(requestor_id)
-    c = min_price
-    Q = min(1.0, (min_price + 1 + v_paid + c) / (min_price + 1 + v_assigned))
-    R = get_requestor_efficiency(requestor_id)
-    S = Q * R
-    return max(int(r / S), min_price)
 
 
 class TaskServer(
@@ -448,12 +436,17 @@ class TaskServer(
                 )
                 return None
 
-            # Send WTCT
-            price = _calculate_price(
-                self.config_desc.min_price,
-                theader.task_owner.key,
+            market_strategy = self.task_manager\
+                .get_provider_market_strategy_for_env(theader.environment)
+
+            price = market_strategy.calculate_price(  # type: ignore
+                ProviderPricing(
+                    price_per_wallclock_h=self.config_desc.min_price,
+                    price_per_cpu_h=self.config_desc.price_per_cpu_h,
+                ),
+                theader.max_price,
+                theader.task_owner.key
             )
-            price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price,
                 performance=benchmark_result.performance
