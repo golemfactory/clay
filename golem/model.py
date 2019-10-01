@@ -741,6 +741,9 @@ class RequestedTask(BaseModel):
     output_directory = CharField(null=False)
     app_params = JsonField(null=False, default=default_dict())
 
+    class Meta:
+        database = db
+
     @property
     def deadline(self) -> Optional[datetime.datetime]:
         if self.start_time is None:
@@ -760,6 +763,9 @@ class RequestedTask(BaseModel):
 class ComputingNode(BaseModel):
     node_id = CharField(primary_key=True)
     name = CharField(null=False)
+
+    class Meta:
+        database = db
 
 
 class RequestedSubtask(BaseModel):
@@ -783,6 +789,7 @@ class RequestedSubtask(BaseModel):
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
 
     class Meta:
+        database = db
         primary_key = CompositeKey('task', 'subtask_id')
 
 
