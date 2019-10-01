@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import List, Optional, Tuple
+from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
 from golem.marketplace import Offer
@@ -9,6 +9,10 @@ from golem.marketplace.pooling_marketplace import\
 import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.task.taskbase import Task  # noqa
 
 logger = logging.getLogger(__name__)
 
@@ -46,3 +50,10 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         ])
 
         return [offers[i] for i in permutation]
+
+    @classmethod
+    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
+            -> Callable[[int], int]:
+        def payment_computer(price: int):
+            return price * task.header.subtask_timeout
+        return payment_computer

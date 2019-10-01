@@ -2,9 +2,18 @@ import sys
 from unittest import TestCase
 from unittest.mock import patch, Mock
 
-from golem.marketplace import (RequestorBrassMarketStrategy,
-                               ProviderPerformance, Offer)
+from ethereum.utils import denoms
+
+from golem.marketplace import (
+    RequestorBrassMarketStrategy,
+    RequestorWasmMarketStrategy,
+    ProviderPerformance,
+    Offer
+)
 from golem.marketplace.brass_marketplace import scale_price
+
+GWEI = denoms.szabo
+HOUR = 3600
 
 
 def _fake_get_efficacy():
@@ -24,6 +33,66 @@ class TestScalePrice(TestCase):
 
     def test_zero(self):
         assert scale_price(5, 0) == sys.float_info.max
+
+
+@patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+       Mock(return_value=0.0))
+@patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+       Mock(return_value=_fake_get_efficacy()))
+class TestRequestorMarketStrategy(TestCase):
+    TASK_A = 'aaa'
+    PROVIDER_A = 'provider_a'
+    PROVIDER_B = 'provider_b'
+    SUBTASK_A = 'subtask_a'
+    SUBTASK_B = 'subtask_b'
+
+    def test_brass_payment_computer(self):
+        market_strategy = RequestorBrassMarketStrategy
+        task = Mock()
+        task.header = Mock()
+        task.header.subtask_timeout = 10
+        payment_computer = market_strategy.get_payment_computer(task, None)
+        self.assertEqual(payment_computer(1), 10)
+
+    def test_wasm_payment_computer(self):
+        task = Mock()
+        task.subtask_price = 6000 * GWEI
+        task.header = Mock()
+        task.header.subtask_timeout = 10
+        market_strategy = RequestorWasmMarketStrategy
+        market_strategy.report_subtask_usages(
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0 * HOUR),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
+        )
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_A
+        )
+        self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
+
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_B
+        )
+        self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
+
+    def test_wasm_payment_computer_budget_exceeded(self):
+        task = Mock()
+        task.subtask_price = 6000 * GWEI
+        task.header = Mock()
+        task.header.subtask_timeout = 10
+        market_strategy = RequestorWasmMarketStrategy
+        market_strategy.report_subtask_usages(
+            self.TASK_A, [(self.PROVIDER_A, self.SUBTASK_A, 5.0 * HOUR),
+                          (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
+        )
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_A
+        )
+        self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
+
+        payment_computer = market_strategy.get_payment_computer(
+            task, self.SUBTASK_B
+        )
+        self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
 
 @patch('golem.ranking.manager.database_manager.get_provider_efficiency',

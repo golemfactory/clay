@@ -49,6 +49,7 @@ def computed_task_reported(
             subtask_id,
             'ForceGetTaskResult',
         )
+
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,

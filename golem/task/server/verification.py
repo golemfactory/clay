@@ -1,5 +1,6 @@
 import logging
 import typing
+from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -9,6 +10,7 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
@@ -83,11 +85,18 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
+            task = self.task_manager.tasks[task_id]
+            market_strategy: Type[RequestorMarketStrategy] =\
+                task.REQUESTOR_MARKET_STRATEGY
+            payment_computer =\
+                market_strategy.get_payment_computer(  # type: ignore
+                    task, subtask_id
+                )
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
+                payment_computer(task_to_compute.want_to_compute_task.price),
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )
@@ -150,7 +159,6 @@ class VerificationMixin:
         :param str subtask_id: subtask that has wrong result
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
-
 
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',

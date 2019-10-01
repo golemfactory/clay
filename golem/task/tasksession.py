@@ -331,9 +331,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = self.task_manager.get_market_strategy_for_task(
-            current_task
-        )
+        market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -351,7 +349,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer = OfferWithCallback(
             self.key_id,
-            ProviderPerformance(msg.perf_index),
+            ProviderPerformance(msg.cpu_usage / 1e9),
             current_task.header.max_price,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)

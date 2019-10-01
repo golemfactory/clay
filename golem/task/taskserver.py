@@ -460,6 +460,7 @@ class TaskServer(
             )
             wtct = message.tasks.WantToComputeTask(
                 perf_index=benchmark_result.performance,
+                cpu_usage=benchmark_result.cpu_usage,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,

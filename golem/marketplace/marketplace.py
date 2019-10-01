@@ -1,12 +1,20 @@
 from abc import ABC, abstractclassmethod
-from typing import Optional, List
+from typing import Callable, Optional, List, TYPE_CHECKING
 
 from dataclasses import dataclass
 
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.task.taskbase import Task
+
 
 class ProviderPerformance:
-    def __init__(self, usage_benchmark):
-        self.usage_benchmark = usage_benchmark
+    def __init__(self, usage_benchmark: float):
+        """
+        Arguments:
+            usage_benchmark {float} -- Use benchmark in seconds
+        """
+        self.usage_benchmark: float = usage_benchmark
 
 
 @dataclass
@@ -42,5 +50,17 @@ class RequestorMarketStrategy(ABC):
     def get_task_offer_count(cls, task_id: str) -> int:
         """
         Returns number of offers known for the task.
+        """
+        raise NotImplementedError()
+
+    @abstractclassmethod
+    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
+            -> Callable[[int], int]:
+        """Returns a function computing payment based on price in TTC.
+        Raises:
+            NotImplementedError: [description]
+
+        Returns:
+            Callable[[int], int] -- Function computing payment
         """
         raise NotImplementedError()
