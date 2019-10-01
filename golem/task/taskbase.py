@@ -400,3 +400,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, compute_time: float) -> None:
+        self.compute_time: float = compute_time

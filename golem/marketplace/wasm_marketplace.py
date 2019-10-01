@@ -67,7 +67,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
         for offer in offers:
             usage_factor = cls.get_usage_factor(
-                offer.provider_id, offer.provider_performance.usage_benchmark)
+                offer.provider_id,
+                offer.provider_performance.usage_benchmark)
             adjusted_price = usage_factor * offer.price
             logger.info(
                 "RWMS: offer from %s, b=%.1f, R=%.3f, price=%d Gwei, a=%g",
@@ -83,8 +84,9 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return offers_sorted
 
     @classmethod
-    def report_subtask_usages(
-            cls, _task_id: str, usages: List[UsageReport]) -> None:
+    def report_subtask_usages(cls,
+                              _task_id: str,
+                              usages: List[UsageReport]) -> None:
         assert len(usages) > 1
 
         for pid, sid, usage in usages:

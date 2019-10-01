@@ -16,6 +16,8 @@ from typing import (
 )
 import logging
 
+from ethereum.utils import denoms
+
 from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
 
@@ -29,6 +31,7 @@ from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
     RequestorWasmMarketStrategy, UsageReport,
     ProviderWasmMarketStrategy
+    RequestorWasmMarketStrategy, UsageReport
 )
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
@@ -214,7 +217,7 @@ class WasmTaskDefinition(TaskDefinition):
         return dictionary
 
 
-class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
+class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
     REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
         RequestorWasmMarketStrategy
     PROVIDER_MARKET_STRATEGY: Type[ProviderWasmMarketStrategy] =\
@@ -226,7 +229,6 @@ class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
 
-    REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy
 
     def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
