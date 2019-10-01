@@ -31,7 +31,6 @@ from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
     RequestorWasmMarketStrategy, UsageReport,
     ProviderWasmMarketStrategy
-    RequestorWasmMarketStrategy, UsageReport
 )
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
