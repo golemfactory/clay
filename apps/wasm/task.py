@@ -213,7 +213,8 @@ class WasmTaskDefinition(TaskDefinition):
         }
         return dictionary
 
-class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
+
+class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
     ENVIRONMENT_CLASS = WasmTaskEnvironment
 
     JOB_ENTRYPOINT = 'python3 /golem/scripts/job.py'
@@ -221,7 +222,6 @@ class WasmTask(CoreTask): # pylint: disable=too-many-public-methods
     CALLBACKS: Dict[str, Callable] = {}
 
     REQUESTOR_MARKET_STRATEGY = RequestorWasmMarketStrategy  # type: ignore
-
 
     def __init__(self, task_definition: WasmTaskDefinition,
                  root_path: Optional[str] = None, owner: Node = None) -> None:
