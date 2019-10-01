@@ -124,7 +124,10 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return cls._usages.pop(subtask_id)
 
     @classmethod
-    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
+    def get_payment_computer(
+        cls, task: 'Task', 
+        subtask_id: str
+    )
             -> Callable[[int], int]:
         def payment_computer(price: int) -> int:
             subtask_usage: float = cls._get_subtask_usage(subtask_id)
