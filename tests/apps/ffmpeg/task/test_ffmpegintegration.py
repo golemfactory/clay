@@ -1,17 +1,19 @@
 import os
 import logging
 
-from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container, list_matching_resolutions, \
     list_supported_frame_rates
 from ffmpeg_tools.validation import UnsupportedVideoCodec, InvalidResolution, \
-    UnsupportedVideoCodecConversion, InvalidFrameRate
+    UnsupportedVideoCodecConversion, InvalidFrameRate, \
+    UnsupportedTargetVideoFormat, UnsupportedVideoFormat, UnsupportedAudioCodec
 
 from parameterized import parameterized
 import pytest
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
-    ffmpegException
+    ffmpegException, VideoCodecNotSupportedByContainer, \
+    AudioCodecNotSupportedByContainer
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
@@ -190,6 +192,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             result_file,
             container,
             video_options=None,
+            audio_options=None,
             subtasks_count=2,
     ):
         task_def_for_transcoding = {
@@ -203,6 +206,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             'options': {
                 'output_path': os.path.dirname(result_file),
                 'video': video_options if video_options is not None else {},
+                'audio': audio_options if audio_options is not None else {},
                 'container': container,
             }
         }
@@ -572,4 +576,123 @@ class TestFfmpegIntegration(TestTaskIntegration):
             })
 
         with self.assertRaises(UnsupportedVideoCodec):
+            self.execute_task(task_def)
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_unsupported_target_video_codec(self):
+        assert self.VIDEO_FILES[0]["container"] != Container.c_OGG
+        with self.assertRaises(VideoCodecNotSupportedByContainer):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(
+                self.VIDEO_FILES[0]['video_codec'])
+            operation.request_container_change(Container.c_OGG)
+            operation.request_resolution_change(
+                self.VIDEO_FILES[0]["resolution"])
+            operation.run(self.VIDEO_FILES[0]["path"])
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_unsupported_target_container_if_exclusive_demuxer(self):
+        with self.assertRaises(UnsupportedTargetVideoFormat):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(
+                self.VIDEO_FILES[0]['video_codec'])
+            operation.request_container_change(
+                Container.c_MATROSKA_WEBM_DEMUXER)
+            operation.request_resolution_change(
+                self.VIDEO_FILES[0]["resolution"])
+            operation.run(self.VIDEO_FILES[0]["path"])
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_invalid_resolution_should_raise_proper_exception(self):
+        dst_resolution = (100, 100)
+        assert self.VIDEO_FILES[0]['resolution'][0] / dst_resolution[0] != \
+            self.VIDEO_FILES[0]['resolution'][1] / dst_resolution[1], \
+            "Only a resolution change that involves changing aspect ratio is " \
+            "supposed to trigger InvalidResolution"
+        with self.assertRaises(InvalidResolution):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(
+                self.VIDEO_FILES[0]['video_codec'])
+            operation.request_container_change(self.VIDEO_FILES[0]['container'])
+            operation.request_resolution_change(dst_resolution)
+            operation.run(self.VIDEO_FILES[0]["path"])
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_invalid_frame_rate_should_raise_proper_exception(self):
+        assert 55 not in list_supported_frame_rates()
+        with self.assertRaises(InvalidFrameRate):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(
+                self.VIDEO_FILES[0]['video_codec'])
+            operation.request_container_change(self.VIDEO_FILES[0]['container'])
+            operation.request_resolution_change(
+                self.VIDEO_FILES[0]["resolution"])
+            operation.request_frame_rate_change('55')
+            operation.run(self.VIDEO_FILES[0]["path"])
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_invalid_container_should_raise_proper_exception(self):
+        with self.assertRaises(UnsupportedVideoFormat):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(
+                self.VIDEO_FILES[0]['video_codec'])
+            operation.request_container_change('invalid container', '')
+            operation.request_resolution_change(
+                self.VIDEO_FILES[0]["resolution"])
+            operation.run(self.VIDEO_FILES[0]["path"])
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_unsupported_audio_codec_should_raise_proper_exception(self):
+        with self.assertRaises(AudioCodecNotSupportedByContainer):
+            operation = SimulatedTranscodingOperation(
+                task_executor=self,
+                experiment_name=None,
+                resource_dir=self.RESOURCES,
+                tmp_dir=self.tempdir)
+            operation.request_video_codec_change(VideoCodec.H_264)
+            operation.request_audio_codec_change(AudioCodec.AC3)
+            operation.request_container_change(Container.c_MP4)
+            operation.request_resolution_change((180, 98))
+            operation.run("big_buck_bunny_stereo.mp4")
+
+    @pytest.mark.slow
+    @remove_temporary_dirtree_if_test_passed
+    def test_task_invalid_audio_params(self):
+        resource_stream = os.path.join(self.RESOURCES,
+                                       'big_buck_bunny_stereo.mp4')
+        result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            audio_options={
+                'codec': 'abcd',
+            })
+        with self.assertRaises(UnsupportedAudioCodec):
             self.execute_task(task_def)

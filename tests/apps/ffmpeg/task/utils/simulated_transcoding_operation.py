@@ -1,8 +1,8 @@
 import os
 import tempfile
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
-from ffmpeg_tools.codecs import VideoCodec
+from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, \
@@ -13,7 +13,7 @@ from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 class SimulatedTranscodingOperation:
     def __init__(self,
                  task_executor,
-                 experiment_name: str,
+                 experiment_name: Optional[str],
                  resource_dir: str,
                  tmp_dir: str,
                  dont_include_in_option_description: Optional[list] = None)\
@@ -24,7 +24,7 @@ class SimulatedTranscodingOperation:
         assert os.path.isdir(tmp_dir)
 
         self._task_executor = task_executor
-        self._experiment_name: str = experiment_name
+        self._experiment_name: Optional[str] = experiment_name
         self._host_dirs: Dict[str, str] = {
             'resource': resource_dir,
             'tmp': tmp_dir,
@@ -38,6 +38,7 @@ class SimulatedTranscodingOperation:
         self._diff_excludes: FileExcludes = {}
         self._assume_attribute_unchanged_if_missing: bool = False
         self._video_options: Dict[str, Any] = {}
+        self._audio_options: Dict[str, Any] = {}
         self._task_options: Dict[str, Any] = {
             'output_container': None,
             'subtasks_count': 2,
@@ -53,15 +54,24 @@ class SimulatedTranscodingOperation:
     def attach_to_report_set(self, report_set: FfprobeReportSet):
         self._ffprobe_report_set = report_set
 
-    def request_container_change(self, new_container: Container):
-        self._task_options['output_container'] = new_container
+    def request_container_change(
+            self,
+            new_container: Container,
+            expected_format_name: Optional[str] = None):
 
-        format_name = new_container.get_demuxer()
-        self.set_override('format', 'format_name', format_name)
+        self._task_options['output_container'] = new_container
+        if expected_format_name is None:
+            expected_format_name = new_container.get_demuxer()
+
+        self.set_override('format', 'format_name', expected_format_name)
 
     def request_video_codec_change(self, new_codec: VideoCodec):
         self._video_options['codec'] = new_codec.value
         self.set_override('video', 'codec_name', new_codec.value)
+
+    def request_audio_codec_change(self, new_codec: AudioCodec):
+        self._audio_options['codec'] = new_codec.value
+        self.set_override('audio', 'codec_name', new_codec.value)
 
     def request_video_bitrate_change(self, new_bitrate: str):
         self._video_options['bit_rate'] = new_bitrate
@@ -98,7 +108,10 @@ class SimulatedTranscodingOperation:
 
     def _build_option_description(self):
         if self._task_options['output_container'] is not None:
-            container = self._task_options['output_container'].value
+            if isinstance(self._task_options['output_container'], str):
+                container = self._task_options['output_container']
+            else:
+                container = self._task_options['output_container'].value
         else:
             container = None
 
@@ -117,6 +130,7 @@ class SimulatedTranscodingOperation:
 
         components = {
             'video_codec': self._video_options.get('codec', None),
+            'audio_codec': self._audio_options.get('codec', None),
             'container': container,
             'resolution': resolution,
             'frame_rate': self._video_options.get('frame_rate', None),
@@ -135,9 +149,16 @@ class SimulatedTranscodingOperation:
     def _build_task_def(cls,
                         video_file: str,
                         result_file: str,
-                        container: Container,
+                        container: Union[Container, str],
                         video_options: Dict[str, str],
+                        audio_options: Dict[str, str],
                         subtasks_count: int) -> dict:
+
+        if isinstance(container, Container):
+            container_str = container.value
+        else:
+            container_str = container
+
         return {
             'type': 'FFMPEG',
             'name': os.path.splitext(os.path.basename(result_file))[0],
@@ -148,15 +169,18 @@ class SimulatedTranscodingOperation:
             'resources': [video_file],
             'options': {
                 'output_path': os.path.dirname(result_file),
+                'audio': audio_options if audio_options is not None else {},
                 'video': video_options if video_options is not None else {},
-                'container': container.value if container is not None else None,
+                'container': container_str,
             }
         }
 
     def _build_file_names(self, relative_input_file: str):
         if self._task_options['output_container'] is not None:
-            output_extension = "." +\
-                               self._task_options['output_container'].value
+            if isinstance(self._task_options['output_container'], str):
+                output_extension = "." + self._task_options['output_container']
+            else:
+                output_extension = "." + self._task_options['output_container'].value  # noqa: E501  # pylint: disable=line-too-long
         else:
             output_extension = os.path.splitext(relative_input_file)[1]
 
@@ -209,6 +233,7 @@ class SimulatedTranscodingOperation:
                 output_file,
                 self._task_options['output_container'],
                 self._video_options,
+                self._audio_options,
                 self._task_options['subtasks_count'],
             )
 
@@ -219,7 +244,9 @@ class SimulatedTranscodingOperation:
                 output_file,
             )
         except BaseException as exception:
-            if self._ffprobe_report_set is not None:
+            if self._ffprobe_report_set is not None and \
+                    self._experiment_name is not None:
+
                 self._ffprobe_report_set.collect_error(
                     type(exception).__name__,
                     experiment_name=self._experiment_name,
@@ -228,7 +255,8 @@ class SimulatedTranscodingOperation:
                 )
             raise
         else:
-            if self._ffprobe_report_set is not None:
+            if self._ffprobe_report_set is not None and \
+                    self._experiment_name is not None:
                 self._ffprobe_report_set.collect_reports(
                     diff,
                     experiment_name=self._experiment_name,
