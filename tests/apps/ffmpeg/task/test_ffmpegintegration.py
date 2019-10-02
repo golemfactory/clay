@@ -527,7 +527,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             self.execute_task(task_def)
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_unsupported_target_video_codec(self):
         assert self.VIDEO_FILES[0]["container"] != Container.c_OGG
         with self.assertRaises(VideoCodecNotSupportedByContainer):
@@ -544,7 +544,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_unsupported_target_container_if_exclusive_demuxer(self):
         with self.assertRaises(UnsupportedTargetVideoFormat):
             operation = SimulatedTranscodingOperation(
@@ -561,7 +561,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_invalid_resolution_should_raise_proper_exception(self):
         dst_resolution = (100, 100)
         assert self.VIDEO_FILES[0]['resolution'][0] / dst_resolution[0] != \
@@ -581,7 +581,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_invalid_frame_rate_should_raise_proper_exception(self):
         assert 55 not in list_supported_frame_rates()
         with self.assertRaises(InvalidFrameRate):
@@ -599,7 +599,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_invalid_container_should_raise_proper_exception(self):
         with self.assertRaises(UnsupportedVideoFormat):
             operation = SimulatedTranscodingOperation(
@@ -615,7 +615,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_unsupported_audio_codec_should_raise_proper_exception(self):
         with self.assertRaises(AudioCodecNotSupportedByContainer):
             operation = SimulatedTranscodingOperation(
@@ -630,7 +630,7 @@ class TestFfmpegIntegration(TestTaskIntegration):
             operation.run("big_buck_bunny_stereo.mp4")
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
+    @keep_temporary_dirtree_if_test_failed
     def test_task_invalid_audio_params(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'big_buck_bunny_stereo.mp4')
