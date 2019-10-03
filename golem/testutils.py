@@ -217,8 +217,9 @@ class TestTaskIntegration(DatabaseFixture):
     def setUp(self):
         super(TestTaskIntegration, self).setUp()
 
-        # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
-        # will set this variable to True on the end of test.
+        # Assume that test passed and temporary files should be removed. If test
+        # fails @keep_temporary_dirtree_if_test_failed will set this variable to
+        # False after this test to keep temporary files.
         self.REMOVE_TMP_DIRS = True
 
         # build mock node
