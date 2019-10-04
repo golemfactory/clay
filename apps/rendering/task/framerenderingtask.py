@@ -19,7 +19,6 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                PREVIEW_EXT)
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
-from golem.rpc import utils as rpc_utils
 from golem.task.taskbase import TaskResult
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 
@@ -35,21 +34,6 @@ def _calculate_subtasks_count(
         frames: list) -> int:
     # TODO: come up with a better function
     return subtasks_count
-
-
-@rpc_utils.expose('comp.task.subtasks.count')
-def legacy_calculate_subtasks_count(
-        subtasks_count: int,
-        optimize_total: bool,
-        use_frames: bool,
-        frames: list) -> int:
-    """
-    TODO: remove this before 0.21
-    """
-    return _calculate_subtasks_count(
-        subtasks_count,
-        use_frames,
-        frames)
 
 
 class FrameRendererOptions(Options):
