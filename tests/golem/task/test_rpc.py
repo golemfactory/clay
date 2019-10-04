@@ -204,7 +204,7 @@ class TestCreateTaskDryRun(ProviderBase):
         # then
         assert error is None
         assert new_dict['id'] is not None
-        assert new_dict['subtasks_count'] == 10
+        assert new_dict['subtasks_count'] == 0
 
     def test_failure(self):
         # given

@@ -1,39 +1,22 @@
 import os
 import tempfile
-from copy import deepcopy
 
-from apps.core.task.coretaskstate import (TaskDefinition,
-                                          TaskDefaults, Options)
+from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import symlink_or_copy, list_dir_recursive
 
 
-class DummyTaskDefaults(TaskDefaults):
-    """ Suggested default values for dummy task"""
-
-    def __init__(self):
-        super(DummyTaskDefaults, self).__init__()
-        self.options = DummyTaskOptions()
-        self.options.difficulty = 0xffff0000  # magic number
-
-        self.shared_data_files = ["in.data"]
-        self.out_file_basename = "out"
-        self.default_subtasks = 5
-        self.code_dir = os.path.join(get_golem_path(),
-                                     "apps", "dummy", "resources", "code_dir")
-        self.result_size = 256  # length of result hex number
-
-
 class DummyTaskDefinition(TaskDefinition):
-    def __init__(self, defaults=None):
+    def __init__(self):
         TaskDefinition.__init__(self)
 
         self.options = DummyTaskOptions()
+        self.options.difficulty = 0xffff0000  # magic number
         self.task_type = 'DUMMY'
 
         # subtask data
-        self.shared_data_files = []
+        self.shared_data_files = ["in.data"]
 
         # subtask code
         self.code_dir = os.path.join(get_golem_path(),
@@ -43,8 +26,7 @@ class DummyTaskDefinition(TaskDefinition):
         self.result_size = 256  # length of result hex number
         self.out_file_basename = "out"
 
-        if defaults:
-            self.set_defaults(defaults)
+        self.subtasks_count = 5
 
     def add_to_resources(self):
         super().add_to_resources()
@@ -76,15 +58,6 @@ class DummyTaskDefinition(TaskDefinition):
                         os.path.join(data_path, os.path.basename(data_file)))
 
         self.resources = set(list_dir_recursive(self.tmp_dir))
-
-    # TODO maybe move it to the CoreTask? Issue #2428
-    def set_defaults(self, defaults: DummyTaskDefaults):
-        self.shared_data_files = deepcopy(defaults.shared_data_files)
-        self.out_file_basename = defaults.out_file_basename
-        self.code_dir = defaults.code_dir
-        self.result_size = defaults.result_size
-        self.subtasks_count = defaults.default_subtasks
-        self.options = deepcopy(defaults.options)
 
 
 class DummyTaskOptions(Options):

@@ -17,7 +17,6 @@ from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
-from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
@@ -30,49 +29,13 @@ logger = logging.getLogger("apps.rendering")
 DEFAULT_PADDING = 4
 
 
-def _calculate_subtasks_count_with_frames(
-        subtasks_count: int,
-        frames: list) -> int:
-    num_frames = len(frames)
-    est_f: float
-    if subtasks_count > num_frames:
-        est_f = math.floor(subtasks_count / num_frames) * num_frames
-        est = int(est_f)
-        if est != subtasks_count:
-            logger.warning("Too many subtasks for this task. %s "
-                           "subtasks will be used", est)
-        return est
-
-    est_f = num_frames / math.ceil(num_frames / subtasks_count)
-    est = int(math.ceil(est_f))
-    if est != subtasks_count:
-        logger.warning("Too many subtasks for this task. %s "
-                       "subtasks will be used.", est)
-
-    return est
-
-
 def _calculate_subtasks_count(
         subtasks_count: int,
         optimize_total: bool,
         use_frames: bool,
-        frames: list,
-        defaults: 'RendererDefaults') -> int:
-    if optimize_total or not subtasks_count:
-        if use_frames:
-            return len(frames)
-        return defaults.default_subtasks
-
-    if use_frames:
-        return _calculate_subtasks_count_with_frames(
-            subtasks_count=subtasks_count,
-            frames=frames,
-        )
-
-    total = subtasks_count
-    if defaults.min_subtasks <= total <= defaults.max_subtasks:
-        return total
-    return defaults.default_subtasks
+        frames: list) -> int:
+    # TODO: come up with a better function
+    return subtasks_count
 
 
 @rpc_utils.expose('comp.task.subtasks.count')
@@ -88,8 +51,7 @@ def legacy_calculate_subtasks_count(
         subtasks_count,
         optimize_total,
         use_frames,
-        frames,
-        RendererDefaults())
+        frames)
 
 
 class FrameRendererOptions(Options):
@@ -531,7 +493,6 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
             optimize_total=definition.optimize_total,
             use_frames=definition.options.use_frames,
             frames=definition.options.frames,
-            defaults=cls.DEFAULTS(),
         )
 
         return definition

@@ -8,10 +8,8 @@ from pathlib import Path
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_opencv_image_error
-from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import RenderingVerifier
-from golem.core.common import get_golem_path
-from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.simpleexccmd import is_windows
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
@@ -244,24 +242,8 @@ class RenderingTaskBuilderError(Exception):
     pass
 
 
-def _calculate_subtasks_count(
-        subtasks_count: int,
-        optimize_total: bool,
-        defaults: RendererDefaults) -> int:
-    if optimize_total:
-        return defaults.default_subtasks
-
-    if defaults.min_subtasks <= subtasks_count <= defaults.max_subtasks:
-        return subtasks_count
-
-    logger.warning("Cannot set total subtasks to %s. Changing to %s",
-                   subtasks_count, defaults.default_subtasks)
-    return defaults.default_subtasks
-
-
 class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
-    DEFAULTS = RendererDefaults
 
     @staticmethod
     def _scene_file(type, resources):
@@ -291,11 +273,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.subtasks_count = _calculate_subtasks_count(
-            subtasks_count=int(dictionary['subtasks_count']),
-            optimize_total=definition.optimize_total,
-            defaults=cls.DEFAULTS(),
-        )
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']

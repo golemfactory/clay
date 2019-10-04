@@ -37,25 +37,6 @@ class RunVerification(enum.Enum):
     disabled = enum.auto()
 
 
-class TaskDefaults(object):
-    """ Suggested default values for task parameters """
-
-    def __init__(self):
-        self.output_format = ""
-        self.min_subtasks = 1
-        self.max_subtasks = 50
-        self.default_subtasks = 20
-        self.name = ""
-
-    @property
-    def timeout(self):
-        return DEFAULT_TIMEOUT
-
-    @property
-    def subtask_timeout(self):
-        return DEFAULT_SUBTASK_TIMEOUT
-
-
 class TaskDefinition(object):
     """ Task description used in GUI and in save file format"""
 

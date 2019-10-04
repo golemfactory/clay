@@ -1,26 +1,7 @@
 from os import path
 
 from apps.core.task.coretaskstate import (TaskDefinition,
-                                          AdvanceVerificationOptions,
-                                          TaskDefaults)
-
-
-class RendererDefaults(TaskDefaults):
-    """ Suggested default values for Rendering tasks"""
-    def __init__(self):
-        super(RendererDefaults, self).__init__()
-        self.resolution = [1920, 1080]
-        self._pixel_to_seconds = 384
-
-    @property
-    def subtask_timeout(self) -> int:
-        return int(
-            self.resolution[0] * self.resolution[1] / self._pixel_to_seconds,
-        )
-
-    @property
-    def timeout(self) -> int:
-        return self.subtask_timeout * self.default_subtasks
+                                          AdvanceVerificationOptions)
 
 
 class RenderingTaskDefinition(TaskDefinition):
