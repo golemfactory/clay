@@ -31,7 +31,6 @@ DEFAULT_PADDING = 4
 
 def _calculate_subtasks_count(
         subtasks_count: int,
-        optimize_total: bool,
         use_frames: bool,
         frames: list) -> int:
     # TODO: come up with a better function
@@ -49,7 +48,6 @@ def legacy_calculate_subtasks_count(
     """
     return _calculate_subtasks_count(
         subtasks_count,
-        optimize_total,
         use_frames,
         frames)
 
@@ -490,7 +488,6 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         definition.options.use_frames = use_frames
         definition.subtasks_count = _calculate_subtasks_count(
             subtasks_count=int(dictionary['subtasks_count']),
-            optimize_total=definition.optimize_total,
             use_frames=definition.options.use_frames,
             frames=definition.options.frames,
         )

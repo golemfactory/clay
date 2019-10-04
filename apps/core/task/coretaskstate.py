@@ -49,7 +49,6 @@ class TaskDefinition(object):
         self.estimated_memory = 0
 
         self.subtasks_count = 0
-        self.optimize_total = False
         self.output_file = ""
         self.task_type = None
         self.name = ""

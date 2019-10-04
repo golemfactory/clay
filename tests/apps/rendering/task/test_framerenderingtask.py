@@ -316,7 +316,6 @@ class TestBuildDefinition(unittest.TestCase):
             *,
             frame_count: int = 1,
             subtasks_count: int = 1,
-            optimize_total: bool = False,
     ):
         assert frame_count > 0
         if frame_count == 1:
@@ -327,7 +326,6 @@ class TestBuildDefinition(unittest.TestCase):
         return {
             "bid": 0,
             "name": "foo",
-            "optimize_total": optimize_total,
             "options": {
                 "format": "PNG",
                 "frame_count": frame_count,
@@ -342,7 +340,7 @@ class TestBuildDefinition(unittest.TestCase):
         }
 
     def test_subtasks_count(self):
-        # sort tests by (optimize_total, frame_count, subtasks_count)
+        # sort tests by (frame_count, subtasks_count)
         tests = [
             # TODO
         ]
