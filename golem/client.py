@@ -1091,7 +1091,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
 
-        self.enable_talkback(self.config_desc.enable_talkback)
+        self.enable_talkback(bool(self.config_desc.enable_talkback))
         self.app_config.change_config(self.config_desc)
 
         dispatcher.send(
@@ -1369,7 +1369,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return None
 
     @staticmethod
-    def enable_talkback(value):
+    def enable_talkback(value: bool):
         enable_sentry_logger(value)
 
     @rpc_utils.expose('net.peer.block')
