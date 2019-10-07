@@ -321,6 +321,7 @@ class RequestedTaskManager:
         loop.call_at(
             loop.time() + task.subtask_timeout,
             self._check_subtask_timeout,
+            subtask.task,
             subtask.subtask_id,
         )
         ProviderComputeTimers.start(subtask_id)
@@ -339,6 +340,7 @@ class RequestedTaskManager:
             raise RuntimeError(
                 f"Task not active, can not verify. task_id={task_id}")
         subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id)
         assert subtask.task == task
         app_client = await self._get_app_client(task.app_id)
@@ -524,9 +526,13 @@ class RequestedTaskManager:
         )
 
     @staticmethod
-    def get_node_id_for_subtask(subtask_id: SubtaskId) -> Optional[str]:
+    def get_node_id_for_subtask(
+            task_id: TaskId,
+            subtask_id: SubtaskId,
+    ) -> Optional[str]:
         try:
             subtask = RequestedSubtask.get(
+                RequestedSubtask.task == task_id,
                 RequestedSubtask.subtask_id == subtask_id
             )
             return subtask.computing_node.node_id
@@ -586,14 +592,19 @@ class RequestedTaskManager:
             task.save()
             self._notice_task_updated(task, op=TaskOp.TIMEOUT)
 
-    def _check_subtask_timeout(self, subtask_id: SubtaskId) -> None:
+    def _check_subtask_timeout(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> None:
         subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
         if subtask.status.is_active():
             logger.info(
                 "Subtask timed out. task_id=%r, subtask_id=%r",
-                subtask.task_id,
+                subtask.task,
                 subtask.subtask_id
             )
             # TODO: Add SubtaskStatus.timeout?

@@ -674,7 +674,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _react_to_cannot_compute_task(self, msg):
-        if not self.check_provider_for_subtask(msg.subtask_id):
+        if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
@@ -717,8 +717,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.verify_owners(msg, my_role=Actor.Requestor):
             return
 
+        task_id = msg.task_id
         subtask_id = msg.subtask_id
-        if not self.check_provider_for_subtask(subtask_id):
+        if not self.check_provider_for_subtask(task_id, subtask_id):
             self.dropped()
             return
 
@@ -904,7 +905,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_task_failure(self, msg):
-        if self.check_provider_for_subtask(msg.subtask_id):
+        if self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
@@ -1052,9 +1053,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.port
         )
 
-    def check_provider_for_subtask(self, subtask_id) -> bool:
+    def check_provider_for_subtask(
+            self,
+            task_id: str,
+            subtask_id: str
+    ) -> bool:
         node_id = self.requested_task_manager.get_node_id_for_subtask(
-            subtask_id
+            task_id, subtask_id
         )
         if node_id is None:
             node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
