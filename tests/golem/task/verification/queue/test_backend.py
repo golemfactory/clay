@@ -1,3 +1,5 @@
+import itertools
+
 from freezegun import freeze_time
 
 from golem.task.verification.queue.backend import DatabaseQueueBackend
@@ -49,12 +51,10 @@ class TestDatabaseQueueBackend(DatabaseFixture):
         assert self.backend.get() is None
 
     def test_update_priorities(self):
-        counter = 0
+        counter = itertools.count()
 
         def priority_fn() -> int:
-            nonlocal counter
-            counter += 1
-            return counter
+            return next(counter)
 
         with freeze_time('1000'):
             self.backend.put(f"{TASK_ID}0", f"{SUBTASK_ID}0", priority=None)
