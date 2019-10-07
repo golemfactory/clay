@@ -109,9 +109,9 @@ class Node(HardwarePresetsMixin):
         self._use_docker_manager = use_docker_manager
         self._docker_manager: Optional[DockerManager] = None
 
-        self._use_monitor = config_desc.enable_monitor \
+        self._use_monitor: bool = bool(config_desc.enable_monitor) \
             if use_monitor is None else use_monitor
-        self._use_talkback = config_desc.enable_talkback \
+        self._use_talkback: bool = bool(config_desc.enable_talkback) \
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
@@ -333,11 +333,11 @@ class Node(HardwarePresetsMixin):
                      enable_talkback: Optional[bool] = None) -> None:
 
         if enable_talkback is not None:
-            self._config_desc.enable_talkback = enable_talkback
+            self._config_desc.enable_talkback = int(enable_talkback)
             self._use_talkback = enable_talkback
 
         if enable_monitor is not None:
-            self._config_desc.enable_monitor = enable_monitor
+            self._config_desc.enable_monitor = int(enable_monitor)
             self._use_monitor = enable_monitor
 
         self._app_config.change_config(self._config_desc)

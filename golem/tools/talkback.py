@@ -25,9 +25,8 @@ def update_sentry_user(node_id: str, node_name: Optional[str] = None):
         handler.update_user(id=node_id, node_name=node_name)
 
 
-def enable_sentry_logger(value):
+def enable_sentry_logger(talkback_value: bool):
     from golem.tools.customloggers import SwitchedSentryHandler
-    talkback_value = bool(value)
     logger_root = logging.getLogger()
     try:
         import golem
