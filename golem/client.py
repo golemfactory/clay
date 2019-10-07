@@ -8,7 +8,10 @@ import time
 import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
-from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import (
+    Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple,
+    TYPE_CHECKING,
+)
 
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
@@ -74,6 +77,11 @@ from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+    from golem.task.requestedtaskmanager import RequestedTaskManager
+    from golem.task.taskmanager import TaskManager
 
 
 class ClientTaskComputerEventListener(object):
