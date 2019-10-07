@@ -10,15 +10,7 @@ from golem_task_api.enums import VerifyResult
 from golem.task import SubtaskId, TaskId
 from golem.task.verification.queue import VerificationQueue
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
-
-
-class AsyncMock(mock.MagicMock):
-    """
-    Extended MagicMock to keep async calls async
-    """
-    async def __call__(self, *args, **kwargs):
-        return super().__call__(*args, **kwargs)
-
+from tests.utils.asyncio import AsyncMock
 
 TASK_ID = 'task_id'
 SUBTASK_ID = 'subtask_id'

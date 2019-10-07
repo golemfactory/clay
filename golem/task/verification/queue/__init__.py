@@ -1,1 +1,1 @@
-from .queue import VerificationQueue
+from .queue import VerificationQueue  # noqa

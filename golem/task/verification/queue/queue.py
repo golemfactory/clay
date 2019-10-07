@@ -50,7 +50,6 @@ class VerificationQueue:
         self._queue = backend or DatabaseQueueBackend()
         # In-memory store for pending calls
         self._pending: Dict[Tuple[TaskId, SubtaskId], asyncio.Future] = dict()
-        self._pending: Dict[Tuple[TaskId, SubtaskId], asyncio.Future] = dict()
         # Tells whether the queue processing is running
         self._processing = False
         # Tells whether queue processing was paused by the user
