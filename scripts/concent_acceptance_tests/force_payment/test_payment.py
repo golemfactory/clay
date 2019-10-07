@@ -328,7 +328,7 @@ class RequestorPaysTest(ForcePaymentBase):
             'Batch transfer timeout',
         )
         sys.stderr.write('\n')
-        self.blockchain_sleep(120)
+        self.blockchain_sleep()
         return LOA, V
 
     def test_requestor_already_paid(self):
