@@ -3,6 +3,17 @@ import logging
 from enum import Enum
 from typing import Callable, Dict, List, Optional, Type, TYPE_CHECKING
 
+from dataclasses import dataclass, field
+from golem_messages.datastructures import stats as dt_stats
+
+from apps.core.task.coretaskstate import TaskDefinition, Options
+from golem.task.taskstate import TaskState
+from golem.marketplace import (
+    ProviderMarketStrategy, RequestorMarketStrategy,
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    DEFAULT_PROVIDER_MARKET_STRATEGY
+)
+
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
     import golem_messages
@@ -10,9 +21,6 @@ if TYPE_CHECKING:
 
     from apps.core.task.coretaskstate import TaskDefinition, Options
     from golem.task.taskstate import TaskState
-
-from dataclasses import dataclass, field
-from golem.marketplace import DEFAULT_MARKET_STRATEGY
 
 logger = logging.getLogger("golem.task")
 
@@ -30,7 +38,6 @@ class TaskPurpose(Enum):
 
 class TaskTypeInfo(object):
     """ Information about task that allows to define and build a new task"""
-    MARKET_STRATEGY = DEFAULT_MARKET_STRATEGY
 
     def __init__(self,
                  name: str,
@@ -98,10 +105,15 @@ class TaskEventListener(object):
 @dataclass
 class TaskResult:
     files: List[str] = field(default_factory=list)
-    stats: Dict = field(default_factory=dict)
+    stats: dt_stats.ProviderStats = dt_stats.ProviderStats()
 
 
+# pylint: disable=too-many-public-methods
 class Task(abc.ABC):
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorMarketStrategy]\
+        = DEFAULT_REQUESTOR_MARKET_STRATEGY
+    PROVIDER_MARKET_STRATEGY: Type[ProviderMarketStrategy]\
+        = DEFAULT_PROVIDER_MARKET_STRATEGY
 
     class ExtraData(object):
         def __init__(self, ctd=None, **kwargs):
@@ -158,9 +170,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
-        """Called after adding a new task, may initialize or create some resources
-        or do other required operations.
-        :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
+        """Called after adding a new task, may initialize or create
+        some resources or do other required operations.
+        :param DirManager dir_manager: DirManager instance for accessing
+        temp dir for this task
         """
         raise NotImplementedError
 
@@ -184,8 +197,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def needs_computation(self) -> bool:
-        """ Return information if there are still some subtasks that may be dispended
-        :return bool: True if there are still subtask that should be computed, False otherwise
+        """ Return information if there are still some subtasks
+        that may be dispended
+        :return bool: True if there are still subtask that should be computed,
+        False otherwise
         """
         raise NotImplementedError
 
@@ -271,6 +286,7 @@ class Task(abc.ABC):
         """
         raise NotImplementedError
 
+    # pylint: disable=no-self-use
     def get_resources(self) -> list:
         """ Return list of files that are needed to compute this task."""
         return []
@@ -284,8 +300,9 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def get_trust_mod(self, subtask_id) -> int:
-        """ Return trust modifier for given subtask. This number may be taken into account during increasing
-        or decreasing trust for given node after successful or failed computation.
+        """ Return trust modifier for given subtask. This number may be taken
+        into account during increasing or decreasing trust for given node
+        after successful or failed computation.
         :param subtask_id:
         :return int:
         """
@@ -298,22 +315,27 @@ class Task(abc.ABC):
         """
         raise NotImplementedError
 
+    # pylint: disable=no-self-use
     def get_stdout(self, subtask_id) -> str:
-        """ Return stdout received after computation of subtask_id, if there is no data available
+        """ Return stdout received after computation of subtask_id,
+        if there is no data available
         return empty string
         :param subtask_id:
         :return str:
         """
         return ""
 
+    # pylint: disable=no-self-use
     def get_stderr(self, subtask_id) -> str:
-        """ Return stderr received after computation of subtask_id, if there is no data available
+        """ Return stderr received after computation of subtask_id,
+        if there is no data available
         return emtpy string
         :param subtask_id:
         :return str:
         """
         return ""
 
+    # pylint: disable=no-self-use
     def get_results(self, subtask_id) -> List:
         """ Return list of files containing results for subtask with given id
         :param subtask_id:
@@ -321,6 +343,7 @@ class Task(abc.ABC):
         """
         return []
 
+    # pylint: disable=no-self-use
     def result_incoming(self, subtask_id):
         """ Informs that a computed task result is being retrieved
         :param subtask_id:
@@ -328,12 +351,14 @@ class Task(abc.ABC):
         """
         pass
 
+    # pylint: disable=no-self-use
     def get_output_names(self) -> List:
         """ Return list of files containing final import task results
         :return list:
         """
         return []
 
+    # pylint: disable=no-self-use
     def get_output_states(self) -> List:
         """ Return list of states of final task results
         :return list:
@@ -375,3 +400,8 @@ class Task(abc.ABC):
         Verify subtask results
         """
         return None
+
+
+class ResultMetadata:
+    def __init__(self, compute_time: float) -> None:
+        self.compute_time: float = compute_time

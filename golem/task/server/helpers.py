@@ -2,6 +2,7 @@ import logging
 import typing
 
 from golem_messages import message
+from golem_messages.datastructures.stats import ProviderStats
 from golem_messages import helpers as msg_helpers
 from golem_messages import utils as msg_utils
 
@@ -49,6 +50,7 @@ def computed_task_reported(
             subtask_id,
             'ForceGetTaskResult',
         )
+
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,
@@ -149,7 +151,7 @@ def send_report_computed_task(
         multihash=waiting_task_result.result_hash,
         secret=waiting_task_result.result_secret,
         options=client_options.__dict__,
-        stats=waiting_task_result.stats,
+        stats=ProviderStats(**waiting_task_result.stats),
     )
 
     signed_report_computed_task = msg_utils.copy_and_sign(

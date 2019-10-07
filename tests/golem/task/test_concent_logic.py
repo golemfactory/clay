@@ -419,7 +419,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg = factories.tasks.WantToComputeTaskFactory(
+            price=10 ** 18, cpu_usage=int(1e9))
         self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
@@ -484,13 +485,12 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
-        task_manager.get_market_strategy_for_task.return_value =\
-            RequestorBrassMarketStrategy
         ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
         ctd["resources"] = []
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()
+        task.REQUESTOR_MARKET_STRATEGY = RequestorBrassMarketStrategy
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
         task.header.max_price = 0

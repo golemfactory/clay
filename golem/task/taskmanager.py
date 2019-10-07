@@ -28,12 +28,17 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
-from golem.marketplace import DEFAULT_MARKET_STRATEGY, RequestorMarketStrategy
+from golem.marketplace import (
+    ProviderBrassMarketStrategy,
+    ProviderWasmMarketStrategy,
+    ProviderMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -1314,14 +1319,10 @@ class TaskManager(TaskEventListener):
 
         update_provider_efficiency(node_id, timeout, computation_time)
 
-    def get_market_strategy_for_task(
-            self, task: Task) -> Type[RequestorMarketStrategy]:
-        market_strategy: Type[RequestorMarketStrategy] = DEFAULT_MARKET_STRATEGY
-
-        try:
-            market_strategy = self.task_types[
-                task.task_definition.task_type.lower()].MARKET_STRATEGY
-        except KeyError:
-            pass
-
-        return market_strategy
+    @staticmethod
+    def get_provider_market_strategy_for_env(
+            env_id: str) -> Type[ProviderMarketStrategy]:
+        # NOTE This assumes ENV_ID == App Type
+        if env_id == WasmTaskEnvironment.ENV_ID:
+            return ProviderWasmMarketStrategy
+        return ProviderBrassMarketStrategy
