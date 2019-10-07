@@ -492,6 +492,7 @@ class RequestedTaskManager:
     async def work_offer_canceled(self, task_id: TaskId, subtask_id: SubtaskId):
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
         assert subtask.task == task
@@ -502,8 +503,9 @@ class RequestedTaskManager:
             op=SubtaskOp.FAILED
         )
 
-    def task_result_incoming(self, subtask_id: SubtaskId):
+    def task_result_incoming(self, task_id: TaskId, subtask_id: SubtaskId):
         subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
         if subtask.status != SubtaskStatus.starting:

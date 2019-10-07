@@ -416,7 +416,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         if self.config_desc.net_masking_enabled:
             mask_udpate_service = MaskUpdateService(
-                task_server=self.task_server,
+                requested_task_manager=self.task_server.requested_task_manager,
+                old_task_manager=self.task_server.task_manager,
                 interval_seconds=self.config_desc.mask_update_interval,
                 update_num_bits=self.config_desc.mask_update_num_bits
             )
@@ -1548,19 +1549,22 @@ class MaskUpdateService(LoopingCallService):
 
     def __init__(
             self,
-            task_server: TaskServer,
+            requested_task_manager: 'RequestedTaskManager',
+            old_task_manager: 'TaskManager',
             interval_seconds: int,
             update_num_bits: int
     ) -> None:
-        self._task_server: TaskServer = task_server
+        self._requested_task_manager = requested_task_manager
+        self._old_task_manager = old_task_manager
         self._update_num_bits = update_num_bits
         self._interval = interval_seconds
         super().__init__(interval_seconds)
 
     @inlineCallbacks
     def _run(self) -> Deferred:
-        logger.info('Updating masks')
-        old_task_manager = self._task_server.task_manager
+        logger.debug('Updating masks')
+        old_task_manager = self._old_task_manager
+        requested_task_manager = self._requested_task_manager
         # Using list() because tasks could be changed by another thread
         for task_id, task in list(old_task_manager.tasks.items()):
             if not old_task_manager.task_needs_computation(task_id):
@@ -1575,7 +1579,6 @@ class MaskUpdateService(LoopingCallService):
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
 
-        requested_task_manager = self._task_server.requested_task_manager
         started_tasks = requested_task_manager.get_started_tasks()
         # Using list() because tasks could be changed by another thread
         for db_task in list(started_tasks):
