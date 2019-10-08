@@ -13,6 +13,7 @@ isort==4.3.4
 lazy-object-proxy==1.3.1
 mccabe==0.6.1
 mypy==0.670
+parameterized==0.7.0
 pluggy==0.6.0
 py==1.5.3
 pycodestyle==2.5.0
