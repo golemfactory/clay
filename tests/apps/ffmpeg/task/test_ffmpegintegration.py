@@ -11,7 +11,7 @@ from ffmpeg_tools.formats import list_supported_frame_rates
 from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
     UnsupportedAudioCodec, UnsupportedVideoCodec, \
-    UnsupportedVideoCodecConversion, validate_resolution
+    validate_resolution
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
@@ -85,7 +85,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
                 (VideoCodec.MPEG_1, Container.c_MPEG),
                 (VideoCodec.MPEG_2, Container.c_MPEG),
                 (VideoCodec.MPEG_4, Container.c_MPEGTS),
-                (VideoCodec.THEORA, Container.c_OGG),
                 (VideoCodec.VP8, Container.c_WEBM),
                 (VideoCodec.VP9, Container.c_MATROSKA),
                 (VideoCodec.WMV1, Container.c_ASF),
@@ -101,6 +100,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
                                                video_codec,
                                                container):
         source_codec = video["video_codec"]
+        assert video_codec.value in source_codec.get_supported_conversions()
+
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="codec change",
@@ -115,15 +116,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
 
-        supported_conversions = source_codec.get_supported_conversions()
-        if video_codec.value in supported_conversions:
-            (_input_report, _output_report, diff) = operation.run(
-                video["path"])
-            self.assertEqual(diff, [])
-        else:
-            with self.assertRaises(UnsupportedVideoCodecConversion):
-                operation.run(video["path"])
-            pytest.skip("Video codec conversion not supported")
+        (_input_report, _output_report, diff) = operation.run(video["path"])
+        self.assertEqual(diff, [])
 
     @parameterized.expand(
         (
@@ -132,7 +126,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             for resolution in (
                 [400, 300],
                 [640, 480],
-                [720, 480],
             )
         ),
         name_func=create_split_and_merge_with_resolution_change_test_name
@@ -154,20 +147,15 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
 
-        try:
-            validate_resolution(video["resolution"], resolution)
-            (_input_report, _output_report, diff) = operation.run(video["path"])
-            self.assertEqual(diff, [])
-        except InvalidResolution:
-            with self.assertRaises(InvalidResolution):
-                operation.run(video["path"])
-            pytest.skip("Target resolution not supported")
+        validate_resolution(video["resolution"], resolution)
+        (_input_report, _output_report, diff) = operation.run(video["path"])
+        self.assertEqual(diff, [])
 
     @parameterized.expand(
         (
             (video, frame_rate)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for frame_rate in (1, 25, '30000/1001', 60)
+            for frame_rate in (25, '30000/1001', 60)
         ),
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
@@ -175,6 +163,9 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         source_codec = video["video_codec"]
+        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
+        assert frame_rate_as_str_or_int & list_supported_frame_rates() != set()
+
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="frame rate change",
@@ -193,15 +184,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
-        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
-        if frame_rate_as_str_or_int & list_supported_frame_rates() != set():
-            (_input_report, _output_report, diff) = operation.run(
-                video["path"])
-            self.assertEqual(diff, [])
-        else:
-            with self.assertRaises(InvalidFrameRate):
-                operation.run(video["path"])
-            pytest.skip("Target frame rate not supported")
+        (_input_report, _output_report, diff) = operation.run(video["path"])
+        self.assertEqual(diff, [])
 
     @parameterized.expand(
         (
