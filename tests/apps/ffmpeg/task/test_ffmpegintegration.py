@@ -87,11 +87,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
                                                video,
                                                video_codec,
                                                container):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -107,15 +102,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.exclude_from_diff({'video': {'frame_count'}})
         operation.enable_treating_missing_attributes_as_unchanged()
-
-        if not Container.is_supported(video['container'].value):
-            pytest.skip("Source container not supported")
-        if not Container.is_supported(container.value):
-            pytest.skip("Target container not supported")
-        if not video['container'].is_supported_video_codec(source_codec.value):
-            pytest.skip("Source video codec not supported by the container")
-        if not container.is_supported_video_codec(video_codec.value):
-            pytest.skip("Target video codec not supported by the container")
 
         supported_conversions = source_codec.get_supported_conversions()
         if video_codec.value in supported_conversions:
@@ -142,17 +128,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_resolution_change(self, video, resolution):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
-        if not Container.is_supported(video['container'].value):
-            pytest.skip("Target container not supported")
-        if not video['container'].is_supported_video_codec(source_codec.value):
-            pytest.skip("Target video codec not supported by the container")
-
         operation = SimulatedTranscodingOperation(
             task_executor=self,
             experiment_name="resolution change",
@@ -165,16 +141,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
-
-        if not Container.is_supported(video['container'].value):
-            pytest.skip("Target container not supported")
-        if not video['container'].is_supported_video_codec(source_codec.value):
-            pytest.skip("Target video codec not supported by the container")
-
-        supported_conversions = source_codec.get_supported_conversions()
-        if source_codec.value not in supported_conversions:
-            pytest.skip("Transcoding is not possible for this file without"
-                        "also changing the video codec.")
 
         try:
             validate_resolution(video["resolution"], resolution)
@@ -196,11 +162,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -219,16 +180,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
-
-        if not Container.is_supported(video['container'].value):
-            pytest.skip("Target container not supported")
-        if not video['container'].is_supported_video_codec(source_codec.value):
-            pytest.skip("Target video codec not supported by the container")
-
-        supported_conversions = source_codec.get_supported_conversions()
-        if source_codec.value not in supported_conversions:
-            pytest.skip("Transcoding is not possible for this file without"
-                        "also changing the video codec.")
 
         frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
         if frame_rate_as_str_or_int & list_supported_frame_rates() != set():
@@ -253,11 +204,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video,
                                                            subtasks_count):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -273,16 +219,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.enable_treating_missing_attributes_as_unchanged()
-
-        if not Container.is_supported(video['container'].value):
-            pytest.skip("Target container not supported")
-        if not video['container'].is_supported_video_codec(source_codec.value):
-            pytest.skip("Target video codec not supported by the container")
-
-        supported_conversions = source_codec.get_supported_conversions()
-        if source_codec.value not in supported_conversions:
-            pytest.skip("Transcoding is not possible for this file without"
-                        "also changing the video codec.")
 
         (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
