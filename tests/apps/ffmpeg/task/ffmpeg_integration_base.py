@@ -29,14 +29,15 @@ def create_split_and_merge_with_resolution_change_test_name(
         testcase_func,
         param_num,
         param):
-    source_width = f"{param[0][0]['resolution'][0]}"
-    source_height = f"{param[0][0]['resolution'][1]}"
-    destination_resolution = f"{param[0][1][0]}x{param[0][1][1]}"
+    source_width = param[0][0]['resolution'][0]
+    source_height = param[0][0]['resolution'][1]
+    destination_width = param[0][1][0]
+    destination_height = param[0][1][1]
     return (
         f'{testcase_func.__name__}_{param_num}_from_'
         f'{source_width}x'
         f'{source_height}_to_'
-        f'{destination_resolution}'
+        f'{destination_width}x{destination_height}'
     )
 
 
@@ -44,9 +45,9 @@ def create_split_and_merge_with_frame_rate_change_test_name(
         testcase_func,
         param_num,
         param):
-    source_video_codec = f"{param[0][0]['video_codec'].value}"
-    source_video_container = f"{param[0][0]['container'].value}"
-    destination_frame_rate = f"{str(param[0][1]).replace('/', '_')}"
+    source_video_codec = param[0][0]['video_codec'].value
+    source_video_container = param[0][0]['container'].value
+    destination_frame_rate = str(param[0][1]).replace('/', '_')
     return (
         f'{testcase_func.__name__}_{param_num}_of_codec_'
         f'{source_video_codec}_and_container_'
@@ -59,9 +60,9 @@ def create_split_and_merge_with_different_subtask_counts_test_name(
         testcase_func,
         param_num,
         param):
-    source_video_codec = f"{param[0][0]['video_codec'].value}"
-    source_video_container = f"{param[0][0]['container'].value}"
-    number_of_subtasks = f"{param[0][1]}"
+    source_video_codec = param[0][0]['video_codec'].value
+    source_video_container = param[0][0]['container'].value
+    number_of_subtasks = param[0][1]
     return (
         f'{testcase_func.__name__}_{param_num}_of_codec_'
         f'{source_video_codec}_and_container_'
