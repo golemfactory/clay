@@ -20,7 +20,7 @@ from golem.testutils import TestTaskIntegration, \
     remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
-    FfmpegIntegrationBase, CODEC_CONTAINER_PAIRS_TO_TEST, \
+    FfmpegIntegrationBase, \
     create_split_and_merge_with_codec_change_test_name, \
     create_split_and_merge_with_resolution_change_test_name, \
     create_split_and_merge_with_frame_rate_change_test_name, \
@@ -77,7 +77,20 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (
             (video, video_codec, container)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for video_codec, container in CODEC_CONTAINER_PAIRS_TO_TEST
+            for video_codec, container in (
+                (VideoCodec.FLV1, Container.c_FLV),
+                (VideoCodec.H_264, Container.c_AVI),
+                (VideoCodec.HEVC, Container.c_MP4),
+                (VideoCodec.MJPEG, Container.c_MOV),
+                (VideoCodec.MPEG_1, Container.c_MPEG),
+                (VideoCodec.MPEG_2, Container.c_MPEG),
+                (VideoCodec.MPEG_4, Container.c_MPEGTS),
+                (VideoCodec.THEORA, Container.c_OGG),
+                (VideoCodec.VP8, Container.c_WEBM),
+                (VideoCodec.VP9, Container.c_MATROSKA),
+                (VideoCodec.WMV1, Container.c_ASF),
+                (VideoCodec.WMV2, Container.c_ASF),
+            )
         ),
         name_func=create_split_and_merge_with_codec_change_test_name
     )
