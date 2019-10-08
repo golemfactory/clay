@@ -24,11 +24,7 @@ from golem.core import deferred
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import (
-    DEFAULT_REQUESTOR_MARKET_STRATEGY,
-    Offer,
-    ProviderPerformance,
-)
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -337,11 +333,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if is_new_task:
-            # FIXME: find "current_task" and select a proper market strategy
-            market_strategy = DEFAULT_REQUESTOR_MARKET_STRATEGY
+            current_task = self.requested_task_manager.get_requested_task(
+                task_id)
+            current_app = self.task_server.app_manager.app(
+                current_task.app_id)
+            market_strategy = current_app.market_strategy
+            max_price_per_hour = current_task.max_price_per_hour
         else:
-            current_task = self.task_manager.tasks[msg.task_id]
+            current_task = self.task_manager.tasks[task_id]
             market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+            max_price_per_hour = current_task.header.max_price
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -360,7 +361,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         offer = OfferWithCallback(
             self.key_id,
             ProviderPerformance(msg.cpu_usage / 1e9),
-            current_task.header.max_price,
+            max_price_per_hour,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
         )

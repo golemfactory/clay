@@ -7,6 +7,8 @@ from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields as mm_fields
 
+from golem.marketplace import RequestorMarketStrategies
+
 logger = logging.getLogger(__name__)
 
 AppId = str
@@ -25,6 +27,14 @@ class AppDefinition:
     description: str = ''
     author: str = ''
     license: str = ''
+
+    market_strategy: RequestorMarketStrategies = field(
+        metadata=config(
+            encoder=RequestorMarketStrategies.serialize,
+            decoder=RequestorMarketStrategies.deserialize,
+        ),
+        default_factory=RequestorMarketStrategies.default,
+    )
 
     @property
     def id(self) -> AppId:
