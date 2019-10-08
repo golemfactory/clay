@@ -100,7 +100,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
-        operation.exclude_from_diff({'video': {'frame_count'}})
         operation.enable_treating_missing_attributes_as_unchanged()
 
         supported_conversions = source_codec.get_supported_conversions()
