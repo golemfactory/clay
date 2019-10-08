@@ -24,10 +24,6 @@ from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
 # flake8: noqa
 # pylint: disable=line-too-long,bad-whitespace
 VIDEO_FILES = [
-    # Files from the repo
-    {"resolution": [320, 240],   "container": Container.c_MP4,      "video_codec": VideoCodec.H_264,     "key_frames": 1,    "path": "test_video.mp4"},
-    {"resolution": [320, 240],   "container": Container.c_MP4,      "video_codec": VideoCodec.H_264,     "key_frames": 2,    "path": "test_video2"},
-
     # Files from transcoding-video-bundle
     {"resolution": [512, 288],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP8,       "key_frames": 1,    "path": "videos/good/basen-out8[vp8,512x288,10s,v1a0s0d0,i248p494b247,25fps].webm"},
     {"resolution": [512, 288],   "container": Container.c_WEBM,     "video_codec": VideoCodec.VP9,       "key_frames": 1,    "path": "videos/good/basen-out9[vp9,512x288,10s,v1a0s0d0,i248p494b247,25fps].webm"},
