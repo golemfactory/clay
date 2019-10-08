@@ -13,9 +13,9 @@ def create_split_and_merge_with_codec_change_test_name(
         testcase_func,
         param_num,
         param):
-    source_video_codec = {param[0][0]['video_codec'].value}
-    destination_video_codec = {param[0][1].value}
-    destination_container = {param[0][2].value}
+    source_video_codec = param[0][0]['video_codec'].value
+    destination_video_codec = param[0][1].value
+    destination_container = param[0][2].value
 
     return (
         f'{testcase_func.__name__}_{param_num}_from_'
@@ -59,9 +59,9 @@ def create_split_and_merge_with_different_subtask_counts_test_name(
         testcase_func,
         param_num,
         param):
-    source_video_codec = f"{param[0][0]['video_codec'].value}_"
+    source_video_codec = f"{param[0][0]['video_codec'].value}"
     source_video_container = f"{param[0][0]['container'].value}"
-    number_of_subtasks = f"{param[0][1]}_subtasks"
+    number_of_subtasks = f"{param[0][1]}"
     return (
         f'{testcase_func.__name__}_{param_num}_of_codec_'
         f'{source_video_codec}_and_container_'
