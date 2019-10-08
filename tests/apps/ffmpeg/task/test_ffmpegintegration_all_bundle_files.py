@@ -113,6 +113,25 @@ VIDEO_FILES = [
 @pytest.mark.skip("Files from transcoding-video-bundle disabled for now")
 class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
 
+    # flake8: noqa
+    # pylint: disable=line-too-long
+    _IGNORED_ATTRIBUTES_OF_BROKEN_FILE = {
+        # The merge step (using ffmpeg’s concat demuxer) changes FPS from 29.97
+        # to 30. This happens only for this particular file and there does not
+        # seem to be anything unusual about the input file itself. We have
+        # decided to ignore this problem for now because we can’t do anything
+        # about it and it’s likely to be a bug in ffmpeg. So bad output is
+        # unfortunately the expected result here.
+        'standalone-tra3106[mjpeg,720x496,17s,v1a0s0d0,i1525p1016b1016,29.97fps][segment1of17].avi': {'video': {'frame_rate'}},
+        # This wmv3/wmv file has incorrect FPS in metadata (or at least ffprobe
+        # returns an incorrect value). This makes ffmpeg (incorrectly) double
+        # the number of frames while keeping the FPS in output file metadata the
+        # same as in the original. We can’t help it. We’re going to assume that
+        # this is the expected result, i.e. garbage in, garbage out.”
+        'standalone-catherine[wmv3+wmav2,180x140,42s,v1a1s0d0,i637p1257b631,_][segment1of6].wmv': {'video': {'frame_rate'}},
+    }
+    # pylint: enable=line-too-long
+
     @parameterized.expand(
         (
             (video, video_codec, container)
