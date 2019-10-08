@@ -108,6 +108,9 @@ VIDEO_FILES = [
 
 
 @ci_skip
+# FIXME: These tests should be re-enabled once all the fixes needed
+# to make them pass are done and merged.
+@pytest.mark.skip("Files from transcoding-video-bundle disabled for now")
 class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
 
     @parameterized.expand(
@@ -124,11 +127,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
                                                video,
                                                video_codec,
                                                container):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -184,11 +182,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_resolution_change(self, video, resolution):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         if not Container.is_supported(video['container'].value):
             pytest.skip("Target container not supported")
@@ -243,11 +236,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
     @pytest.mark.slow
     @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -305,11 +293,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video,
                                                            subtasks_count):
-        # FIXME: These tests should be re-enabled once all the fixes needed
-        # to make them pass are done and merged.
-        if video["path"].startswith("videos/"):
-            pytest.skip("Files from transcoding-video-bundle disabled for now")
-
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
             task_executor=self,
