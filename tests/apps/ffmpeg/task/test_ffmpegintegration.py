@@ -2,8 +2,6 @@ import logging
 import os
 
 import pytest
-from parameterized import parameterized
-
 from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
@@ -12,6 +10,7 @@ from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
     UnsupportedAudioCodec, UnsupportedVideoCodec, \
     validate_resolution
+from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \

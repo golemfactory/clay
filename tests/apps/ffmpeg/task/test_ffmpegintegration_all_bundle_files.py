@@ -1,11 +1,11 @@
 import os
-import pytest
-from parameterized import parameterized
 
+import pytest
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, list_supported_frame_rates
 from ffmpeg_tools.validation import InvalidResolution, \
     UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution
+from parameterized import parameterized
 
 from golem.testutils import remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
