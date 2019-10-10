@@ -572,6 +572,16 @@ class Performance(BaseModel):
             ).save()
 
 
+class AppBenchmark(BaseModel):
+
+    hash = CharField(null=False, index=True, unique=True)
+    score = FloatField()
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
+
+    class Meta:
+        database = db
+
+
 class DockerWhitelist(BaseModel):
     repository = CharField(primary_key=True)
 
