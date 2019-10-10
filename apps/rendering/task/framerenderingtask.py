@@ -1,8 +1,14 @@
 import logging
 import math
 import os
-import typing
-from typing import Callable, List, TYPE_CHECKING
+from typing import (
+    Callable,
+    Dict,
+    List,
+    TYPE_CHECKING,
+    Type,
+    cast,
+)
 from bisect import insort
 from collections import OrderedDict, defaultdict
 
@@ -174,7 +180,7 @@ class FrameRenderingTask(RenderingTask):
             return result
         return []
 
-    def get_subtasks(self, part) -> typing.Dict[str, dict]:
+    def get_subtasks(self, part) -> Dict[str, dict]:
         if self.task_definition.options.use_frames:
             subtask_ids = self.frames_subtasks.get(to_unicode(part), [])
             subtask_ids = filter(None, subtask_ids)
@@ -481,7 +487,7 @@ def get_frame_name(output_name, ext, frame_num):
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    TASK_CLASS = FrameRenderingTask
+    TASK_CLASS: Type[FrameRenderingTask]
 
     def __init__(self, owner, task_definition, dir_manager):
         frames = task_definition.options.frames
@@ -504,7 +510,8 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        parent = super(FrameRenderingTaskBuilder, cls)
+        parent = cast(Type[RenderingTaskBuilder],
+                      super(FrameRenderingTaskBuilder, cls))
         options = dictionary.get('options') or dict()
 
         frames_string = to_unicode(options.get('frames', 1))
@@ -522,15 +529,16 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        definition = super().build_full_definition(task_type, dictionary)
+        parent = cast(Type[RenderingTaskBuilder],
+                      super(FrameRenderingTaskBuilder, cls))
 
+        definition = parent.build_full_definition(task_type, dictionary)
         definition.subtasks_count = _calculate_subtasks_count(
             subtasks_count=int(dictionary['subtasks_count']),
             use_frames=definition.options.use_frames,
             frames=definition.options.frames,
             resolution=definition.resolution,
         )
-
         return definition
 
     @staticmethod

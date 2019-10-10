@@ -280,9 +280,8 @@ class CoreTask(Task):
         return (self.get_total_tasks() - self.last_task) \
             + self.num_failed_subtasks
 
-    # pylint:disable=unused-argument
-    @classmethod
-    def get_subtasks(cls, part):
+    # pylint:disable=unused-argument,no-self-use
+    def get_subtasks(self, part) -> Dict[str, dict]:
         return dict()
 
     def restart(self):
@@ -518,7 +517,7 @@ class CoreTask(Task):
 
 
 class CoreTaskBuilder(TaskBuilder):
-    TASK_CLASS = CoreTask
+    TASK_CLASS: Type[CoreTask]
     OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,

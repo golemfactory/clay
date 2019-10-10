@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from typing import Type, TYPE_CHECKING
+from typing import cast, Type, TYPE_CHECKING
 
 from pathlib import Path
 
@@ -246,7 +246,7 @@ class RenderingTaskBuilderError(Exception):
 
 
 class RenderingTaskBuilder(CoreTaskBuilder):
-    TASK_CLASS = RenderingTask
+    TASK_CLASS: Type[RenderingTask]
 
     @staticmethod
     def _scene_file(type, resources):
@@ -262,7 +262,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
 
         dictionary = parent.build_dictionary(definition)
         dictionary['options']['format'] = definition.output_format
@@ -272,10 +272,12 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         resources = dictionary['resources']
 
-        definition = parent.build_minimal_definition(task_type, dictionary)
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_minimal_definition(task_type, dictionary))
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
@@ -288,10 +290,12 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         options = dictionary['options']
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_full_definition(task_type, dictionary))
         definition.output_format = options['format'].upper()
 
         definition.resolution = \
@@ -319,7 +323,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         path = parent.get_output_path(dictionary, definition)
 
         return '{}.{}'.format(path, dictionary['options']['format'])
