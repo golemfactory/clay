@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import typing
 from typing import Type
@@ -121,11 +122,12 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
-            verification_failed = not self.requested_task_manager.verify(
+            task = asyncio.ensure_future(self.requested_task_manager.verify(
                 task_id,
                 subtask_id,
-            )
-            verification_finished(False, verification_failed)
+            ))
+            task.add_done_callback(
+                lambda success: verification_finished(False, not success))
         else:
             def verification_finished_old():
                 is_verification_lenient = (

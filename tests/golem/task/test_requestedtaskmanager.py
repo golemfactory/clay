@@ -180,13 +180,13 @@ class TestRequestedTaskManager():
         mock_client.has_pending_subtasks.return_value = False
         subtask_id = subtask.subtask_id
         # when
-        res = await self.rtm.verify(task_id, subtask.subtask_id)
+        res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
         # then
-        assert res is True
+        assert res is VerifyResult.SUCCESS
         mock_client.verify.assert_called_once_with(task_id, subtask.subtask_id)
         mock_client.shutdown.assert_called_once_with()
         assert task_row.status.is_completed() is True
@@ -205,13 +205,13 @@ class TestRequestedTaskManager():
 
         subtask_id = subtask.subtask_id
         # when
-        res = await self.rtm.verify(task_id, subtask.subtask_id)
+        res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(
             RequestedSubtask.subtask_id == subtask_id)
         # then
-        assert res is False
+        assert res is VerifyResult.FAILURE
         mock_client.verify.assert_called_once_with(task_id, subtask.subtask_id)
         mock_client.shutdown.assert_not_called()
         assert task_row.status.is_active() is True

@@ -21,15 +21,14 @@ from golem.model import (
     RequestedTask,
     RequestedSubtask,
 )
+from golem.task import SubtaskId, TaskId
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TASK_STATUS_ACTIVE
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
+from golem.task.verification.queue import VerificationQueue
 
 logger = logging.getLogger(__name__)
-
-TaskId = str
-SubtaskId = str
 
 
 @dataclass
@@ -75,6 +74,8 @@ class RequestedTaskManager:
         self._app_manager = app_manager
         self._public_key: bytes = public_key
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
+        # Created lazily due to cascading errors in tests
+        self._verification_queue: Optional[VerificationQueue] = None
 
     def _app_dir(self, app_id: AppId) -> RequestorDir:
         app_dir = RequestorDir(self._root_path / app_id)
@@ -302,8 +303,21 @@ class RequestedTaskManager:
             deadline=deadline,
         )
 
-    async def verify(self, task_id: TaskId, subtask_id: SubtaskId) -> bool:
-        """ Return whether a subtask has been computed corectly. """
+    async def verify(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> VerifyResult:
+        if not self._verification_queue:
+            self._verification_queue = VerificationQueue(self._verify)
+        return await self._verification_queue.put(task_id, subtask_id)
+
+    async def _verify(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> VerifyResult:
+        """ Return whether a subtask has been computed correctly. """
         logger.debug('verify(task_id=%r, subtask_id=%r)', task_id, subtask_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
@@ -329,10 +343,11 @@ class RequestedTaskManager:
         ProviderComputeTimers.finish(subtask_id)
         if result is VerifyResult.SUCCESS:
             subtask.status = SubtaskStatus.finished
-        elif result is VerifyResult.FAILURE:
+        elif result in (VerifyResult.FAILURE, VerifyResult.INCONCLUSIVE):
             subtask.status = SubtaskStatus.failure
+        elif result is VerifyResult.AWAITING_DATA:
+            pass  # no update
         else:
-            # TODO: Handle other results
             raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
 
@@ -344,7 +359,7 @@ class RequestedTaskManager:
                     task.save()
                     await self._shutdown_app_client(task.app_id)
 
-        return result is VerifyResult.SUCCESS
+        return result
 
     async def abort_task(self, task_id):
         task = RequestedTask.get(RequestedTask.task_id == task_id)
