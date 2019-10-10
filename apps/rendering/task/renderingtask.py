@@ -24,6 +24,9 @@ SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
+# Theoretically it should be 8, but there are some unsolved edge cases,
+# so 10 should be safe.
+MIN_PIXELS_PER_SUBTASK = 10
 
 
 logger = logging.getLogger("apps.rendering")
@@ -290,7 +293,12 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
-        definition.resolution = [int(val) for val in options['resolution']]
+
+        definition.resolution = \
+            [int(val) for val in dictionary['options']['resolution']]
+        if any(dim < MIN_PIXELS_PER_SUBTASK for dim in definition.resolution):
+            raise ValueError("resolution too small")
+
         if definition.timeout < MIN_TIMEOUT:
             logger.warning(
                 "Timeout %d too short for this task. "
