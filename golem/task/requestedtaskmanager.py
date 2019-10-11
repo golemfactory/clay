@@ -1,32 +1,34 @@
+import asyncio
+import hashlib
 from datetime import timedelta
 import logging
-from pathlib import Path
+import os
 import shutil
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
-from golem_task_api import constants
+from golem_task_api.dirutils import RequestorDir, RequestorTaskDir
+from golem_task_api.enums import VerifyResult
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
-from golem.app_manager import AppManager
+from golem.app_manager import AppManager, AppId
 from golem.model import (
     ComputingNode,
     default_now,
     RequestedTask,
     RequestedSubtask,
 )
+from golem.task import SubtaskId, TaskId
 from golem.task.envmanager import EnvironmentManager, EnvId
-from golem.task.taskstate import TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskStatus, SubtaskStatus, TASK_STATUS_ACTIVE
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
-
+from golem.task.verification.queue import VerificationQueue
 
 logger = logging.getLogger(__name__)
-
-TaskId = str
-SubtaskId = str
 
 
 @dataclass
@@ -56,55 +58,56 @@ class SubtaskDefinition:
     deadline: int
 
 
-class DirManager:
-    def __init__(self, root_path: Path):
-        self._root_path = root_path
-
-    def get_app_dir(self, app_id: str) -> Path:
-        app_dir = self._root_path / app_id
-        app_dir.mkdir(exist_ok=True)
-        return app_dir
-
-    def prepare_task_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        task_dir.mkdir()
-        task_inputs_dir = task_dir / constants.TASK_INPUTS_DIR
-        task_inputs_dir.mkdir()
-        subtask_inputs_dir = self.get_subtask_inputs_dir(app_id, task_id)
-        subtask_inputs_dir.mkdir()
-        task_outputs_dir = task_dir / constants.TASK_OUTPUTS_DIR
-        task_outputs_dir.mkdir()
-        subtask_outputs_dir = self.get_subtask_outputs_dir(app_id, task_id)
-        subtask_outputs_dir.mkdir()
-        return task_inputs_dir
-
-    def get_subtask_inputs_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        return task_dir / constants.SUBTASK_INPUTS_DIR
-
-    def get_subtask_outputs_dir(self, app_id: str, task_id: TaskId) -> Path:
-        task_dir = self._get_task_dir(app_id, task_id)
-        return task_dir / constants.SUBTASK_OUTPUTS_DIR
-
-    def _get_task_dir(self, app_id: str, task_id: TaskId) -> Path:
-        return self.get_app_dir(app_id) / task_id
-
-
 class RequestedTaskManager:
+
     def __init__(
             self,
             env_manager: EnvironmentManager,
             app_manager: AppManager,
             public_key: bytes,
             root_path: Path,
-    ):
+    ) -> None:
         logger.debug('RequestedTaskManager(public_key=%r, root_path=%r)',
                      public_key, root_path)
-        self._dir_manager = DirManager(root_path)
+        self._root_path = root_path
         self._env_manager = env_manager
         self._app_manager = app_manager
         self._public_key: bytes = public_key
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
+        # Created lazily due to cascading errors in tests
+        self._verification_queue: Optional[VerificationQueue] = None
+
+    def _app_dir(self, app_id: AppId) -> RequestorDir:
+        app_dir = RequestorDir(self._root_path / app_id)
+        app_dir.mkdir(exist_ok=True)
+        return app_dir
+
+    def _task_dir(self, task_id: TaskId) -> RequestorTaskDir:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        return self._app_dir(task.app_id).task_dir(task_id)
+
+    def get_task_inputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory where task resources should be
+            placed. """
+        return self._task_dir(task_id).task_inputs_dir
+
+    def get_task_outputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory where task results should be
+            placed. """
+        return self._task_dir(task_id).task_outputs_dir
+
+    def get_subtask_inputs_dir(self, task_id: TaskId) -> Path:
+        """ Return a path to the directory of the task network resources. """
+        return self._task_dir(task_id).subtask_inputs_dir
+
+    def get_subtask_outputs_dir(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> Path:
+        """ Return a path to the directory where subtasks outputs should be
+            placed. """
+        return self._task_dir(task_id).subtask_outputs_dir(subtask_id)
 
     def create_task(
             self,
@@ -121,10 +124,9 @@ class RequestedTaskManager:
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
-            # prerequisites='{}',
             task_timeout=golem_params.task_timeout,
             subtask_timeout=golem_params.subtask_timeout,
-            start_time=default_now(),
+            start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
             # Concent is explicitly disabled for task_api for now...
@@ -134,17 +136,23 @@ class RequestedTaskManager:
             app_params=app_params,
         )
 
+        loop = asyncio.get_event_loop()
+        loop.call_at(
+            loop.time() + golem_params.task_timeout,
+            self._check_task_timeout,
+            task.task_id,
+        )
+
         logger.debug(
             'create_task(task_id=%r) - preparing directories. app_id=%s',
             task.task_id,
             task.app_id,
         )
-        task_inputs_dir = self._dir_manager.prepare_task_dir(
-            task.app_id,
-            task.task_id)
+        task_dir = self._task_dir(task.task_id)
+        task_dir.prepare()
         # Move resources to task_inputs_dir
         for resource in golem_params.resources:
-            shutil.copy2(resource, task_inputs_dir)
+            shutil.copy2(resource, task_dir.task_inputs_dir)
         logger.info(
             "Creating task. id=%s, app=%r",
             task.task_id,
@@ -169,11 +177,14 @@ class RequestedTaskManager:
 
         app_client = await self._get_app_client(task.app_id)
         logger.debug('init_task(task_id=%r) - creating task', task_id)
-        await app_client.create_task(
+        reply = await app_client.create_task(
             task.task_id,
             task.max_subtasks,
             task.app_params,
         )
+        task.env_id = reply.env_id
+        task.prerequisites = reply.prerequisites
+        task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
     @staticmethod
@@ -187,6 +198,7 @@ class RequestedTaskManager:
             raise RuntimeError(f"Task {task_id} has already been started")
 
         task.status = TaskStatus.waiting
+        task.start_time = default_now()
         task.save()
         # FIXME: add self.notice_task_updated(task_id, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
@@ -208,17 +220,6 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
 
-    def get_subtask_inputs_dir(self, task_id: TaskId) -> Path:
-        """ Return a path to the directory of the task network resources. """
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_subtask_inputs_dir(task.app_id, task_id)
-
-    def get_subtask_outputs_dir(self, task_id: TaskId) -> Path:
-        """ Return a path to the directory where subtasks outputs should be
-        placed. """
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
-        return self._dir_manager.get_subtask_outputs_dir(task.app_id, task_id)
-
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
         computation at the given moment. If there are the next call to
@@ -237,7 +238,7 @@ class RequestedTaskManager:
             self,
             task_id: TaskId,
             computing_node: ComputingNodeDefinition
-    ) -> SubtaskDefinition:
+    ) -> Optional[SubtaskDefinition]:
         """ Return a set of data required for subtask computation. """
         logger.debug(
             'get_next_subtask(task_id=%r, computing_node=%r)',
@@ -248,7 +249,7 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         node, _ = ComputingNode.get_or_create(
             node_id=computing_node.node_id,
-            name=computing_node.name
+            defaults={'name': computing_node.name}
         )
 
         # Check not providing for own task
@@ -266,13 +267,23 @@ class RequestedTaskManager:
                 f"Task not pending, no next subtask. task_id={task_id}")
 
         app_client = await self._get_app_client(task.app_id)
-        result = await app_client.next_subtask(task.task_id)
+        result = await app_client.next_subtask(
+            task_id=task.task_id,
+            opaque_node_id=hashlib.sha3_256(node.node_id.encode()).hexdigest()  # noqa pylint: disable=no-member
+        )
+
+        if result is None:
+            logger.info(
+                "Application refused to assign subtask to provider node. "
+                "task_id=%r, node_id=%r", task_id, node.node_id)
+            return None
+
         subtask = RequestedSubtask.create(
             task=task,
             subtask_id=result.subtask_id,
             status=SubtaskStatus.starting,
             payload=result.params,
-            inputs=result.resources,
+            inputs=list(map(str, result.resources)),
             start_time=default_now(),
             price=task.max_price_per_hour,
             computing_node=node,
@@ -292,8 +303,21 @@ class RequestedTaskManager:
             deadline=deadline,
         )
 
-    async def verify(self, task_id: TaskId, subtask_id: SubtaskId) -> bool:
-        """ Return whether a subtask has been computed corectly. """
+    async def verify(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> VerifyResult:
+        if not self._verification_queue:
+            self._verification_queue = VerificationQueue(self._verify)
+        return await self._verification_queue.put(task_id, subtask_id)
+
+    async def _verify(
+            self,
+            task_id: TaskId,
+            subtask_id: SubtaskId
+    ) -> VerifyResult:
+        """ Return whether a subtask has been computed correctly. """
         logger.debug('verify(task_id=%r, subtask_id=%r)', task_id, subtask_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
@@ -306,7 +330,7 @@ class RequestedTaskManager:
         subtask.status = SubtaskStatus.verifying
         subtask.save()
         try:
-            result = await app_client.verify(task_id, subtask_id)
+            result, _ = await app_client.verify(task_id, subtask_id)
         except Exception as e:
             logger.warning(
                 "Verification failed. subtask=%s, task=%s, exception=%r",
@@ -314,16 +338,20 @@ class RequestedTaskManager:
                 task_id,
                 e
             )
-            result = False
+            result, _ = VerifyResult.FAILURE, str(e)
 
         ProviderComputeTimers.finish(subtask_id)
-        if result:
+        if result is VerifyResult.SUCCESS:
             subtask.status = SubtaskStatus.finished
-        else:
+        elif result in (VerifyResult.FAILURE, VerifyResult.INCONCLUSIVE):
             subtask.status = SubtaskStatus.failure
+        elif result is VerifyResult.AWAITING_DATA:
+            pass  # no update
+        else:
+            raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
 
-        if result:
+        if result is VerifyResult.SUCCESS:
             # Check if task completed
             if not await self.has_pending_subtasks(task_id):
                 if not self._get_pending_subtasks(task_id):
@@ -349,6 +377,70 @@ class RequestedTaskManager:
         # self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
         await self._shutdown_app_client(task.app_id)
+
+    @staticmethod
+    def get_started_tasks():
+        return RequestedTask.select().where(
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE),
+            RequestedTask.start_time is not None
+        ).execute()
+
+    async def restart_task(self, task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        task.status = TaskStatus.waiting
+        task.save()
+
+    async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        inputs_dir = self.get_task_inputs_dir(task_id)
+        resources = list(map(lambda f: inputs_dir / f, os.listdir(inputs_dir)))
+        golem_params = CreateTaskParams(
+            app_id=task.app_id,
+            name=f'{task.name} copy',
+            task_timeout=task.task_timeout,
+            subtask_timeout=task.subtask_timeout,
+            output_directory=output_dir,
+            resources=resources,
+            max_subtasks=task.max_subtasks,
+            max_price_per_hour=task.max_price_per_hour,
+            concent_enabled=task.concent_enabled,
+        )
+        app_params = task.app_params
+        return self.create_task(golem_params, app_params)
+
+    async def discard_subtasks(
+            self,
+            task_id: TaskId,
+            subtask_ids: List[SubtaskId],
+    ) -> List[SubtaskId]:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        app_client = await self._get_app_client(task.app_id)
+        for subtask in RequestedSubtask.select().where(
+                RequestedSubtask.subtask_id.in_(subtask_ids)):
+            assert subtask.task_id == task_id
+        discarded_subtask_ids = await app_client.discard_subtasks(
+            task_id,
+            subtask_ids
+        )
+        for subtask in RequestedSubtask.select().where(
+                RequestedSubtask.subtask_id.in_(discarded_subtask_ids)):
+            subtask.status = SubtaskStatus.cancelled
+            subtask.save()
+        return discarded_subtask_ids
+
+    async def stop(self):
+        logger.debug('stop()')
+        # Shutdown registered app_clients
+        for app_id, app_client in self._app_clients.items():
+            logger.info('Shutting down app. app_id=%r', app_id)
+            try:
+                await app_client.shutdown()
+            except Exception:  # pylint: disable=broad-except
+                logger.warning("Failed to shutdown app. app_id=%r", app_id)
+
+        self._app_clients.clear()
+
+        logger.debug('stop() - DONE')
 
     async def _get_app_client(
             self,
@@ -386,7 +478,7 @@ class RequestedTaskManager:
         env = self._env_manager.environment(env_id)
         payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
-        shared_dir = self._dir_manager.get_app_dir(app_id)
+        shared_dir = self._app_dir(app_id)
 
         return EnvironmentTaskApiService(
             env=env,
@@ -394,6 +486,14 @@ class RequestedTaskManager:
             prereq=prereq,
             shared_dir=shared_dir
         )
+
+    @staticmethod
+    def _check_task_timeout(task_id: TaskId) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if task.status.is_active():
+            logger.info("Task timed out. task_id=%r", task_id)
+            task.status = TaskStatus.timeout
+            task.save()
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(
@@ -428,13 +528,7 @@ class RequestedTaskManager:
             fn.Count(RequestedTask.task_id)
         ).where(
             RequestedTask.app_id == app_id,
-            # FIXME: duplicate list with TaskStatus.is_active()
-            RequestedTask.status.in_([
-                TaskStatus.sending,
-                TaskStatus.waiting,
-                TaskStatus.starting,
-                TaskStatus.computing,
-            ])
+            RequestedTask.status.in_(TASK_STATUS_ACTIVE)
         ).scalar()
         logger.debug('unfinished tasks: %r', unfinished_tasks)
         if unfinished_tasks == 0:

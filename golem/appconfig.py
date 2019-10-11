@@ -161,6 +161,7 @@ class AppConfig:
             # price and trust
             min_price=MIN_PRICE,
             max_price=MAX_PRICE,
+            price_per_cpu_h=MIN_PRICE,
             requesting_trust=REQUESTING_TRUST,
             computing_trust=COMPUTING_TRUST,
             # intervals

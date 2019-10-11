@@ -110,8 +110,6 @@ class DummyTask(Task):
         self.resource_parts = {}
 
         self.shared_data_file = None
-        self.subtasks_count = num_subtasks
-        self.total_tasks = self.subtasks_count
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
@@ -155,17 +153,17 @@ class DummyTask(Task):
         return 0.
 
     def get_total_tasks(self):
-        return self.subtasks_count
+        return self.task_definition.subtasks_count
 
     def get_tasks_left(self):
-        return self.subtasks_count - len(self.subtask_results)
+        return self.get_total_tasks() - len(self.subtask_results)
 
     @property
     def price(self) -> int:
-        return self.subtask_price * self.total_tasks
+        return self.subtask_price * self.get_total_tasks()
 
     def needs_computation(self):
-        return len(self.subtask_data) < self.subtasks_count
+        return len(self.subtask_data) < self.get_total_tasks()
 
     def finished_computation(self):
         return self.get_tasks_left() == 0
@@ -211,10 +209,10 @@ class DummyTask(Task):
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
         # for each subtack.
-        if not len(self.subtask_results) == self.subtasks_count:
+        if not len(self.subtask_results) == self.get_total_tasks():
             print(
                 "Results vs Count: "
-                f"{len(self.subtask_results)} != {self.subtasks_count}",
+                f"{len(self.subtask_results)} != {self.get_total_tasks()}",
             )
             return False
         print(f"subtask results: {self.subtask_results}")

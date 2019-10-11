@@ -166,6 +166,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _get_wtct(self):
         msg = msg_factories.tasks.WantToComputeTaskFactory(
             concent_enabled=self.use_concent,
+            cpu_usage=int(1e9),
             **self._get_task_parameters(),
         )
         msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member, no-value-for-parameter
@@ -174,6 +175,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_add_task(self):
         task_header = self._get_task_header()
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+        self.task_manager.tasks[self.task_id].REQUESTOR_MARKET_STRATEGY =\
+            RequestorBrassMarketStrategy
 
     def _get_task_header(self):
         task_header = dt_tasks_factory.TaskHeaderFactory(
@@ -294,8 +297,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
-        ts.task_manager.get_market_strategy_for_task.return_value =\
-            RequestorBrassMarketStrategy
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)

@@ -84,7 +84,7 @@ class GLambdaBenchmarkTaskTestCase(TestCase):
         dir_manager.get_task_output_dir.return_value = ''
 
         task = GLambdaBenchmarkTask(
-            total_tasks=1, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(), dir_manager=dir_manager
         )
 
@@ -109,7 +109,7 @@ class GLambdaTaskTestCase(TempDirFixture):
         )
         task_def.task_id = str(uuid4())
         self.task = GLambdaTask(
-            total_tasks=1, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(),
             dir_manager=DirManager(root_path=self.tempdir)
         )

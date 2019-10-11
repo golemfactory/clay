@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, mock
 from uuid import uuid4
 
 from golem_messages.factories.datastructures import p2p
@@ -11,6 +11,14 @@ from apps.wasm.task import (
     WasmTaskOptions,
     WasmTaskTypeInfo
 )
+
+
+def _fake_performance():
+    class FakePerformance:
+        def __init__(self, value, cpu_usage):
+            self.value = value
+            self.cpu_usage = cpu_usage
+    return FakePerformance(1.0, 1)
 
 
 class WasmTaskOptionsTestCase(TestCase):
@@ -93,11 +101,13 @@ TEST_TASK_DEFINITION_DICT = {
 
 
 class WasmTaskBuilderTestCase(TestCase):
+    @mock.patch("golem.model.Performance.get",
+                mock.Mock(return_value=_fake_performance()))
     def test_build_full_definition(self):
         task_def = WasmTaskBuilder.build_full_definition(
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
         )
-        self.assertEqual(task_def.subtasks_count, 4)
+        self.assertEqual(task_def.subtasks_count, 2)
 
         opts: WasmTaskOptions = task_def.options
         self.assertEqual(opts.input_dir, '/input/dir')
@@ -123,6 +133,8 @@ class WasmTaskBuilderTestCase(TestCase):
 
 
 class WasmTaskTestCase(TempDirFixture):
+    @mock.patch("golem.model.Performance.get",
+                mock.Mock(return_value=_fake_performance()))
     def setUp(self):
         super(WasmTaskTestCase, self).setUp()
         task_def = WasmTaskBuilder.build_full_definition(
@@ -130,7 +142,7 @@ class WasmTaskTestCase(TempDirFixture):
         )
         task_def.task_id = str(uuid4())
         self.task = WasmTask(
-            total_tasks=2, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(),
         )
 

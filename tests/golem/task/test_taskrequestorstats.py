@@ -310,7 +310,10 @@ class TestRequestorTaskStats(LogTestCase):
                          "about any subtasks")
 
         # receive work offer
-        rs.on_message("task1", tstate, op=TaskOp.WORK_OFFER_RECEIVED)
+        with self.assertLogs(logger, level="INFO") as log:
+            rs.on_message("task1", tstate, op=TaskOp.WORK_OFFER_RECEIVED)
+            self.assertTrue(any("Received work offers"
+                                in line for line in log.output))
         # which does not mean that a subtask is in progress
         cs = rs.get_current_stats()
         self.assertEqual(cs, CurrentStats(1, 0, 0, 0, 0, 0, 0, 0, 1),
@@ -360,6 +363,10 @@ class TestRequestorTaskStats(LogTestCase):
                          "The only task is now finished")
         self.assertTrue(rs.is_task_finished("task1"),
                         "A task should be finished now")
+
+        # we should not log on received offers once the task is finished
+        with self.assertNoLogs(logger, level="INFO"):
+            rs.on_message("task1", tstate, op=TaskOp.WORK_OFFER_RECEIVED)
 
     @staticmethod
     def create_task_and_taskstate(rs, name):

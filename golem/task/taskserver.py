@@ -14,6 +14,7 @@ from typing import (
     Dict,
     List,
     Optional,
+    Type,
     Union,
     Set,
     Tuple,
@@ -30,10 +31,11 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from golem.app_manager import AppManager
+from golem import constants as gconst
+from golem import app_manager
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
-from golem.core.deferred import sync_wait
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -48,6 +50,7 @@ from golem.envs.docker.non_hypervised import (
     NonHypervisedDockerCPUEnvironment,
     NonHypervisedDockerGPUEnvironment,
 )
+from golem.marketplace import ProviderPricing
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
@@ -70,7 +73,9 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
+from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
@@ -89,26 +94,12 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem_messages.datastructures import p2p as dt_p2p # noqa pylint: disable=unused-import,ungrouped-imports
+    from golem.envs import BenchmarkResult  # noqa pylint: disable=unused-import,ungrouped-imports
+    from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
-
-
-def _calculate_price(min_price: int, requestor_id: str) -> int:
-    """
-    Provider's subtask price function as proposed in
-    https://docs.golem.network/About/img/Brass_Golem_Marketplace.pdf
-    """
-    r = min_price * (1.0 + timer.ProviderTimer.profit_factor)
-    v_paid = get_requestor_paid_sum(requestor_id)
-    v_assigned = get_requestor_assigned_sum(requestor_id)
-    c = min_price
-    Q = min(1.0, (min_price + 1 + v_paid + c) / (min_price + 1 + v_assigned))
-    R = get_requestor_efficiency(requestor_id)
-    S = Q * R
-    return max(int(r / S), min_price)
 
 
 class TaskServer(
@@ -116,6 +107,7 @@ class TaskServer(
         resources.TaskResourcesMixin,
         srv_queue.TaskMessagesQueueMixin,
         srv_verification.VerificationMixin,
+        DockerWhitelistRPC,
 ):
 
     BENCHMARK_TIMEOUT = 60  # s
@@ -130,6 +122,8 @@ class TaskServer(
                  task_archiver=None,
                  apps_manager=AppsManager(),
                  task_finished_cb=None) -> None:
+        DockerWhitelistRPC.__init__(self)
+
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -175,8 +169,15 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
+
+        app_mgr = app_manager.AppManager()
+        app_dir = self.get_app_dir()
+        os.makedirs(app_dir, exist_ok=True)
+        for app_def in app_manager.load_apps_from_dir(app_dir):
+            app_mgr.register_app(app_def)
+
         self.requested_task_manager = RequestedTaskManager(
-            app_manager=AppManager(),
+            app_manager=app_mgr,
             env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
@@ -224,9 +225,10 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.acl = get_acl(Path(client.datadir),
-                           max_times=config_desc.disallow_id_max_times)
-        self.acl_ip = DenyAcl([], max_times=config_desc.disallow_ip_max_times)
+        self.acl = get_acl(
+            self.client, max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl(
+            self.client, max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
@@ -294,10 +296,19 @@ class TaskServer(
     def pause(self):
         super().pause()
         yield CoreTask.VERIFICATION_QUEUE.pause()
+        self.disconnect()
+        self.quit()
 
     def resume(self):
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
+
+    def quit(self):
+        defer_rtm_quit = deferred_from_future(
+            self.requested_task_manager.stop()
+        )
+        sync_wait(defer_rtm_quit)
+        self.task_computer.quit()
 
     def get_environment_by_id(
             self,
@@ -393,13 +404,13 @@ class TaskServer(
                 return None
 
             # Check performance
-            performance = None
+            benchmark_result: 'Optional[BenchmarkResult]' = None
             if isinstance(env, OldEnv):
-                performance = env.get_performance()
+                benchmark_result = env.get_benchmark_result()
             else:  # NewEnv
                 env_mgr = self.task_keeper.new_env_manager
-                performance = yield env_mgr.get_performance(env_id)
-            if performance is None:
+                benchmark_result = yield env_mgr.get_benchmark_result(env_id)
+            if benchmark_result is None:
                 logger.debug("Not requesting task, benchmark is in progress.")
                 return None
 
@@ -425,16 +436,24 @@ class TaskServer(
                 )
                 return None
 
-            # Send WTCT
-            price = _calculate_price(
-                self.config_desc.min_price,
-                theader.task_owner.key,
+            market_strategy = self.task_manager\
+                .get_provider_market_strategy_for_env(theader.environment)
+
+            price = market_strategy.calculate_price(  # type: ignore
+                ProviderPricing(
+                    price_per_wallclock_h=self.config_desc.min_price,
+                    price_per_cpu_h=self.config_desc.price_per_cpu_h,
+                ),
+                theader.max_price,
+                theader.task_owner.key
             )
-            price = min(price, theader.max_price)
             self.task_manager.add_comp_task_request(
-                theader=theader, price=price, performance=performance)
+                theader=theader, price=price,
+                performance=benchmark_result.performance
+            )
             wtct = message.tasks.WantToComputeTask(
-                perf_index=performance,
+                perf_index=benchmark_result.performance,
+                cpu_usage=benchmark_result.cpu_usage,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
@@ -480,8 +499,7 @@ class TaskServer(
             defer.gatherResults(deferreds, consumeErrors=True)\
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id),
-                    lambda e: self.resource_failure(msg.task_id, e),
-                )
+                    lambda e: self.resource_failure(msg.task_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -623,7 +641,32 @@ class TaskServer(
                 logger.error("Error closing session: %s", exc)
 
     def get_own_tasks_headers(self):
-        return self.task_manager.get_tasks_headers()
+        old_headers = self.task_manager.get_tasks_headers()
+        new_headers = self._get_and_sign_headers()
+        return old_headers + new_headers
+
+    def _get_and_sign_headers(self):
+        started_tasks = self.requested_task_manager.get_started_tasks()
+        signed_headers = []
+        for db_task in started_tasks:
+            task_header = dt_tasks.TaskHeader(
+                min_version=str(gconst.GOLEM_MIN_VERSION),
+                task_id=db_task.task_id,
+                environment=db_task.env_id,
+                environment_prerequisites=db_task.prerequisites,
+                task_owner=self.node,
+                deadline=int(db_task.deadline.timestamp()),
+                subtask_timeout=db_task.subtask_timeout,
+                subtasks_count=db_task.max_subtasks,
+                # estimated_memory=task_definition.estimated_memory,
+                max_price=db_task.max_price_per_hour,
+                concent_enabled=db_task.concent_enabled,
+                timestamp=int(db_task.start_time.timestamp()),
+            )
+            task_header.sign(private_key=self.keys_auth._private_key)
+            signed_headers.append(task_header)
+
+        return signed_headers
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
@@ -644,6 +687,11 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
+
+        if task_header.environment_prerequisites:
+            image_name = task_header.environment_prerequisites['image']
+            self._docker_image_discovered(image_name)
+
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
@@ -652,7 +700,7 @@ class TaskServer(
             return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
-            return False
+        return False
 
     @classmethod
     def _verify_header_sig(cls, header: dt_tasks.TaskHeader):
@@ -699,17 +747,30 @@ class TaskServer(
             run_benchmarks: bool,
     ) -> Deferred:
         config_changed = yield self.task_computer.change_config(config_desc)
-        if config_changed or run_benchmarks:
-            self.task_computer.lock_config(True)
-            deferred = Deferred()
-            self.benchmark_manager.run_all_benchmarks(
-                deferred.callback, deferred.errback
-            )
-            yield deferred
-            self.task_computer.lock_config(False)
+        if config_changed:
+            self._remove_env_performance_scores()
+        elif not run_benchmarks:
+            return
+
+        self.task_computer.lock_config(True)
+        deferred = Deferred()
+        self.benchmark_manager.run_all_benchmarks(
+            deferred.callback, deferred.errback)
+        yield deferred
+        self.task_computer.lock_config(False)
+
+    def _remove_env_performance_scores(self) -> None:
+        env_manager = self.task_keeper.new_env_manager
+        for env_id in env_manager.environments():
+            env_manager.remove_cached_performance(env_id)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
+
+    def get_app_dir(self) -> Path:
+        """ Get path to the directory where definitions for Task API apps are
+            stored. """
+        return Path(self.client.datadir) / "apps"
 
     def subtask_rejected(self, sender_node_id, subtask_id):
         """My (providers) results were rejected"""
@@ -877,9 +938,6 @@ class TaskServer(
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
-    def quit(self):
-        self.task_computer.quit()
-
     def add_forwarded_session_request(self, key_id, conn_id):
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
@@ -1025,23 +1083,37 @@ class TaskServer(
     @rpc_utils.expose('net.peer.disallow')
     def disallow_node(
             self,
-            node_id: str,
+            node_id: Union[str, list],
             timeout_seconds: int = -1,
             persist: bool = False
     ) -> None:
-        self.acl.disallow(node_id, timeout_seconds, persist)
+        if isinstance(node_id, str):
+            node_id = [node_id]
+        for item in node_id:
+            self.acl.disallow(item, timeout_seconds, persist)
 
     @rpc_utils.expose('net.peer.block_ip')
-    def disallow_ip(self, ip: str, timeout_seconds: int = -1) -> None:
-        self.acl_ip.disallow(ip, timeout_seconds)
+    def disallow_ip(self, ip: Union[str, list],
+                    timeout_seconds: int = -1) -> None:
+        if isinstance(ip, str):
+            ip = [ip]
+        for item in ip:
+            self.acl_ip.disallow(item, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
-    def allow_node(self, node_id: str, persist: bool = True) -> None:
-        self.acl.allow(node_id, persist)
+    def allow_node(self, node_id: Union[str, list],
+                   persist: bool = True) -> None:
+        if isinstance(node_id, str):
+            node_id = [node_id]
+        for item in node_id:
+            self.acl.allow(item, persist)
 
     @rpc_utils.expose('net.peer.allow_ip')
-    def allow_ip(self, node_id: str, persist: bool = True) -> None:
-        self.acl_ip.allow(node_id, persist)
+    def allow_ip(self, ip: Union[str, list], persist: bool = True) -> None:
+        if isinstance(ip, str):
+            ip = [ip]
+        for item in ip:
+            self.acl_ip.allow(item, persist)
 
     @rpc_utils.expose('net.peer.acl')
     def acl_status(self) -> Dict:
@@ -1053,7 +1125,7 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.acl.new')
     def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
-        new_acl = setup_acl(Path(self.client.datadir),
+        new_acl = setup_acl(self.client,
                             AclRule[default_rule],
                             exceptions)
         self.acl = new_acl

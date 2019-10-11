@@ -178,7 +178,7 @@ class TestUpdateStatus(TestDockerCPURuntime):
 class TestUpdateStatusLoop(TestDockerCPURuntime):
 
     # Timeout not to enter an infinite loop if there's a bug in the method
-    @pytest.mark.timeout(0.1)
+    @pytest.mark.timeout(5.0)
     @patch('sleep')
     @patch_runtime('_update_status')
     def test_not_running(self, update_status, sleep):
@@ -187,7 +187,7 @@ class TestUpdateStatusLoop(TestDockerCPURuntime):
         sleep.assert_not_called()
 
     # Timeout not to enter an infinite loop if there's a bug in the method
-    @pytest.mark.timeout(0.1)
+    @pytest.mark.timeout(5.0)
     @patch('sleep')
     @patch_runtime('_update_status')
     def test_updated(self, update_status, sleep):

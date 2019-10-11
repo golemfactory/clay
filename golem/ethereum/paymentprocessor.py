@@ -14,6 +14,7 @@ from twisted.internet import threads
 import golem_sci
 
 from golem import model
+from golem.core import common
 from golem.core.variables import PAYMENT_DEADLINE
 PAYMENT_DEADLINE_TD = datetime.timedelta(seconds=PAYMENT_DEADLINE)
 
@@ -156,7 +157,7 @@ class PaymentProcessor:
             value: int,
     ) -> model.TaskPayment:
         log.info(
-            "Adding payment for %s to %s (%.3f GNTB)",
+            "Adding payment for %s to %s (%.8f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
@@ -176,6 +177,7 @@ class PaymentProcessor:
             task=task_id,
             subtask=subtask_id,
             expected_amount=value,
+            charged_from_deposit=False,
         )
 
         self._awaiting.add(payment)
@@ -309,3 +311,117 @@ class PaymentProcessor:
             counter += 1
         if counter:
             log.info("Marked %d payments as overdue.", counter)
+
+    def sent_forced_subtask_payment(
+            self,
+            tx_hash: str,
+            receiver: str,
+            subtask_id: str,
+            amount: int,
+    ) -> None:
+        log.warning(
+            "Concent payed on our behalf."
+            " type='subtask payment', amount: %s, tx_hash: %s,"
+            " receiver=%s",
+            amount,
+            tx_hash,
+            receiver,
+        )
+        for awaiting_payment in self._awaiting[:]:
+            if awaiting_payment.subtask == subtask_id:
+                self._awaiting.remove(awaiting_payment)
+        query = model.TaskPayment.select() \
+            .where(
+                model.TaskPayment.subtask == subtask_id,
+            )
+        if not query.exists():
+            log.info(
+                "Concent payed for something that is missing in our DB."
+                " tx_hash: %s, subtask_id: %s",
+                tx_hash,
+                subtask_id,
+            )
+            return
+
+        for old_payment in query:
+            old_payment.wallet_operation.status = \
+                model.WalletOperation.STATUS.arbitraged_by_concent
+            old_payment.wallet_operation.save()
+
+            # Create Concent TP
+            model.TaskPayment.create(
+                wallet_operation=model.WalletOperation.create(
+                    tx_hash=tx_hash,
+                    direction=model.WalletOperation.DIRECTION.outgoing,
+                    operation_type=model.WalletOperation.TYPE.deposit_payment,
+                    sender_address=self._sci.get_eth_address(),
+                    recipient_address=receiver,
+                    currency=model.WalletOperation.CURRENCY.GNT,
+                    amount=amount,
+                    status=model.WalletOperation.STATUS.confirmed,
+                    gas_cost=0,
+                ),
+                node=old_payment.node,
+                task=old_payment.task,
+                subtask=subtask_id,
+                expected_amount=amount,
+                charged_from_deposit=True,
+            )
+
+    def sent_forced_payment(
+            self,
+            tx_hash: str,
+            receiver: str,
+            amount: int,
+            closure_time: int,
+    ) -> None:
+        closure_dt = common.timestamp_to_datetime(closure_time)
+        log.warning(
+            "Concent payed on our behalf."
+            " type=batch-payment, amount: %s, tx_hash: %s"
+            " receiver=%s, closure_dt=%s",
+            amount,
+            tx_hash,
+            receiver,
+            closure_dt,
+        )
+        for awaiting_payment in self._awaiting[:]:
+            if awaiting_payment.created_date <= closure_dt:
+                self._awaiting.remove(awaiting_payment)
+        # Find unpaid TPs within closure_time
+        query = model.TaskPayment.select() \
+            .where(
+                model.TaskPayment.created_date <= closure_dt,
+            )
+        if not query.exists():
+            log.info(
+                "Concent payed for something that is missing in our DB."
+                " tx_hash: %s",
+                tx_hash,
+            )
+            return
+
+        for old_payment in query:
+            old_payment.wallet_operation.status = \
+                model.WalletOperation.STATUS.arbitraged_by_concent
+            old_payment.wallet_operation.save()
+
+            # Create Concent TP
+            model.TaskPayment.create(
+                wallet_operation=model.WalletOperation.create(
+                    tx_hash=tx_hash,
+                    direction=model.WalletOperation.DIRECTION.outgoing,
+                    operation_type=model.WalletOperation.TYPE.deposit_payment,
+                    sender_address=self._sci.get_eth_address(),
+                    recipient_address=receiver,
+                    currency=model.WalletOperation.CURRENCY.GNT,
+                    amount=amount,
+                    status=model.WalletOperation.STATUS.confirmed,
+                    gas_cost=0,
+                ),
+                node=old_payment.node,
+                task=old_payment.task,
+                subtask=old_payment.subtask,
+                expected_amount=amount,
+                charged_from_deposit=True,
+            )

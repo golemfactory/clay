@@ -6,13 +6,14 @@ from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 import collections
 
-import requests
-from requests import HTTPError
+from twisted.internet.defer import inlineCallbacks
+from twisted.web.http_headers import Headers
 
 from golem_messages import helpers as msg_helpers
-from twisted.internet.defer import inlineCallbacks
-from twisted.web.client import readBody
-from twisted.web.http_headers import Headers
+import requests
+from requests import HTTPError
+import golem.tools.talkback
+
 
 from golem.core.golem_async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
@@ -112,7 +113,8 @@ class HyperdriveClient(IClient):
             dest=path,
             peers=peers or [],
             size=size,
-            timeout=timeout
+            timeout=timeout,
+            user=golem.tools.talkback.user(),
         )
 
     def cancel(self, content_hash):
@@ -129,6 +131,8 @@ class HyperdriveClient(IClient):
     ) -> Dict:
         if endpoint and endpoint[0] == '/':
             endpoint = endpoint[1:]
+        if 'user' not in data:
+            data['user'] = golem.tools.talkback.user()
 
         response = requests.post(url=f'{self._url}/{endpoint}',
                                  headers=self.HEADERS,
@@ -163,8 +167,9 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(client_options.timeout))
-
+            timeout=round_timeout(client_options.timeout),
+            user=golem.tools.talkback.user(),
+        )
         return self._async_request(
             params=params,
             parser=lambda res: res['hash'])
@@ -179,8 +184,9 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=round_timeout(client_options.timeout))
-
+            timeout=round_timeout(client_options.timeout),
+            user=golem.tools.talkback.user(),
+        )
         return self._async_request(
             params=params,
             parser=lambda res: res['hash'])
@@ -239,6 +245,8 @@ class HyperdriveAsyncClient(HyperdriveClient):
             params: Optional[Dict] = None,
             parser: Optional[Callable[[Dict], Any]] = None,
     ):
+        # Imports the reactor
+        from twisted.web.client import readBody
         body = None
 
         if endpoint and endpoint[0] == '/':

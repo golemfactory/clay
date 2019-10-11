@@ -278,6 +278,7 @@ class TestP2PService(TestDatabaseWithReactor):
             p2p_pub_port=10000
         )
 
+        self.service.resume()
         self.service.config_desc.opt_peer_num = 10
         self.service.free_peers.append(node.key)
         self.service.incoming_peers[node.key] = {
@@ -467,6 +468,7 @@ class TestP2PService(TestDatabaseWithReactor):
     @mock.patch('golem.network.p2p.p2pservice.'
                 'P2PService._P2PService__connection_established')
     def test_connect_success(self, connection_established, createSocket):
+        self.service.resume()
         createSocket.return_value = socket = mock.Mock()
         socket.fileno = mock.Mock(return_value=0)
         socket.getsockopt = mock.Mock(return_value=None)
@@ -484,6 +486,7 @@ class TestP2PService(TestDatabaseWithReactor):
     @mock.patch('golem.network.p2p.p2pservice.'
                 'P2PService._P2PService__connection_failure')
     def test_connect_failure(self, connection_failure, createSocket):
+        self.service.resume()
         addr = SocketAddress('127.0.0.1', 40102)
         self.service.connect(addr)
         assert connection_failure.called

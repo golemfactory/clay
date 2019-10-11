@@ -1,6 +1,5 @@
 """Task related module with procedures exposed by RPC"""
 
-import asyncio
 import copy
 import functools
 import logging
@@ -15,7 +14,6 @@ from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
-from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
@@ -82,25 +80,6 @@ def _validate_task_dict(client, task_dict) -> None:
     if 'id' in task_dict:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
-
-    subtasks_count = task_dict.get('subtasks_count', 0)
-    options = task_dict.get('options', {})
-    optimize_total = bool(options.get('optimize_total', False))
-    if subtasks_count and not optimize_total:
-        computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            subtasks_count=subtasks_count,
-            optimize_total=False,
-            use_frames=options.get('frame_count', 1) > 1,
-            frames=[None] * options.get('frame_count', 1),
-        )
-        if computed_subtasks != subtasks_count:
-            raise ValueError(
-                "Subtasks count {:d} is invalid."
-                " Maybe use {:d} instead?".format(
-                    subtasks_count,
-                    computed_subtasks,
-                )
-            )
 
     if task_dict['concent_enabled']:
         if not client.concent_service.enabled:  # `enabled` implies `available`
@@ -534,22 +513,35 @@ class ClientProvider:
 
         return task_id, None
 
+    @rpc_utils.expose('comp.task.create.dry_run')
+    @safe_run(_create_task_error)
+    def create_task_dry_run(self, task_dict) \
+            -> typing.Tuple[typing.Optional[dict],
+                            typing.Optional[str]]:
+        """
+        Dry run creating a task.
+        This works by creating a TaskDefinition object (like 'comp.taks.create'
+        would to) and dumping it back to dict (like 'comp.task' would do).
+        Golem performs task_dict validation and possibly changes some fields.
+        This task is not passed for computation.
+        :param task_dict: Task description dictionary. The same as for
+                          'comp.task.create'.
+        :return: (task_dict, None) on success; (None, error_message) on failure.
+        """
+        validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
+        task_definition, task_builder_type = \
+            self.task_manager.create_task_definition(task_dict)
+        task_dict = common.update_dict(
+            {'progress': 0.0},
+            taskstate.TaskState().to_dictionary(),
+            task_builder_type.build_dictionary(task_definition),
+        )
+        return task_dict, None
+
     @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(self, golem_params: dict, task_params: dict=None):
+    def create_task_api_task(self, task_params: dict, golem_params: dict):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
-
-        if task_params is None:
-            if 'options' in golem_params:
-                task_params = golem_params['options']
-                del golem_params['options']
-            else:
-                task_params = {}
-
-        if 'app_id' not in golem_params:
-            logger.warning('Please use app_id when making a task.')
-            if 'type' not in golem_params:
-                raise RuntimeError("No type to fall back on")
-            golem_params['app_id'] = golem_params['type']
 
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
@@ -584,25 +576,13 @@ class ClientProvider:
         @defer.inlineCallbacks
         def init_task():
             try:
-                logger.debug('init_task()')
-                future = asyncio.ensure_future(
-                    self.requested_task_manager.init_task(task_id)
-                )
-                logger.debug('init_task() - started')
-                yield deferred_from_future(future)
-                logger.debug('init_task() - ended')
-
-            except Exception as e:
-                logger.error('init_task() - exception=%r', e, exc_info=True)
+                yield deferred_from_future(
+                    self.requested_task_manager.init_task(task_id))
+            except Exception:
                 self.client.funds_locker.remove_task(task_id)
                 raise
             else:
-                logger.debug('start_task()')
                 self.requested_task_manager.start_task(task_id)
-                logger.debug('start_task() - ended')
-            # Dummy yield to make this function work with inlineCallbacks.
-            # To be removed when there are other yeilds in this function.
-            yield defer.Deferred()
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
@@ -1032,7 +1012,7 @@ class ClientProvider:
 
         fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
 
-        for subtask_index in range(1, task.total_tasks + 1):
+        for subtask_index in range(1, task.get_total_tasks() + 1):
             fragments[subtask_index] = []
 
         for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
