@@ -18,7 +18,7 @@ from tests.utils.asyncio import AsyncMock
 PACKAGE = 'golem.task.benchmarkmanager'
 
 ENV_ID = 'env'
-ENV_PREREQ_DICT = dict(key='value')
+PREREQ_DICT = dict(key='value')
 PREREQ_HASH = '0xdeadbeef'
 
 
@@ -30,7 +30,6 @@ class TestAppBenchmarkManager:
         metadata = EnvMetadata(id=env_id)
         payload_builder = MagicMock(spec_set=TaskApiPayloadBuilder)
         self.env_manager.register_env(env, metadata, payload_builder)
-        return env, metadata, payload_builder
 
     @pytest.fixture(autouse=True)
     def setup_method(self, tmpdir, event_loop):
@@ -51,7 +50,7 @@ class TestAppBenchmarkManager:
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
             score = await self.app_benchmark_manager.get_benchmark_score(
                 env_id=ENV_ID,
-                env_prereq_dict=ENV_PREREQ_DICT)
+                env_prereq_dict=PREREQ_DICT)
 
         assert not self.app_benchmark_manager._run_benchmark.called
         assert score == 1000.
@@ -66,7 +65,7 @@ class TestAppBenchmarkManager:
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
             score = await self.app_benchmark_manager.get_benchmark_score(
                 env_id=ENV_ID,
-                env_prereq_dict=ENV_PREREQ_DICT)
+                env_prereq_dict=PREREQ_DICT)
 
         assert self.app_benchmark_manager._run_benchmark.called
         assert score == 10.
@@ -79,7 +78,7 @@ class TestAppBenchmarkManager:
         try:
             await self.app_benchmark_manager.get_benchmark_score(
                 env_id=ENV_ID,
-                env_prereq_dict=ENV_PREREQ_DICT)
+                env_prereq_dict=PREREQ_DICT)
         except ComputationInProgress:
             pass
         else:
@@ -97,7 +96,7 @@ class TestAppBenchmarkManager:
                 shared_dir = self.app_benchmark_manager._root_path / PREREQ_HASH
                 await self.app_benchmark_manager._run_benchmark(
                     ENV_ID,
-                    ENV_PREREQ_DICT)
+                    PREREQ_DICT)
 
                 assert create.called
                 assert create.run_benchmark.called
@@ -107,6 +106,6 @@ class TestAppBenchmarkManager:
         app_benchmark = AppBenchmark(hash=PREREQ_HASH, score=1000.)
         app_benchmark.save()
 
-        assert len(list(app_benchmark.select().execute())) == 1
+        assert app_benchmark.select().count() == 1
         self.app_benchmark_manager.remove_benchmark_scores()
-        assert not list(app_benchmark.select().execute())
+        assert not app_benchmark.select().count()
