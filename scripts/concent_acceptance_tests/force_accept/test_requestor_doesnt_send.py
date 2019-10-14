@@ -214,7 +214,7 @@ class RequestorDoesntSendTestCase(TestBase):
                 concent_public_key=self.variant['pubkey'],
             ),
         )
-        assert self.provider_fsr.subtask_id == fsr.subtask_id
+        self.assertEqual(self.provider_fsr.subtask_id, fsr.subtask_id)
         accept_msg = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=fsr
             .ack_report_computed_task
