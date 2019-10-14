@@ -67,6 +67,8 @@ def _calculate_subtasks_count(
         frames: list,
         resolution: List[int]) -> int:
     if subtasks_count < 1:
+        logger.warning("Cannot set total subtasks to %s. Changing to 1",
+                       subtasks_count)
         return 1
 
     max_subtasks_per_frame = resolution[1] // MIN_PIXELS_PER_SUBTASK
@@ -83,6 +85,8 @@ def _calculate_subtasks_count(
     if new_subtasks_count > max_subtasks_count:
         return max_subtasks_count
 
+    logger.warning("Cannot set total subtasks to %s. Changing to %s",
+                   subtasks_count, new_subtasks_count)
     return new_subtasks_count
 
 
