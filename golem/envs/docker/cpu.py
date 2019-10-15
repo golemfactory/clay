@@ -700,8 +700,11 @@ class DockerCPUEnvironment(EnvironmentBase):
             binds = self._hypervisor.create_volumes(payload.binds)
 
         port_bindings = None
-        if self._hypervisor.requires_ports_publishing() and payload.ports:
-            port_bindings = {port: None for port in payload.ports}
+        if payload.ports:
+            port_bindings = {
+                f'{port}/tcp': {'HostIp': '0.0.0.0', 'HostPort': port}
+                for port in payload.ports
+            }
 
         client = local_client()
         return client.create_host_config(
@@ -732,7 +735,7 @@ class DockerCPUEnvironment(EnvironmentBase):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
-            ports=payload.ports,
+            ports=[(port, 'tcp') for port in payload.ports],
             host_config=host_config,
             stdin_open=True
         )

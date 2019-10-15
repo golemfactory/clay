@@ -594,7 +594,6 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
         payload = mock_docker_runtime_payload(ports=[port])
-        self.hypervisor.requires_ports_publishing.return_value = True
         host_config = self.env._create_host_config(config, payload)
 
         local_client().create_host_config.assert_called_once_with(
@@ -615,7 +614,6 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
         payload = mock_docker_runtime_payload(ports=[port])
-        self.hypervisor.requires_ports_publishing.return_value = False
         host_config = self.env._create_host_config(config, payload)
 
         local_client().create_host_config.assert_called_once_with(

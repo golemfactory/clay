@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Tuple
 
+from golem.core.common import is_osx
 from golem.docker.client import local_client
 from golem.docker.hypervisor import Hypervisor
 
@@ -39,12 +40,15 @@ class DummyHypervisor(Hypervisor):
     def constraints(self, name: Optional[str] = None) -> Dict:
         return {}
 
-    def requires_ports_publishing(self) -> bool:
-        return False
-
     def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
         api_client = local_client()
-        c_config = api_client.inspect_container(container_id)
-        ip_address = \
-            c_config['NetworkSettings']['Networks']['bridge']['IPAddress']
+        config = api_client.inspect_container(container_id)
+        net_config = config['NetworkSettings']
+
+        if is_osx():
+            ip_address = '127.0.0.1'
+        else:
+            ip_address = net_config['Networks']['bridge']['IPAddress']
+
+        port = int(net_config['Ports'][f'{port}/tcp'][0]['HostPort'])
         return ip_address, port
