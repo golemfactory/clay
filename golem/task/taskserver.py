@@ -552,16 +552,27 @@ class TaskServer(
             owner=header.task_owner,
             stats=stats)
 
-        if result:
+        def create_and_enqueue_result():
             self._create_and_set_result_package(wtr)
-        else:
-            resource_id = \
-                sync_wait(self.new_resource_manager.share(task_api_result))
-            wtr.result_hash = resource_id
+            self.results_to_send[subtask_id] = wtr
+            Trust.REQUESTED.increase(header.task_owner.key)
 
-        self.results_to_send[subtask_id] = wtr
+        def on_result_share_success(res_id):
+            wtr.result_hash = res_id
+            create_and_enqueue_result()
 
-        Trust.REQUESTED.increase(header.task_owner.key)
+        def on_result_share_error(err):
+            logger.error(
+                "Cannot share resources for subtask_id=%s: %r",
+                subtask_id, err)
+
+        if result:
+            create_and_enqueue_result()
+            return
+
+        self.new_resource_manager.share(task_api_result).addCallbacks(
+            on_result_share_success,
+            on_result_share_error)
 
     def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
