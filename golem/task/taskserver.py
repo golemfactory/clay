@@ -661,6 +661,7 @@ class TaskServer(
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
 
+    @inlineCallbacks
     def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
         if not self._verify_header_sig(task_header):
             logger.info(

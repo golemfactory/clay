@@ -8,6 +8,7 @@ import random
 from collections import Counter
 
 from eth_utils import decode_hex
+from golem_messages.datastructures.masking import Mask
 from twisted.internet.defer import inlineCallbacks, Deferred
 
 from golem_messages import (
@@ -429,7 +430,8 @@ class TaskHeaderKeeper:
 
     def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
-        if header.mask.matches(decode_hex(self.node.key)):
+        mask = header.mask or Mask()
+        if mask.matches(decode_hex(self.node.key)):
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 
@@ -480,6 +482,7 @@ class TaskHeaderKeeper:
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
+    @inlineCallbacks
     def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
@@ -511,7 +514,7 @@ class TaskHeaderKeeper:
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
-            sync_wait(self.update_supported_set(header))
+            yield self.update_supported_set(header)
 
             self.check_max_tasks_per_owner(header.task_owner.key)
 
