@@ -11,6 +11,7 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.core.deferred import deferred_from_future
 from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
@@ -122,10 +123,8 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
-            task = asyncio.ensure_future(self.requested_task_manager.verify(
-                task_id,
-                subtask_id,
-            ))
+            future = self.requested_task_manager.verify(task_id, subtask_id)
+            task = deferred_from_future(future)
             task.add_done_callback(
                 lambda success: verification_finished(False, not success))
         else:
