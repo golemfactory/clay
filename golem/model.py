@@ -733,7 +733,7 @@ class RequestedTask(BaseModel):
     subtask_timeout = IntegerField(null=False)  # milliseconds
     start_time = UTCDateTimeField(null=True)
 
-    max_price_per_hour = IntegerField(null=False)
+    max_price_per_hour = HexIntegerField(null=False)
 
     max_subtasks = IntegerField(null=False)
     concent_enabled = BooleanField(null=False, default=False)
@@ -776,7 +776,7 @@ class RequestedSubtask(BaseModel):
     payload = JsonField(null=False, default=default_dict())
     inputs = JsonField(null=False, default=default_list())
     start_time = UTCDateTimeField(null=True)
-    price = IntegerField(null=True)
+    price = HexIntegerField(null=True)
     computing_node = ForeignKeyField(
         ComputingNode, null=True, related_name='subtasks')
 
