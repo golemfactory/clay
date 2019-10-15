@@ -14,7 +14,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Type,
     Union,
     Set,
     Tuple,
@@ -32,7 +31,8 @@ from twisted.internet.defer import inlineCallbacks, Deferred, \
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem import constants as gconst
-from golem import app_manager
+from golem.apps import manager as app_manager
+from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id
 from golem.core.deferred import sync_wait, deferred_from_future
@@ -42,13 +42,10 @@ from golem.environments.environment import (
     SupportStatus,
     UnsupportReason,
 )
-from golem.envs import Environment as NewEnv, EnvSupportStatus
-from golem.envs.auto_setup import auto_setup
-from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
-from golem.envs.docker.gpu import DOCKER_GPU_METADATA
-from golem.envs.docker.non_hypervised import (
-    NonHypervisedDockerCPUEnvironment,
-    NonHypervisedDockerGPUEnvironment,
+from golem.envs import Environment as NewEnv
+from golem.envs.default import (
+    register_built_in_environments,
+    register_built_in_repositories,
 )
 from golem.marketplace import ProviderPricing
 from golem.model import TaskPayment
@@ -62,9 +59,6 @@ from golem.network.transport.tcpserver import (
 )
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager.database_manager import (
-    get_requestor_efficiency,
-    get_requestor_assigned_sum,
-    get_requestor_paid_sum,
     update_requestor_paid_sum,
     update_requestor_assigned_sum,
     update_requestor_efficiency,
@@ -74,8 +68,6 @@ from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.server.whitelist import DockerWhitelistRPC
-from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
-from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
@@ -128,29 +120,22 @@ class TaskServer(
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
 
-        os.makedirs(self.get_task_computer_root(), exist_ok=True)
-
-        docker_config_dict = dict(work_dirs=[self.get_task_computer_root()])
-        docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
-        docker_cpu_env = auto_setup(
-            NonHypervisedDockerCPUEnvironment(docker_cpu_config))
+        Path(self.get_task_computer_root()).mkdir(parents=True, exist_ok=True)
 
         new_env_manager = EnvironmentManager()
-        new_env_manager.register_env(
-            docker_cpu_env,
-            DOCKER_CPU_METADATA,
-            DockerTaskApiPayloadBuilder,
-        )
+        register_built_in_repositories()
+        register_built_in_environments(
+            work_dir=self.get_task_computer_root(),
+            env_manager=new_env_manager)
 
-        docker_gpu_status = NonHypervisedDockerGPUEnvironment.supported()
-        if docker_gpu_status == EnvSupportStatus(True):
-            docker_gpu_env = auto_setup(
-                NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
-            new_env_manager.register_env(
-                docker_gpu_env,
-                DOCKER_GPU_METADATA,
-                DockerTaskApiPayloadBuilder,
-            )
+        app_dir = self.get_app_dir()
+        built_in_apps = save_built_in_app_definitions(app_dir)
+
+        app_mgr = app_manager.AppManager()
+        for app_def in app_manager.load_apps_from_dir(app_dir):
+            app_mgr.register_app(app_def)
+        for app_id in built_in_apps:
+            app_mgr.set_enabled(app_id, True)
 
         self.node = node
         self.task_archiver = task_archiver
@@ -169,12 +154,6 @@ class TaskServer(
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
-
-        app_mgr = app_manager.AppManager()
-        app_dir = self.get_app_dir()
-        os.makedirs(app_dir, exist_ok=True)
-        for app_def in app_manager.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
 
         self.requested_task_manager = RequestedTaskManager(
             app_manager=app_mgr,
@@ -697,8 +676,9 @@ class TaskServer(
                     task_header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
 
-            return self.task_keeper.add_task_header(task_header)
-        except Exception:  # pylint: disable=broad-except
+            task_added = yield self.task_keeper.add_task_header(task_header)
+            return task_added
+        except Exception as e:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
         return False
 

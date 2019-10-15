@@ -1,4 +1,3 @@
-from unittest import TestCase
 from unittest.mock import MagicMock, Mock
 
 from twisted.internet.defer import inlineCallbacks
@@ -11,7 +10,7 @@ from golem.task.envmanager import EnvironmentManager
 from golem.testutils import DatabaseFixture
 
 
-class EnvManagerBaseTest(TestCase):
+class EnvManagerBaseTest(DatabaseFixture):
     def setUp(self):
         super().setUp()
         self.manager = EnvironmentManager()
@@ -97,7 +96,6 @@ class TestEnvironmentManager(EnvManagerBaseTest):
 
 class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors
         EnvManagerBaseTest,
-        DatabaseFixture,
         TwistedTestCase
 ):
 

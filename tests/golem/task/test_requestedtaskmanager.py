@@ -11,7 +11,7 @@ from golem_task_api.structs import Subtask
 from mock import ANY, Mock
 import pytest
 
-from golem.app_manager import AppManager
+from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import (

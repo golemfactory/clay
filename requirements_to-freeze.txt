@@ -32,6 +32,7 @@ numpy==1.15.4
 OpenEXR
 os-win
 packaging
+pathvalidate
 peewee<2.11,>=2.8
 peewee_migrate==0.14.0
 pluggy==0.6.0

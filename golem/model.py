@@ -803,6 +803,22 @@ class QueuedVerification(BaseModel):
         primary_key = CompositeKey('task_id', 'subtask_id')
 
 
+class AppConfiguration(BaseModel):
+    app_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class EnvConfiguration(BaseModel):
+    env_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
 def collect_db_models(module: str = __name__):
     return inspect.getmembers(
         sys.modules[module],

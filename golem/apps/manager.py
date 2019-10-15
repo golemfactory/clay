@@ -1,15 +1,16 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Iterator, Tuple
+from typing import Dict, List, Iterator, Tuple, Any
 
 from dataclasses import dataclass, field
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
 
-logger = logging.getLogger(__name__)
+from golem.apps import AppId
+from golem.model import AppConfiguration
 
-AppId = str
+logger = logging.getLogger(__name__)
 
 
 @dataclass_json
@@ -68,7 +69,7 @@ class AppManager:
 
     def __init__(self) -> None:
         self._apps: Dict[AppId, AppDefinition] = {}
-        self._state: Dict[AppId, bool] = {}
+        self._state = AppStates()
 
     def register_app(self, app: AppDefinition) -> None:
         """ Register an application in the manager. """
@@ -105,3 +106,36 @@ class AppManager:
     def app(self, app_id: AppId) -> AppDefinition:
         """ Get an app with given ID (assuming it is registered). """
         return self._apps[app_id]
+
+
+class AppStates:
+
+    def __contains__(self, item):
+        if not isinstance(item, str):
+            self._type_error(item)
+
+        return AppConfiguration.select(AppConfiguration.app_id) \
+            .where(AppConfiguration.app_id == item) \
+            .exists()
+
+    def __getitem__(self, item):
+        if not isinstance(item, str):
+            self._type_error(item)
+        try:
+            return AppConfiguration \
+                .get(AppConfiguration.app_id == item) \
+                .enabled
+        except AppConfiguration.DoesNotExist:
+            raise KeyError(item)
+
+    def __setitem__(self, key, val):
+        if not isinstance(key, str):
+            self._type_error(key)
+        if not isinstance(val, bool):
+            raise TypeError(f"Value is of type {type(val)}; bool expected")
+
+        AppConfiguration.insert(app_id=key, enabled=val).upsert().execute()
+
+    @staticmethod
+    def _type_error(item):
+        raise TypeError(f"Key is of type {type(item)}; str expected")

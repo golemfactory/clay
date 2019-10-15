@@ -1,12 +1,9 @@
-from unittest import TestCase
-
-from golem.app_manager import (
-    AppDefinition,
+from golem.apps.manager import (
     AppManager,
     load_app_from_json_file,
-    load_apps_from_dir
-)
-from golem.testutils import TempDirFixture
+    load_apps_from_dir,
+    AppDefinition)
+from golem.testutils import TempDirFixture, DatabaseFixture
 
 APP_DEF = AppDefinition(
     name='test_app',
@@ -20,7 +17,7 @@ APP_DEF = AppDefinition(
 APP_ID = APP_DEF.id
 
 
-class AppManagerTestBase(TestCase):
+class AppManagerTestBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
