@@ -62,4 +62,4 @@ def register_built_in_environments(
         _register_docker_cpu_env(work_dir, env_manager)
 
     if NonHypervisedDockerGPUEnvironment.supported() == EnvSupportStatus(True):
-        _register_docker_cpu_env(work_dir, env_manager)
+        _register_docker_gpu_env(work_dir, env_manager)
