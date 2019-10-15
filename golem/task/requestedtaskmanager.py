@@ -5,7 +5,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -14,7 +14,8 @@ from golem_task_api.enums import VerifyResult
 from golem_task_api.client import RequestorAppClient
 from peewee import fn
 
-from golem.app_manager import AppManager, AppId
+from golem.apps import AppId
+from golem.apps.manager import AppManager
 from golem.model import (
     ComputingNode,
     default_now,
@@ -42,6 +43,31 @@ class CreateTaskParams:
     max_subtasks: int
     max_price_per_hour: int
     concent_enabled: bool
+
+    @classmethod
+    def parse(
+            cls,
+            golem_params: Dict[str, Any],
+            app_params: Optional[Dict[str, Any]] = None
+    ) -> Tuple['CreateTaskParams', Dict[str, Any]]:
+        if not app_params:
+            app_params = golem_params['options']
+            app_params['resources'] = golem_params['resources']
+
+        properties = {
+            'app_id': golem_params['app_id'],
+            'name': golem_params['name'],
+            'output_directory': Path(golem_params['output_directory']),
+            'max_price_per_hour': int(golem_params['max_price_per_hour']),
+            'max_subtasks': int(golem_params['max_subtasks']),
+            'task_timeout': int(golem_params['task_timeout']),
+            'subtask_timeout': int(golem_params['subtask_timeout']),
+            'concent_enabled': bool(golem_params.get('concent_enabled', False)),
+            'resources': list(map(Path, app_params['resources'])),
+        }
+
+        app_params['resources'] = [r.name for r in properties['resources']]
+        return cls(**properties), app_params
 
 
 @dataclass
@@ -150,7 +176,7 @@ class RequestedTaskManager:
         )
         task_dir = self._task_dir(task.task_id)
         task_dir.prepare()
-        # Move resources to task_inputs_dir
+        # Copy resources to task_inputs_dir
         for resource in golem_params.resources:
             shutil.copy2(resource, task_dir.task_inputs_dir)
         logger.info(
@@ -384,6 +410,25 @@ class RequestedTaskManager:
             RequestedTask.status.in_(TASK_STATUS_ACTIVE),
             RequestedTask.start_time is not None
         ).execute()
+
+    @staticmethod
+    def get_requested_task(task_id: TaskId) -> Optional[RequestedTask]:
+        try:
+            return RequestedTask.get(RequestedTask.task_id == task_id)
+        except RequestedTask.DoesNotExist:
+            return None
+
+    @staticmethod
+    def get_requested_task_ids() -> List[TaskId]:
+        tasks = RequestedTask.select(RequestedTask.task_id).execute()
+        return [task.task_id for task in tasks]
+
+    @staticmethod
+    def get_requested_task_subtask_ids(task_id: TaskId) -> List[SubtaskId]:
+        subtasks = RequestedSubtask.select(RequestedSubtask.subtask_id) \
+            .where(RequestedSubtask.task == task_id) \
+            .execute()
+        return [subtask.subtask_id for subtask in subtasks]
 
     async def restart_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
