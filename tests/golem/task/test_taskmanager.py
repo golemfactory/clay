@@ -7,6 +7,7 @@ import time
 import uuid
 from collections import OrderedDict
 from pathlib import Path
+from typing import Callable
 import unittest
 from unittest.mock import Mock, patch, MagicMock
 
@@ -37,7 +38,7 @@ from golem.core.keysauth import KeysAuth
 from golem.network.p2p.local_node import LocalNode
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, \
-    TaskEventListener, AcceptClientVerdict
+    TaskEventListener, AcceptClientVerdict, TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -428,8 +429,9 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
-            def computation_finished(self, subtask_id, task_result,
-                                     verification_finished=None):
+            def computation_finished(
+                    self, subtask_id: str, task_result: TaskResult,
+                    verification_finished: Callable[[], None]) -> None:
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
                 verification_finished()
@@ -805,10 +807,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 TaskStatus.notStarted,
             )
             self.tm.start_task(t.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states["xyz"].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states["xyz"].status.is_active())
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
         self.assertIs(
@@ -1051,6 +1050,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             definition.output_file = os.path.join(self.tempdir, 'somefile')
             definition.main_scene_file = self.path
             definition.options.frames = list(range(i + 1))
+            definition.subtasks_count = n
 
             subtask_states, subtask_id = self.__build_subtasks(n)
 
@@ -1064,7 +1064,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                      owner=dt_p2p_factory.Node(
                                          node_name='node',
                                      ),
-                                     total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))
             task.get_total_tasks = Mock()
@@ -1172,7 +1171,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             new_task.last_task += 1
             return Task.ExtraData(ctd=ctd)
 
-        new_task.total_tasks = len(ctds)
+        new_task.get_total_tasks.return_value = len(ctds)
         new_task.needs_computation = lambda: new_task.last_task < len(ctds)
         new_task.query_extra_data = query_extra_data
 
@@ -1233,7 +1232,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
-        new_task.total_tasks = len(new_task.subtasks_given)
+        new_task.get_total_tasks.return_value = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy:
@@ -1277,7 +1276,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             }
         }
         new_task.needs_computation.return_value = False
-        new_task.total_tasks = len(new_task.subtasks_given)
+        new_task.get_total_tasks.return_value = len(new_task.subtasks_given)
 
         with patch.object(self.tm, 'restart_subtask') as restart, \
                 patch.object(self.tm, '_copy_subtask_results') as copy, \
@@ -1324,10 +1323,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
 
             self.tm.start_task(task.header.task_id)
-            self.assertIn(
-                self.tm.tasks_states['xyz'].status,
-                self.tm.ACTIVE_STATUS,
-            )
+            self.assertTrue(self.tm.tasks_states['xyz'].status.is_active())
 
         with freeze_time(start_time + datetime.timedelta(seconds=2)):
             self.tm.check_timeouts()
@@ -1443,7 +1439,7 @@ class TestCopySubtaskResults(DatabaseFixture):
             results = [str(Path(result)) for result in results]
 
             new_task.copy_subtask_results.assert_called_once_with(
-                'new_subtask_id', old_subtask, results)
+                'new_subtask_id', old_subtask, TaskResult(files=results))
 
             self.assertEqual(new_subtask_state.progress, 1.0)
             self.assertEqual(
@@ -1516,12 +1512,12 @@ class TestNeedsComputation(unittest.TestCase):
         definition.resources = [str(uuid.uuid4()) for _ in range(5)]
         definition.main_scene_file = dummy_path
         definition.options.frames = [1]
+        definition.subtasks_count = 1
         self.task = BlenderRenderTask(
             task_definition=definition,
             owner=dt_p2p_factory.Node(
                 node_name='node',
             ),
-            total_tasks=1,
             root_path=dummy_path,
         )
         self.tm.tasks[self.task_id] = self.task
@@ -1531,7 +1527,7 @@ class TestNeedsComputation(unittest.TestCase):
         self.assertFalse(self.tm.task_needs_computation(self.task_id))
 
     def test_task_doesnt_need_computation(self, *_):
-        self.task.last_task = self.task.total_tasks
+        self.task.last_task = self.task.get_total_tasks()
         self.assertFalse(self.tm.task_needs_computation(self.task_id))
 
     def test_needs_computation_while_creating(self, *_):

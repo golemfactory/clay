@@ -2,6 +2,8 @@ import datetime
 from functools import partial
 import time
 
+from golem_messages import utils as msg_utils
+
 from scripts.node_integration_tests import helpers
 
 from ..concent_base import ConcentTestPlaybook
@@ -28,8 +30,8 @@ class Playbook(ConcentTestPlaybook):
     def step_init_force_payment_timeout(self):
         print("Waiting for ForcePayment.")
         self.force_payment_timeout = (
-                datetime.datetime.now() +
-                datetime.timedelta(minutes=15)
+            datetime.datetime.now() +
+            datetime.timedelta(minutes=15)
         )
         self.next()
 
@@ -52,14 +54,17 @@ class Playbook(ConcentTestPlaybook):
         if datetime.datetime.now() > self.force_payment_timeout:
             self.fail("ForcePayment timed out... ")
 
-        print("Waiting for ForcePayment...")
+        print(
+            f"Waiting {self.force_payment_timeout - datetime.datetime.now()}"
+            " for ForcePayment..."
+        )
         time.sleep(15)
 
     def step_init_force_payment_committed_timeout(self):
         print("Waiting for ForcePaymentCommitted.")
         self.force_payment_committed_timeout = (
-                datetime.datetime.now() +
-                datetime.timedelta(minutes=15)
+            datetime.datetime.now() +
+            datetime.timedelta(minutes=15)
         )
         self.next()
 
@@ -98,11 +103,17 @@ class Playbook(ConcentTestPlaybook):
 
     def step_get_provider_expected_payment(self):
         def on_success(result):
+            _count, operations = result
+            sender_address = msg_utils.pubkey_to_address(
+                self.nodes_keys[NodeId.requestor],
+            )
             self.expected_payment = helpers.to_ether(sum([
-                int(p.get('value'))
-                for p in result
-                if p.get('payer') == self.nodes_keys[NodeId.requestor] and
-                   p.get('subtask') in self.subtasks[NodeId.provider]
+                int(o['task_payment']['missing_amount']) + int(o['amount'])
+                for o in operations
+                if o['task_payment']
+                and o['sender_address'] == sender_address
+                and o['task_payment']['subtask_id']
+                in self.subtasks[NodeId.provider]
             ]))
             if not self.expected_payment:
                 print("No expected payments found for the task...")
@@ -111,14 +122,19 @@ class Playbook(ConcentTestPlaybook):
             print("Expected payment: %s" % self.expected_payment)
             self.next()
 
-        return self.call(NodeId.provider,
-                         'pay.incomes', on_success=on_success)
+        return self.call(
+            node_id=NodeId.provider,
+            method='pay.operations',
+            operation_type='task_payment',
+            direction='incoming',
+            on_success=on_success,
+        )
 
     def step_init_payment_timeout(self):
         print("Waiting for blockchain payment.")
         self.payment_timeout = (
-                datetime.datetime.now() +
-                datetime.timedelta(minutes=5)
+            datetime.datetime.now() +
+            datetime.timedelta(minutes=5)
         )
         self.next()
 

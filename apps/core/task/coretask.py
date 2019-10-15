@@ -5,11 +5,12 @@ import os
 import time
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
-    Optional,
     Type,
-    TYPE_CHECKING)
+    TYPE_CHECKING,
+)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
@@ -22,15 +23,16 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
+# importing DirManager could be under "if TYPE_CHECKING", but it's needed here
+# for validation by 'enforce'
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
+from golem.task.taskbase import TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
 from golem.verifier.core_verifier import CoreVerifier
-
-from .coretaskstate import RunVerification
 
 from .coretaskstate import RunVerification
 
@@ -106,8 +108,7 @@ class CoreTask(Task):
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
                  resource_size=None,
-                 root_path=None,
-                 total_tasks=1):
+                 root_path=None):
         """Create more specific task implementation
         """
 
@@ -143,7 +144,7 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=total_tasks,
+            subtasks_count=task_definition.subtasks_count,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
@@ -152,7 +153,6 @@ class CoreTask(Task):
 
         Task.__init__(self, th, task_definition)
 
-        self.total_tasks = total_tasks
         self.last_task = 0
 
         self.num_tasks_received = 0
@@ -189,17 +189,17 @@ class CoreTask(Task):
                                                           create=True)
 
     def needs_computation(self):
-        return (self.last_task != self.total_tasks) or \
+        return (self.last_task != self.get_total_tasks()) or \
                (self.num_failed_subtasks > 0)
 
     def finished_computation(self):
-        return self.num_tasks_received == self.total_tasks
+        return self.num_tasks_received == self.get_total_tasks()
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -271,13 +271,14 @@ class CoreTask(Task):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return self.total_tasks
+        return self.task_definition.subtasks_count
 
     def get_active_tasks(self):
         return self.last_task
 
     def get_tasks_left(self):
-        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+        return (self.get_total_tasks() - self.last_task) \
+            + self.num_failed_subtasks
 
     # pylint:disable=unused-argument
     @classmethod
@@ -311,9 +312,9 @@ class CoreTask(Task):
         pass
 
     def get_progress(self):
-        if self.total_tasks == 0:
+        if self.get_total_tasks() == 0:
             return 0.0
-        return self.num_tasks_received / self.total_tasks
+        return self.num_tasks_received / self.get_total_tasks()
 
     def update_task_state(self, task_state):
         pass
@@ -363,7 +364,9 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, sort=True):
+    def interpret_task_results(
+            self, subtask_id: str, task_results: TaskResult,
+            sort: bool = True) -> None:
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
@@ -374,7 +377,7 @@ class CoreTask(Task):
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
         self.results[subtask_id] = self.filter_task_results(
-            task_results, subtask_id)
+            task_results.files, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
@@ -382,8 +385,9 @@ class CoreTask(Task):
     def result_incoming(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
-                            err_log_ext="err.log"):
+    def filter_task_results(
+            self, task_results: List[str], subtask_id: str,
+            log_ext: str = ".log", err_log_ext: str = "err.log") -> List[str]:
         """ From a list of files received in task_results, return only files
         that don't have extension <log_ext> or <err_log_ext>. File with log_ext
         is saved as stdout for this subtask (only one file is currently
@@ -396,7 +400,7 @@ class CoreTask(Task):
         :return:
         """
 
-        filtered_task_results = []
+        filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
                 self.stderr[subtask_id] = tr
@@ -493,7 +497,9 @@ class CoreTask(Task):
 
         return verdict
 
-    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+    def copy_subtask_results(
+            self, subtask_id: str, old_subtask_info: dict,
+            results: TaskResult) -> None:
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
@@ -531,7 +537,6 @@ class CoreTaskBuilder(TaskBuilder):
         return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
@@ -550,10 +555,10 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-
+        if 'optimize_total' in dictionary:
+            definition.optimize_total = bool(dictionary['optimize_total'])
         if 'resources' in dictionary:
             definition.resources = set(dictionary['resources'])
-
         return definition
 
     @classmethod

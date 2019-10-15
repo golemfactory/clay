@@ -37,6 +37,7 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task import taskkeeper
+from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
@@ -330,9 +331,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = self.task_manager.get_market_strategy_for_task(
-            current_task
-        )
+        market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -350,7 +349,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer = OfferWithCallback(
             self.key_id,
-            ProviderPerformance(msg.perf_index),
+            ProviderPerformance(msg.cpu_usage / 1e9),
             current_task.header.max_price,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
@@ -426,7 +425,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
-                    ctd['subtask_id'], self.address).__dict__
+                    address=self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             if ttc.concent_enabled:
@@ -434,8 +433,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     f"Signing promissory notes for GNTDeposit at: "
                     f"{self.deposit_contract_address}"
                 )
-                ttc.sign_promissory_note(private_key=self.my_private_key)
-                ttc.sign_concent_promissory_note(
+                ttc.sign_all_promissory_notes(
                     deposit_contract_address=self.deposit_contract_address,
                     private_key=self.my_private_key
                 )
@@ -466,10 +464,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.requested_task_manager.task_exists(task_id):
             if not self.requested_task_manager.has_pending_subtasks(task_id):
                 return None
-            subtask_definition = \
-                self.requested_task_manager.get_next_subtask(task_id)
+            subtask_definition = yield deferred.deferred_from_future(
+                self.requested_task_manager.get_next_subtask(
+                    task_id=task_id,
+                    computing_node=ComputingNodeDefinition(
+                        name='',  # FIXME: Provide proper node name
+                        node_id=self.key_id
+                    )
+                ))
+            if subtask_definition is None:
+                # Application refused to assign subtask to provider node
+                return None
             task_resources_dir = self.requested_task_manager.\
-                get_task_network_resources_dir(task_id)
+                get_subtask_inputs_dir(task_id)
             rm = self.task_server.new_resource_manager
             cdn_resources = yield defer.gatherResults([
                 rm.share(task_resources_dir / r)
@@ -618,10 +625,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
-            if not (msg.verify_promissory_note() and
-                    msg.verify_concent_promissory_note(
-                        deposit_contract_address=self.deposit_contract_address
-                    )):
+            if not msg.verify_all_promissory_notes(
+                    deposit_contract_address=self.deposit_contract_address):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
                     f"Requestor failed to provide correct promissory"
@@ -799,57 +804,94 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
-        if msg.task_to_compute.concent_enabled:
-            # if the Concent is enabled for this subtask, as a provider,
-            # knowing that we had done a proper job of computing it,
-            # we are delegating the verification to the Concent so that
-            # we can be paid for this subtask despite the rejection
-
-            amount, expected = msg_helpers.provider_deposit_amount(
-                subtask_price=msg.task_to_compute.price,
-            )
-
-            def ask_for_verification(_):
-                srv = message.concents.SubtaskResultsVerify(
-                    subtask_results_rejected=msg
-                )
-                srv.sign_concent_promissory_note(
-                    deposit_contract_address=self.deposit_contract_address,
-                    private_key=self.my_private_key,
-                )
-
-                self.concent_service.submit_task_message(
-                    subtask_id=msg.subtask_id,
-                    msg=srv,
-                )
-
-            self.task_server.client.transaction_system.\
-                validate_concent_deposit_possibility(
-                    required=amount,
-                    tasks_num=1,
-                )
-            self.task_server.client.transaction_system.concent_deposit(
-                required=amount,
-                expected=expected,
-            ).addCallback(ask_for_verification).addErrback(
-                lambda failure: logger.warning(
-                    "Additional verification deposit failed %s", failure.value,
-                ),
-            )
-
-        else:
+        def subtask_rejected():
             dispatcher.send(
                 signal='golem.message',
                 event='received',
                 message=msg
             )
-
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
 
+        if msg.task_to_compute.concent_enabled:
+            self._handle_srr_with_concent_enabled(msg, subtask_rejected)
+        else:
+            subtask_rejected()
+
         self.dropped()
+
+    def _handle_srr_with_concent_enabled(
+            self, msg: message.tasks.SubtaskResultsRejected,
+            subtask_rejected: Callable[[], None]):
+        if msg.reason == (message.tasks.SubtaskResultsRejected.REASON
+                          .VerificationNegative):
+            logger.debug("_handle_srr_with_concent_enabled: triggering "
+                         "additional verification")
+            self._trigger_concent_additional_verification(msg)
+            return
+
+        fgtrf_msg: message.concents.ForceGetTaskResultFailed = \
+            msg.force_get_task_result_failed
+
+        if msg.reason == (message.tasks.SubtaskResultsRejected.REASON
+                          .ForcedResourcesFailure) \
+                and fgtrf_msg \
+                and self.verify_owners(fgtrf_msg, my_role=Actor.Provider) \
+                and (msg.report_computed_task.task_to_compute.subtask_id ==
+                     fgtrf_msg.task_to_compute.subtask_id):
+            subtask_id = msg.report_computed_task.subtask_id
+            logger.info("Received ForcedResourcesFailure message. "
+                        "subtask_id=%s", subtask_id)
+            subtask_rejected()
+            return
+
+        # in case the reason for SRR is neither
+        # a `VerificationNegative` nor `ForcedResourcesFailure`
+        # the SRR is effectively broken so we're ignoring it
+        # instead
+        # we wait for timeout to trigger force accept,
+        # so that the SRR can be verified independently by the Concent
+
+    def _trigger_concent_additional_verification(
+            self, msg: message.tasks.SubtaskResultsRejected):
+        # if the Concent is enabled for this subtask, as a provider,
+        # knowing that we had done a proper job of computing it,
+        # we are delegating the verification to the Concent so that
+        # we can be paid for this subtask despite the rejection
+
+        amount, expected = msg_helpers.provider_deposit_amount(
+            subtask_price=msg.task_to_compute.price,
+        )
+
+        def ask_for_verification(_):
+            srv = message.concents.SubtaskResultsVerify(
+                subtask_results_rejected=msg
+            )
+            srv.sign_concent_promissory_note(
+                deposit_contract_address=self.deposit_contract_address,
+                private_key=self.my_private_key,
+            )
+
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=srv,
+            )
+
+        self.task_server.client.transaction_system.\
+            validate_concent_deposit_possibility(
+                required=amount,
+                tasks_num=1,
+            )
+        self.task_server.client.transaction_system.concent_deposit(
+            required=amount,
+            expected=expected,
+        ).addCallback(ask_for_verification).addErrback(
+            lambda failure: logger.warning(
+                "Additional verification deposit failed %s", failure.value,
+            ),
+        )
 
     def _react_to_task_failure(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):

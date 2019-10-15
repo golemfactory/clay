@@ -1,15 +1,16 @@
 import random
 import unittest.mock as mock
 
-from pydispatch import dispatcher
-
 from golem.monitor.test_helper import MonitorTestBaseClass
 from golem.task.taskcomputer import TaskComputerAdapter
 
 
 class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
+    maxDiff = None
 
-    def test_channel(self):
+    @mock.patch('requests.post')
+    @mock.patch('json.dumps')
+    def test_channel(self, mock_dumps, *_):
         compute_tasks = random.random() > 0.5
         computer_mock = mock.Mock(
             spec=TaskComputerAdapter,
@@ -18,20 +19,22 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
         computer_mock.has_assigned_task.return_value = True
         computer_mock.assigned_subtask_id = 'test_subtask_id'
 
-        with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
-            dispatcher.send(
-                signal='golem.monitor',
-                event='task_computer_snapshot',
-                task_computer=computer_mock,
-            )
-            self.assertEqual(mock_send.call_count, 1)
-            result = mock_send.call_args[0][0].dict_repr()
-            for key in ('cliid', 'sessid', 'timestamp'):
-                del result[key]
-            self.maxDiff = None
-            expected = {
+        self.loop.run_until_complete(self.monitor.on_task_computer_snapshot(
+            task_computer=computer_mock,
+        ))
+        mock_dumps.assert_called_once()
+        result = mock_dumps.call_args[0][0]
+        self.maxDiff = None
+        expected = {
+            'proto_ver': 1,
+            'data': {
+                'cliid': mock.ANY,
+                'sessid': mock.ANY,
+                'timestamp': mock.ANY,
+
                 'type': 'TaskComputer',
                 'compute_task': compute_tasks,
                 'assigned_subtask': 'test_subtask_id',
-            }
-            self.assertEqual(expected, result)
+            },
+        }
+        self.assertCountEqual(expected, result)

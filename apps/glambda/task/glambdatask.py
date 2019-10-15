@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from enum import IntEnum
-from typing import List, Optional, Dict, Any, Type
+from typing import List, Optional, Dict, Any, Type, Callable
 
 import cloudpickle
 from golem_messages.datastructures import p2p as dt_p2p
@@ -13,7 +13,7 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder, \
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task, TaskTypeInfo
+from golem.task.taskbase import Task, TaskTypeInfo, TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
 
@@ -70,13 +70,11 @@ class GLambdaTask(CoreTask):
                  owner: dt_p2p.Node,
                  dir_manager: DirManager,
                  resource_size=None,
-                 root_path: Optional[str] = None,
-                 total_tasks=1) -> None:
+                 root_path: Optional[str] = None) -> None:
         super().__init__(task_definition,
                          owner,
                          resource_size,
-                         root_path,
-                         total_tasks)
+                         root_path)
         self.method = task_definition.options.method
         self.args = task_definition.options.args
         self.verification_metadata = task_definition.options.verification
@@ -178,8 +176,8 @@ class GLambdaTask(CoreTask):
         verif_cb()
         self._move_subtask_results_to_task_output_dir(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None) -> None:
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -190,7 +188,7 @@ class GLambdaTask(CoreTask):
         elif self.verification_type == \
                 self.VerificationMethod.EXTERNALLY_VERIFIED:
             self.SUBTASK_CALLBACKS[subtask_id] = verification_finished
-            self.results[subtask_id] = task_result
+            self.results[subtask_id] = task_result.files
             verdict = SubtaskVerificationState.IN_PROGRESS
         try:
             self._handle_verification_verdict(subtask_id, verdict,

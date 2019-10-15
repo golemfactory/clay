@@ -32,6 +32,10 @@ class UnknownActorError(Exception):
     pass
 
 
+class AlreadyFinished(Exception):
+    pass
+
+
 class VerificationByRedundancy(ABC):
     def __init__(self, redundancy_factor: int,
                  comparator: Callable[[Any, Any], bool],
@@ -139,6 +143,7 @@ class BucketVerifier(VerificationByRedundancy):
         self.normal_actor_count = redundancy_factor + 1
         self.referee_count = referee_count
         self.majority = (self.normal_actor_count + self.referee_count) // 2 + 1
+        self.max_actor_cnt = self.normal_actor_count + self.referee_count
 
     def validate_actor(self, actor):
         if actor in self.actors:
@@ -152,6 +157,13 @@ class BucketVerifier(VerificationByRedundancy):
         self.actors.append(actor)
         if len(self.actors) >= self.redundancy_factor + 1:
             self.more_actors_needed = False
+
+    def remove_actor(self, actor):
+        if self.verdicts is not None or actor in self.results.keys():
+            raise AlreadyFinished
+        self.actors.remove(actor)
+        if len(self.actors) < self.redundancy_factor + 1:
+            self.more_actors_needed = True
 
     def add_result(self, actor: Actor, result: Optional[Any]) -> None:
         if actor not in self.actors:
@@ -208,7 +220,8 @@ class BucketVerifier(VerificationByRedundancy):
                  if actor in winners else fail)
                 for actor in self.actors
             ]
-        elif self.majority - max_popularity <= self.referee_count:
+        elif self.majority - max_popularity <= self.referee_count and \
+                len(self.actors) < self.max_actor_cnt:
             self.verdicts = None
             self.more_actors_needed = True
         else:

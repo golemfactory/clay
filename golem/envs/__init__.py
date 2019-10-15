@@ -1,3 +1,4 @@
+import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
@@ -7,11 +8,13 @@ from threading import RLock
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
     Sequence, Iterable, ContextManager, Set, Tuple
 
+from dataclasses import dataclass, field
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
+from golem.model import Performance
 
 CounterId = str
 CounterUsage = Any
@@ -48,7 +51,6 @@ class EnvEventType(Enum):
 
 class EnvEvent(NamedTuple):
     type: EnvEventType
-    env_id: EnvId
     details: Optional[Dict[str, Any]] = None
 
 
@@ -75,6 +77,16 @@ class EnvSupportStatus(NamedTuple):
     """ Is the environment supported? If not, why? """
     supported: bool
     nonsupport_reason: Optional[str] = None
+
+
+@dataclass
+class BenchmarkResult:
+    performance: float = 0.0
+    cpu_usage: int = 0
+
+    @staticmethod
+    def from_performance(performance: Performance):
+        return BenchmarkResult(performance.value, performance.cpu_usage)
 
 
 class RuntimeStatus(Enum):
@@ -226,11 +238,6 @@ class Runtime(ABC):
         """ Register a listener for a given type of Runtime events. """
         raise NotImplementedError
 
-    @abstractmethod
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        """ Send RPC call to the Runtime. """
-        raise NotImplementedError
-
 
 class RuntimeBase(Runtime, ABC):
 
@@ -358,12 +365,21 @@ class RuntimeBase(Runtime, ABC):
     ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
 
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        def _wait_until_stopped():
+            while self.status() == RuntimeStatus.RUNNING:
+                time.sleep(1)
+        return deferToThread(_wait_until_stopped)
 
-class EnvMetadata(NamedTuple):
+
+@dataclass
+class EnvMetadata:
     id: EnvId
-    description: str
-    supported_counters: List[CounterId]
-    custom_metadata: Dict[str, Any]
+    description: str = ''
+    supported_counters: List[CounterId] = field(default_factory=list)
+    custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class EnvStatus(Enum):
@@ -405,12 +421,6 @@ class Environment(ABC):
     @abstractmethod
     def run_benchmark(self) -> Deferred:
         """ Get the general performance score for this environment. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def metadata(cls) -> EnvMetadata:
-        """ Get Environment metadata. """
         raise NotImplementedError
 
     @classmethod
@@ -483,7 +493,6 @@ class EnvironmentBase(Environment, ABC):
             every listener registered for this type of events. """
 
         event = EnvEvent(
-            env_id=self.metadata().id,
             type=event_type,
             details=details
         )

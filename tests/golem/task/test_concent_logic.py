@@ -60,11 +60,10 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.concent_enabled = True
         self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.msg.generate_ethsig(self.requestor_keys.raw_privkey)
-        self.msg.sign_promissory_note(self.requestor_keys.raw_privkey)
         self.ethereum_config = EthereumConfig()
-        self.msg.sign_concent_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+        self.msg.sign_all_promissory_notes(
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.requestor_keys.raw_privkey
         )
         self.msg.sign_message(self.requestor_keys.raw_privkey)  # noqa go home pylint, you're drunk pylint: disable=no-value-for-parameter
@@ -225,7 +224,11 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_bad_promissory_note_sig(self, send_mock, *_):
-        self.msg.sign_promissory_note(self.different_keys.raw_privkey)
+        self.msg.sign_promissory_note(
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
+            private_key=self.different_keys.raw_privkey
+        )
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
             send_mock,
@@ -234,8 +237,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_bad_concent_promissory_note_sig(self, send_mock, *_):
         self.msg.sign_concent_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.different_keys.raw_privkey
         )
         self.task_session._react_to_task_to_compute(self.msg)
@@ -414,7 +417,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg = factories.tasks.WantToComputeTaskFactory(
+            price=10 ** 18, cpu_usage=int(1e9))
         self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
@@ -479,13 +483,12 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
-        task_manager.get_market_strategy_for_task.return_value =\
-            RequestorBrassMarketStrategy
         ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
         ctd["resources"] = []
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()
+        task.REQUESTOR_MARKET_STRATEGY = RequestorBrassMarketStrategy
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
         task.header.max_price = 0

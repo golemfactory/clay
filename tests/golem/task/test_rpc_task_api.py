@@ -41,7 +41,6 @@ class TestTaskApiCreate(unittest.TestCase):
         random_dir = tempfile.gettempdir()
         return {
             'app_id': 'testappid',
-            'environment': 'testenv',
             'name': 'testname',
             'output_directory': random_dir,
             'resources': [
@@ -71,10 +70,6 @@ class TestTaskApiCreate(unittest.TestCase):
         )
         create_task_params = \
             self.requested_task_manager.create_task.call_args[0][0]
-        self.assertEqual(
-            golem_params['environment'],
-            create_task_params.environment,
-        )
         self.assertEqual(
             golem_params['app_id'],
             create_task_params.app_id,
@@ -118,7 +113,6 @@ class TestTaskApiCreate(unittest.TestCase):
         )
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
-        self.requested_task_manager.start_task.assert_called_once_with(task_id)
 
     def test_failed_init(self):
         self.requested_task_manager.init_task.side_effect = Exception

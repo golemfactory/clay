@@ -5,6 +5,8 @@ import time
 import unittest.mock as mock
 import uuid
 
+from pydispatch import dispatcher
+
 from golem_messages.message import ComputeTaskDef
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -110,10 +112,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.assigned_subtask)
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
-        args = task_server.send_results.call_args[0]
-        self.assertEqual(args[0], "xxyyzz")
-        self.assertEqual(args[1], "xyz")
-        self.assertEqual(args[2], 10000)
+        kwargs = task_server.send_results.call_args[1]
+        self.assertEqual(kwargs['subtask_id'], "xxyyzz")
+        self.assertEqual(kwargs['task_id'], "xyz")
+        self.assertEqual(kwargs['result'], 10000)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
@@ -342,19 +344,22 @@ class TestTaskMonitor(DatabaseFixture):
             task.assigned_subtask = subtask
 
         def check(expected):
-            with mock.patch('golem.monitor.monitor.SenderThread.send') \
-                    as mock_send:
-                task.task_computed(task_thread)
-                self.assertEqual(mock_send.call_count, 1)
-                result = mock_send.call_args[0][0].dict_repr()
-                for key in ('cliid', 'sessid', 'timestamp'):
-                    del result[key]
-                expected_d = {
-                    'type': 'ComputationTime',
-                    'success': expected,
-                    'value': duration,
-                }
-                self.assertEqual(expected_d, result)
+            listener = mock.Mock()
+            kwargs = {
+                'signal': 'golem.monitor',
+            }
+            dispatcher.connect(
+                listener,
+                **kwargs,
+            )
+            task.task_computed(task_thread)
+            listener.assert_called_once_with(
+                event='computation_time_spent',
+                sender=mock.ANY,
+                value=duration,
+                success=expected,
+                **kwargs,
+            )
 
         # error case
         prepare()

@@ -22,6 +22,7 @@ class TestGetTaskResources(TempDirFixture):
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
+        task_definition.subtasks_count = 1
         return task_definition
 
     def _get_core_task(self):

@@ -15,7 +15,7 @@ coverage:
     changes: false
   ignore:
     - "golem/database/schemas"
-    - "golem/envs/docker/benchmark/minilight/*"
+    - "golem/envs/docker/benchmark/cpu/minilight/*"
     - "golem/testutils.py"
     - "golem/tools/pyuic.py"
     - "save/*"

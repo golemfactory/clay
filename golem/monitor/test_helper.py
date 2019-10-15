@@ -1,3 +1,4 @@
+import asyncio
 from unittest import mock, TestCase
 from uuid import uuid4
 
@@ -26,3 +27,8 @@ def meta_data():
 class MonitorTestBaseClass(TestCase):
     def setUp(self):
         self.monitor = SystemMonitor(meta_data(), MONITOR_CONFIG)
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
+
+    def tearDown(self):
+        asyncio.set_event_loop(None)

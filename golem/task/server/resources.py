@@ -77,8 +77,18 @@ class TaskResourcesMixin:
                            resource_hash: Optional[str] = None,
                            timeout: Optional[int] = None):
 
-        options = self.get_share_options(task_id, None)
-        options.timeout = timeout
+        options = self.get_share_options(timeout=timeout)
+        logger.debug(
+            "Restoring resources. "
+            "files=%s, task_id=%s, resource_hash=%s, timeout=%s",
+            files, task_id, resource_hash, timeout
+        )
+        if timeout and timeout <= 0:
+            logger.warning(
+                "Timeout negative, skipping resource restore. task_id=%s",
+                task_id
+            )
+            return None
 
         try:
             resource_hash, _ = self.resource_manager.add_resources(
@@ -154,15 +164,18 @@ class TaskResourcesMixin:
             options.set(size=size)
         return options
 
-    def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
-                          address: Optional[str]) -> HyperdriveClientOptions:
+    def get_share_options(
+            self,
+            address: Optional[str] = None,
+            timeout: Optional[int] = None,
+    ) -> HyperdriveClientOptions:
         """
         Builds share options with a list of peers in HyperG format.
         If the given address is a private one, put the list of private addresses
         before own public address.
 
-        :param _task_id: Task id (unused)
         :param address: IP address of the node we're currently connected to
+        :param timeout: Share timeout in seconds
         """
 
         node = getattr(self, 'node')
@@ -180,7 +193,8 @@ class TaskResourcesMixin:
 
         peers.insert(-1 if prefer_prv else 0, pub_peer)
 
-        return self.resource_manager.build_client_options(peers=peers)
+        return self.resource_manager.build_client_options(
+            peers=peers, timeout=timeout)
 
     def _verify_peer(self, ip_address, _port):
         is_accessible = self.is_address_in_network  # noqa # pylint: disable=no-member
@@ -276,11 +290,10 @@ class TaskResourcesMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self.resource_handshakes.get(key_id)
-        options = self.get_share_options(handshake.nonce, None)
-        options.timeout = self.HANDSHAKE_TIMEOUT
+        options = self.get_share_options(timeout=self.HANDSHAKE_TIMEOUT)
 
         deferred = self.resource_manager.add_file(handshake.file,
-                                                  self.NONCE_TASK,
+                                                  res_id=key_id,
                                                   client_options=options,
                                                   async_=True)
 

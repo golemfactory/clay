@@ -68,6 +68,7 @@ from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -137,6 +138,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             prv_addr=self.config_desc.node_address or None,
             key=self.keys_auth.key_id,
         )
+
+        pub_key = self.keys_auth.key_id
+        pub_key_short = pub_key[:16] + '...' + pub_key[-16:]
+
+        golem.tools.talkback.update_sentry_user(
+            node_id=pub_key_short,
+            node_name=self.config_desc.node_name)
 
         self.p2pservice = None
         self.diag_service = None
@@ -352,9 +360,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.task_computer.quit()
+            self.task_server.quit()
         if self.use_monitor and self.monitor:
-            self.stop_monitor()
+            self.diag_service.stop()
+            # This effectively removes monitor dispatcher connections (weakrefs)
             self.monitor = None
         logger.debug('Stopped client services')
 
@@ -371,8 +380,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
-        self.p2pservice.add_metadata_provider(
-            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -385,9 +392,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_finished_cb=self._task_finished_cb,
         )
 
-        # Pause p2p and task sessions to prevent receiving messages before
-        # the node is ready
-        self.pause()
+        def get_performance_values():
+            values = self.environments_manager.get_performance_values()
+            new_env_manager = self.task_server.task_keeper.new_env_manager
+            for env_id in new_env_manager.environments():
+                benchmark_result = new_env_manager \
+                    .get_cached_benchmark_result(env_id)
+                if benchmark_result is not None:
+                    values[env_id] = benchmark_result.performance
+            return values
+        self.p2pservice.add_metadata_provider(
+            'performance', get_performance_values)
+
         self._restore_locks()
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -498,9 +514,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.task_computer.register_listener(listener)
 
             if self.monitor:
-                self.diag_service.register(self.p2pservice,
-                                           self.monitor.on_peer_snapshot)
-                self.monitor.on_login()
+                self.diag_service.register(
+                    self.p2pservice,
+                    lambda data: dispatcher.send(
+                        signal="golem.monitor",
+                        event="peer_snapshot",
+                        p2p_data=data,
+                    ),
+                )
+                dispatcher.send(
+                    signal="golem.monitor",
+                    event="login",
+                )
 
             StatusPublisher.publish(Component.client, 'start',
                                     stage=Stage.post)
@@ -586,8 +611,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server:
             logger.debug("Pausing task_server")
             yield self.task_server.pause()
-            self.task_server.disconnect()
-            self.task_server.task_computer.quit()
         logger.info("Paused")
 
     @rpc_utils.expose('ui.start')
@@ -612,14 +635,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
             VMDiagnosticsProvider(),
-            self.monitor.on_vm_snapshot
+            lambda data: dispatcher.send(
+                signal="golem.monitor",
+                event="vm_snapshot",
+                vm_data=data,
+            ),
         )
         self.diag_service.start()
-
-    def stop_monitor(self):
-        logger.debug("Stopping monitor ...")
-        self.monitor.shut_down()
-        self.diag_service.stop()
 
     @rpc_utils.expose('net.peer.connect')
     def connect(self, socket_address):
@@ -860,18 +882,31 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return task_dict
 
     @rpc_utils.expose('comp.tasks')
-    def get_tasks(self, task_id: Optional[str] = None) \
-            -> Union[Optional[dict], Iterable[dict]]:
+    def get_tasks(
+            self,
+            task_id: Optional[str] = None,
+            return_created_tasks_only: bool = False,
+    ) -> Union[Optional[dict], Iterable[dict]]:
         if not self.task_server:
             return []
 
         if task_id:
             return self.get_task(task_id)
 
-        task_ids = list(self.task_server.task_manager.tasks.keys())
-        tasks = (self.get_task(task_id) for task_id in task_ids)
-        # Filter Nones because get_task returns Optional[dict]
-        return list(filter(None, tasks))
+        task_keys = self.task_server.task_manager.tasks.keys()
+        tasks = (self.get_task(task_id) for task_id in task_keys)
+        filter_fn = None
+
+        if return_created_tasks_only:
+            filter_fn = self._filter_task_created_status
+
+        return list(filter(filter_fn, tasks))
+
+    @staticmethod
+    def _filter_task_created_status(task: Dict) -> bool:
+        return bool(task) and task['status'] not in (
+            TaskStatus.creating.value,
+            TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
@@ -1056,7 +1091,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
 
-        self.enable_talkback(self.config_desc.enable_talkback)
+        self.enable_talkback(bool(self.config_desc.enable_talkback))
         self.app_config.change_config(self.config_desc)
 
         dispatcher.send(
@@ -1153,7 +1188,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'id': env_id,
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
-            'performance': env.get_performance(),
+            'performance': env.get_benchmark_result().performance,
+            'cpu_usage': env.get_benchmark_result().cpu_usage,
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env_id, env in envs.items()]
@@ -1333,22 +1369,27 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return None
 
     @staticmethod
-    def enable_talkback(value):
+    def enable_talkback(value: bool):
         enable_sentry_logger(value)
 
     @rpc_utils.expose('net.peer.block')
     def block_node(
             self,
-            node_id: str,
+            node_id: Union[str, list],
             timeout_seconds: int = -1,
     ) -> Tuple[bool, Optional[str]]:
         if not self.task_server:
             return False, 'Client is not ready'
 
         try:
-            self.task_server.disallow_node(node_id,
-                                           timeout_seconds=timeout_seconds,
-                                           persist=True)
+            if isinstance(node_id, str):
+                node_id = [node_id]
+
+            for item in node_id:
+                self.task_server.disallow_node(item,
+                                               timeout_seconds=timeout_seconds,
+                                               persist=True)
+
             return True, None
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)

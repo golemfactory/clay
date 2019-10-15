@@ -30,22 +30,24 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
         config_desc = ClientConfigDescriptor()
         config_desc.accept_tasks = True
         config_desc.in_shutdown = False
+        self.task_keeper = mock.Mock()
         self.task_server = mock.Mock(
             spec=TaskServer,
             config_desc=config_desc,
-            task_keeper=mock.Mock()
+            task_keeper=self.task_keeper
         )
         self.env_manager = mock.Mock(spec_set=EnvironmentManager)
+        self.finished_callback = mock.Mock()
         self.adapter = TaskComputerAdapter(
             task_server=self.task_server,
-            env_manager=self.env_manager
+            env_manager=self.env_manager,
+            finished_cb=self.finished_callback
         )
 
 
 class TestInit(TaskComputerAdapterTestBase):
 
     def test_init(self):
-        self.new_computer.prepare.aseert_called_once()
         self.assertTrue(self.adapter.compute_tasks)
         self.assertTrue(self.adapter.runnable)
         self.assertIs(self.adapter.stats, self.int_stats_keeper)
@@ -164,6 +166,7 @@ class TestStartComputation(TaskComputerAdapterTestBase):
 
         self.new_computer.compute.assert_called_once()
         self.old_computer.start_computation.assert_not_called()
+        self.task_keeper.task_started.assert_called_once_with('test_task')
         handle_results.assert_called_once_with(
             'test_task',
             'test_subtask',
@@ -198,6 +201,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
             subtask_id='test_subtask',
             task_api_result=output_file,
         )
+        self.finished_callback.assert_called_once_with()
 
     @defer.inlineCallbacks
     def test_error(self):
@@ -213,6 +217,7 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
             err_msg='test_error'
         )
         self.task_server.send_results.assert_not_called()
+        self.finished_callback.assert_called_once_with()
 
 
 class TestTaskInterrupted(TaskComputerAdapterTestBase):
@@ -368,14 +373,14 @@ class TestTaskResourcesDir(TaskComputerAdapterTestBase):
             ValueError,
             'Task resources directory only available when a task-api task'
                 ' is assigned'):  # pylint: disable=bad-continuation
-            self.adapter.get_task_resources_dir()
+            self.adapter.get_subtask_inputs_dir()
 
     def test_new_assigned(self):
         self.new_computer.has_assigned_task.return_value = True
         self.old_computer.has_assigned_task.return_value = False
         self.assertEqual(
-            self.new_computer.get_task_resources_dir.return_value,
-            self.adapter.get_task_resources_dir(),
+            self.new_computer.get_subtask_inputs_dir.return_value,
+            self.adapter.get_subtask_inputs_dir(),
         )
 
 
@@ -383,5 +388,4 @@ class TestQuit(TaskComputerAdapterTestBase):
 
     def test_quit(self):
         self.adapter.quit()
-        self.new_computer.clean_up.assert_called_once()
         self.old_computer.quit.assert_called_once()

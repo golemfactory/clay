@@ -5,6 +5,7 @@ import sys
 import types
 from abc import ABC, abstractmethod
 from enum import Enum
+from typing import Any, Dict
 
 from golem_messages import datastructures
 
@@ -175,6 +176,6 @@ class DictSerializable(ABC):
 
     @staticmethod
     @abstractmethod
-    def from_dict(data: dict) -> 'DictSerializable':
+    def from_dict(data: Dict[str, Any]) -> 'DictSerializable':
         """ Construct object from a dict containing only primitive types. """
         raise NotImplementedError

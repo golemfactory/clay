@@ -10,16 +10,14 @@ from time import sleep
 
 import ethereum.keys
 import pycodestyle
+import pytest
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
 from golem.model import DB_MODELS, db, DB_FIELDS
 
-
 logger = logging.getLogger(__name__)
-
-
 
 
 class TempDirFixture(unittest.TestCase):
@@ -151,8 +149,10 @@ class PEP8MixIn(object):
     To use it in your TestCase just add it to inheritance list like so:
     class MyTestCase(unittest.TestCase, testutils.PEP8MixIn):
         PEP8_FILES = <iterable>
+
     PEP8_FILES attribute should be an iterable containing paths of python
     source files relative to <golem root>.
+
     Afterwards your test case will perform conformance test on files mentioned
     in this attribute.
     """
@@ -179,3 +179,13 @@ def async_test(coro):
     return wrapper
 
 
+@pytest.fixture
+def pytest_database_fixture(tmpdir):
+    database = Database(
+        db,
+        fields=DB_FIELDS,
+        models=DB_MODELS,
+        db_dir=tmpdir
+    )
+    yield database
+    database.db.close()

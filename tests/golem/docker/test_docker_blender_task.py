@@ -115,7 +115,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert len(task.task_resources) == 1
         assert task.task_resources[0].endswith(
             'scene-Helicopter-27-cycles.blend')
-        assert task.total_tasks == 6
+        assert task.get_total_tasks() == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
         assert task.subtasks_given == {}

@@ -1,8 +1,10 @@
+import sys
 from typing import NewType, Optional, Dict, Tuple, Iterable
 
 from pathlib import Path
 from twisted.internet.defer import inlineCallbacks
 
+from golem.core.common import get_timestamp_utc
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.resource.client import ClientOptions
 
@@ -34,15 +36,26 @@ class ResourceManager:
     def share(
             self,
             file_path: Path,
-            client_options: Optional[ClientOptions] = None,
+            client_options: ClientOptions,
     ):
         """ Share a single file; resolves to an assigned resource ID
             or a client-specific error """
 
         resolved_path = file_path.resolve()
         cached = self._cache.get(resolved_path)
+
         if cached:
-            return cached
+            # Missing / invalid timeouts are validated by the client.
+            # Don't pre-check it here and set the timeout to max int.
+            timeout = client_options.timeout or sys.maxsize
+            now = get_timestamp_utc()
+
+            resource_info = yield self._client.resource_async(cached)
+            valid_to = int(resource_info['validTo'])
+
+            if now + timeout <= valid_to:
+                return cached
+            self.drop(cached)
 
         resource_id = yield self._client.add_async(
             files={str(resolved_path): resolved_path.name},
@@ -58,7 +71,7 @@ class ResourceManager:
             self,
             resource_id: ResourceId,
             directory: Path,
-            client_options: Optional[ClientOptions] = None,
+            client_options: ClientOptions,
     ):
         """ Download a single resource to a given directory;
             resolves to Path or a client-specific error """

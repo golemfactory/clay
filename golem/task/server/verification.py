@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import typing
+from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -9,8 +11,10 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
+from golem.task.taskbase import TaskResult
 from golem.task.result.resultmanager import ExtractedPackage
 
 if typing.TYPE_CHECKING:
@@ -82,11 +86,18 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
+            task = self.task_manager.tasks[task_id]
+            market_strategy: Type[RequestorMarketStrategy] =\
+                task.REQUESTOR_MARKET_STRATEGY
+            payment_computer =\
+                market_strategy.get_payment_computer(  # type: ignore
+                    task, subtask_id
+                )
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
+                payment_computer(task_to_compute.want_to_compute_task.price),
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )
@@ -111,11 +122,12 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
-            verification_failed = not self.requested_task_manager.verify(
+            task = asyncio.ensure_future(self.requested_task_manager.verify(
                 task_id,
                 subtask_id,
-            )
-            verification_finished(False, verification_failed)
+            ))
+            task.add_done_callback(
+                lambda success: verification_finished(False, not success))
         else:
             def verification_finished_old():
                 is_verification_lenient = (
@@ -128,10 +140,12 @@ class VerificationMixin:
                     verification_failed,
                 )
 
-            result_files = extracted_package.get_full_path_files()
             self.task_manager.computed_task_received(
                 subtask_id,
-                result_files,
+                TaskResult(
+                    files=extracted_package.get_full_path_files(),
+                    stats=report_computed_task.stats
+                ),
                 verification_finished_old,
             )
 
@@ -147,7 +161,6 @@ class VerificationMixin:
         :param str subtask_id: subtask that has wrong result
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
-
 
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',
