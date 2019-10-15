@@ -846,19 +846,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if not task_dict:
             # NEW taskmanager
             logger.debug('get_task(task_id=%r) - NEW', task_id)
-            RequestedTask = model.RequestedTask
-            task = RequestedTask.get(
-                RequestedTask.task_id == task_id
-            )
-            task_dict = {
-                'id': task.task_id,
-                'status': task.status.name,
-            }
-            RequestedSubtask = model.RequestedSubtask
-            query = RequestedSubtask.select(RequestedSubtask.subtask_id) \
-                .where(RequestedSubtask.task_id == task_id)
-
-            subtask_ids = [s.subtask_id for s in query]
+            rtm = self.task_server.requested_task_manager
+            task = rtm.get_requested_task(task_id)
+            if not task:
+                return None
+            subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            task_dict = {'id': task.task_id, 'status': task.status.name}
         else:
             # OLD taskmanager
             logger.debug('get_task(task_id=%r) - OLD', task_id)
@@ -909,8 +902,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if task_id:
             return self.get_task(task_id)
 
-        task_keys = self.task_server.task_manager.tasks.keys()
-        tasks = (self.get_task(task_id) for task_id in task_keys)
+        tm = self.task_server.task_manager
+        rtm = self.task_server.requested_task_manager
+
+        task_keys = set()
+        task_keys.update(tm.tasks.keys())
+        task_keys.update(rtm.get_requested_task_ids())
+
+        tasks = (self.get_task(task_id) for task_id in sorted(task_keys))
         filter_fn = None
 
         if return_created_tasks_only:
