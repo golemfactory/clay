@@ -29,7 +29,7 @@ from golem.task import (
     taskstate,
     tasktester,
     requestedtaskmanager,
-)
+    TaskId)
 
 if typing.TYPE_CHECKING:
     from golem.client import Client  # noqa pylint: disable=unused-import
@@ -288,6 +288,10 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         desired_num_workers=desired_num_workers,
         potential_num_workers=potential_num_workers
     )
+
+    if mask is None:
+        mask = masking.Mask()
+
     logger.info(
         f'Task {task.header.task_id} '
         f'initial mask size: {mask.num_bits} '
@@ -539,21 +543,17 @@ class ClientProvider:
         )
         return task_dict, None
 
+    # FIXME: integration tests pass a single argument
     @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(self, task_params: dict, golem_params: dict):
-        logger.info('Creating Task API task. golem_params=%r', golem_params)
+    def create_task_api_task(
+            self,
+            golem_params: dict,
+            app_params: typing.Optional[dict] = None
+    ) -> TaskId:
+        logger.info('Creating Task API task. params=%r', golem_params)
 
-        create_task_params = requestedtaskmanager.CreateTaskParams(
-            app_id=golem_params['app_id'],
-            name=golem_params['name'],
-            output_directory=Path(golem_params['output_directory']),
-            resources=list(map(Path, golem_params['resources'])),
-            max_price_per_hour=int(golem_params['max_price_per_hour']),
-            max_subtasks=int(golem_params['max_subtasks']),
-            task_timeout=int(golem_params['task_timeout']),
-            subtask_timeout=int(golem_params['subtask_timeout']),
-            concent_enabled=False,  # Concent doesn't support Task API
-        )
+        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
+            .parse(golem_params, app_params)
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,
@@ -564,7 +564,7 @@ class ClientProvider:
 
         task_id = self.requested_task_manager.create_task(
             create_task_params,
-            task_params,
+            app_params,
         )
 
         self.client.funds_locker.lock_funds(
