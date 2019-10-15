@@ -9,9 +9,7 @@ from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from golem.task.taskbase import Task
 
-
 logger = logging.getLogger(__name__)
-
 
 
 @ci_skip
@@ -35,13 +33,13 @@ class TestBlenderIntegration(TestTaskIntegration):
             self,
             scene_file: str,
             resolution: List[int],
-            samples: int=150,
-            subtasks_count: int=2,
-            output_path: str=None,
-            output_format: str="PNG",
-            frames: List[int]=None
+            samples: int = 150,
+            subtasks_count: int = 2,
+            output_path: str = None,
+            output_format: str = "PNG",
+            frames: List[int] = None
     ) -> dict:
-    
+
         if output_path is None:
             output_path = self.tempdir
 
@@ -51,7 +49,6 @@ class TestBlenderIntegration(TestTaskIntegration):
         else:
             use_frames = False
             frames = "1"
-
 
         logger.info(frames)
 
@@ -82,23 +79,22 @@ class TestBlenderIntegration(TestTaskIntegration):
             # For multiple frames we must build frame path.
             base, ext = os.path.splitext(task.task_definition.output_file)
 
-            for frame in task.task_definition.options.frames:                
+            for frame in task.task_definition.options.frames:
                 path = base + "{:04d}".format(frame) + ext
-                
+
                 logger.info("Expected result path [{}]".format(path))
-                self.assertTrue(TestTaskIntegration.check_file_existence(path))    
+                self.assertTrue(TestTaskIntegration.check_file_existence(path))
         else:
             # For single frame, blender generates file with the same name
             # as in task_definition.
             logger.info("Expected result path [{}]".format(result))
             self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-
     def test_full_task_flow_multiframes(self):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=[400, 400],
                                          subtasks_count=2,
-                                         frames=[1,2])
+                                         frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)
@@ -117,7 +113,7 @@ class TestBlenderIntegration(TestTaskIntegration):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=[400, 400],
                                          subtasks_count=6,
-                                         frames=[1,2])
+                                         frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)
@@ -126,7 +122,7 @@ class TestBlenderIntegration(TestTaskIntegration):
         task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
                                          resolution=[400, 400],
                                          subtasks_count=1,
-                                         frames=[1,2])
+                                         frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)

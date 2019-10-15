@@ -24,13 +24,11 @@ from golem.task.taskmanager import TaskManager
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
-
 logger = logging.getLogger(__name__)
 
 
 class DockerTestJobFailure(Exception):
     pass
-
 
 
 def remove_temporary_dirtree_if_test_passed(fun):
@@ -40,9 +38,8 @@ def remove_temporary_dirtree_if_test_passed(fun):
         # If test fails, we won't reach this point, but tearDown
         # will be called and directories won't be removed.
         self.REMOVE_TMP_DIRS = True
+
     return wrapper
-
-
 
 
 class VerificationWait:
@@ -59,7 +56,7 @@ class VerificationWait:
             while not self.is_finished:
                 # If timeout is set to None, we wait for ethernity.
                 timeouted = not self.condition_var.wait(timeout=timeout)
-                
+
                 # This implementation can wait much longer then timeout,
                 # because we are in loop and timeout is always restarted,
                 # but who cares.
@@ -80,6 +77,10 @@ class VerificationWait:
 
 
 class TestTaskIntegration(TestDatabaseWithReactor):
+
+    class Result:
+        def __init__(self, files: []):
+            self.files = files
 
     @staticmethod
     def check_file_existence(filename):
@@ -104,7 +105,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         self.node_id = self._generate_node_id()
         self.node_name = self._generate_node_id()
         self.dir_manager = DirManager(self.tempdir)
-        
+
         logger.info("Tempdir: {}".format(self.tempdir))
 
         # load all apps to be enabled for tests
@@ -146,7 +147,8 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         task: Task = self.start_task(task_def)
 
         for i in range(task.task_definition.subtasks_count):
-            result, subtask_id, _ = self.compute_next_subtask(task, i)
+            files, subtask_id, _ = self.compute_next_subtask(task, i)
+            result = TestTaskIntegration.Result(files)
             self.assertTrue(self.verify_subtask(task, subtask_id, result))
 
         return task
@@ -184,8 +186,8 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         logger.info("Executing test subtask {}/{} [subtask_id = {}] "
                     "[task_id = {}] on mocked provider.".format(
-                        subtask_num+1, task.task_definition.subtasks_count,
-                        subtask_id, task_id))
+            subtask_num + 1, task.task_definition.subtasks_count,
+            subtask_id, task_id))
 
         result = self._execute_subtask(task, ctd)
         result = self._collect_results_from_provider(result,
@@ -336,6 +338,3 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         return ''.join(
             SystemRandom().choice(string.ascii_lowercase + string.digits) for _
             in range(8))
-
-
-
