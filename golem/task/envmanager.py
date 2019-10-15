@@ -6,7 +6,7 @@ from peewee import PeeweeException
 from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem.envs import BenchmarkResult, EnvId, Environment, EnvMetadata
-from golem.model import Performance
+from golem.model import Performance, EnvConfiguration
 from golem.task.task_api import TaskApiPayloadBuilder
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,7 @@ class EnvironmentManager:
 
     def __init__(self):
         self._envs: Dict[EnvId, EnvironmentManager.EnvEntry] = {}
-        self._state: Dict[EnvId, bool] = {}
+        self._state = EnvStates()
         self._running_benchmark: bool = False
 
     def register_env(
@@ -44,7 +44,7 @@ class EnvironmentManager:
 
     def state(self) -> Dict[EnvId, bool]:
         """ Get the state (enabled or not) for all registered Environments. """
-        return dict(self._state)
+        return self._state.copy()
 
     def set_state(self, state: Dict[EnvId, bool]) -> None:
         """ Set the state (enabled or not) for all registered Environments. """
@@ -143,3 +143,41 @@ class EnvironmentManager:
             query.execute()
         except PeeweeException:
             logger.exception(f"Cannot clear performance score for '{env_id}'")
+
+
+class EnvStates:
+
+    @staticmethod
+    def copy() -> Dict[EnvId, bool]:
+        configs = EnvConfiguration.select().execute()
+        return {config.env_id: config.enabled for config in configs}
+
+    def __contains__(self, item):
+        if not isinstance(item, str):
+            self._type_error(item)
+
+        return EnvConfiguration.select(EnvConfiguration.env_id) \
+            .where(EnvConfiguration.env_id == item) \
+            .exists()
+
+    def __getitem__(self, item):
+        if not isinstance(item, str):
+            self._type_error(item)
+        try:
+            return EnvConfiguration \
+                .get(EnvConfiguration.env_id == item) \
+                .enabled
+        except EnvConfiguration.DoesNotExist:
+            raise KeyError(item)
+
+    def __setitem__(self, key, val):
+        if not isinstance(key, str):
+            self._type_error(key)
+        if not isinstance(val, bool):
+            raise TypeError(f"Value is of type {type(val)}; bool expected")
+
+        EnvConfiguration.insert(env_id=key, enabled=val).upsert().execute()
+
+    @staticmethod
+    def _type_error(item):
+        raise TypeError(f"Key is of type {type(item)}; str expected")
