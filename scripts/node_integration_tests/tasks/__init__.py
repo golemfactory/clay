@@ -165,22 +165,19 @@ _TASK_SETTINGS = {
         },
     },
     'task_api_blender': {
-        'app_id': "blender",
-        'name': 'test task',
-        'environment': "docker_cpu",
-        'output_directory': "",
-        "resources": [],
-        "max_price_per_hour": 1.0,
-        "max_subtasks": 1,
+        'app_id': '983f842328c296ac5378746e8096723a',
+        'name': 'test Blender task',
+        'output_directory': '',
+        'resources': [],
+        'max_price_per_hour': str(50 * 10 ** 18),
+        'max_subtasks': 10,
         'task_timeout': 600000,  # 00:10:00
-        "subtask_timeout": 590000,  # 00:09:50
-        "options": {
-            "output_path": '',
-            "format": "PNG",
-            "resolution": [
-                320,
-                240
-            ]
+        'subtask_timeout': 590000,  # 00:09:50
+        'options': {
+            'resolution': [320, 240],
+            'frames': '1',
+            'format': 'PNG',
+            'compositing': False,
         }
     },
 }

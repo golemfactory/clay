@@ -8,7 +8,8 @@ import shutil
 import tempfile
 import time
 
-from golem import app_manager as appmanager, database, model
+from golem import database, model
+from golem.apps import manager as appmanager
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
