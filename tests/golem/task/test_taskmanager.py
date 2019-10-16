@@ -25,10 +25,7 @@ from apps.blender.task.blenderrendertask import BlenderRenderTask
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.dummy.task.dummytask import DummyTaskBuilder
-from apps.dummy.task.dummytaskstate import (
-    DummyTaskDefinition,
-    DummyTaskDefaults,
-)
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 
 from golem import model
 from golem import testutils
@@ -202,8 +199,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert any("This is not my task" in log for log in log.output)
 
     def _get_test_dummy_task(self, task_id):
-        defaults = DummyTaskDefaults()
-        tdd = DummyTaskDefinition(defaults)
+        tdd = DummyTaskDefinition()
         dm = dirmanager.DirManager(self.path)
         dtb = DummyTaskBuilder(dt_p2p_factory.Node(node_name="MyNode"), tdd, dm)
 

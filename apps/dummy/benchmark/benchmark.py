@@ -4,8 +4,7 @@ from pathlib import Path
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.dummy.task.dummytask import DummyTask
-from apps.dummy.task.dummytaskstate import DummyTaskDefinition, \
-    DummyTaskDefaults
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
 from golem.verifier.subtask_verification_state import SubtaskVerificationState
@@ -17,7 +16,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         self.dummy_task_path = join(get_golem_path(),
                                     "apps", "dummy", "test_data")
 
-        td = self._task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        td = self._task_definition = DummyTaskDefinition()
         td.shared_data_files = [join(self.dummy_task_path, x) for x in
                                 td.shared_data_files]
 
