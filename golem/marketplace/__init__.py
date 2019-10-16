@@ -35,18 +35,18 @@ class NameSerializableEnum(Enum):
 
 
 class RequestorMarketStrategies(NameSerializableEnum):
-    Brass = RequestorBrassMarketStrategy
-    Wasm = RequestorWasmMarketStrategy
+    BRASS = RequestorBrassMarketStrategy
+    WASM = RequestorWasmMarketStrategy
 
     @classmethod
     def default(cls) -> 'RequestorMarketStrategies':
-        return cls.Brass
+        return cls.BRASS
 
 
 class ProviderMarketStrategies(NameSerializableEnum):
-    Brass = ProviderBrassMarketStrategy
-    Wasm = ProviderWasmMarketStrategy
+    BRASS = ProviderBrassMarketStrategy
+    WASM = ProviderWasmMarketStrategy
 
     @classmethod
     def default(cls) -> 'ProviderMarketStrategies':
-        return cls.Brass
+        return cls.BRASS
