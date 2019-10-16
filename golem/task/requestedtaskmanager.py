@@ -380,13 +380,16 @@ class RequestedTaskManager:
             subtask_op = SubtaskOp.FINISHED
             subtask.status = SubtaskStatus.finished
         elif result in (VerifyResult.FAILURE, VerifyResult.INCONCLUSIVE):
+            subtask_op = SubtaskOp.FAILED
             subtask.status = SubtaskStatus.failure
         elif result is VerifyResult.AWAITING_DATA:
-            pass  # no update
+            subtask_op = None
         else:
             raise NotImplementedError(f"Unexpected verify result: {result}")
         subtask.save()
-        self._finish_subtask(subtask, subtask_op)
+
+        if subtask_op:
+            self._finish_subtask(subtask, subtask_op)
 
         if result is VerifyResult.SUCCESS:
             # Check if task completed
