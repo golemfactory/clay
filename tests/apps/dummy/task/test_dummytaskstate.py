@@ -3,26 +3,11 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
-from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
+from apps.dummy.task.dummytaskstate import \
     DummyTaskOptions, DummyTaskDefinition
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import list_dir_recursive
 from golem.testutils import PEP8MixIn, TempDirFixture
-
-
-class TestDummyTaskDefaults(TestCase):
-    def test_init(self):
-        td = DummyTaskDefaults()
-        assert isinstance(td, DummyTaskDefaults)
-        assert isinstance(td.options, DummyTaskOptions)
-        assert td.options.subtask_data_size == 128
-        assert td.options.difficulty == 0xffff0000
-
-        assert td.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
-        assert td.result_size == 256
-        assert td.default_subtasks == 5
-        assert td.out_file_basename == "out"
-        assert td.shared_data_files == ["in.data"]
 
 
 class TestDummyTaskOptions(TestCase):
@@ -45,25 +30,19 @@ class TestDummyTaskDefinition(TempDirFixture):
         td = DummyTaskDefinition()
         assert isinstance(td, DummyTaskDefinition)
         assert isinstance(td.options, DummyTaskOptions)
+        assert td.options.subtask_data_size == 128
+        assert td.options.difficulty == 0xffff0000
         assert td.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
+        for c in list_dir_recursive(td.code_dir):
+            assert os.path.isfile(c)
         assert td.result_size == 256
         assert td.out_file_basename == "out"
         assert isinstance(td.resources, set)
-
-        defaults = DummyTaskDefaults()
-        tdd = DummyTaskDefinition(defaults)
-        assert tdd.options.subtask_data_size == 128
-        assert tdd.options.difficulty == 0xffff0000
-        assert tdd.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
-        for c in list_dir_recursive(tdd.code_dir):
-            assert os.path.isfile(c)
-        assert tdd.result_size == 256
-        assert tdd.subtasks_count == 5
-        assert tdd.out_file_basename == "out"
-        assert tdd.shared_data_files == ["in.data"]
+        assert td.subtasks_count == 5
+        assert td.shared_data_files == ["in.data"]
 
     def test_add_to_resources(self):
-        td = DummyTaskDefinition(DummyTaskDefaults())
+        td = DummyTaskDefinition()
         td.resources = {os.path.join(get_golem_path(), "apps", "dummy", "test_data", "in.data")}
         assert os.path.isfile(list(td.resources)[0])
         with patch("tempfile.mkdtemp", lambda: self.tempdir):

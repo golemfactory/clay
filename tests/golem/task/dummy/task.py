@@ -100,8 +100,7 @@ class DummyTask(Task):
                 'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-        from apps.dummy.task.dummytaskstate import DummyTaskDefaults
-        task_definition = DummyTaskDefinition(DummyTaskDefaults())
+        task_definition = DummyTaskDefinition()
         Task.__init__(self, header, task_definition)
 
         self.task_id = task_id

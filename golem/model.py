@@ -800,6 +800,16 @@ class RequestedSubtask(BaseModel):
         primary_key = CompositeKey('task', 'subtask_id')
 
 
+class QueuedVerification(BaseModel):
+    task_id = CharField(null=False)
+    subtask_id = CharField(null=False)
+    priority = IntegerField(null=True, index=True)
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task_id', 'subtask_id')
+
+
 def collect_db_models(module: str = __name__):
     return inspect.getmembers(
         sys.modules[module],

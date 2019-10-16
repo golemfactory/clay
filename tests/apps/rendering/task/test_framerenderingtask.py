@@ -10,6 +10,7 @@ from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 from apps.rendering.task.framerenderingtask import get_frame_name, \
     FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions, logger
+from apps.rendering.task.renderingtask import MIN_PIXELS_PER_SUBTASK
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
@@ -315,8 +316,8 @@ class TestBuildDefinition(unittest.TestCase):
     def _make_dict(
             *,
             frame_count: int = 1,
+            pixel_height: int = MIN_PIXELS_PER_SUBTASK,
             subtasks_count: int = 1,
-            optimize_total: bool = False,
     ):
         assert frame_count > 0
         if frame_count == 1:
@@ -327,65 +328,38 @@ class TestBuildDefinition(unittest.TestCase):
         return {
             "bid": 0,
             "name": "foo",
-            "optimize_total": optimize_total,
             "options": {
                 "format": "PNG",
                 "frame_count": frame_count,
                 "frames": frames,
                 "output_path": "/tmp/foo",
-                "resolution": [1, 1],
+                "resolution": [MIN_PIXELS_PER_SUBTASK, pixel_height],
             },
             "resources": ["foo.txt"],
-            "subtask_timeout": "0:00:01",
+            "subtask_timeout": "0:01:00",
             "subtasks_count": subtasks_count,
-            "timeout": "0:00:01",
+            "timeout": "0:01:00",
         }
 
     def test_subtasks_count(self):
-        # sort tests by (optimize_total, frame_count, subtasks_count)
+        # sort tests by (frame_count, pixel_height, subtasks_count)
         tests = [
-            {
-                "make_dict_kwargs": {
-                    "subtasks_count": 0,
-                },
-                "expected_subtasks_count": 20,
-            },
             {
                 "make_dict_kwargs": {},
                 "expected_subtasks_count": 1,
             },
             {
                 "make_dict_kwargs": {
-                    "subtasks_count": 50,
+                    "pixel_height": 5,
                 },
-                "expected_subtasks_count": 50,
+                "expected_throw": True,  # image too small
             },
             {
                 "make_dict_kwargs": {
-                    "subtasks_count": 51,
-                },
-                "expected_subtasks_count": 20,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 0,
-                },
-                "expected_subtasks_count": 6,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 1,
-                },
-                "expected_subtasks_count": 1,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
+                    "pixel_height": 15,
                     "subtasks_count": 2,
                 },
-                "expected_subtasks_count": 2,
+                "expected_subtasks_count": 1,
             },
             {
                 "make_dict_kwargs": {
@@ -399,72 +373,45 @@ class TestBuildDefinition(unittest.TestCase):
                     "frame_count": 6,
                     "subtasks_count": 4,
                 },
-                "expected_subtasks_count": 3,
+                "expected_subtasks_count": 4,
             },
             {
                 "make_dict_kwargs": {
                     "frame_count": 6,
-                    "subtasks_count": 6,
+                    "pixel_height": 768,
+                    "subtasks_count": 50,
                 },
-                "expected_subtasks_count": 6,
+                "expected_subtasks_count": 48,
             },
             {
                 "make_dict_kwargs": {
                     "frame_count": 6,
-                    "subtasks_count": 12,
+                    "pixel_height": 768,
+                    "subtasks_count": 457,
                 },
-                "expected_subtasks_count": 12,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 13,
-                },
-                "expected_subtasks_count": 12,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 17,
-                },
-                "expected_subtasks_count": 12,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 18,
-                },
-                "expected_subtasks_count": 18,
-            },
-            {
-                "make_dict_kwargs": {
-                    "optimize_total": True,
-                },
-                "expected_subtasks_count": 20,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 12,
-                    "optimize_total": True,
-                },
-                "expected_subtasks_count": 6,
-            },
-            {
-                "make_dict_kwargs": {
-                    "frame_count": 6,
-                    "subtasks_count": 12,
-                    "optimize_total": True,
-                },
-                "expected_subtasks_count": 6,
+                "expected_subtasks_count": 456,
             },
         ]
         failures = []
         for test in tests:
             task_dict = self._make_dict(**test["make_dict_kwargs"])
-            definition = FrameRenderingTaskBuilder.build_definition(
-                self.tti, task_dict)
-            if definition.subtasks_count != test["expected_subtasks_count"]:
+            definition = None
+            thrown_exception = None
+
+            try:
+                definition = FrameRenderingTaskBuilder.build_definition(
+                    self.tti, task_dict)
+            except Exception as e:  # pylint: disable=broad-except
+                thrown_exception = e
+
+            if thrown_exception is not None and \
+                    not test.get("expected_throw", False):
+                test["thrown_exception"] = thrown_exception
+                failures.append(test)
+
+            if definition and (
+                    definition.subtasks_count
+                    != test["expected_subtasks_count"]):
                 test["actual_subtasks_count"] = definition.subtasks_count
                 failures.append(test)
         assert failures == []
