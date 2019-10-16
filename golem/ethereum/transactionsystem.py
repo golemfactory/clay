@@ -632,6 +632,9 @@ class TransactionSystem(LoopingCallService):
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
+        if gas_price and amount < gas_price:
+            raise Exception("Gas price is higer than amount")
+
         log.info(
             "Trying to withdraw %f %s to %s",
             amount / denoms.ether,
