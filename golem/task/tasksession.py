@@ -22,11 +22,12 @@ import golem
 from golem.core import common
 from golem.core import deferred
 from golem.core import variables
+from golem.core.common import deadline_to_timeout
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import (
-    Offer, ProviderPerformance
-)
+    Offer, ProviderPerformance,
+    RequestorBrassMarketStrategy)
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -274,6 +275,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.ConcentDisabled)
             return
 
+        is_task_api_task = self.requested_task_manager.task_exists(task_id)
         if not self.task_manager.is_my_task(task_id) and \
                 not self.requested_task_manager.task_exists(task_id):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
@@ -298,7 +300,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        if self.requested_task_manager.task_exists(task_id):
+        if is_task_api_task:
             if not self.requested_task_manager.has_pending_subtasks(task_id):
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
@@ -330,8 +332,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+        if msg.task_id in self.task_manager.tasks:
+            current_task = self.task_manager.tasks[msg.task_id]
+            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+            max_price_per_hour = current_task.header.max_price
+        else:
+            current_task = self.requested_task_manager.get_requested_task(
+                msg.task_id)
+            # FIXME: adjust after merging #4753 (with #4785)
+            market_strategy = RequestorBrassMarketStrategy
+            max_price_per_hour = current_task.max_price_per_hour
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -350,7 +360,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         offer = OfferWithCallback(
             self.key_id,
             ProviderPerformance(msg.cpu_usage / 1e9),
-            current_task.header.max_price,
+            max_price_per_hour,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
         )
@@ -462,8 +472,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = msg.task_id
 
         if self.requested_task_manager.task_exists(task_id):
-            if not self.requested_task_manager.has_pending_subtasks(task_id):
+            has_pending_subtasks = yield deferred.deferred_from_future(
+                self.requested_task_manager.has_pending_subtasks(task_id))
+            if not has_pending_subtasks:
                 return None
+
             subtask_definition = yield deferred.deferred_from_future(
                 self.requested_task_manager.get_next_subtask(
                     task_id=task_id,
@@ -475,11 +488,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if subtask_definition is None:
                 # Application refused to assign subtask to provider node
                 return None
+
             task_resources_dir = self.requested_task_manager.\
                 get_subtask_inputs_dir(task_id)
+
             rm = self.task_server.new_resource_manager
+            share_options = self.task_server.get_share_options(
+                timeout=deadline_to_timeout(subtask_definition.deadline))
+
             cdn_resources = yield defer.gatherResults([
-                rm.share(task_resources_dir / r)
+                rm.share(task_resources_dir / r, share_options)
                 for r in subtask_definition.resources
             ])
             new_ctd = {
