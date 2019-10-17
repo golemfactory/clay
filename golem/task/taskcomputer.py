@@ -394,9 +394,8 @@ class NewTaskComputer:
         return self._work_dir / env_id / task_id
 
     def task_interrupted(self) -> None:
-        assert self.has_assigned_task()
-        assert self._computation is not None
-        self._computation.cancel()
+        if self.has_assigned_task() and self._computation:
+            self._computation.cancel()
 
     def get_current_computing_env(self) -> Optional[EnvId]:
         if self._assigned_task is None:
