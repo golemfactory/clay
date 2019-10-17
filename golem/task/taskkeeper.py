@@ -22,7 +22,6 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from golem.core import common
 from golem.core import golem_async
-from golem.core.deferred import sync_wait
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
@@ -238,13 +237,6 @@ class CompTaskKeeper:
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
-        if not idgenerator.check_id_hex_seed(
-                comp_task_def['subtask_id'],
-                key_id,):
-            logger.info(not_accepted_message, *log_args, "Subtask id was not "
-                                                         "generated from "
-                                                         "requestor's key.")
-            return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")
