@@ -23,6 +23,7 @@ from typing import (
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.datastructures.masking import Mask
 from pydispatch import dispatcher
 from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
@@ -34,7 +35,7 @@ from golem import constants as gconst
 from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import short_node_id
+from golem.core.common import short_node_id, deadline_to_timeout
 from golem.core.deferred import sync_wait, deferred_from_future
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
@@ -162,16 +163,21 @@ class TaskServer(
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
         )
         self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
-            config_desc.hyperdrive_rpc_address,
             config_desc.hyperdrive_rpc_port,
+            config_desc.hyperdrive_rpc_address,
         ))
-        benchmarks = self.task_manager.apps_manager.get_benchmarks()
-        self.benchmark_manager = BenchmarkManager(
-            node_name=config_desc.node_name,
-            task_server=self,
-            root_path=self.get_task_computer_root(),
-            benchmarks=benchmarks
-        )
+        # FIXME: for testing purposes only
+        # benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        # self.benchmark_manager = BenchmarkManager(
+        #     node_name=config_desc.node_name,
+        #     task_server=self,
+        #     root_path=self.get_task_computer_root(),
+        #     benchmarks=benchmarks
+        # )
+
+        from unittest import mock
+        self.benchmark_manager = mock.Mock()
+
         self.task_computer = TaskComputerAdapter(
             task_server=self,
             env_manager=new_env_manager,
@@ -473,7 +479,8 @@ class TaskServer(
                 deferreds.append(self.new_resource_manager.download(
                     resource_id,
                     self.task_computer.get_subtask_inputs_dir(),
-                    msg.resources_options,
+                    self.resource_manager.build_client_options(
+                        **msg.resources_options),
                 ))
             defer.gatherResults(deferreds, consumeErrors=True)\
                 .addCallbacks(
@@ -546,7 +553,7 @@ class TaskServer(
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result or task_api_result,
+            result=result or [str(task_api_result)],
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner,
@@ -570,7 +577,12 @@ class TaskServer(
             create_and_enqueue_result()
             return
 
-        self.new_resource_manager.share(task_api_result).addCallbacks(
+        client_options = self.get_share_options(
+            timeout=deadline_to_timeout(header.deadline))
+        deferred = self.new_resource_manager.share(
+            task_api_result,
+            client_options)
+        deferred.addCallbacks(
             on_result_share_success,
             on_result_share_error)
 
@@ -746,10 +758,14 @@ class TaskServer(
 
         self.task_computer.lock_config(True)
         deferred = Deferred()
-        self.benchmark_manager.run_all_benchmarks(
-            deferred.callback, deferred.errback)
-        yield deferred
-        self.task_computer.lock_config(False)
+        try:
+            # FIXME: for testing purposes only
+            # self.benchmark_manager.run_all_benchmarks(
+            #     deferred.callback, deferred.errback)
+            # yield deferred
+            pass
+        finally:
+            self.task_computer.lock_config(False)
 
     def _remove_env_performance_scores(self) -> None:
         env_manager = self.task_keeper.new_env_manager
@@ -934,8 +950,8 @@ class TaskServer(
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
 
-    def get_min_performance_for_task(self, task: Task) -> float:
-        env = self.get_environment_by_id(task.header.environment)
+    def get_min_performance_for_env(self, env_id: str) -> float:
+        env = self.get_environment_by_id(env_id)
         if isinstance(env, OldEnv):
             return env.get_min_accepted_performance()
         # NewEnv
@@ -964,15 +980,29 @@ class TaskServer(
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
-        if task_id not in self.task_manager.tasks:
+        if task_id in self.task_manager.tasks:
+            task = self.task_manager.tasks.get(task_id)
+            env_id = task.header.environment
+            min_memory = task.header.estimated_memory
+            mask = task.header.mask
+            accept_client_verdict = task.should_accept_client(
+                node_id,
+                offer_hash)
+        elif self.requested_task_manager.task_exists(task_id):
+            task = self.requested_task_manager.get_requested_task(task_id)
+            env_id = task.env_id
+            min_memory = task.min_memory
+            mask = Mask(task.mask)
+            # For compatibility purposes; the app decides to whom assign a task
+            accept_client_verdict = AcceptClientVerdict.ACCEPTED
+        else:
             logger.info('Cannot find task in my tasks: %s', ids)
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.not_my_task)
             return False
 
-        task = self.task_manager.tasks[task_id]
-        min_accepted_perf = self.get_min_performance_for_task(task)
+        min_accepted_perf = self.get_min_performance_for_env(env_id)
 
         if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'
@@ -986,15 +1016,14 @@ class TaskServer(
                 })
             return False
 
-        if task.header.estimated_memory > (int(max_memory_size) * 1024):
+        if min_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
-                        f'{task.header.estimated_memory} B < {max_memory_size} '
-                        f'KiB; {ids}')
+                        f'{min_memory} B < {max_memory_size} KiB; {ids}')
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.memory_size,
                 details={
-                    'memory_size': task.header.estimated_memory,
+                    'memory_size': min_memory,
                     'max_memory_size': max_memory_size * 1024,
                 })
             return False
@@ -1023,15 +1052,13 @@ class TaskServer(
                 })
             return False
 
-        if not task.header.mask.matches(decode_hex(node_id)):
+        if not mask.matches(decode_hex(node_id)):
             logger.info(f'network mask mismatch: {ids}')
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.netmask)
             return False
 
-        accept_client_verdict: AcceptClientVerdict \
-            = task.should_accept_client(node_id, offer_hash)
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
             logger.info(f'provider {node_id} is not allowed'
                         f' for this task at this moment '
