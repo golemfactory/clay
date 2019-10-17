@@ -376,6 +376,7 @@ class RequestedTaskManager:
             )
             result, _ = VerifyResult.FAILURE, str(e)
 
+        subtask_op: Optional[SubtaskOp] = None
         if result is VerifyResult.SUCCESS:
             subtask_op = SubtaskOp.FINISHED
             subtask.status = SubtaskStatus.finished
