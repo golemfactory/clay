@@ -16,6 +16,7 @@ from peewee import fn
 
 from golem.apps import AppId
 from golem.apps.manager import AppManager
+from golem.core.common import datetime_to_timestamp
 from golem.model import (
     ComputingNode,
     default_now,
@@ -287,9 +288,10 @@ class RequestedTaskManager:
 
         # Check should accept provider, raises when waiting on results or banned
         if self._get_unfinished_subtasks_for_node(task_id, node) > 0:
-            raise RuntimeError(
+            logger.warning(
                 "Provider has unfinished subtasks, no next subtask. "
                 f"task_id={task_id}")
+            return None
 
         if not await self.has_pending_subtasks(task_id):
             raise RuntimeError(
@@ -319,10 +321,10 @@ class RequestedTaskManager:
         )
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
-        deadline = min(
+        deadline = datetime_to_timestamp(min(
             subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
             task_deadline
-        )
+        ))
 
         ProviderComputeTimers.start(subtask.subtask_id)
         return SubtaskDefinition(
