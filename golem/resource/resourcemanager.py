@@ -77,11 +77,12 @@ class ResourceManager:
             resolves to Path or a client-specific error """
 
         resolved_path = directory.resolve(strict=False)
-        _, files = yield self._client.get_async(
+        response = yield self._client.get_async(
             content_hash=resource_id,
             filepath=str(resolved_path),
             client_options=client_options)
 
+        *_, files = response[0]
         return Path(files[0]).resolve()
 
     @inlineCallbacks
