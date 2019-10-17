@@ -42,6 +42,16 @@ class AppDefinition:
         raise NotImplementedError  # A stub to silence the linters
 
 
+def save_app_to_json_file(app_def: AppDefinition, json_file: Path) -> None:
+    try:
+        json_file.parent.mkdir(parents=True, exist_ok=True)
+        json_file.write_text(app_def.to_json())
+    except OSError:
+        msg = f"Error writing app definition to file '{json_file}."
+        logger.exception(msg)
+        raise ValueError(msg)
+
+
 def load_app_from_json_file(json_file: Path) -> AppDefinition:
     """ Parse application definition from the given JSON file. Raise ValueError
         if the given file doesn't contain a valid definition. """
