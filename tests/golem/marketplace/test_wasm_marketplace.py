@@ -1,11 +1,12 @@
-from unittest import TestCase
 from unittest.mock import Mock
+
+from golem import testutils
 
 from golem.marketplace import ProviderPerformance
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 
 
-class TestOfferChoice(TestCase):
+class TestOfferChoice(testutils.DatabaseFixture):
     TASK_1 = 'task_1'
     TASK_2 = 'task_2'
     PROVIDER_1 = 'P1'

@@ -12,6 +12,7 @@ from golem.ranking.manager.database_manager import (
     get_requestor_assigned_sum,
     get_requestor_paid_sum,
 )
+from golem import model
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -29,7 +30,6 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     DEFAULT_USAGE_BENCHMARK: float = 1.0
 
     _usages: ClassVar[Dict[str, float]] = dict()
-    _usage_factors: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
     _my_usage_benchmark: ClassVar[float] = DEFAULT_USAGE_BENCHMARK
 
@@ -44,15 +44,34 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def get_usage_factor(cls, provider_id, usage_benchmark):
-        usage_factor = cls._usage_factors.get(provider_id, None)
+        usage_factor = model.UsageFactor.select().where(
+            model.UsageFactor.provider_node_id == provider_id).first()
         if usage_factor is None:
             # Division goes this way since higher benchmark val means
             # faster processor
-            usage_factor = cls.get_my_usage_benchmark() / usage_benchmark
-            if not usage_factor:
-                usage_factor = 1.0
-            cls._usage_factors[provider_id] = usage_factor
-        return usage_factor
+            uf = cls.get_my_usage_benchmark() / usage_benchmark
+            if not uf:
+                uf = 1.0
+            node, _ = model.ComputingNode.get_or_create(
+                node_id=provider_id, defaults={'name': ''})
+            usage_factor, _ = model.UsageFactor.get_or_create(
+                provider_node=node,
+                defaults={'usage_factor': uf})
+        return usage_factor.usage_factor
+
+    @classmethod
+    def update_usage_factor(cls, provider_id: str, delta: float):
+        usage_factor = model.UsageFactor.select().where(
+            model.UsageFactor.provider_node_id == provider_id).first()
+
+        r = delta * usage_factor.usage_factor
+        logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f",
+                    provider_id[:8], usage_factor.usage_factor, r)
+        usage_factor.usage_factor = r
+        usage_factor.save()
+        if r > cls._max_usage_factor:
+            logger.info("RWMS: Provider %s has excessive usage factor: %f",
+                        provider_id, r)
 
     # pylint: disable-msg=line-too-long
     @classmethod
@@ -106,17 +125,15 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             deltas[pid] = di / d
 
         for pid, delta in deltas.items():
-            r = delta * cls._usage_factors[pid]
-            logger.info("RWMS: adjust R for provider %s: %.3f -> %.3f",
-                        pid[:8], cls._usage_factors[pid], r)
-            cls._usage_factors[pid] = r
-            if r > cls._max_usage_factor:
-                logger.info("RWMS: Provider %s has excessive usage factor: %f",
-                            pid, r)
+            cls.update_usage_factor(pid, delta)
+
+    @classmethod
+    def _reset_usage_factors(cls):
+        model.UsageFactor.delete().execute()
 
     @classmethod
     def reset(cls) -> None:
-        cls._usage_factors = dict()
+        cls._reset_usage_factors()
         cls._my_usage_benchmark = cls.DEFAULT_USAGE_BENCHMARK
 
     @classmethod
