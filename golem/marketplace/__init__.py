@@ -31,7 +31,7 @@ class NameSerializableEnum(Enum):
 
     @classmethod
     def default(cls):
-        raise NotImplemented
+        raise NotImplementedError
 
 
 class RequestorMarketStrategies(NameSerializableEnum):
