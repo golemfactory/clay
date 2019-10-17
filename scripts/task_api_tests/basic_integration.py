@@ -83,6 +83,7 @@ async def test_task(
         resources=resources,
         max_subtasks=max_subtasks,
         max_price_per_hour=1,
+        min_memory=0,
         concent_enabled=False,
     )
     with open(task_params_path, 'r') as f:

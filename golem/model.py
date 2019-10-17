@@ -734,8 +734,9 @@ class RequestedTask(BaseModel):
     start_time = UTCDateTimeField(null=True)
 
     max_price_per_hour = HexIntegerField(null=False)
-
     max_subtasks = IntegerField(null=False)
+    min_memory = IntegerField(null=False)
+
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)

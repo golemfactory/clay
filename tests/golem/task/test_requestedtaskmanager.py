@@ -362,6 +362,7 @@ class TestRequestedTaskManager():
             resources=resources,
             max_subtasks=1,
             max_price_per_hour=1,
+            min_memory=0,
             concent_enabled=False,
         )
 

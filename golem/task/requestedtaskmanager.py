@@ -42,6 +42,7 @@ class CreateTaskParams:
     resources: List[Path]
     max_subtasks: int
     max_price_per_hour: int
+    min_memory: int
     concent_enabled: bool
 
     @classmethod
@@ -60,6 +61,7 @@ class CreateTaskParams:
             'output_directory': Path(golem_params['output_directory']),
             'max_price_per_hour': int(golem_params['max_price_per_hour']),
             'max_subtasks': int(golem_params['max_subtasks']),
+            'min_memory': int(golem_params['min_memory']),
             'task_timeout': int(golem_params['task_timeout']),
             'subtask_timeout': int(golem_params['subtask_timeout']),
             'concent_enabled': bool(golem_params.get('concent_enabled', False)),
@@ -155,6 +157,7 @@ class RequestedTaskManager:
             start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
+            min_memory=golem_params.min_memory,
             # Concent is explicitly disabled for task_api for now...
             concent_enabled=False,
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
