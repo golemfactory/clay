@@ -803,6 +803,12 @@ class QueuedVerification(BaseModel):
         primary_key = CompositeKey('task_id', 'subtask_id')
 
 
+class UsageFactor(BaseModel):
+    provider_node = ForeignKeyField(
+        ComputingNode, null=False, unique=True, related_name='usage_factor')
+    usage_factor = FloatField(default=1.0)
+
+
 def collect_db_models(module: str = __name__):
     return inspect.getmembers(
         sys.modules[module],
