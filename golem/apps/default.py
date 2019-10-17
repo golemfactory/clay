@@ -11,11 +11,11 @@ from golem.apps.manager import AppDefinition, save_app_to_json_file
 logger = logging.getLogger(__name__)
 
 
-BlenderAppDefinition_v0_3_1 = AppDefinition(
+BlenderAppDefinition_v0_3_2 = AppDefinition(
     name='golemfactory/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
-    version='0.3.1',
+    version='0.3.2',
     description=(
         'Rendering with Blender, the free and open source '
         '3D creation suite'
@@ -24,14 +24,14 @@ BlenderAppDefinition_v0_3_1 = AppDefinition(
     requestor_env=DOCKER_CPU_ENV_ID,
     requestor_prereq=dict(
         image='golemfactory/blenderapp',
-        tag='0.3.1',
+        tag='0.3.2',
     ),
 
     max_benchmark_score=10000.,
 )
 
 APPS = [
-    BlenderAppDefinition_v0_3_1,
+    BlenderAppDefinition_v0_3_2,
 ]
 
 

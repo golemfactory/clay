@@ -165,7 +165,7 @@ _TASK_SETTINGS = {
         },
     },
     'task_api_blender': {
-        'app_id': '0a0a9ad44693c7aa0c996d756d7156db',
+        'app_id': 'c67dbee6858c20158f31700dacc1c1ad',
         'name': 'test Blender task',
         'output_directory': '',
         'resources': [],
