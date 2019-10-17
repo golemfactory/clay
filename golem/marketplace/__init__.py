@@ -1,5 +1,7 @@
 # pylint: disable=unused-import
-from enum import Enum
+from typing import Type, Union
+
+from bidict import bidict
 
 from .marketplace import (  # noqa
     RequestorMarketStrategy,
@@ -17,36 +19,27 @@ from .wasm_marketplace import (  # noqa
     ProviderWasmMarketStrategy
 )
 
+DEFAULT_REQUESTOR_MARKET_STRATEGY = RequestorBrassMarketStrategy
+DEFAULT_PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
 
-class NameSerializableEnum(Enum):
-    def serialize(self):
-        return self.name
-
-    @classmethod
-    def deserialize(cls, name: str) -> 'NameSerializableEnum':
-        try:
-            return cls[name]
-        except KeyError:
-            return cls.default()
-
-    @classmethod
-    def default(cls):
-        raise NotImplementedError
+REQUESTOR_MARKET_STRATEGIES = bidict({
+    'wasm': RequestorWasmMarketStrategy,
+    'brass': RequestorBrassMarketStrategy,
+})
 
 
-class RequestorMarketStrategies(NameSerializableEnum):
-    BRASS = RequestorBrassMarketStrategy
-    WASM = RequestorWasmMarketStrategy
+# Using Union; type(Type[...]) check is failing in dataclasses-json
+def requestor_market_strategy_decode(
+        strategy: Union[None, str, Type[RequestorMarketStrategy]]
+) -> Type[RequestorMarketStrategy]:
+    if not strategy:
+        return DEFAULT_REQUESTOR_MARKET_STRATEGY
+    elif isinstance(strategy, str):
+        return REQUESTOR_MARKET_STRATEGIES[strategy.lower()]
+    return strategy
 
-    @classmethod
-    def default(cls) -> 'RequestorMarketStrategies':
-        return cls.BRASS
 
-
-class ProviderMarketStrategies(NameSerializableEnum):
-    BRASS = ProviderBrassMarketStrategy
-    WASM = ProviderWasmMarketStrategy
-
-    @classmethod
-    def default(cls) -> 'ProviderMarketStrategies':
-        return cls.BRASS
+def requestor_market_strategy_encode(
+        strategy: Type[RequestorMarketStrategy],
+) -> str:
+    return REQUESTOR_MARKET_STRATEGIES.inverse[strategy]

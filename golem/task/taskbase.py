@@ -10,7 +10,9 @@ from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
 from golem.marketplace import (
     ProviderMarketStrategy, RequestorMarketStrategy,
-    RequestorMarketStrategies, ProviderMarketStrategies)
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    DEFAULT_PROVIDER_MARKET_STRATEGY
+)
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -109,9 +111,9 @@ class TaskResult:
 # pylint: disable=too-many-public-methods
 class Task(abc.ABC):
     REQUESTOR_MARKET_STRATEGY: Type[RequestorMarketStrategy]\
-        = RequestorMarketStrategies.default()
+        = DEFAULT_REQUESTOR_MARKET_STRATEGY
     PROVIDER_MARKET_STRATEGY: Type[ProviderMarketStrategy]\
-        = ProviderMarketStrategies.default()
+        = DEFAULT_PROVIDER_MARKET_STRATEGY
 
     class ExtraData(object):
         def __init__(self, ctd=None, **kwargs):
