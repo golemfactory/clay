@@ -511,6 +511,8 @@ class TransactionSystem(LoopingCallService):
             (self._payments_locked + self._payment_processor.recipients_count)
 
     def unlock_funds_for_payments(self, price: int, num: int) -> None:
+        if num == 0:
+            return
         gnt = price * num
         if gnt > self._gntb_locked:
             raise Exception("Can't unlock {} GNT, locked: {}".format(
