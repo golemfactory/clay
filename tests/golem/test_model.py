@@ -106,7 +106,7 @@ class TestPerformance(DatabaseFixture):
                                 perf.modified_date)
         self.assertEqual(perf.value, 0.0)
         self.assertEqual(perf.min_accepted_step, 300.0)
-        self.assertEqual(perf.cpu_usage, 0)
+        self.assertEqual(perf.cpu_usage, m.Performance.DEFAULT_CPU_USAGE)
 
     def test_constraints(self):
         perf = m.Performance()

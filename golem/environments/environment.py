@@ -119,6 +119,7 @@ class Environment():
         logger.info('%s performance is %.2f', cls.get_id(), performance)
 
         if save:
-            Performance.update_or_create(cls.get_id(), performance, 0)
+            Performance.update_or_create(cls.get_id(), performance,
+                                         Performance.DEFAULT_CPU_USAGE)
 
-        return BenchmarkResult(performance, 0)
+        return BenchmarkResult(performance, Performance.DEFAULT_CPU_USAGE)
