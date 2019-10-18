@@ -3,7 +3,6 @@ import calendar
 import datetime
 import logging
 import random
-import uuid
 
 from golem_messages import constants
 from golem_messages import factories as msg_factories
@@ -21,10 +20,9 @@ logger = logging.getLogger(__name__)
 moment = datetime.timedelta(seconds=2)
 
 
-class RequestorDoesntSendTestCase(SCIBaseTest):
-    """Requestor doesn't send Ack/Reject of SubtaskResults"""
-
-    def prepare_report_computed_task(self, mode, ttc_kwargs, rct_kwargs):
+class TestBase(SCIBaseTest):
+    def prepare_report_computed_task(self, mode, ttc_kwargs, rct_kwargs,
+                                     ttc=None):
         """Returns ReportComputedTask with open force acceptance window
 
         Can be modified by delta
@@ -32,8 +30,8 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         _rct_kwargs = self.gen_rtc_kwargs()
         _rct_kwargs.update(rct_kwargs)
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute=(ttc if ttc else self.gen_ttc(**ttc_kwargs)),
             **_rct_kwargs,
-            **{'task_to_compute': self.gen_ttc(**ttc_kwargs)},
         )
         # Difference between timestamp and deadline has to be constant
         # because it's part of SVT formula
@@ -85,16 +83,21 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         return report_computed_task
 
     def provider_send_force(
-            self, mode='within', ttc_kwargs=None, rct_kwargs=None, **kwargs):
+            self, mode='within', ttc_kwargs=None, ttc=None, rct_kwargs=None,
+            **kwargs):
         ttc_kwargs = ttc_kwargs or {}
         rct_kwargs = rct_kwargs or {}
-        price = random.randint(1 << 20, 10 << 20)
+        if ttc:
+            price = ttc.price
+        else:
+            price = random.randint(1 << 20, 10 << 20)
+            ttc_kwargs['price'] = price
         self.requestor_put_deposit(helpers.requestor_deposit_amount(price)[0])
-        ttc_kwargs['price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
             ttc_kwargs=ttc_kwargs,
             rct_kwargs=rct_kwargs,
+            ttc=ttc,
         )
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
             ack_report_computed_task__report_computed_task=report_computed_task,
@@ -126,6 +129,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
             ),
         )
         fsr.sig = None  # Will be signed in send_to_concent()
+        self.provider_fsr = fsr
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
             type(response),
@@ -136,6 +140,10 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
             ],
         )
         return response
+
+
+class RequestorDoesntSendTestCase(TestBase):
+    """Requestor doesn't send Ack/Reject of SubtaskResults"""
 
     def test_provider_insufficient_funds(self):
         # TODO implement when we actually implement
@@ -206,6 +214,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
                 concent_public_key=self.variant['pubkey'],
             ),
         )
+        self.assertEqual(self.provider_fsr.subtask_id, fsr.subtask_id)
         accept_msg = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=fsr
             .ack_report_computed_task
@@ -265,3 +274,36 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         )
         self.assertIsNone(received.subtask_results_accepted)
         self.assertEqual(received.subtask_results_rejected, reject_msg)
+
+    def test_requestor_responds_with_invalid_reject_reason(self):
+        self.assertIsNone(self.provider_send_force())
+        fsr = self.requestor_receive()
+        self.assertTrue(
+            fsr.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
+        # the only allowed reasons are VerificationNegative and
+        # ForcedResourcesFailure
+        reject_msg = msg_factories.tasks.SubtaskResultsRejectedFactory(
+            report_computed_task=fsr
+            .ack_report_computed_task
+            .report_computed_task,
+            reason=message.tasks.SubtaskResultsRejected.REASON
+            .ConcentVerificationNegative,
+        )
+        reject_msg.sign_message(self.requestor_priv_key)
+        self.assertTrue(
+            reject_msg.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
+        fsrr = message.concents.ForceSubtaskResultsResponse(
+            subtask_results_rejected=reject_msg,
+        )
+        with self.assertRaises(concent_exceptions.ConcentRequestError):
+            self.requestor_send(fsrr)
