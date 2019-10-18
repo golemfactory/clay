@@ -836,19 +836,16 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str, value: int,
-                      *, unlock_funds=True) -> TaskPayment:
+    def accept_result(self, task_id, subtask_id, key_id, eth_address: str,
+                      value: int, *, unlock_funds=True) -> TaskPayment:
+        # FIXME: trust
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
-
-        task_id = self.task_manager.get_task_id(subtask_id)
-        task = self.task_manager.tasks[task_id]
-
         payment = self.client.transaction_system.add_payment_info(
-            node_id=task.header.task_owner.key,
-            task_id=task.header.task_id,
+            node_id=key_id,
+            task_id=task_id,
             subtask_id=subtask_id,
             value=value,
             eth_address=eth_address,

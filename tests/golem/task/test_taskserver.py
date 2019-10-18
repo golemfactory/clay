@@ -1022,13 +1022,14 @@ class TestTaskServer2(TaskServerBase):
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
-        ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
+        ts.accept_result(task_mock.header.task_id, "xxyyzz", "key",
+            "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
+            task_id=task_mock.header.task_id,
             subtask_id="xxyyzz",
             value=expected_value,
             eth_address="eth_address",
             node_id=task_mock.header.task_owner.key,  # noqa pylint: disable=no-member
-            task_id=task_mock.header.task_id,
         )
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 

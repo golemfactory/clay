@@ -372,15 +372,16 @@ class RequestedTaskManager:
             result, _ = VerifyResult.FAILURE, str(e)
 
         ProviderComputeTimers.finish(subtask_id)
-        if result is VerifyResult.SUCCESS:
-            subtask.status = SubtaskStatus.finished
-        elif result in (VerifyResult.FAILURE, VerifyResult.INCONCLUSIVE):
+        if result.is_failure():
             subtask.status = SubtaskStatus.failure
+            subtask.save()
+        elif result is VerifyResult.SUCCESS:
+            subtask.status = SubtaskStatus.finished
+            subtask.save()
         elif result is VerifyResult.AWAITING_DATA:
             pass  # no update
         else:
             raise NotImplementedError(f"Unexpected verify result: {result}")
-        subtask.save()
 
         if result is VerifyResult.SUCCESS:
             # Check if task completed
@@ -434,6 +435,15 @@ class RequestedTaskManager:
             .where(RequestedSubtask.task == task_id) \
             .execute()
         return [subtask.subtask_id for subtask in subtasks]
+
+    @staticmethod
+    def get_computing_node_for_subtask(
+            subtask_id: SubtaskId
+    ) -> Optional[ComputingNode]:
+        return ComputingNode.select() \
+            .join(RequestedSubtask) \
+            .where(RequestedSubtask.subtask_id == subtask_id) \
+            .first()
 
     async def restart_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)

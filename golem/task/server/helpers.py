@@ -44,7 +44,10 @@ def computed_task_reported(
 
     # Pepare callbacks for received resources
     def on_success(extracted_pkg, *_args, **_kwargs):
-        logger.debug("Task result extracted %r", extracted_pkg.__dict__)
+        if hasattr(extracted_pkg, '__dict__'):
+            logger.debug("Task result extracted %r", extracted_pkg.__dict__)
+        else:
+            logger.debug("Task result extracted %r", extracted_pkg)
 
         concent_service.cancel_task_message(
             subtask_id,

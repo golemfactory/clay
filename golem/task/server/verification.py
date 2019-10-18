@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import typing
-from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -11,8 +10,6 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
-from golem.core.deferred import deferred_from_future
-from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
@@ -87,14 +84,22 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            task = self.task_manager.tasks[task_id]
-            market_strategy: Type[RequestorMarketStrategy] =\
-                task.REQUESTOR_MARKET_STRATEGY
-            payment_computer =\
-                market_strategy.get_payment_computer(  # type: ignore
-                    task, subtask_id
-                )
+            if task_id in self.task_manager.tasks:
+                task = self.task_manager.tasks[task_id]
+                strategy = task.REQUESTOR_MARKET_STRATEGY
+                payment_computer = strategy.get_payment_computer(  # noqa type: ignore
+                        task,
+                        subtask_id)
+            else:
+                # FIXME: adjust after merging #4753 (with #4785)
+                task = self.requested_task_manager.get_requested_task(task_id)
+                subtask_timeout = task.subtask_timeout
+
+                def payment_computer(price: int):
+                    return price * subtask_timeout
+
             payment = self.accept_result(
+                task_id,
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
@@ -123,10 +128,12 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
-            future = self.requested_task_manager.verify(task_id, subtask_id)
-            task = deferred_from_future(future)
+            task = asyncio.ensure_future(self.requested_task_manager.verify(
+                task_id,
+                subtask_id,
+            ))
             task.add_done_callback(
-                lambda success: verification_finished(False, not success))
+                lambda r: verification_finished(False, r.is_failure()))
         else:
             def verification_finished_old():
                 is_verification_lenient = (

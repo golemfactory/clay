@@ -23,6 +23,7 @@ from golem.core import common
 from golem.core import deferred
 from golem.core import variables
 from golem.core.common import deadline_to_timeout
+from golem.core.deferred import sync_wait, deferred_from_future
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import (
@@ -276,8 +277,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         is_task_api_task = self.requested_task_manager.task_exists(task_id)
-        if not self.task_manager.is_my_task(task_id) and \
-                not self.requested_task_manager.task_exists(task_id):
+        if not (self.task_manager.is_my_task(task_id) or is_task_api_task):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
@@ -301,7 +301,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if is_task_api_task:
-            if not self.requested_task_manager.has_pending_subtasks(task_id):
+            # FIXME: sync_wait
+            has_pending_subtasks = sync_wait(deferred_from_future(
+                self.requested_task_manager.has_pending_subtasks(task_id)))
+            if not has_pending_subtasks:
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
                 return
@@ -332,16 +335,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            ' progress. %s', task_node_info)
             return
 
-        if msg.task_id in self.task_manager.tasks:
-            current_task = self.task_manager.tasks[msg.task_id]
-            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
-            max_price_per_hour = current_task.header.max_price
-        else:
+        if is_task_api_task:
             current_task = self.requested_task_manager.get_requested_task(
                 msg.task_id)
             # FIXME: adjust after merging #4753 (with #4785)
             market_strategy = RequestorBrassMarketStrategy
             max_price_per_hour = current_task.max_price_per_hour
+        else:
+            current_task = self.task_manager.tasks[msg.task_id]
+            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+            max_price_per_hour = current_task.header.max_price
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -507,6 +510,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 'deadline': subtask_definition.deadline,
                 'resources': cdn_resources,
                 'performance': msg.perf_index,
+                # The lack of the 'docker_images' property causes
+                # TTC.compute_task_def and RCT.task_to_compute.compute_task_def
+                # to differ and fail signature verification
+                'docker_images': None,
             }
             return new_ctd, '', 1
 
@@ -1062,6 +1069,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def check_provider_for_subtask(self, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
+        if not node_id:
+            node = self.requested_task_manager.get_computing_node_for_subtask(
+                subtask_id)
+            if node:
+                node_id = node.node_id
         if node_id != self.key_id:
             logger.warning('Received message about subtask %r from different '
                            'node %r than expected %r', subtask_id,
