@@ -421,7 +421,14 @@ class RequestedTaskManager:
         await self._shutdown_app_client(task.app_id)
 
     @staticmethod
-    def get_started_tasks():
+    def get_requested_task(task_id: TaskId) -> Optional[RequestedTask]:
+        try:
+            return RequestedTask.get(RequestedTask.task_id == task_id)
+        except RequestedTask.DoesNotExist:
+            return None
+
+    @staticmethod
+    def get_started_tasks() -> List[RequestedTask]:
         return RequestedTask.select().where(
             RequestedTask.status.in_(TASK_STATUS_ACTIVE),
             RequestedTask.start_time is not None
