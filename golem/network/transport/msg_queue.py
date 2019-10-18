@@ -1,11 +1,13 @@
 import datetime
 import logging
+import sqlite3
 import threading
 import typing
 
 import golem_messages
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
+import peewee
 
 from golem import decorators
 from golem import model
@@ -64,10 +66,21 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
 
 
 def waiting() -> typing.Iterator[str]:
-    for db_row in model.QueuedMessage.select(
-            model.QueuedMessage.node,
-    ).group_by(model.QueuedMessage.node):
-        yield db_row.node
+    query = model.QueuedMessage.select(
+        model.QueuedMessage.node,
+    ).group_by(model.QueuedMessage.node)
+    try:
+        for db_row in query:
+            yield db_row.node
+    except (
+            sqlite3.ProgrammingError,
+            peewee.OperationalError,
+    ):
+        # SEE also: golem.database.database
+        #           .GolemSqliteDatabase.execute_sql
+        # Here we're using peewee.QueryResultWrapper.iterate()
+        # and have to duplicate error handling.
+        logger.debug("DB Error", exc_info=True)
 
 
 @decorators.run_with_db()
