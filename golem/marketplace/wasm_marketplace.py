@@ -25,8 +25,11 @@ UsageReport = Tuple[ProviderId, SubtaskId, Usage]
 logger = logging.getLogger(__name__)
 
 
+USAGE_SECOND = 1e9  # usage is measured in nanoseconds
+
+
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
-    DEFAULT_USAGE_BENCHMARK: float = 1.0
+    DEFAULT_USAGE_BENCHMARK: float = 1.0 * USAGE_SECOND
 
     _usages: ClassVar[Dict[str, float]] = dict()
     _usage_factors: ClassVar[Dict[str, float]] = dict()
@@ -39,6 +42,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def set_my_usage_benchmark(cls, benchmark: float) -> None:
+        if benchmark < 1e-6 * USAGE_SECOND:
+            benchmark = cls.DEFAULT_USAGE_BENCHMARK
         logger.info("RWMS: set_my_usage_benchmark %.3f", benchmark)
         cls._my_usage_benchmark = benchmark
 
@@ -49,8 +54,13 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             # Division goes this way since higher benchmark val means
             # faster processor
             usage_factor = cls.get_my_usage_benchmark() / usage_benchmark
-            if not usage_factor:
-                usage_factor = 1.0
+
+            # Sanity check against misreported benchmarks
+            usage_factor = min(max(usage_factor, 0.25), 1.5)
+            logger.info("RWMS: initial usage factor for %s = %.3f",
+                        provider_id,
+                        usage_factor)
+
             cls._usage_factors[provider_id] = usage_factor
         return usage_factor
 

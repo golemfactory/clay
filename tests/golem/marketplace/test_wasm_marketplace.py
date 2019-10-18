@@ -4,6 +4,8 @@ from unittest.mock import Mock
 from golem.marketplace import ProviderPerformance
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 
+USAGE_SECOND = 1e9  # usage is measured in nanoseconds
+
 
 class TestOfferChoice(TestCase):
     TASK_1 = 'task_1'
@@ -21,7 +23,8 @@ class TestOfferChoice(TestCase):
         mock_offer_1.quality = (.0, .0, .0, .0)
         mock_offer_1.reputation = .0
         mock_offer_1.price = 5.0
-        mock_offer_1.provider_performance = ProviderPerformance(1000 / 1.25)
+        mock_offer_1.provider_performance = ProviderPerformance(
+            1 * USAGE_SECOND / 1.25)
         self.mock_offer_1 = mock_offer_1
 
         mock_offer_2 = Mock()
@@ -29,15 +32,20 @@ class TestOfferChoice(TestCase):
         mock_offer_2.quality = (.0, .0, .0, .0)
         mock_offer_2.reputation = .0
         mock_offer_2.price = 6.0
-        mock_offer_2.provider_performance = ProviderPerformance(1000 / 0.8)
+        mock_offer_2.provider_performance = ProviderPerformance(
+            1 * USAGE_SECOND / 0.8)
         self.mock_offer_2 = mock_offer_2
 
     def test_get_usage_benchmark(self):
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_my_usage_benchmark(), 1.0
+            RequestorWasmMarketStrategy.get_my_usage_benchmark(),
+            RequestorWasmMarketStrategy.DEFAULT_USAGE_BENCHMARK
         )
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, 1.0),
+            RequestorWasmMarketStrategy.get_usage_factor(
+                self.PROVIDER_1,
+                RequestorWasmMarketStrategy.DEFAULT_USAGE_BENCHMARK
+            ),
             1.0
         )
 
