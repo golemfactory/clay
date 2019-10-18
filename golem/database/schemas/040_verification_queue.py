@@ -3,7 +3,7 @@
 import datetime as dt
 import peewee as pw
 
-SCHEMA_VERSION = 39
+SCHEMA_VERSION = 40
 
 
 def migrate(migrator, database, fake=False, **kwargs):
