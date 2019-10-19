@@ -110,8 +110,8 @@ if not (in_appveyor() or in_travis() or
         print('Exception occurred:', exc)
         DockerManager().build_images()
 
-if building_wheel:
-    move_wheel()
+#if building_wheel:
+#    move_wheel()
 
 if not building_migration:
     from golem.database.migration.create import latest_migration_exists
