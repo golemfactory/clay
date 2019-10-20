@@ -166,18 +166,13 @@ class TaskServer(
             config_desc.hyperdrive_rpc_port,
             config_desc.hyperdrive_rpc_address,
         ))
-        # FIXME: for testing purposes only
-        # benchmarks = self.task_manager.apps_manager.get_benchmarks()
-        # self.benchmark_manager = BenchmarkManager(
-        #     node_name=config_desc.node_name,
-        #     task_server=self,
-        #     root_path=self.get_task_computer_root(),
-        #     benchmarks=benchmarks
-        # )
-
-        from unittest import mock
-        self.benchmark_manager = mock.Mock()
-
+        benchmarks = self.task_manager.apps_manager.get_benchmarks()
+        self.benchmark_manager = BenchmarkManager(
+            node_name=config_desc.node_name,
+            task_server=self,
+            root_path=self.get_task_computer_root(),
+            benchmarks=benchmarks
+        )
         self.task_computer = TaskComputerAdapter(
             task_server=self,
             env_manager=new_env_manager,
@@ -762,14 +757,10 @@ class TaskServer(
 
         self.task_computer.lock_config(True)
         deferred = Deferred()
-        try:
-            # FIXME: for testing purposes only
-            # self.benchmark_manager.run_all_benchmarks(
-            #     deferred.callback, deferred.errback)
-            # yield deferred
-            pass
-        finally:
-            self.task_computer.lock_config(False)
+        self.benchmark_manager.run_all_benchmarks(
+            deferred.callback, deferred.errback)
+        yield deferred
+        self.task_computer.lock_config(False)
 
     def _remove_env_performance_scores(self) -> None:
         env_manager = self.task_keeper.new_env_manager
