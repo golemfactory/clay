@@ -32,7 +32,7 @@ class VerificationMixin:
     def verify_results(
             self,
             report_computed_task: message.tasks.ReportComputedTask,
-            extracted_package: ExtractedPackage,
+            files: typing.List[str],
     ) -> None:
         node = dt_p2p.Node(**report_computed_task.node_info)
         task_id = report_computed_task.task_id
@@ -133,7 +133,7 @@ class VerificationMixin:
                 subtask_id,
             ))
             task.add_done_callback(
-                lambda r: verification_finished(False, r.is_failure()))
+                lambda f: verification_finished(False, f.result().is_failure()))
         else:
             def verification_finished_old():
                 is_verification_lenient = (
@@ -149,7 +149,7 @@ class VerificationMixin:
             self.task_manager.computed_task_received(
                 subtask_id,
                 TaskResult(
-                    files=extracted_package.get_full_path_files(),
+                    files=files,
                     stats=report_computed_task.stats
                 ),
                 verification_finished_old,

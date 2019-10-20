@@ -560,9 +560,17 @@ class TaskServer(
             stats=stats)
 
         def create_and_enqueue_result():
-            self._create_and_set_result_package(wtr)
+            if task_api_result:
+                wtr.package_sha1 = ''
+                wtr.result_path = wtr.result[0]
+            else:
+                self._create_and_set_result_package(wtr)
             self.results_to_send[subtask_id] = wtr
             Trust.REQUESTED.increase(header.task_owner.key)
+
+        if result:
+            create_and_enqueue_result()
+            return
 
         def on_result_share_success(res_id):
             wtr.result_hash = res_id
@@ -572,10 +580,6 @@ class TaskServer(
             logger.error(
                 "Cannot share resources for subtask_id=%s: %r",
                 subtask_id, err)
-
-        if result:
-            create_and_enqueue_result()
-            return
 
         client_options = self.get_share_options(
             timeout=deadline_to_timeout(header.deadline))
