@@ -268,6 +268,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     # pylint: disable=too-many-return-statements
+    @defer.inlineCallbacks
     def _react_to_want_to_compute_task(self, msg):
         task_id = msg.task_id
         reasons = message.tasks.CannotAssignTask.REASON
@@ -301,9 +302,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if is_task_api_task:
-            # FIXME: sync_wait
-            has_pending_subtasks = sync_wait(deferred_from_future(
-                self.requested_task_manager.has_pending_subtasks(task_id)))
+            has_pending_subtasks = yield deferred_from_future(
+                    self.requested_task_manager.has_pending_subtasks(task_id))
             if not has_pending_subtasks:
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
@@ -312,6 +312,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 logger.debug("is_task_finished True. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.TaskFinished)
                 return
+
+            current_task = self.requested_task_manager.get_requested_task(
+                msg.task_id)
+            # FIXME: adjust after merging #4753 (with #4785)
+            market_strategy = RequestorBrassMarketStrategy
+            max_price_per_hour = current_task.max_price_per_hour
         else:
             if not self.task_manager.check_next_subtask(
                     msg.task_id, msg.price):
@@ -324,6 +330,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
                 return
 
+            current_task = self.task_manager.tasks[msg.task_id]
+            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+            max_price_per_hour = current_task.header.max_price
+
         if self._handshake_required(self.key_id):
             logger.warning('Can not accept offer: Resource handshake is'
                            ' required. %s', task_node_info)
@@ -334,17 +344,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Can not accept offer: Resource handshake is in'
                            ' progress. %s', task_node_info)
             return
-
-        if is_task_api_task:
-            current_task = self.requested_task_manager.get_requested_task(
-                msg.task_id)
-            # FIXME: adjust after merging #4753 (with #4785)
-            market_strategy = RequestorBrassMarketStrategy
-            max_price_per_hour = current_task.max_price_per_hour
-        else:
-            current_task = self.task_manager.tasks[msg.task_id]
-            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
-            max_price_per_hour = current_task.header.max_price
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
