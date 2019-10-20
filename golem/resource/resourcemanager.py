@@ -2,7 +2,7 @@ import sys
 from typing import NewType, Optional, Dict, Tuple, Iterable
 
 from pathlib import Path
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, FirstError
 
 from golem.core.common import get_timestamp_utc
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
@@ -50,8 +50,12 @@ class ResourceManager:
             timeout = client_options.timeout or sys.maxsize
             now = get_timestamp_utc()
 
-            resource_info = yield self._client.resource_async(cached)
-            valid_to = int(resource_info['validTo'])
+            # Prevent crashes if the response is empty or invalid
+            try:
+                resource_info = yield self._client.resource_async(cached)
+                valid_to = int(resource_info['validTo'])
+            except (FirstError, KeyError, TypeError, ValueError):
+                valid_to = 0
 
             if now + timeout <= valid_to:
                 return cached

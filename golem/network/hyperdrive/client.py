@@ -268,7 +268,11 @@ class HyperdriveAsyncClient(HyperdriveClient):
             raise HTTPError(response.decode(self.ENCODING))
 
         decoded = response_body.decode(self.ENCODING)
-        deserialized = json.loads(decoded)
+
+        try:
+            deserialized = json.loads(decoded)
+        except json.JSONDecodeError:
+            return None
 
         if parser:
             return parser(deserialized)
