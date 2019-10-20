@@ -170,7 +170,7 @@ _TASK_SETTINGS = {
         'output_directory': '',
         'resources': [],
         'max_price_per_hour': str(50 * 10 ** 18),
-        'max_subtasks': 10,
+        'max_subtasks': 1,
         'min_memory': 0,
         'task_timeout': 600000,  # 00:10:00
         'subtask_timeout': 590000,  # 00:09:50
