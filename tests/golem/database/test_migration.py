@@ -2,6 +2,7 @@
 import datetime
 import functools
 from contextlib import contextmanager
+import typing
 from unittest import TestCase
 from unittest.mock import patch
 import uuid
@@ -13,6 +14,7 @@ from peewee import CharField
 import golem
 from golem.database import Database
 from golem.database.migration import default_migrate_dir
+from golem.database.migration.router import Router
 from golem.database.migration.create import create_from_commandline, \
     create_migration
 from golem.database.migration.migrate import migrate_schema, choose_scripts
@@ -569,6 +571,28 @@ class TestSavedMigrations(TempDirFixture):
             database._migrate_schema(6, 35)
             database.db.RETRY_TIMEOUT = datetime.timedelta(seconds=0)
             database._migrate_schema(35, 36)
+
+
+class TestDuplicateMigrations(DatabaseFixture):
+
+    def test_no_duplicate_migrations(self):
+        router = Router(
+            database=self.database.db,
+            migrate_dir=default_migrate_dir(),
+            schema_version=Database.SCHEMA_VERSION)
+        migration_script_names: typing.List[str] = router.environment.scripts
+        version_to_name: typing.Dict[str, str] = {}
+
+        for name in migration_script_names:
+            split = name.split('_', 1)
+            version = split[0]
+
+            if version_to_name.get(version):
+                self.fail(f"Migration scripts must have unique version numbers."
+                          f" Colliding file names: {name}, "
+                          f"{version + '_' + version_to_name[version]}")
+
+            version_to_name[version] = split[1]
 
 
 def generate(start, stop):
