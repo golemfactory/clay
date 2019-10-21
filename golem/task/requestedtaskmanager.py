@@ -61,21 +61,21 @@ class CreateTaskParams:
             'output_directory',
             app_params.get('output_path'))
 
-        properties = {
-            'app_id': golem_params['app_id'],
-            'name': golem_params['name'],
-            'output_directory': Path(golem_params['output_directory']),
-            'max_price_per_hour': int(golem_params['max_price_per_hour']),
-            'max_subtasks': int(golem_params['max_subtasks']),
-            'min_memory': int(golem_params['min_memory']),
-            'task_timeout': int(golem_params['task_timeout']),
-            'subtask_timeout': int(golem_params['subtask_timeout']),
-            'concent_enabled': bool(golem_params.get('concent_enabled', False)),
-            'resources': list(map(Path, app_params['resources'])),
-        }
+        create_params = cls(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            output_directory=Path(golem_params['output_directory']),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            min_memory=int(golem_params['min_memory']),
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=bool(golem_params.get('concent_enabled', False)),
+            resources=list(map(Path, app_params['resources'])),
+        )
 
-        app_params['resources'] = [r.name for r in properties['resources']]
-        return cls(**properties), app_params
+        app_params['resources'] = [r.name for r in create_params.resources]
+        return create_params, app_params
 
 
 @dataclass
