@@ -5,7 +5,7 @@ import json
 import pickle
 import sys
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
@@ -30,6 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
+from golem.core.common import datetime_to_timestamp
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -788,6 +789,27 @@ class RequestedSubtask(BaseModel):
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + datetime.timedelta(
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
+
+    def to_dict(self) -> Dict[str, Any]:
+        if isinstance(self.computing_node, str):
+            computing_node = ComputingNode.get(
+                ComputingNode.node_id == self.computing_node)
+        else:
+            computing_node = self.computing_node
+
+        if isinstance(self.task, str):
+            task_id = self.task
+        else:
+            task_id = self.task.task_id
+
+        return {
+            'task_id': task_id,
+            'subtask_id': self.subtask_id,
+            'status': self.status.value,  # noqa
+            'time_started': datetime_to_timestamp(self.start_time),
+            'node_id': computing_node.node_id,
+            'node_name': computing_node.name,
+        }
 
     class Meta:
         database = db

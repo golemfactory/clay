@@ -928,21 +928,31 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if rtm.task_exists(task_id):
+                subtasks = rtm.get_requested_task_subtasks(task_id)
+                return [subtask.to_dict() for subtask in subtasks]
+            return tm.get_subtasks_dict(task_id)
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str) \
+    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(
-                subtask_id)
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if task_id and rtm.task_exists(task_id):
+                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
+                return subtask.to_dict(), None
+            subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
-        except KeyError:
+        except (AttributeError, KeyError):
             return None, "Subtask not found: '{}'".format(subtask_id)
 
     @rpc_utils.expose('comp.task.preview')
