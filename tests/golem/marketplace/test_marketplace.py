@@ -4,6 +4,8 @@ from unittest.mock import patch, Mock, MagicMock
 
 from ethereum.utils import denoms
 
+from golem import testutils
+
 from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
@@ -38,7 +40,7 @@ class TestScalePrice(TestCase):
        Mock(return_value=0.0))
 @patch('golem.ranking.manager.database_manager.get_provider_efficacy',
        Mock(return_value=_fake_get_efficacy()))
-class TestRequestorMarketStrategy(TestCase):
+class TestRequestorMarketStrategy(testutils.DatabaseFixture):
     TASK_A = 'aaa'
     PROVIDER_A = 'provider_a'
     PROVIDER_B = 'provider_b'
