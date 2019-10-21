@@ -404,9 +404,7 @@ class RequestedTaskManager:
         user_output_dir.mkdir(parents=True, exist_ok=True)
         task_outputs_dir = self._task_dir(task_id).task_outputs_dir
 
-        logger.warning(">> moving %r", task_outputs_dir)
         for entry in task_outputs_dir.iterdir():
-            logger.warning(">> moving %r to %r", entry, user_output_dir / entry.name)
             entry.resolve().replace(user_output_dir / entry.name)
 
     async def abort_task(self, task_id):
