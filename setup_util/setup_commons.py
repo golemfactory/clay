@@ -91,15 +91,12 @@ class PyInstaller(Command):
             if path.exists(directory):
                 shutil.rmtree(directory)
 
-        for spec in ['golemapp.spec', 'golemcli.spec']:
+        for spec in ['golemapp.spec', ]:
             self.banner("Building {}".format(spec))
             subprocess.check_call([
                 sys.executable, '-m', 'PyInstaller', '--clean',
                 '--win-private-assemblies', spec
             ])
-
-        print("> Copying taskcollector")
-        self.copy_taskcollector(dist_dir)
 
         print("> Copying examples")
         self.copy_examples(dist_dir)
@@ -113,20 +110,6 @@ class PyInstaller(Command):
         print("\n> --------------------------------")
         print("> {}".format(msg))
         print("> --------------------------------\n")
-
-    def copy_taskcollector(self, dist_dir):
-        import shutil
-
-        taskcollector_dir = path.join(
-            'apps',
-            'rendering',
-            'resources',
-            'taskcollector',
-            'x64' if is_windows() else '',
-            'Release'
-        )
-        shutil.copytree(taskcollector_dir,
-                        path.join(dist_dir, taskcollector_dir))
 
     def copy_examples(self, dist_dir):
         import shutil
@@ -155,15 +138,12 @@ class PyInstaller(Command):
         if not path.exists(ver_dir):
             makedirs(ver_dir)
 
-        shutil.move(path.join(dist_dir, 'apps'), ver_dir)
         shutil.move(path.join(dist_dir, 'examples'), ver_dir)
 
         if is_windows():
             shutil.move(path.join(dist_dir, 'golemapp.exe'), ver_dir)
-            shutil.move(path.join(dist_dir, 'golemcli.exe'), ver_dir)
         else:
             shutil.move(path.join(dist_dir, 'golemapp'), ver_dir)
-            shutil.move(path.join(dist_dir, 'golemcli'), ver_dir)
 
         return ver_dir
 
@@ -233,7 +213,7 @@ def parse_requirements(my_path):
         if line.startswith('-') or line.startswith('#'):
             continue
 
-        m = re.match('.+#egg=(?P<package>.+)$', line)
+        m = re.match('.+#egg=(?P<package>.+?)(?:&.+)?$', line)
         if m:
             requirements.append(m.group('package'))
             dependency_links.append(line)

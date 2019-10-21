@@ -53,7 +53,7 @@ class TaskState:
             'time_remaining': self.remaining_time,
             'last_updated': getattr(self, 'last_update_time', None),
             'status': self.status.value,
-            'status_message': self.status_message,
+            'status_message': getattr(self, 'status_message', None),
             'estimated_cost': getattr(self, 'estimated_cost', None),
             'estimated_fee': getattr(self, 'estimated_fee', None)
         }
@@ -165,19 +165,30 @@ class TaskStatus(Enum):
     timeout = "Timeout"
     restarted = "Restart"
 
+    def is_creating(self) -> bool:
+        return self in [self.creating, self.errorCreating]
+
     def is_completed(self) -> bool:
         return self in [self.finished, self.aborted,
                         self.timeout, self.restarted]
 
     def is_preparing(self) -> bool:
         return self in (
+            self.creating,
             self.notStarted,
             self.creatingDeposit,
         )
 
     def is_active(self) -> bool:
-        return self in [self.sending, self.waiting,
-                        self.starting, self.computing]
+        return self in TASK_STATUS_ACTIVE
+
+
+TASK_STATUS_ACTIVE = [
+    TaskStatus.sending,
+    TaskStatus.waiting,
+    TaskStatus.starting,
+    TaskStatus.computing
+]
 
 
 class TaskTestStatus(Enum):

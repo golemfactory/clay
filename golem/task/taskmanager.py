@@ -9,11 +9,15 @@ import uuid
 from functools import partial
 from pathlib import Path
 from typing import (
+    Callable,
     Dict,
     FrozenSet,
     Iterable,
     List,
     Optional,
+    Tuple,
+    Type,
+    TYPE_CHECKING,
 )
 from zipfile import ZipFile
 
@@ -25,11 +29,16 @@ from twisted.internet.threads import deferToThread
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
+from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
+from golem.marketplace import (
+    ProviderBrassMarketStrategy,
+    ProviderWasmMarketStrategy,
+    ProviderMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -40,12 +49,19 @@ from golem.resource.hyperdrive.resourcesmanager import \
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
-    TaskPurpose, AcceptClientVerdict
+    TaskPurpose, AcceptClientVerdict, TaskResult
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
 from golem.task.timer import ProviderComputeTimers
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from apps.appsmanager import App
+    from apps.core.task.coretaskstate import TaskDefinition
+    from golem.task.taskbase import TaskTypeInfo, TaskBuilder
+
 
 logger = logging.getLogger(__name__)
 
@@ -84,20 +100,27 @@ class TaskManager(TaskEventListener):
     class AlreadyRestartedError(Error):
         pass
 
-    def __init__(
-            self, node, keys_auth, root_path,
+    def __init__(  # pylint: disable=too-many-arguments
+            self,
+            node,
+            keys_auth,
+            root_path,
             config_desc: ClientConfigDescriptor,
-            tasks_dir="tasks", task_persistence=True,
+            tasks_dir="tasks",
             apps_manager=AppsManager(),
             finished_cb=None,
     ) -> None:
         # pylint: disable=too-many-instance-attributes
         super().__init__()
 
-        self.apps_manager = apps_manager
-        apps = list(apps_manager.apps.values())
-        task_types = [app.task_type_info() for app in apps]
-        self.task_types = {t.name.lower(): t for t in task_types}
+        self.apps_manager: AppsManager = apps_manager
+        apps: 'List[App]' = list(apps_manager.apps.values())
+        # Ignore type, because these are deriving from TaskTypeInfo and take
+        # no arguments in constructors.
+        task_types: 'List[TaskTypeInfo]' = \
+            [app.task_type_info() for app in apps]  # type: ignore
+        self.task_types: 'Dict[str, TaskTypeInfo]' = \
+            {t.id: t for t in task_types}
 
         self.node = node
         self.keys_auth = keys_auth
@@ -105,8 +128,6 @@ class TaskManager(TaskEventListener):
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.task_persistence = task_persistence
 
         tasks_dir = Path(tasks_dir)
         self.tasks_dir = tasks_dir / "tmanager"
@@ -127,25 +148,8 @@ class TaskManager(TaskEventListener):
             resource_manager
         )
 
-        self.CREATING_STATUS = frozenset([
-            TaskStatus.creating,
-            TaskStatus.errorCreating,
-        ])
-        self.ACTIVE_STATUS = frozenset([
-            TaskStatus.computing,
-            TaskStatus.starting,
-            TaskStatus.waiting,
-        ])
-        self.FINISHED_STATUS = frozenset([
-            TaskStatus.finished,
-            TaskStatus.aborted,
-            TaskStatus.timeout,
-            TaskStatus.restarted,
-        ])
-
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
-            persist=self.task_persistence,
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
@@ -154,35 +158,43 @@ class TaskManager(TaskEventListener):
 
         self.finished_cb = finished_cb
 
-        if self.task_persistence:
-            self.restore_tasks()
+        self.restore_tasks()
 
     def get_task_manager_root(self):
         return self.root_path
 
-    def create_task(self, dictionary, minimal=False):
-        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
+    def create_task_definition(self, dictionary, test=False) \
+            -> 'Tuple[TaskDefinition, Type[TaskBuilder]]':
+        purpose = TaskPurpose.TESTING if test else TaskPurpose.REQUESTING
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
         type_name = dictionary['type'].lower()
         compute_on = dictionary.get('compute_on', 'cpu').lower()
-        is_requesting = purpose == TaskPurpose.REQUESTING
 
         if type_name == "blender" and is_requesting and compute_on == "gpu":
             type_name = type_name + "_nvgpu"
 
-        task_type = self.task_types[type_name].for_purpose(purpose)
-        builder_type = task_type.task_builder_type
+        task_type: 'TaskTypeInfo' = \
+            self.task_types[type_name].for_purpose(purpose)
+        builder_type: 'Type[TaskBuilder]' = task_type.task_builder_type
 
-        definition = builder_type.build_definition(task_type, dictionary,
-                                                   minimal)
-        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition: 'TaskDefinition' = \
+            builder_type.build_definition(task_type, dictionary, test)
         definition.concent_enabled = dictionary.get('concent_enabled', False)
+        definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        return definition, builder_type
 
+    def create_task(self, dictionary, test=False):
+        definition, builder_type = \
+            self.create_task_definition(dictionary, test)
         task = builder_type(self.node, definition, self.dir_manager).build()
-        task_id = task.header.task_id
+        task_id = definition.task_id
 
-        logger.info("Creating task. type=%r, id=%s", type(task), task_id)
-        self.tasks[task_id] = task
-        self.tasks_states[task_id] = TaskState(task)
+        if not test:
+            logger.info("Creating task. type=%r, id=%s", type(task), task_id)
+            self.tasks[task_id] = task
+            self.tasks_states[task_id] = TaskState(task)
+
         return task
 
     def initialize_task(self, task: Task):
@@ -226,7 +238,7 @@ class TaskManager(TaskEventListener):
 
     @handle_task_key_error
     def task_creation_failed(self, task_id: str, reason: str) -> None:
-        logger.error("Cannot create task. id=%s : %s", task_id, reason)
+        logger.error("Cannot create task. task_id=%s : %s", task_id, reason)
 
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.errorCreating
@@ -297,7 +309,7 @@ class TaskManager(TaskEventListener):
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
-    def _create_task_output_dir(self, task_def: TaskDefinition):
+    def _create_task_output_dir(self, task_def: 'TaskDefinition'):
         """
         Creates the output directory for a task along with any parents,
         if necessary. The path is obtained from `output_file` field in the
@@ -311,7 +323,7 @@ class TaskManager(TaskEventListener):
             return
         output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _try_remove_task_output_dir(self, task_def: TaskDefinition):
+    def _try_remove_task_output_dir(self, task_def: 'TaskDefinition'):
         """
         Attempts to remove the output directory from a given task definition.
         This will only succeed if the directory is empty.
@@ -326,7 +338,7 @@ class TaskManager(TaskEventListener):
             pass
 
     @staticmethod
-    def _get_task_output_dir(task_def: TaskDefinition) -> Optional[Path]:
+    def _get_task_output_dir(task_def: 'TaskDefinition') -> Optional[Path]:
         if not task_def.output_file:
             return None
 
@@ -396,16 +408,16 @@ class TaskManager(TaskEventListener):
 
     def task_being_created(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.CREATING_STATUS
+        return task_status.is_creating()
 
     def task_finished(self, task_id: str) -> bool:
         task_status = self.tasks_states[task_id].status
-        return task_status in self.FINISHED_STATUS
+        return task_status.is_completed()
 
     def task_needs_computation(self, task_id: str) -> bool:
         if self.task_being_created(task_id) or self.task_finished(task_id):
             task_status = self.tasks_states[task_id].status
-            logger.info(
+            logger.debug(
                 'task is not active: %(task_id)s, status: %(task_status)s',
                 {
                     'task_id': task_id,
@@ -419,28 +431,23 @@ class TaskManager(TaskEventListener):
             return False
         return True
 
-    def get_next_subtask(  # pylint: disable=too-many-arguments
-            self, node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size):
+    # noqa pylint: disable=too-many-arguments,too-many-return-statements
+    def get_next_subtask(self,
+                         node_id: str,
+                         task_id: str,
+                         estimated_performance: float,
+                         price: int,
+                         offer_hash: str) \
+            -> Optional[message.tasks.ComputeTaskDef]:
         """ Assign next subtask from task <task_id> to node with given
-        id <node_id> and name. If subtask is assigned the function
-        is returning a tuple
-        :param node_id:
-        :param task_id:
-        :param estimated_performance:
-        :param price:
-        :param max_resource_size:
-        :param max_memory_size:
-        :return (ComputeTaskDef|None: Function returns a ComputeTaskDef.
-        First element is either ComputeTaskDef that describe assigned subtask
+        id <node_id>.
+        :return ComputeTaskDef that describe assigned subtask
         or None. It is recommended to call is_my_task and should_wait_for_node
         before this to find the reason why the task is not able to be picked up
         """
-        # pylint: disable=too-many-return-statements
         logger.debug(
-            'get_next_subtask(%r, %r, %r, %r, %r, %r)',
+            'get_next_subtask(%r, %r, %r, %r)',
             node_id, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size,
         )
 
         if node_id == self.keys_auth.key_id:
@@ -456,7 +463,7 @@ class TaskManager(TaskEventListener):
         if not self.task_needs_computation(task_id):
             return None
 
-        if self.should_wait_for_node(task_id, node_id):
+        if self.should_wait_for_node(task_id, node_id, offer_hash):
             return None
 
         task = self.tasks[task_id]
@@ -467,11 +474,7 @@ class TaskManager(TaskEventListener):
                          task_id, node_id)
             return None
 
-        extra_data = task.query_extra_data(
-            estimated_performance,
-            node_id,
-            "",
-        )
+        extra_data = task.query_extra_data(estimated_performance, node_id, "")
         ctd = extra_data.ctd
 
         def check_compute_task_def():
@@ -495,12 +498,8 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None
 
-        task.accept_client(node_id)
-
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
-        self.__add_subtask_to_tasks_states(
-            node_id, ctd, price,
-        )
+        self.__add_subtask_to_tasks_states(node_id, ctd, price)
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
@@ -518,7 +517,10 @@ class TaskManager(TaskEventListener):
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
-    def should_wait_for_node(self, task_id, node_id) -> bool:
+    def should_wait_for_node(self,
+                             task_id: str,
+                             node_id: str,
+                             offer_hash: str) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
             logger.debug(
@@ -530,7 +532,7 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
-        verdict = task.should_accept_client(node_id)
+        verdict = task.should_accept_client(node_id, offer_hash)
         logger.debug(
             "Should accept client verdict. verdict=%s, task=%s, node=%s",
             verdict,
@@ -626,7 +628,9 @@ class TaskManager(TaskEventListener):
                 .status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
-            new_task.num_failed_subtasks += 1
+
+        new_task.num_failed_subtasks = \
+            new_task.get_total_tasks() - len(subtasks_to_copy)
 
         def handle_copy_error(subtask_id, error):
             logger.error(
@@ -685,7 +689,7 @@ class TaskManager(TaskEventListener):
 
         def after_results_extracted(results):
             new_task.copy_subtask_results(
-                new_subtask_id, old_subtask, results)
+                new_subtask_id, old_subtask, TaskResult(files=results))
 
             self.__set_subtask_state_finished(new_subtask_id)
 
@@ -702,7 +706,7 @@ class TaskManager(TaskEventListener):
         ret = []
         for tid, task in self.tasks.items():
             status = self.tasks_states[tid].status
-            if task.needs_computation() and status in self.ACTIVE_STATUS:
+            if task.needs_computation() and status.is_active():
                 ret.append(task.header)
 
         return ret
@@ -737,13 +741,15 @@ class TaskManager(TaskEventListener):
         return subtask_state.node_id
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result,
-                               verification_finished):
+    def computed_task_received(
+            self, subtask_id: str, result: TaskResult,
+            verification_finished: Callable[[], None]) -> None:
         logger.debug("Computed task received. subtask_id=%s", subtask_id)
-        task_id = self.subtask2task_mapping[subtask_id]
+        task_id: str = self.subtask2task_mapping[subtask_id]
 
-        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
-        subtask_status = subtask_state.status
+        subtask_state: SubtaskState =\
+            self.tasks_states[task_id].subtask_states[subtask_id]
+        subtask_status: SubtaskStatus = subtask_state.status
 
         if not subtask_status.is_computed():
             logger.warning(
@@ -780,7 +786,7 @@ class TaskManager(TaskEventListener):
 
             verification_finished()
 
-            if self.tasks_states[task_id].status in self.ACTIVE_STATUS:
+            if self.tasks_states[task_id].status.is_active():
                 if not self.tasks[task_id].finished_computation():
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
@@ -896,7 +902,7 @@ class TaskManager(TaskEventListener):
         nodes_with_timeouts = []
         for t in list(self.tasks.values()):
             th = t.header
-            if self.tasks_states[th.task_id].status not in self.ACTIVE_STATUS:
+            if not self.tasks_states[th.task_id].status.is_active():
                 continue
             cur_time = int(get_timestamp_utc())
             # Check subtask timeout
@@ -1145,9 +1151,9 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    def add_comp_task_request(self, theader, price):
+    def add_comp_task_request(self, theader, price, performance):
         """ Add a header of a task which this node may try to compute """
-        self.comp_task_keeper.add_request(theader, price)
+        self.comp_task_keeper.add_request(theader, price, performance)
 
     def __add_subtask_to_tasks_states(self, node_id,
                                       ctd, price: int):
@@ -1210,7 +1216,7 @@ class TaskManager(TaskEventListener):
             task_id, subtask_id, op, persist,
         )
 
-        if persist and self.task_persistence:
+        if persist:
             self.dump_task(task_id)
 
         task_state = self.tasks_states.get(task_id)
@@ -1318,3 +1324,11 @@ class TaskManager(TaskEventListener):
             return
 
         update_provider_efficiency(node_id, timeout, computation_time)
+
+    @staticmethod
+    def get_provider_market_strategy_for_env(
+            env_id: str) -> Type[ProviderMarketStrategy]:
+        # NOTE This assumes ENV_ID == App Type
+        if env_id == WasmTaskEnvironment.ENV_ID:
+            return ProviderWasmMarketStrategy
+        return ProviderBrassMarketStrategy

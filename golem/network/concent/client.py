@@ -216,7 +216,16 @@ class ConcentClientService(threading.Thread):
     @property
     def enabled(self) -> bool:
         """Indicates whether this client is available and user turned it on"""
-        return self.available and soft_switch.is_on()
+        return self.available and soft_switch.concent_is_on()
+
+    @property
+    def required_as_provider(self) -> bool:
+        """
+        Indicates whether concent is required for any tasks
+        considered for computation as a provider
+        (assuming it's enabled)
+        """
+        return soft_switch.is_required_as_provider()
 
     def run(self) -> None:
         last_receive = 0.0

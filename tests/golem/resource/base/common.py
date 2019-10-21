@@ -32,6 +32,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         self.task_id = str(uuid.uuid4())
 
+        client_options = mock.Mock(timeout=10.)
         client_1, dir_1, session_1 = self._create_client(self.task_id, '_1')
         client_2, dir_2, session_2 = self._create_client(self.task_id, '_2')
 
@@ -45,11 +46,15 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.resources_relative, resources = self._create_resources(
             self.resource_dir_1)
         client_1.resource_server.resource_manager.add_resources(
-            resources, self.task_id, async_=False)
+            resources,
+            self.task_id,
+            client_options=client_options,
+            async_=False)
 
     def tearDown(self):
-        self.client_1.quit()
-        self.client_2.quit()
+        with mock.patch('golem.task.taskserver.TaskServer.quit'):
+            self.client_1.quit()
+            self.client_2.quit()
 
         LogTestCase.tearDown(self)
         TempDirFixture.tearDown(self)
@@ -74,7 +79,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         return relative, absolute
 
-    @mock.patch('golem.task.taskserver.TaskComputer', mock.Mock())
+    @mock.patch('golem.task.taskserver.TaskComputerAdapter', mock.Mock())
     def _create_client(self, task_id, postfix):
         directory = os.path.join(self.tempdir, 'node' + postfix)
         dir_manager = DirManager(directory)
@@ -108,7 +113,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".register_handler"):
             client.task_server = TaskServer(
                 node=dt_p2p_factory.Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
-                config_desc=mock.Mock(),
+                config_desc=client.config_desc,
                 client=client,
                 use_docker_manager=False,
             )

@@ -14,7 +14,7 @@ def run_job():
         os.environ['RESOURCES_DIR'], params['input_dir_name']
     )
 
-    subprocess.call(
+    return subprocess.call(
         [
             WASM_SANDBOX_EXECUTABLE_NAME,
             '-O',
@@ -35,4 +35,4 @@ def run_job():
 
 
 if __name__ == '__main__':
-    run_job()
+    exit(run_job())

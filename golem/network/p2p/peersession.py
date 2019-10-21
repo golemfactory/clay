@@ -21,10 +21,16 @@ logger = logging.getLogger(__name__)
 
 def compare_version(client_ver):
     try:
-        v_client = semantic_version.Version(client_ver)
+        v_client = semantic_version.Version(client_ver, partial=True)
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
+    # Convert partial version to complete one
+    v_client = semantic_version.Version(
+        f"{v_client.major}"
+        f".{v_client.minor if v_client.minor else 0}"
+        f".{v_client.patch if v_client.patch else 0}",
+    )
     if gconst.GOLEM_VERSION < v_client:
         dispatcher.send(
             signal='golem.p2p',
@@ -529,7 +535,7 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.add_known_peer(
             self.node_info,
             self.address,
-            self.port,
+            self.listen_port,
             self.metadata
         )
         self.p2p_service.set_suggested_address(

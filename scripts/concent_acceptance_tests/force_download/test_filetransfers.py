@@ -6,7 +6,6 @@ import os
 import tempfile
 import time
 import shutil
-import unittest
 from unittest import mock
 
 import faker
@@ -24,9 +23,7 @@ from .base import ForceDownloadBaseTest
 logger = logging.getLogger(__name__)
 
 
-class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
-                                         unittest.TestCase):
-
+class TestBase(ForceDownloadBaseTest):
     def setUp(self):
         super().setUp()
         file = tempfile.NamedTemporaryFile(delete=False)
@@ -67,6 +64,10 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
         )
         self.requestor_send(fgtr)
         return self.provider_receive()
+
+
+class ForceGetTaskResultFiletransferTest(TestBase):
+    # testing failing upload is a part of force_accept_after_force_download
 
     def test_upload(self):
         fgtru = self.get_fgtru()

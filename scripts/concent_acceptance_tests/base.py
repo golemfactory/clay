@@ -3,7 +3,6 @@ import base64
 import calendar
 import datetime
 import functools
-import logging
 import os
 import sys
 import tempfile
@@ -12,6 +11,9 @@ import typing
 import unittest
 
 from pathlib import Path
+
+# this must be before any other ethereum imports
+from .fix_logging import logging
 
 from ethereum.utils import denoms
 import golem_messages
@@ -67,8 +69,6 @@ class ConcentBaseTest(unittest.TestCase):
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
-        from golem.core import common
-        common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
@@ -94,10 +94,9 @@ class ConcentBaseTest(unittest.TestCase):
 
     def ttc_add_promissory_and_sign(self, ttc, priv_key=None) -> None:
         priv_key = priv_key or self.requestor_priv_key
-        ttc.sign_promissory_note(private_key=priv_key)
-        ttc.sign_concent_promissory_note(
-            deposit_contract_address=
-            self.ethereum_config.deposit_contract_address,
+        ttc.sign_all_promissory_notes(
+            deposit_contract_address=self.ethereum_config
+            .deposit_contract_address,
             private_key=priv_key,
         )
         ttc.sign_message(priv_key)
@@ -230,7 +229,7 @@ class ConcentBaseTest(unittest.TestCase):
             self,
             msg: concents.ServiceRefused,
             reason=None,
-        ):
+    ):
         self.assertIsInstance(msg, concents.ServiceRefused)
         if reason:
             self.assertEqual(msg.reason, reason)
@@ -294,6 +293,11 @@ class SCIBaseTest(ConcentBaseTest):
             contract_addresses=self.ethereum_config.CONTRACT_ADDRESSES,
             chain=self.ethereum_config.CHAIN,
         )
+
+    def tearDown(self):
+        self.requestor_sci.stop()
+        self.provider_sci.stop()
+        super().tearDown()
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
@@ -398,7 +402,7 @@ class SCIBaseTest(ConcentBaseTest):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
-        self.blockchain_sleep(120)
+        self.blockchain_sleep()
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):
@@ -412,7 +416,7 @@ class SCIBaseTest(ConcentBaseTest):
         amount, _ = helpers.provider_deposit_amount(price)
         return self.put_deposit(self.provider_sci, amount)
 
-    @staticmethod
-    def blockchain_sleep(sleep_time=60):
+    def blockchain_sleep(self):
+        sleep_time = 15*self.requestor_sci.REQUIRED_CONFS+10
         sys.stderr.write(f'Going to sleep for: {sleep_time} seconds...\n')
         time.sleep(sleep_time)

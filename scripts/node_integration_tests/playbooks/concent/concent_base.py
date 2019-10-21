@@ -19,44 +19,6 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         helpers.clear_output(self.output_queues[node_id])
         self.next()
 
-    def step_check_is_concent_off(self, node_id: NodeId):
-        def on_success(result):
-            if result is True:
-                print(f"Concent unexpectedly already enabled for"
-                      " {node_id.value}...")
-            self.next()
-
-        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
-
-    def step_enable_concent(self, node_id: NodeId):
-        def on_success(_):
-            self.next()
-
-        def on_error(result):
-            print(f"Error enabling Concent for {node_id.value}")
-            self.fail()
-
-        return self.call(
-            node_id,
-            'golem.concent.switch.turn', 1,
-            on_success=on_success, on_error=on_error,
-        )
-
-    def step_ensure_concent_on(self, node_id: NodeId):
-        def on_success(result):
-            if result is True:
-                print(f"Enabled Concent for {node_id.value}.")
-                self.next()
-            else:
-                self.fail(
-                    "Failed to enable Concent for %s... (result=%r)" % (
-                        node_id.value, result
-                    )
-                )
-            self.next()
-
-        return self.call(node_id, 'golem.concent.switch', on_success=on_success)
-
     @staticmethod
     def check_concent_logs(
             output_queue: 'queue.Queue',
@@ -116,13 +78,19 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         return None, None
 
     initial_steps = NodeTestPlaybook.initial_steps + (
-        partial(step_check_is_concent_off, node_id=NodeId.provider),
-        partial(step_enable_concent, node_id=NodeId.provider),
-        partial(step_ensure_concent_on, node_id=NodeId.provider),
+        partial(NodeTestPlaybook.step_ensure_concent_off,
+                node_id=NodeId.provider),
+        partial(NodeTestPlaybook.step_enable_concent,
+                node_id=NodeId.provider),
+        partial(NodeTestPlaybook.step_ensure_concent_on,
+                node_id=NodeId.provider),
 
-        partial(step_check_is_concent_off, node_id=NodeId.requestor),
-        partial(step_enable_concent, node_id=NodeId.requestor),
-        partial(step_ensure_concent_on, node_id=NodeId.requestor),
+        partial(NodeTestPlaybook.step_ensure_concent_off,
+                node_id=NodeId.requestor),
+        partial(NodeTestPlaybook.step_enable_concent,
+                node_id=NodeId.requestor),
+        partial(NodeTestPlaybook.step_ensure_concent_on,
+                node_id=NodeId.requestor),
 
         partial(step_clear_output, node_id=NodeId.requestor),
         partial(step_clear_output, node_id=NodeId.provider),

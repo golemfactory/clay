@@ -18,6 +18,7 @@ class DockerMachineCommandHandler(DockerCommandHandler):
             'docker-machine', '--native-ssh', 'regenerate-certs', '--force'],
         restart=['docker-machine', '--native-ssh', 'restart'],
         execute=['docker-machine', '--native-ssh', 'ssh'],
+        ip=['docker-machine', 'ip'],
     )
 
     commands.update(DockerCommandHandler.commands)

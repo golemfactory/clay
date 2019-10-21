@@ -44,6 +44,8 @@ from golem.task.acl import Acl
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskmanager import TaskManager
+from golem.task.taskstate import TaskStatus
+from golem.testutils import DatabaseFixture
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
@@ -127,14 +129,19 @@ def make_client(*_, **kwargs):
     return client
 
 
-class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+class TestClientBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
         self.client = make_client(datadir=self.path)
 
     def tearDown(self):
-        self.client.quit()
+        # Only call taskcomputer.quit, TaskServer.quit now requires asyncio
+        # FIXME: Only keep self.client.quit() when it works with asyncio
+        if self.client.task_server is not None:
+            self.client.task_server.task_computer.quit()
+        with patch('golem.task.taskserver.TaskServer.quit'):
+            self.client.quit()
         super().tearDown()
 
 
@@ -250,6 +257,7 @@ class TestClient(TestClientBase):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
+    @patch('golem.task.taskserver.TaskServer.quit')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -275,7 +283,7 @@ class TestClient(TestClientBase):
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
-    @patch('golem.client.P2PService.connect_to_network')
+    @patch('golem.task.taskserver.TaskServer.quit')
     def test_pause_resume(self, *_):
         self.client.start()
 
@@ -350,11 +358,9 @@ class TestClient(TestClientBase):
             ),
         }
         subtask_price = 123
-        deadline = 23
         tm.tasks = {
             "t2": Mock(
                 subtask_price=subtask_price,
-                header=Mock(deadline=deadline),
                 get_total_tasks=Mock(return_value=3)
             ),
         }
@@ -363,8 +369,50 @@ class TestClient(TestClientBase):
             "t2",
             subtask_price,
             2,
-            deadline,
         )
+
+
+class TestGetTasks(TestClientBase):
+
+    def setUp(self):
+        super().setUp()
+        self.tasks = self._create_dict_of_tasks_with_status()
+        self.client.task_server = Mock(task_manager=Mock())
+        self.client.task_server.task_manager.tasks = self.tasks
+
+    def test_get_tasks(self):
+        self.client.get_task = lambda task_id: self.tasks[task_id]
+        retrieved_tasks = self.client.get_tasks()
+        assert isinstance(retrieved_tasks, list)
+        assert len(retrieved_tasks) == 6
+
+    def test_get_single_task(self):
+        self.client.get_task = lambda task_id: self.tasks[task_id]
+        retrieved_tasks = self.client.get_tasks(task_id='task_1')
+        assert isinstance(retrieved_tasks, dict)
+
+    def test_get_created_tasks(self):
+        self.client.get_task = lambda task_id: self.tasks[task_id]
+        retrieved_tasks = self.client.get_tasks(return_created_tasks_only=True)
+        assert isinstance(retrieved_tasks, list)
+        assert len(retrieved_tasks) == 4
+
+    def test_get_tasks_none_filter(self):
+        self.client.get_task = lambda task_id: None
+        retrieved_tasks = self.client.get_tasks()
+        assert isinstance(retrieved_tasks, list)
+        assert not retrieved_tasks
+
+    @staticmethod
+    def _create_dict_of_tasks_with_status():
+        return {
+            'task_1': {'status': TaskStatus.creating.value},
+            'task_2': {'status': TaskStatus.errorCreating.value},
+            'task_3': {'status': TaskStatus.aborted.value},
+            'task_4': {'status': TaskStatus.computing.value},
+            'task_5': {'status': TaskStatus.finished.value},
+            'task_6': {'status': TaskStatus.creatingDeposit.value},
+        }
 
 
 class TestClientRestartSubtasks(TestClientBase):
@@ -380,7 +428,6 @@ class TestClientRestartSubtasks(TestClientBase):
             self.task_id,
             self.subtask_price,
             10,
-            time.time(),
         )
 
         self.client.task_server = Mock()
@@ -400,7 +447,6 @@ class TestClientRestartSubtasks(TestClientBase):
             self.subtask_price, 1)
 
 
-# pylint: disable=no-member
 class TestDoWorkService(testwithreactor.TestWithReactor):
 
     def setUp(self):
@@ -603,6 +649,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             )
         self.client.monitor = Mock()
         self.client._update_hw_preset = Mock()
+        self.client.task_server.change_config = Mock()
 
     def test_node(self, *_):
         c = self.client
@@ -1145,6 +1192,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', -1, True)
+        self.client.block_node(['node_id_1', 'node_id_2'])
+        self.client.task_server.acl.disallow.assert_called_with(
+            'node_id_2', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):

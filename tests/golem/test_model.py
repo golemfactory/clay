@@ -6,6 +6,7 @@ from datetime import (
 from peewee import IntegrityError
 
 import golem.model as m
+from golem.task.taskstate import SubtaskOp
 from golem.testutils import DatabaseFixture
 
 from tests.factories import model as m_factory
@@ -55,6 +56,18 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual(0, r.negative_resource)
         self.assertEqual((0, 0, 0, 0), r.provider_efficacy.vector)
 
+    def test_modify_efficacy(self):
+        # Create new LocalRank database entry with default values.
+        rank, _ = m.LocalRank.get_or_create(node_id="blaa_node")
+        efficacy = rank.provider_efficacy
+
+        # Update efficacy in created entry.
+        efficacy.update(SubtaskOp.FINISHED)
+
+        # Create new LocalRank database entry. It should have default values.
+        rank, _ = m.LocalRank.get_or_create(node_id="blaa_node2")
+        self.assertEqual((0, 0, 0, 0), rank.provider_efficacy.vector)
+
 
 class TestGlobalRank(DatabaseFixture):
     def test_default_fields(self):
@@ -79,16 +92,20 @@ class TestNeighbourRank(DatabaseFixture):
 class TestTaskPreset(DatabaseFixture):
     def test_default_fields(self):
         tp = m.TaskPreset()
-        assert datetime.now(tz=timezone.utc) >= tp.created_date
-        assert datetime.now(tz=timezone.utc) >= tp.modified_date
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), tp.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc), tp.modified_date)
 
 
 class TestPerformance(DatabaseFixture):
     def test_default_fields(self):
         perf = m.Performance()
-        assert datetime.now(tz=timezone.utc) >= perf.created_date
-        assert datetime.now(tz=timezone.utc) >= perf.modified_date
-        assert perf.value == 0.0
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc),
+                                perf.created_date)
+        self.assertGreaterEqual(datetime.now(tz=timezone.utc),
+                                perf.modified_date)
+        self.assertEqual(perf.value, 0.0)
+        self.assertEqual(perf.min_accepted_step, 300.0)
+        self.assertEqual(perf.cpu_usage, 0)
 
     def test_constraints(self):
         perf = m.Performance()
@@ -103,9 +120,9 @@ class TestPerformance(DatabaseFixture):
         perf.save()
 
         env1 = m.Performance.get(m.Performance.environment_id == "ENV1")
-        assert env1.value == 0.0
+        self.assertEqual(env1.value, 0)
         env2 = m.Performance.get(m.Performance.environment_id == "ENV2")
-        assert env2.value == 138.18
+        self.assertEqual(env2.value, 138.18)
 
         # environment_id must be unique
         perf3 = m.Performance(environment_id="ENV1", value=1472.11)
@@ -117,14 +134,23 @@ class TestPerformance(DatabaseFixture):
         perf3.save()
 
     def test_update_or_create(self):
-        m.Performance.update_or_create("ENVX", 100)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 100
-        m.Performance.update_or_create("ENVX", 200)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 200
-        m.Performance.update_or_create("ENVXXX", 300)
-        env = m.Performance.get(m.Performance.environment_id == "ENVXXX")
-        assert env.value == 300
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 200
+        env_id = "test_env"
+        m.Performance.update_or_create(
+            env_id=env_id,
+            performance=100.0,
+            cpu_usage=1000
+        )
+
+        stored = m.Performance.get(m.Performance.environment_id == env_id)
+        self.assertEqual(stored.value, 100.0)
+        self.assertEqual(stored.cpu_usage, 1000)
+
+        m.Performance.update_or_create(
+            env_id=env_id,
+            performance=200.0,
+            cpu_usage=2000
+        )
+
+        stored = m.Performance.get(m.Performance.environment_id == env_id)
+        self.assertEqual(stored.value, 200.0)
+        self.assertEqual(stored.cpu_usage, 2000)

@@ -1,4 +1,5 @@
 # pylint: disable=protected-access
+import datetime
 import functools
 from contextlib import contextmanager
 from unittest import TestCase
@@ -437,6 +438,41 @@ class TestSavedMigrations(TempDirFixture):
             self.assertEqual(tp_count, 1)
 
     @patch('golem.database.Database._create_tables')
+    def test_31_payments_migration_invalid_node_info(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 30)
+
+            details_null_key = '{"node_info": {"key": null}}'
+            details_null_node = '{"node_info": null}'
+            for cnt, details in enumerate(
+                    (details_null_key, details_null_node),
+            ):
+                database.db.execute_sql(
+                    "INSERT INTO payment ("
+                    "    subtask, created_date, modified_date, status,"
+                    "    payee, value, details)"
+                    " VALUES (?, datetime('now'), datetime('now'), 1,"
+                    "         '0x0eeA941c1244ADC31F53525D0eC1397ff6951C9C', 10,"
+                    "         ?)",
+                    (f"0xdead{cnt}", details, ),
+                )
+            database._migrate_schema(30, 31)
+
+            # UNIONS don't work here. Do it manually
+            cursor = database.db.execute_sql("SELECT count(*) FROM payment")
+            payment_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            cursor = database.db.execute_sql("SELECT count(*) FROM taskpayment")
+            tp_count = cursor.fetchone()[0]
+            # Migrated payments shouldn't be removed
+            self.assertEqual(payment_count, 2)
+            self.assertEqual(wo_count, 0)
+            self.assertEqual(tp_count, 0)
+
+    @patch('golem.database.Database._create_tables')
     def test_32_incomes_migration(self, *_args):
         with self.database_context() as database:
             database._migrate_schema(6, 31)
@@ -509,6 +545,30 @@ class TestSavedMigrations(TempDirFixture):
                     fee,
                 ],
             )
+
+    @patch('golem.database.Database._create_tables')
+    def test_33_deposit_payments_migration_table_missing(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 32)
+
+            database.db.RETRY_TIMEOUT = datetime.timedelta(seconds=0)
+            database.db.execute_sql(
+                "DROP TABLE depositpayment"
+            )
+            database._migrate_schema(32, 33)
+
+            cursor = database.db.execute_sql(
+                "SELECT count(*) FROM walletoperation",
+            )
+            wo_count = cursor.fetchone()[0]
+            self.assertEqual(wo_count, 0)
+
+    @patch('golem.database.Database._create_tables')
+    def test_36_charged_from_deposit(self, *_args):
+        with self.database_context() as database:
+            database._migrate_schema(6, 35)
+            database.db.RETRY_TIMEOUT = datetime.timedelta(seconds=0)
+            database._migrate_schema(35, 36)
 
 
 def generate(start, stop):

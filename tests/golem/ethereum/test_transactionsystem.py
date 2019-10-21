@@ -11,12 +11,17 @@ from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
 from golem_messages.factories import p2p as p2p_factory
+from golem_messages.factories.helpers import (
+    random_eth_address,
+)
 import golem_sci
 import golem_sci.contracts
 import golem_sci.structs
+import hexbytes
 
 from golem import model
 from golem import testutils
+from golem.core import deferred
 from golem.ethereum import exceptions
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
@@ -25,6 +30,21 @@ from tests.factories import model as model_factory
 
 fake = faker.Faker()
 PASSWORD = 'derp'
+
+
+def get_transaction_receipt(tx_hash, status=1):
+    return golem_sci.structs.TransactionReceipt(
+        raw_receipt={
+            'transactionHash': hexbytes.HexBytes(tx_hash),
+            'status': status,
+            'blockHash': hexbytes.HexBytes(
+                '0xcbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
+                '97dc22e97399c',
+            ),
+            'blockNumber': 2940769,
+            'gasUsed': 21000,
+        },
+    )
 
 
 class TransactionSystemBase(testutils.DatabaseFixture):
@@ -40,6 +60,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.get_deposit_locked_until.return_value = 0
+        self.sci.GAS_GNT_TRANSFER = 2
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -209,7 +230,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
         self.sci.GAS_OPEN_GATE = 10
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -240,7 +260,6 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_gnt_balance.return_value = amount1
         self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
-        self.sci.GAS_GNT_TRANSFER = 2
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.ets._refresh_balances()
 
@@ -279,7 +298,7 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.sci.get_eth_address(),
-            0,
+            self.sci.get_latest_confirmed_block_number(),
             ANY,
         )
 
@@ -372,8 +391,8 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.estimate_transfer_eth_gas.return_value = self.gas_cost
         self.dest = '0x' + 40 * 'd'
 
-        self.eth_tx = '0xee'
-        self.gntb_tx = '0xfad'
+        self.eth_tx = f'0x{"e"*64}'
+        self.gntb_tx = f'0x{"f"*64}'
         self.sci.transfer_eth.return_value = self.eth_tx
         self.sci.convert_gntb_to_gnt.return_value = self.gntb_tx
 
@@ -402,7 +421,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             amount,
-            None,
+            self.ets.gas_price,
         )
 
     def test_custom_gas_price_gnt(self):
@@ -465,7 +484,7 @@ class WithdrawTest(TransactionSystemBase):
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             self.dest,
             self.gnt_balance - locked_gnt,
-            None,
+            self.ets.gas_price,
         )
 
     def test_not_enough_gnt_with_lock(self):
@@ -493,7 +512,9 @@ class WithdrawTest(TransactionSystemBase):
 
         self.sci.get_gntb_balance.return_value = 0
         self.ets._refresh_balances()
-        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
+        self.sci.on_transaction_confirmed.call_args[0][1](
+            get_transaction_receipt(f'0x{"0"*64}')
+        )
         assert self.ets.get_available_gnt() == 0
 
 
@@ -569,18 +590,7 @@ class ConcentDepositTest(TransactionSystemBase):
 
     @classmethod
     def _confirm_it(cls, tx_hash, cb):
-        receipt = golem_sci.structs.TransactionReceipt(
-            raw_receipt={
-                'transactionHash': bytes.fromhex(tx_hash[2:]),
-                'status': 1,
-                'blockHash': bytes.fromhex(
-                    'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
-                    '97dc22e97399c',
-                ),
-                'blockNumber': 2940769,
-                'gasUsed': 21000,
-            },
-        )
+        receipt = get_transaction_receipt(tx_hash)
         cb(receipt)
 
     def test_transaction_failed(self):
@@ -589,18 +599,7 @@ class ConcentDepositTest(TransactionSystemBase):
         subtask_count = 1
 
         def fail_it(tx_hash, cb):
-            receipt = golem_sci.structs.TransactionReceipt(
-                raw_receipt={
-                    'transactionHash': bytes.fromhex(tx_hash[2:]),
-                    'status': 'not a status',
-                    'blockHash': bytes.fromhex(
-                        'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
-                        '97dc22e97399c',
-                    ),
-                    'blockNumber': 2940769,
-                    'gasUsed': 21000,
-                },
-            )
+            receipt = get_transaction_receipt(tx_hash, 'not a status')
             cb(receipt)
 
         self._prepare_concent_deposit(
@@ -710,16 +709,29 @@ class ConcentWithdrawTest(TransactionSystemBase):
     @freeze_time('2018-10-01 14:00:00')
     def test_unlocked(self):
         now = time.time()
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.sci.get_deposit_locked_until.reset_mock()
         self.sci.get_deposit_locked_until.return_value = int(now)
+        self.sci.get_deposit_value.return_value = 10
+        self.sci.withdraw_deposit.return_value = tx_hash
         self.ets.concent_withdraw()
         self.sci.withdraw_deposit.assert_called_once_with()
+        wo_cnt = model.WalletOperation.deposit_transfers().where(
+            model.WalletOperation.direction
+            == model.WalletOperation.DIRECTION.incoming,
+        ).count()
+        self.assertEqual(wo_cnt, 1)
 
 
 class ConcentUnlockTest(TransactionSystemBase):
     def setUp(self):
         super().setUp()
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.ets = self._make_ets(provide_gntdeposit=True)
+        self.sci.get_transaction_gas_price.return_value = 2
+        self.sci.withdraw_deposit.return_value = tx_hash
 
     def test_empty(self):
         self.sci.get_deposit_value.return_value = 0
@@ -735,7 +747,9 @@ class ConcentUnlockTest(TransactionSystemBase):
         self.sci.withdraw_deposit.assert_called_once_with()
         self.sci.on_transaction_confirmed.assert_called_once()
 
-        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        self.sci.on_transaction_confirmed.call_args[0][1](
+            get_transaction_receipt(f'0x{"0"*64}'),
+        )
         self.ets.concent_withdraw()
         assert self.sci.withdraw_deposit.call_count == 2
 
@@ -845,4 +859,52 @@ class IncomesListTest(TransactionSystemBase):
                 },
             ],
             self.ets.get_incomes_list(),
+        )
+
+
+class TransactionConfirmationTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.ets = self._make_ets(provide_gntdeposit=True)
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gntb_balance.return_value = 100
+        self.ets._refresh_balances()
+        self.receipt = get_transaction_receipt(f'0x{"0"*64}')
+        self.tx_hash = self.receipt.tx_hash
+        self.sci.on_transaction_confirmed.side_effect = \
+            lambda tx_hash, cb: cb(self.receipt)
+        self.sci.estimate_transfer_eth_gas.return_value = 1
+        self.sci.get_transaction_gas_price.return_value = 2
+
+    def test_transfer_eth(self):
+        self.sci.transfer_eth.return_value = self.tx_hash
+        self.ets.withdraw(
+            amount=1,
+            destination=random_eth_address(),
+            currency='ETH',
+        )
+        self.sci.on_transaction_confirmed.assert_called_once()
+        operation = model.WalletOperation.transfers().where(
+            model.WalletOperation.tx_hash == self.tx_hash,
+        ).get()
+        self.assertEqual(
+            operation.status,
+            model.WalletOperation.STATUS.confirmed,
+        )
+
+    def test_deposit_transfer(self):
+        self.sci.deposit_payment.return_value = self.tx_hash
+        self.sci.get_deposit_value.return_value = 0
+        defer = self.ets.concent_deposit(
+            required=10,
+            expected=40,
+        )
+        deferred.sync_wait(defer)
+        self.sci.on_transaction_confirmed.assert_called_once()
+        operation = model.WalletOperation.deposit_transfers().where(
+            model.WalletOperation.tx_hash == self.tx_hash,
+        ).get()
+        self.assertEqual(
+            operation.status,
+            model.WalletOperation.STATUS.confirmed,
         )

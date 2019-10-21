@@ -3,7 +3,6 @@ import re
 import shutil
 from threading import Lock
 from typing import List
-
 from golem.core.fileshelper import copy_file_tree, relative_path
 
 

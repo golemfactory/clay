@@ -2,7 +2,7 @@ from unittest import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
-from tests.golem.task.dummy import runner, task
+from tests.golem.task.dummy import runner
 
 
 @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')

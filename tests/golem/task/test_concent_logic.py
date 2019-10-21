@@ -14,11 +14,11 @@ from golem_messages import factories
 from golem_messages import message
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
-from twisted.internet.defer import Deferred
 
 from golem import testutils
 from golem.config.active import EthereumConfig
 from golem.core import keysauth
+from golem.marketplace import RequestorBrassMarketStrategy
 from golem.network import history
 from golem.task import tasksession
 from golem.task import taskstate
@@ -32,7 +32,18 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 # pylint: disable=protected-access
 
 
-@mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
+def _fake_get_efficacy():
+    class A:
+        def __init__(self):
+            self.vector = (.0, .0, .0, .0)
+    return A()
+
+
+def _call_in_place(_delay, fn, *args, **kwargs):
+    return fn(*args, **kwargs)
+
+
+@mock.patch("golem.task.tasksession.TaskSession._check_task_header",
             return_value=True)
 @mock.patch("golem.task.tasksession.TaskSession.send")
 class TaskToComputeConcentTestCase(testutils.TempDirFixture):
@@ -49,11 +60,10 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.concent_enabled = True
         self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.msg.generate_ethsig(self.requestor_keys.raw_privkey)
-        self.msg.sign_promissory_note(self.requestor_keys.raw_privkey)
         self.ethereum_config = EthereumConfig()
-        self.msg.sign_concent_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+        self.msg.sign_all_promissory_notes(
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.requestor_keys.raw_privkey
         )
         self.msg.sign_message(self.requestor_keys.raw_privkey)  # noqa go home pylint, you're drunk pylint: disable=no-value-for-parameter
@@ -64,6 +74,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             self.ethereum_config.deposit_contract_address
 
         self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.required_as_provider = True
         self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
             self.keys.raw_pubkey
@@ -103,6 +114,12 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(send_mock)
+
+    def test_requestor_concent_disabled_but_not_required(self, send_mock, *_):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.required_as_provider = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
 
     def test_provider_doesnt_want_concent(self, send_mock, *_):
         self.task_session.concent_service.enabled = False
@@ -207,7 +224,11 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_bad_promissory_note_sig(self, send_mock, *_):
-        self.msg.sign_promissory_note(self.different_keys.raw_privkey)
+        self.msg.sign_promissory_note(
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
+            private_key=self.different_keys.raw_privkey
+        )
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
             send_mock,
@@ -216,8 +237,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_bad_concent_promissory_note_sig(self, send_mock, *_):
         self.msg.sign_concent_promissory_note(
-            deposit_contract_address=getattr(
-                self.ethereum_config, 'deposit_contract_address'),
+            deposit_contract_address=self.ethereum_config.
+            deposit_contract_address,
             private_key=self.different_keys.raw_privkey
         )
         self.task_session._react_to_task_to_compute(self.msg)
@@ -225,6 +246,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             send_mock,
             reason=cannot_reasons.PromissoryNoteMissing,
         )
+
 
 @mock.patch(
     'golem.task.tasksession.TaskSession.verify_owners',
@@ -382,15 +404,11 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-def _offerpool_add(*_):
-    res = Deferred()
-    res.callback(True)
-    return res
-
-
-@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
-@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
-@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
+@mock.patch('golem.core.deferred.call_later', _call_in_place)
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficiency',
+            mock.Mock(return_value=0.0))
+@mock.patch('golem.ranking.manager.database_manager.get_provider_efficacy',
+            mock.Mock(return_value=_fake_get_efficacy()))
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
@@ -399,7 +417,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg = factories.tasks.WantToComputeTaskFactory(
+            price=10 ** 18, cpu_usage=int(1e9))
         self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
@@ -409,6 +428,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.task_session.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
         self.task_session.task_manager.task_finished.return_value = False
+        self.task_session.requested_task_manager.task_exists.return_value = \
+            False
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)
@@ -467,6 +488,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()
+        task.REQUESTOR_MARKET_STRATEGY = RequestorBrassMarketStrategy
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
         task.header.max_price = 0
@@ -477,6 +499,8 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
             pass
 
         task_session.task_server.get_share_options.return_value = X()
+        task_session.task_server.get_resources.return_value = []
+        task_session.task_server.config_desc.offer_pooling_interval = 0
 
         with mock.patch(
             'golem.task.tasksession.taskkeeper.compute_subtask_value',

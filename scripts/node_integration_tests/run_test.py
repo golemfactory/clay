@@ -7,7 +7,11 @@ from golem.config.environments import set_environment
 from scripts.node_integration_tests.playbook_loader import \
     get_config_and_playbook_class
 from scripts.node_integration_tests.playbooks import run_playbook
-from scripts.node_integration_tests.playbooks.test_config_base import NodeId
+from scripts.node_integration_tests.playbooks.test_config_base import (
+    NodeId,
+    CONCENT_DISABLED,
+)
+
 
 if TYPE_CHECKING:
     from scripts.node_integration_tests.playbooks.test_config_base \
@@ -118,7 +122,7 @@ def main():
     args = parse_args()
 
     if args.mainnet:
-        set_environment('mainnet', 'disabled')
+        set_environment('mainnet', CONCENT_DISABLED)
 
     config, playbook_class = get_config_and_playbook_class(args.test_path)
 

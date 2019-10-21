@@ -28,6 +28,7 @@ def run_job():
         result_obj['data'] = result
         write_result(json.dumps(result_obj))
     except Exception as e:  # pylint: disable=broad-except
+        result_obj = {}
         result_obj['error'] = '{}:{}'.format(e.__class__, str(e))
         write_result(json.dumps(result_obj))
 

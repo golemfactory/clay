@@ -85,7 +85,10 @@ class TestIncomesKeeper(TestWithDatabase):
         self.incomes_keeper.received_forced_payment(
             **kwargs,
         )
-        batch_mock.assert_called_once_with(**kwargs)
+        batch_mock.assert_called_once_with(
+            **kwargs,
+            charged_from_deposit=True,
+        )
 
     def test_received_batch_transfer_closure_time(self):
         sender_node = 64 * 'a'
@@ -252,9 +255,11 @@ class TestIncomesKeeper(TestWithDatabase):
         tx_hash = f'0x{"0"*64}'
         income1 = self._create_income(
             accepted_ts=int(time.time()),
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
             wallet_operation__tx_hash=tx_hash)
         income2 = self._create_income(
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
+            wallet_operation__status=model.WalletOperation.STATUS.awaiting,
             wallet_operation__tx_hash=tx_hash)
         self.incomes_keeper.update_overdue_incomes()
         self.assertNotEqual(
@@ -288,4 +293,17 @@ class TestIncomesKeeper(TestWithDatabase):
         self.assertEqual(
             income.wallet_operation.refresh().status,
             model.WalletOperation.STATUS.overdue,
+        )
+
+    def test_received_transfer(self):
+        self.incomes_keeper.received_transfer(
+            tx_hash=f"0x{'0'*64}",
+            sender_address=random_eth_address(),
+            recipient_address=random_eth_address(),
+            amount=1,
+            currency=model.WalletOperation.CURRENCY.ETH,
+        )
+        self.assertEqual(
+            model.WalletOperation.select().count(),
+            1,
         )

@@ -12,7 +12,7 @@ from ethereum.utils import denoms
 import golem_messages
 from golem_messages import datastructures as msg_dt
 from golem_messages import message
-from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import p2p as dt_p2p, masking
 from peewee import (
     BlobField,
     BooleanField,
@@ -34,6 +34,7 @@ from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.ranking import ProviderEfficacy
+from golem.task import taskstate
 
 
 # TODO: migrate to golem.database. issue #2415
@@ -54,6 +55,20 @@ def default_now():
 default_now.__self__ = datetime.datetime  # type: ignore
 
 
+def default_dict():
+    return {}
+
+
+default_dict.__self__ = dict  # type: ignore
+
+
+def default_list():
+    return []
+
+
+default_list.__self__ = list  # type: ignore
+
+
 class UTCDateTimeField(DateTimeField):
     formats = DateTimeField.formats + [
         '%Y-%m-%d %H:%M:%S+00:00',
@@ -69,6 +84,12 @@ class UTCDateTimeField(DateTimeField):
 
 class BaseModel(Model):
     class Meta:
+        # WARNING: Meta won't be inherited by subclasses
+        #          due too meta class hack in peewee...
+        # SEE:
+        #  https://github.com/coleifer/peewee/blob/2.10.2/peewee.py#L4831-L4836
+        # In other words - you have to define Meta in every
+        # class that inherits from peewee.Model
         database = db
 
     created_date = UTCDateTimeField(default=default_now)
@@ -85,6 +106,9 @@ class BaseModel(Model):
 class GenericKeyValue(BaseModel):
     key = CharField(primary_key=True)
     value = CharField(null=True)
+
+    class Meta:
+        database = db
 
 
 ##################
@@ -252,6 +276,8 @@ class WalletOperation(BaseModel):
         sent = enum.auto()
         confirmed = enum.auto()
         overdue = enum.auto()
+        failed = enum.auto()
+        arbitraged_by_concent = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -277,6 +303,9 @@ class WalletOperation(BaseModel):
     currency = StringEnumField(enum_type=CURRENCY)
     gas_cost = HexIntegerField()
 
+    class Meta:
+        database = db
+
     def __str__(self):
         return (
             f"WalletOperation. tx_hash={self.tx_hash},"
@@ -289,8 +318,46 @@ class WalletOperation(BaseModel):
         return cls.select() \
             .where(
                 WalletOperation.operation_type
-                == WalletOperation.TYPE.deposit_transfer,
-            )
+                == WalletOperation.TYPE.deposit_transfer)
+
+    @classmethod
+    def transfers(cls):
+        return cls.select() \
+            .where(
+                WalletOperation.operation_type
+                == WalletOperation.TYPE.transfer)
+
+    @classmethod
+    def unconfirmed_payments(cls):
+        return cls.select() \
+            .where(
+                cls.status.not_in([
+                    cls.STATUS.confirmed,
+                    cls.STATUS.failed,
+                    cls.STATUS.arbitraged_by_concent,
+                ]),
+                cls.tx_hash.is_null(False),
+                cls.direction ==
+                cls.DIRECTION.outgoing,
+                cls.operation_type.in_([
+                    cls.TYPE.transfer,
+                    cls.TYPE.deposit_transfer,
+                ]))
+
+    def on_confirmed(self, gas_cost: int):
+        if self.operation_type not in (
+                self.TYPE.transfer,
+                self.TYPE.deposit_transfer
+        ):
+            return
+        if self.direction != self.DIRECTION.outgoing:
+            return
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.confirmed  # type: ignore
+
+    def on_failed(self, gas_cost: int):
+        self.gas_cost = gas_cost  # type: ignore
+        self.status = self.STATUS.failed  # type: ignore
 
 
 class TaskPayment(BaseModel):
@@ -301,6 +368,10 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+    charged_from_deposit = BooleanField(null=True)
+
+    class Meta:
+        database = db
 
     def __str__(self):
         return (
@@ -317,8 +388,7 @@ class TaskPayment(BaseModel):
                 WalletOperation.operation_type
                 == WalletOperation.TYPE.task_payment,
                 WalletOperation.direction
-                == WalletOperation.DIRECTION.incoming,
-            )
+                == WalletOperation.DIRECTION.incoming)
 
     @classmethod
     def payments(cls):
@@ -328,8 +398,7 @@ class TaskPayment(BaseModel):
                 WalletOperation.operation_type
                 == WalletOperation.TYPE.task_payment,
                 WalletOperation.direction
-                == WalletOperation.DIRECTION.outgoing,
-            )
+                == WalletOperation.DIRECTION.outgoing)
 
     @property
     def missing_amount(self):
@@ -339,6 +408,14 @@ class TaskPayment(BaseModel):
 ##################
 # RANKING MODELS #
 ##################
+
+
+def provider_efficacy_producer():
+    def producer():
+        return ProviderEfficacy(0., 0., 0., 0.)
+    # peewee-migrate expects a '__self__' attribute
+    producer.__self__ = ProviderEfficacy
+    return producer
 
 
 class LocalRank(BaseModel):
@@ -360,7 +437,10 @@ class LocalRank(BaseModel):
     requestor_paid_sum = HexIntegerField(default=0)
     provider_efficiency = FloatField(default=1.0)
     provider_efficacy = ProviderEfficacyField(
-        default=ProviderEfficacy(0., 0., 0., 0.))
+        default=provider_efficacy_producer())
+
+    class Meta:
+        database = db
 
 
 class GlobalRank(BaseModel):
@@ -371,6 +451,9 @@ class GlobalRank(BaseModel):
     computing_trust_value = FloatField(default=NEUTRAL_TRUST)
     gossip_weight_computing = FloatField(default=0.0)
     gossip_weight_requesting = FloatField(default=0.0)
+
+    class Meta:
+        database = db
 
 
 class NeighbourLocRank(BaseModel):
@@ -469,24 +552,59 @@ class Performance(BaseModel):
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            stored = Performance.get(Performance.environment_id == env_id)
+            stored.value = performance
+            stored.cpu_usage = cpu_usage
+            stored.save()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            Performance(
+                environment_id=env_id,
+                value=performance,
+                cpu_usage=cpu_usage
+            ).save()
 
 
 class DockerWhitelist(BaseModel):
     repository = CharField(primary_key=True)
 
+    class Meta:
+        database = db
+
+
+class ACLAllowedNodes(BaseModel):
+    node_name = CharField(null=True)
+    node_id = CharField(null=False, index=True, unique=True)
+
+    def to_dict(self):
+        return {
+            'node_name': self.node_name,
+            'node_id': self.node_id
+        }
+
+    class Meta:
+        database = db
+
+
+class ACLDeniedNodes(BaseModel):
+    node_name = CharField(null=True)
+    node_id = CharField(null=False, index=True, unique=True)
+
+    def to_dict(self):
+        return {
+            'node_name': self.node_name,
+            'node_id': self.node_id
+        }
+
+    class Meta:
+        database = db
 
 ##################
 # MESSAGE MODELS #
@@ -501,6 +619,7 @@ class Actor(enum.Enum):
 
 class ActorField(StringEnumField):
     """ Database field that stores Actor objects as strings. """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, enum_type=Actor, **kwargs)
 
@@ -519,6 +638,9 @@ class NetworkMessage(BaseModel):
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
 
+    class Meta:
+        database = db
+
     def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
@@ -529,6 +651,9 @@ class QueuedMessage(BaseModel):
     msg_version = VersionField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+
+    class Meta:
+        database = db
 
     @classmethod
     def from_message(cls, node_id: str, msg: message.base.Message):
@@ -573,6 +698,9 @@ class CachedNode(BaseModel):
     node = CharField(null=False, index=True, unique=True)
     node_field = NodeField(null=False)
 
+    class Meta:
+        database = db
+
     def __str__(self):
         # pylint: disable=no-member
         node_name = self.node_field.node_name if self.node_field else ''
@@ -586,6 +714,93 @@ class CachedNode(BaseModel):
             f"<{self.__class__.__module__}.{self.__class__.__qualname__}:"
             f" {self}>"
         )
+
+####################
+# REQUESTOR MODELS #
+####################
+
+
+class RequestedTask(BaseModel):
+    task_id = CharField(primary_key=True)
+    app_id = CharField(null=False)
+    name = CharField(null=True)
+    status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
+
+    env_id = CharField(null=True)
+    prerequisites = JsonField(null=False, default=default_dict())
+
+    task_timeout = IntegerField(null=False)  # milliseconds
+    subtask_timeout = IntegerField(null=False)  # milliseconds
+    start_time = UTCDateTimeField(null=True)
+
+    max_price_per_hour = IntegerField(null=False)
+
+    max_subtasks = IntegerField(null=False)
+    concent_enabled = BooleanField(null=False, default=False)
+    mask = BlobField(null=False, default=masking.Mask().to_bytes())
+    output_directory = CharField(null=False)
+    app_params = JsonField(null=False, default=default_dict())
+
+    class Meta:
+        database = db
+
+    @property
+    def deadline(self) -> Optional[datetime.datetime]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return self.start_time + \
+            datetime.timedelta(milliseconds=self.task_timeout)
+
+    def estimated_fee(self) -> float:
+        return self.max_price_per_hour * (
+            self.subtask_timeout
+            * self.max_subtasks
+            / 60 / 1000  # subtask timeout is miliseconds, convert to hour
+        )
+
+
+class ComputingNode(BaseModel):
+    node_id = CharField(primary_key=True)
+    name = CharField(null=False)
+
+    class Meta:
+        database = db
+
+
+class RequestedSubtask(BaseModel):
+    task = ForeignKeyField(RequestedTask, null=False, related_name='subtasks')
+    subtask_id = CharField(null=False)
+    status = StringEnumField(enum_type=taskstate.SubtaskStatus, null=False)
+
+    payload = JsonField(null=False, default=default_dict())
+    inputs = JsonField(null=False, default=default_list())
+    start_time = UTCDateTimeField(null=True)
+    price = IntegerField(null=True)
+    computing_node = ForeignKeyField(
+        ComputingNode, null=True, related_name='subtasks')
+
+    @property
+    def deadline(self) -> Optional[datetime.datetime]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return self.start_time + datetime.timedelta(
+            milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task', 'subtask_id')
+
+
+class QueuedVerification(BaseModel):
+    task_id = CharField(null=False)
+    subtask_id = CharField(null=False)
+    priority = IntegerField(null=True, index=True)
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task_id', 'subtask_id')
 
 
 def collect_db_models(module: str = __name__):
