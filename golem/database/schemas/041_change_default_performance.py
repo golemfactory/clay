@@ -1,19 +1,17 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
-from golem.model import Performance
 import peewee as pw
+from golem.model import Performance
 
 SCHEMA_VERSION = 41
 
 
 def migrate(migrator, database, fake=False, **kwargs):
     database.truncate_table(Performance)
-    migrator.remove_fields('performance', 'cpu_usage')
-    migrator.add_fields('performance', cpu_usage=pw.IntegerField(
+    migrator.change_columns(Performance, cpu_usage=pw.IntegerField(
         default=Performance.DEFAULT_CPU_USAGE))
 
 
 def rollback(migrator, database, fake=False, **kwargs):
     database.truncate_table(Performance)
-    migrator.remove_fields('performance', 'cpu_usage')
-    migrator.add_fields('performance', cpu_usage=pw.IntegerField(default=0))
+    migrator.change_columns(Performance, cpu_usage=pw.IntegerField(default=0))
