@@ -69,7 +69,6 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual((0, 0, 0, 0), rank.provider_efficacy.vector)
 
 
-
 class TestGlobalRank(DatabaseFixture):
     def test_default_fields(self):
         r = m.GlobalRank()
