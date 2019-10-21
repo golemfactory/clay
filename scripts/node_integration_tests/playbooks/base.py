@@ -100,7 +100,7 @@ class NodeTestPlaybook:
         self.reconnect_countdown = self.RECONNECT_COUNTDOWN_INITIAL
         self.has_requested_eth: bool = False
         self.retry_counter = 0
-        self.retry_limit = 20
+        self.retry_limit = 128
 
         self.start_nodes()
         self.started = True
@@ -309,7 +309,6 @@ class NodeTestPlaybook:
     def step_get_task_id(self, node_id: NodeId = NodeId.requestor):
 
         def on_success(result):
-            print('RESULT:', result)
             tasks = set(map(lambda r: r['id'], result))
             new_tasks = tasks - self.known_tasks
             if len(new_tasks) != 1:
