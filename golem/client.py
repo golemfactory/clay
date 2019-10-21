@@ -851,7 +851,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
-            task_dict = {'id': task.task_id, 'status': task.status.name}
+            task_dict = {'id': task.task_id, 'status': task.status.value}
         else:
             # OLD taskmanager
             logger.debug('get_task(task_id=%r) - OLD', task_id)
