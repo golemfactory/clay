@@ -9,12 +9,12 @@ logger = logging.getLogger(__name__)
 
 class FFmpegVerifier(CoreVerifier):
     def __init__(self, verification_data):
-        super(FFmpegVerifier, self).__init__()
+        super(FFmpegVerifier, self).__init__(verification_data)
         self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING
 
     def simple_verification(self, verification_data):
-        verdict = super().simple_verification(verification_data)
+        verdict = super().simple_verification()
 
         # TODO more verification
 

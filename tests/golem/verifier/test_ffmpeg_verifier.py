@@ -25,14 +25,16 @@ def results(result_file):
 @fixture
 def verification_data(results):
     return {
-        "results": results
+        "results": results,
+        "subtask_info": {}
     }
 
 
 @fixture
 def empty_results():
     return {
-        "results": []
+        "results": [],
+        "subtask_info": {}
     }
 
 
