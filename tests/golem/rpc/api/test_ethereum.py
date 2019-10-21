@@ -100,9 +100,7 @@ class TestGetOperations(testutils.DatabaseFixture, EthereumBase):
         EthereumBase.setUp(self)
 
     def test_one(self):
-        instance = model_factory.TaskPayment()
-        instance.wallet_operation.save(force_insert=True)
-        instance.save(force_insert=True)
+        _ = model_factory.TaskPayment()
         count, _result = self.ets_provider.get_operations(operation_type=None)
         self.assertEqual(
             count,
@@ -110,8 +108,7 @@ class TestGetOperations(testutils.DatabaseFixture, EthereumBase):
         )
 
     def test_wallet_operation(self):
-        instance = model_factory.WalletOperation()
-        instance.save(force_insert=True)
+        _ = model_factory.WalletOperation()
         count, _result = self.ets_provider.get_operations(operation_type=None)
         self.assertEqual(
             count,

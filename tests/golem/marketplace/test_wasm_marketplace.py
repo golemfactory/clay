@@ -42,30 +42,32 @@ class TestOfferChoice(testutils.DatabaseFixture):
             1.0
         )
 
-    def test_resolution_length_correct(self):
+    def _resolve_task_offers(self):
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
         RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
         self.assertEqual(
             RequestorWasmMarketStrategy.get_task_offer_count(self.TASK_1), 2)
-        result = RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_1)
+        return RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_1)
+
+    def test_resolution_length_correct(self):
+        result = self._resolve_task_offers()
         self.assertEqual(len(result), 2)
 
     def test_adjusted_prices(self):
-        RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
-        RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
-        self.assertEqual(
-            RequestorWasmMarketStrategy.get_task_offer_count(self.TASK_1), 2)
-        result = RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_1)
+        result = self._resolve_task_offers()
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].provider_id, self.PROVIDER_2)
 
     def test_usage_adjustment(self):
-        RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_1)
-        RequestorWasmMarketStrategy.add(self.TASK_1, self.mock_offer_2)
+        result = self._resolve_task_offers()
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_task_offer_count(self.TASK_1), 2)
-        result = RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_1)
-
+            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, -1),
+            0.00125
+        )
+        self.assertEqual(
+            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_2, -1),
+            0.0008
+        )
         RequestorWasmMarketStrategy.report_subtask_usages(
             self.TASK_1, [(self.PROVIDER_1, self.SUBTASK_1, 5.0),
                           (self.PROVIDER_2, self.SUBTASK_2, 8.0)]
@@ -79,3 +81,8 @@ class TestOfferChoice(testutils.DatabaseFixture):
         result = RequestorWasmMarketStrategy.resolve_task_offers(self.TASK_2)
         self.assertEqual(len(result), 2)
         self.assertEqual(result[0].provider_id, self.PROVIDER_1)
+
+        self.assertGreater(
+            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_2, -1),
+            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, -1),
+        )
