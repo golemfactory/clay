@@ -46,7 +46,7 @@ from golem.environments.environment import (
 )
 from golem.envs import Environment as NewEnv
 from golem.envs.default import (
-    register_built_in_environments,
+    register_environments,
     register_built_in_repositories,
 )
 from golem.marketplace import ProviderPricing
@@ -126,7 +126,7 @@ class TaskServer(
 
         new_env_manager = EnvironmentManager()
         register_built_in_repositories()
-        register_built_in_environments(
+        register_environments(
             work_dir=self.get_task_computer_root(),
             env_manager=new_env_manager)
 

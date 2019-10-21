@@ -53,7 +53,7 @@ def register_built_in_repositories():
         Whitelist.add(DOCKER_REPOSITORY)
 
 
-def register_built_in_environments(
+def register_environments(
         work_dir: str,
         env_manager: EnvironmentManager
 ) -> None:
