@@ -1,8 +1,9 @@
-from golem.apps.manager import (
-    AppManager,
+from golem.apps.manager import AppManager
+from golem.apps import (
+    AppDefinition,
     load_app_from_json_file,
     load_apps_from_dir,
-    AppDefinition)
+)
 from golem.testutils import TempDirFixture, DatabaseFixture
 
 APP_DEF = AppDefinition(

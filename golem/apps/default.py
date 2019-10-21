@@ -5,8 +5,7 @@ from typing import List
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from pathvalidate import sanitize_filename
 
-from golem.apps import AppId
-from golem.apps.manager import AppDefinition, save_app_to_json_file
+from golem.apps import AppId, AppDefinition, save_app_to_json_file
 
 logger = logging.getLogger(__name__)
 

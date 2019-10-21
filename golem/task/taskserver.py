@@ -29,6 +29,7 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
+import golem.apps
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem import constants as gconst
@@ -133,7 +134,7 @@ class TaskServer(
         built_in_apps = save_built_in_app_definitions(app_dir)
 
         app_mgr = app_manager.AppManager()
-        for app_def in app_manager.load_apps_from_dir(app_dir):
+        for app_def in golem.apps.load_apps_from_dir(app_dir):
             app_mgr.register_app(app_def)
         for app_id in built_in_apps:
             app_mgr.set_enabled(app_id, True)
