@@ -190,8 +190,9 @@ class ResourceHandshakeSessionMixin:
     # ########################
 
     def _handshake_error(self, key_id, error):
-        logger.info("Resource handshake error (%r): %r",
+        logger.info("Resource handshake error (%r): %s",
                     short_node_id(key_id), error)
+        logger.debug("%r", error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
         self.dropped()

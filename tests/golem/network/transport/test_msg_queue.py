@@ -1,5 +1,7 @@
 import datetime
+import sqlite3
 import uuid
+from unittest import mock
 
 from dateutil.relativedelta import relativedelta
 from freezegun import freeze_time
@@ -9,6 +11,7 @@ from golem_messages.factories import tasks as tasks_factories
 from golem import model
 from golem import testutils
 from golem.network.transport import msg_queue
+
 
 class TestMsqQueue(testutils.DatabaseFixture):
     def setUp(self):
@@ -53,6 +56,16 @@ class TestMsqQueue(testutils.DatabaseFixture):
                 node_id3,
             ]),
         )
+
+    @mock.patch(
+        'peewee.QueryResultWrapper.iterate',
+        side_effect=sqlite3.ProgrammingError,
+    )
+    def test_waiting_programming_error(self, *_args):
+        msg_queue.put(self.node_id, self.msg)
+        # Error should be handled cleanly inside waiting()
+        waiting = frozenset(msg_queue.waiting())
+        self.assertEqual(waiting, set())
 
     def test_sweep(self):
         def put_explicit_now():
