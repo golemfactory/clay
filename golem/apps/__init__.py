@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from pathlib import Path
 from typing import Dict, Any, Iterator
 
@@ -6,8 +7,7 @@ from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
 
-from golem.apps import logger
-from golem.apps.manager import logger
+logger = logging.getLogger(__name__)
 
 AppId = str
 
