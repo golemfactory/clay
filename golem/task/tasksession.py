@@ -23,7 +23,7 @@ from golem.core import common
 from golem.core import deferred
 from golem.core import variables
 from golem.core.common import deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future
+from golem.core.deferred import deferred_from_future
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.marketplace import (
@@ -688,7 +688,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _react_to_cannot_compute_task(self, msg):
-        if not self.check_provider_for_subtask(msg.subtask_id):
+        if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
@@ -731,8 +731,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.verify_owners(msg, my_role=Actor.Requestor):
             return
 
-        subtask_id = msg.subtask_id
-        if not self.check_provider_for_subtask(subtask_id):
+        if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
@@ -760,7 +759,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 .ResourcesFailure,
             )
             self.task_manager.task_computation_failure(
-                subtask_id,
+                msg.subtask_id,
                 'Error downloading task result'
             )
 
@@ -918,7 +917,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_task_failure(self, msg):
-        if self.check_provider_for_subtask(msg.subtask_id):
+        if self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
@@ -1066,11 +1065,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.port
         )
 
-    def check_provider_for_subtask(self, subtask_id) -> bool:
+    def check_provider_for_subtask(self, task_id, subtask_id) -> bool:
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         if not node_id:
             node = self.requested_task_manager.get_computing_node_for_subtask(
-                subtask_id)
+                task_id, subtask_id)
             if node:
                 node_id = node.node_id
         if node_id != self.key_id:

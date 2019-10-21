@@ -52,9 +52,14 @@ class CreateTaskParams:
             golem_params: Dict[str, Any],
             app_params: Optional[Dict[str, Any]] = None
     ) -> Tuple['CreateTaskParams', Dict[str, Any]]:
+        # FIXME: integration tests workaround
         if not app_params:
             app_params = golem_params['options']
             app_params['resources'] = golem_params['resources']
+        # FIXME: integration tests workaround
+        golem_params['output_directory'] = golem_params.get(
+            'output_directory',
+            app_params.get('output_path'))
 
         properties = {
             'app_id': golem_params['app_id'],
@@ -389,9 +394,20 @@ class RequestedTaskManager:
                 if not self._get_pending_subtasks(task_id):
                     task.status = TaskStatus.finished
                     task.save()
+                    self._move_task_results(task_id, task.output_directory)
                     await self._shutdown_app_client(task.app_id)
 
         return result
+
+    def _move_task_results(self, task_id: TaskId, user_output_dir: Path):
+        user_output_dir = Path(user_output_dir)
+        user_output_dir.mkdir(parents=True, exist_ok=True)
+        task_outputs_dir = self._task_dir(task_id).task_outputs_dir
+
+        logger.warning(">> moving %r", task_outputs_dir)
+        for entry in task_outputs_dir.iterdir():
+            logger.warning(">> moving %r to %r", entry, user_output_dir / entry.name)
+            entry.resolve().replace(user_output_dir / entry.name)
 
     async def abort_task(self, task_id):
         task = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -437,12 +453,33 @@ class RequestedTaskManager:
         return [subtask.subtask_id for subtask in subtasks]
 
     @staticmethod
-    def get_computing_node_for_subtask(
+    def get_requested_task_subtasks(task_id: TaskId) -> List[RequestedSubtask]:
+        return RequestedSubtask.select() \
+            .where(RequestedSubtask.task == task_id) \
+            .execute()
+
+    @staticmethod
+    def get_requested_task_subtask(
+            task_id: TaskId,
             subtask_id: SubtaskId
+    ) -> Optional[RequestedSubtask]:
+        try:
+            return RequestedSubtask.get(
+                RequestedSubtask.task == task_id,
+                RequestedSubtask.subtask_id == subtask_id)
+        except RequestedSubtask.DoesNotExist:
+            return None
+
+    @staticmethod
+    def get_computing_node_for_subtask(
+            task_id: TaskId,
+            subtask_id: SubtaskId,
     ) -> Optional[ComputingNode]:
         return ComputingNode.select() \
             .join(RequestedSubtask) \
-            .where(RequestedSubtask.subtask_id == subtask_id) \
+            .where(
+                RequestedSubtask.task == task_id,
+                RequestedSubtask.subtask_id == subtask_id) \
             .first()
 
     async def restart_task(self, task_id: TaskId) -> None:

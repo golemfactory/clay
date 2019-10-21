@@ -166,8 +166,7 @@ _TASK_SETTINGS = {
     },
     'task_api_blender': {
         'app_id': 'c67dbee6858c20158f31700dacc1c1ad',
-        'name': 'test Blender task',
-        'output_directory': '',
+        'name': '',  # leave empty: Task API output does not contain this name
         'resources': [],
         'max_price_per_hour': str(50 * 10 ** 18),
         'max_subtasks': 1,
@@ -175,6 +174,7 @@ _TASK_SETTINGS = {
         'task_timeout': 600000,  # 00:10:00
         'subtask_timeout': 590000,  # 00:09:50
         'options': {
+            'output_path': '',
             'resolution': [320, 240],
             'frames': '1',
             'format': 'PNG',
