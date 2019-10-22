@@ -29,6 +29,7 @@ from golem.envs import (
     RuntimePayload
 )
 from golem.envs import BenchmarkResult
+from golem.model import Performance
 from golem.task.task_api import TaskApiPayloadBuilder
 
 logger = logging.getLogger(__name__)
@@ -257,7 +258,8 @@ class LocalhostEnvironment(EnvironmentBase):
         return defer.succeed(None)
 
     def run_benchmark(self) -> defer.Deferred:
-        return defer.succeed(BenchmarkResult(1.0, 1))
+        return defer.succeed(
+            BenchmarkResult(1.0, Performance.DEFAULT_CPU_USAGE))
 
     def metadata(self) -> EnvMetadata:
         return EnvMetadata(

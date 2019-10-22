@@ -549,10 +549,12 @@ class TaskPreset(BaseModel):
 
 class Performance(BaseModel):
     """ Keeps information about benchmark performance """
+    DEFAULT_CPU_USAGE = 1_000_000_000   # 1 second in nanoseconds
+
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
-    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
+    cpu_usage = IntegerField(default=DEFAULT_CPU_USAGE)
 
     class Meta:
         database = db
