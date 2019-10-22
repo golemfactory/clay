@@ -20,7 +20,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import KeysAuth
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
-from golem.docker.task_thread import DockerTaskThread
+from golem.docker.task_thread import DockerTaskThread, DockerDirMapping
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskmanager import TaskManager
@@ -212,17 +212,20 @@ class TestTaskIntegration(TestDatabaseWithReactor):
             shutil.copy(res, resources_dir)
 
     @staticmethod
-    def _create_docker_dirs(root_dir):
+    def _create_docker_dirs(root_dir) -> DockerDirMapping:
 
         resources_dir = os.path.join(root_dir, "resources")
-        work_dir = os.path.join(root_dir, "work")
-        output_dir = os.path.join(root_dir, "output")
 
-        dirs = [resources_dir, work_dir, output_dir]
+        dir_mapping = DockerDirMapping.generate(
+            Path(resources_dir),
+            Path(root_dir))
 
-        for docker_dir in dirs:
-            os.makedirs(docker_dir, exist_ok=True)
-        return dirs
+        os.makedirs(dir_mapping.output, exist_ok=True)
+        os.makedirs(dir_mapping.work, exist_ok=True)
+        os.makedirs(dir_mapping.resources, exist_ok=True)
+        os.makedirs(dir_mapping.stats, exist_ok=True)
+            
+        return dir_mapping
 
     @classmethod
     def _log_docker_logs(cls, dtt):
@@ -247,19 +250,13 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
     def _run_test_job(self, task, root_dir, params):
 
-        [resources_dir, work_dir, output_dir] = self._create_docker_dirs(
-            root_dir)
+        dir_mapping = self._create_docker_dirs(root_dir)
 
-        self._copy_resources(task, resources_dir)
+        self._copy_resources(task, dir_mapping.resources)
 
         # Run docker job
         env = task.ENVIRONMENT_CLASS
         image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
-
-        dir_mapping = DockerTaskThread.specify_dir_mapping(
-            output=output_dir, temporary=work_dir,
-            resources=resources_dir, logs=work_dir, work=work_dir,
-            stats="/tmp/stats")
 
         dtt = DockerTaskThread(docker_images=[image],
                                extra_data=params,
@@ -271,11 +268,11 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         dtt.run()
 
         logger.info("Content of docker resources "
-                    "directory: {}".format(os.listdir(resources_dir)))
+                    "directory: {}".format(os.listdir(dir_mapping.resources)))
         logger.info("Content of docker work "
-                    "directory: {}".format(os.listdir(work_dir)))
+                    "directory: {}".format(os.listdir(dir_mapping.work)))
         logger.info("Content of docker output "
-                    "directory: {}".format(os.listdir(output_dir)))
+                    "directory: {}".format(os.listdir(dir_mapping.output)))
 
         self._log_docker_logs(dtt)
 
