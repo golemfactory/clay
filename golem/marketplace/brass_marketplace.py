@@ -7,6 +7,7 @@ from golem.marketplace import (Offer, ProviderMarketStrategy, ProviderPricing)
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 from golem.task import timer
+from golem.task.taskkeeper import compute_subtask_value
 import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
@@ -60,7 +61,7 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     ) -> Callable[[int], int]:
 
         def payment_computer(price: int):
-            return price * task.header.subtask_timeout
+            return compute_subtask_value(price, task.header.subtask_timeout)
 
         return payment_computer
 
