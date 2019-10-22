@@ -377,7 +377,7 @@ class RequestedTaskManager:
             result, _ = VerifyResult.FAILURE, str(e)
 
         ProviderComputeTimers.finish(subtask_id)
-        if result.is_failure():
+        if result in (VerifyResult.INCONCLUSIVE, VerifyResult.FAILURE):
             subtask.status = SubtaskStatus.failure
             subtask.save()
         elif result is VerifyResult.SUCCESS:
