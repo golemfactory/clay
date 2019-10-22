@@ -26,11 +26,13 @@ class TestPayment(DatabaseFixture):
     def test_payment_big_value(self):
         value = 10000 * 10**18
         self.assertGreater(value, 2**64)
-        payment = m_factory.TaskPayment(
-            value=value,
+        m_factory.TaskPayment(
+            expected_amount=value
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
+        self.assertEqual(
+            m.TaskPayment.select().first().expected_amount,
+            value
+        )
 
 
 class TestLocalRank(DatabaseFixture):
@@ -67,7 +69,6 @@ class TestLocalRank(DatabaseFixture):
         # Create new LocalRank database entry. It should have default values.
         rank, _ = m.LocalRank.get_or_create(node_id="blaa_node2")
         self.assertEqual((0, 0, 0, 0), rank.provider_efficacy.vector)
-
 
 
 class TestGlobalRank(DatabaseFixture):
@@ -155,3 +156,24 @@ class TestPerformance(DatabaseFixture):
         stored = m.Performance.get(m.Performance.environment_id == env_id)
         self.assertEqual(stored.value, 200.0)
         self.assertEqual(stored.cpu_usage, 2000)
+
+
+class TestUsageFactor(DatabaseFixture):
+    def test_factory(self):
+        uf = m_factory.UsageFactor()
+        self.assertIsInstance(uf.provider_node, m.ComputingNode)
+        self.assertGreater(uf.usage_factor, 0.0)
+
+    def test_create(self):
+        USAGE_FACTOR = 42.0
+        node = m_factory.ComputingNode()
+        m.UsageFactor.create(provider_node=node, usage_factor=USAGE_FACTOR)
+        uf = m.UsageFactor.select().where(
+            m.UsageFactor.provider_node_id == node.node_id
+        ).first()
+        self.assertEqual(uf.usage_factor, USAGE_FACTOR)
+
+    def test_default(self):
+        node = m_factory.ComputingNode()
+        uf = m.UsageFactor.create(provider_node=node)
+        self.assertEqual(uf.usage_factor, 1.0)

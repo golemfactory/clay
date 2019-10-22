@@ -306,7 +306,7 @@ class WalletOperation(BaseModel):
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"WalletOperation. tx_hash={self.tx_hash},"
             f" direction={self.direction}, type={self.operation_type},"
@@ -373,7 +373,7 @@ class TaskPayment(BaseModel):
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"TaskPayment. accepted_ts={self.accepted_ts},"
             f" task={self.task}, subtask={self.subtask},"
@@ -779,6 +779,14 @@ class ComputingNode(BaseModel):
     class Meta:
         database = db
 
+    def __repr__(self):
+        return (
+            f"ComputingNode <"
+            f"node_id={self.node_id}, "
+            f"name={self.name}"
+            f">"
+        )
+
 
 class RequestedSubtask(BaseModel):
     task = ForeignKeyField(RequestedTask, null=False, related_name='subtasks')
@@ -813,6 +821,20 @@ class QueuedVerification(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_id', 'subtask_id')
+
+
+class UsageFactor(BaseModel):
+    provider_node = ForeignKeyField(
+        ComputingNode, null=False, unique=True, related_name='usage_factor')
+    usage_factor = FloatField(default=1.0)
+
+    def __repr__(self):
+        return (
+            f"UsageFactor <"
+            f"provider={self.provider_node_id}, "
+            f"usage_factor={self.usage_factor}"
+            f">"
+        )
 
 
 def collect_db_models(module: str = __name__):
