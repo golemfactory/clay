@@ -51,9 +51,9 @@ class TestRequestorMarketStrategy(testutils.DatabaseFixture):
         market_strategy = RequestorBrassMarketStrategy
         task = Mock()
         task.header = Mock()
-        task.header.subtask_timeout = 10
+        task.header.subtask_timeout = 360
         payment_computer = market_strategy.get_payment_computer(task, None)
-        self.assertEqual(payment_computer(1), 10)
+        self.assertEqual(payment_computer(100), 10)  # price * timeout / 3600
 
     def test_wasm_payment_computer(self):
         task = Mock()
