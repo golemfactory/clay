@@ -1,3 +1,4 @@
+import shutil
 from copy import copy
 import hashlib
 import json
@@ -208,5 +209,8 @@ class AppBenchmarkManager:
             shared_dir=shared_dir
         )
 
-        app_client = await ProviderAppClient.create(task_api_service)
-        return await app_client.run_benchmark()
+        try:
+            app_client = await ProviderAppClient.create(task_api_service)
+            return await app_client.run_benchmark()
+        finally:
+            shutil.rmtree(shared_dir)

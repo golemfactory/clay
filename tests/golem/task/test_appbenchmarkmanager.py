@@ -75,14 +75,10 @@ class TestAppBenchmarkManager:
         self.app_benchmark_manager._run_benchmark = AsyncMock(return_value=10.)
         self.app_benchmark_manager._computing = True
 
-        try:
+        with pytest.raises(ComputationInProgress):
             await self.app_benchmark_manager.get_benchmark_score(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
-        except ComputationInProgress:
-            pass
-        else:
-            raise RuntimeError("Computation should have failed")
 
         assert not self.app_benchmark_manager._run_benchmark.called
 
@@ -100,7 +96,7 @@ class TestAppBenchmarkManager:
 
                 assert create.called
                 assert create.run_benchmark.called
-                assert shared_dir.exists()
+                assert not shared_dir.exists()
 
     def test_remove_benchmark_scores(self):
         app_benchmark = AppBenchmark(hash=PREREQ_HASH, score=1000.)

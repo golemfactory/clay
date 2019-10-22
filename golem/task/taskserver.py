@@ -422,8 +422,11 @@ class TaskServer(
                         theader.environment_prerequisites)
                     app_benchmark = yield Deferred.fromFuture(
                         asyncio.ensure_future(future))
-                except ComputationInProgress as e:
-                    logger.debug(f"Not requesting task={theader.task_id}: {e}")
+                except ComputationInProgress as error:
+                    logger.debug(
+                        "Not requesting task_id=%s: %r",
+                        theader.task_id,
+                        error)
                     return None
                 benchmark_score = app_benchmark.score
                 benchmark_cpu_usage = app_benchmark.cpu_usage
