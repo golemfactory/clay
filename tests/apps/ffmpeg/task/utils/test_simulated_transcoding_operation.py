@@ -49,7 +49,7 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
         )
 
     @mock.patch(
-        'golem.testutils.TestTaskIntegration.execute_task',
+        'golem.testutils_app_integration.TestTaskIntegration.execute_task',
         side_effect=BaseException
     )
     def test_exceptions_are_collected_but_not_silenced(self, _executor):
