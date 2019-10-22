@@ -1590,12 +1590,13 @@ class MaskUpdateService(LoopingCallService):
         started_tasks = requested_task_manager.get_started_tasks()
         # Using list() because tasks could be changed by another thread
         for db_task in list(started_tasks):
+            elapsed_seconds = db_task.elapsed_seconds
+            if elapsed_seconds is None or elapsed_seconds < self._interval:
+                continue
             has_subtask = yield deferred_from_future(
                 requested_task_manager.has_pending_subtasks(db_task.task_id)
             )
             if not has_subtask:
-                continue
-            if db_task.elapsed_seconds < self._interval:
                 continue
 
             requested_task_manager.decrease_task_mask(
