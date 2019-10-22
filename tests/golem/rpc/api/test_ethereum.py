@@ -13,12 +13,13 @@ from tests.factories import model as model_factory
 
 class EthereumBase(TestCase):
     def setUp(self):
+        super().setUp()
         self.maxDiff = None
         self.ets = mock.Mock(spec_set=TransactionSystem)
         self.ets_provider = ETSProvider(self.ets)
 
 
-class TestEthereum(EthereumBase):
+class TestEthereum(EthereumBase, testutils.DatabaseFixture):
     def test_get_gas_price(self):
         test_gas_price = 1234
         test_price_limit = 12345
@@ -94,11 +95,7 @@ class TestEthereum(EthereumBase):
         )
 
 
-class TestGetOperations(testutils.DatabaseFixture, EthereumBase):
-    def setUp(self):
-        testutils.DatabaseFixture.setUp(self)
-        EthereumBase.setUp(self)
-
+class TestGetOperations(EthereumBase, testutils.DatabaseFixture):
     def test_one(self):
         _ = model_factory.TaskPayment()
         count, _result = self.ets_provider.get_operations(operation_type=None)
