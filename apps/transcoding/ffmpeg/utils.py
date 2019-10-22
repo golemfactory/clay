@@ -13,7 +13,7 @@ from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerTaskThread, DockerBind
+from golem.docker.task_thread import DockerTaskThread, DockerBind, DockerDirMapping
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
@@ -118,12 +118,14 @@ class StreamOperator:
             'work': os.path.join(task_dir, 'merge', 'work'),
             'output': os.path.join(task_dir, 'merge', 'output'),
             'logs': os.path.join(task_dir, 'merge', 'output'),
+            'stats': os.path.join(task_dir, 'merge', 'stats'),
         }
 
         try:
             os.makedirs(host_dirs['resources'])
             os.makedirs(host_dirs['output'])
             os.makedirs(host_dirs['work'])
+            os.makedirs(host_dirs['stats'])
         except OSError:
             raise ffmpegMergeReplaceError(
                 "Failed to prepare video merge directory structure")
@@ -242,21 +244,18 @@ class StreamOperator:
     def _get_dir_mapping(dir_manager: DirManager, task_id: str):
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         resources_task_dir = dir_manager.get_task_resource_dir(task_id)
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
 
-        return DockerTaskThread. \
-            specify_dir_mapping(output=task_output_dir,
-                                temporary=tmp_task_dir,
-                                resources=resources_task_dir,
-                                logs=tmp_task_dir,
-                                work=tmp_task_dir)
+        return DockerDirMapping.generate(
+            Path(resources_task_dir),
+            Path(tmp_task_dir))
 
     @staticmethod
     def _specify_dir_mapping(output, temporary, resources, logs, work):
         return DockerTaskThread.specify_dir_mapping(output=output,
                                                     temporary=temporary,
                                                     resources=resources,
-                                                    logs=logs, work=work)
+                                                    logs=logs, work=work,
+                                                    stats=logs)
 
     def get_metadata(self,
                      input_files: List[str],
@@ -294,7 +293,8 @@ class StreamOperator:
             temporary=work_dir,
             resources=resources_dir,
             logs=work_dir,
-            work=work_dir)
+            work=work_dir,
+            stats=work_dir)
 
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
