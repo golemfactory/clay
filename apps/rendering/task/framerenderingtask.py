@@ -286,11 +286,11 @@ class FrameRenderingTask(RenderingTask):
             self._update_frame_status(frame)
 
     def _update_frame_status(self, frame):
-        frame_key = to_unicode(frame)
+        frame_key = str(frame)
         state = self.frames_state[frame_key]
         subtask_ids = self.frames_subtasks[frame_key]
 
-        parts = max(1, int(self.get_total_tasks() / len(self.frames)))
+        parts = max(1, self.get_total_tasks() // len(self.frames))
         counters = defaultdict(lambda: 0, dict())
 
         # Count the number of occurrences of each subtask state
@@ -298,10 +298,7 @@ class FrameRenderingTask(RenderingTask):
             subtask = self.subtasks_given[subtask_id]
             counters[subtask['status']] += 1
 
-        # Count statuses different from 'finished' and 'failure'
-        computing = len([x for x in counters.keys()
-                         if x not in [SubtaskStatus.finished,
-                                      SubtaskStatus.failure]])
+        computing = len([x for x in counters.keys() if x.is_active()])
 
         # Finished if at least n subtasks >= parts were finished
         if counters[SubtaskStatus.finished] >= parts:
