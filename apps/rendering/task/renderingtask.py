@@ -1,17 +1,15 @@
 import logging
 import math
 import os
-from typing import Type, TYPE_CHECKING
+from typing import cast, Type, TYPE_CHECKING
 
 from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_opencv_image_error
-from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem.verifier.rendering_verifier import RenderingVerifier
-from golem.core.common import get_golem_path
-from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.core.simpleexccmd import is_windows
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
@@ -26,6 +24,9 @@ SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
+# Theoretically it should be 8, but there are some unsolved edge cases,
+# so 10 should be safe.
+MIN_PIXELS_PER_SUBTASK = 10
 
 
 logger = logging.getLogger("apps.rendering")
@@ -244,24 +245,8 @@ class RenderingTaskBuilderError(Exception):
     pass
 
 
-def _calculate_subtasks_count(
-        subtasks_count: int,
-        optimize_total: bool,
-        defaults: RendererDefaults) -> int:
-    if optimize_total:
-        return defaults.default_subtasks
-
-    if defaults.min_subtasks <= subtasks_count <= defaults.max_subtasks:
-        return subtasks_count
-
-    logger.warning("Cannot set total subtasks to %s. Changing to %s",
-                   subtasks_count, defaults.default_subtasks)
-    return defaults.default_subtasks
-
-
 class RenderingTaskBuilder(CoreTaskBuilder):
-    TASK_CLASS = RenderingTask
-    DEFAULTS = RendererDefaults
+    TASK_CLASS: Type[RenderingTask]
 
     @staticmethod
     def _scene_file(type, resources):
@@ -277,7 +262,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
 
         dictionary = parent.build_dictionary(definition)
         dictionary['options']['format'] = definition.output_format
@@ -287,15 +272,12 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_minimal_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         resources = dictionary['resources']
 
-        definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.subtasks_count = _calculate_subtasks_count(
-            subtasks_count=int(dictionary['subtasks_count']),
-            optimize_total=definition.optimize_total,
-            defaults=cls.DEFAULTS(),
-        )
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_minimal_definition(task_type, dictionary))
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
@@ -308,12 +290,19 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type, dictionary) \
             -> 'RenderingTaskDefinition':
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         options = dictionary['options']
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_full_definition(task_type, dictionary))
         definition.output_format = options['format'].upper()
-        definition.resolution = [int(val) for val in options['resolution']]
+
+        definition.resolution = \
+            [int(val) for val in dictionary['options']['resolution']]
+        if any(dim < MIN_PIXELS_PER_SUBTASK for dim in definition.resolution):
+            raise ValueError("resolution too small")
+
         if definition.timeout < MIN_TIMEOUT:
             logger.warning(
                 "Timeout %d too short for this task. "
@@ -334,7 +323,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         path = parent.get_output_path(dictionary, definition)
 
         return '{}.{}'.format(path, dictionary['options']['format'])
