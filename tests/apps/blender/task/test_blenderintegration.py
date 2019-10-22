@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 class TestBlenderIntegration(TestTaskIntegration):
 
     @classmethod
-    def _get_test_scene(cls) -> pathlib.Path:
+    def _get_test_scene(cls) -> str:
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
         return str(scene_file)
@@ -35,9 +35,9 @@ class TestBlenderIntegration(TestTaskIntegration):
             resolution: List[int],
             samples: int = 150,
             subtasks_count: int = 2,
-            output_path: str = None,
-            output_format: str = "PNG",
-            frames: List[int] = None
+            output_path=None,
+            output_format="PNG",
+            frames=None
     ) -> dict:
 
         if output_path is None:
@@ -91,18 +91,20 @@ class TestBlenderIntegration(TestTaskIntegration):
             self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
     def test_full_task_flow_multiframes(self):
-        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
-                                         resolution=[400, 400],
-                                         subtasks_count=2,
-                                         frames=[1, 2])
+        task_def = self._task_dictionary(
+            scene_file=self._get_chessboard_scene(),
+            resolution=[400, 400],
+            subtasks_count=2,
+            frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)
 
     def test_full_task_flow_singleframe(self):
-        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
-                                         resolution=[400, 400],
-                                         subtasks_count=3)
+        task_def = self._task_dictionary(
+            scene_file=self._get_chessboard_scene(),
+            resolution=[400, 400],
+            subtasks_count=3)
 
         task: Task = self.execute_task(task_def)
 
@@ -110,19 +112,21 @@ class TestBlenderIntegration(TestTaskIntegration):
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
     def test_failing_case_uneven_divisions(self):
-        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
-                                         resolution=[400, 400],
-                                         subtasks_count=6,
-                                         frames=[1, 2])
+        task_def = self._task_dictionary(
+            scene_file=self._get_chessboard_scene(),
+            resolution=[400, 400],
+            subtasks_count=6,
+            frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)
 
     def test_failing_case_one_subtask(self):
-        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
-                                         resolution=[400, 400],
-                                         subtasks_count=1,
-                                         frames=[1, 2])
+        task_def = self._task_dictionary(
+            scene_file=self._get_chessboard_scene(),
+            resolution=[400, 400],
+            subtasks_count=1,
+            frames=[1, 2])
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existance(task)

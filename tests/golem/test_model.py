@@ -24,8 +24,8 @@ class TestBaseModel(DatabaseFixture):
 
 class TestPayment(DatabaseFixture):
     def test_payment_big_value(self):
-        value = 10000 * 10**18
-        self.assertGreater(value, 2**64)
+        value = 10000 * 10 ** 18
+        self.assertGreater(value, 2 ** 64)
         payment = m_factory.TaskPayment(
             value=value,
         )

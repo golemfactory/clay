@@ -4,9 +4,10 @@ import os.path
 import shutil
 import string
 import threading
-from unittest.mock import patch
 from random import SystemRandom
 from typing import Tuple, List
+from unittest.mock import patch
+from functools import wraps
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -14,15 +15,15 @@ from golem_messages.message import ComputeTaskDef
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from apps.core.verification_queue import VerificationQueue
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import KeysAuth
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import TaskEventListener, Task
+from golem.task.taskbase import Task
 from golem.task.taskmanager import TaskManager
 from golem.tools.testwithreactor import TestDatabaseWithReactor
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -76,10 +77,10 @@ class VerificationWait:
             self.condition_var.notify_all()
 
 
+# pylint: disable=too-many-instance-attributes
 class TestTaskIntegration(TestDatabaseWithReactor):
-
     class Result:
-        def __init__(self, files: []):
+        def __init__(self, files: List[str]):
             self.files = files
 
     @staticmethod
@@ -163,9 +164,11 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         self.task_manager.start_task(task_id)
         return task
 
-    def compute_next_subtask(self, task: Task, subtask_num: int) -> Tuple[List[str], int, dict]:
+    def compute_next_subtask(self, task: Task, subtask_num: int) -> \
+            Tuple[List[str], int, dict]:
         subtask_id, ctd = self.query_next_subtask(task)
-        result = self.execute_on_mock_provider(task, ctd, subtask_id, subtask_num)
+        result = self.execute_on_mock_provider(task, ctd, subtask_id,
+                                               subtask_num)
 
         return result, subtask_id, ctd
 
@@ -181,13 +184,15 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         return ctd["subtask_id"], ctd
 
-    def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int, subtask_num: int):
+    def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int,
+                                 subtask_num: int):
         task_id = task.task_definition.task_id
 
         logger.info("Executing test subtask {}/{} [subtask_id = {}] "
-                    "[task_id = {}] on mocked provider.".format(
-            subtask_num + 1, task.task_definition.subtasks_count,
-            subtask_id, task_id))
+                    "[task_id = {}] on mocked provider."
+                    .format(subtask_num + 1,
+                            task.task_definition.subtasks_count, subtask_id,
+                            task_id))
 
         result = self._execute_subtask(task, ctd)
         result = self._collect_results_from_provider(result,
@@ -243,7 +248,8 @@ class TestTaskIntegration(TestDatabaseWithReactor):
             os.makedirs(docker_dir, exist_ok=True)
         return dirs
 
-    def _log_docker_logs(self, dtt):
+    @classmethod
+    def _log_docker_logs(cls, dtt):
         stdout_file = dtt.dir_mapping.logs / dtt.STDOUT_FILE
         stderr_file = dtt.dir_mapping.logs / dtt.STDERR_FILE
 
@@ -276,7 +282,8 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir, temporary=work_dir,
-            resources=resources_dir, logs=work_dir, work=work_dir, stats="/tmp/stats")
+            resources=resources_dir, logs=work_dir, work=work_dir,
+            stats="/tmp/stats")
 
         dtt = DockerTaskThread(docker_images=[image],
                                extra_data=params,
