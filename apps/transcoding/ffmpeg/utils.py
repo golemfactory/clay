@@ -46,9 +46,11 @@ class StreamOperator:
                                         dir_manager: DirManager,
                                         task_id: str):
 
+        directory_mapping = self._get_dir_mapping(dir_manager, task_id)
+
         host_dirs = {
-            'tmp': dir_manager.get_task_temporary_dir(task_id),
-            'output': dir_manager.get_task_output_dir(task_id),
+            'tmp': directory_mapping.temporary,
+            'output': directory_mapping.output,
         }
 
         input_file_basename = os.path.basename(input_file_on_host)
@@ -79,7 +81,7 @@ class StreamOperator:
             extra_data)
         try:
             result = self._do_job_in_container(
-                self._get_dir_mapping(dir_manager, task_id),
+                directory_mapping,
                 extra_data,
                 env)
         except ffmpegException as exception:
