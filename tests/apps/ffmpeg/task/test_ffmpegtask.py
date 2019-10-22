@@ -232,7 +232,7 @@ class TestffmpegTask(TempDirFixture):
             assert any("subtasks was requested but video splitting process"
                        in log for log in log.output)
 
-        self.assertEqual(task.total_tasks, 1)
+        self.assertEqual(task.get_total_tasks(), 1)
 
     def test_query_extra_data(self):
         ffmpeg_task = self._build_ffmpeg_task()
