@@ -5,6 +5,7 @@ import typing
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
+from golem_task_api.enums import VerifyResult
 
 from apps.core.task.coretaskstate import RunVerification
 
@@ -128,12 +129,14 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
+            failure_results = (VerifyResult.INCONCLUSIVE, VerifyResult.FAILURE)
             task = asyncio.ensure_future(self.requested_task_manager.verify(
                 task_id,
-                subtask_id,
-            ))
+                subtask_id))
             task.add_done_callback(
-                lambda f: verification_finished(False, f.result().is_failure()))
+                lambda f: verification_finished(
+                    False,
+                    f.result() in failure_results))
         else:
             def verification_finished_old():
                 is_verification_lenient = (

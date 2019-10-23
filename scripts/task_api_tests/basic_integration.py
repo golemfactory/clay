@@ -8,6 +8,7 @@ import shutil
 import tempfile
 import time
 
+import golem.apps
 from golem import database, model
 from golem.apps import manager as appmanager
 from golem.core.common import install_reactor
@@ -34,7 +35,7 @@ async def test_task(
 
     app_manager = appmanager.AppManager()
     app_name = 'test_app'
-    app_manager.register_app(appmanager.AppDefinition(
+    app_manager.register_app(golem.apps.AppDefinition(
         name=app_name,
         requestor_env=environment,
         requestor_prereq=env_prerequisites,

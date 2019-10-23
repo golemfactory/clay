@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
 from golem.envs import EnvSupportStatus
@@ -18,8 +20,7 @@ def _register_docker_cpu_env(
         work_dir: str,
         env_manager: EnvironmentManager
 ) -> None:
-    docker_config_dict = dict(work_dirs=[work_dir])
-    docker_cpu_config = DockerCPUConfig.from_dict(docker_config_dict)
+    docker_cpu_config = DockerCPUConfig(work_dirs=[Path(work_dir)])
     docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
 
     env_manager.register_env(
@@ -51,7 +52,7 @@ def register_built_in_repositories():
         Whitelist.add(DOCKER_REPOSITORY)
 
 
-def register_built_in_environments(
+def register_environments(
         work_dir: str,
         env_manager: EnvironmentManager
 ) -> None:
