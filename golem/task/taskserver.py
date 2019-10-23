@@ -420,13 +420,15 @@ class TaskServer(
                     future = self.app_benchmark_manager.get_benchmark_score(
                         theader.environment,
                         theader.environment_prerequisites)
-                    app_benchmark = yield Deferred.fromFuture(
-                        asyncio.ensure_future(future))
+                    app_benchmark = deferred_from_future(future)
                 except ComputationInProgress as error:
                     logger.debug(
                         "Not requesting task_id=%s: %r",
                         theader.task_id,
                         error)
+                    return None
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("Cannot retrieve benchmark score")
                     return None
                 benchmark_score = app_benchmark.score
                 benchmark_cpu_usage = app_benchmark.cpu_usage
