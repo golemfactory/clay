@@ -295,7 +295,7 @@ class RequestedTaskManager:
         if self._get_unfinished_subtasks_for_node(task_id, node) > 0:
             logger.warning(
                 "Provider has unfinished subtasks, no next subtask. "
-                f"task_id={task_id}")
+                "task_id=%s", task_id)
             return None
 
         if not await self.has_pending_subtasks(task_id):

@@ -278,7 +278,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         is_task_api_task = self.requested_task_manager.task_exists(task_id)
-        if not (self.task_manager.is_my_task(task_id) or is_task_api_task):
+        if not (is_task_api_task or self.task_manager.is_my_task(task_id)):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
