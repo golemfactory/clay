@@ -534,6 +534,7 @@ class TestTaskSession(TaskSessionTestBase):
     def setUp(self):
         super().setUp()
         self.concent_keys = cryptography.ECCx(None)
+        self.task_session.task_server.task_manager.tasks = dict()
         self.task_session.task_server.client.concent_service.variant = {
             'pubkey': self.concent_keys.raw_pubkey}
 
@@ -791,10 +792,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = True
@@ -808,10 +811,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = False
