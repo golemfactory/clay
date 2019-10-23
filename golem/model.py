@@ -578,7 +578,7 @@ class AppBenchmark(BaseModel):
 
     hash = CharField(null=False, index=True, unique=True)
     score = FloatField()
-    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
+    cpu_usage = IntegerField(default=1)  # total CPU usage in nanoseconds
 
     class Meta:
         database = db

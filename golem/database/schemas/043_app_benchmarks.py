@@ -15,7 +15,7 @@ def migrate(migrator, database, fake=False, **kwargs):
         modified_date = pw.UTCDateTimeField(default=dt.datetime.now)
         hash = pw.CharField(max_length=255, unique=True)
         score = pw.FloatField()
-        cpu_usage = pw.IntegerField(default=0)
+        cpu_usage = pw.IntegerField(default=1)
 
         class Meta:
             db_table = "appbenchmark"
