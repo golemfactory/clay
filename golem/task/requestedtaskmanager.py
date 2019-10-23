@@ -408,6 +408,8 @@ class RequestedTaskManager:
         if not task.status.is_active():
             raise RuntimeError(
                 f"Task not active, can not abort. task_id={task_id}")
+        app_client = await self._get_app_client(task.app_id)
+        await app_client.abort_task(task_id)
         task.status = TaskStatus.aborted
         task.save()
         subtasks = self._get_pending_subtasks(task_id)

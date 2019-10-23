@@ -246,6 +246,7 @@ class TestRequestedTaskManager():
             RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id)
         # then
+        mock_client.abort_task.assert_called_once_with(task_id)
         mock_client.shutdown.assert_called_once_with()
         assert task_row.status == TaskStatus.aborted
         assert subtask_row.status == SubtaskStatus.cancelled
