@@ -1,3 +1,4 @@
+import unittest
 from logging import Logger
 from pathlib import Path
 from unittest.mock import patch, Mock, MagicMock, ANY
@@ -600,7 +601,9 @@ class TestCreateHostConfig(TestDockerCPUEnv):
             cpuset_cpus=ANY,
             mem_limit=ANY,
             binds=ANY,
-            port_bindings={port: None},
+            port_bindings={
+                f'{port}/tcp': {'HostIp': '0.0.0.0', 'HostPort': port},
+            },
             privileged=ANY,
             network_mode=ANY,
             dns=ANY,
@@ -610,6 +613,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         self.assertEqual(host_config, local_client().create_host_config())
 
     @patch_cpu('local_client')
+    @unittest.skip('Ports should be published')
     def test_nonpublished_ports(self, local_client):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
