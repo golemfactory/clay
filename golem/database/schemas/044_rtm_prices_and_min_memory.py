@@ -1,18 +1,20 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
-import datetime as dt
 import peewee as pw
 
 SCHEMA_VERSION = 44
 
 
 def migrate(migrator, database, fake=False, **kwargs):
-    migrator.add_fields('requestedtask',
+    migrator.add_fields(
+        'requestedtask',
         min_memory=pw.IntegerField(default=0))
-    migrator.change_fields('requestedtask',
+    migrator.change_fields(
+        'requestedtask',
         max_price_per_hour=pw.HexIntegerField())
-    migrator.change_fields('requestedsubtask',
-    price=pw.HexIntegerField(null=True))
+    migrator.change_fields(
+        'requestedsubtask',
+        price=pw.HexIntegerField(null=True))
 
 
 def rollback(migrator, database, fake=False, **kwargs):
@@ -26,4 +28,6 @@ def rollback(migrator, database, fake=False, **kwargs):
         app_params=pw.JsonField(default='{}'),
         max_price_per_hour=pw.IntegerField(),
         prerequisites=pw.JsonField(default='{}'))
-    migrator.remove_fields('requestedtask', 'min_memory')
+    migrator.remove_fields(
+        'requestedtask',
+        'min_memory')

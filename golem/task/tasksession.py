@@ -303,7 +303,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if is_task_api_task:
             has_pending_subtasks = yield deferred_from_future(
-                    self.requested_task_manager.has_pending_subtasks(task_id))
+                self.requested_task_manager.has_pending_subtasks(task_id))
             if not has_pending_subtasks:
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)

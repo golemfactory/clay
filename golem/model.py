@@ -801,24 +801,13 @@ class RequestedSubtask(BaseModel):
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
 
     def to_dict(self) -> Dict[str, Any]:
-        if isinstance(self.computing_node, str):
-            computing_node = ComputingNode.get(
-                ComputingNode.node_id == self.computing_node)
-        else:
-            computing_node = self.computing_node
-
-        if isinstance(self.task, str):
-            task_id = self.task
-        else:
-            task_id = self.task.task_id
-
         return {
-            'task_id': task_id,
+            'task_id': self.task.task_id,  # pylint: disable=no-member
             'subtask_id': self.subtask_id,
-            'status': self.status.value,  # noqa
+            'status': self.status.value,  # pylint: disable=no-member
             'time_started': datetime_to_timestamp(self.start_time),
-            'node_id': computing_node.node_id,
-            'node_name': computing_node.name,
+            'node_id': self.computing_node.node_id,  # pylint: disable=no-member
+            'node_name': self.computing_node.name,  # pylint: disable=no-member
         }
 
     class Meta:

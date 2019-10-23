@@ -475,7 +475,7 @@ class TaskHeaderKeeper:
                 self.task_archiver.add_support_status(id_, supported)
 
     @inlineCallbacks
-    def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
+    def add_task_header(self, header: dt_tasks.TaskHeader):
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported

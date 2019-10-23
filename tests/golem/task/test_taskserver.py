@@ -131,12 +131,12 @@ class TaskServerTestBase(LogTestCase,
                          testutils.DatabaseFixture,
                          testutils.TestWithClient,
                          TwistedAsyncioTestCase):
-
+    # pylint: disable=arguments-differ
     @patch('golem.network.concent.handlers_library.HandlersLibrary'
            '.register_handler')
     @patch('golem.task.taskserver.TaskComputerAdapter')
     @patch('golem.envs.default.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, docker_env, *_):  # pylint: disable=arguments-differ
+    def setUp(self, docker_env, *_):
         super().setUp()
         random.seed()
         docker_env.supported.return_value = EnvSupportStatus(True)
@@ -154,6 +154,7 @@ class TaskServerTestBase(LogTestCase,
             task_archiver=Mock(spec=TaskArchiver)
         )
         self.ts.resource_manager.storage.get_dir.return_value = self.tempdir
+    # pylint: enable=arguments-differ
 
     def tearDown(self):
         LogTestCase.tearDown(self)
@@ -1030,7 +1031,7 @@ class TestTaskServer2(TaskServerBase):
         expected_value = ceil(1031 * 1010 / 3600)
         prev_calls = trust.COMPUTED.increase.call_count
         ts.accept_result(
-            key_id=task_mock.header.task_owner.key,
+            key_id=task_mock.header.task_owner.key,  # noqa pylint: disable=no-member
             task_id=task_mock.header.task_id,
             subtask_id="xxyyzz",
             eth_address="eth_address",

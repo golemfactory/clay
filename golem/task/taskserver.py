@@ -586,7 +586,7 @@ class TaskServer(
         deferred = self.new_resource_manager.share(
             task_api_result,
             client_options)
-        deferred.addCallbacks(
+        deferred.addCallbacks(  # pylint: disable=no-member
             on_result_share_success,
             on_result_share_error)
 
@@ -706,7 +706,7 @@ class TaskServer(
 
             task_added = yield self.task_keeper.add_task_header(task_header)
             return task_added
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
         return False
 
@@ -978,7 +978,7 @@ class TaskServer(
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id in self.task_manager.tasks:
-            task = self.task_manager.tasks.get(task_id)
+            task = self.task_manager.tasks[task_id]
             env_id = task.header.environment
             min_memory = task.header.estimated_memory
             mask = task.header.mask
@@ -986,10 +986,11 @@ class TaskServer(
                 node_id,
                 offer_hash)
         elif self.requested_task_manager.task_exists(task_id):
-            task = self.requested_task_manager.get_requested_task(task_id)
-            env_id = task.env_id
-            min_memory = task.min_memory
-            mask = Mask(task.mask)
+            req_task = self.requested_task_manager.get_requested_task(task_id)
+            assert req_task, "Task missing due a race condition"
+            env_id = req_task.env_id
+            min_memory = req_task.min_memory
+            mask = Mask(req_task.mask)
             # For compatibility purposes; the app decides to whom assign a task
             accept_client_verdict = AcceptClientVerdict.ACCEPTED
         else:

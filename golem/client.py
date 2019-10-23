@@ -8,7 +8,8 @@ import time
 import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
-from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple,\
+    Set
 
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
@@ -905,7 +906,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         tm = self.task_server.task_manager
         rtm = self.task_server.requested_task_manager
 
-        task_keys = set()
+        task_keys: Set[str] = set()
         task_keys.update(tm.tasks.keys())
         task_keys.update(rtm.get_requested_task_ids())
 
@@ -947,9 +948,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             tm = self.task_server.task_manager
             rtm = self.task_server.requested_task_manager
 
-            if task_id and rtm.task_exists(task_id):
+            if task_id:
                 subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
-                return subtask.to_dict(), None
+                if subtask:
+                    return subtask.to_dict(), None
             subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
         except (AttributeError, KeyError):

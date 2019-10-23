@@ -1,5 +1,5 @@
 # pylint: disable=no-member
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,unused-variable
 import datetime as dt
 import peewee as pw
 
