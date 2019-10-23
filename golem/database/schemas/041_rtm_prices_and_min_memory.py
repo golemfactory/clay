@@ -8,7 +8,7 @@ SCHEMA_VERSION = 41
 
 def migrate(migrator, database, fake=False, **kwargs):
     migrator.add_fields('requestedtask',
-        min_memory=pw.IntegerField())
+        min_memory=pw.IntegerField(default=0))
     migrator.change_fields('requestedtask',
         max_price_per_hour=pw.HexIntegerField())
     migrator.change_fields('requestedsubtask',
