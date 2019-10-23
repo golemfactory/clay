@@ -522,7 +522,6 @@ class RequestedTaskManager:
             RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
-        assert subtask.task == task
         await self.discard_subtasks(task_id, [subtask_id])
         self._notice_task_updated(
             task,
