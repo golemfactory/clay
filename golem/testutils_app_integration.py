@@ -7,7 +7,6 @@ import threading
 from unittest.mock import patch
 from random import SystemRandom
 from typing import Tuple, List
-from functools import wraps
 from pathlib import Path
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -31,17 +30,6 @@ logger = logging.getLogger(__name__)
 
 class DockerTestJobFailure(Exception):
     pass
-
-
-def remove_temporary_dirtree_if_test_passed(fun):
-    @wraps(fun)
-    def wrapper(self, *args, **kwargs):
-        fun(self, *args, **kwargs)
-        # If test fails, we won't reach this point, but tearDown
-        # will be called and directories won't be removed.
-        self.REMOVE_TMP_DIRS = True
-
-    return wrapper
 
 
 class VerificationWait:
@@ -98,10 +86,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         # Clean verification queue.
         CoreTask.VERIFICATION_QUEUE = VerificationQueue()
 
-        # Assume that test failed. @dont_remove_dirs_on_failed_test decorator
-        # will set this variable to True on the end of test.
-        self.REMOVE_TMP_DIRS = True
-
         # build mock node
         self.node = dt_p2p_factory.Node()
         self.node_id = self._generate_node_id()
@@ -134,16 +118,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
     def _mock_remove_files(self):
         pass
-
-    def tearDown(self):
-        # Patch __remove_files. We will remove directory conditionally.
-        self.__remove_files = self._mock_remove_files
-
-        super().tearDown()
-
-        if self.REMOVE_TMP_DIRS:
-            if os.path.isdir(self.tempdir):
-                shutil.rmtree(self.tempdir)
 
     def execute_task(self, task_def):
         task: Task = self.start_task(task_def)
