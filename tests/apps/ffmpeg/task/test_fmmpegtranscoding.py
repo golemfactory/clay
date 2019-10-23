@@ -13,7 +13,7 @@ from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.testutils import TempDirFixture
+from golem.testutils import TempDirFixture, keep_testdir_on_fail
 from golem.tools.ci import ci_skip
 from tests.golem.docker.test_docker_job import TestDockerJob
 
@@ -23,8 +23,8 @@ from tests.golem.docker.test_docker_job import TestDockerJob
 class TestffmpegTranscoding(TempDirFixture):
     def setUp(self):
         super(TestffmpegTranscoding, self).setUp()
-        self.RESOURCES = os.path.join(os.path.dirname(os.path.dirname(
-            os.path.dirname(os.path.realpath(__file__)))), 'resources')
+        self.RESOURCES = os.path.join(os.path.dirname(
+            os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video2')
         self.stream_operator = StreamOperator()
         self.dir_manager = DirManager(self.tempdir)
@@ -52,6 +52,7 @@ class TestffmpegTranscoding(TempDirFixture):
                 1, self.dir_manager,
                 str(uuid.uuid4()))
 
+    @keep_testdir_on_fail
     def test_extract_split_merge_and_replace_video(self):
         parts = 2
         task_id = str(uuid.uuid4())

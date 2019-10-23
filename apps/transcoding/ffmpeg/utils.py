@@ -175,7 +175,6 @@ class StreamOperator:
                                         output_file_basename,
                                         task_dir,
                                         container):
-
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
         assert os.path.isfile(input_file_on_host), \
