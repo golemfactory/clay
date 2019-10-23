@@ -279,7 +279,8 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         raise RuntimeError('TaskServer not ready')
 
     network_size = client.p2pservice.get_estimated_network_size()
-    min_perf = client.task_server.get_min_performance_for_task(task)
+    min_perf = client.task_server.get_min_performance_for_env(
+        task.header.environment)
     perf_rank = client.p2pservice.get_performance_percentile_rank(
         min_perf, task.header.environment)
     potential_num_workers = int(network_size * (1 - perf_rank))
