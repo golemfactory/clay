@@ -53,7 +53,7 @@ class CreateTaskParams:
             app_params: Optional[Dict[str, Any]] = None
     ) -> Tuple['CreateTaskParams', Dict[str, Any]]:
         # FIXME: integration tests workaround
-        if not app_params:
+        if app_params is None:
             app_params = golem_params['options']
             app_params['resources'] = golem_params['resources']
         # FIXME: integration tests workaround
@@ -71,7 +71,7 @@ class CreateTaskParams:
             task_timeout=int(golem_params['task_timeout']),
             subtask_timeout=int(golem_params['subtask_timeout']),
             concent_enabled=bool(golem_params.get('concent_enabled', False)),
-            resources=list(map(Path, app_params['resources'])),
+            resources=list(map(Path, golem_params['resources'])),
         )
 
         app_params['resources'] = [r.name for r in create_params.resources]
