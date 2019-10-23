@@ -470,15 +470,20 @@ class TaskServer(
 
         self.task_computer.task_given(msg.compute_task_def)
         if msg.want_to_compute_task.task_header.environment_prerequisites:
-            deferreds = []
-            for resource_id in msg.compute_task_def['resources']:
-                deferreds.append(self.new_resource_manager.download(
+            subtask_inputs_dir = self.task_computer.get_subtask_inputs_dir()
+            resources_options = msg.resources_options or dict()
+            client_options = self.resource_manager.build_client_options(
+                **resources_options)
+
+            deferred_list = [
+                self.new_resource_manager.download(
                     resource_id,
-                    self.task_computer.get_subtask_inputs_dir(),
-                    self.resource_manager.build_client_options(
-                        **msg.resources_options),
-                ))
-            defer.gatherResults(deferreds, consumeErrors=True)\
+                    subtask_inputs_dir,
+                    client_options,
+                ) for resource_id in msg.compute_task_def['resources']
+            ]
+
+            defer.gatherResults(deferred_list, consumeErrors=True)\
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id),
                     lambda e: self.resource_failure(msg.task_id, e))
@@ -526,7 +531,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
-            stats: Dict = {},
+            stats: Dict = None,
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -545,32 +550,31 @@ class TaskServer(
 
         delay_time = 0.0
         last_sending_trial = 0
+        stats = stats or {}
 
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result or [str(task_api_result)],
+            result=result or (str(task_api_result),),
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner,
             stats=stats)
 
-        def create_and_enqueue_result():
-            if task_api_result:
-                wtr.package_sha1 = ''
-                wtr.result_path = wtr.result[0]
-            else:
-                self._create_and_set_result_package(wtr)
-            self.results_to_send[subtask_id] = wtr
-            Trust.REQUESTED.increase(header.task_owner.key)
+        def enqueue_computed_task_result():
+            self.results_to_send[wtr.subtask_id] = wtr
+            Trust.REQUESTED.increase(wtr.owner.key)
 
         if result:
-            create_and_enqueue_result()
+            self._create_and_set_result_package(wtr)
+            enqueue_computed_task_result()
             return
 
-        def on_result_share_success(res_id):
-            wtr.result_hash = res_id
-            create_and_enqueue_result()
+        def on_result_share_success(resource_id):
+            wtr.package_sha1 = resource_id
+            wtr.result_path = wtr.result[0]
+            wtr.result_hash = resource_id
+            enqueue_computed_task_result()
 
         def on_result_share_error(err):
             logger.error(
@@ -674,7 +678,7 @@ class TaskServer(
         return self.task_keeper.get_all_tasks()
 
     @inlineCallbacks
-    def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
+    def add_task_header(self, task_header: dt_tasks.TaskHeader):
         if not self._verify_header_sig(task_header):
             logger.info(
                 'Invalid signature. task_id=%r, signature=%r',
