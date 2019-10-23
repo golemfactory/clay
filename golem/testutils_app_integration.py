@@ -198,7 +198,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         return self._run_test_job(task, provider_tempdir, extra_data)
 
     @staticmethod
-    def _copy_resources(task, resources_dir):
+    def _copy_resources(task: Task, resources_dir):
 
         logger.info("Copy files to docker resources "
                     "directory {}".format(resources_dir))

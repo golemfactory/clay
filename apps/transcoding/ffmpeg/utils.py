@@ -103,14 +103,17 @@ class StreamOperator:
             if params.get('status', 'Success') != 'Success':
                 raise ffmpegExtractSplitError('Splitting video failed')
 
-            streams_list = list(map(
-                lambda x: x.get('video_segment'),
-                params.get('segments', [])))
+            segments = params.get('segments', [])
+            streams_list = [os.path.join(directory_mapping.output,
+                                         segment.get('video_segment'))
+                            for segment in segments]
+
             logger.info(
                 "Stream %s has successfully passed the "
                 "extract+split operation. Segments: %s",
                 input_file_on_host,
                 streams_list)
+
             return streams_list, params.get('metadata', {})
 
     def _prepare_merge_job(self, task_dir, chunks_on_host):

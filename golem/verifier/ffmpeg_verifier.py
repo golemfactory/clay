@@ -1,5 +1,4 @@
 import logging
-import os
 
 from golem.verifier import CoreVerifier
 from golem.verifier.core_verifier import SubtaskVerificationState
@@ -13,7 +12,7 @@ class FFmpegVerifier(CoreVerifier):
         self.results = verification_data['results']
         self.state = SubtaskVerificationState.WAITING
 
-    def simple_verification(self, verification_data):
+    def simple_verification(self):
         verdict = super().simple_verification()
 
         # TODO more verification
