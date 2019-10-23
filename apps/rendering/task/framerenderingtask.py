@@ -355,11 +355,10 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            with handle_opencv_image_error(logger):
-                img = OpenCVImgRepr.empty(
-                    int(round(self.res_x * self.scale_factor)),
-                    int(round(self.res_y * self.scale_factor)))
-                img.save_with_extension(preview_file_path, PREVIEW_EXT)
+            img = OpenCVImgRepr.empty(
+                int(round(self.res_x * self.scale_factor)),
+                int(round(self.res_y * self.scale_factor)))
+            img.save_with_extension(preview_file_path, PREVIEW_EXT)
 
         return OpenCVImgRepr.from_image_file(preview_file_path)
 
@@ -454,9 +453,10 @@ class FrameRenderingTask(RenderingTask):
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
         preview_task_file_path = self._get_preview_task_file_path(idx)
-        img_task = self._open_frame_preview(preview_task_file_path)
-        self._mark_task_area(sub, img_task, color, idx)
-        img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
+        with handle_opencv_image_error(logger):
+            img_task = self._open_frame_preview(preview_task_file_path)
+            self._mark_task_area(sub, img_task, color, idx)
+            img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:
