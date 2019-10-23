@@ -5,13 +5,15 @@ import subprocess
 from typing import List
 from xml.etree import ElementTree
 
+from semantic_version import Version
+
 from golem.core.common import is_linux, unix_pipe
 
 
 logger = logging.getLogger(__name__)
 
 
-MIN_DRIVER_VERSION = 396.0
+MIN_DRIVER_VERSION = Version('396.0', partial=True)
 
 
 @functools.lru_cache(5)
@@ -101,7 +103,7 @@ def _assert_driver_version() -> None:
         xml_tree = ElementTree.fromstring(xml_output)
         version_entry = xml_tree.find('driver_version')
         version_text = getattr(version_entry, 'text', None)
-        version = float(version_text)
+        version = Version(version_text, partial=True)
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
         raise RuntimeError(f'Unable to parse nvidia-smi output: {str(exc)}')
 
