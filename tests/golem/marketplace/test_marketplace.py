@@ -4,6 +4,8 @@ from unittest.mock import patch, Mock, MagicMock
 
 from ethereum.utils import denoms
 
+from golem import testutils
+
 from golem.marketplace import (
     RequestorBrassMarketStrategy,
     RequestorWasmMarketStrategy,
@@ -38,7 +40,7 @@ class TestScalePrice(TestCase):
        Mock(return_value=0.0))
 @patch('golem.ranking.manager.database_manager.get_provider_efficacy',
        Mock(return_value=_fake_get_efficacy()))
-class TestRequestorMarketStrategy(TestCase):
+class TestRequestorMarketStrategy(testutils.DatabaseFixture):
     TASK_A = 'aaa'
     PROVIDER_A = 'provider_a'
     PROVIDER_B = 'provider_b'
@@ -49,9 +51,9 @@ class TestRequestorMarketStrategy(TestCase):
         market_strategy = RequestorBrassMarketStrategy
         task = Mock()
         task.header = Mock()
-        task.header.subtask_timeout = 10
+        task.header.subtask_timeout = 360
         payment_computer = market_strategy.get_payment_computer(task, None)
-        self.assertEqual(payment_computer(1), 10)
+        self.assertEqual(payment_computer(100), 10)  # price * timeout / 3600
 
     def test_wasm_payment_computer(self):
         task = Mock()

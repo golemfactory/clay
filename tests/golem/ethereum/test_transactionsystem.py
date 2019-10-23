@@ -794,7 +794,6 @@ class DepositPaymentsListTest(TransactionSystemBase):
             created_date=dt,
             modified_date=dt,
         )
-        instance.save(force_insert=True)
 
         self.assertEqual(
             [instance],
@@ -812,11 +811,6 @@ class IncomesListTest(TransactionSystemBase):
             model.WalletOperation.DIRECTION.incoming,
             wallet_operation__operation_type=  # noqa
             model.WalletOperation.TYPE.task_payment,
-        )
-        income.wallet_operation.save(force_insert=True)
-        self.assertEqual(
-            income.save(force_insert=True),
-            1,
         )
         return income
 

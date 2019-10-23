@@ -68,8 +68,6 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             model.WalletOperation.DIRECTION.outgoing,
             wallet_operation__status=model.WalletOperation.STATUS.awaiting,
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
 
         self.pp.load_from_db()
         expected = [payment]
@@ -115,9 +113,6 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             wallet_operation__tx_hash=tx_hash2,
             wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
-        for sent_payment in (sent_payment11, sent_payment12, sent_payment21):
-            sent_payment.wallet_operation.save(force_insert=True)
-            sent_payment.save(force_insert=True)
         self.pp.load_from_db()
         self.assertEqual(3 * value, self.pp.reserved_gntb)
         self.assertEqual(0, self.pp.recipients_count)
@@ -491,8 +486,6 @@ class UpdateOverdueTest(PaymentProcessorBase):
             wallet_operation__status=  # noqa
             model.WalletOperation.STATUS.awaiting,
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
         self.pp._awaiting.add(payment)
         return payment
 
@@ -551,7 +544,8 @@ class ForcedPaymentBase(PaymentProcessorBase):
         tx_hash = (
             '0xa1360025847dbf4b02c53f4d62424a1f8b77d76d0278938600fd69cde6ec61f5'
         )
-        self.payment = model_factory.TaskPayment(
+        # using `build` so that the object is not saved into the db
+        self.payment = model_factory.TaskPayment.build(
             wallet_operation__operation_type=  # noqa
             model.WalletOperation.TYPE.task_payment,
             wallet_operation__direction=  # noqa
@@ -560,7 +554,6 @@ class ForcedPaymentBase(PaymentProcessorBase):
             model.WalletOperation.STATUS.awaiting,
             wallet_operation__tx_hash=tx_hash,
         )
-        # No save here
 
 
 class SentForcedSubtaskPaymentTest(ForcedPaymentBase):

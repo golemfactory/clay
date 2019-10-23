@@ -20,8 +20,7 @@ from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
     PREVIEW_Y
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
-    RendererDefaults
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import short_node_id, to_unicode
 from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
@@ -31,20 +30,6 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem.verifier.blender_verifier import BlenderVerifier
 
 logger = logging.getLogger(__name__)
-
-
-class BlenderDefaults(RendererDefaults):
-    def __init__(self):
-        RendererDefaults.__init__(self)
-        self.output_format = "EXR"
-
-        self.min_subtasks = 1
-        self.max_subtasks = 100
-        self.default_subtasks = 6
-
-
-class BlenderNVGPUDefaults(BlenderDefaults):
-    pass
 
 
 class PreviewUpdater(object):
@@ -607,7 +592,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
     TASK_CLASS: Type[BlenderRenderTask] = BlenderRenderTask
-    DEFAULTS: Type[BlenderDefaults] = BlenderDefaults
 
     @classmethod
     def build_dictionary(cls, definition):
@@ -639,7 +623,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
 class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
     TASK_CLASS: Type[BlenderRenderTask] = BlenderNVGPURenderTask
-    DEFAULTS: Type[BlenderDefaults] = BlenderNVGPUDefaults
 
 
 class CustomCollector(RenderingTaskCollector):
