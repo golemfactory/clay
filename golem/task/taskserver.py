@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-import asyncio
-
 import functools
 import itertools
 import logging
@@ -16,7 +14,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Type,
     Union,
     Set,
     Tuple,
@@ -64,9 +61,6 @@ from golem.network.transport.tcpserver import (
 )
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager.database_manager import (
-    get_requestor_efficiency,
-    get_requestor_assigned_sum,
-    get_requestor_paid_sum,
     update_requestor_paid_sum,
     update_requestor_assigned_sum,
     update_requestor_efficiency,
@@ -78,7 +72,6 @@ from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.exceptions import ComputationInProgress
 from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
-from golem.task.taskbase import Task
 from golem.task.benchmarkmanager import AppBenchmarkManager, BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
@@ -420,7 +413,7 @@ class TaskServer(
                     future = self.app_benchmark_manager.get_benchmark_score(
                         theader.environment,
                         theader.environment_prerequisites)
-                    app_benchmark = deferred_from_future(future)
+                    app_benchmark = yield deferred_from_future(future)
                 except ComputationInProgress as error:
                     logger.debug(
                         "Not requesting task_id=%s: %r",
