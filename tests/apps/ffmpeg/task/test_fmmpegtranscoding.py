@@ -52,14 +52,15 @@ class TestffmpegTranscoding(TempDirFixture):
                 1, self.dir_manager,
                 str(uuid.uuid4()))
 
-    @keep_testdir_on_fail
     def test_extract_split_merge_and_replace_video(self):
         parts = 2
         task_id = str(uuid.uuid4())
         output_extension = ".mp4"
         output_name = f"test{output_extension}"
         output_container = Container.c_MP4
-        output_dir = self.dir_manager.get_task_output_dir(task_id)
+
+        task_dir = self.dir_manager.get_task_temporary_dir(task_id)
+        split_output_dir = os.path.join(task_dir, "output")
 
         chunks, _ = self.stream_operator.extract_video_streams_and_split(
             self.RESOURCE_STREAM, parts,
@@ -68,14 +69,14 @@ class TestffmpegTranscoding(TempDirFixture):
         self.assertEqual(
             set(os.path.splitext(chunk)[1] for chunk in chunks),
             {''})
-        segments = [os.path.join(output_dir, chunk) for chunk in chunks]
+        segments = [os.path.join(split_output_dir, chunk) for chunk in chunks]
 
         assert len(segments) == parts
         tc_segments = list()
         for segment in segments:
             name, _ = os.path.splitext(os.path.basename(segment))
             transcoded_segment = os.path.join(
-                os.path.dirname(segment),
+                task_dir,
                 "{}_TC{}".format(name, output_extension))
             shutil.copy2(segment, transcoded_segment)
             assert os.path.isfile(transcoded_segment)
@@ -85,10 +86,10 @@ class TestffmpegTranscoding(TempDirFixture):
             self.RESOURCE_STREAM,
             tc_segments,
             output_name,
-            output_dir,
+            task_dir,
             output_container,
         )
-        assert os.path.isfile(os.path.join(output_dir, 'merge',
+        assert os.path.isfile(os.path.join(task_dir, 'merge',
                                            'output', output_name))
 
     def test_merge_and_replace_video_empty_dir(self):
