@@ -293,16 +293,19 @@ class StreamOperator:
             },
         }
 
+        stats_dir = os.path.join(os.path.dirname(work_dir), "get-metadata-stats")
+
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir,
             temporary=work_dir,
             resources=resources_dir,
             logs=work_dir,
             work=work_dir,
-            stats=work_dir)
+            stats=stats_dir)
 
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
+        logger.info('Directories: work {}'.format(work_dir))
 
         job_result = self._do_job_in_container(dir_mapping, extra_data)
         if 'data' not in job_result:
