@@ -7,7 +7,6 @@ import threading
 from random import SystemRandom
 from typing import Tuple, List
 from unittest.mock import patch
-from functools import wraps
 from pathlib import Path
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
