@@ -1,6 +1,5 @@
 import json
 import os
-import sys
 from pathlib import Path
 from pprint import pprint, pformat
 from typing import List, Optional, Tuple, Any, Dict
@@ -64,7 +63,8 @@ def prepare_crops(
     return crops, crops_render_data
 
 
-def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, too-many-arguments
+def prepare_data_for_blender_verification(
+        # pylint: disable=too-many-locals, too-many-arguments
         subtask_border: List[float],
         scene_file_path: str,
         resolution: List[int],
@@ -217,7 +217,8 @@ def verify(  # pylint: disable=too-many-arguments
     )
     print("blender_render_params:")
     pprint(blender_render_parameters)
-    save_params(blender_render_parameters, "blender_render_params.json", mounted_paths)
+    save_params(blender_render_parameters, "blender_render_params.json",
+                mounted_paths)
 
     results = blender.render(blender_render_parameters, mounted_paths)
 
@@ -225,6 +226,7 @@ def verify(  # pylint: disable=too-many-arguments
     pprint(results)
 
     make_verdict(subtask_file_paths, crops, results)
+
 
 def save_params(params: dict, filename: str, mounted_paths: dict):
     path = os.path.join(mounted_paths["WORK_DIR"], filename)

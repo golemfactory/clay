@@ -1,27 +1,23 @@
-import logging
-from typing import List
-import sys
-import os
-import traceback
-import json
-import re
 import copy
-import mock
+import json
+import logging
+import os
+import sys
+import traceback
+from typing import List
 
-sys.path.insert(0, '.')
-
-from golem.verifier.blender_verifier import BlenderVerifier
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.task.taskbase import Task
-from tests.apps.blender.task.test_blenderintegration import TestBlenderIntegration
+from tests.apps.blender.task.test_blenderintegration import \
+    TestBlenderIntegration
 from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
     are_pixels_equal, find_fragments_in_path
 
+sys.path.insert(0, '.')
 
 logger = logging.getLogger(__name__)
 logging.disable(logging.CRITICAL)
-
 
 
 class Report:
@@ -46,9 +42,9 @@ class Report:
         self.success_params = self.success_params + report.success_params
         self.all_params = self.all_params + report.all_params
 
-    # Merge rapports with the same parameters but different crops.
+    # Merge reports with the same parameters but different crops.
     # Note: This function doesn't check if reports have the same parameters.
-    def merge_raports_content(self):
+    def merge_reports_content(self):
         if self.failed_params:
             self.failed_params = [self.merge_report(self.failed_params)]
         if self.all_params:
@@ -56,11 +52,11 @@ class Report:
         if self.success_params:
             self.success_params = [self.merge_report(self.success_params)]
 
-    def merge_report(self, report: dict):
-        if len(report) > 0:
+    def merge_report(self, report: List[dict]):
+        if report:
             # Choose one report and copy common part.
             report_params = copy.deepcopy(report[0])
-            
+
             # Delete parameters and replace it with empty dict.
             # It will be updated below.
             del report_params['crops_params']
@@ -70,7 +66,8 @@ class Report:
             for subtasks in report:
                 crops_params = subtasks["crops_params"]
 
-                # Probably there's only one subtask, but we can iterate over whole list.
+                # Probably there's only one subtask
+                # but we can iterate over whole list.
                 for subtask_num, crop in crops_params.items():
 
                     report_params['crops_params'][subtask_num] = crop
@@ -79,22 +76,24 @@ class Report:
                     if subtasks.get('fail_reason') is not None:
                         report_params['fails'][subtask_num].append(
                             subtasks['fail_reason'])
-            
+
             return report_params
         return report
 
-    def to_file(self, dir: str, part: int):
-        os.makedirs(dir, exist_ok=True)
+    def to_file(self, directory: str, part: int):
+        os.makedirs(directory, exist_ok=True)
 
-        all_path = os.path.join(dir, 'all_tests{}.json'.format(part))
+        all_path = os.path.join(directory, 'all_tests{}.json'.format(part))
         with open(all_path, 'w') as outfile:
             json.dump(self.all_params, outfile, indent=4, sort_keys=False)
 
-        failed_path = os.path.join(dir, 'failed_tests{}.json'.format(part))
+        failed_path = os.path.join(directory,
+                                   'failed_tests{}.json'.format(part))
         with open(failed_path, 'w') as outfile:
             json.dump(self.failed_params, outfile, indent=4, sort_keys=False)
 
-        success_path = os.path.join(dir, 'success_tests{}.json'.format(part))
+        success_path = os.path.join(directory,
+                                    'success_tests{}.json'.format(part))
         with open(success_path, 'w') as outfile:
             json.dump(self.success_params, outfile, indent=4, sort_keys=False)
 
@@ -104,8 +103,7 @@ class Report:
         self.all_params: List[dict] = list()
 
 
-
-class ExtendedVerifierTestEnv():
+class ExtendedVerifierTestEnv:
 
     def __init__(self):
         self.report = Report()
@@ -119,12 +117,41 @@ class ExtendedVerifierTestEnv():
             self.run_for_params(parameters_sets)
         except (Exception, RuntimeError) as e:
             print("Script error ocured: {}".format(repr(e)))
-            print("Saving to file partial results.")
-            self._reports_to_files()
         finally:
             ExtendedVerifierTest.tearDownClass()
 
-    def run_for_params(self, parameters_sets: dict):
+    def _run_parameters_set(self, parameters):
+        try:
+            tester = ExtendedVerifierTest()
+
+            tester.setUp()
+            tester.run_for_parameters_set(parameters)
+
+        except (Exception, RuntimeError) as e:
+            _, _, tb = sys.exc_info()
+            message = traceback.format_exc()
+            tb_info = traceback.extract_tb(tb)
+            filename, line, function, _ = tb_info[-1]
+
+            reason = {
+                'exception': repr(e),
+                'line': line,
+                'filename': filename,
+                'function': function,
+                'stacktrace': message,
+                'tmp_dir': tester.tempdir
+            }
+
+            self.report.fail(parameters, reason)
+        else:
+            report = tester.get_report()
+            report.merge_reports_content()
+
+            self.report.update(report)
+        finally:
+            tester.tearDown()
+
+    def run_for_params(self, parameters_sets: List[dict]):
         logger.info("Parameters {}".format(str(parameters_sets)))
 
         num_sets = len(parameters_sets)
@@ -135,36 +162,12 @@ class ExtendedVerifierTestEnv():
         part = 0
 
         for parameters_set in parameters_sets:
-
             try:
-                tester = ExtendedVerifierTest()
-                
-                tester.setUp()
-                tester.run_for_parameters_set(parameters_set)
-
+                self._run_parameters_set(parameters_set)
             except (Exception, RuntimeError) as e:
-                _, _, tb = sys.exc_info()
-                message = traceback.format_exc()
-                tb_info = traceback.extract_tb(tb)
-                filename, line, function, _ = tb_info[-1]
-
-                reason = {
-                    'exception' : repr(e),
-                    'line' : line,
-                    'filename' : filename,
-                    'function' : function,
-                    'stacktrace' : message,
-                    'tmp_dir' : tester.tempdir
-                }
-
-                self.report.fail(parameters_set, reason)
-            else:
-                report = tester.get_report()
-                report.merge_raports_content()
-
-                self.report.update(report)
-            finally:
-                tester.tearDown()
+                print("Saving to file partial results.")
+                self._reports_to_files(part)
+                raise e
 
             self._progress()
 
@@ -177,7 +180,6 @@ class ExtendedVerifierTestEnv():
                 self.report.clear_reports()
                 part += 1
 
-        
         # Add newline on end.
         print("")
         self._print_failes()
@@ -189,7 +191,7 @@ class ExtendedVerifierTestEnv():
 
     def _progress(self):
         # Print dot for each test to indicate progress like in pytest.
-        print(".", end = '')
+        print(".", end='')
         sys.stdout.flush()
 
     def _reports_to_files(self, part):
@@ -200,19 +202,20 @@ class ExtendedVerifierTestEnv():
         # subtasks_num_list = range(1, 4)
         # num_frames = [list(range(1, 2))]
         resolutions_list = [[400, 400]]
-        subtasks_num_list = range(1, 40)
+        subtasks_num_list = list(range(1, 40))
         num_frames = self._generate_num_frames(1, 2)
 
-        return self._generate_combinations(resolutions_list,
-                                           subtasks_num_list,
+        return self._generate_combinations(resolutions_list, subtasks_num_list,
                                            num_frames)
 
     def _generate_num_frames(self, min_num_frames: int, max_num_frames: int):
-        return [list(range(1, i+1)) for i in range(min_num_frames, max_num_frames+1)]
+        return [
+            list(range(1, i + 1))
+            for i in range(min_num_frames, max_num_frames + 1)
+        ]
 
     @classmethod
-    def _generate_combinations(cls,
-                               resolutions_list: List[List[int]],
+    def _generate_combinations(cls, resolutions_list: List[List[int]],
                                subtasks_num_list: List[int],
                                frames_list: List[List[int]]):
         parameters_set = []
@@ -220,16 +223,13 @@ class ExtendedVerifierTestEnv():
         for resolution in resolutions_list:
             for subtasks_num in subtasks_num_list:
                 for frames in frames_list:
-                    params = ExtendedVerifierTest._build_params(resolution,
-                                                                subtasks_num,
-                                                                frames,
-                                                                None)
+                    params = ExtendedVerifierTest._build_params(
+                        resolution, subtasks_num, frames, {})
                     parameters_set.append(params)
         return parameters_set
 
 
-
-
+# pylint: disable=too-many-ancestors
 class ExtendedVerifierTest(TestBlenderIntegration):
 
     def __init__(self):
@@ -246,48 +246,50 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         frames = parameters_set['frames']
 
         # TODO: Use these parameters to test chosen crops.
-        crops_params = parameters_set['crops_params']
+        # crops_params = parameters_set['crops_params']
 
-        task_def = self._task_dictionary(scene_file=self._get_chessboard_scene(),
-                                         resolution=resolution,
-                                         subtasks_count=subtasks,
-                                         frames=frames)
+        task_def = self._task_dictionary(
+            scene_file=self._get_chessboard_scene(),
+            resolution=resolution,
+            subtasks_count=subtasks,
+            frames=frames)
 
         task: Task = self.start_task(task_def)
 
         for i in range(task.task_definition.subtasks_count):
             result, subtask_id, _ = self.compute_next_subtask(task, i)
-            
+
             try:
                 result = self.verify_subtask(task, subtask_id, result)
                 self._assert_crops_match(task.task_definition.task_id)
 
                 if not result:
-                    raise RuntimeError("Verification (decision tree) resulted in negative response.")
+                    raise RuntimeError("Verification (decision tree) resulted "
+                                       "in negative response.")
 
-            except (Exception, RuntimeError) as e:
-                parameters_set_copy = self._add_crop_params(parameters_set, task, i)
-                
+            except (Exception, RuntimeError):
+                parameters_set_copy = self._add_crop_params(
+                    parameters_set, task, i)
+
                 reason = {
-                    'exception' : "Crops don't match.",
-                    'tmp_dir' : self.tempdir
+                    'exception': "Crops don't match.",
+                    'tmp_dir': self.tempdir
                 }
 
                 self.report.fail(parameters_set_copy, reason)
             else:
-                self.report.success(self._add_crop_params(parameters_set, task, i))
+                self.report.success(
+                    self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
         if not TestTaskIntegration.check_file_existence(result):
             raise RuntimeError("Result file [{}] doesn't exist.".format(result))
 
-    def _add_crop_params(self,
-                         parameters_set: dict, 
-                         task: Task,
+    def _add_crop_params(self, parameters_set: dict, task: Task,
                          subtask_num: int):
         parameters_set_copy = copy.deepcopy(parameters_set)
         crops = self._deduce_crop_parameters(task.task_definition.task_id)
-        
+
         parameters_set_copy['crops_params'] = dict()
         parameters_set_copy['crops_params'][subtask_num] = crops['crops']
 
@@ -297,12 +299,15 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         task_dir = os.path.join(self.tempdir, task_id)
 
         try:
-            crops_paths = find_crop_files_in_path(os.path.join(task_dir, 'output'))
-            fragments_paths = find_fragments_in_path(os.path.join(task_dir, "work"))
-        except:
-            raise Exception("Can't find crop files in output or work directory.")
+            crops_paths = find_crop_files_in_path(
+                os.path.join(task_dir, 'output'))
+            fragments_paths = find_fragments_in_path(
+                os.path.join(task_dir, "work"))
+        except Exception:
+            raise Exception(
+                "Can't find crop files in output or work directory.")
 
-        assert len(crops_paths) > 0, "There were no crops produced!"
+        assert crops_paths, "There were no crops produced!"
         assert len(crops_paths) == len(
             fragments_paths
         ), "Amount of rendered crops != amount of image fragments!"
@@ -317,26 +322,27 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
     def _deduce_crop_parameters(self, task_id: str) -> dict:
         task_dir = os.path.join(self.tempdir, task_id)
-        params_file = os.path.join(task_dir, 'work', 'blender_render_params.json')
+        params_file = os.path.join(task_dir, 'work',
+                                   'blender_render_params.json')
 
         with open(params_file, "r") as file:
             content = file.read()
             return json.loads(content)
 
     @classmethod
-    def _build_params(cls, resolution: List[int], subtasks: int, frames: List[int], crops_params: dict):
+    def _build_params(cls, resolution: List[int], subtasks: int,
+                      frames: List[int], crops_params: dict):
         return {
-            'resolution' : resolution,
-            'subtasks_count' : subtasks,
-            'frames' : frames,
-            'crops_params' : crops_params
+            'resolution': resolution,
+            'subtasks_count': subtasks,
+            'frames': frames,
+            'crops_params': crops_params
         }
 
 
 def run_script():
     test_env = ExtendedVerifierTestEnv()
     test_env.run()
-
 
 
 if __name__ == "__main__":

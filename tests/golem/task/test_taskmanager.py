@@ -320,7 +320,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.is_my_task("xyz")
 
         cached_node = CachedNodeFactory()
-        cached_node.save()
 
         subtask = self.tm.get_next_subtask(
             cached_node.node, "xyz", 1000, 10, 'oh')

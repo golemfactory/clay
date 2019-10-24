@@ -208,8 +208,6 @@ class TestIncomesKeeper(TestWithDatabase):
             model.WalletOperation.DIRECTION.incoming,
             **kwargs,
         )
-        income.wallet_operation.save(force_insert=True)
-        income.save(force_insert=True)
         return income
 
     @staticmethod

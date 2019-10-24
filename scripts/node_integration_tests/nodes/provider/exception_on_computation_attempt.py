@@ -48,7 +48,7 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
         Performance.update_or_create(
             env_id=env_id,
             performance=ACCEPTABLE_PERFORMANCE,
-            cpu_usage=0
+            cpu_usage=Performance.DEFAULT_CPU_USAGE
         )
 
         if isinstance(err, str):

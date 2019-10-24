@@ -303,9 +303,10 @@ class HyperdriveResourceManager(ClientHandler):
             success(entry, files, res_id)
 
         def error_wrapper(exception, **_):
-            logger.warning("Error downloading resource."
-                           "path=%s, hash=%s, error=%s",
-                           resource.path, resource.hash, exception)
+            logger.warning("Error downloading resource. res_id=%s",
+                           resource.res_id)
+            logger.debug("path=%s, hash=%s, error=%s",
+                         resource.path, resource.hash, exception)
             error(exception, entry, res_id)
 
         logger.debug("Preparing to download resource. path=%s, hash=%s",
