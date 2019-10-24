@@ -14,12 +14,13 @@ import pytest
 from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
+from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
     ComputingNodeDefinition,
 )
-from golem.task.taskstate import TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 from tests.utils.asyncio import AsyncMock
 
@@ -42,10 +43,10 @@ def mock_client(monkeypatch):
 
 
 @pytest.mark.usefixtures('pytest_database_fixture')
-class TestRequestedTaskManager():
+class TestRequestedTaskManager:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmpdir):
+    def setup_method(self, tmpdir, monkeypatch):
         self.frozen_time = None
         # TODO: Replace with tmp_path when pytest is updated to 5.x
         self.tmp_path = Path(tmpdir)
@@ -61,6 +62,11 @@ class TestRequestedTaskManager():
             public_key=self.public_key,
             root_path=self.rtm_path
         )
+
+        monkeypatch.setattr(
+            requestedtaskmanager,
+            '_build_legacy_task_state',
+            lambda *_: TaskState())
 
     def test_create_task(self):
         # given

@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Iterable
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -17,7 +17,10 @@ from pydispatch import dispatcher
 
 from golem.apps import AppId
 from golem.apps.manager import AppManager
-from golem.core.common import datetime_to_timestamp
+from golem.core.common import (
+    datetime_to_timestamp_utc,
+    get_timestamp_utc,
+)
 from golem.model import (
     ComputingNode,
     default_now,
@@ -33,7 +36,7 @@ from golem.task.taskstate import (
     TaskOp,
     TaskStatus,
     TASK_STATUS_ACTIVE,
-)
+    TaskState, SubtaskState)
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
 from golem.task.taskkeeper import compute_subtask_value
@@ -341,7 +344,7 @@ class RequestedTaskManager:
         )
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
-        deadline = datetime_to_timestamp(min(
+        deadline = datetime_to_timestamp_utc(min(
             subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
             task_deadline
         ))
@@ -636,7 +639,7 @@ class RequestedTaskManager:
         subtask.save()
 
         self._notice_task_updated(
-            subtask.task_id,
+            subtask.task,
             subtask_id=subtask.subtask_id,
             op=SubtaskOp.RESULT_DOWNLOADING
         )
@@ -754,8 +757,8 @@ class RequestedTaskManager:
             await self._app_clients[app_id].shutdown()
             del self._app_clients[app_id]
 
-    @staticmethod
     def _notice_task_updated(
+            self,
             db_task: RequestedTask,
             subtask_id: Optional[str] = None,
             op: Optional[Operation] = None,
@@ -769,8 +772,9 @@ class RequestedTaskManager:
             signal='golem.taskmanager',
             event='task_status_updated',
             task_id=db_task.task_id,
-            # FIXME: Fake the old task_state or update monitor for new values
-            task_status=db_task.status,
+            task_state=_build_legacy_task_state(
+                db_task,
+                self.get_requested_task_subtasks(db_task.task_id)),
             subtask_id=subtask_id,
             op=op,
         )
@@ -806,3 +810,48 @@ class RequestedTaskManager:
                 subtask_computation_time=comp_time,
             )
         ProviderComputeTimers.remove(subtask_id)
+
+
+def _build_legacy_task_state(
+        task: RequestedTask,
+        subtasks: Iterable[RequestedSubtask],
+) -> TaskState:
+    time_started = 0.0
+    time_elapsed = 0.0
+
+    if task.start_time:
+        time_started = datetime_to_timestamp_utc(task.start_time)
+        time_elapsed = get_timestamp_utc() - time_started
+
+    state = TaskState()
+    state.status = task.status
+    state.time_started = int(time_started)
+    state.elapsed_time = int(time_elapsed)
+    state.subtask_states = {
+        subtask.subtask_id: _build_legacy_subtask_state(subtask)
+        for subtask in subtasks
+    }
+
+    return state
+
+
+def _build_legacy_subtask_state(
+        subtask: RequestedSubtask
+) -> SubtaskState:
+    time_started = 0
+    deadline = 0
+
+    deadline_dt = subtask.deadline
+    if subtask.deadline:
+        time_started = datetime_to_timestamp_utc(subtask.start_time)
+        deadline = datetime_to_timestamp_utc(deadline_dt)
+
+    return SubtaskState(
+        subtask_id=subtask.subtask_id,
+        status=subtask.status,
+        time_started=int(time_started),
+        deadline=int(deadline),
+        price=subtask.price,
+        node_id=subtask.computing_node.node_id,
+        node_name=subtask.computing_node.name,
+    )
