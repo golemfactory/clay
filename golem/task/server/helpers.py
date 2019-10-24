@@ -80,6 +80,7 @@ def computed_task_reported(
 
     if is_task_api_task:
         rtm = task_server.requested_task_manager
+        rtm.task_result_incoming(task_id, report_computed_task.subtask_id)
         download_dir = rtm.get_subtask_outputs_dir(task_id, subtask_id)
         download_dir.mkdir(parents=True, exist_ok=True)
         logger.debug(

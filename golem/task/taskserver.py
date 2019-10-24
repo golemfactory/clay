@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import functools
 import itertools
 import logging
@@ -37,7 +38,11 @@ from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id, deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future
+from golem.core.deferred import (
+    asyncio_main_loop,
+    deferred_from_future,
+    sync_wait,
+)
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -69,11 +74,12 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.exceptions import ComputationInProgress
 from golem.task.server.whitelist import DockerWhitelistRPC
-from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task.benchmarkmanager import AppBenchmarkManager, BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
@@ -88,7 +94,6 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 if TYPE_CHECKING:
-    from golem.envs import BenchmarkResult  # noqa pylint: disable=unused-import,ungrouped-imports
     from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
 
 logger = logging.getLogger(__name__)
@@ -133,7 +138,7 @@ class TaskServer(
         app_dir = self.get_app_dir()
         built_in_apps = save_built_in_app_definitions(app_dir)
 
-        app_mgr = app_manager.AppManager()
+        self.app_manager = app_mgr = app_manager.AppManager()
         for app_def in golem.apps.load_apps_from_dir(app_dir):
             app_mgr.register_app(app_def)
         for app_id in built_in_apps:
@@ -173,6 +178,10 @@ class TaskServer(
             task_server=self,
             root_path=self.get_task_computer_root(),
             benchmarks=benchmarks
+        )
+        self.app_benchmark_manager = AppBenchmarkManager(
+            env_manager=new_env_manager,
+            root_path=Path(self.get_task_computer_root()),
         )
         self.task_computer = TaskComputerAdapter(
             task_server=self,
@@ -385,15 +394,29 @@ class TaskServer(
                 return None
 
             # Check performance
-            benchmark_result: 'Optional[BenchmarkResult]' = None
             if isinstance(env, OldEnv):
                 benchmark_result = env.get_benchmark_result()
+                benchmark_score = benchmark_result.performance
+                benchmark_cpu_usage = benchmark_result.cpu_usage
             else:  # NewEnv
-                env_mgr = self.task_keeper.new_env_manager
-                benchmark_result = yield env_mgr.get_benchmark_result(env_id)
-            if benchmark_result is None:
-                logger.debug("Not requesting task, benchmark is in progress.")
-                return None
+                try:
+                    future = asyncio.run_coroutine_threadsafe(
+                        self.app_benchmark_manager.get(
+                            theader.environment,
+                            theader.environment_prerequisites),
+                        loop=asyncio_main_loop())
+                    app_benchmark = yield Deferred.fromFuture(future)
+                except ComputationInProgress as error:
+                    logger.debug(
+                        "Not requesting task_id=%s: %r",
+                        theader.task_id,
+                        error)
+                    return None
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("Cannot retrieve benchmark score")
+                    return None
+                benchmark_score = app_benchmark.score
+                benchmark_cpu_usage = app_benchmark.cpu_usage
 
             # Check handshake
             handshake = self.resource_handshakes.get(theader.task_owner.key)
@@ -430,11 +453,11 @@ class TaskServer(
             )
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price,
-                performance=benchmark_result.performance
+                performance=benchmark_score
             )
             wtct = message.tasks.WantToComputeTask(
-                perf_index=benchmark_result.performance,
-                cpu_usage=benchmark_result.cpu_usage,
+                perf_index=benchmark_score,
+                cpu_usage=benchmark_cpu_usage,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
@@ -470,15 +493,20 @@ class TaskServer(
 
         self.task_computer.task_given(msg.compute_task_def)
         if msg.want_to_compute_task.task_header.environment_prerequisites:
-            deferreds = []
-            for resource_id in msg.compute_task_def['resources']:
-                deferreds.append(self.new_resource_manager.download(
+            subtask_inputs_dir = self.task_computer.get_subtask_inputs_dir()
+            resources_options = msg.resources_options or dict()
+            client_options = self.resource_manager.build_client_options(
+                **resources_options)
+
+            deferred_list = [
+                self.new_resource_manager.download(
                     resource_id,
-                    self.task_computer.get_subtask_inputs_dir(),
-                    self.resource_manager.build_client_options(
-                        **msg.resources_options),
-                ))
-            defer.gatherResults(deferreds, consumeErrors=True)\
+                    subtask_inputs_dir,
+                    client_options,
+                ) for resource_id in msg.compute_task_def['resources']
+            ]
+
+            defer.gatherResults(deferred_list, consumeErrors=True)\
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id),
                     lambda e: self.resource_failure(msg.task_id, e))
@@ -526,7 +554,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
-            stats: Dict = {},
+            stats: Dict = None,
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')
@@ -545,32 +573,31 @@ class TaskServer(
 
         delay_time = 0.0
         last_sending_trial = 0
+        stats = stats or {}
 
         wtr = WaitingTaskResult(
             task_id=task_id,
             subtask_id=subtask_id,
-            result=result or [str(task_api_result)],
+            result=result or (str(task_api_result),),
             last_sending_trial=last_sending_trial,
             delay_time=delay_time,
             owner=header.task_owner,
             stats=stats)
 
-        def create_and_enqueue_result():
-            if task_api_result:
-                wtr.package_sha1 = ''
-                wtr.result_path = wtr.result[0]
-            else:
-                self._create_and_set_result_package(wtr)
-            self.results_to_send[subtask_id] = wtr
-            Trust.REQUESTED.increase(header.task_owner.key)
+        def enqueue_computed_task_result():
+            self.results_to_send[wtr.subtask_id] = wtr
+            Trust.REQUESTED.increase(wtr.owner.key)
 
         if result:
-            create_and_enqueue_result()
+            self._create_and_set_result_package(wtr)
+            enqueue_computed_task_result()
             return
 
-        def on_result_share_success(res_id):
-            wtr.result_hash = res_id
-            create_and_enqueue_result()
+        def on_result_share_success(resource_id):
+            wtr.package_sha1 = resource_id
+            wtr.result_path = wtr.result[0]
+            wtr.result_hash = resource_id
+            enqueue_computed_task_result()
 
         def on_result_share_error(err):
             logger.error(
@@ -582,7 +609,7 @@ class TaskServer(
         deferred = self.new_resource_manager.share(
             task_api_result,
             client_options)
-        deferred.addCallbacks(
+        deferred.addCallbacks(  # pylint: disable=no-member
             on_result_share_success,
             on_result_share_error)
 
@@ -674,7 +701,7 @@ class TaskServer(
         return self.task_keeper.get_all_tasks()
 
     @inlineCallbacks
-    def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
+    def add_task_header(self, task_header: dt_tasks.TaskHeader):
         if not self._verify_header_sig(task_header):
             logger.info(
                 'Invalid signature. task_id=%r, signature=%r',
@@ -702,7 +729,7 @@ class TaskServer(
 
             task_added = yield self.task_keeper.add_task_header(task_header)
             return task_added
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
         return False
 
@@ -753,6 +780,7 @@ class TaskServer(
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed:
             self._remove_env_performance_scores()
+            self.app_benchmark_manager.remove_benchmark_scores()
         elif not run_benchmarks:
             return
 
@@ -974,7 +1002,7 @@ class TaskServer(
         ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id in self.task_manager.tasks:
-            task = self.task_manager.tasks.get(task_id)
+            task = self.task_manager.tasks[task_id]
             env_id = task.header.environment
             min_memory = task.header.estimated_memory
             mask = task.header.mask
@@ -982,10 +1010,11 @@ class TaskServer(
                 node_id,
                 offer_hash)
         elif self.requested_task_manager.task_exists(task_id):
-            task = self.requested_task_manager.get_requested_task(task_id)
-            env_id = task.env_id
-            min_memory = task.min_memory
-            mask = Mask(task.mask)
+            req_task = self.requested_task_manager.get_requested_task(task_id)
+            assert req_task, "Task missing due a race condition"
+            env_id = req_task.env_id
+            min_memory = req_task.min_memory
+            mask = Mask(req_task.mask)
             # For compatibility purposes; the app decides to whom assign a task
             accept_client_verdict = AcceptClientVerdict.ACCEPTED
         else:

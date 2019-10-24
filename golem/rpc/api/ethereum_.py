@@ -64,10 +64,12 @@ class ETSProvider:
 
         def item(o):
             node_id = o.node if not o.node.startswith('0x') else o.node[2:]
+            amount = o.wallet_operation.amount \
+                if o.wallet_operation.amount else o.expected_amount
             return {
                 "subtask": common.to_unicode(o.subtask),
                 "payer": common.to_unicode(node_id),
-                "value": common.to_unicode(o.wallet_operation.amount),
+                "value": common.to_unicode(amount),
                 "status": common.to_unicode(o.wallet_operation.status.name),
                 "transaction": common.to_unicode(o.wallet_operation.tx_hash),
                 "created": common.datetime_to_timestamp_utc(o.created_date),

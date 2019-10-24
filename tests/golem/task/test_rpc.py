@@ -19,6 +19,7 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.envs import EnvSupportStatus
 from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
@@ -59,9 +60,10 @@ class ProviderBase(test_client.TestClientBase):
         'concent_enabled': False,
     }
 
-    @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):  # pylint: disable=arguments-differ
+    @mock.patch('golem.envs.default.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
+        docker_env.supported.return_value = EnvSupportStatus(True)
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
         self.client.apps_manager._benchmark_enabled = mock.Mock(
@@ -205,7 +207,7 @@ class TestCreateTaskDryRun(ProviderBase):
         # then
         assert error is None
         assert new_dict['id'] is not None
-        assert new_dict['subtasks_count'] == 10
+        assert new_dict['subtasks_count'] == 1
 
     def test_failure(self):
         # given

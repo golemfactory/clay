@@ -258,13 +258,15 @@ class SubtaskOp(Operation):
     TIMEOUT = auto()
     RESTARTED = auto()
     VERIFYING = auto()
+    ABORTED = auto()
 
     def is_completed(self) -> bool:
         return self not in (
             SubtaskOp.ASSIGNED,
             SubtaskOp.RESULT_DOWNLOADING,
             SubtaskOp.RESTARTED,
-            SubtaskOp.VERIFYING
+            SubtaskOp.VERIFYING,
+            SubtaskOp.ABORTED,
         )
 
 

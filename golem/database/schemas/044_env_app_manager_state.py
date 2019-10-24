@@ -1,9 +1,9 @@
 # pylint: disable=no-member
-# pylint: disable=unused-argument
+# pylint: disable=unused-argument,unused-variable
 import datetime as dt
 import peewee as pw
 
-SCHEMA_VERSION = 40
+SCHEMA_VERSION = 44
 
 
 def migrate(migrator, database, fake=False, **kwargs):

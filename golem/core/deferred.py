@@ -3,6 +3,7 @@ from queue import Queue, Empty
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from twisted.internet import defer
+from twisted.internet.asyncioreactor import AsyncioSelectorReactor
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
@@ -95,3 +96,9 @@ def deferred_from_future(future_like) -> defer.Deferred:
     deferred.addCallback(uncancel)
     future.add_done_callback(adapt)
     return deferred
+
+
+def asyncio_main_loop():
+    from twisted.internet import reactor
+    assert isinstance(reactor, AsyncioSelectorReactor)
+    return reactor._asyncioEventloop  # noqa pylint: disable=protected-access

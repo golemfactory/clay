@@ -165,7 +165,7 @@ _TASK_SETTINGS = {
         },
     },
     'task_api_blender': {
-        'app_id': 'c67dbee6858c20158f31700dacc1c1ad',
+        'app_id': 'a6efc03aa659a16980fd5f079ae9b01b',
         'name': '',  # leave empty: Task API output does not contain this name
         'resources': [],
         'max_price_per_hour': str(50 * 10 ** 18),

@@ -82,7 +82,7 @@ class EnvSupportStatus(NamedTuple):
 @dataclass
 class BenchmarkResult:
     performance: float = 0.0
-    cpu_usage: int = 0
+    cpu_usage: int = Performance.DEFAULT_CPU_USAGE
 
     @staticmethod
     def from_performance(performance: Performance):

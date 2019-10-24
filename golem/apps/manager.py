@@ -55,7 +55,7 @@ class AppStates:
 
     def __contains__(self, item):
         if not isinstance(item, str):
-            self._type_error(item)
+            self._raise_no_str_type(item)
 
         return AppConfiguration.select(AppConfiguration.app_id) \
             .where(AppConfiguration.app_id == item) \
@@ -63,7 +63,7 @@ class AppStates:
 
     def __getitem__(self, item):
         if not isinstance(item, str):
-            self._type_error(item)
+            self._raise_no_str_type(item)
         try:
             return AppConfiguration \
                 .get(AppConfiguration.app_id == item) \
@@ -73,12 +73,12 @@ class AppStates:
 
     def __setitem__(self, key, val):
         if not isinstance(key, str):
-            self._type_error(key)
+            self._raise_no_str_type(key)
         if not isinstance(val, bool):
             raise TypeError(f"Value is of type {type(val)}; bool expected")
 
         AppConfiguration.insert(app_id=key, enabled=val).upsert().execute()
 
     @staticmethod
-    def _type_error(item):
+    def _raise_no_str_type(item):
         raise TypeError(f"Key is of type {type(item)}; str expected")

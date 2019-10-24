@@ -233,10 +233,18 @@ class CompTaskKeeper:
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
+        is_task_api_task = bool(task.header.environment_prerequisites)
         key_id: str = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
+        if not is_task_api_task and not idgenerator.check_id_hex_seed(
+                comp_task_def['subtask_id'],
+                key_id,):
+            logger.info(not_accepted_message, *log_args, "Subtask id was not "
+                                                         "generated from "
+                                                         "requestor's key.")
+            return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")
@@ -475,7 +483,7 @@ class TaskHeaderKeeper:
                 self.task_archiver.add_support_status(id_, supported)
 
     @inlineCallbacks
-    def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
+    def add_task_header(self, header: dt_tasks.TaskHeader):
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported

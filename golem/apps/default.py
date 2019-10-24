@@ -5,13 +5,13 @@ from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from pathvalidate import sanitize_filename
 
 from golem.apps import AppId, AppDefinition, save_app_to_json_file
+from golem.marketplace import RequestorBrassMarketStrategy
 
-
-BlenderAppDefinition_v0_3_2 = AppDefinition(
+BlenderAppDefinition_v0_4_0 = AppDefinition(
     name='golemfactory/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
-    version='0.3.2',
+    version='0.4.0',
     description=(
         'Rendering with Blender, the free and open source '
         '3D creation suite'
@@ -19,13 +19,14 @@ BlenderAppDefinition_v0_3_2 = AppDefinition(
     requestor_env=DOCKER_CPU_ENV_ID,
     requestor_prereq=dict(
         image='golemfactory/blenderapp',
-        tag='0.3.2',
+        tag='0.4.0',
     ),
+    market_strategy=RequestorBrassMarketStrategy,
     max_benchmark_score=10000.,
 )
 
 APPS = [
-    BlenderAppDefinition_v0_3_2,
+    BlenderAppDefinition_v0_4_0,
 ]
 
 

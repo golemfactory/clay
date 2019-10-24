@@ -251,6 +251,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def test_cannot_compute_task_computation_failure(self):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.get_node_id_for_subtask.return_value = ts2.key_id
+        ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -261,6 +262,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
+        ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -273,6 +275,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             reason=message.tasks.CannotComputeTask.REASON.OfferCancelled,
         )
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
+        ts.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts._react_to_cannot_compute_task(msg)
         ts.task_manager.task_computation_cancelled.assert_called_once_with(
             msg.subtask_id,
@@ -534,6 +537,7 @@ class TestTaskSession(TaskSessionTestBase):
     def setUp(self):
         super().setUp()
         self.concent_keys = cryptography.ECCx(None)
+        self.task_session.task_server.task_manager.tasks = dict()
         self.task_session.task_server.client.concent_service.variant = {
             'pubkey': self.concent_keys.raw_pubkey}
 
@@ -791,10 +795,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = True
@@ -808,10 +814,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = False
@@ -1063,6 +1071,7 @@ class ReportComputedTaskTest(
         ts = TaskSession(Mock())
         ts.key_id = "ABC"
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
+        ts.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts.task_manager.subtask2task_mapping = {
             self.subtask_id: self.task_id,
         }
@@ -1101,6 +1110,9 @@ class ReportComputedTaskTest(
         msg = self._prepare_report_computed_task()
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(True)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.task_exists.return_value = False
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.process_report_computed_task',
                    return_value=message.tasks.AckReportComputedTask()):
@@ -1114,6 +1126,9 @@ class ReportComputedTaskTest(
     def test_reject_result_pull_failed_no_concent(self, *_):
         msg = self._prepare_report_computed_task(
             task_to_compute__concent_enabled=False)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.task_exists.return_value = False
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.history.add'):
             self.ts.task_manager.task_result_manager.pull_package = \
@@ -1135,6 +1150,8 @@ class ReportComputedTaskTest(
 
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(False)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.process_report_computed_task',
                    return_value=message.tasks.AckReportComputedTask()):

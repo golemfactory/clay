@@ -187,7 +187,7 @@ class EnvStates:
 
     def __contains__(self, item):
         if not isinstance(item, str):
-            self._type_error(item)
+            self._raise_no_str_type(item)
 
         return EnvConfiguration.select(EnvConfiguration.env_id) \
             .where(EnvConfiguration.env_id == item) \
@@ -195,7 +195,7 @@ class EnvStates:
 
     def __getitem__(self, item):
         if not isinstance(item, str):
-            self._type_error(item)
+            self._raise_no_str_type(item)
         try:
             return EnvConfiguration \
                 .get(EnvConfiguration.env_id == item) \
@@ -205,12 +205,12 @@ class EnvStates:
 
     def __setitem__(self, key, val):
         if not isinstance(key, str):
-            self._type_error(key)
+            self._raise_no_str_type(key)
         if not isinstance(val, bool):
             raise TypeError(f"Value is of type {type(val)}; bool expected")
 
         EnvConfiguration.insert(env_id=key, enabled=val).upsert().execute()
 
     @staticmethod
-    def _type_error(item):
+    def _raise_no_str_type(item):
         raise TypeError(f"Key is of type {type(item)}; str expected")

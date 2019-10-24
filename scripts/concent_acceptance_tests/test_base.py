@@ -1,5 +1,4 @@
 import pickle
-import unittest
 
 from golem_messages import message
 from golem_messages import factories as msg_factories
@@ -8,7 +7,7 @@ from golem_messages.shortcuts import dump, load
 from .base import ConcentBaseTest
 
 
-class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
+class ConcentBaseTestTest(ConcentBaseTest):
     def test_assert_methods(self):
         requestor_keys = self._fake_keys()
         provider_keys = self._fake_keys()

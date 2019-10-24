@@ -14,12 +14,13 @@ import pytest
 from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
+from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
     ComputingNodeDefinition,
 )
-from golem.task.taskstate import TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 from tests.utils.asyncio import AsyncMock
 
@@ -42,10 +43,11 @@ def mock_client(monkeypatch):
 
 
 @pytest.mark.usefixtures('pytest_database_fixture')
-class TestRequestedTaskManager():
+class TestRequestedTaskManager:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmpdir):
+    def setup_method(self, tmpdir, monkeypatch):
+        self.frozen_time = None
         # TODO: Replace with tmp_path when pytest is updated to 5.x
         self.tmp_path = Path(tmpdir)
 
@@ -60,6 +62,11 @@ class TestRequestedTaskManager():
             public_key=self.public_key,
             root_path=self.rtm_path
         )
+
+        monkeypatch.setattr(
+            requestedtaskmanager,
+            '_build_legacy_task_state',
+            lambda *_: TaskState())
 
     def test_create_task(self):
         # given
@@ -154,6 +161,7 @@ class TestRequestedTaskManager():
         res = await self.rtm.get_next_subtask(task_id, computing_node)
 
         row = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == res.subtask_id)
         # then
         assert row.task_id == task_id
@@ -165,7 +173,8 @@ class TestRequestedTaskManager():
         )
 
     @pytest.mark.asyncio
-    async def test_verify(self, mock_client):
+    @pytest.mark.freeze_time("1000")
+    async def test_verify(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = (VerifyResult.SUCCESS, '')
@@ -180,10 +189,12 @@ class TestRequestedTaskManager():
         mock_client.has_pending_subtasks.return_value = False
         subtask_id = subtask.subtask_id
         # when
+        freezer.move_to("1010")
         res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id)
         # then
         assert res is VerifyResult.SUCCESS
@@ -193,7 +204,8 @@ class TestRequestedTaskManager():
         assert subtask_row.status.is_finished() is True
 
     @pytest.mark.asyncio
-    async def test_verify_failed(self, mock_client):
+    @pytest.mark.freeze_time("1000")
+    async def test_verify_failed(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         mock_client.verify.return_value = False
@@ -205,10 +217,12 @@ class TestRequestedTaskManager():
 
         subtask_id = subtask.subtask_id
         # when
+        freezer.move_to("1010")
         res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id)
         # then
         assert res is VerifyResult.FAILURE
@@ -218,7 +232,8 @@ class TestRequestedTaskManager():
         assert subtask_row.status == SubtaskStatus.failure
 
     @pytest.mark.asyncio
-    async def test_abort(self, mock_client):
+    @pytest.mark.freeze_time("1000")
+    async def test_abort(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
 
@@ -230,11 +245,14 @@ class TestRequestedTaskManager():
 
         subtask_id = subtask.subtask_id
         # when
+        freezer.move_to("1010")
         await self.rtm.abort_task(task_id)
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id)
         # then
+        mock_client.abort_task.assert_called_once_with(task_id)
         mock_client.shutdown.assert_called_once_with()
         assert task_row.status == TaskStatus.aborted
         assert subtask_row.status == SubtaskStatus.cancelled
@@ -326,6 +344,7 @@ class TestRequestedTaskManager():
         assert discarded_subtask_ids == subtask_ids
         for subtask_id in discarded_subtask_ids:
             row = RequestedSubtask.get(
+                RequestedSubtask.task == task_id,
                 RequestedSubtask.subtask_id == subtask_id)
             assert row.status == SubtaskStatus.cancelled
 

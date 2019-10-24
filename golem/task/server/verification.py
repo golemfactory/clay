@@ -14,7 +14,6 @@ from golem.core import common
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
-from golem.task.result.resultmanager import ExtractedPackage
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
@@ -85,19 +84,20 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            if task_id in self.task_manager.tasks:
-                task = self.task_manager.tasks[task_id]
-                strategy = task.REQUESTOR_MARKET_STRATEGY
-                payment_computer = strategy.get_payment_computer(  # noqa type: ignore
-                        task,
-                        subtask_id)
+            task = self.task_manager.tasks.get(task_id)
+            if task:
+                strat = task.REQUESTOR_MARKET_STRATEGY
+                payment_computer = strat.get_payment_computer(  # type: ignore
+                    task,
+                    subtask_id)
             else:
                 # FIXME: adjust after merging #4753 (with #4785)
-                task = self.requested_task_manager.get_requested_task(task_id)
-                subtask_timeout = task.subtask_timeout
-
                 def payment_computer(price: int):
                     return price * subtask_timeout
+
+                task = self.requested_task_manager.get_requested_task(task_id)
+                assert task, "Completed verification for an unknown task"
+                subtask_timeout = task.subtask_timeout
 
             payment = self.accept_result(
                 task_id,
@@ -130,10 +130,10 @@ class VerificationMixin:
 
         if self.requested_task_manager.task_exists(task_id):
             failure_results = (VerifyResult.INCONCLUSIVE, VerifyResult.FAILURE)
-            task = asyncio.ensure_future(self.requested_task_manager.verify(
+            fut = asyncio.ensure_future(self.requested_task_manager.verify(
                 task_id,
                 subtask_id))
-            task.add_done_callback(
+            fut.add_done_callback(
                 lambda f: verification_finished(
                     False,
                     f.result() in failure_results))

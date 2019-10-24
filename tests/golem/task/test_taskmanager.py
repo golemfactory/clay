@@ -25,10 +25,7 @@ from apps.blender.task.blenderrendertask import BlenderRenderTask
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.dummy.task.dummytask import DummyTaskBuilder
-from apps.dummy.task.dummytaskstate import (
-    DummyTaskDefinition,
-    DummyTaskDefaults,
-)
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 
 from golem import model
 from golem import testutils
@@ -202,8 +199,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert any("This is not my task" in log for log in log.output)
 
     def _get_test_dummy_task(self, task_id):
-        defaults = DummyTaskDefaults()
-        tdd = DummyTaskDefinition(defaults)
+        tdd = DummyTaskDefinition()
         dm = dirmanager.DirManager(self.path)
         dtb = DummyTaskBuilder(dt_p2p_factory.Node(node_name="MyNode"), tdd, dm)
 
@@ -324,7 +320,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert self.tm.is_my_task("xyz")
 
         cached_node = CachedNodeFactory()
-        cached_node.save()
 
         subtask = self.tm.get_next_subtask(
             cached_node.node, "xyz", 1000, 10, 'oh')
@@ -767,33 +762,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.assertEqual(set(self.tm.get_subtasks("xyz")),
                          {"xxyyzz", "aabbcc", "ddeeff"})
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
-
-    def test_resource_send(self, *_):
-        # pylint: disable=abstract-class-instantiated
-        from pydispatch import dispatcher
-        t = TaskMock(
-            header=dt_tasks_factory.TaskHeaderFactory(
-                task_id="xyz",
-                subtask_timeout=1,
-                max_price=1,
-            ),
-            task_definition=Mock(),
-        )
-        listener_mock = Mock()
-
-        def listener(sender, signal, event, task_id):
-            self.assertEqual(event, 'task_status_updated')
-            self.assertEqual(task_id, t.header.task_id)
-            listener_mock()
-
-        dispatcher.connect(listener, signal='golem.taskmanager')
-        try:
-            self.tm.add_new_task(t)
-            self.tm.start_task(t.header.task_id)
-            self.tm.resources_send("xyz")
-            self.assertEqual(3, listener_mock.call_count)
-        finally:
-            dispatcher.disconnect(listener, signal='golem.taskmanager')
 
     @freeze_time()
     def test_check_timeouts(self, *_):
