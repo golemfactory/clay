@@ -14,7 +14,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    Type,
     Union,
     Set,
     Tuple,
@@ -62,9 +61,6 @@ from golem.network.transport.tcpserver import (
 )
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager.database_manager import (
-    get_requestor_efficiency,
-    get_requestor_assigned_sum,
-    get_requestor_paid_sum,
     update_requestor_paid_sum,
     update_requestor_assigned_sum,
     update_requestor_efficiency,
@@ -73,10 +69,10 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
+from golem.task.exceptions import ComputationInProgress
 from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
-from golem.task.taskbase import Task
-from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task.benchmarkmanager import AppBenchmarkManager, BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
 from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskbase import Task, AcceptClientVerdict
@@ -170,14 +166,14 @@ class TaskServer(
             finished_cb=task_finished_cb,
         )
 
-        app_mgr = app_manager.AppManager()
+        self.app_manager = app_manager.AppManager()
         app_dir = self.get_app_dir()
         os.makedirs(app_dir, exist_ok=True)
         for app_def in app_manager.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
+            self.app_manager.register_app(app_def)
 
         self.requested_task_manager = RequestedTaskManager(
-            app_manager=app_mgr,
+            app_manager=self.app_manager,
             env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
@@ -192,6 +188,10 @@ class TaskServer(
             task_server=self,
             root_path=self.get_task_computer_root(),
             benchmarks=benchmarks
+        )
+        self.app_benchmark_manager = AppBenchmarkManager(
+            env_manager=new_env_manager,
+            root_path=Path(self.get_task_computer_root()),
         )
         self.task_computer = TaskComputerAdapter(
             task_server=self,
@@ -404,15 +404,27 @@ class TaskServer(
                 return None
 
             # Check performance
-            benchmark_result: 'Optional[BenchmarkResult]' = None
             if isinstance(env, OldEnv):
                 benchmark_result = env.get_benchmark_result()
+                benchmark_score = benchmark_result.performance
+                benchmark_cpu_usage = benchmark_result.cpu_usage
             else:  # NewEnv
-                env_mgr = self.task_keeper.new_env_manager
-                benchmark_result = yield env_mgr.get_benchmark_result(env_id)
-            if benchmark_result is None:
-                logger.debug("Not requesting task, benchmark is in progress.")
-                return None
+                try:
+                    future = self.app_benchmark_manager.get_benchmark_score(
+                        theader.environment,
+                        theader.environment_prerequisites)
+                    app_benchmark = yield deferred_from_future(future)
+                except ComputationInProgress as error:
+                    logger.debug(
+                        "Not requesting task_id=%s: %r",
+                        theader.task_id,
+                        error)
+                    return None
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception("Cannot retrieve benchmark score")
+                    return None
+                benchmark_score = app_benchmark.score
+                benchmark_cpu_usage = app_benchmark.cpu_usage
 
             # Check handshake
             handshake = self.resource_handshakes.get(theader.task_owner.key)
@@ -449,11 +461,11 @@ class TaskServer(
             )
             self.task_manager.add_comp_task_request(
                 theader=theader, price=price,
-                performance=benchmark_result.performance
+                performance=benchmark_score
             )
             wtct = message.tasks.WantToComputeTask(
-                perf_index=benchmark_result.performance,
-                cpu_usage=benchmark_result.cpu_usage,
+                perf_index=benchmark_score,
+                cpu_usage=benchmark_cpu_usage,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
@@ -749,6 +761,7 @@ class TaskServer(
         config_changed = yield self.task_computer.change_config(config_desc)
         if config_changed:
             self._remove_env_performance_scores()
+            self.app_benchmark_manager.remove_benchmark_scores()
         elif not run_benchmarks:
             return
 

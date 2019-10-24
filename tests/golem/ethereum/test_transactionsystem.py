@@ -393,7 +393,15 @@ class WithdrawTest(TransactionSystemBase):
 
         self.eth_tx = f'0x{"e"*64}'
         self.gntb_tx = f'0x{"f"*64}'
-        self.sci.transfer_eth.return_value = self.eth_tx
+
+        def transfer_eth(
+                to_address: str,
+                amount: int,
+                gas_price: Optional[int] = None) -> str:
+            assert amount > 0
+            return self.eth_tx
+
+        self.sci.transfer_eth.side_effect = transfer_eth
         self.sci.convert_gntb_to_gnt.return_value = self.gntb_tx
 
         self.ets._refresh_balances()
@@ -453,6 +461,13 @@ class WithdrawTest(TransactionSystemBase):
             amount - gas_price * self.gas_cost,
             gas_price,
         )
+
+    def test_gas_price_higher_than_amount(self):
+        amount = denoms.ether
+        gas_price = amount+1
+        with self.assertRaisesRegex(Exception,
+                                    "Gas price is higer than amount"):
+            self.ets.withdraw(amount, self.dest, 'ETH', gas_price)
 
     def test_eth_with_lock(self):
         self.ets.lock_funds_for_payments(1, 1)
