@@ -206,15 +206,15 @@ def verify(  # pylint: disable=too-many-arguments
 
     (crops,
      blender_render_parameters) = prepare_data_for_blender_verification(
-        subtask_border,
-        scene_file_path,
-        resolution,
-        samples,
-        frames,
-        output_format,
-        crops_count,
-        crops_borders
-    )
+         subtask_border,
+         scene_file_path,
+         resolution,
+         samples,
+         frames,
+         output_format,
+         crops_count,
+         crops_borders
+     )
     print("blender_render_params:")
     pprint(blender_render_parameters)
     save_params(blender_render_parameters, "blender_render_params.json",
