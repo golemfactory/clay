@@ -383,12 +383,6 @@ class TaskManager(TaskEventListener):
         for path in broken_paths:
             path.unlink()
 
-    @handle_task_key_error
-    def resources_send(self, task_id):
-        self.tasks_states[task_id].status = TaskStatus.waiting
-        self.notice_task_updated(task_id)
-        logger.info("Resources for task sent. id=%s", task_id)
-
     def got_wants_to_compute(self,
                              task_id: str):
         """

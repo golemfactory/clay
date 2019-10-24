@@ -754,6 +754,13 @@ class RequestedTask(BaseModel):
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
 
+    @property
+    def elapsed_seconds(self) -> Optional[int]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return (default_now() - self.start_time).total_seconds()
+
     def estimated_fee(self) -> float:
         return self.max_price_per_hour * (
             self.subtask_timeout
