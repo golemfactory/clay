@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import Callable, List, Optional, Tuple, TYPE_CHECKING
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 from dataclasses import dataclass
 from golem.marketplace import (Offer, ProviderMarketStrategy, ProviderPricing)
@@ -15,6 +15,7 @@ from .rust import order_providers
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
     from golem.task.taskbase import Task  # noqa
+    from golem_messages.message.tasks import ReportComputedTask
 
 logger = logging.getLogger(__name__)
 
@@ -54,16 +55,8 @@ class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
         return [offers[i] for i in permutation]
 
     @classmethod
-    def get_payment_computer(
-            cls,
-            task: 'Task',
-            subtask_id: str
-    ) -> Callable[[int], int]:
-
-        def payment_computer(price: int):
-            return compute_subtask_value(price, task.header.subtask_timeout)
-
-        return payment_computer
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+        return _calculate_brass_payment(rct)
 
 
 class ProviderBrassMarketStrategy(ProviderMarketStrategy):
@@ -89,3 +82,16 @@ class ProviderBrassMarketStrategy(ProviderMarketStrategy):
         R = dbm.get_requestor_efficiency(requestor_id)
         S = Q * R
         return min(max(int(r / S), pricing.price_per_wallclock_h), max_price)
+
+    @classmethod
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+        return _calculate_brass_payment(rct)
+
+
+def _calculate_brass_payment(rct: 'ReportComputedTask') -> int:
+    task_header = rct.task_to_compute.want_to_compute_task.task_header
+
+    return compute_subtask_value(
+        rct.task_to_compute.want_to_compute_task.price,
+        task_header.subtask_timeout
+    )

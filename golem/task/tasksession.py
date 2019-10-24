@@ -40,6 +40,7 @@ from golem.task import taskkeeper
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
+from golem.task.taskkeeper import compute_subtask_value
 
 if TYPE_CHECKING:
     from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
@@ -589,10 +590,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ResourcesTooBig)
             return
 
-        number_of_subtasks = self.task_server.task_keeper\
-            .task_headers[msg.task_id]\
-            .subtasks_count
-        total_task_price = msg.price * number_of_subtasks
+        task_header = msg.want_to_compute_task.task_header
+        total_task_price = compute_subtask_value(
+            task_header.max_price,
+            task_header.subtask_timeout
+        ) * task_header.subtasks_count
+
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.get_available_gnt(
             account_address=msg.requestor_ethereum_address,
@@ -781,12 +784,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
+        task_header = msg.task_to_compute.want_to_compute_task.task_header
+        app = self.task_server.client.apps_manager.get_app_for_env(
+            task_header.environment
+        )
+        payment_value = app.builder.TASK_CLASS.PROVIDER_MARKET_STRATEGY\
+            .calculate_payment(msg.report_computed_task)
+
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             payer_address=msg.task_to_compute.requestor_ethereum_address,
-            value=msg.task_to_compute.price,
+            value=payment_value,
             accepted_ts=msg.payment_ts,
         )
         self.dropped()
