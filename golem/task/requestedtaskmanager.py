@@ -519,11 +519,11 @@ class RequestedTaskManager:
             )
 
     async def work_offer_canceled(self, task_id: TaskId, subtask_id: SubtaskId):
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask = RequestedSubtask.get(
             RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
+        task = subtask.task
         await self.discard_subtasks(task_id, [subtask_id])
         self._notice_task_updated(
             task,
