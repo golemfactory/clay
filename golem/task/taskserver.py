@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import asyncio
 import functools
 import itertools
 import logging
@@ -37,7 +38,7 @@ from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id, deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future
+from golem.core.deferred import sync_wait, deferred_from_future, asyncio_main_loop
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
@@ -395,10 +396,12 @@ class TaskServer(
                 benchmark_cpu_usage = benchmark_result.cpu_usage
             else:  # NewEnv
                 try:
-                    future = self.app_benchmark_manager.get_benchmark_score(
-                        theader.environment,
-                        theader.environment_prerequisites)
-                    app_benchmark = yield deferred_from_future(future)
+                    future = asyncio.run_coroutine_threadsafe(
+                        self.app_benchmark_manager.get_benchmark_score(
+                            theader.environment,
+                            theader.environment_prerequisites),
+                        loop=asyncio_main_loop())
+                    app_benchmark = yield Deferred.fromFuture(future)
                 except ComputationInProgress as error:
                     logger.debug(
                         "Not requesting task_id=%s: %r",
