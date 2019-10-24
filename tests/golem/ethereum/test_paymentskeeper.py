@@ -1,6 +1,5 @@
 from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
-from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
 
