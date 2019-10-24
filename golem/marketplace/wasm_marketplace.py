@@ -54,7 +54,7 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             uf = usage_benchmark / cls.get_my_usage_benchmark()
 
             # Sanity check against misreported benchmarks
-            uf = min(max(uf, 0.25), 1.5)
+            uf = min(max(uf, 0.1), 2.0)
             logger.info("RWMS: initial usage factor for %s = %.3f",
                         provider_id,
                         uf)
