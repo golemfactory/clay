@@ -1,6 +1,7 @@
 import logging
 from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,
                     TYPE_CHECKING)
+import math
 import numpy
 
 from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
@@ -187,7 +188,9 @@ def _calculate_usage_payment(rct: 'ReportComputedTask') -> int:
         task_header.subtask_timeout,
     )
 
-    usage = rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
+    usage = math.ceil(
+        rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
+    )
     price = rct.task_to_compute.want_to_compute_task.price
 
     return min(compute_subtask_value(price, usage), max_payment)
