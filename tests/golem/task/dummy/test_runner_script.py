@@ -5,7 +5,6 @@ from golem.testutils import DatabaseFixture
 from tests.golem.task.dummy import runner
 
 
-@mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
 
@@ -14,7 +13,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_requesting(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node, _):
+            mock_run_requesting_node):
         args = ["runner.py", runner.REQUESTING_NODE_KIND, self.path, "7"]
         runner.dispatch(args)
         self.assertTrue(mock_run_requesting_node.called)
@@ -27,7 +26,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_computing(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node, _):
+            mock_run_requesting_node):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
                 self.path, "1.2.3.4:5678", "pid", ]
         runner.dispatch(args)
@@ -45,7 +44,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_dispatch_computing_with_failure(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node, _):
+            mock_run_requesting_node):
         args = ["runner.py", runner.COMPUTING_NODE_KIND,
                 self.path, "10.0.255.127:16000", "pid", "25"]
         runner.dispatch(args)
@@ -63,7 +62,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.run_simulation")
     def test_runner_run_simulation(
             self, mock_run_simulation, mock_run_computing_node,
-            mock_run_requesting_node, _):
+            mock_run_requesting_node):
         args = ["runner.py"]
         mock_run_simulation.return_value = None
         runner.dispatch(args)
@@ -105,7 +104,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         client.quit()
 
     @mock.patch("subprocess.Popen")
-    def test_run_simulation(self, mock_popen, _):
+    def test_run_simulation(self, mock_popen):
         mock_process = mock.MagicMock()
         mock_process.pid = 12345
         mock_popen.return_value = mock_process

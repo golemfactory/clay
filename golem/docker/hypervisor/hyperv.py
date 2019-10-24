@@ -328,25 +328,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         else:
             yield name
 
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.reconfig')
-    def reconfig_ctx(self, name: Optional[str] = None):
-        name = name or self._vm_name
-
-        # VM running -> restart
-        if self.vm_running():
-            with self.restart_ctx(name) as res:
-                yield res
-
-        # VM suspended -> remove saved state
-        elif self._vm_utils.get_vm_state(name) == HYPERV_VM_STATE_SUSPENDED:
-            self._vm_utils.set_vm_state(name, HYPERV_VM_STATE_DISABLED)
-            yield name
-
-        # VM disabled -> do nothing
-        else:
-            yield name
-
     @classmethod
     def _get_vswitch_name(cls) -> str:
         return run_powershell(

@@ -66,11 +66,9 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-
         builder = task_builder(Node(node_name=self.node_name),
                                task_state.definition,
                                self.dir_manager)
-        logger.info(builder)
         task = builder.build()
         task.initialize(builder.dir_manager)
 
