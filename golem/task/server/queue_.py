@@ -88,7 +88,7 @@ class TaskMessagesQueueMixin:
             return
         self.remove_session(session)
 
-    def remove_session(self, session):
+    def remove_session(self, session: 'TaskSession'):
         session.disconnect(
             message.base.Disconnect.REASON.NoMoreMessages,
         )
