@@ -177,8 +177,7 @@ class TaskStatus(Enum):
         return self in [self.creating, self.errorCreating]
 
     def is_completed(self) -> bool:
-        return self in [self.finished, self.aborted,
-                        self.timeout, self.restarted]
+        return self in TASK_STATUS_COMPLETED
 
     def is_preparing(self) -> bool:
         return self in (
@@ -189,6 +188,14 @@ class TaskStatus(Enum):
 
     def is_active(self) -> bool:
         return self in TASK_STATUS_ACTIVE
+
+
+TASK_STATUS_COMPLETED = [
+    TaskStatus.finished,
+    TaskStatus.aborted,
+    TaskStatus.timeout,
+    TaskStatus.restarted
+]
 
 
 TASK_STATUS_ACTIVE = [
