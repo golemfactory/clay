@@ -38,7 +38,11 @@ from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import short_node_id, deadline_to_timeout
-from golem.core.deferred import sync_wait, deferred_from_future, asyncio_main_loop
+from golem.core.deferred import (
+    asyncio_main_loop,
+    deferred_from_future,
+    sync_wait,
+)
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import (
     Environment as OldEnv,
