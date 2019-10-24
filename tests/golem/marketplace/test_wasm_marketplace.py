@@ -6,7 +6,6 @@ from golem.marketplace import ProviderPerformance
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 
 
-
 USAGE_SECOND = 1e9  # usage is measured in nanoseconds
 
 

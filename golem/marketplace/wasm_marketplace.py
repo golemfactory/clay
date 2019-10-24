@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 USAGE_SECOND = 1e9  # Usage is measured in nanoseconds
 
+
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
     DEFAULT_USAGE_BENCHMARK: float = 1.0 * USAGE_SECOND
 
