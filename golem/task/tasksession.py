@@ -26,11 +26,7 @@ from golem.core.common import deadline_to_timeout
 from golem.core.deferred import deferred_from_future
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import (
-    Offer,
-    ProviderPerformance,
-    RequestorBrassMarketStrategy
-)
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -320,8 +316,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             current_task = self.requested_task_manager.get_requested_task(
                 msg.task_id)
-            # FIXME: adjust after merging #4753 (with #4785)
-            market_strategy = RequestorBrassMarketStrategy
+            current_app = self.task_server.app_manager.app(
+                current_task.app_id)
+            market_strategy = current_app.market_strategy
             max_price_per_hour = current_task.max_price_per_hour
         else:
             if not self.task_manager.check_next_subtask(
@@ -349,18 +346,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Can not accept offer: Resource handshake is in'
                            ' progress. %s', task_node_info)
             return
-
-        if is_task_api_task:
-            current_task = self.requested_task_manager.get_requested_task(
-                task_id)
-            current_app = self.task_server.app_manager.app(
-                current_task.app_id)
-            market_strategy = current_app.market_strategy
-            max_price_per_hour = current_task.max_price_per_hour
-        else:
-            current_task = self.task_manager.tasks[task_id]
-            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
-            max_price_per_hour = current_task.header.max_price
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
