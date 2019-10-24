@@ -1702,7 +1702,7 @@ class TestEnvManager(TaskServerTestBase):
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
         mock_get = Mock(spec=BenchmarkResult)
-        self.ts.app_benchmark_manager.get_benchmark_score = mock_get
+        self.ts.app_benchmark_manager.get = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)
@@ -1730,7 +1730,7 @@ class TestEnvManager(TaskServerTestBase):
         self.ts.get_environment_by_id = Mock(return_value=mock_env)
 
         mock_get = Mock(return_value=performance)
-        self.ts.app_benchmark_manager.get_benchmark_score = mock_get
+        self.ts.app_benchmark_manager.get = mock_get
 
         mock_handshake = Mock()
         mock_handshake.success = Mock(return_value=True)

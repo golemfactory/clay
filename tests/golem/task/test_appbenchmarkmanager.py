@@ -47,12 +47,12 @@ class TestAppBenchmarkManager:
         app_benchmark.save()
 
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
-            score = await self.app_benchmark_manager.get_benchmark_score(
+            benchmark = await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 
         assert not self.app_benchmark_manager._run_benchmark.called
-        assert score == 1000.
+        assert benchmark.score == 1000.
 
     @pytest.mark.asyncio
     async def test_get_benchmark_score_new(self):
@@ -62,12 +62,12 @@ class TestAppBenchmarkManager:
         app_benchmark.save()
 
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
-            score = await self.app_benchmark_manager.get_benchmark_score(
+            benchmark = await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 
         assert self.app_benchmark_manager._run_benchmark.called
-        assert score == 10.
+        assert benchmark.score == 10.
 
     @pytest.mark.asyncio
     async def test_get_benchmark_score_exception(self):
@@ -75,7 +75,7 @@ class TestAppBenchmarkManager:
         self.app_benchmark_manager._computing = True
 
         with pytest.raises(ComputationInProgress):
-            await self.app_benchmark_manager.get_benchmark_score(
+            await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 

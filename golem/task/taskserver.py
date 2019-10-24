@@ -134,7 +134,7 @@ class TaskServer(
         app_dir = self.get_app_dir()
         built_in_apps = save_built_in_app_definitions(app_dir)
 
-        app_mgr = app_manager.AppManager()
+        self.app_manager = app_mgr = app_manager.AppManager()
         for app_def in golem.apps.load_apps_from_dir(app_dir):
             app_mgr.register_app(app_def)
         for app_id in built_in_apps:
@@ -397,7 +397,7 @@ class TaskServer(
             else:  # NewEnv
                 try:
                     future = asyncio.run_coroutine_threadsafe(
-                        self.app_benchmark_manager.get_benchmark_score(
+                        self.app_benchmark_manager.get(
                             theader.environment,
                             theader.environment_prerequisites),
                         loop=asyncio_main_loop())
