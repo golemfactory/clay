@@ -8,7 +8,8 @@ from ffmpeg_tools.formats import Container
 
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
-from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, FuzzyInt
+from tests.apps.ffmpeg.task.utils.ffprobe_report import \
+    FfprobeFormatReport, FuzzyInt
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
