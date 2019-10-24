@@ -71,11 +71,11 @@ class TestOfferChoice(testutils.DatabaseFixture):
         result = self._resolve_task_offers()
         self.assertEqual(
             RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, -1),
-            0.00125
+            1.25
         )
         self.assertEqual(
             RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_2, -1),
-            0.0008
+            0.8
         )
         RequestorWasmMarketStrategy.report_subtask_usages(
             self.TASK_1, [(self.PROVIDER_1, self.SUBTASK_1, 5.0),
