@@ -262,7 +262,30 @@ class TestRequestedTaskManager():
         # Unfortunately feezegun doesn't mock asyncio's time
         # and can't be used here
         await asyncio.sleep(task_timeout)
+
         assert self.rtm.is_task_finished(task_id)
+        mock_client.abort_task.assert_called_once_with(task_id)
+        mock_client.shutdown.assert_called_once_with()
+
+    @pytest.mark.asyncio
+    async def test_task_timeout_with_subtask(self, mock_client):
+        self._add_next_subtask_to_client_mock(mock_client)
+        task_timeout = 1
+        task_id = await self._start_task(task_timeout=task_timeout)
+        subtask_id = (await self.rtm.get_next_subtask(
+            task_id, self._get_computing_node()
+        )).subtask_id
+
+        # Unfortunately feezegun doesn't mock asyncio's time
+        # and can't be used here
+        await asyncio.sleep(task_timeout)
+
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
+            RequestedSubtask.subtask_id == subtask_id)
+        assert task.status == TaskStatus.timeout
+        assert subtask.status == SubtaskStatus.timeout
 
     @pytest.mark.asyncio
     async def test_get_started_tasks(self, mock_client):
