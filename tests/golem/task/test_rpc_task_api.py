@@ -3,7 +3,7 @@ from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
-from mock import Mock
+from mock import Mock, call
 
 from golem.client import Client
 from golem.ethereum import fundslocker, transactionsystem
@@ -113,6 +113,8 @@ class TestTaskApiCreate(unittest.TestCase):
         )
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
+        self.client.update_setting.assert_called_once_with(
+            'accept_tasks', False)
 
     def test_failed_init(self):
         self.requested_task_manager.init_task.side_effect = Exception
@@ -121,3 +123,7 @@ class TestTaskApiCreate(unittest.TestCase):
 
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
+        self.client.update_setting.assert_has_calls((
+            call('accept_tasks', False),
+            call('accept_tasks', True)
+        ))

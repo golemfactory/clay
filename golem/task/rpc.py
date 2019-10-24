@@ -577,6 +577,8 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
@@ -584,6 +586,7 @@ class ClientProvider:
                     self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
