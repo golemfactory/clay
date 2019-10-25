@@ -282,7 +282,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                     self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
-        if not TestTaskIntegration.check_file_existence(result):
+        if not os.path.isfile(result):
             raise RuntimeError("Result file [{}] doesn't exist.".format(result))
 
     def _add_crop_params(self, parameters_set: dict, task: Task,

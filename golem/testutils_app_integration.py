@@ -72,14 +72,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         def __init__(self, files: List[str]):
             self.files = files
 
-    @staticmethod
-    def check_file_existence(filename):
-        return os.path.isfile(filename)
-
-    @staticmethod
-    def check_dir_existence(dir_path):
-        return os.path.isdir(dir_path)
-
     def setUp(self):
         super().setUp()
 

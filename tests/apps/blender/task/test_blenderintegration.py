@@ -83,12 +83,12 @@ class TestBlenderIntegration(TestTaskIntegration):
                 path = base + "{:04d}".format(frame) + ext
 
                 logger.info("Expected result path [{}]".format(path))
-                self.assertTrue(TestTaskIntegration.check_file_existence(path))
+                self.assertTrue(os.path.isfile(path))
         else:
             # For single frame, blender generates file with the same name
             # as in task_definition.
             logger.info("Expected result path [{}]".format(result))
-            self.assertTrue(TestTaskIntegration.check_file_existence(result))
+            self.assertTrue(os.path.isfile(result))
 
     def test_full_task_flow_multiframes(self):
         task_def = self._task_dictionary(
@@ -109,7 +109,7 @@ class TestBlenderIntegration(TestTaskIntegration):
         task: Task = self.execute_task(task_def)
 
         result = task.task_definition.output_file
-        self.assertTrue(TestTaskIntegration.check_file_existence(result))
+        self.assertTrue(os.path.isfile(result))
 
     def test_failing_case_uneven_divisions(self):
         task_def = self._task_dictionary(
