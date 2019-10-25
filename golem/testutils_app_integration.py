@@ -8,6 +8,7 @@ from random import SystemRandom
 from typing import Tuple, List
 from unittest.mock import patch
 from pathlib import Path
+from dataclasses import dataclass
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -68,9 +69,10 @@ class VerificationWait:
 
 # pylint: disable=too-many-instance-attributes
 class TestTaskIntegration(TestDatabaseWithReactor):
+
+    @dataclass
     class Result:
-        def __init__(self, files: List[str]):
-            self.files = files
+        files: List[str]
 
     def setUp(self):
         super().setUp()
