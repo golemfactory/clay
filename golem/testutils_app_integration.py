@@ -108,9 +108,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
         self.verification_timeout = 100
 
-    def _mock_remove_files(self):
-        pass
-
     def execute_task(self, task_def):
         task: Task = self.start_task(task_def)
 
