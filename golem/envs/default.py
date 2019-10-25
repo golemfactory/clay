@@ -2,7 +2,6 @@ from pathlib import Path
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
-from golem.envs import EnvSupportStatus
 from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
 from golem.envs.docker.gpu import DOCKER_GPU_METADATA
@@ -59,8 +58,8 @@ def register_environments(
         env_manager: EnvironmentManager
 ) -> None:
 
-    if NonHypervisedDockerCPUEnvironment.supported() == EnvSupportStatus(True):
+    if NonHypervisedDockerCPUEnvironment.supported().supported:
         _register_docker_cpu_env(work_dir, env_manager)
 
-    if NonHypervisedDockerGPUEnvironment.supported() == EnvSupportStatus(True):
+    if NonHypervisedDockerGPUEnvironment.supported().supported:
         _register_docker_gpu_env(work_dir, env_manager)

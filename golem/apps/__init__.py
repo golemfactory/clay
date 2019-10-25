@@ -58,6 +58,8 @@ class AppDefinition:
 
 
 def save_app_to_json_file(app_def: AppDefinition, json_file: Path) -> None:
+     """ Save application definition to the given file in JSON format.
+         Create parent directories if they don't exist. """
     try:
         json_file.parent.mkdir(parents=True, exist_ok=True)
         json_file.write_text(app_def.to_json())
