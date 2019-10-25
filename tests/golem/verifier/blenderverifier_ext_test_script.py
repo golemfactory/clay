@@ -326,8 +326,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                                    'blender_render_params.json')
 
         with open(params_file, "r") as file:
-            content = file.read()
-            return json.loads(content)
+            return json.load(file)
 
     @classmethod
     def _build_params(cls, resolution: List[int], subtasks: int,
