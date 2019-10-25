@@ -4,10 +4,6 @@ from unittest import mock
 from golem.task.server.verification import VerificationMixin
 
 
-class Verifier(VerificationMixin):
-    pass
-
-
 class TestGetPaymentComputer(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -45,7 +41,7 @@ class TestGetPaymentComputer(unittest.TestCase):
             )
         )
 
-        self.verifier = Verifier()
+        self.verifier = VerificationMixin()
         self.verifier.app_manager = am
         self.verifier.task_manager = tm
         self.verifier.requested_task_manager = rtm
