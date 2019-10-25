@@ -20,14 +20,10 @@ def migrate(migrator, database, fake=False, **kwargs):
 def rollback(migrator, database, fake=False, **kwargs):
     migrator.change_fields(
         'requestedsubtask',
-        payload=pw.JsonField(default='{}'),
-        price=pw.IntegerField(null=True),
-        inputs=pw.JsonField(default='[]'))
+        price=pw.IntegerField(null=True))
     migrator.change_fields(
         'requestedtask',
-        app_params=pw.JsonField(default='{}'),
-        max_price_per_hour=pw.IntegerField(),
-        prerequisites=pw.JsonField(default='{}'))
+        max_price_per_hour=pw.IntegerField())
     migrator.remove_fields(
         'requestedtask',
         'min_memory')
