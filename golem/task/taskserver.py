@@ -554,7 +554,7 @@ class TaskServer(
             task_id: str,
             result: Optional[List[Path]] = None,
             task_api_result: Optional[Path] = None,
-            stats: Dict = None,
+            stats: Optional[Dict] = None,
     ) -> None:
         if not result and not task_api_result:
             raise ValueError('No results to send')

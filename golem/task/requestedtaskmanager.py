@@ -437,14 +437,15 @@ class RequestedTaskManager:
                 if not self._get_pending_subtasks(task_id):
                     task.status = TaskStatus.finished
                     task.save()
-                    self._move_task_results(task_id, task.output_directory)
+                    self._move_task_results(
+                        task_id,
+                        Path(task.output_directory))
                     self._notice_task_updated(task, op=TaskOp.FINISHED)
                     await self._shutdown_app_client(task.app_id)
 
         return result
 
     def _move_task_results(self, task_id: TaskId, user_output_dir: Path):
-        user_output_dir = Path(user_output_dir)
         user_output_dir.mkdir(parents=True, exist_ok=True)
         task_outputs_dir = self._task_dir(task_id).task_outputs_dir
 
@@ -840,10 +841,11 @@ def _build_legacy_subtask_state(
 ) -> SubtaskState:
     time_started = 0
     deadline = 0
-
     deadline_dt = subtask.deadline
-    if subtask.deadline:
+
+    if subtask.start_time:
         time_started = datetime_to_timestamp_utc(subtask.start_time)
+    if subtask.deadline:
         deadline = datetime_to_timestamp_utc(deadline_dt)
 
     return SubtaskState(
