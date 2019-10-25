@@ -2,6 +2,7 @@ import logging
 import typing
 
 from golem_messages import message
+from golem_messages.datastructures.stats import ProviderStats
 from golem_messages import helpers as msg_helpers
 from golem_messages import utils as msg_utils
 
@@ -13,6 +14,7 @@ from golem.network.transport import msg_queue
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.network.p2p.local_node import LocalNode
+    from golem.task.taskserver import TaskServer, WaitingTaskResult
 
 logger = logging.getLogger(__name__)
 
@@ -22,26 +24,18 @@ def computed_task_reported(
         report_computed_task,
         after_success=lambda: None,
         after_error=lambda: None):
-    task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
-
-    task = task_manager.tasks.get(report_computed_task.task_id, None)
-    output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
-    client_options = task_server.get_download_options(
-        report_computed_task.options
-    )
-
-    fgtr = message.concents.ForceGetTaskResult(
-        report_computed_task=report_computed_task
-    )
 
     # submit a delayed `ForceGetTaskResult` to the Concent
     # in case the download exceeds the maximum allowable download time.
     # however, if it succeeds, the message will get cancelled
     # in the success handler
-
+    fgtr = message.concents.ForceGetTaskResult(
+        report_computed_task=report_computed_task
+    )
+    subtask_id = report_computed_task.subtask_id
     concent_service.submit_task_message(
-        report_computed_task.subtask_id,
+        subtask_id,
         fgtr,
         msg_helpers.maximum_download_time(
             report_computed_task.size,
@@ -53,9 +47,10 @@ def computed_task_reported(
         logger.debug("Task result extracted %r", extracted_pkg.__dict__)
 
         concent_service.cancel_task_message(
-            report_computed_task.subtask_id,
+            subtask_id,
             'ForceGetTaskResult',
         )
+
         task_server.verify_results(
             report_computed_task=report_computed_task,
             extracted_package=extracted_pkg,
@@ -65,7 +60,7 @@ def computed_task_reported(
     def on_error(exc, *_args, **_kwargs):
         logger.warning(
             "Task result error: %s (%s)",
-            report_computed_task.subtask_id,
+            subtask_id,
             exc or "unspecified",
         )
 
@@ -74,27 +69,50 @@ def computed_task_reported(
             # to obtain the task results
             logger.debug('[CONCENT] sending ForceGetTaskResult: %s', fgtr)
             concent_service.submit_task_message(
-                report_computed_task.subtask_id,
+                subtask_id,
                 fgtr,
             )
         after_error()
 
-    # Actually request results
-    task_manager.task_result_incoming(report_computed_task.subtask_id)
-    task_manager.task_result_manager.pull_package(
-        report_computed_task.multihash,
-        report_computed_task.task_id,
-        report_computed_task.subtask_id,
-        report_computed_task.secret,
-        success=on_success,
-        error=on_error,
-        client_options=client_options,
-        output_dir=output_dir
+    task_id = report_computed_task.task_id
+    client_options = task_server.get_download_options(
+        report_computed_task.options
     )
 
-def send_report_computed_task(task_server, waiting_task_result) -> None:
-    """ Send task results after finished computations
-    """
+    rtm = task_server.requested_task_manager
+    if rtm.task_exists(task_id):
+        download_dir = rtm.get_subtask_outputs_dir(task_id, subtask_id)
+        download_dir.mkdir()
+        deferred = task_server.new_resource_manager.download(
+            resource_id=report_computed_task.multihash,
+            directory=download_dir,
+            client_options=client_options,
+        )
+        deferred.addCallback(on_success)
+        deferred.addErrback(on_error)
+    else:
+        task_manager = task_server.task_manager
+        task = task_manager.tasks.get(task_id, None)
+        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
+        # Request results
+        task_manager.task_result_incoming(subtask_id)
+        task_manager.task_result_manager.pull_package(
+            content_hash=report_computed_task.multihash,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            key_or_secret=report_computed_task.secret,
+            success=on_success,
+            error=on_error,
+            client_options=client_options,
+            output_dir=output_dir
+        )
+
+
+def send_report_computed_task(
+        task_server: 'TaskServer',
+        waiting_task_result: 'WaitingTaskResult') -> None:
+    """ Send task results after finished computations """
+
     task_to_compute = history.get(
         message_class_name='TaskToCompute',
         node_id=waiting_task_result.owner.key,
@@ -117,8 +135,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
 
     my_node: LocalNode = task_server.node
     client_options = task_server.get_share_options(
-        waiting_task_result.task_id,
-        waiting_task_result.owner.prv_addr,
+        address=waiting_task_result.owner.prv_addr,
     )
 
     report_computed_task = message.tasks.ReportComputedTask(
@@ -133,6 +150,7 @@ def send_report_computed_task(task_server, waiting_task_result) -> None:
         multihash=waiting_task_result.result_hash,
         secret=waiting_task_result.result_secret,
         options=client_options.__dict__,
+        stats=ProviderStats(**waiting_task_result.stats),
     )
 
     signed_report_computed_task = msg_utils.copy_and_sign(

@@ -39,7 +39,6 @@ class DummyTask(CoreTask):
     TESTING_CHAR = "a"
 
     def __init__(self,
-                 total_tasks: int,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
                  owner=None):
@@ -47,7 +46,6 @@ class DummyTask(CoreTask):
             owner=owner,
             task_definition=task_definition,
             root_path=root_path,
-            total_tasks=total_tasks
         )
 
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:

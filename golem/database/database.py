@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import sqlite3
 import time
 from typing import Optional, Type, Sequence
 
@@ -27,17 +28,22 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
             iterations += 1
             try:
                 return super().execute_sql(sql, params, require_commit)
-            except peewee.OperationalError as e:
+            except (
+                    sqlite3.ProgrammingError,
+                    peewee.OperationalError,
+            ) as e:
                 # Ignore transaction rollbacks
                 if str(e).startswith('no such savepoint'):
                     logger.warning('execute_sql() tx rollback failed: %r', e)
-                    return
+                    return None
                 # Check retry deadline
                 elif datetime.datetime.now() > deadline:
                     logger.warning(
                         "execute_sql() retry timeout after %d iterations."
-                        " Giving up.",
+                        " Giving up. sql=%r, params=%r",
                         iterations,
+                        sql,
+                        params,
                     )
                     raise
                 logger.debug(
@@ -55,7 +61,7 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
 
 
 class Database:
-    SCHEMA_VERSION = 33
+    SCHEMA_VERSION = 42
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  db: peewee.Database,

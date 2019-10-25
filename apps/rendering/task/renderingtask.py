@@ -1,21 +1,21 @@
 import logging
 import math
 import os
-from typing import Type, TYPE_CHECKING
+from typing import cast, Type, TYPE_CHECKING
 
 from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_opencv_image_error
-from apps.rendering.task.renderingtaskstate import RendererDefaults
-from golem.verificator.rendering_verifier import RenderingVerifier
-from golem.core.common import get_golem_path
-from golem.core.simpleexccmd import is_windows, exec_cmd
+from golem.verifier.rendering_verifier import RenderingVerifier
+from golem.core.simpleexccmd import is_windows
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
 if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from .renderingtaskstate import RenderingTaskDefinition
     from golem.docker.environment import DockerEnvironment
 
 
@@ -24,6 +24,9 @@ SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
+# Theoretically it should be 8, but there are some unsolved edge cases,
+# so 10 should be safe.
+MIN_PIXELS_PER_SUBTASK = 10
 
 
 logger = logging.getLogger("apps.rendering")
@@ -34,29 +37,18 @@ class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS: 'Type[DockerEnvironment]'
 
-    @classmethod
-    def _get_task_collector_path(cls):
-        if is_windows():
-            build_path = os.path.join("x64", "Release", "taskcollector.exe")
-        else:
-            build_path = os.path.join("Release", "taskcollector")
-
-        return os.path.normpath(os.path.join(get_golem_path(), "apps",
-                                             "rendering", "resources",
-                                             "taskcollector", build_path))
-
     ################
     # Task methods #
     ################
 
-    def __init__(self, task_definition, total_tasks, root_path, owner):
+    def __init__(self, task_definition: 'RenderingTaskDefinition', root_path,
+                 owner):
 
         CoreTask.__init__(
             self,
             task_definition=task_definition,
             owner=owner,
-            root_path=root_path,
-            total_tasks=total_tasks)
+            root_path=root_path)
 
         if task_definition.docker_images is None:
             task_definition.docker_images = self.environment.docker_images
@@ -169,28 +161,25 @@ class RenderingTask(CoreTask):
         x = int(round(self.res_x * self.scale_factor))
         y = int(round(self.res_y * self.scale_factor))
         upper = max(0,
-                    int(math.floor(y / self.total_tasks
+                    int(math.floor(y / self.get_total_tasks()
                                    * (subtask['start_task'] - 1))))
         lower = min(
-            int(math.floor(y / self.total_tasks * (subtask['start_task']))),
+            int(math.floor(y / self.get_total_tasks()
+                           * (subtask['start_task']))),
             y,
         )
         for i in range(0, x):
             for j in range(upper, lower):
                 img_task.set_pixel((i, j), color)
 
-    def _put_collected_files_together(self, output_file_name, files, arg):
-        task_collector_path = self._get_task_collector_path()
-
-        cmd = ["{}".format(task_collector_path),
-               "{}".format(arg),
-               "{}".format(self.res_x),
-               "{}".format(self.res_y),
-               output_file_name] + [f for f in files]
-        exec_cmd(cmd)
-
     def _get_next_task(self):
-        if self.last_task != self.total_tasks:
+        logger.debug("_get_next_task. last_task=%d, total_tasks=%d, "
+                     "num_failed_subtasks=%d",
+                     self.last_task,
+                     self.get_total_tasks(),
+                     self.num_failed_subtasks,
+        )
+        if self.last_task != self.get_total_tasks():
             self.last_task += 1
             start_task = self.last_task
             return start_task
@@ -243,12 +232,6 @@ class RenderingTask(CoreTask):
         )
         return OpenCVImgRepr.from_image_file(self.preview_file_path)
 
-    def _use_outer_task_collector(self):
-        unsupported_formats = ['EXR', 'EPS']
-        if self.output_format.upper() in unsupported_formats:
-            return True
-        return False
-
     def __get_path(self, path):
         if is_windows():
             return self.__get_path_windows(path)
@@ -263,21 +246,7 @@ class RenderingTaskBuilderError(Exception):
 
 
 class RenderingTaskBuilder(CoreTaskBuilder):
-    TASK_CLASS = RenderingTask
-    DEFAULTS = RendererDefaults
-
-    def _calculate_total(self, defaults):
-        if self.task_definition.optimize_total:
-            return defaults.default_subtasks
-
-        total = self.task_definition.subtasks_count
-
-        if defaults.min_subtasks <= total <= defaults.max_subtasks:
-            return total
-        else:
-            logger.warning("Cannot set total subtasks to {}. Changing to {}"
-                           .format(total, defaults.default_subtasks))
-            return defaults.default_subtasks
+    TASK_CLASS: Type[RenderingTask]
 
     @staticmethod
     def _scene_file(type, resources):
@@ -291,14 +260,9 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates.sort(key=len)
         return candidates[0]
 
-    def get_task_kwargs(self, **kwargs):
-        kwargs = super().get_task_kwargs(**kwargs)
-        kwargs['total_tasks'] = self._calculate_total(self.DEFAULTS())
-        return kwargs
-
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
 
         dictionary = parent.build_dictionary(definition)
         dictionary['options']['format'] = definition.output_format
@@ -306,11 +270,14 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_minimal_definition(cls, task_type, dictionary):
-        parent = super(RenderingTaskBuilder, cls)
+    def build_minimal_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         resources = dictionary['resources']
 
-        definition = parent.build_minimal_definition(task_type, dictionary)
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_minimal_definition(task_type, dictionary))
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
@@ -321,13 +288,21 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, task_type, dictionary):
-        parent = super(RenderingTaskBuilder, cls)
+    def build_full_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         options = dictionary['options']
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = cast(
+            'RenderingTaskDefinition',
+            parent.build_full_definition(task_type, dictionary))
         definition.output_format = options['format'].upper()
-        definition.resolution = [int(val) for val in options['resolution']]
+
+        definition.resolution = \
+            [int(val) for val in dictionary['options']['resolution']]
+        if any(dim < MIN_PIXELS_PER_SUBTASK for dim in definition.resolution):
+            raise ValueError("resolution too small")
+
         if definition.timeout < MIN_TIMEOUT:
             logger.warning(
                 "Timeout %d too short for this task. "
@@ -348,7 +323,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(cls, dictionary, definition):
-        parent = super(RenderingTaskBuilder, cls)
+        parent = cast(Type[CoreTaskBuilder], super(RenderingTaskBuilder, cls))
         path = parent.get_output_path(dictionary, definition)
 
         return '{}.{}'.format(path, dictionary['options']['format'])

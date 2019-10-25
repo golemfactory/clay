@@ -11,6 +11,8 @@ from golem import model
 from golem import testutils
 from golem.core import keysauth
 from golem.network.hyperdrive.client import HyperdriveClientOptions
+from golem.task import requestedtaskmanager
+from golem.task import taskserver
 from golem.task.server import helpers
 from tests import factories
 
@@ -158,3 +160,66 @@ class TestSendTaskFailure(unittest.TestCase):
         get_mock.return_value = self.ttc
         helpers.send_task_failure(self.wtf)
         put_mock.assert_called_once()
+
+
+class TestComputedTaskReportedTaskApiFlow(unittest.TestCase):
+    def setUp(self):
+        self.rtm = mock.Mock(
+            spec=requestedtaskmanager.RequestedTaskManager,
+        )
+        self.rtm.task_exists.return_value = True
+
+        self.task_server = mock.Mock(spec=taskserver.TaskServer)
+        self.task_server.requested_task_manager = self.rtm
+        self.task_server.new_resource_manager = mock.Mock()
+        self.task_server.client = mock.Mock(concent_service=mock.Mock())
+
+        self.rct = msg_factories.tasks.ReportComputedTaskFactory()
+
+    def test_basic(self):
+        helpers.computed_task_reported(self.task_server, self.rct)
+
+        self.rtm.task_exists.assert_called_once_with(self.rct.task_id)
+        self.rtm.get_subtask_outputs_dir.assert_called_once_with(
+            self.rct.task_id,
+            self.rct.subtask_id
+        )
+        self.task_server.new_resource_manager.download.assert_called_once_with(
+            resource_id=self.rct.multihash,
+            directory=self.rtm.get_subtask_outputs_dir(),
+            client_options=self.task_server.get_download_options(),
+        )
+
+    def test_success_callback(self):
+        after_success = mock.Mock()
+        after_error = mock.Mock()
+        self.task_server.new_resource_manager.download.return_value = mock.Mock(
+            addCallback=lambda cb: cb(mock.Mock()),
+        )
+
+        helpers.computed_task_reported(
+            self.task_server,
+            self.rct,
+            after_success=after_success,
+            after_error=after_error,
+        )
+
+        after_success.assert_called_once_with()
+        after_error.assert_not_called()
+
+    def test_error_callback(self):
+        after_success = mock.Mock()
+        after_error = mock.Mock()
+        self.task_server.new_resource_manager.download.return_value = mock.Mock(
+            addErrback=lambda cb: cb(mock.Mock()),
+        )
+
+        helpers.computed_task_reported(
+            self.task_server,
+            self.rct,
+            after_success=after_success,
+            after_error=after_error,
+        )
+
+        after_success.assert_not_called()
+        after_error.assert_called_once_with()

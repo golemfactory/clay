@@ -13,7 +13,7 @@ from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerTaskThread, DockerBind
+from golem.docker.task_thread import DockerTaskThread, DockerBind, DockerDirMapping
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
@@ -46,9 +46,11 @@ class StreamOperator:
                                         dir_manager: DirManager,
                                         task_id: str):
 
+        directory_mapping = self._get_dir_mapping(dir_manager, task_id)
+
         host_dirs = {
-            'tmp': dir_manager.get_task_temporary_dir(task_id),
-            'output': dir_manager.get_task_output_dir(task_id),
+            'tmp': directory_mapping.temporary,
+            'output': directory_mapping.output,
         }
 
         input_file_basename = os.path.basename(input_file_on_host)
@@ -79,7 +81,7 @@ class StreamOperator:
             extra_data)
         try:
             result = self._do_job_in_container(
-                self._get_dir_mapping(dir_manager, task_id),
+                directory_mapping,
                 extra_data,
                 env)
         except ffmpegException as exception:
@@ -101,14 +103,17 @@ class StreamOperator:
             if params.get('status', 'Success') != 'Success':
                 raise ffmpegExtractSplitError('Splitting video failed')
 
-            streams_list = list(map(
-                lambda x: x.get('video_segment'),
-                params.get('segments', [])))
+            segments = params.get('segments', [])
+            streams_list = [os.path.join(directory_mapping.output,
+                                         segment.get('video_segment'))
+                            for segment in segments]
+
             logger.info(
                 "Stream %s has successfully passed the "
                 "extract+split operation. Segments: %s",
                 input_file_on_host,
                 streams_list)
+
             return streams_list, params.get('metadata', {})
 
     def _prepare_merge_job(self, task_dir, chunks_on_host):
@@ -118,12 +123,14 @@ class StreamOperator:
             'work': os.path.join(task_dir, 'merge', 'work'),
             'output': os.path.join(task_dir, 'merge', 'output'),
             'logs': os.path.join(task_dir, 'merge', 'output'),
+            'stats': os.path.join(task_dir, 'merge', 'stats'),
         }
 
         try:
             os.makedirs(host_dirs['resources'])
             os.makedirs(host_dirs['output'])
             os.makedirs(host_dirs['work'])
+            os.makedirs(host_dirs['stats'])
         except OSError:
             raise ffmpegMergeReplaceError(
                 "Failed to prepare video merge directory structure")
@@ -142,8 +149,8 @@ class StreamOperator:
                 raise ffmpegMergeReplaceError("Missing result file: {}".format(
                     file))
             if os.path.dirname(file) != directory:
-                raise ffmpegMergeReplaceError("Result file: {} should be in \
-                    the proper directory: {}".format(file, directory))
+                raise ffmpegMergeReplaceError("Result file: {} should be in "
+                    "the proper directory: {}".format(file, directory))
 
             results.append(file)
 
@@ -168,7 +175,6 @@ class StreamOperator:
                                         output_file_basename,
                                         task_dir,
                                         container):
-
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
         assert os.path.isfile(input_file_on_host), \
@@ -242,21 +248,18 @@ class StreamOperator:
     def _get_dir_mapping(dir_manager: DirManager, task_id: str):
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         resources_task_dir = dir_manager.get_task_resource_dir(task_id)
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
 
-        return DockerTaskThread. \
-            specify_dir_mapping(output=task_output_dir,
-                                temporary=tmp_task_dir,
-                                resources=resources_task_dir,
-                                logs=tmp_task_dir,
-                                work=tmp_task_dir)
+        return DockerDirMapping.generate(
+            Path(resources_task_dir),
+            Path(tmp_task_dir))
 
     @staticmethod
     def _specify_dir_mapping(output, temporary, resources, logs, work):
         return DockerTaskThread.specify_dir_mapping(output=output,
                                                     temporary=temporary,
                                                     resources=resources,
-                                                    logs=logs, work=work)
+                                                    logs=logs, work=work,
+                                                    stats=logs)
 
     def get_metadata(self,
                      input_files: List[str],
@@ -289,15 +292,19 @@ class StreamOperator:
             },
         }
 
+        stats_dir = os.path.join(os.path.dirname(work_dir), "get-metadata-stats")
+
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir,
             temporary=work_dir,
             resources=resources_dir,
             logs=work_dir,
-            work=work_dir)
+            work=work_dir,
+            stats=stats_dir)
 
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
+        logger.info('Directories: work {}'.format(work_dir))
 
         job_result = self._do_job_in_container(dir_mapping, extra_data)
         if 'data' not in job_result:

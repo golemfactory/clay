@@ -37,6 +37,10 @@ def migrate_dp(database, db_row):
 
 
 def migrate(migrator, database, fake=False, **kwargs):
+    if 'depositpayment' not in database.get_tables():
+        logger.info('depositpayment table not in DB. Skipping this migration.')
+        return
+
     cursor = database.execute_sql(
         'SELECT tx, value, status, fee,'
         '       created_date'

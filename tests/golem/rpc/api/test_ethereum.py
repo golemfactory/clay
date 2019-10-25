@@ -4,18 +4,22 @@ from unittest import TestCase, mock
 from golem_messages.datastructures import p2p as dt_p2p
 
 from golem import model
+from golem import testutils
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.rpc.api.ethereum_ import ETSProvider
 
-from tests.factories.model import TaskPayment as TaskPaymentFactory
+from tests.factories import model as model_factory
 
 
-class TestEthereum(TestCase):
+class EthereumBase(TestCase):
     def setUp(self):
+        super().setUp()
         self.maxDiff = None
         self.ets = mock.Mock(spec_set=TransactionSystem)
         self.ets_provider = ETSProvider(self.ets)
 
+
+class TestEthereum(EthereumBase, testutils.DatabaseFixture):
     def test_get_gas_price(self):
         test_gas_price = 1234
         test_price_limit = 12345
@@ -67,7 +71,7 @@ class TestEthereum(TestCase):
             ts,
             tz=datetime.timezone.utc,
         )
-        instance = TaskPaymentFactory(
+        instance = model_factory.TaskPayment(
             created_date=dt,
             modified_date=dt,
         )
@@ -78,7 +82,7 @@ class TestEthereum(TestCase):
                 'subtask': instance.subtask,
                 'payer': instance.node,
                 'value': str(instance.wallet_operation.amount),
-                'status': 'awaiting',
+                'status': str(instance.wallet_operation.status.value),
                 'transaction': instance.wallet_operation.tx_hash,
                 'created': ts,
                 'modified': ts,
@@ -88,4 +92,22 @@ class TestEthereum(TestCase):
         self.assertEqual(
             expected,
             self.ets_provider.get_incomes_list(),
+        )
+
+
+class TestGetOperations(EthereumBase, testutils.DatabaseFixture):
+    def test_one(self):
+        _ = model_factory.TaskPayment()
+        count, _result = self.ets_provider.get_operations(operation_type=None)
+        self.assertEqual(
+            count,
+            1,
+        )
+
+    def test_wallet_operation(self):
+        _ = model_factory.WalletOperation()
+        count, _result = self.ets_provider.get_operations(operation_type=None)
+        self.assertEqual(
+            count,
+            1,
         )

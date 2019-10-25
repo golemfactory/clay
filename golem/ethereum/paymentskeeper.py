@@ -9,12 +9,15 @@ logger = logging.getLogger(__name__)
 
 
 class PaymentsDatabase(object):
-    """ Save and retrieve from database information about payments that this node has to make / made
+    """Save and retrieve from database information
+       about payments that this node has to make / made
     """
 
     @staticmethod
     def get_payment_value(subtask_id: str):
-        """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
+        """Returns value of a payment
+           that was done to the same node and for the same
+           task as payment for payment_info
         """
         return PaymentsDatabase.get_payment_for_subtask(subtask_id)
 
@@ -64,7 +67,9 @@ class PaymentsDatabase(object):
 
 
 class PaymentsKeeper:
-    """ Keeps information about payments for tasks that should be processed and send or received. """
+    """Keeps information about outgoing payments
+       that should be processed and send or received.
+    """
 
     def __init__(self) -> None:
         """ Create new payments keeper instance"""
@@ -100,3 +105,28 @@ class PaymentsKeeper:
             self,
             subtask_ids: Iterable[str]) -> List[model.TaskPayment]:
         return self.db.get_subtasks_payments(subtask_ids)
+
+    @staticmethod
+    def confirmed_transfer(
+            tx_hash: str,
+            successful: bool,
+            gas_cost: int,
+    ) -> None:
+        try:
+            operation = model.WalletOperation.select() \
+                .where(
+                    model.WalletOperation.tx_hash == tx_hash,
+                ).get()
+        except model.WalletOperation.DoesNotExist:
+            logger.warning(
+                "Got confirmation of unknown transfer. tx_hash=%s",
+                tx_hash,
+            )
+            return
+        if not successful:
+            logger.error("Failed transaction. tx_hash=%s", tx_hash)
+            operation.on_failed(gas_cost=gas_cost)
+            operation.save()
+            return
+        operation.on_confirmed(gas_cost=gas_cost)
+        operation.save()

@@ -20,31 +20,16 @@ from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
     PREVIEW_Y
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
-    RendererDefaults
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.core.common import short_node_id, to_unicode
 from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem.verificator.blender_verifier import BlenderVerifier
+from golem.verifier.blender_verifier import BlenderVerifier
 
 logger = logging.getLogger(__name__)
-
-
-class BlenderDefaults(RendererDefaults):
-    def __init__(self):
-        RendererDefaults.__init__(self)
-        self.output_format = "EXR"
-
-        self.min_subtasks = 1
-        self.max_subtasks = 100
-        self.default_subtasks = 6
-
-
-class BlenderNVGPUDefaults(BlenderDefaults):
-    pass
 
 
 class PreviewUpdater(object):
@@ -115,7 +100,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             with handle_opencv_image_error(logger):
-                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y)\
+                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y) \
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):
@@ -322,9 +307,9 @@ class BlenderRenderTask(FrameRenderingTask):
         super(BlenderRenderTask, self).initialize(dir_manager)
 
         if self.use_frames:
-            parts = int(self.total_tasks / len(self.frames))
+            parts = int(self.get_total_tasks() / len(self.frames))
         else:
-            parts = self.total_tasks
+            parts = self.get_total_tasks()
         expected_offsets = generate_expected_offsets(parts, self.res_x,
                                                      self.res_y)
         preview_y = expected_offsets[parts + 1]
@@ -364,21 +349,12 @@ class BlenderRenderTask(FrameRenderingTask):
 
         if self.use_frames:
             frames, parts = self._choose_frames(self.frames, start_task,
-                                                self.total_tasks)
+                                                self.get_total_tasks())
         else:
             frames = self.frames or [1]
             parts = 1
 
-        if not self.use_frames:
-            min_y, max_y = self._get_min_max_y(start_task)
-        elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) \
-                    * (1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) \
-                * (1.0 / parts)
-        else:
-            min_y = 0.0
-            max_y = 1.0
+        min_y, max_y = self.get_subtask_y_border(start_task)
 
         crops = [
             {"outfilebasename": "{}_{}".format(
@@ -394,7 +370,7 @@ class BlenderRenderTask(FrameRenderingTask):
                       "output_format": self.output_format,
                       "path_root": self.main_scene_dir,
                       "start_task": start_task,
-                      "total_tasks": self.total_tasks,
+                      "total_tasks": self.get_total_tasks(),
                       "crops": crops,
                       "entrypoint":
                           "python3 /golem/entrypoints/render_entrypoint.py",
@@ -446,6 +422,23 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[subtask_id]['ctd'] = ctd
         return self.ExtraData(ctd=ctd)
 
+    def get_parts_in_frame(self, total_tasks):
+        if self.use_frames:
+            if total_tasks <= len(self.frames):
+                return 1
+            return max(1, int(total_tasks / len(self.frames)))
+        return total_tasks
+
+    def get_subtask_y_border(self, start_task):
+        parts_in_frame = self.get_parts_in_frame(self.get_total_tasks())
+        if not self.use_frames:
+            return get_min_max_y(start_task, parts_in_frame, self.res_y)
+        elif parts_in_frame > 1:
+            part = self._count_part(start_task, parts_in_frame)
+            return get_min_max_y(part, parts_in_frame, self.res_y)
+
+        return 0.0, 1.0
+
     def restart(self):
         super(BlenderRenderTask, self).restart()
         if self.use_frames:
@@ -495,13 +488,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, 0)
 
-    def _get_min_max_y(self, start_task):
-        if self.use_frames:
-            parts = int(self.total_tasks / len(self.frames))
-        else:
-            parts = self.total_tasks
-        return get_min_max_y(start_task, parts, self.res_y)
-
     def after_test(self, results, tmp_dir):
         return_data = dict()
         if not results or not results.get("data"):
@@ -547,18 +533,13 @@ class BlenderRenderTask(FrameRenderingTask):
         logger.debug('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
-        if not self._use_outer_task_collector():
-            collector = CustomCollector(width=self.res_x,
-                                        height=self.res_y)
-            for file in self.collected_file_names.values():
-                collector.add_img_file(file)
-            with handle_opencv_image_error(logger):
-                image = collector.finalize()
-                image.save_with_extension(output_file_name, self.output_format)
-        else:
-            self._put_collected_files_together(
-                os.path.join(self.tmp_dir, output_file_name),
-                list(self.collected_file_names.values()), "paste")
+        collector = CustomCollector(width=self.res_x,
+                                    height=self.res_y)
+        for file in self.collected_file_names.values():
+            collector.add_img_file(file)
+        with handle_opencv_image_error(logger):
+            image = collector.finalize()
+            image.save_with_extension(output_file_name, self.output_format)
 
     @staticmethod
     def mark_part_on_preview(part, img_task, color, preview_updater):
@@ -573,13 +554,13 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             self.mark_part_on_preview(subtask['start_task'], img_task, color,
                                       self.preview_updater)
-        elif self.total_tasks <= len(self.frames):
+        elif self.get_total_tasks() <= len(self.frames):
             for i in range(0, int(math.floor(self.res_x * self.scale_factor))):
                 for j in range(0,
                                int(math.floor(self.res_y * self.scale_factor))):
                     img_task.set_pixel((i, j), color)
         else:
-            parts = int(self.total_tasks / len(self.frames))
+            parts = int(self.get_total_tasks() / len(self.frames))
             pu = self.preview_updaters[frame_index]
             part = (subtask['start_task'] - 1) % parts + 1
             self.mark_part_on_preview(part, img_task, color, pu)
@@ -591,18 +572,13 @@ class BlenderRenderTask(FrameRenderingTask):
         frame_key = str(frame_num)
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
-        if not self._use_outer_task_collector():
-            collector = CustomCollector(width=self.res_x,
-                                        height=self.res_y)
-            for file in collected.values():
-                collector.add_img_file(file)
-            with handle_opencv_image_error(logger):
-                image = collector.finalize()
-                image.save_with_extension(output_file_name, self.output_format)
-        else:
-            self._put_collected_files_together(output_file_name,
-                                               list(collected.values()),
-                                               "paste")
+        collector = CustomCollector(width=self.res_x,
+                                    height=self.res_y)
+        for file in collected.values():
+            collector.add_img_file(file)
+        with handle_opencv_image_error(logger):
+            image = collector.finalize()
+            image.save_with_extension(output_file_name, self.output_format)
         self.collected_file_names[frame_num] = output_file_name
         self._update_frame_preview(output_file_name, frame_num, final=True)
         self._update_frame_task_preview()
@@ -616,7 +592,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
     TASK_CLASS: Type[BlenderRenderTask] = BlenderRenderTask
-    DEFAULTS: Type[BlenderDefaults] = BlenderDefaults
 
     @classmethod
     def build_dictionary(cls, definition):
@@ -648,7 +623,6 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
 class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
     TASK_CLASS: Type[BlenderRenderTask] = BlenderNVGPURenderTask
-    DEFAULTS: Type[BlenderDefaults] = BlenderNVGPUDefaults
 
 
 class CustomCollector(RenderingTaskCollector):
@@ -684,22 +658,23 @@ def generate_expected_offsets(parts, res_x, res_y):
     return expected_offsets
 
 
-def get_min_max_y(task_num, parts, res_y):
-    if res_y % parts == 0:
-        min_y = (parts - task_num) * (1.0 / parts)
-        max_y = (parts - task_num + 1) * (1.0 / parts)
+def get_min_max_y(part, parts_in_frame, res_y):
+    if res_y % parts_in_frame == 0:
+        min_y = (parts_in_frame - part) * (1.0 / parts_in_frame)
+        max_y = (parts_in_frame - part + 1) * (1.0 / parts_in_frame)
     else:
-        ceiling_height = int(math.ceil(res_y / parts))
-        ceiling_subtasks = parts - (ceiling_height * parts - res_y)
-        if task_num > ceiling_subtasks:
-            min_y = (parts - task_num) * (ceiling_height - 1) / res_y
-            max_y = (parts - task_num + 1) * (ceiling_height - 1) / res_y
+        ceiling_height = int(math.ceil(res_y / parts_in_frame))
+        ceiling_subtasks = parts_in_frame - \
+            (ceiling_height * parts_in_frame - res_y)
+        if part > ceiling_subtasks:
+            min_y = (parts_in_frame - part) * (ceiling_height - 1) / res_y
+            max_y = (parts_in_frame - part + 1) * (ceiling_height - 1) / res_y
         else:
-            min_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
-            min_y += (ceiling_subtasks - task_num) * ceiling_height
+            min_y = (parts_in_frame - ceiling_subtasks) * (ceiling_height - 1)
+            min_y += (ceiling_subtasks - part) * ceiling_height
             min_y = min_y / res_y
 
-            max_y = (parts - ceiling_subtasks) * (ceiling_height - 1)
-            max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
+            max_y = (parts_in_frame - ceiling_subtasks) * (ceiling_height - 1)
+            max_y += (ceiling_subtasks - part + 1) * ceiling_height
             max_y = max_y / res_y
     return min_y, max_y

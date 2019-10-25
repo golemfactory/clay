@@ -12,7 +12,6 @@ from apps.dummy.task.dummytask import (
 from apps.dummy.task.dummytaskstate import (
     DummyTaskDefinition,
     DummyTaskOptions,
-    DummyTaskDefaults,
 )
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -24,9 +23,10 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     ]
 
     def _get_new_dummy(self):
-        td = DummyTaskDefinition(DummyTaskDefaults())
+        td = DummyTaskDefinition()
         td.task_id = str(uuid.uuid4())
-        dt = DummyTask(5, td, "root/path", dt_p2p_factory.Node())
+        td.subtasks_count = 5
+        dt = DummyTask(td, "root/path", dt_p2p_factory.Node())
         return dt, td
 
     def test_constants(self):
@@ -92,7 +92,7 @@ class TestDummyTaskBuilder(TestCase):
         assert DummyTaskBuilder.TASK_CLASS == DummyTask
 
     def test_build_dictionary(self):
-        td = DummyTaskDefinition(DummyTaskDefaults())
+        td = DummyTaskDefinition()
         dictionary = DummyTaskBuilder.build_dictionary(td)
         opts = dictionary["options"]
         assert opts['subtask_data_size'] == int(td.options.subtask_data_size)

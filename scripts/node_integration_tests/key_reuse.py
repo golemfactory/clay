@@ -43,6 +43,7 @@ class NodeKeyReuseConfig:
     enabled: bool = True
 
     # Provider specific variables
+    use_granary: bool = False
     granary_hostname: Optional[str] = None
     local_reuse_dir: Optional[Path] = None
 
@@ -51,8 +52,9 @@ class NodeKeyReuseConfig:
         _log("NodeKeyReuseConfig.get() called.")
         if not cls.instance:
             cls.instance = cls()
-            if cls.granary_hostname:
-                print("key_reuse - granary selected:", cls.granary_hostname)
+            if cls.use_granary:
+                print("key_reuse - granary selected:",
+                      cls.granary_hostname or 'local golem-granary')
                 cls.provider = NodeKeyReuseGranary(cls.granary_hostname)
             else:
                 print("key_reuse - local folder selected:", cls.local_reuse_dir)
@@ -95,8 +97,9 @@ class NodeKeyReuseConfig:
         cls.instance = None
 
     @classmethod
-    def set_granary(cls, hostname):
-        _log("NodeKeyReuseConfig.set_granary() called. host=", hostname)
+    def enable_granary(cls, hostname: Optional[str] = None):
+        _log("NodeKeyReuseConfig.enable_granary() called. host=", hostname)
+        cls.use_granary = True
         cls.granary_hostname = hostname
 
 

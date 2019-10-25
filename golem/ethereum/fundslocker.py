@@ -1,11 +1,7 @@
 import logging
-import time
 from typing import Dict, TYPE_CHECKING
 
 from ethereum.utils import denoms
-
-from golem.core.service import LoopingCallService
-from golem.core.variables import PAYMENT_DEADLINE
 
 
 if TYPE_CHECKING:
@@ -15,38 +11,35 @@ logger = logging.getLogger(__name__)
 
 
 class TaskFundsLock:
-    def __init__(self, subtask_price: int, num_tasks: int, deadline) -> None:
+    def __init__(self, subtask_price: int, num_tasks: int) -> None:
         self.price = subtask_price
         self.num_tasks = num_tasks
-        self.task_deadline = deadline
 
     @property
     def gnt_lock(self):
         return self.price * self.num_tasks
 
 
-class FundsLocker(LoopingCallService):
+class FundsLocker:
     def __init__(
             self,
             transaction_system: 'TransactionSystem',
-            interval_seconds: int = 60) -> None:
-        super().__init__(interval_seconds)
+    ) -> None:
         self.task_lock: Dict[str, TaskFundsLock] = {}
-        self.transaction_system: 'TransactionSystem' \
-            = transaction_system
+        self.transaction_system: 'TransactionSystem' = transaction_system
 
     def lock_funds(
             self,
             task_id: str,
             subtask_price: int,
             num_tasks: int,
-            deadline) -> None:
+    ) -> None:
         if self.task_lock.get(task_id) is not None:
             logger.error("Tried to duplicate lock_fund with same "
                          "task_id %r", task_id)
             return
 
-        tfl = TaskFundsLock(subtask_price, num_tasks, deadline)
+        tfl = TaskFundsLock(subtask_price, num_tasks)
         logger.info(
             'Locking funds for task: %r price: %.3f GNTB num: %d',
             task_id,
@@ -58,15 +51,6 @@ class FundsLocker(LoopingCallService):
             tfl.num_tasks,
         )
         self.task_lock[task_id] = tfl
-
-    def remove_old(self):
-        time_ = time.time()
-        for task_id, task in list(self.task_lock.items()):
-            if task.task_deadline + PAYMENT_DEADLINE < time_:
-                del self.task_lock[task_id]
-
-    def _run(self):
-        self.remove_old()
 
     def remove_subtask(self, task_id):
         task_lock = self.task_lock.get(task_id)

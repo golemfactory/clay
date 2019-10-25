@@ -2,13 +2,13 @@ import os
 from unittest import TestCase
 from mock import mock_open, patch
 
-from apps.wasm import benchmark
 from apps.wasm.task import WasmTaskOptions
+from apps.wasm.benchmark import WasmTaskBenchmark
 
 
 class WasmBenchmarkTestCase(TestCase):
     def setUp(self):
-        self.benchmark = benchmark.WasmTaskBenchmark()
+        self.benchmark = WasmTaskBenchmark()
 
     def test_definition(self):
         task_def = self.benchmark.task_definition
@@ -40,6 +40,6 @@ class WasmBenchmarkTestCase(TestCase):
         with patch('builtins.open', mock_open(read_data='wrong_content')):
             self.assertFalse(self.benchmark.verify_result(['/path/to/out.txt']))
 
-        good_content = benchmark.WasmTaskBenchmark.EXPECTED_OUTPUT
+        good_content = WasmTaskBenchmark.EXPECTED_OUTPUT
         with patch('builtins.open', mock_open(read_data=good_content)):
             self.assertTrue(self.benchmark.verify_result(['/path/to/out.txt']))

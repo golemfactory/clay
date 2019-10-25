@@ -2,13 +2,12 @@ import logging
 import os
 
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.core.task.coretaskstate import TaskDefaults
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
-from golem.verificator.ffmpeg_verifier import FFmpegVerifier
+from golem.verifier.ffmpeg_verifier import FFmpegVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -75,13 +74,9 @@ class ffmpegTask(TranscodingTask):
                 for k, v in d.items() if v is not None}
 
 
-class ffmpegDefaults(TaskDefaults):
-    pass
-
 
 class ffmpegTaskBuilder(TranscodingTaskBuilder):
     TASK_CLASS = ffmpegTask
-    DEFAULTS = ffmpegDefaults
 
 
 class ffmpegTaskDefinition(TranscodingTaskDefinition):

@@ -44,7 +44,6 @@
   ],
   "output_format":"PNG",
   "output_file": "output.png",
-  "optimize_total":false,
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Blender",

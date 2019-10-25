@@ -6,7 +6,7 @@ from docker.errors import APIError
 from twisted.trial.unittest import TestCase
 
 from golem.envs import RuntimeStatus
-from golem.envs.docker import DockerPayload
+from golem.envs.docker import DockerRuntimePayload
 from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput, DockerInput, \
     InputSocket
 
@@ -23,34 +23,28 @@ class TestInit(TestCase):
 
     @patch('local_client')
     def test_init(self, local_client):
-        payload = DockerPayload(
-            image='repo/img',
-            tag='1.0',
-            command='cmd',
-            env={'key': 'value'},
-            user='user',
-            work_dir='/test'
-        )
-        host_config = {'memory': '1234m'}
         volumes = ['/test']
-        runtime = DockerCPURuntime(payload, host_config, volumes)
-
-        local_client().create_container_config.assert_called_once_with(
+        host_config = {'memory': '1234m'}
+        container_config = dict(
             image='repo/img:1.0',
             command='cmd',
             volumes=volumes,
-            environment={'key': 'value'},
+            environment={'key': 'val', 'key2': 'val2'},
+            ports=None,
             user='user',
             working_dir='/test',
             host_config=host_config,
             stdin_open=True,
+            runtime='test',
         )
+
+        runtime = DockerCPURuntime(container_config, Mock())
+
+        local_client().create_container_config.assert_called_once_with(
+            **container_config)
         self.assertEqual(runtime.status(), RuntimeStatus.CREATED)
         self.assertIsNone(runtime._container_id)
         self.assertIsNone(runtime._stdin_socket)
-        self.assertEqual(
-            runtime._container_config,
-            local_client().create_container_config())
 
 
 class TestDockerCPURuntime(TestCase):
@@ -61,15 +55,7 @@ class TestDockerCPURuntime(TestCase):
         self.logger = self._patch_async('logger')
         self.client = self._patch_async('local_client').return_value
         self.container_config = self.client.create_container_config()
-
-        payload = DockerPayload(
-            image='repo/img',
-            tag='1.0',
-            env={}
-        )
-
-        self.runtime = DockerCPURuntime(payload, {}, None)
-        self.container_config = self.client.create_container_config()
+        self.runtime = DockerCPURuntime(self.container_config, Mock())
 
         # We want to make sure that status is being set and read using lock.
 
@@ -192,7 +178,7 @@ class TestUpdateStatus(TestDockerCPURuntime):
 class TestUpdateStatusLoop(TestDockerCPURuntime):
 
     # Timeout not to enter an infinite loop if there's a bug in the method
-    @pytest.mark.timeout(0.1)
+    @pytest.mark.timeout(5.0)
     @patch('sleep')
     @patch_runtime('_update_status')
     def test_not_running(self, update_status, sleep):
@@ -201,7 +187,7 @@ class TestUpdateStatusLoop(TestDockerCPURuntime):
         sleep.assert_not_called()
 
     # Timeout not to enter an infinite loop if there's a bug in the method
-    @pytest.mark.timeout(0.1)
+    @pytest.mark.timeout(5.0)
     @patch('sleep')
     @patch_runtime('_update_status')
     def test_updated(self, update_status, sleep):

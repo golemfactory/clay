@@ -20,6 +20,6 @@ class TestDummyTask(unittest.TestCase):
     def test_dummy_task_computation_subprocess_error(self):
         # Make the first computing node fail after approx. 5 secs
         error_msg = runner.run_simulation(
-            num_computing_nodes=2, num_subtasks=10, timeout=120,
+            num_computing_nodes=2, num_subtasks=10, timeout=240,
             node_failure_times=[5])
         self.assertTrue(error_msg.startswith("Node exited with return code"))

@@ -10,7 +10,7 @@ import mock
 
 from golem_messages import message
 
-from golemapp import start
+from golemapp import main
 
 
 def wrong_docker_images(self, ctd):
@@ -20,4 +20,4 @@ def wrong_docker_images(self, ctd):
 
 with mock.patch("golem.task.tasksession.TaskSession._set_env_params",
                 wrong_docker_images):
-    start()
+    main()

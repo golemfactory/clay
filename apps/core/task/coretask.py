@@ -5,6 +5,7 @@ import os
 import time
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Type,
@@ -22,13 +23,16 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
+# importing DirManager could be under "if TYPE_CHECKING", but it's needed here
+# for validation by 'enforce'
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
+from golem.task.taskbase import TaskResult
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
+from golem.verifier.subtask_verification_state import SubtaskVerificationState
+from golem.verifier.core_verifier import CoreVerifier
 
 from .coretaskstate import RunVerification
 
@@ -46,9 +50,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-MAX_PENDING_CLIENT_RESULTS = 1
 
 
 class CoreTaskTypeInfo(TaskTypeInfo):
@@ -106,10 +107,8 @@ class CoreTask(Task):
     def __init__(self,
                  task_definition: 'TaskDefinition',
                  owner: 'dt_p2p.Node',
-                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
-                 root_path=None,
-                 total_tasks=1):
+                 root_path=None):
         """Create more specific task implementation
         """
 
@@ -145,7 +144,7 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=total_tasks,
+            subtasks_count=task_definition.subtasks_count,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
@@ -154,7 +153,6 @@ class CoreTask(Task):
 
         Task.__init__(self, th, task_definition)
 
-        self.total_tasks = total_tasks
         self.last_task = 0
 
         self.num_tasks_received = 0
@@ -174,7 +172,6 @@ class CoreTask(Task):
 
         self.res_files = {}
         self.tmp_dir = None
-        self.max_pending_client_results = max_pending_client_results
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -192,17 +189,17 @@ class CoreTask(Task):
                                                           create=True)
 
     def needs_computation(self):
-        return (self.last_task != self.total_tasks) or \
+        return (self.last_task != self.get_total_tasks()) or \
                (self.num_failed_subtasks > 0)
 
     def finished_computation(self):
-        return self.num_tasks_received == self.total_tasks
+        return self.num_tasks_received == self.get_total_tasks()
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -263,7 +260,7 @@ class CoreTask(Task):
 
         subtask["status"] = SubtaskStatus.finished
         node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
+        TaskClient.get_or_initialize(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -274,17 +271,17 @@ class CoreTask(Task):
         return self.finished_computation()
 
     def get_total_tasks(self):
-        return self.total_tasks
+        return self.task_definition.subtasks_count
 
     def get_active_tasks(self):
         return self.last_task
 
     def get_tasks_left(self):
-        return (self.total_tasks - self.last_task) + self.num_failed_subtasks
+        return (self.get_total_tasks() - self.last_task) \
+            + self.num_failed_subtasks
 
-    # pylint:disable=unused-argument
-    @classmethod
-    def get_subtasks(cls, part):
+    # pylint:disable=unused-argument,no-self-use
+    def get_subtasks(self, part) -> Dict[str, dict]:
         return dict()
 
     def restart(self):
@@ -314,9 +311,9 @@ class CoreTask(Task):
         pass
 
     def get_progress(self):
-        if self.total_tasks == 0:
+        if self.get_total_tasks() == 0:
             return 0.0
-        return self.num_tasks_received / self.total_tasks
+        return self.num_tasks_received / self.get_total_tasks()
 
     def update_task_state(self, task_state):
         pass
@@ -359,7 +356,6 @@ class CoreTask(Task):
             int(timeout_to_deadline(self.header.subtask_timeout)),
             self.header.deadline,
         )
-        ctd['resources'] = self.get_resources()
 
         return ctd
 
@@ -367,7 +363,9 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, sort=True):
+    def interpret_task_results(
+            self, subtask_id: str, task_results: TaskResult,
+            sort: bool = True) -> None:
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
@@ -378,18 +376,17 @@ class CoreTask(Task):
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
         self.results[subtask_id] = self.filter_task_results(
-            task_results, subtask_id)
+            task_results.files, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
-                            err_log_ext="err.log"):
+    def filter_task_results(
+            self, task_results: List[str], subtask_id: str,
+            log_ext: str = ".log", err_log_ext: str = "err.log") -> List[str]:
         """ From a list of files received in task_results, return only files
         that don't have extension <log_ext> or <err_log_ext>. File with log_ext
         is saved as stdout for this subtask (only one file is currently
@@ -402,7 +399,7 @@ class CoreTask(Task):
         :return:
         """
 
-        filtered_task_results = []
+        filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
                 self.stderr[subtask_id] = tr
@@ -476,35 +473,39 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def should_accept_client(self, node_id):
-        client = TaskClient.assert_exists(node_id, self.counting_nodes)
-        finishing = client.finishing()
-        max_finishing = self.max_pending_client_results
-
+    def should_accept_client(self,
+                             node_id: str,
+                             offer_hash: str) -> AcceptClientVerdict:
+        client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         if client.rejected():
             return AcceptClientVerdict.REJECTED
-        elif finishing >= max_finishing or \
-                client.started() - finishing >= max_finishing:
+        elif client.should_wait(offer_hash):
             return AcceptClientVerdict.SHOULD_WAIT
 
         return AcceptClientVerdict.ACCEPTED
 
-    def accept_client(self, node_id):
-        verdict = self.should_accept_client(node_id)
+    def accept_client(self,
+                      node_id: str,
+                      offer_hash: str,
+                      num_subtasks: int = 1) -> AcceptClientVerdict:
+        verdict = self.should_accept_client(node_id, offer_hash)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
-            client = TaskClient.assert_exists(node_id, self.counting_nodes)
-            client.start()
+            client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
+            client.start(offer_hash, num_subtasks)
 
         return verdict
 
-    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+    def copy_subtask_results(
+            self, subtask_id: str, old_subtask_info: dict,
+            results: TaskResult) -> None:
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
-        self.accept_client(new_subtask['node_id'])
+
+        self.accept_client(new_subtask['node_id'], '')
         self.result_incoming(subtask_id)
         self.interpret_task_results(
             subtask_id=subtask_id,
@@ -516,7 +517,7 @@ class CoreTask(Task):
 
 
 class CoreTaskBuilder(TaskBuilder):
-    TASK_CLASS = CoreTask
+    TASK_CLASS: Type[CoreTask]
     OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,
@@ -535,7 +536,6 @@ class CoreTaskBuilder(TaskBuilder):
         return self.TASK_CLASS(**self.get_task_kwargs())
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
@@ -554,10 +554,8 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-
         if 'resources' in dictionary:
             definition.resources = set(dictionary['resources'])
-
         return definition
 
     @classmethod
