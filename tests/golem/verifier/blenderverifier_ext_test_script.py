@@ -182,10 +182,10 @@ class ExtendedVerifierTestEnv:
 
         # Add newline on end.
         print("")
-        self._print_failes()
+        self._print_fails()
         self._reports_to_files(part)
 
-    def _print_failes(self):
+    def _print_fails(self):
         print("Printing failed tests:")
         print(json.dumps(self.report.failed_params, indent=4, sort_keys=False))
 
