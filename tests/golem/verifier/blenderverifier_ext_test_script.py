@@ -144,7 +144,7 @@ class ExtendedVerifierTestEnv:
 
             self.report.fail(parameters, reason)
         else:
-            report = tester.get_report()
+            report = tester.report
             report.merge_reports_content()
 
             self.report.update(report)
@@ -235,9 +235,6 @@ class ExtendedVerifierTest(TestBlenderIntegration):
     def __init__(self):
         super().__init__()
         self.report: Report = Report()
-
-    def get_report(self) -> Report:
-        return self.report
 
     def run_for_parameters_set(self, parameters_set: dict):
 
