@@ -60,8 +60,12 @@ class RequestorMarketStrategy(ABC):
         raise NotImplementedError()
 
     @abstractclassmethod
-    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
-            -> Callable[[int], int]:
+    def get_payment_computer(
+            cls,
+            subtask_id: str,
+            subtask_timeout: int,
+            subtask_price: int,
+    ) -> Callable[[int], int]:
         """Returns a function computing payment based on price in TTC.
         Raises:
             NotImplementedError: [description]
