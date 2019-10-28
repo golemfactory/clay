@@ -48,6 +48,7 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
+from golem.marketplace import ProviderBrassMarketStrategy
 
 from tests.factories import hyperdrive
 
@@ -956,6 +957,12 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.keys_auth = Mock()
         self.task_server.task_manager = Mock()
         self.task_server.client = Mock()
+        app = Mock()
+        app.builder.TASK_CLASS.\
+            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.task_server.client.apps_manager.get_app_for_env = Mock(
+            return_value=app
+        )
         self.task_server.pending_sessions = set()
         self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
@@ -965,14 +972,18 @@ class SubtaskResultsAcceptedTest(TestCase):
 
     def test_react_to_subtask_results_accepted(self):
         # given
-        rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
-            task_to_compute__requestor_public_key=self.requestor_key_id,
-            task_to_compute__want_to_compute_task__sign__privkey=(
-                self.provider_keys.raw_privkey),
-            task_to_compute__want_to_compute_task__provider_public_key=(
-                self.provider_key_id),
-        )
+        rct = msg_factories.tasks.ReportComputedTaskFactory(**{
+            'task_to_compute__want_to_compute_task'
+            '__task_header__subtask_timeout': 360,
+            'task_to_compute__want_to_compute_task__price': 10,
+            'task_to_compute__price': 1,
+            'task_to_compute__sign__privkey': self.requestor_keys.raw_privkey,
+            'task_to_compute__requestor_public_key': self.requestor_key_id,
+            'task_to_compute__want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey,
+            'task_to_compute__want_to_compute_task__provider_public_key':
+                self.provider_key_id,
+        })
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             sign__privkey=self.requestor_keys.raw_privkey,
             report_computed_task=rct,
