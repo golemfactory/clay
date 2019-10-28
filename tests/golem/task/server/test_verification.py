@@ -70,17 +70,14 @@ class TestGetPaymentComputer(unittest.TestCase):
             subtask_price=10 ** 17)
 
     def test_task_id_invalid(self):
-        with self.assertRaises(RuntimeError) as ctx:
+        with self.assertRaisesRegex(RuntimeError, "unknown task"):
             self.get(task_id='UNKNOWN', subtask_id='subtask_id')
-            self.assertIn(str(ctx.exception), "unknown task")
 
     def test_subtask_id_invalid(self):
-        with self.assertRaises(RuntimeError) as ctx:
+        with self.assertRaisesRegex(RuntimeError, "unknown subtask"):
             self.get(task_id='task_api_task_id', subtask_id='UNKNOWN')
-            self.assertIn(str(ctx.exception), "unknown subtask")
 
     def test_app_id_invalid(self):
         self.apps.clear()
-        with self.assertRaises(RuntimeError) as ctx:
+        with self.assertRaisesRegex(RuntimeError, "unknown app"):
             self.get(task_id='task_api_task_id', subtask_id='subtask_id')
-            self.assertIn(str(ctx.exception), "unknown app")
