@@ -41,11 +41,14 @@ from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
 
 if TYPE_CHECKING:
-    from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
-    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
-    from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
-    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
-    from golem.network.concent.client import ConcentClientService  # noqa pylint:disable=unused-import
+    # pylint: disable=unused-import,ungrouped-imports
+    from twisted.internet.protocol import Protocol
+
+    from .requestedtaskmanager import RequestedTaskManager
+    from .taskcomputer import TaskComputer
+    from .taskmanager import TaskManager
+    from .taskserver import TaskServer
+    from golem.network.concent.client import ConcentClientService
 
 logger = logging.getLogger(__name__)
 
@@ -107,12 +110,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
 
-    def __init__(self, conn):
+    def __init__(self, conn: 'Protocol') -> None:
         """
         Create new Session
-        :param Protocol conn: connection protocol implementation that this
-                              session should enhance
-        :return:
+        :param conn: connection protocol implementation that this
+                     session should enhance
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
@@ -226,10 +228,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug('Invalid message received', exc_info=True)
             return False
         return True
-
-    #######################
-    # FileSession methods #
-    #######################
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """

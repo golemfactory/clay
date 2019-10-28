@@ -1,17 +1,21 @@
 import logging
 import time
-from typing import Callable, Dict, List, Optional, Set
+from typing import Callable, Dict, List, Optional, Set, TYPE_CHECKING
 
-from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import node_info_str
 from golem.core.types import Kwargs
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 
-from .session import BasicSession
-from .tcpnetwork import TCPNetwork, TCPListeningInfo, TCPListenInfo, \
+from .tcpnetwork import TCPListeningInfo, TCPListenInfo, \
     SocketAddress, TCPConnectInfo
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.clientconfigdescriptor import ClientConfigDescriptor
+    from .tcpnetwork import TCPNetwork
+    from .session import BasicSession
 
 logger = logging.getLogger(__name__)
 
@@ -20,8 +24,8 @@ class TCPServer:
     """ Basic tcp server that can start listening on given port """
 
     def __init__(self,
-                 config_desc: ClientConfigDescriptor,
-                 network: TCPNetwork) -> None:
+                 config_desc: 'ClientConfigDescriptor',
+                 network: 'TCPNetwork') -> None:
         """
         Create new server
         :param config_desc: config descriptor for listening port
@@ -34,9 +38,9 @@ class TCPServer:
         self.use_ipv6 = config_desc.use_ipv6 if config_desc else False
         self.ipv4_networks = ipv4_networks()
 
-    def change_config(self, config_desc: ClientConfigDescriptor):
-        """ Change configuration descriptor. If listening port is changed, than stop listening on old port and start
-        listening on a new one.
+    def change_config(self, config_desc: 'ClientConfigDescriptor'):
+        """ Change configuration descriptor. If listening port is changed, then
+        stop listening on old port and start listening on a new one.
         :param config_desc: new config descriptor
         """
         self.config_desc = config_desc
@@ -102,8 +106,8 @@ class PendingConnectionsServer(TCPServer):
     if connection attempt is unsuccessful."""
 
     def __init__(self,
-                 config_desc: ClientConfigDescriptor,
-                 network: TCPNetwork) -> None:
+                 config_desc: 'ClientConfigDescriptor',
+                 network: 'TCPNetwork') -> None:
         """ Create new server
         :param config_desc: config descriptor for listening port
         :param network: network that server will use
@@ -112,7 +116,7 @@ class PendingConnectionsServer(TCPServer):
         #  Connections that should be accomplished
         self.pending_connections: Dict[str, PendingConnection] = {}
         #  Sessions a.k.a Peers before handshake
-        self.pending_sessions: Set[BasicSession] = set()
+        self.pending_sessions: Set['BasicSession'] = set()
         #  Reactions for established connections of certain types
         self.conn_established_for_type: Dict[int, Callable] = {}
         #  Reactions for failed connection attempts of certain types
@@ -134,8 +138,8 @@ class PendingConnectionsServer(TCPServer):
         """
         self.remove_pending_conn(conn_id)
 
-    def remove_pending_conn(self, conn_id):
-        return self.pending_connections.pop(conn_id, None)
+    def remove_pending_conn(self, conn_id) -> None:
+        self.pending_connections.pop(conn_id, None)
 
     def final_conn_failure(self, conn_id):
         """ React to the information that all connection attempts failed. Call specific for this connection type
@@ -264,6 +268,7 @@ class PendingConnectionsServer(TCPServer):
             addresses.insert(0, addresses.pop(index))
 
     def sync_network(self, timeout=1.0):
+        session: 'BasicSession'
         for session in frozenset(self.pending_sessions):
             if (time.time() - session.last_message_time) < timeout:
                 continue
