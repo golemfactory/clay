@@ -319,9 +319,11 @@ class RequestedTaskManager:
             raise RuntimeError(
                 f"Task not pending, no next subtask. task_id={task_id}")
 
+        subtask_id = idgenerator.generate_id(self._public_key)
         app_client = await self._get_app_client(task.app_id)
         result = await app_client.next_subtask(
             task_id=task.task_id,
+            subtask_id=subtask_id,
             opaque_node_id=hashlib.sha3_256(node.node_id.encode()).hexdigest()  # noqa pylint: disable=no-member
         )
 
@@ -331,7 +333,6 @@ class RequestedTaskManager:
                 "task_id=%r, node_id=%r", task_id, node.node_id)
             return None
 
-        subtask_id = result.subtask_id
         subtask = RequestedSubtask.create(
             task=task,
             subtask_id=subtask_id,

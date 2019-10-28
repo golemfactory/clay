@@ -18,9 +18,9 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages
+Golem-Messages==3.13.0
 Golem-Smart-Contracts-Interface==1.10.3
-golem_task_api==0.21.0
+golem_task_api==0.22.0
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
