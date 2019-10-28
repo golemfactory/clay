@@ -7,7 +7,6 @@ from ffmpeg_tools.validation import InvalidResolution, \
     UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution
 from parameterized import parameterized
 
-from golem.testutils import remove_temporary_dirtree_if_test_passed
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
     FfmpegIntegrationBase, \
@@ -154,7 +153,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_codec_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_codec_change(self,
                                                video,
                                                video_codec,
@@ -211,7 +209,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_resolution_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_resolution_change(self, video, resolution):
         source_codec = video["video_codec"]
         if not Container.is_supported(video['container'].value):
@@ -264,7 +261,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
@@ -318,7 +314,6 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_different_subtask_counts_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video,
                                                            subtasks_count):

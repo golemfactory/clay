@@ -220,6 +220,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
+    @pytest.mark.slow
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -237,6 +238,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
+    @pytest.mark.slow
     def test_nonexistent_output_dir(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
@@ -258,6 +260,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
+    @pytest.mark.slow
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'test_nonexistent_video.mp4')
@@ -276,6 +279,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
 
+    @pytest.mark.slow
     def test_invalid_resource_stream(self):
         resource_stream = os.path.join(
             self.RESOURCES,
@@ -296,6 +300,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
 
+    @pytest.mark.slow
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
