@@ -4,7 +4,7 @@ from golem.docker.image import DockerImage
 
 class ffmpegEnvironment(DockerEnvironment):
     DOCKER_IMAGE = 'golemfactory/ffmpeg-experimental'
-    DOCKER_TAG = '0.98.0'
+    DOCKER_TAG = '0.98.1'
     ENV_ID = 'FFMPEG'
     SHORT_DESCRIPTION = ''
 
