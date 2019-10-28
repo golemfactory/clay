@@ -47,6 +47,7 @@ class TestDockerJob(DockerTestCase):
         self.resources_dir = tempfile.mkdtemp(
             prefix="golem-", dir=self.test_dir)
         self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+        self.stats_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
 
         if not is_windows():
             os.chmod(self.test_dir, 0o770)
@@ -60,12 +61,12 @@ class TestDockerJob(DockerTestCase):
             DockerJob(None, "scr", [], '/var/lib/resources/',
                       '/var/lib/work', '/var/lib/out')
         job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir,
-                        self.work_dir, self.output_dir)
+                        self.work_dir, self.output_dir, self.stats_dir)
         self.assertEqual(job.image, self.image)
 
         parameters = {'OUTPUT_DIR': '/golem/output',
                       'RESOURCES_DIR': '/golem/resources',
-                      'WORK_DIR': '/golem/work'}
+                      'WORK_DIR': '/golem/work', 'STATS_DIR': '/golem/stats'}
         self.assertEqual(job.parameters, parameters)
         self.assertEqual(job.host_config, {})
         self.assertEqual(job.resources_dir, self.resources_dir)
@@ -100,6 +101,7 @@ class TestDockerJob(DockerTestCase):
             resources_dir=self.resources_dir,
             work_dir=self.work_dir,
             output_dir=self.output_dir,
+            stats_dir=self.stats_dir,
             host_config={
                 'binds': {
                     self.work_dir: {
@@ -112,6 +114,10 @@ class TestDockerJob(DockerTestCase):
                     },
                     self.output_dir: {
                         "bind": DockerJob.OUTPUT_DIR,
+                        "mode": "rw"
+                    },
+                    self.stats_dir: {
+                        "bind": DockerJob.STATS_DIR,
                         "mode": "rw"
                     }
                 }
@@ -137,6 +143,7 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertIsNotNone(job.work_dir)
         self.assertIsNotNone(job.resources_dir)
         self.assertIsNotNone(job.output_dir)
+        self.assertIsNotNone(job.stats_dir)
         self.assertTrue(job._get_host_params_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
@@ -178,6 +185,7 @@ class TestBaseDockerJob(TestDockerJob):
             work_mount = None
             resources_mount = None
             output_mount = None
+            stats_mount = None
             for mount in info["Mounts"]:
                 if mount["Destination"] == DockerJob.WORK_DIR:
                     work_mount = mount
@@ -185,6 +193,8 @@ class TestBaseDockerJob(TestDockerJob):
                     resources_mount = mount
                 elif mount["Destination"] == DockerJob.OUTPUT_DIR:
                     output_mount = mount
+                elif mount["Destination"] == DockerJob.STATS_DIR:
+                    stats_mount = mount
 
             work_dir = self.work_dir if not is_windows() \
                 else nt_path_to_posix_path(self.work_dir)
@@ -192,6 +202,8 @@ class TestBaseDockerJob(TestDockerJob):
                 else nt_path_to_posix_path(self.resources_dir)
             output_dir = self.output_dir if not is_windows()\
                 else nt_path_to_posix_path(self.output_dir)
+            stats_dir = self.stats_dir if not is_windows() \
+                else nt_path_to_posix_path(self.stats_dir)
 
             self.assertIsNotNone(work_mount)
             self.assertEqual(work_mount["Source"], work_dir)
@@ -202,6 +214,8 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertIsNotNone(output_mount)
             self.assertEqual(output_mount["Source"], output_dir)
             self.assertTrue(output_mount["RW"])
+            self.assertTrue(stats_mount["Source"], stats_dir)
+            self.assertTrue(stats_mount["RW"])
 
     def test_cleanup(self):
         with self._create_test_job() as job:

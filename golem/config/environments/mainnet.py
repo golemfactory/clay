@@ -74,3 +74,8 @@ PROTOCOL_CONST.patch_protocol_id(value=PROTOCOL_CONST.NUM)
 APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini')
 ]
+
+CONCENT_SUPPORTED_APPS = (
+    'blender',
+    'blender_nvgpu'
+)

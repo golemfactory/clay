@@ -21,7 +21,7 @@ class DiagnosticsOutputFormat(object):
 class DiagnosticsProvider(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def get_diagnostics(self, output_format):
-        pass
+        raise NotImplementedError
 
     @staticmethod
     def _format_diagnostics(data, output_format):

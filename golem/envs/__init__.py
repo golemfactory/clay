@@ -1,18 +1,20 @@
+import time
 from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
 from logging import Logger, getLogger
 from threading import RLock
-from pathlib import Path
 
 from typing import Any, Callable, Dict, List, Optional, NamedTuple, Union, \
-    Sequence, Iterable, ContextManager, Set
+    Sequence, Iterable, ContextManager, Set, Tuple
 
+from dataclasses import dataclass, field
 from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
 
 from golem.core.simpleserializer import DictSerializable
+from golem.model import Performance
 
 CounterId = str
 CounterUsage = Any
@@ -49,7 +51,6 @@ class EnvEventType(Enum):
 
 class EnvEvent(NamedTuple):
     type: EnvEventType
-    env_id: EnvId
     details: Optional[Dict[str, Any]] = None
 
 
@@ -68,17 +69,24 @@ class Prerequisites(DictSerializable, ABC):
     """
 
 
-class Payload(DictSerializable, ABC):
-    """
-    A definition for Runtime. Environment-specific description of computation to
-    be run. Received when provider is assigned a subtask.
-    """
+class RuntimePayload(ABC):
+    """ A set of necessary data required to create a Runtime. """
 
 
 class EnvSupportStatus(NamedTuple):
     """ Is the environment supported? If not, why? """
     supported: bool
     nonsupport_reason: Optional[str] = None
+
+
+@dataclass
+class BenchmarkResult:
+    performance: float = 0.0
+    cpu_usage: int = Performance.DEFAULT_CPU_USAGE
+
+    @staticmethod
+    def from_performance(performance: Performance):
+        return BenchmarkResult(performance.value, performance.cpu_usage)
 
 
 class RuntimeStatus(Enum):
@@ -126,6 +134,7 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
             a closed input won't do anything.
             NOTE: If there are many open input handles for a single Runtime
             then closing one of them will effectively close all the other. """
+        raise NotImplementedError
 
     def __enter__(self) -> 'RuntimeInput':
         return self
@@ -152,6 +161,86 @@ class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
 
+    @abstractmethod
+    def prepare(self) -> Deferred:
+        """ Prepare the Runtime to be started. Assumes current status is
+            'CREATED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def clean_up(self) -> Deferred:
+        """ Clean up after the Runtime has finished running. Assumes current
+            status is 'STOPPED' or 'FAILURE'. In the latter case it is not
+            guaranteed that the cleanup will be successful. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def start(self) -> Deferred:
+        """ Start the computation. Assumes current status is 'PREPARED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stop(self) -> Deferred:
+        """ Interrupt the computation. Assumes current status is 'RUNNING'. """
+        raise NotImplementedError
+
+    def status(self) -> RuntimeStatus:
+        """ Get the current status of the Runtime. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
+        """ Get STDIN stream of the Runtime. If encoding is None the returned
+            stream will be raw (accepting bytes), otherwise it will be encoded
+            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
+            or 'RUNNING'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDOUT stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is one of the following: 'PREPARED',
+            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
+            last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
+        """ Get STDERR stream of the Runtime. If encoding is None the returned
+            stream will be raw (bytes), otherwise it will be decoded (str).
+            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
+            (however, in the last case output might not be available). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_port_mapping(self, port: int) -> Tuple[str, int]:
+        """
+        After a runtime is created with exposed ports this function should
+        return a valid socket address where the initial port is accessible from.
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
+        """ For each usage counter supported by the Environment (e.g. clock
+            time) get current usage by this Runtime. """
+        raise NotImplementedError
+
+    def listen(self, event_type: RuntimeEventType,
+               listener: RuntimeEventListener) -> None:
+        """ Register a listener for a given type of Runtime events. """
+        raise NotImplementedError
+
+
+class RuntimeBase(Runtime, ABC):
+
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._logger = logger or getLogger(__name__)
         self._status = RuntimeStatus.CREATED
@@ -162,7 +251,8 @@ class Runtime(ABC):
     @staticmethod
     def _assert_status(
             actual: RuntimeStatus,
-            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]) -> None:
+            expected: Union[RuntimeStatus, Sequence[RuntimeStatus]]
+    ) -> None:
         """ Assert that actual status is one of the expected. """
 
         if isinstance(expected, RuntimeStatus):
@@ -176,7 +266,8 @@ class Runtime(ABC):
     def _change_status(
             self,
             from_status: Union[RuntimeStatus, Sequence[RuntimeStatus]],
-            to_status: RuntimeStatus) -> None:
+            to_status: RuntimeStatus
+    ) -> None:
         """ Assert that current Runtime status is the given one and change to
             another one. Using lock to ensure atomicity. """
 
@@ -263,87 +354,32 @@ class Runtime(ABC):
             return failure
         return _callback
 
-    @abstractmethod
-    def prepare(self) -> Deferred:
-        """ Prepare the Runtime to be started. Assumes current status is
-            'CREATED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def clean_up(self) -> Deferred:
-        """ Clean up after the Runtime has finished running. Assumes current
-            status is 'STOPPED' or 'FAILURE'. In the latter case it is not
-            guaranteed that the cleanup will be successful. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def start(self) -> Deferred:
-        """ Start the computation. Assumes current status is 'PREPARED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def wait_until_stopped(self) -> Deferred:
-        """ Can be called after calling `start` to wait until the runtime has
-            stopped """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stop(self) -> Deferred:
-        """ Interrupt the computation. Assumes current status is 'RUNNING'. """
-        raise NotImplementedError
-
     def status(self) -> RuntimeStatus:
-        """ Get the current status of the Runtime. """
         with self._status_lock:
             return self._status
 
-    @abstractmethod
-    def stdin(self, encoding: Optional[str] = None) -> RuntimeInput:
-        """ Get STDIN stream of the Runtime. If encoding is None the returned
-            stream will be raw (accepting bytes), otherwise it will be encoded
-            (accepting str). Assumes current status is 'PREPARED', 'STARTING',
-            or 'RUNNING'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        """ Get STDOUT stream of the Runtime. If encoding is None the returned
-            stream will be raw (bytes), otherwise it will be decoded (str).
-            Assumes current status is one of the following: 'PREPARED',
-            'STARTING', 'RUNNING', 'STOPPED', or 'FAILURE' (however, in the
-            last case output might not be available). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        """ Get STDERR stream of the Runtime. If encoding is None the returned
-            stream will be raw (bytes), otherwise it will be decoded (str).
-            Assumes current status is 'RUNNING', 'STOPPED', or 'FAILURE'
-            (however, in the last case output might not be available). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        """ For each usage counter supported by the Environment (e.g. clock
-            time) get current usage by this Runtime. """
-        raise NotImplementedError
-
-    def listen(self, event_type: RuntimeEventType,
-               listener: RuntimeEventListener) -> None:
-        """ Register a listener for a given type of Runtime events. """
+    def listen(
+            self,
+            event_type: RuntimeEventType,
+            listener: RuntimeEventListener
+    ) -> None:
         self._event_listeners.setdefault(event_type, set()).add(listener)
 
-    @abstractmethod
-    def call(self, alias: str, *args, **kwargs) -> Deferred:
-        """ Send RPC call to the Runtime. """
-        raise NotImplementedError
+    def wait_until_stopped(self) -> Deferred:
+        """ Can be called after calling `start` to wait until the runtime has
+            stopped """
+        def _wait_until_stopped():
+            while self.status() == RuntimeStatus.RUNNING:
+                time.sleep(1)
+        return deferToThread(_wait_until_stopped)
 
 
-class EnvMetadata(NamedTuple):
+@dataclass
+class EnvMetadata:
     id: EnvId
-    description: str
-    supported_counters: List[CounterId]
-    custom_metadata: Dict[str, Any]
+    description: str = ''
+    supported_counters: List[CounterId] = field(default_factory=list)
+    custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 class EnvStatus(Enum):
@@ -361,6 +397,88 @@ class Environment(ABC):
     """ An Environment capable of running computations. It is responsible for
         creating Runtimes. """
 
+    @classmethod
+    @abstractmethod
+    def supported(cls) -> EnvSupportStatus:
+        """ Is the Environment supported on this machine? """
+        raise NotImplementedError
+
+    def status(self) -> EnvStatus:
+        """ Get current status of the Environment. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def prepare(self) -> Deferred:
+        """ Activate the Environment. Assumes current status is 'DISABLED'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def clean_up(self) -> Deferred:
+        """ Deactivate the Environment. Assumes current status is 'ENABLED' or
+            'ERROR'. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def run_benchmark(self) -> Deferred:
+        """ Get the general performance score for this environment. """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+            -> Prerequisites:
+        """ Build Prerequisites struct from supplied dictionary. Returned value
+            is of appropriate type for calling install_prerequisites(). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
+        """ Prepare Prerequisites for running a computation. Assumes current
+            status is 'ENABLED'.
+            Returns boolean indicating whether installation was successful. """
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
+        """ Build config struct from supplied dictionary. Returned value
+            is of appropriate type for calling update_config(). """
+        raise NotImplementedError
+
+    @abstractmethod
+    def config(self) -> EnvConfig:
+        """ Get current configuration of the Environment. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_config(self, config: EnvConfig) -> None:
+        """ Update configuration. Assumes current status is 'DISABLED'. """
+        raise NotImplementedError
+
+    def listen(
+            self,
+            event_type: EnvEventType,
+            listener: EnvEventListener
+    ) -> None:
+        """ Register a listener for a given type of Environment events. """
+        raise NotImplementedError
+
+    @abstractmethod
+    def runtime(
+            self,
+            payload: RuntimePayload,
+            config: Optional[EnvConfig] = None
+    ) -> Runtime:
+        """ Create a Runtime from the given Payload. Optionally, share the
+            specified directory with the created Runtime. Optionally, override
+            current config with the supplied one (it is however not guaranteed
+            that all config parameters could be overridden). Assumes current
+            status is 'ENABLED'. """
+        raise NotImplementedError
+
+
+class EnvironmentBase(Environment, ABC):
+
     def __init__(self, logger: Optional[Logger] = None) -> None:
         self._status = EnvStatus.DISABLED
         self._logger = logger or getLogger(__name__)
@@ -375,7 +493,6 @@ class Environment(ABC):
             every listener registered for this type of events. """
 
         event = EnvEvent(
-            env_id=self.metadata().id,
             type=event_type,
             details=details
         )
@@ -435,92 +552,13 @@ class Environment(ABC):
                 'message': message
             })
 
-    @classmethod
-    @abstractmethod
-    def supported(cls) -> EnvSupportStatus:
-        """ Is the Environment supported on this machine? """
-        raise NotImplementedError
-
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
         return self._status
 
-    @abstractmethod
-    def prepare(self) -> Deferred:
-        """ Activate the Environment. Assumes current status is 'DISABLED'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def clean_up(self) -> Deferred:
-        """ Deactivate the Environment. Assumes current status is 'ENABLED' or
-            'ERROR'. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def run_benchmark(self) -> Deferred:
-        """ Get the general performace score for this environment. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def metadata(cls) -> EnvMetadata:
-        """ Get Environment metadata. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
-            -> Prerequisites:
-        """ Build Prerequisites struct from supplied dictionary. Returned value
-            is of appropriate type for calling install_prerequisites(). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def install_prerequisites(self, prerequisites: Prerequisites) -> Deferred:
-        """ Prepare Prerequisites for running a computation. Assumes current
-            status is 'ENABLED'.
-            Returns boolean indicating whether installation was successful. """
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
-        """ Build config struct from supplied dictionary. Returned value
-            is of appropriate type for calling update_config(). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def config(self) -> EnvConfig:
-        """ Get current configuration of the Environment. """
-        raise NotImplementedError
-
-    @abstractmethod
-    def update_config(self, config: EnvConfig) -> None:
-        """ Update configuration. Assumes current status is 'DISABLED'. """
-        raise NotImplementedError
-
-    def listen(self, event_type: EnvEventType, listener: EnvEventListener) \
-            -> None:
-        """ Register a listener for a given type of Environment events. """
-        self._event_listeners.setdefault(event_type, set()).add(listener)
-
-    @classmethod
-    @abstractmethod
-    def parse_payload(cls, payload_dict: Dict[str, Any]) -> Payload:
-        """ Build Payload struct from supplied dictionary. Returned value
-            is of appropriate type for calling runtime(). """
-        raise NotImplementedError
-
-    @abstractmethod
-    def runtime(
+    def listen(
             self,
-            payload: Payload,
-            shared_dir: Optional[Path] = None,
-            config: Optional[EnvConfig] = None
-    ) -> Runtime:
-        """ Create a Runtime from the given Payload. Optionally, share the
-            specified directory with the created Runtime. Optionally, override
-            current config with the supplied one (it is however not guaranteed
-            that all config parameters could be overridden). Assumes current
-            status is 'ENABLED'. """
-        raise NotImplementedError
+            event_type: EnvEventType,
+            listener: EnvEventListener
+    ) -> None:
+        self._event_listeners.setdefault(event_type, set()).add(listener)

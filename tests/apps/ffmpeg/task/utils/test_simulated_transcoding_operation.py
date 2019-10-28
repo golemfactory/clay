@@ -6,9 +6,10 @@ from parameterized import parameterized
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 
-from golem.testutils import TestTaskIntegration
+from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
-from tests.apps.ffmpeg.task.utils.ffprobe_report import FfprobeFormatReport, FuzzyInt
+from tests.apps.ffmpeg.task.utils.ffprobe_report import \
+    FfprobeFormatReport, FuzzyInt
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
@@ -49,7 +50,7 @@ class TestSimulatedTranscodingOperationIntegration(TestTaskIntegration):
         )
 
     @mock.patch(
-        'golem.testutils.TestTaskIntegration.execute_task',
+        'golem.testutils_app_integration.TestTaskIntegration.execute_task',
         side_effect=BaseException
     )
     def test_exceptions_are_collected_but_not_silenced(self, _executor):

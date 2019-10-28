@@ -16,6 +16,7 @@ from typing import (
     List,
     Optional,
     Tuple,
+    TYPE_CHECKING,
 )
 
 from ethereum.utils import denoms
@@ -42,6 +43,11 @@ from golem.utils import privkeytoaddr
 
 from . import exceptions
 from .faucet import tETH_faucet_donate
+
+
+if TYPE_CHECKING:
+    # pylint: disable=unused-import,ungrouped-imports
+    from golem_sci import structs as sci_structs
 
 
 log = logging.getLogger(__name__)
@@ -272,7 +278,8 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
             model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
-        from_block = int(values.get().value) if values.count() == 1 else 0
+        from_block = int(values.get().value) if values.count() == 1 else \
+            self._sci.get_latest_confirmed_block_number()
 
         ik = self._incomes_keeper
         self._sci.subscribe_to_batch_transfers(
@@ -287,30 +294,97 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
+        self._sci.subscribe_to_direct_incoming_eth_transfers(
+            address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+            ),
+        )
+
+        self._sci.subscribe_to_gnt_transfers(
+            from_address=None,
+            to_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_transfer(
+                tx_hash=event.tx_hash,
+                sender_address=event.from_address,
+                recipient_address=event.to_address,
+                amount=event.amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+            ),
+        )
+
+        unconfirmed_query = model.WalletOperation.unconfirmed_payments()
+        for operation in unconfirmed_query.iterator():
+            log.debug(
+                'Setting transaction confirmation listener. tx_hash=%s',
+                operation.tx_hash,
+            )
+            self._sci.on_transaction_confirmed(
+                tx_hash=operation.tx_hash,
+                cb=self._on_confirmed,
+            )
+
         if self.deposit_contract_available:
-            self._sci.subscribe_to_forced_subtask_payments(
-                None,
-                self._sci.get_eth_address(),
-                from_block,
-                lambda event: ik.received_forced_subtask_payment(
-                    event.tx_hash,
-                    event.requestor,
-                    str(bytes32_to_uuid(event.subtask_id)),
-                    event.amount,
-                )
-            )
-            self._sci.subscribe_to_forced_payments(
-                requestor_address=None,
-                provider_address=self._sci.get_eth_address(),
-                from_block=from_block,
-                cb=lambda event: ik.received_forced_payment(
-                    tx_hash=event.tx_hash,
-                    sender=event.requestor,
-                    amount=event.amount,
-                    closure_time=event.closure_time,
-                ),
-            )
             self._schedule_concent_withdraw()
+            self._subscribe_to_concent_events(from_block)
+
+    @sci_required()
+    def _subscribe_to_concent_events(self, from_block):
+        # As a provider
+        self._sci.subscribe_to_forced_subtask_payments(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: self._incomes_keeper.received_forced_subtask_payment(
+                event.tx_hash,
+                event.requestor,
+                str(bytes32_to_uuid(event.subtask_id)),
+                event.amount,
+            )
+        )
+        # As a requestor
+        self._sci.subscribe_to_forced_subtask_payments(
+            self._sci.get_eth_address(),
+            None,
+            from_block,
+            lambda event: self._payment_processor.sent_forced_subtask_payment(
+                tx_hash=event.tx_hash,
+                receiver=event.provider,
+                subtask_id=str(bytes32_to_uuid(event.subtask_id)),
+                amount=event.amount,
+            )
+        )
+
+        # As a provider
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: self._incomes_keeper.received_forced_payment(
+                tx_hash=event.tx_hash,
+                sender=event.requestor,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
+        # As a requestor
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: self._payment_processor.sent_forced_payment(
+                tx_hash=event.tx_hash,
+                receiver=event.provider,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -557,6 +631,23 @@ class TransactionSystem(LoopingCallService):
         raise ValueError('Unknown currency {}'.format(currency))
 
     @sci_required()
+    def _on_confirmed(
+            self,
+            receipt: 'sci_structs.TransactionReceipt',
+            gas_price: Optional[int] = None,
+    ):
+        if gas_price is None:
+            assert self._sci is not None  # mypy...
+            gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+            # Mined transactions won't return None
+            assert isinstance(gas_price, int)
+        self._payments_keeper.confirmed_transfer(
+            tx_hash=receipt.tx_hash,
+            successful=bool(receipt.status),
+            gas_cost=gas_price * receipt.gas_used,
+        )
+
+    @sci_required()
     def withdraw(
             self,
             amount: int,
@@ -578,9 +669,11 @@ class TransactionSystem(LoopingCallService):
             currency,
             destination,
         )
+
+        if gas_price is None:
+            gas_price = self.gas_price
+
         if currency == 'ETH':
-            if gas_price is None:
-                gas_price = self.gas_price
             gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
                 * gas_price
             if amount > self.get_available_eth():
@@ -589,12 +682,30 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_eth(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
-            return self._sci.transfer_eth(
+            tx_hash = self._sci.transfer_eth(
                 destination,
                 amount - gas_eth,
                 gas_price,
             )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.ETH,
+                gas_cost=gas_eth,
+            )
+            self._sci.on_transaction_confirmed(
+                tx_hash,
+                functools.partial(
+                    self._on_confirmed,
+                    gas_price=gas_price,
+                ),
+            )
+            return tx_hash
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -603,18 +714,31 @@ class TransactionSystem(LoopingCallService):
                     available=self.get_available_gnt(),
                     currency=currency,
                 )
-            # TODO Create WalletOperation #4172
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
                 gas_price,
+            )
+            model.WalletOperation.create(
+                tx_hash=tx_hash,
+                direction=model.WalletOperation.DIRECTION.outgoing,
+                operation_type=model.WalletOperation.TYPE.transfer,
+                status=model.WalletOperation.STATUS.sent,
+                sender_address=self._sci.get_eth_address(),
+                recipient_address=destination,
+                amount=amount,
+                currency=model.WalletOperation.CURRENCY.GNT,
+                gas_cost=gas_price * self._sci.GAS_GNT_TRANSFER,
             )
 
             def on_receipt(receipt) -> None:
                 self._gntb_withdrawn -= amount
                 if not receipt.status:
                     log.error("Failed GNTB withdrawal: %r", receipt)
-                # TODO Update WalletOperation #4172
+                self._on_confirmed(
+                    receipt=receipt,
+                    gas_price=gas_price,
+                )
             self._sci.on_transaction_confirmed(tx_hash, on_receipt)
             self._gntb_withdrawn += amount
             return tx_hash
@@ -734,14 +858,9 @@ class TransactionSystem(LoopingCallService):
                 "Deposit failed",
                 transaction_receipt=receipt,
             )
-
-        tx_gas_price = self._sci.get_transaction_gas_price(
-            receipt.tx_hash,
+        self._on_confirmed(
+            receipt=receipt,
         )
-        dpayment.gas_cost = receipt.gas_used * tx_gas_price
-        dpayment.status = \
-            model.WalletOperation.STATUS.confirmed
-        dpayment.save()
         return dpayment.tx_hash
 
     @gnt_deposit_required()
@@ -784,9 +903,21 @@ class TransactionSystem(LoopingCallService):
             return
         tx_hash = self._sci.withdraw_deposit()
         self._concent_withdraw_requested = True
+        model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.incoming,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.deposit_contract_address,
+            recipient_address=self._sci.get_eth_address(),
+            amount=self._sci.get_deposit_value(),
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
+        )
 
-        def on_confirmed(_receipt) -> None:
+        def on_confirmed(receipt) -> None:
             self._concent_withdraw_requested = False
+            self._on_confirmed(receipt=receipt)
         self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
         log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 

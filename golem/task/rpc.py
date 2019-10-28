@@ -6,6 +6,7 @@ import logging
 import os.path
 import re
 import typing
+from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -13,17 +14,22 @@ from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
-from apps.rendering.task import framerenderingtask
 from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
 from golem.core import simpleserializer
-from golem.core.deferred import DeferredSeq
+from golem.core.deferred import DeferredSeq, deferred_from_future
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import taskbase, taskkeeper, taskstate, tasktester
+from golem.task import (
+    taskbase,
+    taskkeeper,
+    taskstate,
+    tasktester,
+    requestedtaskmanager,
+)
 
 if typing.TYPE_CHECKING:
     from golem.client import Client  # noqa pylint: disable=unused-import
@@ -51,6 +57,14 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
+    task_type = task_dict.get('type')
+    known_task_types = list(client.apps_manager.task_types.keys())
+    if task_type not in known_task_types:
+        raise ValueError(
+            f"Task type '{task_type}' unrecognized, "
+            f"must be one of: {known_task_types}"
+        )
+
     name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
@@ -67,25 +81,6 @@ def _validate_task_dict(client, task_dict) -> None:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
 
-    subtasks_count = task_dict.get('subtasks_count', 0)
-    options = task_dict.get('options', {})
-    optimize_total = bool(options.get('optimize_total', False))
-    if subtasks_count and not optimize_total:
-        computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            subtasks_count=subtasks_count,
-            optimize_total=False,
-            use_frames=options.get('frame_count', 1) > 1,
-            frames=[None] * options.get('frame_count', 1),
-        )
-        if computed_subtasks != subtasks_count:
-            raise ValueError(
-                "Subtasks count {:d} is invalid."
-                " Maybe use {:d} instead?".format(
-                    subtasks_count,
-                    computed_subtasks,
-                )
-            )
-
     if task_dict['concent_enabled']:
         if not client.concent_service.enabled:  # `enabled` implies `available`
             raise CreateTaskError(
@@ -95,6 +90,12 @@ def _validate_task_dict(client, task_dict) -> None:
                     'switched off' if client.concent_service.available
                     else 'disabled'
                 ),
+            )
+        if not client.apps_manager.get_app(
+                task_dict['type']
+        ).concent_supported:
+            raise CreateTaskError(
+                f"Concent is not supported for {task_dict['type']} tasks."
             )
 
 
@@ -108,10 +109,13 @@ def validate_client(client):
 
 
 def prepare_and_validate_task_dict(client, task_dict):
+    task_type_id = task_dict.get('type', '').lower()
+    task_dict['type'] = task_type_id
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
-        client.concent_service.enabled,
+        client.concent_service.enabled and
+        client.apps_manager.get_app(task_type_id).concent_supported
     )
     _validate_task_dict(client, task_dict)
 
@@ -141,7 +145,7 @@ def _run_test_task(client, task_dict):
 
     dictionary = simpleserializer.DictSerializer.load(task_dict)
     task = client.task_server.task_manager.create_task(
-        dictionary=dictionary, minimal=True
+        dictionary=dictionary, test=True
     )
 
     client.task_test_result = {
@@ -304,18 +308,15 @@ def add_resources(client, resources, res_id, timeout):
     )
     package_path, package_sha1 = packager_result
     resource_size = os.path.getsize(package_path)
-    client_options = client.task_server.get_share_options(res_id, None)
-    client_options.timeout = timeout
+    client_options = client.task_server.get_share_options(timeout=timeout)
     resource_server_result = yield client.resource_server.add_resources(
         package_path,
-        package_sha1,
         res_id,
-        resource_size,
         client_options=client_options,
     )
 
     logger.info("Resource package created. res_id=%r", res_id)
-    return resource_server_result
+    return resource_server_result + (package_sha1, resource_size)
 
 
 @defer.inlineCallbacks
@@ -374,7 +375,6 @@ def enqueue_new_task(client, task, force=False) \
         task_id,
         task.subtask_price,
         task.get_total_tasks(),
-        task.header.deadline,
     )
     logger.debug('Enqueue new task. task_id=%r', task)
 
@@ -467,6 +467,12 @@ class ClientProvider:
     def task_manager(self):
         return self.client.task_server.task_manager
 
+    @property
+    def requested_task_manager(
+            self,
+    ) -> requestedtaskmanager.RequestedTaskManager:
+        return self.client.task_server.requested_task_manager
+
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
     def create_task(self, task_dict, force=False) \
@@ -481,13 +487,18 @@ class ClientProvider:
         logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            task.get_total_tasks(),
-            task.header.concent_enabled,
-            force
-        )
         task_id = task.header.task_id
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                task.get_total_tasks(),
+                task.header.concent_enabled,
+                force
+            )
+        except Exception as exc:  # pylint: disable=broad-except
+            self.client.task_manager.task_creation_failed(task_id, str(exc))
+            raise
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
@@ -501,6 +512,84 @@ class ClientProvider:
         )
 
         return task_id, None
+
+    @rpc_utils.expose('comp.task.create.dry_run')
+    @safe_run(_create_task_error)
+    def create_task_dry_run(self, task_dict) \
+            -> typing.Tuple[typing.Optional[dict],
+                            typing.Optional[str]]:
+        """
+        Dry run creating a task.
+        This works by creating a TaskDefinition object (like 'comp.taks.create'
+        would to) and dumping it back to dict (like 'comp.task' would do).
+        Golem performs task_dict validation and possibly changes some fields.
+        This task is not passed for computation.
+        :param task_dict: Task description dictionary. The same as for
+                          'comp.task.create'.
+        :return: (task_dict, None) on success; (None, error_message) on failure.
+        """
+        validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
+        task_definition, task_builder_type = \
+            self.task_manager.create_task_definition(task_dict)
+        task_dict = common.update_dict(
+            {'progress': 0.0},
+            taskstate.TaskState().to_dictionary(),
+            task_builder_type.build_dictionary(task_definition),
+        )
+        return task_dict, None
+
+    @rpc_utils.expose('comp.task_api.create')
+    def create_task_api_task(self, task_params: dict, golem_params: dict):
+        logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        create_task_params = requestedtaskmanager.CreateTaskParams(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            output_directory=Path(golem_params['output_directory']),
+            resources=list(map(Path, golem_params['resources'])),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=False,  # Concent doesn't support Task API
+        )
+
+        self._validate_enough_funds_to_pay_for_task(
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+            create_task_params.concent_enabled,
+            False,
+        )
+
+        task_id = self.requested_task_manager.create_task(
+            create_task_params,
+            task_params,
+        )
+
+        self.client.funds_locker.lock_funds(
+            task_id,
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+        )
+
+        @defer.inlineCallbacks
+        def init_task():
+            try:
+                yield deferred_from_future(
+                    self.requested_task_manager.init_task(task_id))
+            except Exception:
+                self.client.funds_locker.remove_task(task_id)
+                raise
+            else:
+                self.requested_task_manager.start_task(task_id)
+
+        # Do not yield, this is a fire and forget deferred as it may take long
+        # time to complete and shouldn't block the RPC call.
+        d = init_task()
+        d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
+
+        return task_id
 
     def _validate_enough_funds_to_pay_for_task(
             self,
@@ -645,8 +734,9 @@ class ClientProvider:
                     f'task_id: {task_id}, subtask_id: {sub_id}'
 
         logger.info('Restarting subtasks. task_id=%r', task_id)
-        logger.debug('subtask_ids=%r, ignore_gas_price=%r, disable_concent=%r',
-                     subtask_ids, ignore_gas_price, disable_concent)
+        logger.debug('restart_subtasks. subtask_ids=%r, ignore_gas_price=%r,'
+                     'disable_concent=%r', subtask_ids, ignore_gas_price,
+                     disable_concent)
 
         task_state = self.client.task_manager.tasks_states[task_id]
 
@@ -654,7 +744,7 @@ class ClientProvider:
             self._validate_enough_funds_to_pay_for_task(
                 task.subtask_price,
                 len(subtask_ids),
-                False if disable_concent else task.header.concent_enabled,
+                task.header.concent_enabled,
                 ignore_gas_price
             )
 
@@ -910,7 +1000,7 @@ class ClientProvider:
         :param task_id: Task ID of the rendering task for which fragments should
         be obtained.
         :return: A dictionary where keys are the fragment indices and values are
-        lists of subtasks asssociated with a given fragment. Returns None
+        lists of subtasks associated with a given fragment. Returns None
         (along with an error message) if the task is not known or it is not a
         rendering task.
         """
@@ -922,12 +1012,10 @@ class ClientProvider:
 
         fragments: typing.Dict[int, typing.List[typing.Dict]] = {}
 
-        for subtask_index in range(1, task.total_tasks + 1):
+        for subtask_index in range(1, task.get_total_tasks() + 1):
             fragments[subtask_index] = []
 
-        for extra_data in task.subtasks_given.values():
-            subtask = self.task_manager.get_subtask_dict(
-                extra_data['subtask_id'])
-            fragments[extra_data['start_task']].append(subtask)
+        for subtask in self.task_manager.get_subtasks_dict(task_id) or []:
+            fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None

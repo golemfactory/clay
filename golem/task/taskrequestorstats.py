@@ -42,7 +42,6 @@ class TaskInfo:
     def got_want_to_compute(self):
         """Makes note of a received work offer"""
         self._want_to_compute_count += 1
-        logger.info('Received work offers: %r', self._want_to_compute_count)
 
     def got_task_message(self, msg: TaskMsg, latest_status: TaskStatus):
         """Stores information from task level message"""
@@ -408,6 +407,9 @@ class RequestorTaskStats:
             pass
 
         elif op == TaskOp.WORK_OFFER_RECEIVED:
+            if task_state.status.is_active():
+                logger.info('Received work offers: %r',
+                            self.tasks[task_id].want_to_compute_count())
             self.tasks[task_id].got_want_to_compute()
 
         elif op == TaskOp.RESTORED:

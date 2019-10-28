@@ -1,13 +1,14 @@
 aenum
 codecov
+dill
 factory-boy==2.9.2
 Faker==0.8.9
 flake8
 freezegun==0.3.11
-parameterized==0.7.0
 pylint==1.9.2
+pytest-asyncio
 pytest-cov
 pytest-timeout==1.2.1
-pytest==3.3.1
+pytest==3.6.3
 requests==2.21.0
 urllib3==1.24.3

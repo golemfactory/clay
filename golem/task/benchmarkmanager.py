@@ -1,6 +1,5 @@
 from copy import copy
 import logging
-import os
 from threading import Thread
 from typing import Union
 
@@ -9,6 +8,7 @@ from apps.core.task.coretaskstate import TaskDesc
 from golem.core.threads import callback_wrapper
 from golem.environments.environment import Environment as DefaultEnvironment
 
+from golem.envs import BenchmarkResult
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import TaskStatus
@@ -42,11 +42,18 @@ class BenchmarkManager(object):
 
         from golem_messages.datastructures.p2p import Node
 
-        def success_callback(performance):
-            logger.info('%s performance is %.2f', env_id, performance)
-            Performance.update_or_create(env_id, performance)
+        def success_callback(result: BenchmarkResult):
+            logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
+                        env_id, result.performance, result.cpu_usage)
+
+            Performance.update_or_create(
+                env_id=env_id,
+                performance=result.performance,
+                cpu_usage=result.cpu_usage
+            )
+
             if success:
-                success(performance)
+                success(result.performance)
 
         def error_callback(err: Union[str, Exception]):
             logger.error("Unable to run %s benchmark: %s", env_id, str(err))
@@ -59,11 +66,9 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-
         builder = task_builder(Node(node_name=self.node_name),
                                task_state.definition,
                                self.dir_manager)
-        logger.info(builder)
         task = builder.build()
         task.initialize(builder.dir_manager)
 
@@ -90,15 +95,17 @@ class BenchmarkManager(object):
             run_non_default_benchmarks()
 
     def run_benchmarks(self, benchmarks, success=None, error=None):
+        if not benchmarks:
+            if success:
+                success(None)
+            return
+
         env_id, (benchmark, builder_class) = benchmarks.popitem()
 
-        def on_success(performance):
-            if benchmarks:
-                self.run_benchmarks(benchmarks, success, error)
-            elif success:
-                success(performance)
+        def recurse(_):
+            self.run_benchmarks(benchmarks, success, error)
 
-        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
+        self.run_benchmark(benchmark, builder_class, env_id, recurse, error)
 
     @staticmethod
     def _validate_task_state(task_state):

@@ -2,16 +2,21 @@ from logging import Logger
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from golem.envs import RuntimeStatus, Runtime, RuntimeEventType, RuntimeEvent
+from golem.envs import (
+    RuntimeBase,
+    RuntimeEvent,
+    RuntimeEventType,
+    RuntimeStatus
+)
 
 
 class TestRuntime(TestCase):
 
-    @patch.object(Runtime, "__abstractmethods__", set())
+    @patch.object(RuntimeBase, "__abstractmethods__", set())
     def setUp(self) -> None:
         self.logger = Mock(spec=Logger)
         # pylint: disable=abstract-class-instantiated
-        self.runtime = Runtime(logger=self.logger)  # type: ignore
+        self.runtime = RuntimeBase(logger=self.logger)  # type: ignore
 
 
 class TestChangeStatus(TestRuntime):
@@ -60,35 +65,35 @@ class TestEmitEvents(TestRuntime):
         started_listener2.assert_called_once_with(event)
         stopped_listener.assert_not_called()
 
-    @patch('golem.envs.Runtime._emit_event')
+    @patch('golem.envs.RuntimeBase._emit_event')
     def test_prepared(self, emit):
         self.runtime._prepared()
         self.assertEqual(self.runtime.status(), RuntimeStatus.PREPARED)
         self.logger.info.assert_called_once_with('Runtime prepared.')
         emit.assert_called_once_with(RuntimeEventType.PREPARED)
 
-    @patch('golem.envs.Runtime._emit_event')
+    @patch('golem.envs.RuntimeBase._emit_event')
     def test_started(self, emit):
         self.runtime._started()
         self.assertEqual(self.runtime.status(), RuntimeStatus.RUNNING)
         self.logger.info.assert_called_once_with('Runtime started.')
         emit.assert_called_once_with(RuntimeEventType.STARTED)
 
-    @patch('golem.envs.Runtime._emit_event')
+    @patch('golem.envs.RuntimeBase._emit_event')
     def test_stopped(self, emit):
         self.runtime._stopped()
         self.assertEqual(self.runtime.status(), RuntimeStatus.STOPPED)
         self.logger.info.assert_called_once_with('Runtime stopped.')
         emit.assert_called_once_with(RuntimeEventType.STOPPED)
 
-    @patch('golem.envs.Runtime._emit_event')
+    @patch('golem.envs.RuntimeBase._emit_event')
     def test_torn_down(self, emit):
         self.runtime._torn_down()
         self.assertEqual(self.runtime.status(), RuntimeStatus.TORN_DOWN)
         self.logger.info.assert_called_once_with('Runtime torn down.')
         emit.assert_called_once_with(RuntimeEventType.TORN_DOWN)
 
-    @patch('golem.envs.Runtime._emit_event')
+    @patch('golem.envs.RuntimeBase._emit_event')
     def test_error_occurred(self, emit):
         error = RuntimeError("test")
         message = "error message"

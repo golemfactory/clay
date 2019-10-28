@@ -4,12 +4,14 @@ import logging
 import pickle
 import os
 from collections import Counter
+
+import pytz
+
 from golem.core.common import get_timestamp_utc
 from golem.environments.environment import UnsupportReason
 from golem.core import golem_async
 from golem.appconfig import TASKARCHIVE_FILENAME, TASKARCHIVE_NUM_INTERVALS, \
     TASKARCHIVE_MAX_TASKS
-import pytz
 
 log = logging.getLogger('golem.task.taskarchiver')
 

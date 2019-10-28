@@ -32,7 +32,7 @@ class DockerJob:
     STATE_REMOVED = "removed"
 
     # This dir contains static task resources.
-    # Mounted read-only in the container.
+    # Mounted read-write in the container.
     RESOURCES_DIR = "/golem/resources"
 
     # This dir contains task script and params file.
@@ -43,13 +43,21 @@ class DockerJob:
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    # Dir for storing statistics on the job execution (e.g. resource usage).
+    # Mounted read-write in the container.
+    STATS_DIR = "/golem/stats"
+
+    # Default name for the file containing job execution statistics.
+    STATS_FILE = "stats.json"
+
     # these keys/values pairs will be saved in "params" module - it is
     # dynamically created during docker setup and available for import
     # inside docker
     PATH_PARAMS = {
         "RESOURCES_DIR": RESOURCES_DIR,
         "WORK_DIR": WORK_DIR,
-        "OUTPUT_DIR": OUTPUT_DIR
+        "OUTPUT_DIR": OUTPUT_DIR,
+        "STATS_DIR": STATS_DIR
     }
 
     # Name of the parameters file, relative to WORK_DIR
@@ -63,6 +71,7 @@ class DockerJob:
                  resources_dir: str,
                  work_dir: str,
                  output_dir: str,
+                 stats_dir: str,
                  volumes: Optional[Iterable[str]] = None,
                  environment: Optional[dict] = None,
                  host_config: Optional[Dict] = None,
@@ -87,7 +96,8 @@ class DockerJob:
         self.volumes = list(volumes) if volumes else [
             self.WORK_DIR,
             self.RESOURCES_DIR,
-            self.OUTPUT_DIR
+            self.OUTPUT_DIR,
+            self.STATS_DIR
         ]
         self.environment = environment or {}
         self.host_config = host_config or {}
@@ -95,10 +105,12 @@ class DockerJob:
         self.resources_dir = resources_dir
         self.work_dir = work_dir
         self.output_dir = output_dir
+        self.stats_dir = stats_dir
 
         self.resources_dir_mod = None
         self.work_dir_mod = None
         self.output_dir_mod = None
+        self.stats_dir_mod = None
 
         self.container = None
         self.container_id = None
@@ -115,6 +127,7 @@ class DockerJob:
         self.work_dir_mod = self._host_dir_chmod(self.work_dir, "rw")
         self.resources_dir_mod = self._host_dir_chmod(self.resources_dir, "rw")
         self.output_dir_mod = self._host_dir_chmod(self.output_dir, "rw")
+        self.stats_dir_mod = self._host_dir_chmod(self.stats_dir, "rw")
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
@@ -130,7 +143,7 @@ class DockerJob:
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=self.entrypoint,
+            command=self._build_stats_entrypoint(),
             working_dir=self.WORK_DIR,
             environment=self.environment,
             user=None if is_windows() else os.getuid(),
@@ -139,9 +152,13 @@ class DockerJob:
         if self.container_id is None:
             raise KeyError("container does not have key: Id")
 
-        logger.debug("Container %s prepared, image: %s, dirs: %s; %s; %s",
+        logger.debug("Container %s prepared, image: %s, dirs: %s; %s; %s; %s",
                      self.container_id, self.image.name, self.work_dir,
-                     self.resources_dir, self.output_dir)
+                     self.resources_dir, self.output_dir, self.stats_dir)
+
+    def _build_stats_entrypoint(self) -> str:
+        return f'docker-cgroups-stats -o {self.STATS_DIR}/{self.STATS_FILE} ' \
+               + self.entrypoint
 
     def _cleanup(self):
         if self.container:
@@ -149,6 +166,7 @@ class DockerJob:
             self._host_dir_chmod(self.work_dir, self.work_dir_mod)
             self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
             self._host_dir_chmod(self.output_dir, self.output_dir_mod)
+            self._host_dir_chmod(self.stats_dir, self.stats_dir_mod)
             try:
                 client.remove_container(self.container_id, force=True)
                 logger.debug("Container %s removed", self.container_id)

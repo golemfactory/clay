@@ -1,5 +1,7 @@
+import asyncio
 import logging
 import typing
+from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
@@ -9,14 +11,17 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
+from golem.task.taskbase import TaskResult
 from golem.task.result.resultmanager import ExtractedPackage
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.core import keysauth
     from golem.task import taskmanager
+    from golem.task import requestedtaskmanager
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +29,15 @@ logger = logging.getLogger(__name__)
 class VerificationMixin:
     keys_auth: 'keysauth.KeysAuth'
     task_manager: 'taskmanager.TaskManager'
+    requested_task_manager: 'requestedtaskmanager.RequestedTaskManager'
 
     def verify_results(
             self,
             report_computed_task: message.tasks.ReportComputedTask,
             extracted_package: ExtractedPackage,
     ) -> None:
-
         node = dt_p2p.Node(**report_computed_task.node_info)
+        task_id = report_computed_task.task_id
         subtask_id = report_computed_task.subtask_id
         logger.info(
             'Verifying results. node=%s, subtask_id=%s',
@@ -41,19 +47,13 @@ class VerificationMixin:
             ),
             subtask_id,
         )
-        result_files = extracted_package.get_full_path_files()
 
-        def verification_finished():
+        def verification_finished(
+                is_verification_lenient: bool,
+                verification_failed: bool,
+        ):
             logger.debug("Verification finished handler.")
 
-            task_id = self.task_manager.subtask_to_task(
-                subtask_id, model.Actor.Requestor)
-            is_verification_lenient = (
-                self.task_manager.tasks[task_id]
-                .task_definition.run_verification == RunVerification.lenient)
-
-            verification_failed = \
-                not self.task_manager.verify_subtask(subtask_id)
             if verification_failed:
                 if not is_verification_lenient:
                     logger.debug("Verification failure. subtask_id=%r",
@@ -86,11 +86,18 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
+            task = self.task_manager.tasks[task_id]
+            market_strategy: Type[RequestorMarketStrategy] =\
+                task.REQUESTOR_MARKET_STRATEGY
+            payment_computer =\
+                market_strategy.get_payment_computer(  # type: ignore
+                    task, subtask_id
+                )
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                task_to_compute.price,
+                payment_computer(task_to_compute.want_to_compute_task.price),
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )
@@ -114,11 +121,33 @@ class VerificationMixin:
                 remote_role=model.Actor.Provider,
             )
 
-        self.task_manager.computed_task_received(
-            subtask_id,
-            result_files,
-            verification_finished
-        )
+        if self.requested_task_manager.task_exists(task_id):
+            task = asyncio.ensure_future(self.requested_task_manager.verify(
+                task_id,
+                subtask_id,
+            ))
+            task.add_done_callback(
+                lambda success: verification_finished(False, not success))
+        else:
+            def verification_finished_old():
+                is_verification_lenient = (
+                    self.task_manager.tasks[task_id].task_definition
+                    .run_verification == RunVerification.lenient)
+                verification_failed = \
+                    not self.task_manager.verify_subtask(subtask_id)
+                verification_finished(
+                    is_verification_lenient,
+                    verification_failed,
+                )
+
+            self.task_manager.computed_task_received(
+                subtask_id,
+                TaskResult(
+                    files=extracted_package.get_full_path_files(),
+                    stats=report_computed_task.stats
+                ),
+                verification_finished_old,
+            )
 
     def send_result_rejected(
             self,
@@ -132,7 +161,6 @@ class VerificationMixin:
         :param str subtask_id: subtask that has wrong result
         :param SubtaskResultsRejected.Reason reason: the rejection reason
         """
-
 
         logger.debug(
             'send_result_rejected. reason=%r, rct=%r',

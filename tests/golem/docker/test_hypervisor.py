@@ -1,20 +1,18 @@
 import functools
 import json
 import os
-import types
 import uuid
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Optional, Dict
-from unittest import mock
+from unittest import mock, TestCase
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
 from golem.docker.config import DOCKER_VM_NAME as VM_NAME, DEFAULTS
-from golem.docker.hypervisor import Hypervisor
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
+from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
-from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.manager import DockerManager
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -168,6 +166,25 @@ class TestDockerMachineHypervisor(LogTestCase):
         with mock.patch.object(hypervisor, 'command', raise_process_exception):
             with self.assertLogs(level='WARN'):
                 assert not hypervisor.remove('test')
+
+    @mock.patch('golem.docker.hypervisor.docker_machine.local_client')
+    def test_get_port_mapping(self, local_client):
+        local_client().inspect_container.return_value = {
+            'NetworkSettings': {
+                'Ports': {
+                    '12345/tcp': [{
+                        'HostIp': '0.0.0.0',
+                        'HostPort': '54321'
+                    }]
+                }
+            }
+        }
+        hypervisor = MockHypervisor()
+        vm_ip = '192.168.64.151'
+        with mock.patch.object(hypervisor, 'command', return_value=vm_ip):
+            host, port = hypervisor.get_port_mapping('container_id', 12345)
+        self.assertEqual(host, vm_ip)
+        self.assertEqual(port, 54321)
 
 
 class TestVirtualBoxHypervisor(LogTestCase):
@@ -332,101 +349,6 @@ class TestVirtualBoxHypervisor(LogTestCase):
                 assert not self.hypervisor.power_down(VM_NAME)
 
 
-class TestXhyveHypervisor(TempDirFixture, LogTestCase):
-
-    def setUp(self):
-        TempDirFixture.setUp(self)
-        LogTestCase.setUp(self)
-
-        self.docker_manager = mock.Mock()
-        self.virtualbox = mock.Mock()
-        self.ISession = mock.Mock()
-        self.LockType = mock.Mock()
-
-        self.hypervisor = XhyveHypervisor(self.docker_manager)
-        self.hypervisor.command_calls = []
-        self.hypervisor.command = types.MethodType(command, self.hypervisor)
-
-    def test_create(self):
-
-        constraints = dict(
-            cpu_count=1,
-            memory_size=10000
-        )
-        expected_args = (
-            self.hypervisor.OPTIONS['storage'],
-            self.hypervisor.OPTIONS['cpu'], str(constraints['cpu_count']),
-            self.hypervisor.OPTIONS['mem'], str(constraints['memory_size'])
-        )
-
-        with mock.patch.object(self.hypervisor, 'command') as cmd:
-            self.hypervisor.create('test', **constraints)
-
-        assert ('create', 'test') == cmd.call_args[0]
-
-        args = cmd.call_args[1]['args']
-        assert all(a in args for a in expected_args)
-
-        # errors
-        with mock.patch.object(self.hypervisor, 'command',
-                               raise_process_exception):
-            with self.assertLogs(level='ERROR'):
-                assert not self.hypervisor.create('test')
-
-    def test_constraints(self):
-
-        config = dict(
-            cpu_count=4,
-            memory_size=4096
-        )
-
-        constraints = dict(
-            Driver=dict(
-                CPU="4",
-                Memory="4096",
-            )
-        )
-
-        constraints_str = str(constraints).replace('\'', '"')
-
-        self.hypervisor._config_dir = self.tempdir
-        self.hypervisor._vm_name = VM_NAME
-
-        config_dir = os.path.join(self.hypervisor._config_dir, VM_NAME)
-        config_file = os.path.join(config_dir, 'config.json')
-
-        os.makedirs(config_dir, exist_ok=True)
-        with open(config_file, 'w') as f:
-            json.dump(constraints, f)
-
-        with mock.patch.object(self.hypervisor, 'command',
-                               return_value=constraints_str):
-
-            self.hypervisor.constrain(**config)
-            assert config == self.hypervisor.constraints(VM_NAME)
-
-            self.hypervisor.constrain()
-            assert config == self.hypervisor.constraints(VM_NAME)
-
-        # errors
-        with mock.patch.object(self.hypervisor, 'command',
-                               lambda *_: raise_exception(TypeError)):
-            with self.assertLogs(level='ERROR'):
-                self.hypervisor.constraints(VM_NAME)
-
-    def test_recover_ctx(self):
-        self.hypervisor.vm_running = mock.Mock()
-        self.hypervisor.stop_vm = mock.Mock()
-        self.hypervisor.start_vm = mock.Mock()
-        self.hypervisor._set_env_from_output = mock.Mock()
-
-        with self.hypervisor.recover_ctx(VM_NAME) as name:
-            assert name == VM_NAME
-            assert self.hypervisor.vm_running.called
-            assert self.hypervisor.stop_vm.called
-        assert self.hypervisor.start_vm.called
-
-
 class TestDockerForMacHypervisor(TempDirFixture):
 
     HANDLER = 'golem.docker.commands.docker_for_mac.DockerForMacCommandHandler'
@@ -539,3 +461,40 @@ class TestDockerForMacHypervisor(TempDirFixture):
         assert all(daemon_config['dns'])
 
         return daemon_config
+
+    @mock.patch('golem.docker.hypervisor.docker_for_mac.local_client')
+    def test_get_port_mapping(self, local_client):
+        local_client().inspect_container.return_value = {
+            'NetworkSettings': {
+                'Ports': {
+                    '12345/tcp': [{
+                        'HostIp': '0.0.0.0',
+                        'HostPort': '54321'
+                    }]
+                }
+            }
+        }
+        hypervisor = DockerForMac.instance(mock.Mock())
+        host, port = hypervisor.get_port_mapping('container_id', 12345)
+        self.assertEqual(host, '127.0.0.1')
+        self.assertEqual(port, 54321)
+
+
+class TestDummyHypervisor(TestCase):
+
+    @mock.patch('golem.docker.hypervisor.dummy.local_client')
+    def test_get_port_mapping(self, local_client):
+        container_ip = '172.17.0.2'
+        local_client().inspect_container.return_value = {
+            'NetworkSettings': {
+                'Networks': {
+                    'bridge': {
+                        'IPAddress': container_ip,
+                    }
+                }
+            }
+        }
+        hypervisor = DummyHypervisor(mock.Mock())
+        host, port = hypervisor.get_port_mapping('container_id', 12345)
+        self.assertEqual(host, container_ip)
+        self.assertEqual(port, 12345)

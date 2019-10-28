@@ -8,15 +8,6 @@ from threading import Lock
 from io import IOBase
 
 
-class abstractclassmethod(classmethod):
-
-    __isabstractmethod__ = True
-
-    def __init__(self, func):
-        func.__isabstractmethod__ = True
-        super(abstractclassmethod, self).__init__(func)
-
-
 class FileHelper(object):
 
     def __init__(self, param, mode):
@@ -46,13 +37,15 @@ class FileEncryptor(object, metaclass=abc.ABCMeta):
             n_chars = cls.__strong_random.randrange(min_length, max_length)
             return Random.new().read(n_chars)
 
-    @abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def encrypt(cls, file_in, file_out, key_or_secret):
-        pass
+        raise NotImplementedError
 
-    @abstractclassmethod
+    @classmethod
+    @abc.abstractmethod
     def decrypt(cls, file_in, file_out, key_or_secret):
-        pass
+        raise NotImplementedError
 
 
 class AESFileEncryptor(FileEncryptor):

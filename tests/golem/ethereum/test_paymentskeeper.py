@@ -1,5 +1,6 @@
 from golem import model
 from golem.ethereum.paymentskeeper import PaymentsDatabase
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
 from tests.factories.model import TaskPayment as TaskPaymentFactory
 
@@ -14,8 +15,6 @@ class TestPaymentsDatabase(TestWithDatabase):
             model.WalletOperation.DIRECTION.outgoing,
             **kwargs,
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
         return payment
 
     @staticmethod

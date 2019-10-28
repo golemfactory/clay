@@ -4,7 +4,7 @@ import logging
 import os
 from typing import Iterable, Optional
 
-from crossbar.common import checkconfig
+from crossbar.common.checkconfig import check_config
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc import cert
@@ -16,17 +16,10 @@ from golem.rpc.session import WebSocketAddress
 logger = logging.getLogger('golem.rpc.crossbar')
 
 
-@enum.unique
-class SerializerType(enum.Enum):
-    def _generate_next_value_(name, *_):  # pylint: disable=no-self-argument
-        return name
-
-    json = enum.auto()
-    msgpack = enum.auto()
-
-
 # pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
+    serializers = ['msgpack']
+
     @enum.unique
     class CrossbarRoles(enum.Enum):
         admin = enum.auto()
@@ -39,8 +32,10 @@ class CrossbarRouter(object):
                  port: Optional[int] = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  ssl: bool = True,
-                 generate_secrets: bool = False,
-                 crossbar_serializer: Optional[SerializerType] = None) -> None:
+                 generate_secrets: bool = False) -> None:
+        # Imports the reactor
+        from crossbar.personality import Personality
+
         self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
@@ -55,35 +50,34 @@ class CrossbarRouter(object):
 
         self.node = None
         self.pubkey = None
+        self.personality_cls = Personality
 
-        if crossbar_serializer is None:
-            crossbar_serializer = SerializerType.msgpack
+        self.config = self._build_config(address=self.address,
+                                         serializers=self.serializers,
+                                         cert_manager=self.cert_manager)
 
-        self.config = self._build_config(self.address,
-                                         [crossbar_serializer.name],
-                                         self.cert_manager)
-
+        check_config(self.personality_cls, self.config)
         logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
     def start(self, reactor):
         # imports reactor
-        from crossbar.controller.node import Node, default_native_workers
+        from crossbar.node.node import Node
 
         if self.address.ssl:
             self.cert_manager.generate_if_needed()
 
-        self.node = Node(self.working_dir, reactor=reactor)
-        self.pubkey = self.node.maybe_generate_key(self.working_dir)
+        self.node = Node(personality=self.personality_cls,
+                         cbdir=self.working_dir,
+                         reactor=reactor)
 
-        workers = default_native_workers()
+        self.node.load_keys(self.working_dir)
+        self.node.load_config(None, self.config)
 
-        checkconfig.check_config(self.config, workers)
-        self.node._config = self.config
         return self.node.start()
 
     @inlineCallbacks
     def stop(self):
-        yield self.node._controller.shutdown()  # noqa # pylint: disable=protected-access
+        yield self.node.stop()
 
     @staticmethod
     def _users_config(cert_manager: cert.CertificateManager):
@@ -136,7 +130,7 @@ class CrossbarRouter(object):
             'version': 2,
             'controller': {
                 'options': {
-                    'shutdown': ['shutdown_on_shutdown_requested']
+                    'shutdown': ['shutdown_on_shutdown_requested'],
                 }
             },
             'workers': [{

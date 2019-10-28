@@ -1,4 +1,4 @@
-FROM golemfactory/base:1.5
+FROM golemfactory/base:1.7
 
 MAINTAINER Golem Tech <tech@golem.network>
 

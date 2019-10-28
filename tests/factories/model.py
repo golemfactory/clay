@@ -9,7 +9,17 @@ from golem_messages.factories.helpers import (
 from golem import model
 
 
-class CachedNode(factory.Factory):
+class PeeweeModelFactory(factory.Factory):
+    class Meta:
+        abstract = True
+
+    @factory.post_generation
+    def _save(o, create, _extracted):  # pylint: disable=no-self-argument
+        if create:
+            o.save(force_insert=True)
+
+
+class CachedNode(PeeweeModelFactory):
     class Meta:
         model = model.CachedNode
 
@@ -17,10 +27,11 @@ class CachedNode(factory.Factory):
     node_field = factory.SubFactory(p2p_factory.Node)
 
 
-class WalletOperation(factory.Factory):
+class WalletOperation(PeeweeModelFactory):
     class Meta:
         model = model.WalletOperation
 
+    status = factory.fuzzy.FuzzyChoice(model.WalletOperation.STATUS)
     direction = factory.fuzzy.FuzzyChoice(model.WalletOperation.DIRECTION)
     operation_type = factory.fuzzy.FuzzyChoice(model.WalletOperation.TYPE)
     sender_address = factory.LazyFunction(random_eth_address)
@@ -30,15 +41,30 @@ class WalletOperation(factory.Factory):
     gas_cost = 0
 
 
-class TaskPayment(factory.Factory):
+class TaskPayment(PeeweeModelFactory):
     class Meta:
         model = model.TaskPayment
 
     wallet_operation = factory.SubFactory(
         WalletOperation,
-        status=model.WalletOperation.STATUS.awaiting,
     )
     node = factory.LazyFunction(random_eth_pub_key)
     task = factory.Faker('uuid4')
     subtask = factory.Faker('uuid4')
     expected_amount = factory.fuzzy.FuzzyInteger(1, 10 << 20)
+
+
+class ComputingNode(PeeweeModelFactory):
+    class Meta:
+        model = model.ComputingNode
+
+    node_id = factory.LazyFunction(random_eth_pub_key)
+    name = factory.Faker('name')
+
+
+class UsageFactor(PeeweeModelFactory):
+    class Meta:
+        model = model.UsageFactor
+
+    provider_node = factory.SubFactory(ComputingNode)
+    usage_factor = factory.fuzzy.FuzzyFloat(0.0001, 42.0)

@@ -16,11 +16,33 @@ class IncomesKeeper:
     """
 
     @staticmethod
+    def received_transfer(
+            tx_hash: str,
+            sender_address: str,
+            recipient_address: str,
+            amount: int,
+            currency,
+    ):
+        model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.incoming,
+            operation_type=model.WalletOperation.TYPE.transfer,
+            status=model.WalletOperation.STATUS.confirmed,
+            sender_address=sender_address,
+            recipient_address=recipient_address,
+            amount=amount,
+            currency=currency,
+            gas_cost=0,
+        )
+
+    @staticmethod
     def received_batch_transfer(
             tx_hash: str,
             sender: str,
             amount: int,
-            closure_time: int) -> None:
+            closure_time: int,
+            charged_from_deposit: bool = False,
+    ) -> None:
 
         expected = model.TaskPayment.incomes().where(
             model.WalletOperation.sender_address == sender,
@@ -48,7 +70,10 @@ class IncomesKeeper:
             e.wallet_operation.amount += received
             amount_left -= received
             e.wallet_operation.tx_hash = tx_hash
+            e.wallet_operation.status = model.WalletOperation.STATUS.confirmed
             e.wallet_operation.save()
+            e.charged_from_deposit = charged_from_deposit
+            e.save()
 
             if e.missing_amount == 0:
                 dispatcher.send(
@@ -73,6 +98,7 @@ class IncomesKeeper:
             sender=sender,
             amount=amount,
             closure_time=closure_time,
+            charged_from_deposit=True,
         )
 
     @staticmethod
@@ -143,7 +169,7 @@ class IncomesKeeper:
             wallet_operation=model.WalletOperation.create(
                 tx_hash=tx_hash,
                 direction=model.WalletOperation.DIRECTION.incoming,
-                operation_type=model.WalletOperation.TYPE.deposit_payment,
+                operation_type=model.WalletOperation.TYPE.task_payment,
                 status=model.WalletOperation.STATUS.confirmed,
                 sender_address=sender_addr,
                 recipient_address="",
@@ -155,11 +181,11 @@ class IncomesKeeper:
             task="",
             subtask=subtask_id,
             expected_amount=value,
+            charged_from_deposit=True,
         )
 
     @staticmethod
     def get_list_of_all_incomes():
-        # TODO: pagination. issue #2402
         return model.TaskPayment.incomes(
         ).order_by(model.TaskPayment.created_date.desc())
 

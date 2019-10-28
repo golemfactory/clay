@@ -4,12 +4,14 @@ import uuid
 from pathlib import Path
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 
+from apps.core.task.coretask import CoreTaskTypeInfo
+from apps.core.task.coretaskstate import Options
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 from apps.rendering.task.framerenderingtask import get_frame_name, \
     FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions, logger
-from apps.rendering.task.renderingtaskstate import RendererDefaults, \
-    RenderingTaskDefinition
+from apps.rendering.task.renderingtask import MIN_PIXELS_PER_SUBTASK
+from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -46,10 +48,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
+        rt.subtasks_count = num_tasks
         task = FrameRenderingTaskMock(
             owner=dt_p2p_factory.Node(node_name="ABC", ),
             task_definition=rt,
-            total_tasks=num_tasks,
             root_path=self.path,
         )
         dm = DirManager(self.path)
@@ -69,7 +71,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test_accept_results(self):
         task = self._get_frame_task(use_frames=False)
-        task.accept_client("NODE 1")
+        task.accept_client("NODE 1", 'oh')
         task.tmp_dir = self.path
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1",
                                            "parts": 1, "frames": [1],
@@ -95,13 +97,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.accept_results("SUBTASK2", [img_file])
         task.accept_results("SUBTASK3", [img_file])
         assert task.num_tasks_received == 3
-        assert task.total_tasks == 3
+        assert task.get_total_tasks() == 3
         output_file = task.output_file
         assert os.path.isfile(output_file)
 
         task = self._get_frame_task()
         task.tmp_dir = self.path
-        task.accept_client("NODE 1")
+        task.accept_client("NODE 1", 'oh')
         task.subtasks_given["SUBTASK1"] = {"start_task": 3,
                                            "node_id": "NODE 1",
                                            "parts": 1,
@@ -123,10 +125,9 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert not output_names
 
     def test_update_frame_preview(self):
-        frame_task = self._get_frame_task()
+        frame_task = self._get_frame_task(num_tasks=4)
         frame_task.res_x = 10
         frame_task.res_y = 20
-        frame_task.total_tasks = 4
         frame_task.frames = [5, 7]
         frame_task.scale_factor = 1
         new_img = OpenCVImgRepr.empty(10, 10, color=(0, 255, 0))
@@ -175,8 +176,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert isinstance(new_img, OpenCVImgRepr)
 
     def test_mark_task_area(self):
-        task = self._get_frame_task()
-        task.total_tasks = 4
+        task = self._get_frame_task(num_tasks=4)
         task.frames = [3, 4, 6, 7]
         task.scale_factor = 0.5
         task.res_x = 20
@@ -187,13 +187,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
             for j in range(20):
                 assert img.get_pixel((i, j)) == (121, 0, 0)
 
-        task.total_tasks = 2
+        task.task_definition.subtasks_count = 2
         task._mark_task_area({'start_task': 2}, img, (0, 13, 0))
         for i in range(10):
             for j in range(20):
                 assert img.get_pixel((i, j)) == (0, 13, 0)
 
-        task.total_tasks = 8
+        task.task_definition.subtasks_count = 8
         task._mark_task_area({'start_task': 2}, img, (0, 0, 201))
         for i in range(10):
             for j in range(10):
@@ -202,8 +202,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
                 assert img.get_pixel((i, j)) == (0, 0, 201)
 
     def test_choose_frames(self):
-        task = self._get_frame_task()
-        task.total_tasks = 5
+        task = self._get_frame_task(num_tasks=5)
         task.frames = [x * 10 for x in range(1, 16)]
         assert task._choose_frames(task.frames, 2, 5) == ([40, 50, 60], 1)
 
@@ -282,12 +281,11 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img_repr.close()
 
     def test_put_frame_together(self):
-        task = self._get_frame_task(True)
+        task = self._get_frame_task(use_frames=True, num_tasks=4)
         task.output_format = "exr"
         task.outfilebasename = "output"
         task.output_file = self.temp_file_name("output.exr")
         task.frames = [3, 5]
-        task.total_tasks = 4
         task.res_x = 10
         task.res_y = 20
         exr_1 = Path(__file__).parent.parent.parent / "rendering" \
@@ -315,98 +313,116 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert len(states) == 2
 
 
-class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
-    def test_calculate_total(self):
-        definition = RenderingTaskDefinition()
-        definition.optimize_total = True
-        definition.subtasks_count = 12
-        definition.options = FrameRendererOptions()
-        definition.options.use_frames = True
-        definition.options.frames = list(range(1, 7))
+class TestBuildDefinition(unittest.TestCase):
+    def setUp(self):
+        self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                                    Options,
+                                    FrameRenderingTaskBuilder)
+        self.tti.output_file_ext = 'txt'
 
-        builder = FrameRenderingTaskBuilder(
-            dt_p2p_factory.Node(node_name="node"),
-            dir_manager=DirManager(self.path),
-            task_definition=definition,
-        )
+    @staticmethod
+    def _make_dict(
+            *,
+            frame_count: int = 1,
+            pixel_height: int = MIN_PIXELS_PER_SUBTASK,
+            subtasks_count: int = 1,
+    ):
+        assert frame_count > 0
+        if frame_count == 1:
+            frames = "1"
+        else:
+            frames = f"1-{frame_count}"
 
-        defaults = RendererDefaults()
-        # More subtasks than frames -> use frames count
-        assert builder._calculate_total(defaults) == 6
+        return {
+            "bid": 0,
+            "name": "foo",
+            "options": {
+                "format": "PNG",
+                "frame_count": frame_count,
+                "frames": frames,
+                "output_path": "/tmp/foo",
+                "resolution": [MIN_PIXELS_PER_SUBTASK, pixel_height],
+            },
+            "resources": ["foo.txt"],
+            "subtask_timeout": "0:01:00",
+            "subtasks_count": subtasks_count,
+            "timeout": "0:01:00",
+        }
 
-        definition.options.use_frames = False
-        # Optimize total to default
-        assert builder._calculate_total(defaults) == 20
+    def test_subtasks_count(self):
+        # sort tests by (frame_count, pixel_height, subtasks_count)
+        tests = [
+            {
+                "make_dict_kwargs": {},
+                "expected_subtasks_count": 1,
+            },
+            {
+                "make_dict_kwargs": {
+                    "pixel_height": 5,
+                },
+                "expected_throw": True,  # image too small
+            },
+            {
+                "make_dict_kwargs": {
+                    "pixel_height": 15,
+                    "subtasks_count": 2,
+                },
+                "expected_subtasks_count": 1,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 3,
+                },
+                "expected_subtasks_count": 3,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "subtasks_count": 4,
+                },
+                "expected_subtasks_count": 4,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "pixel_height": 768,
+                    "subtasks_count": 50,
+                },
+                "expected_subtasks_count": 48,
+            },
+            {
+                "make_dict_kwargs": {
+                    "frame_count": 6,
+                    "pixel_height": 768,
+                    "subtasks_count": 457,
+                },
+                "expected_subtasks_count": 456,
+            },
+        ]
+        failures = []
+        for test in tests:
+            task_dict = self._make_dict(**test["make_dict_kwargs"])
+            definition = None
+            thrown_exception = None
 
-        definition.optimize_total = False
-        # Don't optimize -> use subtasks_count
-        assert builder._calculate_total(defaults) == 12
+            try:
+                definition = FrameRenderingTaskBuilder.build_definition(
+                    self.tti, task_dict)
+            except Exception as e:  # pylint: disable=broad-except
+                thrown_exception = e
 
-        definition.subtasks_count = None
-        # subtasks_count unknown -> use default
-        assert builder._calculate_total(defaults) == 20
+            if thrown_exception is not None and \
+                    not test.get("expected_throw", False):
+                test["thrown_exception"] = thrown_exception
+                failures.append(test)
 
-        definition.subtasks_count = 0
-        # subtasks_count invalid -> use default
-        assert builder._calculate_total(defaults) == 20
-
-        definition.subtasks_count = 1
-        # subtasks_count min
-        assert builder._calculate_total(defaults) == 1
-
-        definition.subtasks_count = 51
-        # subtasks_count over max -> use default
-        assert builder._calculate_total(defaults) == 20
-
-        definition.subtasks_count = 50
-        # subtasks_count max
-        assert builder._calculate_total(defaults) == 50
-
-        definition.options.use_frames = True
-
-        definition.subtasks_count = None
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 6
-
-        definition.subtasks_count = 0
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 6
-
-        definition.subtasks_count = 1
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 1
-
-        definition.subtasks_count = 2
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 2
-
-        definition.subtasks_count = 3
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 3
-
-        definition.subtasks_count = 6
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 6
-
-        definition.subtasks_count = 12
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
-
-        definition.subtasks_count = 4
-        with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 3
-
-        definition.subtasks_count = 13
-        with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
-
-        definition.subtasks_count = 17
-        with self.assertLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 12
-
-        definition.subtasks_count = 18
-        with self.assertNoLogs(logger, level="WARNING"):
-            assert builder._calculate_total(defaults) == 18
+            if definition and (
+                    definition.subtasks_count
+                    != test["expected_subtasks_count"]):
+                test["actual_subtasks_count"] = definition.subtasks_count
+                failures.append(test)
+        assert failures == []
 
 
 class TestFramesConversion(unittest.TestCase):

@@ -1,22 +1,24 @@
-import os
-from unittest import TestCase
+from unittest import TestCase, mock
 from uuid import uuid4
-from mock import patch
 
 from golem_messages.factories.datastructures import p2p
-from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 
 from apps.wasm.task import (
-    WasmBenchmarkTask,
-    WasmBenchmarkTaskBuilder,
     WasmTask,
     WasmTaskBuilder,
     WasmTaskDefinition,
     WasmTaskOptions,
-    WasmTaskTypeInfo,
-    WasmTaskVerifier,
+    WasmTaskTypeInfo
 )
+
+
+def _fake_performance():
+    class FakePerformance:
+        def __init__(self, value, cpu_usage):
+            self.value = value
+            self.cpu_usage = cpu_usage
+    return FakePerformance(1.0, 1)
 
 
 class WasmTaskOptionsTestCase(TestCase):
@@ -73,22 +75,6 @@ class WasmTaskDefinitionTestCase(TestCase):
         self.assertCountEqual(task_def.resources, ['/input/dir'])
 
 
-class WasmTaskVerifierTestCase(TestCase):
-    def test_verifier(self):
-        verification_data = {
-            'subtask_info': {'some': 'info'},
-            'results': ['result1', 'result2'],
-        }
-        verifier = WasmTaskVerifier(verification_data)
-
-        # Important check, without this the results are not available
-        # in WasmTask's accept_results.
-        self.assertEqual(verifier.results, ['result1', 'result2'])
-
-        self.assertEqual(verifier.subtask_info, {'some': 'info'})
-        self.assertTrue(verifier._verify_result({'some': 'result'}))
-
-
 TEST_TASK_DEFINITION_DICT = {
     'type': 'wasm',
     'name': 'wasm',
@@ -115,6 +101,8 @@ TEST_TASK_DEFINITION_DICT = {
 
 
 class WasmTaskBuilderTestCase(TestCase):
+    @mock.patch("golem.model.Performance.get",
+                mock.Mock(return_value=_fake_performance()))
     def test_build_full_definition(self):
         task_def = WasmTaskBuilder.build_full_definition(
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
@@ -145,6 +133,8 @@ class WasmTaskBuilderTestCase(TestCase):
 
 
 class WasmTaskTestCase(TempDirFixture):
+    @mock.patch("golem.model.Performance.get",
+                mock.Mock(return_value=_fake_performance()))
     def setUp(self):
         super(WasmTaskTestCase, self).setUp()
         task_def = WasmTaskBuilder.build_full_definition(
@@ -152,114 +142,40 @@ class WasmTaskTestCase(TempDirFixture):
         )
         task_def.task_id = str(uuid4())
         self.task = WasmTask(
-            total_tasks=2, task_definition=task_def,
+            task_definition=task_def,
             root_path='/', owner=p2p.Node(),
         )
 
     def test_get_next_subtask_extra_data(self):
-        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
-        self.assertEqual(subt_name, 'subtask1')
-        self.assertEqual(subt_extra_data, {
-            'name': 'subtask1',
+        _, subt_extra_data =\
+            self.task.subtasks[0].new_instance('node_id')
+
+        expected_dict = {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
             'entrypoint': WasmTask.JOB_ENTRYPOINT,
             'exec_args': ['arg1', 'arg2'],
             'input_dir_name': 'dir',
             'output_file_paths': ['file1', 'file2'],
-        })
+        }
 
-        subt_name, subt_extra_data = self.task.get_next_subtask_extra_data()
-        self.assertEqual(subt_name, 'subtask2')
-        self.assertEqual(subt_extra_data, {
-            'name': 'subtask2',
+        self.assertTrue(
+            all([item in subt_extra_data.items()
+                 for item in expected_dict.items()])
+        )
+
+        _, subt_extra_data =\
+            self.task.subtasks[1].new_instance('node_id')
+        expected_dict = {
             'js_name': 'test.js',
             'wasm_name': 'test.wasm',
             'entrypoint': WasmTask.JOB_ENTRYPOINT,
             'exec_args': ['arg3', 'arg4'],
             'input_dir_name': 'dir',
             'output_file_paths': ['file3', 'file4'],
-        })
+        }
 
-        with self.assertRaises(StopIteration):
-            self.task.get_next_subtask_extra_data()
-
-    def test_query_extra_data(self):
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = self.task.query_extra_data(0.1337, 'test_id', 'test_name')
-
-        self.assertEqual(data.ctd['extra_data'], {'extra': 'data'})
-        self.assertEqual(self.task.subtasks_given[data.ctd['subtask_id']], {
-            'extra': 'data',
-            'status': SubtaskStatus.starting,
-            'node_id': 'test_id',
-            'subtask_id': data.ctd['subtask_id'],
-        })
-        self.assertEqual(
-            self.task.subtask_names[data.ctd['subtask_id']], 'test_subtask',
-        )
-
-    def test_query_extra_data_for_test_task(self):
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = self.task.query_extra_data(0.1337, 'test_id', 'test_name')
-        self.assertEqual(data.ctd['extra_data'], {'extra': 'data'})
-
-    def test_accept_results(self):
-        res_f = [
-            os.path.join(self.tempdir, 'file1'),
-            os.path.join(self.tempdir, 'file2'),
-        ]
-        res_f_contents = [
-            bytes([0, 1, 2, 3, 4, 5]),
-            bytes([0, 11, 12, 13, 14, 15]),
-        ]
-        exp_out_f = [
-            os.path.join(self.tempdir, 'test_subtask_name', 'file1'),
-            os.path.join(self.tempdir, 'test_subtask_name', 'file2'),
-        ]
-
-        for result_file_path, result_content in zip(res_f, res_f_contents):
-            with open(result_file_path, 'wb') as f:
-                f.write(result_content)
-
-        self.task.subtask_names['test_subtask_id'] = 'test_subtask_name'
-        self.task.options.output_dir = self.tempdir
-        with patch('apps.wasm.task.CoreTask.accept_results') as super_acc_mock:
-            self.task.accept_results('test_subtask_id', res_f)
-
-        super_acc_mock.assert_called_once_with('test_subtask_id', res_f)
-
-        for output_file_path, expected_output in zip(exp_out_f, res_f_contents):
-            with open(output_file_path, 'rb') as output_file:
-                self.assertEqual(output_file.read(), expected_output)
-
-
-class WasmBenchmarkTaskTestCase(TestCase):
-    def test_query_extra_data(self):
-        task_def = WasmBenchmarkTaskBuilder.build_full_definition(
-            WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
-        )
-        task_def.task_id = str(uuid4())
-        task = WasmBenchmarkTask(
-            total_tasks=2, task_definition=task_def,
-            root_path='/', owner=p2p.Node(),
-        )
-
-        next_subtask_data = ('test_subtask', {'extra': 'data'})
-        with patch(
-            'apps.wasm.task.WasmBenchmarkTask.get_next_subtask_extra_data',
-            return_value=next_subtask_data,
-        ):
-            data = task.query_extra_data(0.1337, 'test_id', 'test_name')
-
-        self.assertEqual(
-            data.ctd['extra_data'], {'extra': 'data', 'input_dir_name': ''},
+        self.assertTrue(
+            all([item in subt_extra_data.items()
+                 for item in expected_dict.items()])
         )

@@ -55,6 +55,7 @@ class ClientConfigDescriptor(object):
 
         self.min_price = 0
         self.max_price = 0
+        self.price_per_cpu_h = 0
 
         self.accept_tasks = 1
         self.debug_third_party = 0

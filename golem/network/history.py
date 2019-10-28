@@ -39,7 +39,7 @@ class MessageHistoryService(IService):
     model of golem.core.service.LoopingCallService.
     """
 
-    MESSAGE_LIFETIME = datetime.timedelta(days=1)
+    MESSAGE_LIFETIME = datetime.timedelta(days=7)
     SWEEP_INTERVAL = datetime.timedelta(hours=12)
     QUEUE_TIMEOUT = datetime.timedelta(seconds=2).total_seconds()
 

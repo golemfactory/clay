@@ -102,14 +102,14 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         chunks, video_metadata = stream_operator.\
             extract_video_streams_and_split(
                 input_file,
-                self.task_definition.subtasks_count,
+                self.get_total_tasks(),
                 dir_manager,
                 task_id)
 
-        if len(chunks) < self.total_tasks:
+        if len(chunks) < self.get_total_tasks():
             logger.warning('%d subtasks was requested but video splitting '
                            'process resulted in %d chunks.',
-                           self.total_tasks,
+                           self.get_total_tasks(),
                            len(chunks))
 
         streams = list(map(lambda x: x if os.path.isabs(x) else os.path
@@ -117,7 +117,6 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
         self.task_resources = streams
         self.chunks = streams
-        self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
         try:
@@ -148,9 +147,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             logger.info("Task %s - transcoded %d of %d chunks",
                         self.task_definition.task_id,
                         self.num_tasks_received,
-                        self.total_tasks)
+                        self.get_total_tasks())
 
-            if self.num_tasks_received == self.total_tasks:
+            if self.num_tasks_received == self.get_total_tasks():
                 self._merge_video()
 
     def _collect_results(self, results):
@@ -202,7 +201,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
 
-        assert self.last_task < self.total_tasks
+        assert self.last_task < self.get_total_tasks()
         curr = self.last_task + 1
         self.last_task = curr
         return curr - 1

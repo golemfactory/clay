@@ -15,8 +15,8 @@ from parameterized import parameterized
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
     AudioCodecNotSupportedByContainer, ffmpegMergeReplaceError
-from golem.testutils import TestTaskIntegration, \
-    remove_temporary_dirtree_if_test_passed
+from golem.testutils_app_integration import TestTaskIntegration
+from golem.testutils import keep_testdir_on_fail
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
     FfmpegIntegrationBase, \
@@ -99,7 +99,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_codec_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_codec_change(self,
                                                video,
                                                video_codec,
@@ -136,7 +135,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_resolution_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_resolution_change(self, video, resolution):
         source_codec = video["video_codec"]
         operation = SimulatedTranscodingOperation(
@@ -165,7 +163,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         source_codec = video["video_codec"]
         frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
@@ -201,7 +198,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         name_func=create_split_and_merge_with_different_subtask_counts_test_name
     )
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_split_and_merge_with_different_subtask_counts(self,
                                                            video,
                                                            subtasks_count):
@@ -224,7 +220,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
-    @remove_temporary_dirtree_if_test_passed
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -242,7 +237,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
 
-    @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_output_dir(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'nonexistent', 'path',
@@ -264,7 +258,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         self.assertTrue(TestTaskIntegration.check_dir_existence(
             os.path.dirname(result_file)))
 
-    @remove_temporary_dirtree_if_test_passed
     def test_nonexistent_resource(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'test_nonexistent_video.mp4')
@@ -283,7 +276,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(TranscodingTaskBuilderException):
             self.execute_task(task_def)
 
-    @remove_temporary_dirtree_if_test_passed
     def test_invalid_resource_stream(self):
         resource_stream = os.path.join(
             self.RESOURCES,
@@ -304,7 +296,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(ffmpegException):
             self.execute_task(task_def)
 
-    @remove_temporary_dirtree_if_test_passed
     def test_task_invalid_params(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_invalid_params.mp4')
@@ -322,7 +313,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             self.execute_task(task_def)
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_unsupported_target_video_codec(self):
         assert self.VIDEO_FILES[0]["container"] != Container.c_OGG
         with self.assertRaises(VideoCodecNotSupportedByContainer):
@@ -339,7 +329,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_unsupported_target_container_if_exclusive_demuxer(self):
         with self.assertRaises(UnsupportedTargetVideoFormat):
             operation = SimulatedTranscodingOperation(
@@ -356,7 +345,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_invalid_resolution_should_raise_proper_exception(self):
         dst_resolution = (100, 100)
         assert self.VIDEO_FILES[0]['resolution'][0] / dst_resolution[0] != \
@@ -376,7 +364,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_invalid_frame_rate_should_raise_proper_exception(self):
         assert 55 not in list_supported_frame_rates()
         with self.assertRaises(InvalidFrameRate):
@@ -394,7 +381,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_invalid_container_should_raise_proper_exception(self):
         with self.assertRaises(UnsupportedVideoFormat):
             operation = SimulatedTranscodingOperation(
@@ -410,7 +396,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run(self.VIDEO_FILES[0]["path"])
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_unsupported_audio_codec_should_raise_proper_exception(self):
         with self.assertRaises(AudioCodecNotSupportedByContainer):
             operation = SimulatedTranscodingOperation(
@@ -425,7 +410,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             operation.run("big_buck_bunny_stereo.mp4")
 
     @pytest.mark.slow
-    @remove_temporary_dirtree_if_test_passed
     def test_task_invalid_audio_params(self):
         resource_stream = os.path.join(self.RESOURCES,
                                        'big_buck_bunny_stereo.mp4')
@@ -460,14 +444,14 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             strip_unsupported_subtitle_streams=strip_streams,
         )
 
-    @remove_temporary_dirtree_if_test_passed
+    @pytest.mark.slow
     def test_video_with_unsupported_streams_should_be_transcoded_with_streams_stripped(self):  # noqa pylint: disable=line-too-long
         task_def = self._prepare_task_def_for_strip_streams(strip_streams=True)
         task = self.execute_task(task_def)
         output_file = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(output_file))
 
-    @remove_temporary_dirtree_if_test_passed
+    @pytest.mark.slow
     def test_video_with_unsupported_streams_should_fail_transcode_without_strip_streams(self):  # noqa pylint: disable=line-too-long
         task_def = self._prepare_task_def_for_strip_streams(strip_streams=False)
         # We know that if we don't strip subtitles and data streams in this

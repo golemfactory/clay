@@ -1,6 +1,6 @@
 from parameterized import parameterized
 
-from golem.testutils import TestTaskIntegration
+from golem.testutils_app_integration import TestTaskIntegration
 from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyInt, DiffReason
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 

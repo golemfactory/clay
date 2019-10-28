@@ -1,38 +1,24 @@
 # pylint: disable=protected-access
+import asyncio
 import json
-import time
 from unittest import mock, TestCase
 from urllib.parse import urljoin
 
 from random import Random
 import requests
-from freezegun import freeze_time
 from pydispatch import dispatcher
 
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
-from golem.monitor.monitor import SystemMonitor, SenderThread, Sender
+from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
 from golem.tools.os_info import OSInfo
 
 random = Random(__name__)
-
-
-class MockSenderThread:
-    def __init__(self):
-        with mock.patch('golem.monitor.transport.sender.DefaultHttpSender'):
-            self.sender = Sender('some_host', 'some_timeout',
-                                 MONITOR_CONFIG['PROTO_VERSION'])
-
-    def send(self, o):
-        self.sender.send(o)
-
-    def join(self):
-        pass
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
@@ -57,24 +43,25 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         config = MONITOR_CONFIG.copy()
         config['PING_ME_HOSTS'] = ['']
         self.monitor = SystemMonitor(meta_data, config)
-        self.monitor._sender_thread = MockSenderThread()
+        self.loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(self.loop)
 
     def tearDown(self):
-        self.monitor.shut_down()
+        asyncio.set_event_loop(None)
 
     def test_monitor_messages(self):
         """Just check if all signal handlers run without errors"""
-        self.monitor.on_login()
+        self.loop.run_until_complete(self.monitor.on_login())
 
-        self.monitor.on_peer_snapshot([
+        self.loop.run_until_complete(self.monitor.on_peer_snapshot([
             {"node_id": "first node", "port": 19301},
-            {"node_id": "second node", "port": 3193}])
-        self.monitor.on_requestor_stats_snapshot(
+            {"node_id": "second node", "port": 3193}]))
+        self.loop.run_until_complete(self.monitor.on_requestor_stats_snapshot(
             CurrentStats(1, 0, 1, 0, 0, 0, 0, 0, 1),
             FinishedTasksStats(
                 EMPTY_FINISHED_SUMMARY,
                 EMPTY_FINISHED_SUMMARY,
-                EMPTY_FINISHED_SUMMARY))
+                EMPTY_FINISHED_SUMMARY)))
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         client_mock = mock.MagicMock()
@@ -89,19 +76,20 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         )
         new_meta_data = NodeMetadataModel(
             client_mock, os_info, "1.3")
-        self.monitor.on_config_update(new_meta_data)
-        self.monitor.on_logout()
+        self.loop.run_until_complete(
+            self.monitor.on_config_update(new_meta_data),
+        )
+        self.loop.run_until_complete(self.monitor.on_logout())
 
     def test_login_logout_messages(self):
         """Test whether correct login and logout messages
             and protocol data were sent."""
 
-        def check(f, msg_type):
+        @mock.patch('requests.post')
+        @mock.patch('json.dumps')
+        def check(f, msg_type, mock_dumps, *_):
             with mock.patch('apps.core.nvgpu.is_supported', return_value=True):
-                f()
-            mock_send = self.monitor._sender_thread.sender.transport.post_json
-            self.assertEqual(mock_send.call_count, 1)
-            result = json.loads(mock_send.call_args[0][0])
+                self.loop.run_until_complete(f())
             expected_d = {
                 'proto_ver': MONITOR_CONFIG['PROTO_VERSION'],
                 'data': {
@@ -129,21 +117,13 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                     },
                 }
             }
-            self.assertEqual(expected_d, result)
+            mock_dumps.assert_called_once_with(expected_d, indent=mock.ANY)
 
+        # pylint: disable=no-value-for-parameter
         check(self.monitor.on_login, "Login")
-        self.monitor._sender_thread.sender.transport.reset_mock()
         check(self.monitor.on_logout, "Logout")
+        # pylint: enable=no-value-for-parameter
 
-    @mock.patch('requests.post')
-    def test_ping_request_wrong_signal(self, post_mock):
-        dispatcher.send(
-            signal='golem.p2p',
-            event='no event at all',
-            ports=[])
-        self.assertEqual(post_mock.call_count, 0)
-
-    @freeze_time()
     @mock.patch('requests.post')
     def test_ping_request_success(self, post_mock):
         port = random.randint(1, 65535)
@@ -156,16 +136,12 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             if event == 'unreachable':
                 self.fail()
         dispatcher.connect(listener, signal='golem.p2p')
-
-        dispatcher.send(
-            signal='golem.p2p',
-            event='listening',
-            ports=[port])
+        self.loop.run_until_complete(self.monitor.ping_request([port]))
         post_mock.assert_called_once_with(
             urljoin(self.monitor.config['PING_ME_HOSTS'][0], 'ping-me'),
             data={
                 'ports': [port],
-                'timestamp': time.time()
+                'timestamp': mock.ANY,
             },
             timeout=mock.ANY,
         )
@@ -218,12 +194,9 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         listener = mock.MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
 
-        dispatcher.send(
-            signal='golem.p2p',
-            event='listening',
-            ports=[port])
+        self.loop.run_until_complete(self.monitor.ping_request([port]))
 
-        listener.assert_any_call(
+        listener.assert_called_once_with(
             sender=mock.ANY,
             signal='golem.p2p',
             event='unreachable',
@@ -241,37 +214,23 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
 
         listener = mock.MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
+        self.loop.run_until_complete(self.monitor.ping_request([]))
+        post_mock.assert_called_once()
 
-        dispatcher.send(
-            signal='golem.p2p',
-            event='listening',
-            ports=[])
-
-        listener.assert_any_call(
+        listener.assert_called_once_with(
             sender=mock.ANY,
             signal='golem.p2p',
             event='unsynchronized',
             time_diff=time_diff
         )
 
-
-class TestSenderThread(TestCase):
-    def test_run_exception(self):
-        node_info = mock.Mock()
-        node_info.dict_repr.return_value = dict()
-        sender = SenderThread(
-            node_info=node_info,
-            monitor_host=None,
-            monitor_request_timeout=0,
-            monitor_sender_thread_timeout=0,
-            proto_ver=None
-        )
-        sender.stop_request.isSet = mock.Mock(side_effect=[False, True])
-        with mock.patch('requests.post',
-                        side_effect=requests.exceptions.RequestException(
-                            "request failed")), \
-                self.assertLogs() as logs:
-            sender.run()
+    @mock.patch(
+        'requests.post',
+        side_effect=requests.exceptions.RequestException("request failed"),
+    )
+    def test_requests_exception(self, *_):
+        with self.assertLogs(logger='golem.monitor', level='WARNING') as logs:
+            self.loop.run_until_complete(self.monitor.on_login())
 
         # make sure we're not spitting out stack traces
         assert len(logs.output) == 1
