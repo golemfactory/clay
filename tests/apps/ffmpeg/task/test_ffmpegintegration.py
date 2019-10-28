@@ -454,7 +454,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         task_def = self._prepare_task_def_for_strip_streams(strip_streams=True)
         task = self.execute_task(task_def)
         output_file = task.task_definition.output_file
-        self.assertTrue(TestTaskIntegration.check_file_existence(output_file))
+        self.assertTrue(os.path.isfile(output_file))
 
     @pytest.mark.slow
     def test_video_with_unsupported_streams_should_fail_transcode_without_strip_streams(self):  # noqa pylint: disable=line-too-long
