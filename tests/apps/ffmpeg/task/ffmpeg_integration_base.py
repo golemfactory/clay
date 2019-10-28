@@ -71,7 +71,6 @@ def create_split_and_merge_with_different_subtask_counts_test_name(
     )
 
 
-@ci_skip
 class FfmpegIntegrationBase(TestTaskIntegration):
 
     ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS = {
