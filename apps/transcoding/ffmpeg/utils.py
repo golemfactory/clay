@@ -174,7 +174,7 @@ class StreamOperator:
         ]
 
     # pylint: disable=too-many-arguments
-    def merge_and_replace_video_streams(\
+    def merge_and_replace_video_streams(
             self,
             input_file_on_host,
             chunks_on_host,
