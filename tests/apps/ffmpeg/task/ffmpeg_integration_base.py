@@ -3,7 +3,6 @@ import os
 
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils_app_integration import TestTaskIntegration
-from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.utils.ffprobe_report_set import FfprobeReportSet
 
 logger = logging.getLogger(__name__)

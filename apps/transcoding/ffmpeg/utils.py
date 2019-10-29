@@ -305,7 +305,9 @@ class StreamOperator:
             },
         }
 
-        stats_dir = os.path.join(os.path.dirname(work_dir), "get-metadata-stats")
+        stats_dir = os.path.join(
+            os.path.dirname(work_dir),
+            "get-metadata-stats")
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir,

@@ -214,7 +214,8 @@ class SimulatedTranscodingOperation:
             prefix='metadata',
             dir=self._host_dirs['tmp']
         )
-        (input_report, output_report) = FfprobeFormatReport.build(  # pylint: disable=unbalanced-tuple-unpacking
+        # pylint: disable=unbalanced-tuple-unpacking
+        (input_report, output_report) = FfprobeFormatReport.build(
             tmp_metadata_dir,
             [input_file, output_file]
         )

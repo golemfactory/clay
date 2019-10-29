@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Tuple, Optional, Union
 import golem_messages.message
 
 import ffmpeg_tools.validation as validation
-import ffmpeg_tools.meta as meta
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
