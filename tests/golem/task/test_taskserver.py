@@ -991,6 +991,34 @@ class TestTaskServer2(TaskServerBase):
         self.ts.disconnect()
         session_mock.dropped.assert_called_once_with()
 
+    def test_dropped(self):
+        # given
+        class Conn:
+            def __init__(self, server) -> None:
+                self.server = server
+                self.opened = True
+                self.transport = Mock()
+
+            def close(self) -> None:
+                # lets suppose we're still flushing data
+                pass
+
+            def send_message(self, _msg) -> None:
+                # oh, data was flushed in the mean time.
+                self.opened = False
+                raise Exception("connection closed")
+
+        task_session = tasksession.TaskSession(Conn(self.ts))
+        task_session.key_id = 'key_id'
+        task_session.verified = True
+        self.ts.sessions[task_session.key_id] = task_session
+
+        # when
+        task_session.dropped()
+
+        # then
+        assert not self.ts.sessions
+
 
 class TestSubtask(TaskServerBase):
 
