@@ -7,7 +7,7 @@ from golem.marketplace import (Offer, ProviderMarketStrategy, ProviderPricing)
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 from golem.task import timer
-from golem.task.taskkeeper import compute_subtask_value
+from golem.task.helpers import calculate_subtask_payment
 import golem.ranking.manager.database_manager as dbm
 
 from .rust import order_providers
@@ -91,7 +91,7 @@ class ProviderBrassMarketStrategy(ProviderMarketStrategy):
 def _calculate_brass_payment(rct: 'ReportComputedTask') -> int:
     task_header = rct.task_to_compute.want_to_compute_task.task_header
 
-    return compute_subtask_value(
+    return calculate_subtask_payment(
         rct.task_to_compute.want_to_compute_task.price,
         task_header.subtask_timeout
     )

@@ -512,7 +512,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_session.task_server.config_desc.offer_pooling_interval = 0
 
         with mock.patch(
-            'golem.task.tasksession.taskkeeper.compute_subtask_value',
+            'golem.task.tasksession.calculate_subtask_payment',
             mock.Mock(return_value=667),
         ):
             task_session._react_to_want_to_compute_task(self.msg)

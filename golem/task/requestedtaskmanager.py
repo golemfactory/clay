@@ -23,6 +23,7 @@ from golem.model import (
     RequestedSubtask,
 )
 from golem.task import SubtaskId, TaskId
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import (
     Operation,
@@ -34,7 +35,6 @@ from golem.task.taskstate import (
 )
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
-from golem.task.taskkeeper import compute_subtask_value
 from golem.ranking.manager.database_manager import (
     update_provider_efficiency,
     update_provider_efficacy,
@@ -713,7 +713,7 @@ class RequestedTaskManager:
             )
             return
         comp_time = int(round(raw_time))
-        comp_price = compute_subtask_value(
+        comp_price = calculate_subtask_payment(
             subtask.task.max_price_per_hour,
             comp_time
         )

@@ -9,7 +9,7 @@ from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 from golem.task import timer
-from golem.task.taskkeeper import compute_subtask_value
+from golem.task.helpers import calculate_subtask_payment
 from golem.ranking.manager.database_manager import (
     get_requestor_assigned_sum,
     get_requestor_paid_sum,
@@ -191,7 +191,7 @@ class ProviderWasmMarketStrategy(ProviderMarketStrategy):
 
 def _calculate_usage_payment(rct: 'ReportComputedTask') -> int:
     task_header = rct.task_to_compute.want_to_compute_task.task_header
-    max_payment = compute_subtask_value(
+    max_payment = calculate_subtask_payment(
         task_header.max_price,
         task_header.subtask_timeout,
     )
@@ -201,4 +201,4 @@ def _calculate_usage_payment(rct: 'ReportComputedTask') -> int:
     )
     price = rct.task_to_compute.want_to_compute_task.price
 
-    return min(compute_subtask_value(price, usage), max_payment)
+    return min(calculate_subtask_payment(price, usage), max_payment)
