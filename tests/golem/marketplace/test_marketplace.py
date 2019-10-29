@@ -18,13 +18,7 @@ HOUR = 3600
 
 
 def _fake_get_efficacy():
-
-    class A:
-
-        def __init__(self):
-            self.vector = (.0, .0, .0, .0)
-
-    return A()
+    return Mock(vector=(.0, .0, .0, .0))
 
 
 class TestScalePrice(TestCase):
@@ -52,7 +46,10 @@ class TestRequestorMarketStrategy(testutils.DatabaseFixture):
         task = Mock()
         task.header = Mock()
         task.header.subtask_timeout = 360
-        payment_computer = market_strategy.get_payment_computer(task, None)
+        payment_computer = market_strategy.get_payment_computer(
+            None,
+            task.header.subtask_timeout,
+            task.subtask_price)
         self.assertEqual(payment_computer(100), 10)  # price * timeout / 3600
 
     def test_wasm_payment_computer(self):
@@ -66,13 +63,15 @@ class TestRequestorMarketStrategy(testutils.DatabaseFixture):
                           (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
         )
         payment_computer = market_strategy.get_payment_computer(
-            task, self.SUBTASK_A
-        )
+            self.SUBTASK_A,
+            task.header.subtask_timeout,
+            task.subtask_price)
         self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
 
         payment_computer = market_strategy.get_payment_computer(
-            task, self.SUBTASK_B
-        )
+            self.SUBTASK_B,
+            task.header.subtask_timeout,
+            task.subtask_price)
         self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
     def test_wasm_payment_computer_budget_exceeded(self):
@@ -86,13 +85,15 @@ class TestRequestorMarketStrategy(testutils.DatabaseFixture):
                           (self.PROVIDER_B, self.SUBTASK_B, 8.0 * HOUR)]
         )
         payment_computer = market_strategy.get_payment_computer(
-            task, self.SUBTASK_A
-        )
+            self.SUBTASK_A,
+            task.header.subtask_timeout,
+            task.subtask_price)
         self.assertEqual(payment_computer(1000 * GWEI), 5000 * GWEI)
 
         payment_computer = market_strategy.get_payment_computer(
-            task, self.SUBTASK_B
-        )
+            self.SUBTASK_B,
+            task.header.subtask_timeout,
+            task.subtask_price)
         self.assertEqual(payment_computer(1000 * GWEI), 6000 * GWEI)
 
 

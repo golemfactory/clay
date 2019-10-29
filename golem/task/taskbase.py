@@ -147,7 +147,7 @@ class Task(abc.ABC):
         return self.subtask_price * self.get_total_tasks()
 
     @property
-    def subtask_price(self):
+    def subtask_price(self) -> int:
         from golem.task import taskkeeper
         return taskkeeper.compute_subtask_value(
             self.header.max_price,

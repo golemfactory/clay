@@ -18,7 +18,7 @@ from golem.task.taskbase import TaskResult
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.core import keysauth
-    from golem.task import taskmanager
+    from golem.task import taskmanager, SubtaskId, TaskId
     from golem.task import requestedtaskmanager
 
 logger = logging.getLogger(__name__)
@@ -84,21 +84,7 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            task = self.task_manager.tasks.get(task_id)
-            if task:
-                strat = task.REQUESTOR_MARKET_STRATEGY
-                payment_computer = strat.get_payment_computer(  # type: ignore
-                    task,
-                    subtask_id)
-            else:
-                # FIXME: adjust after merging #4753 (with #4785)
-                def payment_computer(price: int):
-                    return price * subtask_timeout
-
-                task = self.requested_task_manager.get_requested_task(task_id)
-                assert task, "Completed verification for an unknown task"
-                subtask_timeout = task.subtask_timeout
-
+            payment_computer = self._get_payment_computer(task_id, subtask_id)
             payment = self.accept_result(
                 task_id,
                 subtask_id,
@@ -157,6 +143,45 @@ class VerificationMixin:
                 ),
                 verification_finished_old,
             )
+
+    def _get_payment_computer(
+            self,
+            task_id: 'TaskId',
+            subtask_id: 'SubtaskId',
+    ) -> typing.Callable[[int], int]:
+        """ Retrieve the payment computing function for given
+            task_id and subtask_id """
+        task = self.task_manager.tasks.get(task_id)
+        if task:
+            market = task.REQUESTOR_MARKET_STRATEGY
+            return market.get_payment_computer(  # type: ignore
+                subtask_id,
+                subtask_timeout=int(task.header.subtask_timeout),
+                subtask_price=task.subtask_price)
+
+        task = self.requested_task_manager.get_requested_task(task_id)
+        if not task:
+            raise RuntimeError(
+                f"Completed verification of subtask {subtask_id} "
+                f"within an unknown task {task_id}")
+
+        subtask = self.requested_task_manager.get_requested_task_subtask(
+            task_id,
+            subtask_id)
+        if not subtask:
+            raise RuntimeError(
+                f"Completed verification of unknown subtask {subtask_id} "
+                f"within task {task_id}")
+
+        app = self.app_manager.app(task.app_id)
+        if not app:
+            raise RuntimeError(
+                f"Completed verification of task {task_id} "
+                f"created by an unknown app {task.app_id}")
+        return app.market_strategy.get_payment_computer(
+            subtask_id,
+            subtask_timeout=task.subtask_timeout,
+            subtask_price=subtask.price)
 
     def send_result_rejected(
             self,
