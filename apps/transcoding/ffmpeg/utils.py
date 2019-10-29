@@ -175,14 +175,14 @@ class StreamOperator:
 
     # pylint: disable=too-many-arguments
     def merge_and_replace_video_streams(\
-        self,
-        input_file_on_host,
-        chunks_on_host,
-        output_file_basename,
-        task_dir,
-        container,
-        strip_unsupported_data_streams=False,
-        strip_unsupported_subtitle_streams=False):
+            self,
+            input_file_on_host,
+            chunks_on_host,
+            output_file_basename,
+            task_dir,
+            container,
+            strip_unsupported_data_streams=False,
+            strip_unsupported_subtitle_streams=False):
 
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
