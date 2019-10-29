@@ -22,7 +22,7 @@ from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread, DockerDirMapping
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
+from golem.task.taskbase import Task, TaskResult
 from golem.task.taskmanager import TaskManager
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -70,10 +70,6 @@ class VerificationWait:
 # pylint: disable=too-many-instance-attributes
 class TestTaskIntegration(TestDatabaseWithReactor):
 
-    @dataclass
-    class Result:
-        files: List[str]
-
     def setUp(self):
         super().setUp()
 
@@ -114,8 +110,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         task: Task = self.start_task(task_def)
 
         for i in range(task.task_definition.subtasks_count):
-            files, subtask_id, _ = self.compute_next_subtask(task, i)
-            result = TestTaskIntegration.Result(files)
+            result, subtask_id, _ = self.compute_next_subtask(task, i)
             self.assertTrue(self.verify_subtask(task, subtask_id, result))
 
         return task
@@ -164,7 +159,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         result = self._collect_results_from_provider(result,
                                                      task_id,
                                                      subtask_id)
-        return result
+        return TaskResult(files=result)
 
     def verify_subtask(self, task: Task, subtask_id, result):
         task_id = task.task_definition.task_id

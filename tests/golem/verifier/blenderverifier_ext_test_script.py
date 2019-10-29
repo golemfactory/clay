@@ -6,15 +6,14 @@ import sys
 import traceback
 from typing import List
 
-from golem.testutils_app_integration import TestTaskIntegration
+sys.path.insert(0, '.')
+
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
 from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
     are_pixels_equal, find_fragments_in_path
-
-sys.path.insert(0, '.')
 
 logger = logging.getLogger(__name__)
 logging.disable(logging.CRITICAL)
