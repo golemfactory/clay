@@ -110,7 +110,8 @@ VIDEO_FILES = [
 # FIXME: These tests should be re-enabled once all the fixes needed
 # to make them pass are done and merged.
 @pytest.mark.skip("Files from transcoding-video-bundle disabled for now")
-class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase): # pylint: disable=too-many-ancestors
+# pylint: disable=too-many-ancestors
+class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
 
     # flake8: noqa
     # pylint: disable=line-too-long
