@@ -293,11 +293,9 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
+    @inlineCallbacks
     def quit(self):
-        defer_rtm_quit = deferred_from_future(
-            self.requested_task_manager.stop()
-        )
-        sync_wait(defer_rtm_quit)
+        yield deferred_from_future(self.requested_task_manager.stop())
         self.task_computer.quit()
 
     def get_environment_by_id(
