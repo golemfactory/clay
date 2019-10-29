@@ -1602,8 +1602,7 @@ class MaskUpdateService(LoopingCallService):
         self._interval = interval_seconds
         super().__init__(interval_seconds)
 
-    @inlineCallbacks
-    def _run(self) -> Deferred:
+    def _run(self):
         logger.debug('Updating masks')
         old_task_manager = self._old_task_manager
         requested_task_manager = self._requested_task_manager
@@ -1621,23 +1620,16 @@ class MaskUpdateService(LoopingCallService):
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
 
-        started_tasks = requested_task_manager.get_started_tasks()
-        # Using list() because tasks could be changed by another thread
-        for db_task in list(started_tasks):
+        for db_task in requested_task_manager.get_started_tasks():
             elapsed_seconds = db_task.elapsed_seconds
             if elapsed_seconds is None or elapsed_seconds < self._interval:
                 continue
-            has_subtask = yield deferred_from_future(
-                requested_task_manager.has_pending_subtasks(db_task.task_id)
-            )
-            if not has_subtask:
-                continue
 
             requested_task_manager.decrease_task_mask(
-                task_id=task_id,
+                task_id=db_task.task_id,
                 num_bits=self._update_num_bits)
             logger.info('Updating mask. task_id=%r, new_mask_size=%r',
-                        task_id, db_task.mask.num_bits)
+                        db_task.task_id, db_task.mask.num_bits)
 
 
 class DailyJobsService(LoopingCallService):
