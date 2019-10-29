@@ -50,12 +50,14 @@ use_nvidia_gpu = get_device_type() == 'nvidia_gpu'
 use_amd_gpu = get_device_type() == 'amd_gpu'
 use_gpu = use_nvidia_gpu or use_amd_gpu
 
+supported_engines = ["CYCLES"]
 if use_gpu:
     tile_size = 512
+    # supported_engines.append("BLENDER_EEVEE")
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
-if engine not in ("BLENDER_RENDER", "CYCLES"):
+if engine not in supported_engines:
     bpy.ops.wm.engine_warning()
 
 bpy.utils.register_class(ShowInformation)
@@ -82,7 +84,7 @@ if output_path != None:
 
 
 if engine == "CYCLES":
-    preferences = bpy.context.user_preferences.addons['cycles'].preferences
+    preferences = bpy.context.preferences.addons['cycles'].preferences
     samples = %(samples)d
 
     if samples != 0:

@@ -19,9 +19,9 @@ RUN apt-get update && \
 	rm -rf /var/lib/apt/lists/*
 
 
-ENV BLENDER_MAJOR 2.79
-ENV BLENDER_VERSION 2.79
-ENV GLIBC_VERSION 219
+ENV BLENDER_MAJOR 2.80
+ENV BLENDER_VERSION 2.80
+ENV GLIBC_VERSION 217
 ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 

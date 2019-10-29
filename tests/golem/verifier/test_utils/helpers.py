@@ -4,27 +4,27 @@ from typing import List, Callable
 import numpy as np
 from cv2 import cv2
 
-WHITE = 0
-BLACK = 765
-OFFSET = 30
+ZERO = 0
+MAX = 255
+ACCEPTABLE_OFFSET = 10
 
 
-def round_to_black_and_white(image: np.ndarray) -> np.ndarray:
+def round_to_pure_colors(image: np.ndarray) -> np.ndarray:
     """
-    Function for squashing image array in to 0/1 array, which translate to
-    black/white pixel
+    Function for squashing image array in to 0/255 for each channel, which translates to
+    pure colour pixels
     """
-    black_and_white_array = np.zeros((image.shape[0], image.shape[1]))
+    enhanced_colors_array = np.copy(image)
     for x, row in enumerate(image):
         for y, single_pixel in enumerate(row):
-            pixel_sum = np.sum(single_pixel)
-            if pixel_sum <= WHITE + OFFSET:
-                black_and_white_array[x, y] = 0
-            elif pixel_sum >= BLACK - OFFSET:
-                black_and_white_array[x, y] = 1
-            else:
-                raise ValueError("Pixel incomparable. Neither black or white.")
-    return black_and_white_array
+            for channel_index, channel in enumerate(single_pixel):
+                if channel <= ZERO + ACCEPTABLE_OFFSET:
+                    enhanced_colors_array[x, y, channel_index] = ZERO
+                elif channel >= MAX - ACCEPTABLE_OFFSET:
+                    enhanced_colors_array[x, y, channel_index] = MAX
+                else:
+                    raise ValueError("Pixel incomparable. Colour couldn't be identified: " + str(single_pixel))
+    return enhanced_colors_array
 
 
 def find_crop_files_in_path(path: str) -> List[str]:
@@ -55,7 +55,7 @@ def are_pixels_equal(
     subtask_fragment_image = cv2.imread(image_fragment_path)
 
     is_result_positive = np.array_equal(
-        round_to_black_and_white(cropped_image),
-        round_to_black_and_white(subtask_fragment_image)
+        round_to_pure_colors(cropped_image),
+        round_to_pure_colors(subtask_fragment_image)
     )
     return is_result_positive
