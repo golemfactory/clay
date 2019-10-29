@@ -23,6 +23,7 @@ from golem.docker.task_thread import DockerTaskThread, DockerDirMapping
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskmanager import TaskManager
+from golem.task.taskstate import TaskState
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 logger = logging.getLogger(__name__)
@@ -118,6 +119,11 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
     def _mock_remove_files(self):
         pass
+
+    def get_task_state(self, task: Task):
+        task_id = task.task_definition.task_id
+        task_state: TaskState = self.task_manager.tasks_states[task_id]
+        return task_state.status
 
     def execute_task(self, task_def):
         task: Task = self.start_task(task_def)
