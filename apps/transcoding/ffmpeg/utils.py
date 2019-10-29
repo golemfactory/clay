@@ -181,8 +181,7 @@ class StreamOperator:
                                         task_dir,
                                         container,
                                         strip_unsupported_data_streams=False,
-                                        strip_unsupported_subtitle_streams=
-                                        False):
+                                        strip_unsupported_subtitle_streams=False):  # pylint: disable=line-too-long
 
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."

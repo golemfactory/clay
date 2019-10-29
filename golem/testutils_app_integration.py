@@ -229,7 +229,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         os.makedirs(dir_mapping.work, exist_ok=True)
         os.makedirs(dir_mapping.resources, exist_ok=True)
         os.makedirs(dir_mapping.stats, exist_ok=True)
-            
+
         return dir_mapping
 
     @classmethod

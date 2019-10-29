@@ -14,11 +14,10 @@ from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
-    AudioCodecNotSupportedByContainer, ffmpegMergeReplaceError
+    AudioCodecNotSupportedByContainer
 from golem.task.taskbase import Task
-from golem.task.taskstate import TaskState, TaskStatus
+from golem.task.taskstate import TaskStatus
 from golem.testutils_app_integration import TestTaskIntegration
-from golem.testutils import keep_testdir_on_fail
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
     FfmpegIntegrationBase, \
