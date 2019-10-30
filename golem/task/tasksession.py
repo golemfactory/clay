@@ -34,11 +34,10 @@ from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
-from golem.task import taskkeeper
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskkeeper import compute_subtask_value
 
 if TYPE_CHECKING:
     from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
@@ -408,7 +407,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        price = taskkeeper.compute_subtask_value(
+        price = calculate_subtask_payment(
             msg.price,
             msg.task_header.subtask_timeout,
         )
@@ -602,7 +601,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         task_header = msg.want_to_compute_task.task_header
-        total_task_price = compute_subtask_value(
+        total_task_price = calculate_subtask_payment(
             task_header.max_price,
             task_header.subtask_timeout
         ) * task_header.subtasks_count
