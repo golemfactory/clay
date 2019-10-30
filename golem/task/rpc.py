@@ -547,6 +547,9 @@ class ClientProvider:
     def create_task_api_task(self, task_params: dict, golem_params: dict):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
             name=golem_params['name'],
@@ -577,6 +580,8 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
@@ -584,6 +589,7 @@ class ClientProvider:
                     self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)

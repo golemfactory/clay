@@ -33,6 +33,7 @@ from golem.task.taskstate import (
     TaskOp,
     TaskStatus,
     TASK_STATUS_ACTIVE,
+    TASK_STATUS_COMPLETED,
 )
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
@@ -235,6 +236,12 @@ class RequestedTaskManager:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
 
+    @staticmethod
+    def has_unfinished_tasks() -> bool:
+        """ Return True iff there are any tasks that need computation. """
+        return RequestedTask.select()\
+            .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED)).exists()
+
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
         computation at the given moment. If there are the next call to
@@ -399,8 +406,8 @@ class RequestedTaskManager:
                 if not self._get_pending_subtasks(task_id):
                     task.status = TaskStatus.finished
                     task.save()
-                    self._notice_task_updated(task, op=TaskOp.FINISHED)
                     await self._shutdown_app_client(task.app_id)
+                    self._notice_task_updated(task, op=TaskOp.FINISHED)
 
         return result
 
@@ -418,9 +425,8 @@ class RequestedTaskManager:
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
-        self._notice_task_updated(task, op=TaskOp.ABORTED)
-
         await self._abort_task_and_shutdown(task)
+        self._notice_task_updated(task, op=TaskOp.ABORTED)
 
     @staticmethod
     def get_requested_task(task_id: TaskId) -> Optional[RequestedTask]:
