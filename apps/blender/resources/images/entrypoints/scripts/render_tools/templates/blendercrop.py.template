@@ -53,7 +53,6 @@ use_gpu = use_nvidia_gpu or use_amd_gpu
 supported_engines = ["CYCLES"]
 if use_gpu:
     tile_size = 512
-    # supported_engines.append("BLENDER_EEVEE")
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
