@@ -8,7 +8,6 @@ from random import SystemRandom
 from typing import Tuple, List
 from unittest.mock import patch
 from pathlib import Path
-from dataclasses import dataclass
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
