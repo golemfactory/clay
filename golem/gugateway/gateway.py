@@ -17,7 +17,7 @@ from .subscription import SubtaskStatus, Subscription, TaskType, \
     InvalidTaskType, InvalidSubtaskStatus
 
 logger: logging.Logger = logging.getLogger(__name__)
-default_port: int = 55001
+DEFAULT_PORT: int = 55001
 app: Flask = Flask(__name__)
 golem_client: Client = None
 # TODO: persist this in case of whole gateway failure
@@ -30,7 +30,7 @@ def start(client: Client) -> None:
 
     from twisted.internet.error import CannotListenError
     try:
-        _start(default_port)
+        _start(DEFAULT_PORT)
     except CannotListenError:
         logger.warning("   NOT launching GU GATEWAY nor WebDAV - port is busy")
         pass

@@ -4,10 +4,10 @@
     "name": "Horse 3s",
     "timeout": "00:15:00",
     "subtask_timeout": "00:10:00",
-    "subtasks_count": 3,
+    "subtasks_count": 7,
     "bid": 3.3,
     "resources": [
-        "/Users/tworec/git/golem/golem/gugateway/horse.blend"
+        "/Users/tworec/git/golem/gu-gateway/golem/gugateway/horse.blend"
     ],
     "options": {
         "frame_count": 1,
@@ -15,8 +15,8 @@
         
         "format": "PNG",
         "resolution": [
-            1000,
-            600
+            4000,
+            3200
         ],
         "frames": "1",
         "compositing": false
