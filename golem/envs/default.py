@@ -2,7 +2,6 @@ from pathlib import Path
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
-from golem.envs.auto_setup import auto_setup
 from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_METADATA
 from golem.envs.docker.gpu import DOCKER_GPU_METADATA
 from golem.envs.docker.non_hypervised import (
@@ -21,8 +20,7 @@ def _register_docker_cpu_env(
         env_manager: EnvironmentManager
 ) -> None:
     docker_cpu_config = DockerCPUConfig(work_dirs=[Path(work_dir)])
-    docker_cpu_env = auto_setup(
-        NonHypervisedDockerCPUEnvironment(docker_cpu_config))
+    docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
 
     env_manager.register_env(
         docker_cpu_env,
@@ -37,8 +35,8 @@ def _register_docker_gpu_env(
         env_manager: EnvironmentManager
 ) -> None:
     docker_config_dict = dict(work_dirs=[work_dir])
-    docker_gpu_env = auto_setup(
-        NonHypervisedDockerGPUEnvironment.default(docker_config_dict))
+    docker_gpu_env = \
+        NonHypervisedDockerGPUEnvironment.default(docker_config_dict)
 
     env_manager.register_env(
         docker_gpu_env,

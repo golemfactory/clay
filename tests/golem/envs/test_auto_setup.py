@@ -22,7 +22,14 @@ class TestAutoSetup(TwistedTestCase):
         self.env = Mock(spec_set=Environment)
         self.runtime = Mock(spec_set=Runtime)
         self.env.runtime.return_value = self.runtime
-        self.wrapped_env = auto_setup(self.env)
+        self.start_usage = Mock(return_value=defer.succeed(None))
+        self.end_usage = Mock(return_value=defer.succeed(None))
+        self.wrapped_env = auto_setup(
+            self.env, self.start_usage, self.end_usage)
+
+        self.master_mock = Mock()  # To assert call order between multiple mocks
+        self.master_mock.attach_mock(self.start_usage, 'start_usage')
+        self.master_mock.attach_mock(self.end_usage, 'end_usage')
 
     def test_supported(self):
         self.assertEqual(self.wrapped_env.supported(), self.env.supported())
@@ -65,25 +72,28 @@ class TestAutoSetup(TwistedTestCase):
 
     @defer.inlineCallbacks
     def test_run_benchmark(self):
+        self.master_mock.attach_mock(self.env.run_benchmark, 'run_benchmark')
         self.env.run_benchmark.return_value = defer.succeed(21.37)
         result = yield self.wrapped_env.run_benchmark()
         self.assertEqual(result, 21.37)
-        self.env.assert_has_calls((
-            call.prepare(),
+        self.master_mock.assert_has_calls((
+            call.start_usage(self.env),
             call.run_benchmark(),
-            call.clean_up()
+            call.end_usage(self.env)
         ))
 
     @defer.inlineCallbacks
     def test_install_prerequisites(self):
+        self.master_mock.attach_mock(
+            self.env.install_prerequisites, 'install_prerequisites')
         prereq = Mock(spec_set=Prerequisites)
         self.env.install_prerequisites.return_value = True
         result = yield self.wrapped_env.install_prerequisites(prereq)
         self.assertEqual(result, True)
-        self.env.assert_has_calls((
-            call.prepare(),
+        self.master_mock.assert_has_calls((
+            call.start_usage(self.env),
             call.install_prerequisites(prereq),
-            call.clean_up()
+            call.end_usage(self.env)
         ))
 
     @defer.inlineCallbacks
@@ -91,26 +101,23 @@ class TestAutoSetup(TwistedTestCase):
 
         @defer.inlineCallbacks
         def _benchmark():
-            self.env.prepare.assert_called_once()
-            self.env.reset_mock()
+            self.start_usage.assert_called_once_with(self.env)
+            self.start_usage.reset_mock()
             prereq = Mock(spec_set=Prerequisites)
             yield self.wrapped_env.install_prerequisites(prereq)
-            self.env.prepare.assert_not_called()
-            self.env.clean_up.assert_not_called()
+            self.start_usage.assert_not_called()
+            self.end_usage.assert_not_called()
 
         self.env.run_benchmark.side_effect = _benchmark
         yield self.wrapped_env.run_benchmark()
-        self.env.clean_up.assert_called_once()
+        self.end_usage.assert_called_once_with(self.env)
 
     @defer.inlineCallbacks
     def test_runtime_flow(self):
-        master_mock = Mock()  # To assert call order between two mocks
-        master_mock.attach_mock(self.env.prepare, 'env_prepare')
-        master_mock.attach_mock(self.env.clean_up, 'env_clean_up')
-        master_mock.attach_mock(self.runtime.prepare, 'runtime_prepare')
-        master_mock.attach_mock(self.runtime.start, 'runtime_start')
-        master_mock.attach_mock(self.runtime.stop, 'runtime_stop')
-        master_mock.attach_mock(self.runtime.clean_up, 'runtime_clean_up')
+        self.master_mock.attach_mock(self.runtime.prepare, 'runtime_prepare')
+        self.master_mock.attach_mock(self.runtime.start, 'runtime_start')
+        self.master_mock.attach_mock(self.runtime.stop, 'runtime_stop')
+        self.master_mock.attach_mock(self.runtime.clean_up, 'runtime_clean_up')
 
         payload = Mock(spec_set=RuntimePayload)
         config = Mock(spec_set=EnvConfig)
@@ -118,28 +125,28 @@ class TestAutoSetup(TwistedTestCase):
         self.env.runtime.assert_called_once_with(payload, config)
 
         yield runtime.prepare()
-        master_mock.assert_has_calls((
-            call.env_prepare(),
+        self.master_mock.assert_has_calls((
+            call.start_usage(self.env),
             call.runtime_prepare()
         ))
 
-        master_mock.reset_mock()
+        self.master_mock.reset_mock()
         yield runtime.start()
-        master_mock.assert_has_calls((
+        self.master_mock.assert_has_calls((
             call.runtime_start(),
         ))
 
-        master_mock.reset_mock()
+        self.master_mock.reset_mock()
         yield runtime.stop()
-        master_mock.assert_has_calls((
+        self.master_mock.assert_has_calls((
             call.runtime_stop(),
         ))
 
-        master_mock.reset_mock()
+        self.master_mock.reset_mock()
         yield runtime.clean_up()
-        master_mock.assert_has_calls((
+        self.master_mock.assert_has_calls((
             call.runtime_clean_up(),
-            call.env_clean_up()
+            call.end_usage(self.env)
         ))
 
     @defer.inlineCallbacks
