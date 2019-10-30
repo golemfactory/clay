@@ -547,6 +547,9 @@ class ClientProvider:
     def create_task_api_task(self, task_params: dict, golem_params: dict):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
             name=golem_params['name'],

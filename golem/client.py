@@ -1326,6 +1326,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             = Client._make_connection_status_human_readable_message(status)
         return status
 
+    def has_assigned_task(self) -> bool:
+        if self.task_server is None:
+            return False
+        return self.task_server.task_computer.has_assigned_task()
+
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting
         if self.task_server is None:
