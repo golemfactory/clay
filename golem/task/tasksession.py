@@ -34,6 +34,9 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    update_requestor_assigned_sum
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task.helpers import calculate_subtask_payment
@@ -810,8 +813,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task_class = self._get_task_class(
             msg.task_to_compute.want_to_compute_task.task_header)
-        payment_value = task_class.PROVIDER_MARKET_STRATEGY\
-            .calculate_payment(msg.report_computed_task)
+        market_strategy = task_class.PROVIDER_MARKET_STRATEGY
+        payment_value = market_strategy.calculate_payment(
+            msg.report_computed_task)
+        budget = market_strategy.calculate_budget(
+            msg.report_computed_task.task_to_compute.want_to_compute_task)
+
+        # because we have originally updated the requestor's assigned sum
+        # with the budget value, when we accepted the job
+        # now that we finally know what the actual payment amount is
+        # we need to subtract the difference
+        if payment_value < budget:
+            update_requestor_assigned_sum(
+                msg.requestor_id,
+                payment_value - budget
+            )
 
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
