@@ -45,12 +45,12 @@ class VerificationWait:
         with self.condition_var:
             while not self.is_finished:
                 # If timeout is set to None, we wait for ethernity.
-                timeouted = not self.condition_var.wait(timeout=timeout)
+                timed_out = not self.condition_var.wait(timeout=timeout)
 
                 # This implementation can wait much longer then timeout,
                 # because we are in loop and timeout is always restarted,
                 # but who cares.
-                if timeouted and not self.is_finished:
+                if timed_out and not self.is_finished:
                     return False
         return True
 

@@ -6,8 +6,6 @@ import sys
 import traceback
 from typing import List
 
-sys.path.insert(0, '.')
-
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
@@ -278,8 +276,10 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                     self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
-        if not os.path.isfile(result):
-            raise RuntimeError("Result file [{}] doesn't exist.".format(result))
+        for file in result:
+            if not os.path.isfile(file):
+                raise RuntimeError("Result file [{}] doesn't exist.".format(
+                    file))
 
     def _add_crop_params(self, parameters_set: dict, task: Task,
                          subtask_num: int):

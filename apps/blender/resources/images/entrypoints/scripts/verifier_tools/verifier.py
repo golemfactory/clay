@@ -4,11 +4,11 @@ from pathlib import Path
 from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
 
+from ..render_tools import blender_render as blender
 from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
     Resolution
 from .file_extension.matcher import get_expected_extension
 from .image_metrics_calculator import calculate_metrics
-from ..render_tools import blender_render as blender
 
 
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
@@ -206,15 +206,15 @@ def verify(  # pylint: disable=too-many-arguments
 
     (crops,
      blender_render_parameters) = prepare_data_for_blender_verification(
-         subtask_border,
-         scene_file_path,
-         resolution,
-         samples,
-         frames,
-         output_format,
-         crops_count,
-         crops_borders
-     )
+        subtask_border,
+        scene_file_path,
+        resolution,
+        samples,
+        frames,
+        output_format,
+        crops_count,
+        crops_borders
+    )
     print("blender_render_params:")
     pprint(blender_render_parameters)
     save_params(blender_render_parameters, "blender_render_params.json",
