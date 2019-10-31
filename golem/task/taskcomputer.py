@@ -9,7 +9,7 @@ import uuid
 from threading import Lock
 
 from dataclasses import dataclass
-from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
+from golem_messages.message.tasks import ComputeTaskDef, TaskHeader, TaskFailure
 from golem_task_api import ProviderAppClient, constants as task_api_constants
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
@@ -33,7 +33,7 @@ from golem.task.envmanager import EnvironmentManager
 from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
-from .taskthread import TaskThread
+from .taskthread import TaskThread, BudgetExceededException, TimeoutException
 
 if TYPE_CHECKING:
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
@@ -519,15 +519,19 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         was_success = False
 
         if task_thread.error or task_thread.error_msg:
-
-            if "Task timed out" in task_thread.error_msg:
+            reason = TaskFailure.DEFAULT_REASON
+            if type(task_thread.error) is TimeoutException:
                 self.stats.increase_stat('tasks_with_timeout')
+                reason = TaskFailure.REASON.TimeExceeded
+            elif type(task_thread.error) is BudgetExceededException:
+                reason = TaskFailure.REASON.BudgetExceeded
             else:
                 self.stats.increase_stat('tasks_with_errors')
                 self.task_server.send_task_failed(
                     subtask_id,
                     subtask['task_id'],
                     task_thread.error_msg,
+                    reason=reason
                 )
 
         elif task_thread.result and 'data' in task_thread.result:

@@ -616,8 +616,12 @@ class TaskServer(
         ) = result
 
     def send_task_failed(
-            self, subtask_id: str, task_id: str, err_msg: str) -> None:
-
+            self,
+            subtask_id: str,
+            task_id: str,
+            err_msg: str,
+            reason=message.TaskFailure.DEFAULT_REASON
+    ) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
@@ -627,7 +631,8 @@ class TaskServer(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 err_msg=err_msg,
-                owner=header.task_owner)
+                owner=header.task_owner,
+                reason=reason)
 
     def new_connection(self, session):
         if not self.active:
@@ -1233,3 +1238,4 @@ class WaitingTaskFailure:
     owner: 'dt_p2p.Node'
     subtask_id: str
     task_id: str
+    reason: message.TaskFailure.REASON

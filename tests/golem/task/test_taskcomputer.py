@@ -18,6 +18,7 @@ from golem.docker.manager import DockerManager
 from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.task.taskserver import TaskServer
+from golem.task.taskthread import JobException
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -273,12 +274,12 @@ class TestTaskThread(DatabaseFixture):
         tt = self._new_task_thread(mock.Mock())
         tt._fail(first_error)
 
-        assert tt.error is True
+        self.assertIsNotNone(tt.error)
         assert tt.done is True
         assert tt.error_msg == str(first_error)
 
         tt._fail(second_error)
-        assert tt.error is True
+        self.assertIsNotNone(tt.error)
         assert tt.done is True
         assert tt.error_msg == str(first_error)
 
@@ -363,12 +364,12 @@ class TestTaskMonitor(DatabaseFixture):
 
         # error case
         prepare()
-        task_thread.error = True
+        task_thread.error = JobException()
         check(False)
 
         # success case
         prepare()
-        task_thread.error = False
+        task_thread.error = None
         task_thread.error_msg = None
         task_thread.result = {'data': 'oh senora!!!'}
         check(True)
