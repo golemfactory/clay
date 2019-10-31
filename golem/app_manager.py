@@ -1,11 +1,18 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Iterator, Tuple
+from typing import Any, Dict, List, Iterator, Tuple, Type
 
 from dataclasses import dataclass, field
 from dataclasses_json import config, dataclass_json
 from marshmallow import fields as mm_fields
+
+from golem.marketplace import (
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    RequestorMarketStrategy,
+    requestor_market_strategy_encode,
+    requestor_market_strategy_decode,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +32,15 @@ class AppDefinition:
     description: str = ''
     author: str = ''
     license: str = ''
+
+    market_strategy: Type[RequestorMarketStrategy] = field(
+        metadata=config(
+            encoder=requestor_market_strategy_encode,
+            decoder=requestor_market_strategy_decode,
+            mm_field=mm_fields.Str(),
+        ),
+        default=DEFAULT_REQUESTOR_MARKET_STRATEGY,
+    )
 
     @property
     def id(self) -> AppId:

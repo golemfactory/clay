@@ -89,15 +89,14 @@ class VerificationMixin:
             task = self.task_manager.tasks[task_id]
             market_strategy: Type[RequestorMarketStrategy] =\
                 task.REQUESTOR_MARKET_STRATEGY
-            payment_computer =\
-                market_strategy.get_payment_computer(  # type: ignore
-                    task, subtask_id
-                )
+            payment_value = market_strategy.calculate_payment(
+                report_computed_task
+            )
             payment = self.accept_result(
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                payment_computer(task_to_compute.want_to_compute_task.price),
+                payment_value,
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )

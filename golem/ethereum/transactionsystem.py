@@ -542,6 +542,8 @@ class TransactionSystem(LoopingCallService):
             (self._payments_locked + self._payment_processor.recipients_count)
 
     def unlock_funds_for_payments(self, price: int, num: int) -> None:
+        if num == 0:
+            return
         gnt = price * num
         if gnt > self._gntb_locked:
             raise Exception("Can't unlock {} GNT, locked: {}".format(
@@ -662,6 +664,9 @@ class TransactionSystem(LoopingCallService):
 
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
+
+        if gas_price and amount < gas_price:
+            raise Exception("Gas price is higer than amount")
 
         log.info(
             "Trying to withdraw %f %s to %s",

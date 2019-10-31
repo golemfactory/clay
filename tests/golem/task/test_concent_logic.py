@@ -49,6 +49,8 @@ def _call_in_place(_delay, fn, *args, **kwargs):
 class TaskToComputeConcentTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
+        self.wtct_price = 100
+        self.subtasks_count = 10
         self.keys = cryptography.ECCx(None)
         self.different_keys = cryptography.ECCx(None)
         self.requestor_keys = cryptography.ECCx(None)
@@ -56,6 +58,11 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             factories.tasks.TaskToComputeFactory(
                 requestor_ethereum_public_key=encode_hex(
                     self.requestor_keys.raw_pubkey),
+                want_to_compute_task__task_header__subtasks_count=self.subtasks_count,  # noqa pylint:disable=line-too-long
+                want_to_compute_task__task_header__max_price=self.wtct_price,
+                want_to_compute_task__task_header__subtask_timeout=360,
+                want_to_compute_task__price=self.wtct_price,
+                price=self.wtct_price // 10,
             )
         self.msg.concent_enabled = True
         self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
@@ -283,6 +290,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
             taskstate.TaskState()
+        self.task_session.requested_task_manager.get_node_id_for_subtask.\
+            return_value = None
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = self.task_session.key_id
         self.task_session.task_manager.get_node_id_for_subtask.return_value = \
@@ -503,7 +512,7 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         task_session.task_server.config_desc.offer_pooling_interval = 0
 
         with mock.patch(
-            'golem.task.tasksession.taskkeeper.compute_subtask_value',
+            'golem.task.tasksession.calculate_subtask_payment',
             mock.Mock(return_value=667),
         ):
             task_session._react_to_want_to_compute_task(self.msg)
