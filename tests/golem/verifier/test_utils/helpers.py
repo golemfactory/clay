@@ -11,8 +11,8 @@ ACCEPTABLE_OFFSET = 10
 
 def round_to_pure_colors(image: np.ndarray) -> np.ndarray:
     """
-    Function for squashing image array in to 0/255 for each channel, which translates to
-    pure colour pixels
+    Function for squashing image array in to 0/255 for each channel, which
+    translates to pure colour pixels
     """
     enhanced_colors_array = np.copy(image)
     for x, row in enumerate(image):
@@ -23,7 +23,10 @@ def round_to_pure_colors(image: np.ndarray) -> np.ndarray:
                 elif channel >= MAX - ACCEPTABLE_OFFSET:
                     enhanced_colors_array[x, y, channel_index] = MAX
                 else:
-                    raise ValueError("Pixel incomparable. Colour couldn't be identified: " + str(single_pixel))
+                    raise ValueError(
+                        "Pixel incomparable. Colour couldn't be identified: "
+                        + str(single_pixel)
+                    )
     return enhanced_colors_array
 
 
