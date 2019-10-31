@@ -24,6 +24,8 @@ from pydispatch import dispatcher
 import twisted.internet.address
 from twisted.internet.defer import Deferred
 
+from apps.appsmanager import AppsManager
+
 import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
@@ -134,6 +136,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
+        server.client.apps_manager = AppsManager()
+        server.client.apps_manager.load_all_apps()
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -187,7 +191,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ),
             subtask_timeout=1,
             max_price=1,
-            deadline=int(time.time() + 3600))
+            deadline=int(time.time() + 3600),
+            environment='BLENDER',
+        )
         task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 

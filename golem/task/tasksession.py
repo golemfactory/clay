@@ -18,6 +18,8 @@ from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
 
+from apps.appsmanager import App
+
 import golem
 from golem.core import common
 from golem.core import deferred
@@ -38,6 +40,7 @@ from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
+from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
@@ -154,6 +157,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if inactivity > self.task_server.config_desc.task_session_timeout:
             return False
         return True
+
+    def _get_app_from_header(
+            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
+        return self.task_server.client.apps_manager.get_app_for_env(
+            task_header.environment
+        )
+
+    def _get_task_class(self, task_header: message.tasks.TaskHeader):
+        app = self._get_app_from_header(task_header)
+        return app.builder.TASK_CLASS if app else Task
 
     ########################
     # BasicSession methods #
@@ -407,10 +420,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        price = calculate_subtask_payment(
-            msg.price,
-            msg.task_header.subtask_timeout,
-        )
+
+        task_class = self._get_task_class(msg.task_header)
+        budget = task_class.REQUESTOR_MARKET_STRATEGY.calculate_budget(msg)
+
         for _i in range(msg.num_subtasks):
             ctd_res = yield self._get_next_ctd(msg)
             if ctd_res is None:
@@ -433,7 +446,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
-                price=price,
+                price=budget,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
                     address=self.address).__dict__
@@ -795,11 +808,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
-        task_header = msg.task_to_compute.want_to_compute_task.task_header
-        app = self.task_server.client.apps_manager.get_app_for_env(
-            task_header.environment
-        )
-        payment_value = app.builder.TASK_CLASS.PROVIDER_MARKET_STRATEGY\
+        task_class = self._get_task_class(
+            msg.task_to_compute.want_to_compute_task.task_header)
+        payment_value = task_class.PROVIDER_MARKET_STRATEGY\
             .calculate_payment(msg.report_computed_task)
 
         self.task_server.subtask_accepted(

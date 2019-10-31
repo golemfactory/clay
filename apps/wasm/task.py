@@ -514,6 +514,12 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         results = subtask.get_result()
         return results.files if results else []
 
+    @classmethod
+    def calculate_subtask_budget(cls, task_definition: WasmTaskDefinition):  # type:ignore  # noqa pylint:disable=line-too-long
+        num_payable_subtasks = len(task_definition.options.subtasks) * \
+                               (cls.REDUNDANCY_FACTOR + 1)
+        return task_definition.budget // num_payable_subtasks
+
     @property
     def subtask_price(self) -> int:
         """WASM subtask_price is calculated based on user provided budget.
@@ -573,10 +579,11 @@ class WasmTaskBuilder(CoreTaskBuilder):
             for name, subtask_opts in options['subtasks'].items()
         }
 
-        task_def.budget = dictionary.get('budget', 1) * denoms.ether
         if 'budget' not in dictionary:
             logger.warning("Assigning task default budget: %d",
                            task_def.budget / denoms.ether)
+        else:
+            task_def.budget = dictionary.get('budget') * denoms.ether
 
         return task_def
 
