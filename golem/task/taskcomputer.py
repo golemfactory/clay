@@ -470,7 +470,6 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         self.finished_cb = finished_cb
 
     def task_given(self, ctd: ComputeTaskDef) -> None:
-        assert self.assigned_subtask is None
         self.assigned_subtask = ctd
         ProviderTimer.start()
 

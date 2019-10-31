@@ -267,7 +267,6 @@ class TaskServer(
             ),
             self._sync_pending,
             self._send_waiting_results,
-            self._request_random_task,
             self.task_computer.check_timeout,
             self.task_connections_helper.sync,
             self._sync_forwarded_session_requests,
@@ -322,51 +321,12 @@ class TaskServer(
             return
         self._request_task(task_header, wtct_kwargs)
 
-    def _request_random_task(self) -> None:
-        """ If there is no task currently computing and time elapsed from last
-            request exceeds the configured request interval, choose a random
-            task from the network to compute on our machine. """
-
-        if time.time() - self._last_task_request_time \
-                < self.config_desc.task_request_interval:
-            return
-
-        if self.task_computer.has_assigned_task() \
-                or (not self.task_computer.compute_tasks) \
-                or (not self.task_computer.runnable):
-            return
-
-        task_header = self.task_keeper.get_task(self.requested_tasks)
-        if task_header is None:
-            return
-
-        self._last_task_request_time = time.time()
-        self.task_computer.stats.increase_stat('tasks_requested')
-
-        def _request_task_error(e):
-            logger.error(
-                "Failed to request task: task_id=%r, exception=%r",
-                task_header.task_id,
-                e
-            )
-        # Unyielded deferred, fire and forget requesting a new task
-        deferred = self._request_task(task_header)
-        deferred.addErrback(_request_task_error)  # pylint: disable=no-member
-
     @inlineCallbacks
     def _request_task(self,
                       theader: dt_tasks.TaskHeader,
                       wtct_kwargs: Optional[dict] = None) -> Deferred:
 
         try:
-            performance = wtct_kwargs.get('performance')
-            if not performance:
-                env = self.get_environment_by_id(theader.environment)
-                if env is not None:
-                    performance = env.get_performance()
-                else:
-                    performance = 0.0
-
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
                 supported = supported.join(SupportStatus.err({
@@ -407,15 +367,16 @@ class TaskServer(
                 return None
 
             # Check performance
-            performance = None
-            if isinstance(env, OldEnv):
-                performance = env.get_performance()
-            else:  # NewEnv
-                env_mgr = self.task_keeper.new_env_manager
-                performance = yield env_mgr.get_performance(env_id)
-            if performance is None:
-                logger.debug("Not requesting task, benchmark is in progress.")
-                return None
+            performance = wtct_kwargs.get('performance')
+            if not performance:
+                if isinstance(env, OldEnv):
+                    performance = env.get_performance()
+                else:  # NewEnv
+                    env_mgr = self.task_keeper.new_env_manager
+                    performance = yield env_mgr.get_performance(env_id)
+                if performance is None:
+                    logger.debug("Not requesting task, benchmark in progress.")
+                    return None
 
             # Check handshake
             handshake = self.resource_handshakes.get(theader.task_owner.key)
@@ -516,7 +477,9 @@ class TaskServer(
         dispatcher.send(
             signal='golem.subtask',
             event='started',
-            ctd=msg,
+            subtask_id=msg.subtask_id,
+            price=msg.price,
+            ctd=msg.compute_task_def,
         )
         return True
 
@@ -525,7 +488,15 @@ class TaskServer(
             logger.error("Resource collected for a wrong task, %s", task_id)
             return False
 
-        self.task_computer.start_computation()
+        # self.task_computer.start_computation()
+        dispatcher.send(
+            signal='golem.resource',
+            res_id=task_id,
+            subtask_id=self.task_computer.assigned_subtask_id,
+            path=os.path.relpath(
+                self.task_computer.dir_manager.get_task_resource_dir(task_id),
+                self.task_computer.dir_manager.root_path),
+        )
         return True
 
     def resource_failure(self, task_id: str, reason: str) -> None:

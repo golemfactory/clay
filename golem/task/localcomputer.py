@@ -10,7 +10,6 @@ from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import to_unicode
 from golem.core.fileshelper import common_dir
-from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 

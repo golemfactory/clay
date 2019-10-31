@@ -256,7 +256,6 @@ class Subscription(object):
     def _handle_remove_task(self, task_id: str):
         del self.tasks[task_id]
 
-    # TODO: add num subtasks in swagger
     def want_subtask(self,
                      task_server: TaskServer,
                      task_id: str,
@@ -325,10 +324,9 @@ class Subscription(object):
         # TODO: SubtaskStatus.timedout is not send(?), but should be counted
         if status == SubtaskStatus.succeeded:
             result_path = Path(root_path).joinpath(request_json['path'])
-            result = {"data": [str(p) for p in result_path.glob('*')]}
+            result = [str(p) for p in result_path.glob('*')]
 
             # TODO: should we call
-            # golem_client.task_server.task_computer.__task_finished(subtask)
             task_server.send_results(subtask_id, task_id, result)
 
         elif status == SubtaskStatus.failed:
@@ -339,6 +337,11 @@ class Subscription(object):
             logger.warning('wrong %s result for subtask %s', status, subtask_id)
             raise InvalidSubtaskStatus(f'subtask result status {status} '
                                        'must be one of: succeeded or failed')
+
+        # task_server.task_computer._task_finished(subtask)
+        # or task_server.task_computer._handle_computation_results
+        task_server.task_keeper.task_ended(task_id)
+        task_server.task_manager.finished_cb()
 
         dispatcher.connect(self._handle_add_result_verification,
                            signal='golem.message')
