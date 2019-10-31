@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from copy import deepcopy
 from pathlib import Path, PurePath
@@ -551,15 +552,14 @@ class WasmTaskBuilder(CoreTaskBuilder):
     def build_full_definition(
             cls, task_type: 'CoreTaskTypeInfo',
             dictionary: Dict[str, Any]) -> TaskDefinition:
+        options = dictionary['options']
+
         # Resources are generated from 'input_dir' later on.
         dictionary['resources'] = []
-        # Output is determined from 'output_dir' later on.
-        dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = len(options['subtasks'])
 
         task_def: Any = super().build_full_definition(task_type, dictionary)
-        options = dictionary['options']
         task_def.options.js_name = options['js_name']
         task_def.options.wasm_name = options['wasm_name']
         task_def.options.input_dir = options['input_dir']
@@ -579,6 +579,20 @@ class WasmTaskBuilder(CoreTaskBuilder):
                            task_def.budget / denoms.ether)
 
         return task_def
+
+    @classmethod
+    def get_output_path(
+            cls,
+            dictionary: Dict[str, Any],
+            definition: 'TaskDefinition') -> str:
+        options = dictionary['options']
+
+        if 'output_path' in options:
+            output_path = options['output_path']
+        else:
+            output_path = options['output_dir']
+
+        return os.path.join(output_path, '/')
 
 
 class WasmBenchmarkTask(WasmTask):
