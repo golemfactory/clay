@@ -657,6 +657,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
+        subtask_budget = task_header.subtask_budget     # TODO stuff
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())

@@ -157,7 +157,7 @@ class DockerJob:
                      self.resources_dir, self.output_dir, self.stats_dir)
 
     def _build_stats_entrypoint(self) -> str:
-        return f'docker-cgroups-stats -o {self.STATS_DIR}/{self.STATS_FILE} ' \
+        return f'docker-cgroups-stats -b 1 -o {self.STATS_DIR}/{self.STATS_FILE} ' \
                + self.entrypoint
 
     def _cleanup(self):

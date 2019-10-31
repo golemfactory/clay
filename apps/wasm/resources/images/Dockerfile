@@ -12,7 +12,7 @@ ENV CXX=clang++-6.0
 RUN cargo install --path . --root /usr
 RUN cargo clean
 
-FROM golemfactory/base:1.7
+FROM golemfactory/base:1.8-dev
 WORKDIR /
 COPY --from=builder /usr/bin/wasm-sandbox /
 COPY scripts/ /golem/scripts/
