@@ -169,6 +169,7 @@ class TestRequestedTaskManager:
         assert row.computing_node.name == computing_node.name
         mock_client.next_subtask.assert_called_once_with(
             task_id=task_id,
+            subtask_id=res.subtask_id,
             opaque_node_id=ANY
         )
 
@@ -328,7 +329,7 @@ class TestRequestedTaskManager:
             task_id,
             self._get_computing_node(),
         )
-        self._add_next_subtask_to_client_mock(mock_client, subtask_id='123')
+        self._add_next_subtask_to_client_mock(mock_client)
         subtask2 = await self.rtm.get_next_subtask(
             task_id,
             self._get_computing_node(node_id='testnodeid2'),
@@ -392,11 +393,8 @@ class TestRequestedTaskManager:
         return task_id
 
     @staticmethod
-    def _add_next_subtask_to_client_mock(
-            client_mock,
-            subtask_id='testsubtaskid'
-    ):
-        result = Subtask(subtask_id=subtask_id, params={}, resources=[])
+    def _add_next_subtask_to_client_mock(client_mock):
+        result = Subtask(params={}, resources=[])
         client_mock.next_subtask.return_value = result
         client_mock.has_pending_subtasks.return_value = True
 

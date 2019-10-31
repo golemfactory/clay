@@ -108,6 +108,7 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
     async def next_subtask(
             self,
             task_work_dir: Path,
+            subtask_id: str,
             opaque_node_id: str
     ) -> Optional[Subtask]:
         return await self._prereq.next_subtask()  # type: ignore

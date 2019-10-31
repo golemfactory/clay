@@ -165,10 +165,10 @@ _TASK_SETTINGS = {
         },
     },
     'task_api_blender': {
-        'app_id': 'a6efc03aa659a16980fd5f079ae9b01b',
+        'app_id': 'c1e99170aa73521af6937f6680065e31',
         'name': '',  # leave empty: Task API output does not contain this name
         'resources': [],
-        'max_price_per_hour': str(50 * 10 ** 18),
+        'max_price_per_hour': str(10 ** 18),
         'max_subtasks': 1,
         'min_memory': 0,
         'task_timeout': 600000,  # 00:10:00
