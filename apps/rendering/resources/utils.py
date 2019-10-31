@@ -41,7 +41,7 @@ def handle_opencv_image_error(logger: Optional[logging.Logger] = None):
         result = Result()
         yield result
         result.success = True
-    except (cv2.error, OpenCVError):
+    except (cv2.error, OpenCVError, FileNotFoundError):
         logger.exception("Failed to operate on image with OpenCV")
 
 
