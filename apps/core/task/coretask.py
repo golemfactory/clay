@@ -151,6 +151,20 @@ class CoreTask(Task):
             timestamp=int(time.time()),
         )
 
+        logger.debug(
+            "CoreTask TaskHeader "
+            "task_id=%s, environment=%s, deadline=%s, "
+            "subtask_timeout=%s, subtasks_count=%s, "
+            "estimated_memory=%s, "
+            "max_price=%s, "
+            "concent_enabled=%s, ",
+            th.task_id, th.environment, th.deadline,
+            th.subtask_timeout, th.subtasks_count,
+            th.estimated_memory,
+            th.max_price,
+            th.concent_enabled,
+        )
+
         Task.__init__(self, th, task_definition)
 
         self.last_task = 0
