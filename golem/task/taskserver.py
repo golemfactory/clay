@@ -295,7 +295,12 @@ class TaskServer(
 
     @inlineCallbacks
     def quit(self):
-        yield deferred_from_future(self.requested_task_manager.stop())
+        try:
+            future = self.requested_task_manager.stop()
+            yield deferred_from_future(asyncio.wait_for(future, timeout=30.))
+        except asyncio.TimeoutError:
+            logger.error("RequestedTaskManager.stop has timed out")
+
         self.task_computer.quit()
 
     def get_environment_by_id(
