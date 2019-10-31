@@ -7,7 +7,7 @@ class ModelBase(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def dict_repr(self):
         """Returns dictionary representation of the current instance"""
-        pass
+        raise NotImplementedError
 
 
 class BasicModel(ModelBase):

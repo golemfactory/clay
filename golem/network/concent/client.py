@@ -25,6 +25,11 @@ from golem.terms import ConcentTermsOfUse
 from . import soft_switch
 from .helpers import ssl_kwargs
 
+
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem import model
+
 logger = logging.getLogger(__name__)
 
 
@@ -211,7 +216,16 @@ class ConcentClientService(threading.Thread):
     @property
     def enabled(self) -> bool:
         """Indicates whether this client is available and user turned it on"""
-        return self.available and soft_switch.is_on()
+        return self.available and soft_switch.concent_is_on()
+
+    @property
+    def required_as_provider(self) -> bool:
+        """
+        Indicates whether concent is required for any tasks
+        considered for computation as a provider
+        (assuming it's enabled)
+        """
+        return soft_switch.is_required_as_provider()
 
     def run(self) -> None:
         last_receive = 0.0
@@ -409,8 +423,9 @@ class ConcentClientService(threading.Thread):
         from golem.network import history
         sra_l = []
         for income in kwargs['incomes']:
+            income: 'model.TaskPayment'
             sra = history.get(
-                node_id=income.sender_node,
+                node_id=income.node,
                 subtask_id=income.subtask,
                 message_class_name='SubtaskResultsAccepted',
             )
@@ -418,8 +433,10 @@ class ConcentClientService(threading.Thread):
                 logger.debug(
                     '[CONCENT] SRA missing subtask_id=%r node_id=%r',
                     income.subtask,
-                    income.sender_node,
+                    income.node,
                 )
+                continue
+            if not sra.report_computed_task.task_to_compute.concent_enabled:
                 continue
             sra_l.append(sra)
         if not sra_l:

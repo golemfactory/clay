@@ -1,5 +1,3 @@
-
-
 from os import path
 from unittest.mock import Mock
 
@@ -91,6 +89,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
             dir_manager,
         )
         task = builder.build()
+        task.initialize(builder.dir_manager)
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
         assert not task.use_frames
@@ -116,7 +115,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert len(task.task_resources) == 1
         assert task.task_resources[0].endswith(
             'scene-Helicopter-27-cycles.blend')
-        assert task.total_tasks == 6
+        assert task.get_total_tasks() == 6
         assert task.last_task == 0
         assert task.num_tasks_received == 0
         assert task.subtasks_given == {}

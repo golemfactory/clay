@@ -1,5 +1,6 @@
+import json
+
 from golem.config.active import EthereumConfig
-from golem.monitor.serialization import defaultserializer
 from .modelbase import BasicModel
 
 
@@ -11,10 +12,17 @@ class NodeMetadataModel(BasicModel):
             client.get_key_id(),
             client.session_id)
 
-        self.os_info = defaultserializer.serialize("OSInfo", os_info)
-        self.settings = defaultserializer.serialize(
-            "ClientConfigDescriptor",
-            client.config_desc)
+        # FIXME Remove double jsonification.
+        # This model will be put through json.dumps().
+        # There is no need to dumps os_info & settings
+        self.os_info = json.dumps({
+            'type': "OSInfo",
+            'obj': os_info.__dict__,
+        })
+        self.settings = json.dumps({
+            'type': "ClientConfigDescriptor",
+            'obj': client.config_desc.__dict__,
+        })
         self.version = ver
         self.net = EthereumConfig().ACTIVE_NET
 

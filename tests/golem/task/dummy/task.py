@@ -1,7 +1,7 @@
 import random
 from os import path
 from threading import Lock
-from typing import Optional
+from typing import Optional, Callable
 
 from eth_utils import encode_hex
 import faker
@@ -13,7 +13,7 @@ from golem_messages.message import ComputeTaskDef
 import golem
 from golem.appconfig import MIN_PRICE
 from golem.core import common
-from golem.task.taskbase import Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 
 
 fake = faker.Faker()
@@ -110,8 +110,6 @@ class DummyTask(Task):
         self.resource_parts = {}
 
         self.shared_data_file = None
-        self.subtasks_count = num_subtasks
-        self.total_tasks = self.subtasks_count
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
@@ -155,17 +153,17 @@ class DummyTask(Task):
         return 0.
 
     def get_total_tasks(self):
-        return self.subtasks_count
+        return self.task_definition.subtasks_count
 
     def get_tasks_left(self):
-        return self.subtasks_count - len(self.subtask_results)
+        return self.get_total_tasks() - len(self.subtask_results)
 
     @property
     def price(self) -> int:
-        return self.subtask_price * self.total_tasks
+        return self.subtask_price * self.get_total_tasks()
 
     def needs_computation(self):
-        return len(self.subtask_data) < self.subtasks_count
+        return len(self.subtask_data) < self.get_total_tasks()
 
     def finished_computation(self):
         return self.get_tasks_left() == 0
@@ -211,10 +209,10 @@ class DummyTask(Task):
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
         # for each subtack.
-        if not len(self.subtask_results) == self.subtasks_count:
+        if not len(self.subtask_results) == self.get_total_tasks():
             print(
                 "Results vs Count: "
-                f"{len(self.subtask_results)} != {self.subtasks_count}",
+                f"{len(self.subtask_results)} != {self.get_total_tasks()}",
             )
             return False
         print(f"subtask results: {self.subtask_results}")
@@ -237,8 +235,8 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
-                             verification_finished=None):
+    def computation_finished(self, subtask_id: str, task_result: TaskResult,
+                             verification_finished: Callable[[], None]) -> None:
         print(
             "Computation finished"
             f" subtask_id: {subtask_id}"
@@ -249,7 +247,7 @@ class DummyTask(Task):
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        with open(task_result[0], 'r') as f:
+        with open(task_result.files[0], 'r') as f:
             self.subtask_results[subtask_id] = f.read()
 
         if not self.verify_subtask(subtask_id):
@@ -267,8 +265,11 @@ class DummyTask(Task):
         self.resource_parts = resource_parts
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        print('DummyTask.computation_failed called')
-        self.computation_finished(subtask_id, None)
+        print(f'DummyTask.computation_failed called. subtask_id: {subtask_id}')
+        with self._lock:
+            if subtask_id in self.assigned_subtasks:
+                node_id = self.assigned_subtasks.pop(subtask_id, None)
+                self.assigned_nodes.pop(node_id, None)
 
     def restart(self):
         print('DummyTask.restart called')
@@ -303,7 +304,7 @@ class DummyTask(Task):
     def query_extra_data_for_test_task(self):
         pass
 
-    def should_accept_client(self, node_id):
+    def should_accept_client(self, node_id, offer_hash):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
@@ -314,7 +315,7 @@ class DummyTask(Task):
         except KeyError:
             return []
 
-    def accept_client(self, node_id):
+    def accept_client(self, node_id, offer_hash, num_subtasks=1):
         print(
             "DummyTask.accept_client called"
             f" node_id={common.short_node_id(node_id)}"

@@ -16,9 +16,11 @@ from twisted.internet.defer import (
     inlineCallbacks,
     gatherResults,
     Deferred)
+from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 import golem
+from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
@@ -31,7 +33,7 @@ from golem.core.common import (
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService, IService
+from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -40,7 +42,6 @@ from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
-from golem.model import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
@@ -67,6 +68,7 @@ from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -137,6 +139,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             key=self.keys_auth.key_id,
         )
 
+        pub_key = self.keys_auth.key_id
+        pub_key_short = pub_key[:16] + '...' + pub_key[-16:]
+
+        golem.tools.talkback.update_sentry_user(
+            node_id=pub_key_short,
+            node_name=self.config_desc.node_name)
+
         self.p2pservice = None
         self.diag_service = None
 
@@ -187,7 +196,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system)
-        self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
@@ -234,6 +242,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
@@ -246,6 +255,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            api_ethereum.ETSProvider(self.transaction_system),
         )
         mapping = {}
         for rpc_provider in providers:
@@ -352,7 +362,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server:
             self.task_server.task_computer.quit()
         if self.use_monitor and self.monitor:
-            self.stop_monitor()
+            self.diag_service.stop()
+            # This effectively removes monitor dispatcher connections (weakrefs)
             self.monitor = None
         logger.debug('Stopped client services')
 
@@ -369,8 +380,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
-        self.p2pservice.add_metadata_provider(
-            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -382,6 +391,17 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             apps_manager=self.apps_manager,
             task_finished_cb=self._task_finished_cb,
         )
+
+        def get_performance_values():
+            values = self.environments_manager.get_performance_values()
+            new_env_manager = self.task_server.task_keeper.new_env_manager
+            for env_id in new_env_manager.environments():
+                value = new_env_manager.get_cached_performance(env_id)
+                if value is not None:
+                    values[env_id] = value
+            return values
+        self.p2pservice.add_metadata_provider(
+            'performance', get_performance_values)
 
         # Pause p2p and task sessions to prevent receiving messages before
         # the node is ready
@@ -465,6 +485,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_cleaner_service.start()
             self._services.append(task_cleaner_service)
 
+        @inlineCallbacks
         def connect(ports):
             logger.info(
                 'Golem is listening on addr: %s'
@@ -475,10 +496,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 self.node.hyperdrive_prv_port
             )
 
+            ports = ports + list(hyperdrive_ports)
             if self.config_desc.use_upnp:
-                self.start_upnp(ports + list(hyperdrive_ports))
-            self.node.update_public_info()
+                yield deferToThread(self.start_upnp, ports)
 
+            self.node.update_public_info()
             public_ports = [
                 self.node.p2p_pub_port,
                 self.node.pub_port,
@@ -494,9 +516,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.task_computer.register_listener(listener)
 
             if self.monitor:
-                self.diag_service.register(self.p2pservice,
-                                           self.monitor.on_peer_snapshot)
-                self.monitor.on_login()
+                self.diag_service.register(
+                    self.p2pservice,
+                    lambda data: dispatcher.send(
+                        signal="golem.monitor",
+                        event="peer_snapshot",
+                        p2p_data=data,
+                    ),
+                )
+                dispatcher.send(
+                    signal="golem.monitor",
+                    event="login",
+                )
 
             StatusPublisher.publish(Component.client, 'start',
                                     stage=Stage.post)
@@ -516,7 +547,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
-        self.p2pservice.set_resource_server(self.resource_server)
         self.p2pservice.start_accepting(listening_established=p2p.callback,
                                         listening_failure=p2p.errback)
 
@@ -542,7 +572,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                         task_id,
                         task.subtask_price,
                         unfinished_subtasks,
-                        task.header.deadline,
                     )
                 except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do
@@ -610,14 +639,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
             VMDiagnosticsProvider(),
-            self.monitor.on_vm_snapshot
+            lambda data: dispatcher.send(
+                signal="golem.monitor",
+                event="vm_snapshot",
+                vm_data=data,
+            ),
         )
         self.diag_service.start()
-
-    def stop_monitor(self):
-        logger.debug("Stopping monitor ...")
-        self.monitor.shut_down()
-        self.diag_service.stop()
 
     @rpc_utils.expose('net.peer.connect')
     def connect(self, socket_address):
@@ -650,10 +678,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.db.close()
 
     def resource_collected(self, res_id):
-        self.task_server.task_computer.resource_collected(res_id)
+        self.task_server.resource_collected(res_id)
 
     def resource_failure(self, res_id, reason):
-        self.task_server.task_computer.resource_failure(res_id, reason)
+        self.task_server.resource_failure(res_id, reason)
 
     @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
@@ -751,10 +779,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def get_key_id(self):
         return self.keys_auth.key_id
 
-    @rpc_utils.expose('crypto.difficulty')
-    def get_difficulty(self):
-        return self.keys_auth.get_difficulty()
-
     @rpc_utils.expose('net.ident.key')
     def get_node_key(self):
         key = self.node.key
@@ -832,17 +856,25 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
             self.transaction_system.get_subtasks_payments(subtask_ids)
+        statuses_of_interest = (
+            model.WalletOperation.STATUS.sent,
+            model.WalletOperation.STATUS.confirmed,
+        )
         all_sent = all(
-            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
+            p.wallet_operation.status in statuses_of_interest
             for p in subtasks_payments)
         if not subtasks_payments or not all_sent:
             task_dict['cost'] = None
             task_dict['fee'] = None
         else:
-            # Because details are JSON field
-            task_dict['cost'] = sum(p.value or 0 for p in subtasks_payments)
+            task_dict['cost'] = sum(
+                p.wallet_operation.amount for p in subtasks_payments
+            )
             task_dict['fee'] = \
-                sum(p.details.fee or 0 for p in subtasks_payments)
+                sum(
+                    p.wallet_operation.gas_cost for p in subtasks_payments
+                    if p.wallet_operation.gas_cost
+                )
 
         # Convert to string because RPC serializer fails on big numbers
         # and enums
@@ -854,18 +886,31 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return task_dict
 
     @rpc_utils.expose('comp.tasks')
-    def get_tasks(self, task_id: Optional[str] = None) \
-            -> Union[Optional[dict], Iterable[dict]]:
+    def get_tasks(
+            self,
+            task_id: Optional[str] = None,
+            return_created_tasks_only: bool = False,
+    ) -> Union[Optional[dict], Iterable[dict]]:
         if not self.task_server:
             return []
 
         if task_id:
             return self.get_task(task_id)
 
-        task_ids = list(self.task_server.task_manager.tasks.keys())
-        tasks = (self.get_task(task_id) for task_id in task_ids)
-        # Filter Nones because get_task returns Optional[dict]
-        return list(filter(None, tasks))
+        task_keys = self.task_server.task_manager.tasks.keys()
+        tasks = (self.get_task(task_id) for task_id in task_keys)
+        filter_fn = None
+
+        if return_created_tasks_only:
+            filter_fn = self._filter_task_created_status
+
+        return list(filter(filter_fn, tasks))
+
+    @staticmethod
+    def _filter_task_created_status(task: Dict) -> bool:
+        return bool(task) and task['status'] not in (
+            TaskStatus.creating.value,
+            TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
@@ -1050,7 +1095,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.task_server.change_config(self.config_desc,
                                            run_benchmarks=run_benchmarks)
 
-        self.enable_talkback(self.config_desc.enable_talkback)
+        self.enable_talkback(bool(self.config_desc.enable_talkback))
         self.app_config.change_config(self.config_desc)
 
         dispatcher.send(
@@ -1327,22 +1372,27 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return None
 
     @staticmethod
-    def enable_talkback(value):
+    def enable_talkback(value: bool):
         enable_sentry_logger(value)
 
     @rpc_utils.expose('net.peer.block')
     def block_node(
             self,
-            node_id: str,
+            node_id: Union[str, list],
             timeout_seconds: int = -1,
     ) -> Tuple[bool, Optional[str]]:
         if not self.task_server:
             return False, 'Client is not ready'
 
         try:
-            self.task_server.disallow_node(node_id,
-                                           timeout_seconds=timeout_seconds,
-                                           persist=True)
+            if isinstance(node_id, str):
+                node_id = [node_id]
+
+            for item in node_id:
+                self.task_server.disallow_node(item,
+                                               timeout_seconds=timeout_seconds,
+                                               persist=True)
+
             return True, None
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)

@@ -83,3 +83,8 @@ APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini'),
     os.path.join('apps', 'registered_test.ini')
 ]
+
+CONCENT_SUPPORTED_APPS = (
+    'blender',
+    'blender_nvgpu'
+)

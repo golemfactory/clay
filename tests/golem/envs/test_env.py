@@ -2,54 +2,57 @@ from logging import Logger
 from unittest import TestCase
 from unittest.mock import Mock, patch
 
-from golem.envs import Environment, EnvEvent, EnvEventType, EnvConfig, \
-    Prerequisites, EnvStatus
+from golem.envs import (
+    EnvConfig,
+    EnvEvent,
+    EnvEventType,
+    EnvironmentBase,
+    EnvStatus,
+    Prerequisites
+)
 
 
-class TestEnvironment(TestCase):
+class TestEnvironmentBase(TestCase):
 
-    @patch.object(Environment, "__abstractmethods__", set())
+    @patch.object(EnvironmentBase, "__abstractmethods__", set())
     def setUp(self) -> None:
         self.logger = Mock(spec=Logger)
         # pylint: disable=abstract-class-instantiated
-        self.env = Environment(logger=self.logger)  # type: ignore
+        self.env = EnvironmentBase(logger=self.logger)  # type: ignore
 
 
-class TestEmitEvents(TestEnvironment):
+class TestEmitEvents(TestEnvironmentBase):
 
     @patch('golem.envs.deferToThread')
     def test_emit_event(self, defer):
         defer.side_effect = lambda f, *args, **kwargs: f(*args, **kwargs)
-        metadata = Mock(id="env_id")
-        with patch.object(self.env, 'metadata', return_value=metadata):
-            enabled_listener1 = Mock()
-            enabled_listener2 = Mock()
-            disabled_listener = Mock()
+        enabled_listener1 = Mock()
+        enabled_listener2 = Mock()
+        disabled_listener = Mock()
 
-            self.env.listen(EnvEventType.ENABLED, enabled_listener1)
-            self.env.listen(EnvEventType.ENABLED, enabled_listener2)
-            self.env.listen(EnvEventType.DISABLED, disabled_listener)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener1)
+        self.env.listen(EnvEventType.ENABLED, enabled_listener2)
+        self.env.listen(EnvEventType.DISABLED, disabled_listener)
 
-            event = EnvEvent(
-                env_id="env_id",
-                type=EnvEventType.ENABLED,
-                details={"key": "value"}
-            )
+        event = EnvEvent(
+            type=EnvEventType.ENABLED,
+            details={"key": "value"}
+        )
 
-            self.env._emit_event(event.type, event.details)
+        self.env._emit_event(event.type, event.details)
 
-            enabled_listener1.assert_called_once_with(event)
-            enabled_listener2.assert_called_once_with(event)
-            disabled_listener.assert_not_called()
+        enabled_listener1.assert_called_once_with(event)
+        enabled_listener2.assert_called_once_with(event)
+        disabled_listener.assert_not_called()
 
-    @patch('golem.envs.Environment._emit_event')
+    @patch('golem.envs.EnvironmentBase._emit_event')
     def test_env_enabled(self, emit):
         self.env._env_enabled()
         self.assertEqual(self.env.status(), EnvStatus.ENABLED)
         self.logger.info.assert_called_once_with('Environment enabled.')
         emit.assert_called_once_with(EnvEventType.ENABLED)
 
-    @patch('golem.envs.Environment._emit_event')
+    @patch('golem.envs.EnvironmentBase._emit_event')
     def test_env_disabled(self, emit):
         self.env._status = EnvStatus.ENABLED
         self.env._env_disabled()
@@ -57,7 +60,7 @@ class TestEmitEvents(TestEnvironment):
         self.logger.info.assert_called_once_with('Environment disabled.')
         emit.assert_called_once_with(EnvEventType.DISABLED)
 
-    @patch('golem.envs.Environment._emit_event')
+    @patch('golem.envs.EnvironmentBase._emit_event')
     def test_config_updated(self, emit):
         config = Mock(spec=EnvConfig)
         self.env._config_updated(config)
@@ -65,7 +68,7 @@ class TestEmitEvents(TestEnvironment):
         emit.assert_called_once_with(
             EnvEventType.CONFIG_UPDATED, {'config': config})
 
-    @patch('golem.envs.Environment._emit_event')
+    @patch('golem.envs.EnvironmentBase._emit_event')
     def test_prerequisites_installed(self, emit):
         prereqs = Mock(spec=Prerequisites)
         self.env._prerequisites_installed(prereqs)
@@ -74,7 +77,7 @@ class TestEmitEvents(TestEnvironment):
             EnvEventType.PREREQUISITES_INSTALLED,
             {'prerequisites': prereqs})
 
-    @patch('golem.envs.Environment._emit_event')
+    @patch('golem.envs.EnvironmentBase._emit_event')
     def test_error_occurred(self, emit):
         error = RuntimeError("test")
         message = "error message"
@@ -88,7 +91,7 @@ class TestEmitEvents(TestEnvironment):
             })
 
 
-class TestListen(TestEnvironment):
+class TestListen(TestEnvironmentBase):
 
     def test_single_listener(self):
         listener = Mock()

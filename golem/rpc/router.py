@@ -4,7 +4,8 @@ import logging
 import os
 from typing import Iterable, Optional
 
-from crossbar.common import checkconfig
+from crossbar.common.checkconfig import check_config
+from crossbar.personality import Personality
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc import cert
@@ -55,35 +56,37 @@ class CrossbarRouter(object):
 
         self.node = None
         self.pubkey = None
+        self.personality_cls = Personality
 
         if crossbar_serializer is None:
             crossbar_serializer = SerializerType.msgpack
 
-        self.config = self._build_config(self.address,
-                                         [crossbar_serializer.name],
-                                         self.cert_manager)
+        self.config = self._build_config(address=self.address,
+                                         serializers=[crossbar_serializer.name],
+                                         cert_manager=self.cert_manager)
 
+        check_config(self.personality_cls, self.config)
         logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
     def start(self, reactor):
         # imports reactor
-        from crossbar.controller.node import Node, default_native_workers
+        from crossbar.node.node import Node
 
         if self.address.ssl:
             self.cert_manager.generate_if_needed()
 
-        self.node = Node(self.working_dir, reactor=reactor)
-        self.pubkey = self.node.maybe_generate_key(self.working_dir)
+        self.node = Node(personality=self.personality_cls,
+                         cbdir=self.working_dir,
+                         reactor=reactor)
 
-        workers = default_native_workers()
+        self.node.load_keys(self.working_dir)
+        self.node.load_config(None, self.config)
 
-        checkconfig.check_config(self.config, workers)
-        self.node._config = self.config
         return self.node.start()
 
     @inlineCallbacks
     def stop(self):
-        yield self.node._controller.shutdown()  # noqa # pylint: disable=protected-access
+        yield self.node.stop()
 
     @staticmethod
     def _users_config(cert_manager: cert.CertificateManager):
@@ -136,7 +139,7 @@ class CrossbarRouter(object):
             'version': 2,
             'controller': {
                 'options': {
-                    'shutdown': ['shutdown_on_shutdown_requested']
+                    'shutdown': ['shutdown_on_shutdown_requested'],
                 }
             },
             'workers': [{

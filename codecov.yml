@@ -14,9 +14,8 @@ coverage:
         target: auto
     changes: false
   ignore:
-    - "apps/core/benchmark/minilight/*"
-    - "apps/rendering/resources/taskcollector/*"
     - "golem/database/schemas"
+    - "golem/envs/docker/benchmark/cpu/minilight/*"
     - "golem/testutils.py"
     - "golem/tools/pyuic.py"
     - "save/*"

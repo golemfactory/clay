@@ -13,14 +13,20 @@ from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
+from twisted.internet.defer import inlineCallbacks, Deferred
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 import golem
+from golem.core import deferred as core_deferred
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
-from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.environments.environmentsmanager import \
+    EnvironmentsManager as OldEnvManager
 from golem.network.hyperdrive.client import HyperdriveClient
+from golem.task import taskarchiver
 from golem.task import taskkeeper
+from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
@@ -30,7 +36,7 @@ from golem.tools.assertlogs import LogTestCase
 def async_run(request, success=None, error=None):
     try:
         result = request.method(*request.args, **request.kwargs)
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-except
         if error:
             error(exc)
     else:
@@ -40,18 +46,18 @@ def async_run(request, success=None, error=None):
 
 class TestTaskHeaderKeeperIsSupported(LogTestCase):
     def setUp(self) -> None:
-        em = EnvironmentsManager()
-        em.environments = {}
-        em.support_statuses = {}
         self.tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0)
+        self.tk.old_env_manager.environments = {}
+        self.tk.old_env_manager.support_statuses = {}
 
     def _add_environment(self):
         e = Environment()
         e.accept_tasks = True
-        self.tk.environments_manager.add_environment(e)
+        self.tk.old_env_manager.add_environment(e)
 
     def test_supported(self):
         self._add_environment()
@@ -64,12 +70,12 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         header.environment = None
         header.max_price = None
         header.min_version = None
-        self.assertFalse(self.tk.check_support(header))
+        self.assertFalse(core_deferred.sync_wait(self.tk.check_support(header)))
 
     def test_environment_missing(self):
         header = get_task_header()
         header.environment = Environment.get_id()
-        supported = self.tk.check_support(header)
+        supported = core_deferred.sync_wait(self.tk.check_support(header))
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
 
@@ -77,7 +83,7 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         self._add_environment()
         header = get_task_header()
         header.max_price = 0
-        supported = self.tk.check_support(header)
+        supported = core_deferred.sync_wait(self.tk.check_support(header))
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
 
@@ -90,7 +96,9 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         config_desc.min_price = 13.0
         self.tk.change_config(config_desc)
         with self.assertLogs('golem.task.taskkeeper', level='INFO'):
-            self.assertFalse(self.tk.check_support(header))
+            self.assertFalse(
+                core_deferred.sync_wait(self.tk.check_support(header)),
+            )
 
     def test_price_equal(self):
         self._add_environment()
@@ -108,210 +116,204 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         header.mask.matches = mock.Mock(return_value=False)
 
         with self.assertNoLogs('golem.task.taskkeeper', level='INFO'):
-            supported = self.tk.check_support(header)
+            supported = core_deferred.sync_wait(self.tk.check_support(header))
 
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.MASK_MISMATCH, supported.desc)
 
 
-class TestTaskHeaderKeeper(LogTestCase):
-    def test_init(self):
-        TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0
-        )
-
-    @mock.patch('golem.task.taskarchiver.TaskArchiver')
-    def test_change_config(self, tar):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+class TaskHeaderKeeperBase(LogTestCase):
+    def setUp(self):
+        super().setUp()
+        self.thk = taskkeeper.TaskHeaderKeeper(
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10.0,
-            task_archiver=tar)
+        )
+
+
+class TestTaskHeaderKeeperWithArchiver(TaskHeaderKeeperBase):
+    def setUp(self):
+        super().setUp()
+        self.tar = mock.Mock(spec=taskarchiver.TaskArchiver)
+        self.thk = TaskHeaderKeeper(
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
+            node=dt_p2p_factory.Node(),
+            min_price=10.0,
+            task_archiver=self.tar,
+        )
+
+    def test_change_config(self):
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.old_env_manager.add_environment(e)
 
         task_header = get_task_header()
         task_id = task_header.task_id
         task_header.max_price = 9.0
-        tk.add_task_header(task_header)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id, tk.task_headers)
+        self.thk.add_task_header(task_header)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id, self.thk.task_headers)
 
         task_header = get_task_header("abc")
         task_id2 = task_header.task_id
         task_header.max_price = 10.0
-        tk.add_task_header(task_header)
-        self.assertIn(task_id2, tk.supported_tasks)
-        self.assertIn(task_id2, tk.task_headers)
+        self.thk.add_task_header(task_header)
+        self.assertIn(task_id2, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.task_headers)
 
         config_desc = mock.Mock()
         config_desc.min_price = 10.0
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
         config_desc.min_price = 8.0
-        tk.change_config(config_desc)
-        self.assertIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
         config_desc.min_price = 11.0
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertNotIn(task_id2, tk.supported_tasks)
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertNotIn(task_id2, self.thk.supported_tasks)
         # Make sure the tasks stats are properly archived
-        tar.reset_mock()
+        self.tar.reset_mock()
         config_desc.min_price = 9.5
-        tk.change_config(config_desc)
-        self.assertNotIn(task_id, tk.supported_tasks)
-        self.assertIn(task_id2, tk.supported_tasks)
-        tar.add_support_status.assert_any_call(
+        self.thk.change_config(config_desc)
+        self.assertNotIn(task_id, self.thk.supported_tasks)
+        self.assertIn(task_id2, self.thk.supported_tasks)
+        self.tar.add_support_status.assert_any_call(
             task_id, SupportStatus(False, {UnsupportReason.MAX_PRICE: 9.0}))
-        tar.add_support_status.assert_any_call(
+        self.tar.add_support_status.assert_any_call(
             task_id2, SupportStatus(True, {}))
 
-    def test_get_task(self):
-        em = EnvironmentsManager()
-        em.environments = {}
-        em.support_statuses = {}
-
-        tk = TaskHeaderKeeper(
-            environments_manager=em,
-            node=dt_p2p_factory.Node(),
-            min_price=10)
-
-        self.assertIsNone(tk.get_task())
-        task_header = get_task_header("uvw")
-        self.assertTrue(tk.add_task_header(task_header))
-        self.assertIsNone(tk.get_task())
+    def test_task_header_update_stats(self):
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.old_env_manager.add_environment(e)
+        task_header = get_task_header("good")
+        assert self.thk.add_task_header(task_header)
+        self.tar.add_task.assert_called_with(mock.ANY)
+        task_id = task_header.task_id
+        self.tar.add_support_status.assert_any_call(
+            task_id, SupportStatus(True, {}))
+
+        self.tar.reset_mock()
+        task_header2 = get_task_header("bad")
+        task_id2 = task_header2.task_id
+        task_header2.max_price = 1.0
+        assert self.thk.add_task_header(task_header2)
+        self.tar.add_task.assert_called_with(mock.ANY)
+        self.tar.add_support_status.assert_any_call(
+            task_id2, SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
+
+
+class TestTaskHeaderKeeper(TaskHeaderKeeperBase):
+    def test_get_task(self):
+        old_env_manager = OldEnvManager()
+        # This is necessary because OldEnvManager is a singleton
+        old_env_manager.environments = {}
+        old_env_manager.support_statuses = {}
+
+        self.assertIsNone(self.thk.get_task())
+        task_header = get_task_header("uvw")
+        self.assertTrue(self.thk.add_task_header(task_header))
+        self.assertIsNone(self.thk.get_task())
+        e = Environment()
+        e.accept_tasks = True
+        self.thk.old_env_manager.add_environment(e)
         task_header2 = get_task_header("xyz")
-        self.assertTrue(tk.add_task_header(task_header2))
-        th = tk.get_task()
+        self.assertTrue(self.thk.add_task_header(task_header2))
+        th = self.thk.get_task()
         self.assertEqual(task_header2.to_dict(), th.to_dict())
 
     @freeze_time(as_arg=True)
-    def test_old_tasks(frozen_time, _):  # pylint: disable=no-self-argument
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
+    def test_old_tasks(frozen_time, self):  # pylint: disable=no-self-argument
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.old_env_manager.add_environment(e)
         task_header = get_task_header()
         task_header.deadline = timeout_to_deadline(10)
-        assert tk.add_task_header(task_header)
+        assert self.thk.add_task_header(task_header)
 
         task_id = task_header.task_id
         task_header2 = get_task_header("abc")
         task_header2.deadline = timeout_to_deadline(1)
         task_id2 = task_header2.task_id
-        assert tk.add_task_header(task_header2)
-        assert tk.task_headers.get(task_id2) is not None
-        assert tk.task_headers.get(task_id) is not None
-        assert tk.removed_tasks.get(task_id2) is None
-        assert tk.removed_tasks.get(task_id) is None
-        assert len(tk.supported_tasks) == 2
+        assert self.thk.add_task_header(task_header2)
+        assert self.thk.task_headers.get(task_id2) is not None
+        assert self.thk.task_headers.get(task_id) is not None
+        assert self.thk.removed_tasks.get(task_id2) is None
+        assert self.thk.removed_tasks.get(task_id) is None
+        assert len(self.thk.supported_tasks) == 2
 
         frozen_time.tick(timedelta(seconds=1.1))  # pylint: disable=no-member
-        tk.remove_old_tasks()
-        assert tk.task_headers.get(task_id2) is None
-        assert tk.task_headers.get(task_id) is not None
-        assert tk.removed_tasks.get(task_id2) is not None
-        assert tk.removed_tasks.get(task_id) is None
-        assert len(tk.supported_tasks) == 1
-        assert tk.supported_tasks[0] == task_id
-
-    @mock.patch('golem.task.taskarchiver.TaskArchiver')
-    def test_task_header_update_stats(self, tar):
-        e = Environment()
-        e.accept_tasks = True
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10,
-            task_archiver=tar)
-        tk.environments_manager.add_environment(e)
-        task_header = get_task_header("good")
-        assert tk.add_task_header(task_header)
-        tar.add_task.assert_called_with(mock.ANY)
-        task_id = task_header.task_id
-        tar.add_support_status.assert_any_call(
-            task_id, SupportStatus(True, {}))
-
-        tar.reset_mock()
-        task_header2 = get_task_header("bad")
-        task_id2 = task_header2.task_id
-        task_header2.max_price = 1.0
-        assert tk.add_task_header(task_header2)
-        tar.add_task.assert_called_with(mock.ANY)
-        tar.add_support_status.assert_any_call(
-            task_id2, SupportStatus(False, {UnsupportReason.MAX_PRICE: 1.0}))
+        self.thk.remove_old_tasks()
+        assert self.thk.task_headers.get(task_id2) is None
+        assert self.thk.task_headers.get(task_id) is not None
+        assert self.thk.removed_tasks.get(task_id2) is not None
+        assert self.thk.removed_tasks.get(task_id) is None
+        assert len(self.thk.supported_tasks) == 1
+        assert self.thk.supported_tasks[0] == task_id
 
     @freeze_time(as_arg=True)
     def test_task_limit(frozen_time, self):  # pylint: disable=no-self-argument
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
-        limit = tk.max_tasks_per_requestor
+        limit = self.thk.max_tasks_per_requestor
 
         thd = get_task_header("ta")
         thd.deadline = timeout_to_deadline(0.1)
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         ids = [thd.task_id]
         for i in range(1, limit):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
-            tk.add_task_header(thd)
+            self.thk.add_task_header(thd)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
 
         thd = get_task_header("tb0")
         tb_id = thd.task_id
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
 
-        self.assertIn(tb_id, tk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
         frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
-        tk.add_task_header(thd)
-        self.assertNotIn(new_task_id, tk.task_headers)
+        self.thk.add_task_header(thd)
+        self.assertNotIn(new_task_id, self.thk.task_headers)
 
         for id_ in ids:
-            self.assertIn(id_, tk.task_headers)
-        self.assertIn(tb_id, tk.task_headers)
+            self.assertIn(id_, self.thk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
         frozen_time.tick(timedelta(seconds=0.1))  # pylint: disable=no-member
-        tk.remove_old_tasks()
+        self.thk.remove_old_tasks()
 
         thd = get_task_header("ta")
         new_task_id = thd.task_id
-        tk.add_task_header(thd)
-        self.assertIn(new_task_id, tk.task_headers)
+        self.thk.add_task_header(thd)
+        self.assertIn(new_task_id, self.thk.task_headers)
 
-        self.assertNotIn(ids[0], tk.task_headers)
+        self.assertNotIn(ids[0], self.thk.task_headers)
         for i in range(1, limit):
-            self.assertIn(ids[i], tk.task_headers)
-        self.assertIn(tb_id, tk.task_headers)
+            self.assertIn(ids[i], self.thk.task_headers)
+        self.assertIn(tb_id, self.thk.task_headers)
 
     @freeze_time(as_arg=True)
     # pylint: disable=no-self-argument
     def test_check_max_tasks_per_owner(freezer, self):
 
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            old_env_manager=OldEnvManager(),
+            new_env_manager=NewEnvManager(),
             node=dt_p2p_factory.Node(),
             min_price=10,
             max_tasks_per_requestor=10)
@@ -392,45 +394,41 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert running_task_id not in tk.running_tasks
 
     def test_get_unsupport_reasons(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
         e = Environment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        self.thk.old_env_manager.add_environment(e)
 
         # Supported task
         thd = get_task_header("good")
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong version
         thd = get_task_header("wrong version")
         thd.min_version = "42.0.17"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong environment
         thd = get_task_header("wrong env")
         thd.environment = "UNKNOWN"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong price
         thd = get_task_header("wrong price")
         thd.max_price = 1
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # Wrong price and version
         thd = get_task_header("wrong price and version")
         thd.min_version = "42.0.17"
         thd.max_price = 1
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
         # And one more with wrong version
         thd = get_task_header("wrong version 2")
         thd.min_version = "42.0.44"
-        tk.add_task_header(thd)
+        self.thk.add_task_header(thd)
 
-        reasons = tk.get_unsupport_reasons()
+        reasons = self.thk.get_unsupport_reasons()
         # 2 tasks with wrong price
         self.assertIn({'avg': 7, 'reason': 'max_price', 'ntasks': 2}, reasons)
         # 1 task with wrong environment
@@ -442,16 +440,19 @@ class TestTaskHeaderKeeper(LogTestCase):
                        'ntasks': 1}, reasons)
 
     def test_get_owner(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
         header = get_task_header()
         owner = header.task_owner.key
         key_id = header.task_id
-        tk.add_task_header(header)
-        assert tk.get_owner(key_id) == owner
-        assert tk.get_owner("UNKNOWN") is None
+        self.thk.add_task_header(header)
+        assert self.thk.get_owner(key_id) == owner
+        assert self.thk.get_owner("UNKNOWN") is None
+
+
+class TestTHKTaskEnded(TaskHeaderKeeperBase):
+    def test_task_not_found(self):
+        task_id = 'non existent id'
+        self.assertNotIn(task_id, self.thk.running_tasks)
+        self.thk.task_ended(task_id)
 
 
 def get_dict_task_header(key_id_seed="kkk"):
@@ -477,8 +478,9 @@ def get_dict_task_header(key_id_seed="kkk"):
     }
 
 
-def get_task_header(key_id_seed="kkk"):
+def get_task_header(key_id_seed="kkk", **kwargs):
     th_dict_repr = get_dict_task_header(key_id_seed=key_id_seed)
+    th_dict_repr.update(kwargs)
     return dt_tasks.TaskHeader(**th_dict_repr)
 
 
@@ -504,7 +506,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
             test_headers.append(header)
             price_bid = int(random.random() * 100)
-            ctk.add_request(header, price_bid)
+            ctk.add_request(header, price_bid, 0.0)
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
@@ -569,28 +571,28 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header.task_id = "xyz"
         header.subtask_timeout = 1
         with self.assertRaises(TypeError):
-            ctk.add_request(header, "not a number")
+            ctk.add_request(header, "not a number", 0.0)
         with self.assertRaises(ValueError):
-            ctk.add_request(header, -2)
-        ctk.add_request(header, 5 * 10 ** 18)
+            ctk.add_request(header, -2, 0.0)
+        ctk.add_request(header, 5 * 10 ** 18, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        ctk.add_request(header, 1 * 10 ** 17)
+        ctk.add_request(header, 1 * 10 ** 17, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
-        ctk.add_request(header, 314 * 10 ** 15)
+        ctk.add_request(header, 314 * 10 ** 15, 0.0)
         self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
         with self.assertRaises(ValueError):
-            ctk.add_request(thread, -1)
+            ctk.add_request(thread, -1, 0.0)
         with self.assertRaises(TypeError):
-            ctk.add_request(thread, '1')
-        ctk.add_request(thread, 12)
+            ctk.add_request(thread, '1', 0.0)
+        ctk.add_request(thread, 12, 0.0)
 
         ctd = ComputeTaskDef()
         ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
@@ -606,11 +608,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
     def test_receive_subtask_problems(self):
-        ctk = CompTaskKeeper(Path(self.path), False)
+        ctk = CompTaskKeeper(Path(self.path))
         th = get_task_header()
         task_id = th.task_id
         price_bid = 5
-        ctk.add_request(th, price_bid)
+        ctk.add_request(th, price_bid, 0.0)
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -646,7 +648,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk = CompTaskKeeper(self.new_path)
         header = get_task_header()
         task_id = header.task_id
-        ctk.add_request(header, 40003)
+        ctk.add_request(header, 40003, 0.0)
         ctk.active_tasks[task_id].requests = 0
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         comp_task_def = {
@@ -719,14 +721,340 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.restore()
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
 
-    @mock.patch('golem.core.golem_async.async_run', async_run)
-    def test_resources_options(self):
-        task_path = Path(self.path)
-        self._dump_some_tasks(task_path)
-        ctk = CompTaskKeeper(task_path)
 
-        assert ctk.get_resources_options("unknown") is None
-        subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
-        res = ctk.get_resources_options(subtask_id)
-        assert isinstance(res, dict)
-        assert res['client_id'] == HyperdriveClient.CLIENT_ID
+class TestTaskHeaderKeeperBase(TwistedTestCase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.old_env_manager = mock.Mock(spec=OldEnvManager)
+        self.new_env_manager = mock.Mock(spec=NewEnvManager)
+        self.keeper = TaskHeaderKeeper(
+            old_env_manager=self.old_env_manager,
+            new_env_manager=self.new_env_manager,
+            node=dt_p2p_factory.Node()
+        )
+
+    def _patch_keeper(self, method):
+        patch = mock.patch(f'golem.task.taskkeeper.TaskHeaderKeeper.{method}')
+        self.addCleanup(patch.stop)
+        return patch.start()
+
+
+class TestCheckSupport(TestTaskHeaderKeeperBase):
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.check_new_env = self._patch_keeper('_check_new_environment')
+        self.check_old_env = self._patch_keeper('_check_old_environment')
+        self.check_mask = self._patch_keeper('check_mask')
+        self.check_price = self._patch_keeper('check_price')
+
+    @inlineCallbacks
+    def test_new_env_unsupported(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: 'test_env'
+        })
+        self.check_new_env.return_value = Deferred()
+        self.check_new_env.return_value.callback(status)
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(
+            environment="test_env",
+            environment_prerequisites={'key': 'value'}
+        )
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_called_once_with(
+            header.environment, header.environment_prerequisites)
+        self.check_old_env.assert_not_called()
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_new_env_ok(self):
+        # Given
+        status = SupportStatus.ok()
+        self.check_new_env.return_value = Deferred()
+        self.check_new_env.return_value.callback(status)
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(
+            environment="test_env",
+            environment_prerequisites={'key': 'value'}
+        )
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_called_once_with(
+            header.environment, header.environment_prerequisites)
+        self.check_old_env.assert_not_called()
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_old_env_unsupported(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: 'test_env'
+        })
+        self.check_old_env.return_value = status
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_old_env_ok(self):
+        # Given
+        status = SupportStatus.ok()
+        self.check_old_env.return_value = status
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_mask_mismatch(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.MASK_MISMATCH: '0xdeadbeef'
+        })
+        self.check_old_env.return_value = SupportStatus.ok()
+        self.check_mask.return_value = status
+        self.check_price.return_value = SupportStatus.ok()
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_price_too_low(self):
+        # Given
+        status = SupportStatus.err({
+            UnsupportReason.MAX_PRICE: 10
+        })
+        self.check_old_env.return_value = SupportStatus.ok()
+        self.check_mask.return_value = SupportStatus.ok()
+        self.check_price.return_value = status
+
+        # When
+        header = get_task_header(environment="test_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(result, status)
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+    @inlineCallbacks
+    def test_all_wrong(self):
+        # Given
+        env_status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_MISSING: "test_env"
+        })
+        mask_status = SupportStatus.err({
+            UnsupportReason.MASK_MISMATCH: '0xdeadbeef'
+        })
+        price_status = SupportStatus.err({
+            UnsupportReason.MAX_PRICE: 10
+        })
+        self.check_old_env.return_value = env_status
+        self.check_mask.return_value = mask_status
+        self.check_price.return_value = price_status
+
+        # When
+        header = get_task_header(environment="new_env")
+        result = yield self.keeper.check_support(header)
+
+        # Then
+        self.assertEqual(
+            result, env_status.join(mask_status).join(price_status))
+        self.check_new_env.assert_not_called()
+        self.check_old_env.assert_called_once_with(header.environment)
+        self.check_mask.assert_called_once_with(header)
+        self.check_price.assert_called_once_with(header)
+
+
+class TestCheckOldEnvironment(TestTaskHeaderKeeperBase):
+
+    def test_ok(self):
+        # Given
+        self.old_env_manager.accept_tasks.return_value = True
+        self.old_env_manager.get_support_status.return_value = \
+            SupportStatus.ok()
+
+        # When
+        env_id = "test_env"
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, SupportStatus.ok())
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_not_accepting_tasks(self):
+        # Given
+        self.old_env_manager.accept_tasks.return_value = False
+        self.old_env_manager.get_support_status.return_value = \
+            SupportStatus.ok()
+
+        # When
+        env_id = "test_env"
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env_id
+        }))
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_env_unsupported(self):
+        # Given
+        env_id = "test_env"
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        })
+        self.old_env_manager.accept_tasks.return_value = True
+        self.old_env_manager.get_support_status.return_value = status
+
+        # When
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, status)
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+    def test_env_unsupported_and_not_accepting_tasks(self):
+        # Given
+        env_id = "test_env"
+        status = SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        })
+        self.old_env_manager.accept_tasks.return_value = False
+        self.old_env_manager.get_support_status.return_value = status
+
+        # When
+        result = self.keeper._check_old_environment(env_id)
+
+        # Then
+        self.assertEqual(result, status.join(SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env_id
+        })))
+        self.old_env_manager.accept_tasks.assert_called_once_with(env_id)
+        self.old_env_manager.get_support_status.assert_called_once_with(env_id)
+
+
+class TestCheckNewEnvironment(TestTaskHeaderKeeperBase):
+
+    @inlineCallbacks
+    def test_env_missing(self):
+        # Given
+        self.new_env_manager.environment.side_effect = KeyError("test")
+
+        # When
+        env_id = "test_env"
+        result = yield self.keeper._check_new_environment(env_id, {})
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_MISSING: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+
+    @inlineCallbacks
+    def test_prerequisites_parsing_error(self):
+        # Given
+        env = self.new_env_manager.environment.return_value
+        env.parse_prerequisites.side_effect = ValueError("test")
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_not_called()
+
+    @inlineCallbacks
+    def test_prerequisites_installation_error(self):
+        # Given
+        install_result = Deferred()
+        install_result.callback(False)  # False means installation failed
+        env = self.new_env_manager.environment.return_value
+        env.install_prerequisites.return_value = install_result
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.err({
+            UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
+        }))
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_called_once_with(
+            env.parse_prerequisites())
+
+    @inlineCallbacks
+    def test_ok(self):
+        # Given
+        install_result = Deferred()
+        install_result.callback(True)  # True means installation succeeded
+        env = self.new_env_manager.environment.return_value
+        env.install_prerequisites.return_value = install_result
+
+        # When
+        env_id = "test_env"
+        prereqs_dict = {"key": "value"}
+        result = yield self.keeper._check_new_environment(env_id, prereqs_dict)
+
+        # Then
+        self.assertEqual(result, SupportStatus.ok())
+        self.new_env_manager.environment.assert_called_once_with(env_id)
+        env.parse_prerequisites.assert_called_once_with(prereqs_dict)
+        env.install_prerequisites.assert_called_once_with(
+            env.parse_prerequisites())

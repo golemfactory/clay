@@ -30,6 +30,7 @@ from golem.resource.dirmanager import DirManager
 from golem.task import rpc as task_rpc
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
+from tests.factories import model as model_factory
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
@@ -68,9 +69,10 @@ def create_client(datadir, node_name):
     app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
-    config_desc.key_difficulty = 0
     config_desc.use_upnp = False
     config_desc.node_name = node_name
+    config_desc.max_memory_size = 1024 * 1024  # 1 GiB
+    config_desc.num_cores = 1
 
     from golem.core.keysauth import KeysAuth
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
@@ -78,7 +80,6 @@ def create_client(datadir, node_name):
             datadir=datadir,
             private_key_name=faker.Faker().pystr(),
             password='password',
-            difficulty=config_desc.key_difficulty,
         )
 
     database = Database(
@@ -116,7 +117,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
-    ets.add_payment_info.return_value = int(time.time())
+    ets.add_payment_info.return_value = model_factory.TaskPayment()
     return ets
 
 
@@ -157,23 +158,24 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     client = create_client(datadir, '[Requestor] DUMMY')
     client.are_terms_accepted = lambda: True
-    client.start()
-    report("Started in {:.1f} s".format(time.time() - start_time))
 
-    dummy_env = DummyEnvironment()
-    client.environments_manager.add_environment(dummy_env)
+    def _start():
+        client.start()
+        report("Started in {:.1f} s".format(time.time() - start_time))
 
-    params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-    task = DummyTask(client.get_node_name(), params, num_subtasks,
-                     client.keys_auth.public_key)
-    task.initialize(DirManager(datadir))
-    task_rpc.enqueue_new_task(client, task)
+        dummy_env = DummyEnvironment()
+        client.environments_manager.add_environment(dummy_env)
 
-    port = client.p2pservice.cur_port
-    requestor_addr = "{}:{}".format(client.node.prv_addr, port)
-    report("Listening on {}".format(requestor_addr))
+        params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
+        task = DummyTask(client.get_node_name(), params, num_subtasks,
+                         client.keys_auth.public_key)
+        task.initialize(DirManager(datadir))
+        task_rpc.enqueue_new_task(client, task)
 
-    def report_status():
+        port = client.p2pservice.cur_port
+        requestor_addr = "{}:{}".format(client.node.prv_addr, port)
+        report("Listening on {}".format(requestor_addr))
+
         while True:
             time.sleep(1)
             if not task.finished_computation():
@@ -185,7 +187,7 @@ def run_requesting_node(datadir, num_subtasks=3):
             shutdown()
             return
 
-    reactor.callInThread(report_status)
+    reactor.callInThread(_start)
     reactor.run()
     return client  # Used in tests, with mocked reactor
 
@@ -217,19 +219,20 @@ def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
 
     client = create_client(datadir, f'[Provider{ provider_id }] DUMMY')
     client.are_terms_accepted = lambda: True
-    client.start()
-    client.task_server.task_computer.support_direct_computation = True
-    report("Started in {:.1f} s".format(time.time() - start_time))
 
-    dummy_env = DummyEnvironment()
-    dummy_env.accept_tasks = True
-    client.environments_manager.add_environment(dummy_env)
+    def _start():
+        client.start()
+        client.task_server.task_computer.support_direct_computation = True
+        report("Started in {:.1f} s".format(time.time() - start_time))
 
-    report("Connecting to requesting node at {}:{} ..."
-           .format(peer_address.address, peer_address.port))
-    client.connect(peer_address)
+        dummy_env = DummyEnvironment()
+        dummy_env.accept_tasks = True
+        client.environments_manager.add_environment(dummy_env)
 
-    def report_status(fail_after=None):
+        report("Connecting to requesting node at {}:{} ..."
+               .format(peer_address.address, peer_address.port))
+        client.connect(peer_address)
+
         t0 = time.time()
         while True:
             if fail_after and time.time() - t0 > fail_after:
@@ -239,7 +242,7 @@ def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
                 return
             time.sleep(1)
 
-    reactor.callInThread(report_status, fail_after)
+    reactor.callInThread(_start)
     reactor.run()
     return client  # Used in tests, with mocked reactor
 
@@ -248,7 +251,7 @@ def run_computing_node(datadir, peer_address, provider_id, fail_after=None):
 task_result = None
 
 
-def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
+def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=240,
                    node_failure_times=None):
 
     # We need to pass the PYTHONPATH to the child processes

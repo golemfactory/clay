@@ -3,6 +3,7 @@ import logging.config
 import os
 import subprocess
 import sys
+import threading
 from calendar import timegm
 from datetime import datetime
 from functools import wraps
@@ -11,6 +12,7 @@ from typing import Any, Callable, cast, List, TypeVar
 import pytz
 
 from golem.core import simpleenv
+from golem.decorators import locked
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -317,18 +319,25 @@ def config_logging(
 
 
 def install_reactor():
-
-    if is_windows():
-        from twisted.internet import iocpreactor
-        iocpreactor.install()
-    elif is_osx():
-        from twisted.internet import kqreactor
-        kqreactor.install()
+    import asyncio
+    from twisted.internet import asyncioreactor
+    asyncioreactor.install(asyncio.get_event_loop())
 
     from twisted.internet import reactor
+    _patch_modify_io(reactor)
+
     from golem.core.variables import REACTOR_THREAD_POOL_SIZE
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
+
+
+def _patch_modify_io(reactor):
+    lock = threading.Lock()
+
+    reactor.removeWriter = locked(lock)(reactor.removeWriter)
+    reactor.addWriter = locked(lock)(reactor.addWriter)
+    reactor.removeReader = locked(lock)(reactor.removeReader)
+    reactor.addReader = locked(lock)(reactor.addReader)
 
 
 if is_windows():

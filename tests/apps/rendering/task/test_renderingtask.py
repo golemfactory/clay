@@ -1,5 +1,6 @@
 import os
 from os import path, remove
+from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
@@ -11,10 +12,8 @@ from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
     OpenCVError
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
-                                               RenderingTaskBuilderError,
                                                RenderingTaskBuilder,
                                                SUBTASK_MIN_TIMEOUT)
-from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -23,7 +22,6 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-
 
 
 def _get_test_exr(alt=False):
@@ -65,10 +63,10 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
         task_definition.output_format = ".png"
+        task_definition.subtasks_count = 100
 
         task = RenderingTaskMock(
             task_definition=task_definition,
-            total_tasks=100,
             root_path=self.path,
             owner=dt_p2p_factory.Node(),
         )
@@ -116,7 +114,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.preview_file_path = "preview_file"
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_task_file"
-        task.num_tasks_received = task.total_tasks
+        task.num_tasks_received = task.get_total_tasks()
         task.update_task_state(state)
         assert state.extra_data["result_preview"] == "preview_file"
         task.preview_file_path = None
@@ -143,13 +141,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(core_logger, level="WARNING"):
             task.restart_subtask("Not existing")
 
-        task.accept_client("node_ABC")
+        task.accept_client("node_ABC", 'oh')
         task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting,
                                       'start_task': 3, "node_id": "node_ABC"}
         task.restart_subtask("ABC")
         assert task.subtasks_given["ABC"]["status"] == SubtaskStatus.restarted
 
-        task.accept_client("node_DEF")
+        task.accept_client("node_DEF", 'oh')
         task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished,
                                       'start_task': 3, "node_id": "node_DEF"}
         task.restart_subtask("DEF")
@@ -158,92 +156,23 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert path.isfile(task.preview_file_path)
         assert task.num_tasks_received == -1
 
-        task.accept_client("node_GHI")
+        task.accept_client("node_GHI", 'oh')
         task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure,
                                       'start_task': 3, "node_id": "node_GHI"}
         task.restart_subtask("GHI")
         assert task.subtasks_given["GHI"]["status"] == SubtaskStatus.failure
 
-        task.accept_client("node_JKL")
+        task.accept_client("node_JKL", 'oh')
         task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent,
                                       'start_task': 3, "node_id": "node_JKL"}
         task.restart_subtask("JKL")
         assert task.subtasks_given["JKL"]["status"] == SubtaskStatus.resent
 
-        task.accept_client("node_MNO")
+        task.accept_client("node_MNO", 'oh')
         task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted,
                                       'start_task': 3, "node_id": "node_MNO"}
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
-
-    def test_put_collected_files_together_exec_windows(self):
-
-        output_file_name = "out.exr"
-        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
-        arg = 'EXR'
-
-        with patch('apps.rendering.task.renderingtask.is_windows',
-                   return_value=True), \
-                patch('golem.core.fileshelper.is_windows', return_value=True), \
-                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(
-                output_file_name, files, arg)
-
-            args = exec_cmd.call_args[0][0]
-            assert not args[0].startswith('"')
-            assert not args[0].endswith('.exe"')
-            assert args[0].endswith('.exe')
-            exec_cmd.assert_called_with(
-                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
-                 '{}'.format(output_file_name)] +
-                ['{}'.format(f) for f in files])
-
-    def test_put_collected_files_together_exec_unix(self):
-        output_file_name = "out.exr"
-        files = ["file_1", "dir_1/file_2", "dir 2/file_3"]
-        arg = 'EXR'
-
-        with patch('apps.rendering.task.renderingtask.is_windows',
-                   return_value=False), \
-                patch('golem.core.fileshelper.is_windows', return_value=False),\
-                patch('apps.rendering.task.renderingtask.exec_cmd') as exec_cmd:
-
-            self.task._put_collected_files_together(
-                output_file_name, files, arg)
-
-            args = exec_cmd.call_args[0][0]
-            assert not args[0].endswith('.exe"')
-            assert not args[0].endswith('.exe')
-            exec_cmd.assert_called_with(
-                [ANY, arg, str(self.task.res_x), str(self.task.res_y),
-                 "{}".format(output_file_name)] +
-                ["{}".format(f) for f in files])
-
-    def test_get_outer_task(self):
-        task = self.task
-        task.output_format = "exr"
-        assert task._use_outer_task_collector()
-        task.output_format = "EXR"
-        assert task._use_outer_task_collector()
-        task.output_format = "eps"
-        assert task._use_outer_task_collector()
-        task.output_format = "EPS"
-        assert task._use_outer_task_collector()
-        task.output_format = "png"
-        assert not task._use_outer_task_collector()
-        task.output_format = "PNG"
-        assert not task._use_outer_task_collector()
-        task.output_format = "jpg"
-        assert not task._use_outer_task_collector()
-        task.output_format = "JPG"
-        assert not task._use_outer_task_collector()
-        task.output_format = "bmp"
-        assert not task._use_outer_task_collector()
-        task.output_format = "tga"
-        assert not task._use_outer_task_collector()
-        task.output_format = "TGA"
-        assert not task._use_outer_task_collector()
 
     def test_get_scene_file_path(self):
         task = self.task
@@ -256,40 +185,9 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
     def test_get_next_task_if_not_tasks(self):
         task = self.task
-        task.total_tasks = 10
+        task.task_definition.subtasks_count = 10
         task.last_task = 10
         assert task._get_next_task() is None
-
-    def test_put_collected_files_together(self):
-        output_name = self.temp_file_name("output.exr")
-        exr1 = _get_test_exr()
-        exr2 = _get_test_exr(alt=True)
-        assert path.isfile(exr1)
-        assert path.isfile(exr2)
-        assert load_img(output_name) is None
-        self.task.res_x = 10
-        self.task.res_y = 20
-
-        self.task._put_collected_files_together(output_name, [exr1, exr2],
-                                                "paste")
-        assert load_img(output_name) is not None
-
-    def test_get_task_collector_path(self):
-        assert path.isfile(self.task._get_task_collector_path())
-
-        mock_is_windows = Mock()
-        mock_is_windows.return_value = False
-        with patch(target="apps.rendering.task.renderingtask.is_windows",
-                   new=mock_is_windows):
-            linux_path = self.task._get_task_collector_path()
-            mock_is_windows.return_value = True
-
-            prefix, exe = os.path.split(linux_path)
-            prefix, exe_dir = os.path.split(prefix)
-            windows_path = str(self.task._get_task_collector_path())
-            assert windows_path.endswith(os.path.join(
-                prefix, 'x64', exe_dir, exe + '.exe'
-            ))
 
     def test_update_task_preview_ioerror(self):
         e = OpenCVError("test message")
@@ -300,71 +198,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert logger.exception.called
 
 
-class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
-    def test_calculate_total(self):
-        definition = RenderingTaskDefinition()
-        definition.optimize_total = True
-        builder = RenderingTaskBuilder(owner=dt_p2p_factory.Node(),
-                                       dir_manager=DirManager(self.path),
-                                       task_definition=definition)
-
-        class Defaults(object):
-            def __init__(self, default_subtasks=13, min_subtasks=3,
-                         max_subtasks=33):
-                self.default_subtasks = default_subtasks
-                self.min_subtasks = min_subtasks
-                self.max_subtasks = max_subtasks
-
-        defaults = Defaults()
-        assert builder._calculate_total(defaults) == 13
-
-        defaults.default_subtasks = 17
-        assert builder._calculate_total(defaults) == 17
-
-        definition.optimize_total = False
-        definition.subtasks_count = 18
-        assert builder._calculate_total(defaults) == 18
-
-        definition.subtasks_count = 2
-        with self.assertLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 17
-
-        definition.subtasks_count = 3
-        with self.assertNoLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 3
-
-        definition.subtasks_count = 34
-        with self.assertLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 17
-
-        definition.subtasks_count = 33
-        with self.assertNoLogs(logger_render, level="WARNING"):
-            assert builder._calculate_total(defaults) == 33
-
-    def test_build_definition_minimal(self):
-        # given
-        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
-                               Options, RenderingTaskBuilder)
-        tti.output_file_ext = 'txt'
-        task_dict = {
-            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
-            'compute_on': 'cpu',
-            'task_type': 'TESTTASK',
-            'subtasks_count': 1
-        }
-
-        # when
-        definition = RenderingTaskBuilder.build_definition(
-            tti, task_dict, minimal=True)
-
-        # then
-        assert definition.main_scene_file in ['file2.txt', 'file4.txt']
-        assert definition.task_type == "TESTTASK"
-        assert definition.resources == {'file1.png', 'file2.txt',
-                                        'file3.jpg', 'file4.txt'}
-
-
-class TestBuildDefinition(TestDirFixture, LogTestCase):
+class TestBuildDefinition(LogTestCase):
     def setUp(self):
         super().setUp()
         self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
@@ -376,7 +210,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
             'subtasks_count': 1,
-            'options': {'output_path': self.path,
+            'options': {'output_path': "/foo/bar",
                         'format': 'PNG',
                         'resolution': [800, 600]},
             'name': "NAME OF THE TASK",
@@ -455,3 +289,25 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             # and it modifies it on windows
             path.normpath("/path/to/file5.txt"),
         }
+
+    def test_build_definition_minimal(self):
+        # given
+        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                               Options, RenderingTaskBuilder)
+        tti.output_file_ext = 'txt'
+        task_dict = {
+            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
+            'compute_on': 'cpu',
+            'task_type': 'TESTTASK',
+            'subtasks_count': 1
+        }
+
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            tti, task_dict, minimal=True)
+
+        # then
+        assert definition.main_scene_file in ['file2.txt', 'file4.txt']
+        assert definition.task_type == "TESTTASK"
+        assert definition.resources == {'file1.png', 'file2.txt',
+                                        'file3.jpg', 'file4.txt'}

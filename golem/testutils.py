@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import os.path
@@ -9,6 +10,7 @@ from time import sleep
 
 import ethereum.keys
 import pycodestyle
+import pytest
 
 from golem.core.common import get_golem_path, is_windows, is_osx
 from golem.core.simpleenv import get_local_datadir
@@ -168,3 +170,22 @@ class PEP8MixIn(object):
         result = style.check_files(absolute_files)
         self.assertEqual(result.total_errors, 0,
                          "Found code style errors (and warnings).")
+
+
+def async_test(coro):
+    def wrapper(*args, **kwargs):
+        loop = asyncio.new_event_loop()
+        return loop.run_until_complete(coro(*args, **kwargs))
+    return wrapper
+
+
+@pytest.fixture
+def pytest_database_fixture(tmpdir):
+    database = Database(
+        db,
+        fields=DB_FIELDS,
+        models=DB_MODELS,
+        db_dir=tmpdir
+    )
+    yield database
+    database.db.close()

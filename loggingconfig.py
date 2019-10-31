@@ -60,7 +60,7 @@ LOGGING = {
         'sentry': {
             'level': 'ERROR',
             'class': 'golem.tools.customloggers.SwitchedSentryHandler',
-            'dsn': 'https://cdf4218c9dd24aa6adeb76ad0c990c9b:e6922bfaff9f49ccaa22ae4e406354aa@talkback.golem.network/2'  # noqa pylint: disable=line-too-long
+            'dsn': 'https://cdf4218c9dd24aa6adeb76ad0c990c9b:e6922bfaff9f49ccaa22ae4e406354aa@talkback.golem.network/2',  # noqa pylint: disable=line-too-long
         },
         'sentry-metrics': {
             'level': 'DEBUG',

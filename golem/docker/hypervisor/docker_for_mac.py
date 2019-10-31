@@ -2,8 +2,9 @@ import json
 import logging
 import os
 from contextlib import contextmanager
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
+from golem.docker.client import local_client
 from golem.docker.commands.docker_for_mac import DockerForMacCommandHandler
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor import Hypervisor
@@ -80,6 +81,16 @@ class DockerForMac(Hypervisor):
             logger.error("Docker for Mac: error reading memory size: %r", e)
 
         return constraints
+
+    def requires_ports_publishing(self) -> bool:
+        return True
+
+    def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
+        api_client = local_client()
+        c_config = api_client.inspect_container(container_id)
+        port = int(
+            c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]['HostPort'])
+        return '127.0.0.1', port
 
     def _configure_daemon(self) -> None:
         update = {'dns': self.DNS_SERVERS}

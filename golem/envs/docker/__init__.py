@@ -1,38 +1,43 @@
-from typing import NamedTuple, Optional, Dict, Any
+from pathlib import Path
+from typing import NamedTuple, Optional, Dict, Any, List
 
-from golem.envs import Payload, Prerequisites
+from golem.core.common import posix_path
+from golem.envs import RuntimePayload, Prerequisites
 
 
-class DockerPayloadData(NamedTuple):
+class DockerBind(NamedTuple):
+    source: Path
+    target: str
+    mode: str = 'rw'
+
+    @property
+    def source_as_posix(self) -> str:
+        return posix_path(str(self.source))
+
+
+class DockerRuntimePayloadData(NamedTuple):
+    """ This exists because NamedTuple must be single superclass """
     image: str
     tag: str
-    env: Dict[str, str]
     command: Optional[str] = None
+    ports: Optional[List[int]] = None
+    env: Optional[Dict[str, str]] = None
     user: Optional[str] = None
     work_dir: Optional[str] = None
+    binds: Optional[List[DockerBind]] = None
 
 
-class DockerPayload(DockerPayloadData, Payload):
-    """ This exists because NamedTuple must be single superclass """
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self._asdict()
-
-    @staticmethod
-    def from_dict(data: Dict[str, Any]) -> 'DockerPayload':
-        data = data.copy()
-        env = data.pop('env', {})
-        return DockerPayload(env=env, **data)
+class DockerRuntimePayload(DockerRuntimePayloadData, RuntimePayload):
+    pass
 
 
 class DockerPrerequisitesData(NamedTuple):
+    """ This exists because NamedTuple must be single superclass """
     image: str
     tag: str
 
 
 class DockerPrerequisites(DockerPrerequisitesData, Prerequisites):
-    """ This exists because NamedTuple must be single superclass """
-
     def to_dict(self) -> Dict[str, Any]:
         return self._asdict()
 

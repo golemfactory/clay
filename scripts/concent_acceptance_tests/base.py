@@ -94,8 +94,7 @@ class ConcentBaseTest(unittest.TestCase):
 
     def ttc_add_promissory_and_sign(self, ttc, priv_key=None) -> None:
         priv_key = priv_key or self.requestor_priv_key
-        ttc.sign_promissory_note(private_key=priv_key)
-        ttc.sign_concent_promissory_note(
+        ttc.sign_all_promissory_notes(
             deposit_contract_address=
             self.ethereum_config.deposit_contract_address,
             private_key=priv_key,
@@ -294,6 +293,11 @@ class SCIBaseTest(ConcentBaseTest):
             contract_addresses=self.ethereum_config.CONTRACT_ADDRESSES,
             chain=self.ethereum_config.CHAIN,
         )
+
+    def tearDown(self):
+        self.requestor_sci.stop()
+        self.provider_sci.stop()
+        super().tearDown()
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(

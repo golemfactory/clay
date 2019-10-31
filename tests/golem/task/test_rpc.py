@@ -1,5 +1,6 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+import itertools
 from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
@@ -44,7 +45,7 @@ class ProviderBase(test_client.TestClientBase):
         'name': fake.pystr(min_chars=4, max_chars=24),
         'type': 'blender',
         'timeout': '09:25:00',
-        'subtasks_count': 6,
+        'subtasks_count': 5,
         'subtask_timeout': '4:10:00',
         'bid': '0.000032',
         'options': {
@@ -57,7 +58,8 @@ class ProviderBase(test_client.TestClientBase):
         'concent_enabled': False,
     }
 
-    def setUp(self):
+    @mock.patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, _):  # pylint: disable=arguments-differ
         super().setUp()
         self.client.sync = mock.Mock()
         self.client.p2pservice = mock.Mock(peers={})
@@ -88,7 +90,7 @@ class ProviderBase(test_client.TestClientBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 42
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server.create_resource_package = mock.Mock(
@@ -100,7 +102,6 @@ class ProviderBase(test_client.TestClientBase):
             instance = self.client.task_manager
             instance.tasks_states[task.header.task_id] = taskstate.TaskState()
             instance.tasks[task.header.task_id] = task
-        self.client.task_server.task_manager.start_task = lambda tid: tid
         self.client.task_server.task_manager.add_new_task = add_new_task
 
 
@@ -114,35 +115,57 @@ class ProviderBase(test_client.TestClientBase):
     ),
 )
 class TestCreateTask(ProviderBase, TestClientBase):
+    @staticmethod
+    def _get_task_dict(**data):
+        task_dict = dummytaskstate.DummyTaskDefinition().to_dict()
+        task_dict['name'] = 'test'
+        task_dict.update(data)
+        return task_dict
+
     @mock.patch(
         'golem.task.rpc.ClientProvider._validate_lock_funds_possibility'
     )
     def test_create_task(self, *_):
-        t = dummytaskstate.DummyTaskDefinition()
-        t.name = "test"
+        def execute(f, *args, **kwargs):
+            return defer.succeed(f(*args, **kwargs))
 
-        result = self.provider.create_task(t.to_dict())
+        with mock.patch('golem.core.deferred.deferToThread', execute):
+            result = self.provider.create_task(self._get_task_dict())
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
-    def test_create_task_fail_on_empty_dict(self, *_):
-        result = self.provider.create_task({})
+    def test_create_task_fail_no_type(self, *_):
+        task_id, error = self.provider.create_task({})
+        self.assertIsNone(task_id)
+        self.assertIn('must be one of', error)
+
+    def test_create_task_fail_unknown_type(self, *_):
+        task_id, error = self.provider.create_task(
+            self._get_task_dict(**{'type': 'project_2501'})
+        )
+        self.assertIsNone(task_id)
+        self.assertIn('must be one of', error)
+
+    def test_create_task_fail_no_name(self, *_):
+        t = self._get_task_dict()
+        del t['name']
+        result = self.provider.create_task(t)
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_too_long_name(self, *_):
-        result = self.provider.create_task({
-            "name": "This name has 27 characters"
-        })
+        result = self.provider.create_task(
+            self._get_task_dict(name='This name has 27 characters')
+        )
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_illegal_character_in_name(self, *_):
-        result = self.provider.create_task({
-            "name": "Golem task/"
-        })
+        result = self.provider.create_task(
+            self._get_task_dict(name="Golem task/")
+        )
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
@@ -155,10 +178,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
             currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
-        t = dummytaskstate.DummyTaskDefinition()
-        t.name = "test"
-
-        result = self.provider.create_task(t.to_dict())
+        result = self.provider.create_task(self._get_task_dict())
 
         rpc.enqueue_new_task.assert_not_called()
         self.assertIn('validate_lock_funds_possibility', str(mocked))
@@ -171,6 +191,31 @@ class TestCreateTask(ProviderBase, TestClientBase):
         self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
                                              'Required GNT: '
                                              '0.166667, available: 0.000000\n')
+
+
+class TestCreateTaskDryRun(ProviderBase):
+    def test_success(self):
+        # given
+        self.t_dict['subtasks_count'] = 0
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert error is None
+        assert new_dict['id'] is not None
+        assert new_dict['subtasks_count'] == 10
+
+    def test_failure(self):
+        # given
+        self.t_dict['type'] = "unknown"
+
+        # when
+        new_dict, error = self.provider.create_task_dry_run(self.t_dict)
+
+        # then
+        assert new_dict is None
+        assert error is not None
 
 
 class ConcentDepositLockPossibilityTest(unittest.TestCase):
@@ -222,7 +267,7 @@ class TestRestartTask(ProviderBase):
 
         def add_resources(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 0
+            result = resource_manager_result, 'res_file_1'
             return test_client.done_deferred(result)
 
         self.client.resource_server = mock.Mock(
@@ -257,9 +302,9 @@ class TestRestartTask(ProviderBase):
 
         task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
-        with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
+        with mock.patch('golem.task.rpc._prepare_task') as prep_mock:
             new_task_id, error = self.provider.restart_task(task.header.task_id)
-            enq_mock.assert_called_once()
+            prep_mock.assert_called_once()
 
         mock_validate_funds.assert_called_once_with(
             task.subtask_price,
@@ -351,7 +396,7 @@ class TestGetMaskForTask(test_client.TestClientBase):
             exp_potential_workers=8)
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestEnqueueNewTask(ProviderBase):
     def test_enqueue_new_task(self, *_):
         c = self.client
@@ -458,7 +503,8 @@ class TestRuntTestTask(ProviderBase):
             _self.success_callback(result, estimated_memory, time_spent, **more)
 
         with mock.patch('golem.task.tasktester.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -479,7 +525,8 @@ class TestRuntTestTask(ProviderBase):
             _self.error_callback(*error, **more)
 
         with mock.patch('golem.client.TaskTester.run', _run):
-            golem_deferred.sync_wait(rpc._run_test_task(self.client, {}))
+            golem_deferred.sync_wait(rpc._run_test_task(self.client,
+                                                        {'name': 'test task'}))
 
         self.assertIsInstance(self.client.task_test_result, dict)
         self.assertEqual(self.client.task_test_result, {
@@ -500,13 +547,17 @@ class TestRuntTestTask(ProviderBase):
                     'type': 'blender',
                     'resources': ['_.blend'],
                     'subtasks_count': 1,
+                    'name': 'test task',
                 }))
 
 
 class TestValidateTaskDict(ProviderBase):
+    def setUp(self, *args, **kwargs):
+        super().setUp(*args, **kwargs)
+        self.client.concent_service = mock.Mock()
+
     def test_concent_service_disabled(self, *_):
         self.t_dict['concent_enabled'] = True
-        self.client.concent_service = mock.Mock()
         self.client.concent_service.available = False
         self.client.concent_service.enabled = False
 
@@ -517,7 +568,6 @@ class TestValidateTaskDict(ProviderBase):
 
     def test_concent_service_switched_off(self, *_):
         self.t_dict['concent_enabled'] = True
-        self.client.concent_service = mock.Mock()
         self.client.concent_service.available = True
         self.client.concent_service.enabled = False
 
@@ -526,29 +576,53 @@ class TestValidateTaskDict(ProviderBase):
         with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
-    @mock.patch(
-        "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
-    )
-    def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks_count'] - 1
-        calculate_mock.return_value = computed_subtasks
-        msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks_count'],
-            computed_subtasks,
-        )
-        with self.assertRaisesRegex(ValueError, msg):
+    def test_concent_service_switched_on(self):
+        self.t_dict['concent_enabled'] = True
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        self.assertIsNone(rpc._validate_task_dict(self.client, self.t_dict))
+
+    def test_concent_service_switched_on_non_blender_task(self):
+        self.t_dict['concent_enabled'] = True
+        self.t_dict['type'] = 'dummy'
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+
+        msg = "Concent is not supported for .+ tasks"
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
+    def test_concent_service_default_off_disabled(self):
+        del self.t_dict['concent_enabled']
+        self.client.concent_service.available = False
+        self.client.concent_service.enabled = False
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertFalse(self.t_dict['concent_enabled'])
 
-@mock.patch('os.path.getsize')
+    def test_concent_service_default_on_enabled_blender(self):
+        del self.t_dict['concent_enabled']
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertTrue(self.t_dict['concent_enabled'])
+
+    def test_concent_service_default_off_enabled_non_blender(self):
+        del self.t_dict['concent_enabled']
+        self.t_dict['type'] = 'dummy'
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = True
+        rpc.prepare_and_validate_task_dict(self.client, self.t_dict)
+        self.assertFalse(self.t_dict['concent_enabled'])
+
+
 @mock.patch('golem.task.taskmanager.TaskManager.dump_task')
 class TestRestartSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
-                rpc.enqueue_new_task(self.client, self.task),
+                rpc.enqueue_new_task(self.client, self.task)
             )
 
         self.task_id = self.task.header.task_id
@@ -693,12 +767,47 @@ class TestRestartSubtasks(ProviderBase):
         self.assertIsNotNone(error['error_msg'])
         self.assertIsNotNone(error['error_details'])
 
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
+    @mock.patch('golem.client.Client.restart_subtask')
+    @mock.patch('golem.task.rpc.ClientProvider.'
+                '_validate_enough_funds_to_pay_for_task')
+    def test_disable_concent(self, validate_funds_mock, restart_mock, *_):
+        concent_enabled = True
+        ignore_gas_price = fake.pybool()
+        self.t_dict['concent_enabled'] = concent_enabled
+        concent_enabled_task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize', return_value=123):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, concent_enabled_task)
+            )
+        task_id = concent_enabled_task.header.task_id
+        self.provider.task_manager.subtask2task_mapping = \
+            {sub_id: task_id for sub_id in self.subtask_ids}
+
+        self.provider.restart_subtasks(
+            task_id=task_id,
+            subtask_ids=self.subtask_ids,
+            disable_concent=True,
+            ignore_gas_price=ignore_gas_price,
+        )
+
+        validate_funds_mock.assert_called_once_with(
+            concent_enabled_task.subtask_price,
+            len(self.subtask_ids),
+            concent_enabled,
+            ignore_gas_price
+        )
+
+        restart_mock.assert_has_calls(
+            map(lambda subtask_id: call(subtask_id), self.subtask_ids)
+        )
+
 
 class TestRestartFrameSubtasks(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
@@ -737,24 +846,27 @@ class TestRestartFrameSubtasks(ProviderBase):
         self.assertEqual(error, f'Task not found: {task_id!r}')
 
 
-@mock.patch('os.path.getsize')
+@mock.patch('os.path.getsize', return_value=123)
 class TestExceptionPropagation(ProviderBase):
     def setUp(self):
         super().setUp()
         self.task = self.client.task_manager.create_task(self.t_dict)
-        with mock.patch('os.path.getsize'):
+        with mock.patch('os.path.getsize', return_value=123):
             golem_deferred.sync_wait(
                 rpc.enqueue_new_task(self.client, self.task),
             )
 
+    @mock.patch('twisted.internet.reactor', mock.Mock())
+    @mock.patch("golem.task.taskmanager.TaskManager.task_creation_failed")
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
-    def test_create_task(self, mock_method, *_):
+    def test_create_task(self, mock_method, creation_failed, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
         mock_method.side_effect = Exception("Test")
 
         result = self.provider.create_task(t.to_dict())
         mock_method.assert_called()
+        creation_failed.assert_called()
         self.assertEqual(result, (None, "Test"))
 
     def test_restart_task(self, *_):
@@ -1008,41 +1120,33 @@ class TestGetEstimatedSubtasksCost(ProviderBase):
             },
         )
 
-@mock.patch('golem.task.taskmanager.TaskManager.get_subtask_dict',
-            return_value=Mock())
+
 class TestGetFragments(ProviderBase):
+    def _create_task(self) -> taskbase.Task:
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc._prepare_task(self.client, task, force=False)
+        return golem_deferred.sync_wait(deferred)
 
+    @mock.patch('os.path.getsize', return_value=123)
+    @mock.patch('golem.task.taskmanager.TaskManager._get_task_output_dir')
     def test_get_fragments(self, *_):
-        task_id = str(uuid.uuid4())
-        subtasks_count = 3
-        mock_task = Mock(spec=RenderingTask)
-        mock_task.total_tasks = subtasks_count
-        mock_task.subtasks_given = {
-            'subtask-uuid-1': {
-                'subtask_id': 'subtask-uuid-1',
-                'start_task': 1,
-            },
-            'subtask-uuid-2': {
-                'subtask_id': 'subtask-uuid-2',
-                'start_task': 2,
-            },
-            'subtask-uuid-3': {
-                'subtask_id': 'subtask-uuid-3',
-                'start_task': 2,
-            },
-            'subtask-uuid-4': {
-                'subtask_id': 'subtask-uuid-4',
-                'start_task': 2,
-            },
-        }
-        self.provider.task_manager.tasks[task_id] = mock_task
+        tm = self.client.task_manager
+        task = self._create_task()
+        subtasks_given = 4
+        # Create first subtask with start_task = 1
+        tm.get_next_subtask('mock-node-id', task.header.task_id, 0, 0, '')
+        # Create three more subtasks, all with start_task = 2
+        for i in range(subtasks_given - 1):
+            with mock.patch('apps.rendering.task.renderingtask.RenderingTask'
+                            '._get_next_task', return_value=2):
+                tm.get_next_subtask(fake.pystr(min_chars=4, max_chars=24),
+                                    task.header.task_id, 0, 0, '')
 
-        task_fragments, _error = self.provider.get_fragments(task_id)
+        task_fragments, error = self.provider.get_fragments(task.header.task_id)
 
-        self.assertTrue(len(task_fragments) == subtasks_count)
-        self.assertTrue(len(task_fragments[1]) == 1)
-        self.assertTrue(len(task_fragments[2]) == 3)
-        self.assertTrue(len(task_fragments[3]) == 0)
+        self.assertEqual(len(task_fragments), self.t_dict['subtasks_count'])
+        subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
+        self.assertEqual(len(subtasks), subtasks_given)
 
     def test_task_not_found(self, *_):
         task_id = str(uuid.uuid4())
@@ -1061,3 +1165,20 @@ class TestGetFragments(ProviderBase):
 
         self.assertIsNone(task_fragments)
         self.assertTrue('Incorrect task type' in error)
+
+    def test_no_subtasks(self, *_):
+        task_id = str(uuid.uuid4())
+        subtasks_count = 5
+        mock_task = Mock(spec=RenderingTask)
+        mock_task.get_total_tasks.return_value = subtasks_count
+        mock_task_state = Mock()
+        mock_task_state.subtask_states = None
+        tm = self.provider.task_manager
+        tm.tasks[task_id] = mock_task
+        tm.tasks_states[task_id] = mock_task_state
+
+        task_fragments, error = self.provider.get_fragments(task_id)
+
+        self.assertEqual(len(task_fragments), subtasks_count)
+        subtasks = list(itertools.chain.from_iterable(task_fragments.values()))
+        self.assertFalse(subtasks)

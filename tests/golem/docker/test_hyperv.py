@@ -167,9 +167,9 @@ class TestHyperVHypervisor(TestCase):
         })
 
     @patch(PATCH_BASE + '.smbshare')
-    def test_update_work_dir(self, smbshare):
+    def test_update_work_dirs(self, smbshare):
         path = Mock()
-        self.hyperv.update_work_dir(path)
+        self.hyperv.update_work_dirs([path])
         smbshare.create_share.assert_called_once_with(
             HyperVHypervisor.DOCKER_USER, path)
 
@@ -200,7 +200,7 @@ class TestHyperVHypervisor(TestCase):
 
     def test_create_volume_wrong_dir(self):
         tmp_dir = Path(tempfile.gettempdir())
-        self.hyperv._work_dir = tmp_dir / 'work_dir'
+        self.hyperv._work_dirs = [tmp_dir / 'work_dir']
 
         with self.assertRaises(ValueError):
             self.hyperv._create_volume('127.0.0.1', tmp_dir / 'shared_dir')
@@ -209,8 +209,8 @@ class TestHyperVHypervisor(TestCase):
     @patch(PATCH_BASE + '.smbshare')
     def test_create_volume_ok(self, smbshare, local_client):
         tmp_dir = Path(tempfile.gettempdir())
-        work_dir = self.hyperv._work_dir = tmp_dir / 'work_dir'
-        shared_dir = work_dir / 'task1' / 'res'
+        work_dirs = self.hyperv._work_dirs = [tmp_dir / 'work_dir']
+        shared_dir = work_dirs[0] / 'task1' / 'res'
         smbshare.get_share_name.return_value = 'SHARE_NAME'
 
         volume_name = self.hyperv._create_volume('127.0.0.1', shared_dir)

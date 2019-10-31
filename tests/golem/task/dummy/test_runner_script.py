@@ -2,7 +2,7 @@ from unittest import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
-from tests.golem.task.dummy import runner, task
+from tests.golem.task.dummy import runner
 
 
 class TestDummyTaskRunnerScript(DatabaseFixture):
@@ -83,21 +83,18 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
                                  mock_config_logging, *_):
         client = runner.run_requesting_node(self.path, 3)
         self.assertTrue(mock_reactor.run.called)
-        self.assertTrue(mock_enqueue_new_task.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()
 
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     @mock.patch("golem.core.common.config_logging")
-    def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
+    def test_run_computing_node(self, mock_config_logging, mock_reactor, *_):
         client = runner.run_computing_node(
             self.path,
             SocketAddress("127.0.0.1", 40102),
             "pid",
         )
-        assert task.DummyTask.ENVIRONMENT_NAME in \
-            client.environments_manager.environments
         mock_reactor.run.assert_called_once_with()
         mock_config_logging.assert_called_once_with(
             datadir=mock.ANY,

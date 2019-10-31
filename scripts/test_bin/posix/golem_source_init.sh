@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "WIP!!! This scripts does not install dependencies"
-echo "golem_source_init: download git, setup python venv, taskcollector and docker"
+echo "golem_source_init: download git, setup python venv and docker"
 
 echo "Loading config"
 _SCRIPT_DIR=$( dirname "${BASH_SOURCE[0]}" )
@@ -21,9 +21,6 @@ CUR_DIR=$(pwd)
 
 echo "Change directory to ~/projects/golem"
 cd "${GOLEM_SRC_DIR}"
-
-echo "Build taskcollector"
-make -C apps/rendering/resources/taskcollector
 
 echo "Run update from previous directory"
 cd "${CUR_DIR}"

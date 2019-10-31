@@ -1,42 +1,11 @@
 from typing import List
 import _pytest
+import pytest
 
-REUSE_KEYS = True
+from .key_reuse import NodeKeyReuseConfig
+
 DUMP_OUTPUT_ON_CRASH = False
 DUMP_OUTPUT_ON_FAIL = False
-
-
-class NodeKeyReuseException(Exception):
-    pass
-
-
-class NodeKeyReuse:
-    instance = None
-    _first_test = True
-
-    @classmethod
-    def get(cls):
-        if not cls.instance:
-            cls.instance = cls()
-        return cls.instance
-
-    @property
-    def keys_ready(self):
-        return not self._first_test
-
-    def mark_keys_ready(self):
-        if not self.enabled:
-            raise NodeKeyReuseException("Key reuse disabled.")
-        self._first_test = False
-
-    @staticmethod
-    def disable():
-        global REUSE_KEYS
-        REUSE_KEYS = False
-
-    @property
-    def enabled(self):
-        return REUSE_KEYS
 
 
 class DumpOutput:
@@ -59,12 +28,25 @@ class DumpOutput:
         DUMP_OUTPUT_ON_FAIL = True
 
 
-def pytest_addoption(parser: _pytest.config.Parser) -> None:
+def pytest_addoption(parser: _pytest.config.argparsing.Parser) -> None:
 
     parser.addoption(
         "--disable-key-reuse", action="store_true",
         help="Disables reuse of provider's and requestor's node keys. "
              "All node_integration_tests run with new, fresh keys."
+    )
+    parser.addoption(
+        "--use-granary", action="store_true",
+        help="Enable the `golem-granary`. "
+             "Unless you also provide the `--granary-hostname`, it will "
+             "use a local `golem-granary` executable."
+    )
+    parser.addoption(
+        "--granary-hostname", action="store",
+        help="The ssh hostname for the granary server to use. "
+             "Implicitly enables the granary. "
+             "If not provided and --use-granary is specified, "
+             "will use a local `golem-granary`."
     )
     parser.addoption(
         "--dump-output-on-fail", action="store_true",
@@ -77,9 +59,12 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 
 
 def pytest_collection_modifyitems(config: _pytest.config.Config,
-                                  items: List[_pytest.main.Item]) -> None:
+                                  items: List[pytest.Item]) -> None:
     if config.getoption("--disable-key-reuse"):
-        NodeKeyReuse.disable()
+        NodeKeyReuseConfig.disable()
+    hostname = config.getoption("--granary-hostname")
+    if hostname or config.getoption('--use-granary'):
+        NodeKeyReuseConfig.enable_granary(hostname)
     if config.getoption('--dump-output-on-crash'):
         DumpOutput.enable_on_crash()
     if config.getoption('--dump-output-on-fail'):
