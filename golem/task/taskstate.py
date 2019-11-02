@@ -68,18 +68,26 @@ class SubtaskStatus(Enum):
     failure = "Failure"
     restarted = "Restart"
     cancelled = "Cancelled"
+    timeout = "Timeout"
 
     def is_computed(self) -> bool:
         return self in [self.starting, self.downloading]
 
     def is_active(self) -> bool:
-        return self in [self.starting, self.downloading, self.verifying]
+        return self in SUBTASK_STATUS_ACTIVE
 
     def is_finished(self) -> bool:
         return self == self.finished
 
     def is_finishing(self) -> bool:
         return self in {self.downloading, self.verifying}
+
+
+SUBTASK_STATUS_ACTIVE = [
+    SubtaskStatus.starting,
+    SubtaskStatus.downloading,
+    SubtaskStatus.verifying
+]
 
 
 validate_varchar_inf = functools.partial(
@@ -171,8 +179,7 @@ class TaskStatus(Enum):
         return self in [self.creating, self.errorCreating]
 
     def is_completed(self) -> bool:
-        return self in [self.finished, self.aborted,
-                        self.timeout, self.restarted]
+        return self in TASK_STATUS_COMPLETED
 
     def is_preparing(self) -> bool:
         return self in (
@@ -183,6 +190,14 @@ class TaskStatus(Enum):
 
     def is_active(self) -> bool:
         return self in TASK_STATUS_ACTIVE
+
+
+TASK_STATUS_COMPLETED = [
+    TaskStatus.finished,
+    TaskStatus.aborted,
+    TaskStatus.timeout,
+    TaskStatus.restarted
+]
 
 
 TASK_STATUS_ACTIVE = [

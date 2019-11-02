@@ -24,11 +24,12 @@ from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import (
     taskbase,
-    taskkeeper,
     taskstate,
     tasktester,
     requestedtaskmanager,
-    TaskId)
+    TaskId,
+)
+from golem.task.helpers import calculate_subtask_payment
 
 if typing.TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -554,7 +555,10 @@ class ClientProvider:
             golem_params: dict,
             app_params: typing.Optional[dict] = None
     ) -> TaskId:
-        logger.info('Creating Task API task. params=%r', golem_params)
+        logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
 
         create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
             .parse(golem_params, app_params)
@@ -577,6 +581,8 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
@@ -584,6 +590,7 @@ class ClientProvider:
                     self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
@@ -963,8 +970,8 @@ class ClientProvider:
             subtask_timeout: int = common.string_to_timeout(
                 options['subtask_timeout'],
             )
-            subtask_price = taskkeeper.compute_subtask_value(
-                price=int(options['price']),
+            subtask_price = calculate_subtask_payment(
+                price_per_hour=int(options['price']),
                 computation_time=subtask_timeout
             )
 

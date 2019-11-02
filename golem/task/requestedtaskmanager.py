@@ -28,18 +28,22 @@ from golem.model import (
     RequestedSubtask,
 )
 from golem.task import SubtaskId, TaskId
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.envmanager import EnvironmentManager, EnvId
 from golem.task.taskstate import (
     Operation,
     SubtaskOp,
+    SubtaskState,
     SubtaskStatus,
+    SUBTASK_STATUS_ACTIVE,
     TaskOp,
+    TaskState,
     TaskStatus,
     TASK_STATUS_ACTIVE,
-    TaskState, SubtaskState)
+    TASK_STATUS_COMPLETED,
+)
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.timer import ProviderComputeTimers
-from golem.task.taskkeeper import compute_subtask_value
 from golem.ranking.manager.database_manager import (
     update_provider_efficiency,
     update_provider_efficacy,
@@ -190,7 +194,7 @@ class RequestedTaskManager:
         loop = asyncio.get_event_loop()
         loop.call_at(
             loop.time() + golem_params.task_timeout,
-            self._check_task_timeout,
+            self._time_out_task,
             task.task_id,
         )
 
@@ -271,6 +275,12 @@ class RequestedTaskManager:
         logger.debug('is_task_finished(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return task.status.is_completed()
+
+    @staticmethod
+    def has_unfinished_tasks() -> bool:
+        """ Return True iff there are any tasks that need computation. """
+        return RequestedTask.select()\
+            .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED)).exists()
 
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for
@@ -361,7 +371,7 @@ class RequestedTaskManager:
         loop = asyncio.get_event_loop()
         loop.call_at(
             loop.time() + task.subtask_timeout,
-            self._check_subtask_timeout,
+            self._time_out_subtask,
             subtask.task,
             subtask.subtask_id,
         )
@@ -438,11 +448,12 @@ class RequestedTaskManager:
                 if not self._get_pending_subtasks(task_id):
                     task.status = TaskStatus.finished
                     task.save()
+
                     self._move_task_results(
                         task_id,
                         Path(task.output_directory))
-                    self._notice_task_updated(task, op=TaskOp.FINISHED)
                     await self._shutdown_app_client(task.app_id)
+                    self._notice_task_updated(task, op=TaskOp.FINISHED)
 
         return result
 
@@ -458,19 +469,17 @@ class RequestedTaskManager:
         if not task.status.is_active():
             raise RuntimeError(
                 f"Task not active, can not abort. task_id={task_id}")
-        app_client = await self._get_app_client(task.app_id)
-        await app_client.abort_task(task_id)
+
         task.status = TaskStatus.aborted
         task.save()
-        subtasks = self._get_pending_subtasks(task_id)
-        for subtask in subtasks:
+
+        for subtask in self._get_pending_subtasks(task_id):
             subtask.status = SubtaskStatus.cancelled  # type: ignore
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
+        await self._abort_task_and_shutdown(task)
         self._notice_task_updated(task, op=TaskOp.ABORTED)
-
-        await self._shutdown_app_client(task.app_id)
 
     @staticmethod
     def get_started_tasks() -> List[RequestedTask]:
@@ -691,15 +700,27 @@ class RequestedTaskManager:
             shared_dir=shared_dir
         )
 
-    def _check_task_timeout(self, task_id: TaskId) -> None:
+    def _time_out_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        if task.status.is_active():
-            logger.info("Task timed out. task_id=%r", task_id)
-            task.status = TaskStatus.timeout
-            task.save()
-            self._notice_task_updated(task, op=TaskOp.TIMEOUT)
+        if not task.status.is_active():
+            return  # Already finished
 
-    def _check_subtask_timeout(
+        logger.info("Task timed out. task_id=%r", task_id)
+
+        task.status = TaskStatus.timeout
+        task.save()
+
+        for subtask in self._get_pending_subtasks(task_id):
+            subtask.status = SubtaskStatus.timeout  # type: ignore
+            subtask.save()
+            self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
+
+        self._notice_task_updated(task, op=TaskOp.TIMEOUT)
+
+        # Don't wait for the future because nothing depends on it
+        asyncio.ensure_future(self._abort_task_and_shutdown(task))
+
+    def _time_out_subtask(
             self,
             task_id: TaskId,
             subtask_id: SubtaskId
@@ -714,8 +735,8 @@ class RequestedTaskManager:
                 subtask.task,
                 subtask.subtask_id
             )
-            # TODO: Add SubtaskStatus.timeout?
-            subtask.status = SubtaskStatus.failure
+            # FIXME: Call discard_subtasks
+            subtask.status = SubtaskStatus.timeout
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
 
@@ -738,15 +759,24 @@ class RequestedTaskManager:
     def _get_pending_subtasks(task_id: TaskId) -> List[RequestedSubtask]:
         return RequestedSubtask.select().where(
             RequestedSubtask.task_id == task_id,
-            # FIXME: duplicate list with SubtaskStatus.is_active()
-            RequestedSubtask.status.in_([
-                SubtaskStatus.starting,
-                SubtaskStatus.downloading,
-                SubtaskStatus.verifying,
-            ])
+            RequestedSubtask.status.in_(SUBTASK_STATUS_ACTIVE)
         )
 
-    async def _shutdown_app_client(self, app_id) -> None:
+    async def _abort_task_and_shutdown(self, task: RequestedTask) -> None:
+        client = await self._get_app_client(task.app_id)
+        try:
+            await client.abort_task(task.task_id)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                'Failed to abort task. app_id=%r task_id=%r',
+                task.app_id, task.task_id)
+        try:
+            await self._shutdown_app_client(task.app_id)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                'Failed to shut down client. app_id=%r', task.app_id)
+
+    async def _shutdown_app_client(self, app_id: AppId) -> None:
         # Check if app completed all tasks
         unfinished_tasks = RequestedTask.select(
             fn.Count(RequestedTask.task_id)
@@ -795,7 +825,7 @@ class RequestedTaskManager:
             )
             return
         comp_time = int(round(raw_time))
-        comp_price = compute_subtask_value(
+        comp_price = calculate_subtask_payment(
             subtask.task.max_price_per_hour,
             comp_time
         )

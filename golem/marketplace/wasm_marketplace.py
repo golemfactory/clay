@@ -1,6 +1,7 @@
 import logging
-from typing import (Callable, List, Dict, ClassVar, Tuple, Optional, Iterable,
+from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,
                     TYPE_CHECKING)
+import math
 import numpy
 
 from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
@@ -8,6 +9,7 @@ from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
 from golem.marketplace.pooling_marketplace import\
     RequestorPoolingMarketStrategy
 from golem.task import timer
+from golem.task.helpers import calculate_subtask_payment
 from golem.ranking.manager.database_manager import (
     get_requestor_assigned_sum,
     get_requestor_paid_sum,
@@ -16,18 +18,23 @@ from golem import model
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
-    from golem.task.taskbase import Task
+    from golem_messages.message.tasks import ReportComputedTask
 
 ProviderId = str
 SubtaskId = str
 Usage = float
 UsageReport = Tuple[ProviderId, SubtaskId, Usage]
 
+NANOSECOND = 1e-9
+
 logger = logging.getLogger(__name__)
 
 
+USAGE_SECOND = 1e9  # Usage is measured in nanoseconds
+
+
 class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
-    DEFAULT_USAGE_BENCHMARK: float = 1.0
+    DEFAULT_USAGE_BENCHMARK: float = 1.0 * USAGE_SECOND
 
     _usages: ClassVar[Dict[str, float]] = dict()
     _max_usage_factor: ClassVar[float] = 2.0
@@ -39,6 +46,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
 
     @classmethod
     def set_my_usage_benchmark(cls, benchmark: float) -> None:
+        if benchmark < 1e-6 * USAGE_SECOND:
+            benchmark = cls.DEFAULT_USAGE_BENCHMARK
         logger.info("RWMS: set_my_usage_benchmark %.3f", benchmark)
         cls._my_usage_benchmark = benchmark
 
@@ -47,11 +56,14 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         usage_factor = model.UsageFactor.select().where(
             model.UsageFactor.provider_node_id == provider_id).first()
         if usage_factor is None:
-            # Division goes this way since higher benchmark val means
-            # faster processor
-            uf = cls.get_my_usage_benchmark() / usage_benchmark
-            if not uf:
-                uf = 1.0
+            uf = usage_benchmark / cls.get_my_usage_benchmark()
+
+            # Sanity check against misreported benchmarks
+            uf = min(max(uf, 0.1), 2.0)
+            logger.info("RWMS: initial usage factor for %s = %.3f",
+                        provider_id,
+                        uf)
+
             node, _ = model.ComputingNode.get_or_create(
                 node_id=provider_id, defaults={'name': ''})
             usage_factor, _ = model.UsageFactor.get_or_create(
@@ -145,17 +157,8 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return cls._usages.pop(subtask_id)
 
     @classmethod
-    def get_payment_computer(
-            cls,
-            subtask_id: str,
-            subtask_timeout: int,
-            subtask_price: int,
-    ) -> Callable[[int], int]:
-        def payment_computer(price: int) -> int:
-            subtask_usage: float = cls._get_subtask_usage(subtask_id)
-            return min(int(price * subtask_usage / 3600), subtask_price)
-
-        return payment_computer
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+        return _calculate_usage_payment(rct)
 
 
 def geomean(a: Iterable[float]) -> float:
@@ -180,3 +183,22 @@ class ProviderWasmMarketStrategy(ProviderMarketStrategy):
         Q = min(1.0, (pricing.price_per_cpu_h + 1 + v_paid + c) /
                 (pricing.price_per_cpu_h + 1 + v_assigned))
         return min(max(int(r / Q), pricing.price_per_cpu_h), max_price)
+
+    @classmethod
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+        return _calculate_usage_payment(rct)
+
+
+def _calculate_usage_payment(rct: 'ReportComputedTask') -> int:
+    task_header = rct.task_to_compute.want_to_compute_task.task_header
+    max_payment = calculate_subtask_payment(
+        task_header.max_price,
+        task_header.subtask_timeout,
+    )
+
+    usage = math.ceil(
+        rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
+    )
+    price = rct.task_to_compute.want_to_compute_task.price
+
+    return min(calculate_subtask_payment(price, usage), max_payment)

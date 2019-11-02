@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from golem_messages.datastructures import stats as dt_stats
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskstate import TaskState
 from golem.marketplace import (
     ProviderMarketStrategy, RequestorMarketStrategy,
@@ -147,9 +148,8 @@ class Task(abc.ABC):
         return self.subtask_price * self.get_total_tasks()
 
     @property
-    def subtask_price(self) -> int:
-        from golem.task import taskkeeper
-        return taskkeeper.compute_subtask_value(
+    def subtask_price(self):
+        return calculate_subtask_payment(
             self.header.max_price,
             self.header.subtask_timeout,
         )

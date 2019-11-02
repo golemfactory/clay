@@ -27,20 +27,10 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
 from golem.task.envmanager import EnvironmentManager as NewEnvManager
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger(__name__)
-
-
-def compute_subtask_value(price: int, computation_time: int) -> int:
-    """
-    Don't use math.ceil (this is general advice, not specific to the case here)
-    >>> math.ceil(10 ** 18 / 6)
-    166666666666666656
-    >>> (10 ** 18 + 5) // 6
-    166666666666666667
-    """
-    return (price * computation_time + 3599) // 3600
 
 
 def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
@@ -188,7 +178,7 @@ class CompTaskKeeper:
             self.active_tasks[task_id].requests += 1
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, performance)
-        self.active_task_offers[task_id] = compute_subtask_value(
+        self.active_task_offers[task_id] = calculate_subtask_payment(
             price, self.active_tasks[task_id].header.subtask_timeout
         )
         self.dump()

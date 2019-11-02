@@ -4,7 +4,7 @@ from unittest import mock
 from golem.task.server.verification import VerificationMixin
 
 
-class TestGetPaymentComputer(unittest.TestCase):
+class TestGetMarketStrategy(unittest.TestCase):
 
     def setUp(self) -> None:
         self.market_legacy = mock.Mock()
@@ -45,29 +45,21 @@ class TestGetPaymentComputer(unittest.TestCase):
         self.verifier.app_manager = am
         self.verifier.task_manager = tm
         self.verifier.requested_task_manager = rtm
-        self.get = self.verifier._get_payment_computer
+        self.get = self.verifier._get_market_strategy
 
     def test_legacy(self):
-        self.get(
+        market = self.get(
             task_id='legacy_task_id',
             subtask_id='subtask_id')
 
-        self.assertFalse(self.market_task_api.get_payment_computer.called)
-        self.market_legacy.get_payment_computer.assert_called_with(
-            'subtask_id',
-            subtask_timeout=3600,
-            subtask_price=10 ** 18)
+        assert market is self.market_legacy
 
     def test_task_api(self):
-        self.get(
+        market = self.get(
             task_id='task_api_task_id',
             subtask_id='subtask_id')
 
-        self.assertFalse(self.market_legacy.get_payment_computer.called)
-        self.market_task_api.get_payment_computer.assert_called_with(
-            'subtask_id',
-            subtask_timeout=1800,
-            subtask_price=10 ** 17)
+        assert market is self.market_task_api
 
     def test_task_id_invalid(self):
         with self.assertRaisesRegex(RuntimeError, "unknown task"):

@@ -373,6 +373,18 @@ class TestClient(TestClientBase):
         )
 
 
+class TestHasAssignedTask(TestClientBase):
+
+    def test_no_task_server(self):
+        self.assertFalse(self.client.has_assigned_task())
+
+    def test_true(self):
+        task_computer = Mock()
+        task_computer.has_assigned_task.return_value = True
+        self.client.task_server = Mock(task_computer=task_computer)
+        self.assertTrue(self.client.has_assigned_task())
+
+
 class TestGetTasks(TestClientBase):
 
     def setUp(self):

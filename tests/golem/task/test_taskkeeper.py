@@ -24,6 +24,7 @@ from golem.environments.environment import Environment, UnsupportReason,\
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
 from golem.network.hyperdrive.client import HyperdriveClient
+from golem.task.helpers import calculate_subtask_payment
 from golem.task import taskarchiver
 from golem.task import taskkeeper
 from golem.task.envmanager import EnvironmentManager as NewEnvManager
@@ -514,7 +515,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 header.task_id,
             )
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 1)
-            price = taskkeeper.compute_subtask_value(
+            price = calculate_subtask_payment(
                 price_bid,
                 header.subtask_timeout,
             )
@@ -618,7 +619,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
-        price = taskkeeper.compute_subtask_value(
+        price = calculate_subtask_payment(
             price_bid,
             th.subtask_timeout,
         )

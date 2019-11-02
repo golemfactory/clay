@@ -1217,29 +1217,39 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.client = Mock()
         remove_task = self.ts.client.p2pservice.remove_task
         remove_task_funds_lock = self.ts.client.funds_locker.remove_task
+        update_setting = self.ts.client.update_setting
 
-        values = dict(TaskOp.__members__)
-        values.pop('FINISHED')
-        values.pop('TIMEOUT')
+        self.ts.requested_task_manager = Mock()
+        self.ts.requested_task_manager.has_unfinished_tasks.return_value = False
 
-        for value in values:
-            self.ts.finished_task_listener(op=value)
-            assert not remove_task.called
+        # Listener should ignore events other than 'task_status_updated'
+        for op in TaskOp:
+            self.ts.finished_task_listener(op=op)
 
-        for value in values:
-            self.ts.finished_task_listener(event='task_status_updated',
-                                           op=value)
-            assert not remove_task.called
+        remove_task.assert_not_called()
+        remove_task_funds_lock.assert_not_called()
+        update_setting.assert_not_called()
 
-        self.ts.finished_task_listener(event='task_status_updated',
-                                       op=TaskOp.FINISHED)
-        assert remove_task.called
-        assert remove_task_funds_lock.called
+        relevant_ops = {TaskOp.FINISHED, TaskOp.TIMEOUT, TaskOp.ABORTED}
+        irrelevant_ops = set(TaskOp) - relevant_ops
 
-        self.ts.finished_task_listener(event='task_status_updated',
-                                       op=TaskOp.TIMEOUT)
-        assert remove_task.call_count == 2
-        assert remove_task_funds_lock.call_count == 2
+        # Listener should ignore irrelevant operations
+        for op in irrelevant_ops:
+            self.ts.finished_task_listener(event='task_status_updated', op=op)
+
+        remove_task.assert_not_called()
+        remove_task_funds_lock.assert_not_called()
+        update_setting.assert_not_called()
+
+        # Listener should fire for relevant operations
+        task_id = 'test_task'
+        for op in relevant_ops:
+            self.ts.finished_task_listener(
+                event='task_status_updated', task_id=task_id, op=op)
+            remove_task.assert_called_once_with(task_id)
+            remove_task_funds_lock.assert_called_once_with(task_id)
+            update_setting.assert_called_once_with('accept_tasks', True)
+            self.ts.client.reset_mock()
 
 
 class TestSendResults(TaskServerTestBase):

@@ -11,6 +11,7 @@ from apps.core.task.coretaskstate import RunVerification
 
 from golem import model
 from golem.core import common
+from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
@@ -84,13 +85,16 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            payment_computer = self._get_payment_computer(task_id, subtask_id)
+            market_strategy = self._get_market_strategy(task_id, subtask_id)
+            payment_value = market_strategy.calculate_payment(
+                report_computed_task
+            )
             payment = self.accept_result(
                 task_id,
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                payment_computer(task_to_compute.want_to_compute_task.price),
+                payment_value,
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )
@@ -144,20 +148,16 @@ class VerificationMixin:
                 verification_finished_old,
             )
 
-    def _get_payment_computer(
+    def _get_market_strategy(
             self,
             task_id: 'TaskId',
             subtask_id: 'SubtaskId',
-    ) -> typing.Callable[[int], int]:
+    ) -> typing.Type[RequestorMarketStrategy]:
         """ Retrieve the payment computing function for given
             task_id and subtask_id """
         task = self.task_manager.tasks.get(task_id)
         if task:
-            market = task.REQUESTOR_MARKET_STRATEGY
-            return market.get_payment_computer(  # type: ignore
-                subtask_id,
-                subtask_timeout=int(task.header.subtask_timeout),
-                subtask_price=task.subtask_price)
+            return task.REQUESTOR_MARKET_STRATEGY
 
         task = self.requested_task_manager.get_requested_task(task_id)
         if not task:
@@ -178,10 +178,7 @@ class VerificationMixin:
             raise RuntimeError(
                 f"Completed verification of task {task_id} "
                 f"created by an unknown app {task.app_id}")
-        return app.market_strategy.get_payment_computer(
-            subtask_id,
-            subtask_timeout=task.subtask_timeout,
-            subtask_price=subtask.price)
+        return app.market_strategy
 
     def send_result_rejected(
             self,

@@ -1,12 +1,11 @@
-from abc import ABC, abstractclassmethod
-from typing import Callable, Optional, List, TYPE_CHECKING
+from abc import ABC, abstractclassmethod, abstractmethod
+from typing import Optional, List, TYPE_CHECKING
 
 from dataclasses import dataclass
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
-    from golem.task.taskbase import Task
-
+    from golem_messages.message.tasks import ReportComputedTask
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark: float):
@@ -59,20 +58,9 @@ class RequestorMarketStrategy(ABC):
         """
         raise NotImplementedError()
 
-    @abstractclassmethod
-    def get_payment_computer(
-            cls,
-            subtask_id: str,
-            subtask_timeout: int,
-            subtask_price: int,
-    ) -> Callable[[int], int]:
-        """Returns a function computing payment based on price in TTC.
-        Raises:
-            NotImplementedError: [description]
-
-        Returns:
-            Callable[[int], int] -- Function computing payment
-        """
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
         raise NotImplementedError()
 
 
@@ -81,4 +69,9 @@ class ProviderMarketStrategy(ABC):
     @abstractclassmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
         raise NotImplementedError()
