@@ -293,11 +293,14 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
+    @inlineCallbacks
     def quit(self):
-        defer_rtm_quit = deferred_from_future(
-            self.requested_task_manager.stop()
-        )
-        sync_wait(defer_rtm_quit)
+        try:
+            future = self.requested_task_manager.stop()
+            yield deferred_from_future(asyncio.wait_for(future, timeout=30.))
+        except asyncio.TimeoutError:
+            logger.error("RequestedTaskManager.stop has timed out")
+
         self.task_computer.quit()
 
     def get_environment_by_id(
