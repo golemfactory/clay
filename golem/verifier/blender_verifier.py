@@ -122,12 +122,11 @@ class BlenderVerifier(FrameRenderingVerifier):
         extra_data = self._generate_verification_params(self.subtask_info,
                                                         self.results)
 
-        self.docker_task = self.docker_task_cls(docker_images=[
-            (self.DOCKER_NAME, self.DOCKER_TAG)
-        ],
-                                                extra_data=extra_data,
-                                                dir_mapping=dir_mapping,
-                                                timeout=self.timeout)
+        self.docker_task = self.docker_task_cls(
+            docker_images=[(self.DOCKER_NAME, self.DOCKER_TAG)],
+            extra_data=extra_data,
+            dir_mapping=dir_mapping,
+            timeout=self.timeout)
 
         def error(exception):
             logger.warning(f'Verification process exception. '

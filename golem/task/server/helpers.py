@@ -81,6 +81,7 @@ def computed_task_reported(
 
     rtm = task_server.requested_task_manager
     if rtm.task_exists(task_id):
+        rtm.task_result_incoming(task_id, report_computed_task.subtask_id)
         download_dir = rtm.get_subtask_outputs_dir(task_id, subtask_id)
         download_dir.mkdir()
         deferred = task_server.new_resource_manager.download(

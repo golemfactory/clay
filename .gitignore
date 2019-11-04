@@ -89,3 +89,5 @@ tests/apps/ffmpeg/resources/videos/
 # developer tools
 .vscode/
 
+# verifier tests output
+reports/

@@ -37,11 +37,11 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
-ffmpeg-tools==0.14.5
+ffmpeg-tools==0.16.0
 fs==2.4.4
 Golem-Messages==3.13.0
 Golem-Smart-Contracts-Interface==1.10.3
-golem_task_api==0.20.0
+golem_task_api==0.21.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0

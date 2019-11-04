@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from pprint import pprint, pformat
+from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
 
 from ..render_tools import blender_render as blender
@@ -230,12 +230,5 @@ def verify(  # pylint: disable=too-many-arguments
 
 def save_params(params: dict, filename: str, mounted_paths: dict):
     path = os.path.join(mounted_paths["WORK_DIR"], filename)
-    json_as_string = pformat(params)
-
-    # We must repair pretty json to something parsable.
-    json_as_string = json_as_string.replace('\'', '\"')
-    json_as_string = json_as_string.replace('False', 'false')
-    json_as_string = json_as_string.replace('True', 'true')
-
     with open(path, 'w', encoding='utf-8') as f:
-        f.write(json_as_string)
+        json.dump(params, f)

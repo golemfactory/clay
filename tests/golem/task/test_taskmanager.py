@@ -763,33 +763,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                          {"xxyyzz", "aabbcc", "ddeeff"})
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
 
-    def test_resource_send(self, *_):
-        # pylint: disable=abstract-class-instantiated
-        from pydispatch import dispatcher
-        t = TaskMock(
-            header=dt_tasks_factory.TaskHeaderFactory(
-                task_id="xyz",
-                subtask_timeout=1,
-                max_price=1,
-            ),
-            task_definition=Mock(),
-        )
-        listener_mock = Mock()
-
-        def listener(sender, signal, event, task_id):
-            self.assertEqual(event, 'task_status_updated')
-            self.assertEqual(task_id, t.header.task_id)
-            listener_mock()
-
-        dispatcher.connect(listener, signal='golem.taskmanager')
-        try:
-            self.tm.add_new_task(t)
-            self.tm.start_task(t.header.task_id)
-            self.tm.resources_send("xyz")
-            self.assertEqual(3, listener_mock.call_count)
-        finally:
-            dispatcher.disconnect(listener, signal='golem.taskmanager')
-
     @freeze_time()
     def test_check_timeouts(self, *_):
         # Task with timeout

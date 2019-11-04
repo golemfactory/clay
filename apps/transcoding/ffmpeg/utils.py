@@ -174,12 +174,16 @@ class StreamOperator:
         ]
 
     # pylint: disable=too-many-arguments
-    def merge_and_replace_video_streams(self,
-                                        input_file_on_host,
-                                        chunks_on_host,
-                                        output_file_basename,
-                                        task_dir,
-                                        container):
+    def merge_and_replace_video_streams(
+            self,
+            input_file_on_host,
+            chunks_on_host,
+            output_file_basename,
+            task_dir,
+            container,
+            strip_unsupported_data_streams=False,
+            strip_unsupported_subtitle_streams=False):
+
         assert os.path.isdir(task_dir), \
             "Caller is responsible for ensuring that task dir exists."
         assert os.path.isfile(input_file_on_host), \
@@ -203,6 +207,9 @@ class StreamOperator:
             'chunks': chunks_in_container,
             'output_file': container_files['out'],
             'container': container.value if container is not None else None,
+            'strip_unsupported_data_streams': strip_unsupported_data_streams,
+            'strip_unsupported_subtitle_streams':
+                strip_unsupported_subtitle_streams
         }
 
         logger.debug('Merge and replace params: %s', extra_data)
@@ -298,7 +305,9 @@ class StreamOperator:
             },
         }
 
-        stats_dir = os.path.join(os.path.dirname(work_dir), "get-metadata-stats")
+        stats_dir = os.path.join(
+            os.path.dirname(work_dir),
+            "get-metadata-stats")
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir,

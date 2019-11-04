@@ -8,7 +8,6 @@ from typing import Any, Dict, List, Tuple, Optional, Union
 import golem_messages.message
 
 import ffmpeg_tools.validation as validation
-import ffmpeg_tools.meta as meta
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
@@ -53,6 +52,8 @@ class TranscodingTaskOptions(Options):
         self.audio_params = TranscodingTaskOptions.AudioParams()
         self.input_stream_path = None
         self.output_container = None
+        self.strip_unsupported_data_streams = False
+        self.strip_unsupported_subtitle_streams = False
 
 
 class TranscodingTaskDefinition(TaskDefinition):
@@ -120,19 +121,15 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         try:
             validation.validate_video(video_metadata)
 
-            src_params = meta.create_params(
-                meta.get_format(video_metadata),
-                meta.get_resolution(video_metadata),
-                meta.get_video_codec(video_metadata),
-                meta.get_audio_codec(video_metadata),
-                meta.get_frame_rate(video_metadata))
-
             # Get parameters for example subtasks. All subtasks should have
             # the same conversion parameters which we check here, so it doesn't
             # matter which we choose.
             dst_params = self._get_extra_data(0)["targs"]
 
-            validation.validate_transcoding_params(src_params, dst_params)
+            validation.validate_transcoding_params(
+                dst_params,
+                video_metadata
+            )
 
         except validation.InvalidVideo as e:
             logger.error(e.response_message)
@@ -174,6 +171,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             output_basename,
             self.task_dir,
             self.task_definition.options.output_container,
+            self.task_definition.options.strip_unsupported_data_streams,
+            self.task_definition.options.strip_unsupported_subtitle_streams,
         )
 
         # Move result to desired location.
@@ -294,6 +293,12 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             task_def.options.output_container = output_container
             task_def.options.audio_params = audio_params
             task_def.options.name = dictionary.get('name', '')
+            if 'strip_unsupported_data_streams' in options:
+                task_def.options.strip_unsupported_data_streams = options[
+                    'strip_unsupported_data_streams']
+            if 'strip_unsupported_subtitle_streams' in options:
+                task_def.options.strip_unsupported_subtitle_streams = options[
+                    'strip_unsupported_subtitle_streams']
 
             logger.debug(
                 'Transcoding task definition has been built [definition=%s]',
