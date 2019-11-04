@@ -1029,11 +1029,12 @@ class TaskServer(
         if allowed:
             allowed, reason = self.acl_ip.is_allowed(ip_addr)
         if not allowed:
-            logger.info(f'provider is {reason.value}; {ids}')
+            reason_msg = 'unknown reason' if reason is None else reason.value
+            logger.info(f'provider is {reason_msg}; {ids}')
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.acl,
-                details={'acl_reason': reason.value})
+                details={'acl_reason': reason_msg})
             return False
 
         trust = self.client.get_computing_trust(node_id)

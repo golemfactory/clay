@@ -520,6 +520,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
         if task_thread.error or task_thread.error_msg:
             reason = TaskFailure.DEFAULT_REASON
+            # pylint: disable=unidiomatic-typecheck
             if type(task_thread.error) is TimeoutException:
                 self.stats.increase_stat('tasks_with_timeout')
                 reason = TaskFailure.REASON.TimeExceeded
@@ -574,7 +575,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         if not self._is_computing() or self.assigned_subtask is None:
             return None
 
-        c: TaskThread = self.counting_thread
+        c: Optional[TaskThread] = self.counting_thread
         try:
             outfilebasename = c.extra_data.get(  # type: ignore
                 'crops'
@@ -682,8 +683,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(docker_images, extra_data,
-                                  dir_mapping, task_timeout)
+            tt: TaskThread = DockerTaskThread(
+                docker_images, extra_data, dir_mapping, task_timeout)
         elif self.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
