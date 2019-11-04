@@ -284,11 +284,11 @@ class FrameRenderingTask(RenderingTask):
             self._update_frame_status(frame)
 
     def _update_frame_status(self, frame):
-        frame_key = to_unicode(frame)
+        frame_key = str(frame)
         state = self.frames_state[frame_key]
         subtask_ids = self.frames_subtasks[frame_key]
 
-        parts = max(1, int(self.get_total_tasks() / len(self.frames)))
+        parts = max(1, self.get_total_tasks() // len(self.frames))
         counters = defaultdict(lambda: 0, dict())
 
         # Count the number of occurrences of each subtask state
@@ -296,10 +296,7 @@ class FrameRenderingTask(RenderingTask):
             subtask = self.subtasks_given[subtask_id]
             counters[subtask['status']] += 1
 
-        # Count statuses different from 'finished' and 'failure'
-        computing = len([x for x in counters.keys()
-                         if x not in [SubtaskStatus.finished,
-                                      SubtaskStatus.failure]])
+        computing = len([x for x in counters.keys() if x.is_active()])
 
         # Finished if at least n subtasks >= parts were finished
         if counters[SubtaskStatus.finished] >= parts:
@@ -353,11 +350,10 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            with handle_opencv_image_error(logger):
-                img = OpenCVImgRepr.empty(
-                    int(round(self.res_x * self.scale_factor)),
-                    int(round(self.res_y * self.scale_factor)))
-                img.save_with_extension(preview_file_path, PREVIEW_EXT)
+            img = OpenCVImgRepr.empty(
+                int(round(self.res_x * self.scale_factor)),
+                int(round(self.res_y * self.scale_factor)))
+            img.save_with_extension(preview_file_path, PREVIEW_EXT)
 
         return OpenCVImgRepr.from_image_file(preview_file_path)
 
@@ -452,9 +448,10 @@ class FrameRenderingTask(RenderingTask):
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
         preview_task_file_path = self._get_preview_task_file_path(idx)
-        img_task = self._open_frame_preview(preview_task_file_path)
-        self._mark_task_area(sub, img_task, color, idx)
-        img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
+        with handle_opencv_image_error(logger):
+            img_task = self._open_frame_preview(preview_task_file_path)
+            self._mark_task_area(sub, img_task, color, idx)
+            img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:

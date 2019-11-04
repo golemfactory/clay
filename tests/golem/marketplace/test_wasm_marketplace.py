@@ -6,6 +6,9 @@ from golem.marketplace import ProviderPerformance
 from golem.marketplace.wasm_marketplace import RequestorWasmMarketStrategy
 
 
+USAGE_SECOND = 1e9  # usage is measured in nanoseconds
+
+
 class TestOfferChoice(testutils.DatabaseFixture):
     TASK_1 = 'task_1'
     TASK_2 = 'task_2'
@@ -22,7 +25,8 @@ class TestOfferChoice(testutils.DatabaseFixture):
         mock_offer_1.quality = (.0, .0, .0, .0)
         mock_offer_1.reputation = .0
         mock_offer_1.price = 5.0
-        mock_offer_1.provider_performance = ProviderPerformance(1000 / 1.25)
+        mock_offer_1.provider_performance = ProviderPerformance(
+            1.25 * USAGE_SECOND)
         self.mock_offer_1 = mock_offer_1
 
         mock_offer_2 = Mock()
@@ -30,15 +34,20 @@ class TestOfferChoice(testutils.DatabaseFixture):
         mock_offer_2.quality = (.0, .0, .0, .0)
         mock_offer_2.reputation = .0
         mock_offer_2.price = 6.0
-        mock_offer_2.provider_performance = ProviderPerformance(1000 / 0.8)
+        mock_offer_2.provider_performance = ProviderPerformance(
+            0.8 * USAGE_SECOND)
         self.mock_offer_2 = mock_offer_2
 
     def test_get_usage_benchmark(self):
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_my_usage_benchmark(), 1.0
+            RequestorWasmMarketStrategy.get_my_usage_benchmark(),
+            RequestorWasmMarketStrategy.DEFAULT_USAGE_BENCHMARK
         )
         self.assertEqual(
-            RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, 1.0),
+            RequestorWasmMarketStrategy.get_usage_factor(
+                self.PROVIDER_1,
+                RequestorWasmMarketStrategy.DEFAULT_USAGE_BENCHMARK
+            ),
             1.0
         )
 
@@ -62,11 +71,11 @@ class TestOfferChoice(testutils.DatabaseFixture):
         result = self._resolve_task_offers()
         self.assertEqual(
             RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_1, -1),
-            0.00125
+            1.25
         )
         self.assertEqual(
             RequestorWasmMarketStrategy.get_usage_factor(self.PROVIDER_2, -1),
-            0.0008
+            0.8
         )
         RequestorWasmMarketStrategy.report_subtask_usages(
             self.TASK_1, [(self.PROVIDER_1, self.SUBTASK_1, 5.0),

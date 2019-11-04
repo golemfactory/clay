@@ -25,14 +25,16 @@ from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import (
     taskbase,
-    taskkeeper,
     taskstate,
     tasktester,
     requestedtaskmanager,
 )
+from golem.task.helpers import calculate_subtask_payment
 
 if typing.TYPE_CHECKING:
-    from golem.client import Client  # noqa pylint: disable=unused-import
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.client import Client
+    from .taskmanager import TaskManager
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -460,17 +462,19 @@ class ClientProvider:
     """Provides task related remote procedures that require Client"""
 
     # Add only methods that are exposed via RPC
-    def __init__(self, client):
+    def __init__(self, client: 'Client'):
         self.client = client
 
     @property
-    def task_manager(self):
+    def task_manager(self) -> 'TaskManager':
+        assert self.client.task_server
         return self.client.task_server.task_manager
 
     @property
     def requested_task_manager(
             self,
     ) -> requestedtaskmanager.RequestedTaskManager:
+        assert self.client.task_server
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
@@ -497,7 +501,7 @@ class ClientProvider:
                 force
             )
         except Exception as exc:  # pylint: disable=broad-except
-            self.client.task_manager.task_creation_failed(task_id, str(exc))
+            self.task_manager.task_creation_failed(task_id, str(exc))
             raise
 
         # Fire and forget the next steps after create_task
@@ -543,6 +547,9 @@ class ClientProvider:
     def create_task_api_task(self, task_params: dict, golem_params: dict):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
             name=golem_params['name'],
@@ -573,6 +580,8 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
@@ -580,6 +589,7 @@ class ClientProvider:
                     self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
@@ -775,7 +785,7 @@ class ClientProvider:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: typing.FrozenSet[str] =\
+        frame_subtasks: typing.Optional[typing.FrozenSet[str]] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
@@ -943,7 +953,8 @@ class ClientProvider:
         subtask_price: int = 0
 
         if task_id:
-            task: taskbase.Task = self.task_manager.tasks.get(task_id)
+            task: typing.Optional[taskbase.Task] = \
+                self.task_manager.tasks.get(task_id)
             if not task:
                 return None, f'Task not found: {task_id}'
 
@@ -958,8 +969,8 @@ class ClientProvider:
             subtask_timeout: int = common.string_to_timeout(
                 options['subtask_timeout'],
             )
-            subtask_price = taskkeeper.compute_subtask_value(
-                price=int(options['price']),
+            subtask_price = calculate_subtask_payment(
+                price_per_hour=int(options['price']),
                 computation_time=subtask_timeout
             )
 

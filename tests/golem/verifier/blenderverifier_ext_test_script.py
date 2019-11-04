@@ -6,15 +6,12 @@ import sys
 import traceback
 from typing import List
 
-from golem.testutils_app_integration import TestTaskIntegration
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
 from tests.golem.verifier.test_utils.helpers import \
     find_crop_files_in_path, \
     are_pixels_equal, find_fragments_in_path
-
-sys.path.insert(0, '.')
 
 logger = logging.getLogger(__name__)
 logging.disable(logging.CRITICAL)
@@ -144,7 +141,7 @@ class ExtendedVerifierTestEnv:
 
             self.report.fail(parameters, reason)
         else:
-            report = tester.get_report()
+            report = tester.report
             report.merge_reports_content()
 
             self.report.update(report)
@@ -182,10 +179,10 @@ class ExtendedVerifierTestEnv:
 
         # Add newline on end.
         print("")
-        self._print_failes()
+        self._print_fails()
         self._reports_to_files(part)
 
-    def _print_failes(self):
+    def _print_fails(self):
         print("Printing failed tests:")
         print(json.dumps(self.report.failed_params, indent=4, sort_keys=False))
 
@@ -236,9 +233,6 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         super().__init__()
         self.report: Report = Report()
 
-    def get_report(self) -> Report:
-        return self.report
-
     def run_for_parameters_set(self, parameters_set: dict):
 
         resolution = parameters_set['resolution']
@@ -282,8 +276,10 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                     self._add_crop_params(parameters_set, task, i))
 
         result = task.task_definition.output_file
-        if not TestTaskIntegration.check_file_existence(result):
-            raise RuntimeError("Result file [{}] doesn't exist.".format(result))
+        for file in result:
+            if not os.path.isfile(file):
+                raise RuntimeError("Result file [{}] doesn't exist.".format(
+                    file))
 
     def _add_crop_params(self, parameters_set: dict, task: Task,
                          subtask_num: int):
@@ -326,8 +322,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
                                    'blender_render_params.json')
 
         with open(params_file, "r") as file:
-            content = file.read()
-            return json.loads(content)
+            return json.load(file)
 
     @classmethod
     def _build_params(cls, resolution: List[int], subtasks: int,

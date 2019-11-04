@@ -6,8 +6,8 @@ import string
 import threading
 from random import SystemRandom
 from typing import Tuple, List
+from unittest.mock import patch
 from pathlib import Path
-from mock import patch
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -21,7 +21,7 @@ from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread, DockerDirMapping
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
+from golem.task.taskbase import Task, TaskResult
 from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import TaskState
 from golem.tools.testwithreactor import TestDatabaseWithReactor
@@ -46,12 +46,12 @@ class VerificationWait:
         with self.condition_var:
             while not self.is_finished:
                 # If timeout is set to None, we wait for ethernity.
-                timeouted = not self.condition_var.wait(timeout=timeout)
+                timed_out = not self.condition_var.wait(timeout=timeout)
 
                 # This implementation can wait much longer then timeout,
                 # because we are in loop and timeout is always restarted,
                 # but who cares.
-                if timeouted and not self.is_finished:
+                if timed_out and not self.is_finished:
                     return False
         return True
 
@@ -69,9 +69,6 @@ class VerificationWait:
 
 # pylint: disable=too-many-instance-attributes
 class TestTaskIntegration(TestDatabaseWithReactor):
-    class Result:
-        def __init__(self, files: List[str]):
-            self.files = files
 
     @staticmethod
     def check_file_existence(filename):
@@ -129,8 +126,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         task: Task = self.start_task(task_def)
 
         for i in range(task.task_definition.subtasks_count):
-            files, subtask_id, _ = self.compute_next_subtask(task, i)
-            result = TestTaskIntegration.Result(files)
+            result, subtask_id, _ = self.compute_next_subtask(task, i)
             self.assertTrue(self.verify_subtask(task, subtask_id, result))
 
         return task
@@ -179,7 +175,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         result = self._collect_results_from_provider(result,
                                                      task_id,
                                                      subtask_id)
-        return result
+        return TaskResult(files=result)
 
     def verify_subtask(self, task: Task, subtask_id, result):
         task_id = task.task_definition.task_id
