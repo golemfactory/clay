@@ -75,6 +75,7 @@ class DockerTaskThread(TaskThread):
                  extra_data: Dict,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
+                 cpu_budget: int,
                  check_mem: bool = False) -> None:
 
         if not docker_images:
@@ -98,6 +99,7 @@ class DockerTaskThread(TaskThread):
         self.job: Optional[DockerJob] = None
         self.check_mem = check_mem
         self.dir_mapping = dir_mapping
+        self.cpu_budget = cpu_budget
 
     # pylint:disable=too-many-arguments
     @staticmethod
@@ -199,7 +201,8 @@ class DockerTaskThread(TaskThread):
             stats_dir=str(self.dir_mapping.stats),
             volumes=volumes,
             environment=environment,
-            host_config=host_config
+            host_config=host_config,
+            cpu_budget=self.cpu_budget
         )
 
         with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
