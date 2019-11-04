@@ -729,16 +729,21 @@ class RequestedTaskManager:
             RequestedSubtask.task == task_id,
             RequestedSubtask.subtask_id == subtask_id
         )
-        if subtask.status.is_active():
+        # Do *not* time out subtasks during verification
+        if subtask.status in (
+                SubtaskStatus.starting, SubtaskStatus.downloading
+        ):
             logger.info(
                 "Subtask timed out. task_id=%r, subtask_id=%r",
                 subtask.task,
                 subtask.subtask_id
             )
-            # FIXME: Call discard_subtasks
             subtask.status = SubtaskStatus.timeout
             subtask.save()
             self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
+
+            # Don't wait for the future because nothing depends on it
+            asyncio.ensure_future(self._abort_subtask(subtask))
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(
@@ -761,6 +766,16 @@ class RequestedTaskManager:
             RequestedSubtask.task_id == task_id,
             RequestedSubtask.status.in_(SUBTASK_STATUS_ACTIVE)
         )
+
+    async def _abort_subtask(self, subtask: RequestedSubtask) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == subtask.task)
+        client = await self._get_app_client(task.app_id)
+        try:
+            await client.abort_subtask(task.task_id, subtask.subtask_id)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                'Failed to abort subtask. app_id=%r task_id=%r subtask_id=%r',
+                task.app_id, task.task_id, subtask.subtask_id)
 
     async def _abort_task_and_shutdown(self, task: RequestedTask) -> None:
         client = await self._get_app_client(task.app_id)

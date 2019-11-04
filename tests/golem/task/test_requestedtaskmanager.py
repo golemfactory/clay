@@ -303,6 +303,28 @@ class TestRequestedTaskManager:
         assert not self.rtm.has_unfinished_tasks()
 
     @pytest.mark.asyncio
+    async def test_subtask_timeout(self, mock_client):
+        self._add_next_subtask_to_client_mock(mock_client)
+        task_timeout = 10
+        subtask_timeout = 1
+        task_id = await self._start_task(
+            task_timeout=task_timeout,
+            subtask_timeout=subtask_timeout)
+        subtask_id = (await self.rtm.get_next_subtask(
+            task_id, self._get_computing_node()
+        )).subtask_id
+
+        # Unfortunately feezegun doesn't mock asyncio's time
+        # and can't be used here
+        await asyncio.sleep(subtask_timeout)
+
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
+            RequestedSubtask.subtask_id == subtask_id)
+        assert subtask.status == SubtaskStatus.timeout
+        mock_client.abort_subtask.assert_called_once_with(task_id, subtask_id)
+
+    @pytest.mark.asyncio
     async def test_get_started_tasks(self, mock_client):
         # given
         task_id = self._create_task()
@@ -403,12 +425,13 @@ class TestRequestedTaskManager:
             self,
             resources=[],
             task_timeout=1,
+            subtask_timeout=1
     ) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
             task_timeout=task_timeout,
-            subtask_timeout=1,
+            subtask_timeout=subtask_timeout,
             output_directory=self.tmp_path / 'output',
             resources=resources,
             max_subtasks=1,
