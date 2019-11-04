@@ -730,20 +730,21 @@ class RequestedTaskManager:
             RequestedSubtask.subtask_id == subtask_id
         )
         # Do *not* time out subtasks during verification
-        if subtask.status in (
-                SubtaskStatus.starting, SubtaskStatus.downloading
-        ):
-            logger.info(
-                "Subtask timed out. task_id=%r, subtask_id=%r",
-                subtask.task,
-                subtask.subtask_id
-            )
-            subtask.status = SubtaskStatus.timeout
-            subtask.save()
-            self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
+        active_statuses = (SubtaskStatus.starting, SubtaskStatus.downloading)
+        if subtask.status not in active_statuses:
+            return
 
-            # Don't wait for the future because nothing depends on it
-            asyncio.ensure_future(self._abort_subtask(subtask))
+        logger.info(
+            "Subtask timed out. task_id=%r, subtask_id=%r",
+            subtask.task,
+            subtask.subtask_id
+        )
+        subtask.status = SubtaskStatus.timeout
+        subtask.save()
+        self._finish_subtask(subtask, SubtaskOp.TIMEOUT)
+
+        # Don't wait for the future because nothing depends on it
+        asyncio.ensure_future(self._abort_subtask(subtask))
 
     @staticmethod
     def _get_unfinished_subtasks_for_node(

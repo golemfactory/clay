@@ -7,7 +7,7 @@ from pathvalidate import sanitize_filename
 from golem.apps import AppId, AppDefinition, save_app_to_json_file
 from golem.marketplace import RequestorBrassMarketStrategy
 
-BlenderAppDefinition_v0_6_0 = AppDefinition(
+BlenderAppDefinition = AppDefinition(
     name='golemfactory/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
@@ -26,7 +26,7 @@ BlenderAppDefinition_v0_6_0 = AppDefinition(
 )
 
 APPS = [
-    BlenderAppDefinition_v0_6_0,
+    BlenderAppDefinition,
 ]
 
 
