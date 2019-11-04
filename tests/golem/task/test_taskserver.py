@@ -1880,6 +1880,7 @@ class TestNewTaskComputerIntegration(
                 call.task_ended(self.task_id)
             ]
         )
+        yield self.task_server.quit()
 
     @defer.inlineCallbacks
     def test_computation_error(self):
@@ -1918,6 +1919,7 @@ class TestNewTaskComputerIntegration(
                 call.task_ended(self.task_id)
             ]
         )
+        yield self.task_server.quit()
 
     @defer.inlineCallbacks
     def test_computation_timed_out(self):
@@ -1949,3 +1951,4 @@ class TestNewTaskComputerIntegration(
                 call.task_ended(self.task_id)
             ]
         )
+        yield self.task_server.quit()
