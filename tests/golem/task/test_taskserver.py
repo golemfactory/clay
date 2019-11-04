@@ -18,7 +18,7 @@ from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.datastructures.masking import Mask
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from golem_messages.message import ComputeTaskDef
+from golem_messages.message import ComputeTaskDef, TaskFailure
 from golem_messages.utils import encode_hex as encode_key_id, pubkey_to_address
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from requests import HTTPError
@@ -340,6 +340,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             subtask_id=subtask_id,
             owner=dt_p2p_factory.Node(),
             err_msg="Controlled failure",
+            reason=TaskFailure.DEFAULT_REASON
         )
 
         ts.failures_to_send[subtask_id] = wtf

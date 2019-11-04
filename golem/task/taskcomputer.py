@@ -531,7 +531,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                     subtask_id,
                     subtask['task_id'],
                     task_thread.error_msg,
-                    reason=reason
+                    reason
                 )
 
         elif task_thread.result and 'data' in task_thread.result:

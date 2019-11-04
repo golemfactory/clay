@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-EXIT_CODE_BUDGET_EXCEEDED = 101
+EXIT_CODE_BUDGET_EXCEEDED = 111
 EXIT_CODE_MESSAGE = "Subtask computation failed with exit code {}"
 EXIT_CODE_PROBABLE_CAUSES = {
     EXIT_CODE_BUDGET_EXCEEDED: "CPU budget exceeded",

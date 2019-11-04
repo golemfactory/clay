@@ -1,6 +1,6 @@
 
 import factory
-from golem_messages import idgenerator
+from golem_messages import idgenerator, message
 
 from golem import clientconfigdescriptor
 from golem.task import taskserver
@@ -74,3 +74,4 @@ class WaitingTaskFailureFactory(factory.Factory):
     owner = factory.SubFactory(
         'golem_messages.factories.datastructures.p2p.Node',
     )
+    reason = message.TaskFailure.DEFAULT_REASON

@@ -7,7 +7,7 @@ import uuid
 
 from pydispatch import dispatcher
 
-from golem_messages.message import ComputeTaskDef
+from golem_messages.message import ComputeTaskDef, TaskFailure
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
@@ -96,7 +96,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
-            "xxyyzz", "xyz", "Host direct task not supported")
+            "xxyyzz",
+            "xyz",
+            "Host direct task not supported"
+        )
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -133,7 +136,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtask)
         task_server.send_task_failed.assert_called_with(
-            "aabbcc", "xyz", 'some exception')
+            "aabbcc", "xyz", 'some exception', TaskFailure.DEFAULT_REASON)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
