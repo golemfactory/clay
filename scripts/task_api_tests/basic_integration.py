@@ -12,7 +12,12 @@ from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
 
 from golem import database, model
-from golem.apps import manager as appmanager, load_app_from_json_file
+from golem.apps import (
+    manager as appmanager,
+    load_app_from_json_file,
+    AppDefinition,
+)
+from golem.apps.default import get_built_in_app_by_id
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.envs.default import (
@@ -27,12 +32,11 @@ logging.basicConfig(level=logging.INFO)
 async def test_task(
         work_dir: Path,
         task_params_path: str,
-        app_definition_path: str,
+        app_definition: AppDefinition,
         resources: List[str],
         max_subtasks: int,
 ) -> None:
 
-    app_definition = load_app_from_json_file(Path(app_definition_path))
     env_prerequisites = app_definition.requestor_prereq
     app_manager = appmanager.AppManager()
     app_manager.register_app(app_definition)
@@ -167,26 +171,61 @@ async def _task(
 
 
 @test.command()
-@click.argument('task_params_path', type=click.Path(exists=True))
 @click.argument('app_definition_path', type=click.Path(exists=True))
+@click.argument('task_params_path', type=click.Path(exists=True))
 @click.option('--resource', type=click.Path(exists=True), multiple=True)
 @click.option('--max-subtasks', type=click.INT, default=2)
 @click.option('--workdir', type=click.Path(exists=True))
 @click.option('--leave-workdir', is_flag=True)
-def task(
-        task_params_path,
+def task_from_app_def(
         app_definition_path,
+        task_params_path,
         resource,
         max_subtasks,
         workdir,
         leave_workdir,
 ):
     install_reactor()
+    app_definition = load_app_from_json_file(Path(app_definition_path))
     return react(
         lambda _reactor: ensureDeferred(
             _task(
                 task_params_path,
-                app_definition_path,
+                app_definition,
+                resource,
+                max_subtasks,
+                workdir,
+                leave_workdir,
+            )
+        )
+    )
+
+
+@test.command()
+@click.argument('app_id', type=click.STRING)
+@click.argument('task_params_path', type=click.Path(exists=True))
+@click.option('--resource', type=click.Path(exists=True), multiple=True)
+@click.option('--max-subtasks', type=click.INT, default=2)
+@click.option('--workdir', type=click.Path(exists=True))
+@click.option('--leave-workdir', is_flag=True)
+def task_from_app_id(
+        app_id,
+        task_params_path,
+        resource,
+        max_subtasks,
+        workdir,
+        leave_workdir,
+):
+    app_definition = get_built_in_app_by_id(app_id)
+    if app_definition is None:
+        print('ERROR: Invalid app_id provided')
+        return
+    install_reactor()
+    return react(
+        lambda _reactor: ensureDeferred(
+            _task(
+                task_params_path,
+                app_definition,
                 resource,
                 max_subtasks,
                 workdir,

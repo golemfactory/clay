@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from pathvalidate import sanitize_filename
@@ -45,3 +45,10 @@ def save_built_in_app_definitions(path: Path) -> List[AppId]:
             app_ids.append(app_id)
 
     return app_ids
+
+
+def get_built_in_app_by_id(app_id: AppId) -> Optional[AppDefinition]:
+    for app in APPS:
+        if app.id == app_id:
+            return app
+    return None
