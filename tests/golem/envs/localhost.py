@@ -1,7 +1,7 @@
 import asyncio
 import logging
+import multiprocessing
 import signal
-from multiprocessing import Process
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 
@@ -150,8 +150,11 @@ class LocalhostRuntime(RuntimeBase):
             payload: LocalhostPayload,
     ) -> None:
         super().__init__(logger)
-
-        self._server_process = Process(
+        # From docs: Start a fresh python interpreter process. Unnecessary
+        # file descriptors and handles from the parent process will not
+        # be inherited.
+        mp_ctx = multiprocessing.get_context('spawn')
+        self._server_process = mp_ctx.Process(
             target=self._spawn_server,
             args=(dill.dumps(payload),),
             daemon=True

@@ -216,6 +216,7 @@ class TaskComputerAdapter:
             in_background=in_background))
 
     def quit(self) -> None:
+        self._new_computer.quit()
         self._old_computer.quit()
 
 
@@ -430,6 +431,10 @@ class NewTaskComputer:
             docker_gpu.update_config(DockerGPUConfig(**config_dict))
 
         return defer.succeed(None)
+
+    def quit(self):
+        if self.has_assigned_task():
+            self.task_interrupted()
 
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
