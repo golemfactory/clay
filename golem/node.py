@@ -384,6 +384,8 @@ class Node(HardwarePresetsMixin):
         # configure in_shutdown
         logger.info('Enabling shutdown mode, no more tasks can be started')
         self.client.update_setting('in_shutdown', True)
+        StatusPublisher.publish(
+            Component.client, 'scheduled_shutdown', Stage.pre)
 
         # subscribe to events
 
