@@ -24,6 +24,8 @@ from pydispatch import dispatcher
 import twisted.internet.address
 from twisted.internet.defer import Deferred
 
+from apps.appsmanager import AppsManager
+
 import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
@@ -134,6 +136,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
+        server.client.apps_manager = AppsManager()
+        server.client.apps_manager.load_all_apps()
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -187,7 +191,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ),
             subtask_timeout=1,
             max_price=1,
-            deadline=int(time.time() + 3600))
+            deadline=int(time.time() + 3600),
+            environment='BLENDER',
+        )
         task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 
@@ -538,6 +544,7 @@ class TestTaskSession(TaskSessionTestBase):
     def setUp(self):
         super().setUp()
         self.concent_keys = cryptography.ECCx(None)
+        self.task_session.task_server.task_manager.tasks = dict()
         self.task_session.task_server.client.concent_service.variant = {
             'pubkey': self.concent_keys.raw_pubkey}
 
@@ -795,10 +802,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = True
@@ -812,10 +821,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = False

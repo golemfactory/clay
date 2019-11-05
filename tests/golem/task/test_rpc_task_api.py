@@ -1,9 +1,10 @@
+import asyncio
 import os
 from pathlib import Path
 import tempfile
 import unittest
 from unittest import mock
-from mock import Mock
+from mock import Mock, call
 
 from golem.client import Client
 from golem.ethereum import fundslocker, transactionsystem
@@ -49,6 +50,7 @@ class TestTaskApiCreate(unittest.TestCase):
             ],
             'max_price_per_hour': 123,
             'max_subtasks': 4,
+            'min_memory': 0,
             'task_timeout': 60,
             'subtask_timeout': 60,
         }
@@ -60,9 +62,12 @@ class TestTaskApiCreate(unittest.TestCase):
         }
         golem_params = self.get_golem_params()
         task_id = 'test_task_id'
+        self.client.has_assigned_task.return_value = False
         self.requested_task_manager.create_task.return_value = task_id
+        self.requested_task_manager.init_task.return_value = asyncio.Future()
+        self.requested_task_manager.init_task.return_value.set_result(None)
 
-        new_task_id = self.rpc.create_task_api_task(task_params, golem_params)
+        new_task_id = self.rpc.create_task_api_task(golem_params, task_params)
         self.assertEqual(task_id, new_task_id)
         self.requested_task_manager.create_task.assert_called_once_with(
             mock.ANY,
@@ -113,11 +118,28 @@ class TestTaskApiCreate(unittest.TestCase):
         )
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
+        self.client.update_setting.assert_called_once_with(
+            'accept_tasks', False)
+
+    def test_has_assigned_task(self):
+        self.client.has_assigned_task.return_value = True
+
+        with self.assertRaises(RuntimeError):
+            self.rpc.create_task_api_task({}, self.get_golem_params())
+
+        self.requested_task_manager.create_task.assert_not_called()
+        self.requested_task_manager.init_task.assert_not_called()
+        self.client.funds_locker.lock_funds.assert_not_called()
 
     def test_failed_init(self):
+        self.client.has_assigned_task.return_value = False
         self.requested_task_manager.init_task.side_effect = Exception
 
-        task_id = self.rpc.create_task_api_task({}, self.get_golem_params())
+        task_id = self.rpc.create_task_api_task(self.get_golem_params(), {})
 
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
+        self.client.update_setting.assert_has_calls((
+            call('accept_tasks', False),
+            call('accept_tasks', True)
+        ))

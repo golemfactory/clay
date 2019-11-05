@@ -9,7 +9,15 @@ import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
 from typing import (
-    Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple,
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
     TYPE_CHECKING,
 )
 
@@ -356,6 +364,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 service.start()
         logger.debug('Started client services')
 
+    @inlineCallbacks
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
         logger.debug('Stopping client services ...')
@@ -368,7 +377,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.quit()
+            yield self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)
@@ -667,9 +676,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
+    @inlineCallbacks
     def quit(self):
         logger.info('Shutting down ...')
-        self.stop()
+        yield self.stop()
 
         self.transaction_system.stop()
         if self.diag_service:
@@ -853,10 +863,19 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         task_dict = self.task_server.task_manager.get_task_dict(task_id)
         if not task_dict:
-            return None
-
-        task_state = self.task_server.task_manager.query_task_state(task_id)
-        subtask_ids = list(task_state.subtask_states.keys())
+            # NEW taskmanager
+            logger.debug('get_task(task_id=%r) - NEW', task_id)
+            rtm = self.task_server.requested_task_manager
+            task = rtm.get_requested_task(task_id)
+            if not task:
+                return None
+            subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            task_dict = {'id': task.task_id, 'status': task.status.value}
+        else:
+            # OLD taskmanager
+            logger.debug('get_task(task_id=%r) - OLD', task_id)
+            task_state = self.task_server.task_manager.query_task_state(task_id)
+            subtask_ids = list(task_state.subtask_states.keys())
 
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
@@ -902,8 +921,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if task_id:
             return self.get_task(task_id)
 
-        task_keys = self.task_server.task_manager.tasks.keys()
-        tasks = (self.get_task(task_id) for task_id in task_keys)
+        tm = self.task_server.task_manager
+        rtm = self.task_server.requested_task_manager
+
+        task_keys: Set[str] = set()
+        task_keys.update(tm.tasks.keys())
+        task_keys.update(rtm.get_requested_task_ids())
+
+        tasks = (self.get_task(task_id) for task_id in sorted(task_keys))
         filter_fn = None
 
         if return_created_tasks_only:
@@ -922,21 +947,32 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if rtm.task_exists(task_id):
+                subtasks = rtm.get_requested_task_subtasks(task_id)
+                return [subtask.to_dict() for subtask in subtasks]
+            return tm.get_subtasks_dict(task_id)
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str) \
+    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(
-                subtask_id)
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if task_id:
+                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
+                if subtask:
+                    return subtask.to_dict(), None
+            subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
-        except KeyError:
+        except (AttributeError, KeyError):
             return None, "Subtask not found: '{}'".format(subtask_id)
 
     @rpc_utils.expose('comp.task.preview')
@@ -1326,6 +1362,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             = Client._make_connection_status_human_readable_message(status)
         return status
 
+    def has_assigned_task(self) -> bool:
+        if self.task_server is None:
+            return False
+        return self.task_server.task_computer.has_assigned_task()
+
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting
         if self.task_server is None:
@@ -1568,8 +1609,7 @@ class MaskUpdateService(LoopingCallService):
         self._interval = interval_seconds
         super().__init__(interval_seconds)
 
-    @inlineCallbacks
-    def _run(self) -> Deferred:
+    def _run(self):
         logger.debug('Updating masks')
         old_task_manager = self._old_task_manager
         requested_task_manager = self._requested_task_manager
@@ -1587,23 +1627,16 @@ class MaskUpdateService(LoopingCallService):
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
 
-        started_tasks = requested_task_manager.get_started_tasks()
-        # Using list() because tasks could be changed by another thread
-        for db_task in list(started_tasks):
+        for db_task in requested_task_manager.get_started_tasks():
             elapsed_seconds = db_task.elapsed_seconds
             if elapsed_seconds is None or elapsed_seconds < self._interval:
                 continue
-            has_subtask = yield deferred_from_future(
-                requested_task_manager.has_pending_subtasks(db_task.task_id)
-            )
-            if not has_subtask:
-                continue
 
             requested_task_manager.decrease_task_mask(
-                task_id=task_id,
+                task_id=db_task.task_id,
                 num_bits=self._update_num_bits)
             logger.info('Updating mask. task_id=%r, new_mask_size=%r',
-                        task_id, db_task.mask.num_bits)
+                        db_task.task_id, db_task.mask.num_bits)
 
 
 class DailyJobsService(LoopingCallService):

@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 from copy import deepcopy
 from pathlib import Path, PurePath
@@ -514,6 +515,12 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         results = subtask.get_result()
         return results.files if results else []
 
+    @classmethod
+    def calculate_subtask_budget(cls, task_definition: WasmTaskDefinition):  # type:ignore  # noqa pylint:disable=line-too-long
+        num_payable_subtasks = len(task_definition.options.subtasks) * \
+                               (cls.REDUNDANCY_FACTOR + 1)
+        return task_definition.budget // num_payable_subtasks
+
     @property
     def subtask_price(self) -> int:
         """WASM subtask_price is calculated based on user provided budget.
@@ -551,15 +558,14 @@ class WasmTaskBuilder(CoreTaskBuilder):
     def build_full_definition(
             cls, task_type: 'CoreTaskTypeInfo',
             dictionary: Dict[str, Any]) -> TaskDefinition:
+        options = dictionary['options']
+
         # Resources are generated from 'input_dir' later on.
         dictionary['resources'] = []
-        # Output is determined from 'output_dir' later on.
-        dictionary['options']['output_path'] = ''
         # Subtasks count is determined by the amount of subtask info provided.
-        dictionary['subtasks_count'] = len(dictionary['options']['subtasks'])
+        dictionary['subtasks_count'] = len(options['subtasks'])
 
         task_def: Any = super().build_full_definition(task_type, dictionary)
-        options = dictionary['options']
         task_def.options.js_name = options['js_name']
         task_def.options.wasm_name = options['wasm_name']
         task_def.options.input_dir = options['input_dir']
@@ -573,12 +579,27 @@ class WasmTaskBuilder(CoreTaskBuilder):
             for name, subtask_opts in options['subtasks'].items()
         }
 
-        task_def.budget = dictionary.get('budget', 1) * denoms.ether
         if 'budget' not in dictionary:
             logger.warning("Assigning task default budget: %d",
                            task_def.budget / denoms.ether)
+        else:
+            task_def.budget = dictionary.get('budget') * denoms.ether
 
         return task_def
+
+    @classmethod
+    def get_output_path(
+            cls,
+            dictionary: Dict[str, Any],
+            definition: 'TaskDefinition') -> str:
+        options = dictionary['options']
+
+        if 'output_path' in options:
+            output_path = options['output_path']
+        else:
+            output_path = options['output_dir']
+
+        return os.path.join(output_path, '/')
 
 
 class WasmBenchmarkTask(WasmTask):

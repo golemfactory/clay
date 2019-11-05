@@ -8,12 +8,13 @@ import shutil
 import tempfile
 import time
 
-from golem import app_manager as appmanager, database, model
+import golem.apps
+from golem import database, model
+from golem.apps import manager as appmanager
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 from golem.task.task_api import docker
-from golem.envs.auto_setup import auto_setup
 from golem.envs.docker import cpu, whitelist
 
 from twisted.internet.task import react
@@ -34,7 +35,7 @@ async def test_task(
 
     app_manager = appmanager.AppManager()
     app_name = 'test_app'
-    app_manager.register_app(appmanager.AppDefinition(
+    app_manager.register_app(golem.apps.AppDefinition(
         name=app_name,
         requestor_env=environment,
         requestor_prereq=env_prerequisites,
@@ -44,7 +45,7 @@ async def test_task(
 
     env_manager = envmanager.EnvironmentManager()
     docker_cpu_config = cpu.DockerCPUConfig(work_dirs=[work_dir])
-    docker_cpu_env = auto_setup(cpu.DockerCPUEnvironment(docker_cpu_config))
+    docker_cpu_env = cpu.DockerCPUEnvironment(docker_cpu_config)
     docker_image = cpu.DockerCPUEnvironment.parse_prerequisites(
         env_prerequisites).image
     whitelist.Whitelist.add(docker_image)
@@ -82,6 +83,7 @@ async def test_task(
         resources=resources,
         max_subtasks=max_subtasks,
         max_price_per_hour=1,
+        min_memory=0,
         concent_enabled=False,
     )
     with open(task_params_path, 'r') as f:

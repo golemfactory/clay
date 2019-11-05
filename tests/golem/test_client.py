@@ -41,6 +41,7 @@ from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
 from golem.task import taskstate
 from golem.task.acl import Acl
+from golem.task.requestedtaskmanager import RequestedTaskManager
 from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.task.taskmanager import TaskManager
@@ -372,13 +373,41 @@ class TestClient(TestClientBase):
         )
 
 
+class TestHasAssignedTask(TestClientBase):
+
+    def test_no_task_server(self):
+        self.assertFalse(self.client.has_assigned_task())
+
+    def test_true(self):
+        task_computer = Mock()
+        task_computer.has_assigned_task.return_value = True
+        self.client.task_server = Mock(task_computer=task_computer)
+        self.assertTrue(self.client.has_assigned_task())
+
+
 class TestGetTasks(TestClientBase):
 
     def setUp(self):
         super().setUp()
-        self.tasks = self._create_dict_of_tasks_with_status()
+        tm_tasks = {
+            'task_1': {'status': TaskStatus.creating.value},
+            'task_2': {'status': TaskStatus.errorCreating.value},
+            'task_3': {'status': TaskStatus.aborted.value},
+        }
+        rtm_tasks = {
+            'task_4': {'status': TaskStatus.computing.value},
+            'task_5': {'status': TaskStatus.finished.value},
+            'task_6': {'status': TaskStatus.creatingDeposit.value},
+        }
+
+        self.tasks = dict()
+        self.tasks.update(tm_tasks)
+        self.tasks.update(rtm_tasks)
+
         self.client.task_server = Mock(task_manager=Mock())
-        self.client.task_server.task_manager.tasks = self.tasks
+        self.client.task_server.task_manager.tasks = tm_tasks
+        self.client.task_server.requested_task_manager.get_requested_task_ids =\
+            Mock(return_value=[k for k in rtm_tasks])
 
     def test_get_tasks(self):
         self.client.get_task = lambda task_id: self.tasks[task_id]
@@ -402,17 +431,6 @@ class TestGetTasks(TestClientBase):
         retrieved_tasks = self.client.get_tasks()
         assert isinstance(retrieved_tasks, list)
         assert not retrieved_tasks
-
-    @staticmethod
-    def _create_dict_of_tasks_with_status():
-        return {
-            'task_1': {'status': TaskStatus.creating.value},
-            'task_2': {'status': TaskStatus.errorCreating.value},
-            'task_3': {'status': TaskStatus.aborted.value},
-            'task_4': {'status': TaskStatus.computing.value},
-            'task_5': {'status': TaskStatus.finished.value},
-            'task_6': {'status': TaskStatus.creatingDeposit.value},
-        }
 
 
 class TestClientRestartSubtasks(TestClientBase):
@@ -1134,20 +1152,19 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         StatusPublisher.publish(component, *status)
         assert self.client.get_golem_status()[component] == status
 
-    @inlineCallbacks
     def test_golem_status_with_publisher(self, *_):
         component = 'component'
         status = 'method', 'stage', {'status': 'message', 'value': 'data'}
 
         # status published, with rpc publisher
-        StatusPublisher._rpc_publisher = Mock()
+        StatusPublisher._event_publisher = Mock()
         deferred: Deferred = StatusPublisher.publish(component, *status)
         assert self.client.get_golem_status()[component] == status
 
-        yield deferred
+        sync_wait(deferred)
 
-        assert StatusPublisher._rpc_publisher.publish.called
-        call = StatusPublisher._rpc_publisher.publish.call_args
+        assert StatusPublisher._event_publisher.publish.called
+        call = StatusPublisher._event_publisher.publish.call_args
         assert call[0][0] == Golem.evt_golem_status
         assert call[0][1][component] == status
 
@@ -1285,6 +1302,8 @@ class TestConcentInitialization(TestClientBase):
 class TestGetTask(TestClientBase):
     def test_all_sent(self):
         self.client.task_server = create_autospec(TaskServer)
+        self.client.task_server.requested_task_manager = create_autospec(
+            RequestedTaskManager)
         self.client.task_server.task_manager = create_autospec(TaskManager)
         self.client.task_server.task_computer = create_autospec(TaskComputer)
         self.client.transaction_system.get_subtasks_payments.return_value \

@@ -132,14 +132,6 @@ class Hypervisor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def requires_ports_publishing(self) -> bool:
-        """
-        Should indicate whether ports have to be published while running
-        the container to make them accessible.
-        """
-        raise NotImplementedError
-
-    @abstractmethod
     def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
         """
         Returns a socket address under which the given port on provided

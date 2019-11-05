@@ -99,8 +99,8 @@ class TestIntegration(TestCase, DatabaseFixture):
     @inlineCallbacks
     def test_benchmark(self):
         Whitelist.add(self.env.BENCHMARK_IMAGE.split('/')[0])
-        score = yield self.env.run_benchmark()
-        self.assertGreater(score, 0)
+        benchmark_result = yield self.env.run_benchmark()
+        self.assertGreater(benchmark_result.performance, 0)
 
     @inlineCallbacks
     def test_ports(self):

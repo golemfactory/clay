@@ -63,7 +63,8 @@ def prepare_crops(
     return crops, crops_render_data
 
 
-def prepare_data_for_blender_verification(  # pylint: disable=too-many-locals, too-many-arguments
+def prepare_data_for_blender_verification(
+        # pylint: disable=too-many-locals, too-many-arguments
         subtask_border: List[float],
         scene_file_path: str,
         resolution: List[int],
@@ -216,9 +217,32 @@ def verify(  # pylint: disable=too-many-arguments
     )
     print("blender_render_params:")
     pprint(blender_render_parameters)
+    save_params(blender_render_parameters, "blender_render_params.json",
+                mounted_paths)
+
     results = blender.render(blender_render_parameters, mounted_paths)
 
     print("results:")
     pprint(results)
 
     make_verdict(subtask_file_paths, crops, results)
+
+
+def convert_float32_to_double(params: dict):
+    new_params = params.copy()
+    crops_array = new_params['crops']
+
+    for crop in crops_array:
+        # value.item() converts numpy type to native Python type
+        crop['borders_x'] = [value.item() for value in crop['borders_x']]
+        crop['borders_y'] = [value.item() for value in crop['borders_y']]
+
+    return new_params
+
+
+def save_params(params: dict, filename: str, mounted_paths: dict):
+    new_params = convert_float32_to_double(params)
+
+    path = os.path.join(mounted_paths["WORK_DIR"], filename)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(new_params, f)

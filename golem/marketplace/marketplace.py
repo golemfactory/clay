@@ -1,11 +1,12 @@
 from abc import ABC, abstractclassmethod, abstractmethod
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List
 
 from dataclasses import dataclass
 
-if TYPE_CHECKING:
-    # pylint:disable=unused-import, ungrouped-imports
-    from golem_messages.message.tasks import ReportComputedTask
+from golem_messages.message.tasks import (
+    ReportComputedTask, WantToComputeTask
+)
+
 
 class ProviderPerformance:
     def __init__(self, usage_benchmark: float):
@@ -60,7 +61,25 @@ class RequestorMarketStrategy(ABC):
 
     @classmethod
     @abstractmethod
-    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
+        """
         raise NotImplementedError()
 
 
@@ -73,5 +92,23 @@ class ProviderMarketStrategy(ABC):
 
     @classmethod
     @abstractmethod
-    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
+        """
         raise NotImplementedError()
