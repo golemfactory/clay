@@ -1,8 +1,10 @@
 import json
 import os
+import collections
 from pathlib import Path
 from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
+from numpy import float32
 
 from ..render_tools import blender_render as blender
 from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
@@ -228,7 +230,21 @@ def verify(  # pylint: disable=too-many-arguments
     make_verdict(subtask_file_paths, crops, results)
 
 
+def convert_float32_to_double(params: dict):
+    new_params = params.copy()
+    crops_array = new_params['crops']
+
+    for crop in crops_array:
+        # value.item() converts numpy type to native Python type
+        crop['borders_x'] = [value.item() for value in crop['borders_x']]
+        crop['borders_y'] = [value.item() for value in crop['borders_y']]
+
+    return new_params
+    
+
 def save_params(params: dict, filename: str, mounted_paths: dict):
+    new_params = convert_float32_to_double(params)
+
     path = os.path.join(mounted_paths["WORK_DIR"], filename)
     with open(path, 'w', encoding='utf-8') as f:
-        json.dump(params, f)
+        json.dump(new_params, f)
