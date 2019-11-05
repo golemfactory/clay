@@ -645,6 +645,26 @@ class TestTaskSession(TaskSessionTestBase):
             sender=ANY,
         )
 
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_budget',
+        Mock(return_value=100)
+    )
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_payment',
+        Mock(return_value=75)
+    )
+    def test_budget_vs_payment_difference(self):
+        srr = self._get_srr()
+        with patch('golem.task.tasksession.update_requestor_assigned_sum') \
+                as sum_mock:
+            self.__call_react_to_srr(srr)
+        sum_mock.assert_called_with(
+            srr.requestor_id,
+            -25
+        )
+
     def test_result_rejected_with_wrong_key(self, *_):
         srr = self._get_srr()
         self.task_session.key_id = encode_hex(
