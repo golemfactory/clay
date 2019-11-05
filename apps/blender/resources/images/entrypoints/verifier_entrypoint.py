@@ -13,4 +13,5 @@ verify(
     params['samples'],
     params['frames'],
     params['output_format'],
+    crops_count=params.get('crops_count', 3)
 )
