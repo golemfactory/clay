@@ -384,6 +384,12 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.conn = Mock()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
+        app = Mock()
+        app.builder.TASK_CLASS.\
+            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.conn.server.client.apps_manager.get_app_for_env = Mock(
+            return_value=app
+        )
         self.task_session = TaskSession(self.conn)
         self.peer_keys = cryptography.ECCx(None)
         self.task_session.key_id = encode_hex(self.peer_keys.raw_pubkey)
@@ -583,6 +589,9 @@ class TestTaskSession(TaskSessionTestBase):
                 requestor_keys=requestor_keys,
                 provider_keys=provider_keys,
                 concent_enabled=concent,
+                want_to_compute_task__task_header__subtask_timeout=360,
+                want_to_compute_task__price=10,
+                price=1,
             ),
             sign__privkey=provider_keys.raw_privkey,
         )

@@ -788,8 +788,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_class = self._get_task_class(
             rct.task_to_compute.want_to_compute_task.task_header)
         market_strategy = task_class.PROVIDER_MARKET_STRATEGY
-        payment_value = market_strategy.calculate_payment(
-            rct.report_computed_task)
+        payment_value = market_strategy.calculate_payment(rct)
         budget = market_strategy.calculate_budget(
             rct.task_to_compute.want_to_compute_task)
         return payment_value, budget
