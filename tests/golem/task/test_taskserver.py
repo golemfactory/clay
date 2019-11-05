@@ -1,7 +1,9 @@
 # pylint: disable=protected-access, too-many-lines
 import asyncio
 import os
+import sys
 import time
+import unittest
 from datetime import datetime, timedelta
 import random
 import tempfile
@@ -1845,6 +1847,8 @@ class TestNewTaskComputerIntegration(
 
         return msg
 
+    # FIXME: this test is on macOS
+    @unittest.skipIf(sys.platform.startswith('darwin'), 'Unstable on macOS')
     @defer.inlineCallbacks
     def test_successful_computation(self):
         # Given
@@ -1892,6 +1896,8 @@ class TestNewTaskComputerIntegration(
         )
         yield self.task_server.quit()
 
+    # FIXME: this test is on macOS
+    @unittest.skipIf(sys.platform.startswith('darwin'), 'Unstable on macOS')
     @defer.inlineCallbacks
     def test_computation_error(self):
         # Given
@@ -1931,6 +1937,8 @@ class TestNewTaskComputerIntegration(
         )
         yield self.task_server.quit()
 
+    # FIXME: this test is on macOS
+    @unittest.skipIf(sys.platform.startswith('darwin'), 'Unstable on macOS')
     @defer.inlineCallbacks
     def test_computation_timed_out(self):
         # Given
