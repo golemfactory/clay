@@ -976,8 +976,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test_react_to_subtask_results_accepted(self):
-        # given
+    def _get_sra(self):
         rct = msg_factories.tasks.ReportComputedTaskFactory(**{
             'task_to_compute__want_to_compute_task'
             '__task_header__subtask_timeout': 360,
@@ -1003,6 +1002,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.key_id = self.requestor_key_id
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
+        return sra
+
+    def test_react_to_subtask_results_accepted(self):
+        # given
+        sra = self._get_sra()
 
         dispatch_listener = Mock()
         dispatcher.connect(dispatch_listener, signal='golem.message')
@@ -1030,6 +1034,26 @@ class SubtaskResultsAcceptedTest(TestCase):
             signal='golem.message',
             message=sra,
             sender=ANY,
+        )
+
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_budget',
+        Mock(return_value=100)
+    )
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_payment',
+        Mock(return_value=75)
+    )
+    def test_budget_vs_payment_difference(self):
+        sra = self._get_sra()
+        with patch('golem.task.tasksession.update_requestor_assigned_sum') \
+                as sum_mock:
+            self.task_session._react_to_subtask_results_accepted(sra)
+        sum_mock.assert_called_with(
+            sra.requestor_id,
+            -25
         )
 
     def test_react_with_wrong_key(self):
