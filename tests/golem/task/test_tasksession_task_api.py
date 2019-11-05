@@ -8,6 +8,8 @@ from golem_messages.message import tasks as msg_tasks
 
 from twisted.internet import defer
 
+from apps.appsmanager import AppsManager
+
 from golem.resource import resourcemanager
 from golem.task import requestedtaskmanager
 from golem.task import tasksession
@@ -27,6 +29,9 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
         self.rtm.task_exists.return_value = True
         self.ts.task_server.requested_task_manager = self.rtm
 
+        self.ts.task_server.client.apps_manager = AppsManager()
+        self.ts.task_server.client.apps_manager.load_all_apps()
+
         self.keys_auth = mock.Mock()
         self.keys_auth._private_key = b'4' * 32
         self.keys_auth.public_key = (
@@ -39,6 +44,7 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
         self.ts.task_server.new_resource_manager = self.resource_manager
 
         self.wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            task_header__environment='BLENDER',
             task_header__sign__privkey=self.keys_auth._private_key,
             price=123,
         )

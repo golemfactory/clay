@@ -7,6 +7,8 @@ import calendar
 import datetime
 import unittest.mock as mock
 
+from apps import appsmanager
+
 from freezegun import freeze_time
 from golem_messages import constants as msg_constants
 from golem_messages import cryptography
@@ -427,7 +429,10 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory(
-            price=10 ** 18, cpu_usage=int(1e9))
+            price=10 ** 18,
+            cpu_usage=int(1e9),
+            task_header__environment='BLENDER',
+        )
         self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
@@ -439,6 +444,10 @@ class ReactToWantToComputeTaskTestCase(TestWithReactor):
         self.task_session.task_manager.task_finished.return_value = False
         self.task_session.requested_task_manager.task_exists.return_value = \
             False
+
+        apps_manager = appsmanager.AppsManager()
+        apps_manager.load_all_apps()
+        self.task_session.task_server.client.apps_manager = apps_manager
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)

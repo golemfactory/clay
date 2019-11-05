@@ -68,6 +68,8 @@ class TaskTypeInfo(object):
 
 
 class TaskBuilder(abc.ABC):
+    TASK_CLASS: Type['Task']
+
     def __init__(self):
         pass
 
@@ -143,16 +145,25 @@ class Task(abc.ABC):
     def __repr__(self):
         return '<Task: %r>' % (self.header,)
 
+    @classmethod
+    def calculate_subtask_budget(cls, task_definition: 'TaskDefinition'):
+        """
+        calculate the per-job budget based on the task definition
+        :param task_definition:
+        :return: single job (subtask) budget [ GNT wei ]
+        """
+        return calculate_subtask_payment(
+            task_definition.max_price,
+            task_definition.subtask_timeout,
+        )
+
     @property
     def price(self) -> int:
         return self.subtask_price * self.get_total_tasks()
 
     @property
     def subtask_price(self):
-        return calculate_subtask_payment(
-            self.header.max_price,
-            self.header.subtask_timeout,
-        )
+        return self.calculate_subtask_budget(self.task_definition)
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):

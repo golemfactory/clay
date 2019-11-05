@@ -52,6 +52,7 @@ class TestMarketStrategy(testutils.DatabaseFixture):
     PROVIDER_B = 'provider_b'
     SUBTASK_A = 'subtask_a'
     SUBTASK_B = 'subtask_b'
+    BUDGET = 200 * PWEI
 
     def test_brass_calculate_payment(self):
         rct = ReportComputedTaskFactory(**{
@@ -69,9 +70,7 @@ class TestMarketStrategy(testutils.DatabaseFixture):
         return ReportComputedTaskFactory(**{
             'task_to_compute__want_to_compute_task__price': 100 * PWEI,
             'task_to_compute__want_to_compute_task'
-            '__task_header__subtask_timeout': 3600,
-            'task_to_compute__want_to_compute_task'
-            '__task_header__max_price': 200 * PWEI,
+            '__task_header__subtask_budget': self.BUDGET,
             'stats': ProviderStats(**{
                 'cpu_stats': {
                     'cpu_usage': {
@@ -96,7 +95,7 @@ class TestMarketStrategy(testutils.DatabaseFixture):
     def test_wasm_calculate_payment_budget_exceeded(self):
         rct = self._usage_rct_factory(3.0 * HOUR)
         # clamp at max payment -> max_price * subtask_timeout / 3600
-        expected = 200 * PWEI
+        expected = self.BUDGET
         self.assertEqual(
             RequestorWasmMarketStrategy.calculate_payment(rct),
             expected

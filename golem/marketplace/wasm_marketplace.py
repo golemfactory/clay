@@ -1,8 +1,11 @@
 import logging
-from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,
-                    TYPE_CHECKING)
+from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,)
 import math
 import numpy
+
+from golem_messages.message.tasks import (
+    ReportComputedTask, WantToComputeTask
+)
 
 from golem.marketplace.marketplace import (Offer, ProviderMarketStrategy,
                                            ProviderPricing)
@@ -15,10 +18,6 @@ from golem.ranking.manager.database_manager import (
     get_requestor_paid_sum,
 )
 from golem import model
-
-if TYPE_CHECKING:
-    # pylint:disable=unused-import, ungrouped-imports
-    from golem_messages.message.tasks import ReportComputedTask
 
 ProviderId = str
 SubtaskId = str
@@ -157,8 +156,12 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
         return cls._usages.pop(subtask_id)
 
     @classmethod
-    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
         return _calculate_usage_payment(rct)
+
+    @classmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        return _calculate_usage_budget(wtct)
 
 
 def geomean(a: Iterable[float]) -> float:
@@ -185,20 +188,27 @@ class ProviderWasmMarketStrategy(ProviderMarketStrategy):
         return min(max(int(r / Q), pricing.price_per_cpu_h), max_price)
 
     @classmethod
-    def calculate_payment(cls, rct: 'ReportComputedTask') -> int:
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
         return _calculate_usage_payment(rct)
 
+    @classmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        return _calculate_usage_budget(wtct)
 
-def _calculate_usage_payment(rct: 'ReportComputedTask') -> int:
+
+def _calculate_usage_payment(rct: ReportComputedTask) -> int:
     task_header = rct.task_to_compute.want_to_compute_task.task_header
-    max_payment = calculate_subtask_payment(
-        task_header.max_price,
-        task_header.subtask_timeout,
-    )
 
     usage = math.ceil(
         rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
     )
     price = rct.task_to_compute.want_to_compute_task.price
 
-    return min(calculate_subtask_payment(price, usage), max_payment)
+    return min(
+        calculate_subtask_payment(price, usage),
+        task_header.subtask_budget
+    )
+
+
+def _calculate_usage_budget(wtct: WantToComputeTask) -> int:
+    return wtct.task_header.subtask_budget
