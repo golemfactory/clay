@@ -24,13 +24,7 @@ NANOSECOND = 1e-9
 
 
 def _fake_get_efficacy():
-
-    class A:
-
-        def __init__(self):
-            self.vector = (.0, .0, .0, .0)
-
-    return A()
+    return Mock(vector=(.0, .0, .0, .0))
 
 
 class TestScalePrice(TestCase):

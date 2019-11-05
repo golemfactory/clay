@@ -50,6 +50,7 @@ class TestTaskApiCreate(unittest.TestCase):
             ],
             'max_price_per_hour': 123,
             'max_subtasks': 4,
+            'min_memory': 0,
             'task_timeout': 60,
             'subtask_timeout': 60,
         }
@@ -66,7 +67,7 @@ class TestTaskApiCreate(unittest.TestCase):
         self.requested_task_manager.init_task.return_value = asyncio.Future()
         self.requested_task_manager.init_task.return_value.set_result(None)
 
-        new_task_id = self.rpc.create_task_api_task(task_params, golem_params)
+        new_task_id = self.rpc.create_task_api_task(golem_params, task_params)
         self.assertEqual(task_id, new_task_id)
         self.requested_task_manager.create_task.assert_called_once_with(
             mock.ANY,
@@ -134,7 +135,7 @@ class TestTaskApiCreate(unittest.TestCase):
         self.client.has_assigned_task.return_value = False
         self.requested_task_manager.init_task.side_effect = Exception
 
-        task_id = self.rpc.create_task_api_task({}, self.get_golem_params())
+        task_id = self.rpc.create_task_api_task(self.get_golem_params(), {})
 
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
