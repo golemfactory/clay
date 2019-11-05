@@ -19,6 +19,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.node import Node, ShutdownResponse
+from golem.report import Component, Stage, StatusPublisher
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
@@ -839,7 +840,8 @@ class TestOptNode(TempDirFixture):
         assert self.node._is_task_in_progress.called
         assert self.node._reactor.stop.called
 
-    def test_graceful_shutdown_off(self, *_):
+    @patch('golem.node.StatusPublisher')
+    def test_graceful_shutdown_off(self, publisher, *_):
         self.node_kwargs['config_desc'].in_shutdown = True
 
         self.node = Node(**self.node_kwargs)
@@ -853,8 +855,11 @@ class TestOptNode(TempDirFixture):
                                                             False)
         assert self.node._is_task_in_progress.not_called
         assert self.node.quit.not_called
+        publisher.publish.assert_called_with(
+            Component.client, 'start', Stage.post)
 
-    def test_graceful_shutdown_on(self, *_):
+    @patch('golem.node.StatusPublisher')
+    def test_graceful_shutdown_on(self, publisher, *_):
         self.node = Node(**self.node_kwargs)
         self.node.quit = Mock()
         self.node.client = Mock()
@@ -866,6 +871,8 @@ class TestOptNode(TempDirFixture):
                                                             True)
         assert self.node.quit.not_called
         assert self.node._is_task_in_progress.called
+        publisher.publish.assert_called_with(
+            Component.client, 'scheduled_shutdown', Stage.pre)
 
     def test_try_shutdown(self, *_):
         self.node = Node(**self.node_kwargs)
