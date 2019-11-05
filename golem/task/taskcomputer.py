@@ -215,8 +215,9 @@ class TaskComputerAdapter:
             config_desc=config_desc,
             in_background=in_background))
 
+    @defer.inlineCallbacks
     def quit(self) -> None:
-        self._new_computer.quit()
+        yield self._new_computer.quit()
         self._old_computer.quit()
 
 
@@ -432,9 +433,11 @@ class NewTaskComputer:
 
         return defer.succeed(None)
 
+    @defer.inlineCallbacks
     def quit(self):
-        if self.has_assigned_task():
-            self.task_interrupted()
+        self.task_interrupted()
+        if self._computation:
+            yield self._wait_until_computation_ends()
 
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes

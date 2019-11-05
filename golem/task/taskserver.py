@@ -301,7 +301,7 @@ class TaskServer(
         except asyncio.TimeoutError:
             logger.error("RequestedTaskManager.stop has timed out")
 
-        self.task_computer.quit()
+        yield self.task_computer.quit()
 
     def get_environment_by_id(
             self,

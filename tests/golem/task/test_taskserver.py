@@ -1725,6 +1725,7 @@ class TestEnvManager(TaskServerTestBase):
 
         # Then
         mock_get.assert_called_once()
+        yield self.ts.quit()
 
     @defer.inlineCallbacks
     def test_request_task_running_benchmark(self):
@@ -1753,6 +1754,7 @@ class TestEnvManager(TaskServerTestBase):
 
         self.assertEqual(result, performance)
         mock_get.assert_called_once()
+        yield self.ts.quit()
 
 
 class TestNewTaskComputerIntegration(
