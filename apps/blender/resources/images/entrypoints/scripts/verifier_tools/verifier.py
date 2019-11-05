@@ -1,10 +1,8 @@
 import json
 import os
-import collections
 from pathlib import Path
 from pprint import pprint
 from typing import List, Optional, Tuple, Any, Dict
-from numpy import float32
 
 from ..render_tools import blender_render as blender
 from .crop_generator import WORK_DIR, OUTPUT_DIR, FloatingPointBox, Crop, \
@@ -240,7 +238,7 @@ def convert_float32_to_double(params: dict):
         crop['borders_y'] = [value.item() for value in crop['borders_y']]
 
     return new_params
-    
+
 
 def save_params(params: dict, filename: str, mounted_paths: dict):
     new_params = convert_float32_to_double(params)
