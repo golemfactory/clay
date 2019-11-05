@@ -143,7 +143,7 @@ def test():
 async def _task(
         task_params_path,
         app_definition_path,
-        resource,
+        resources,
         max_subtasks,
         work_dir,
         leave_work_dir,
@@ -161,7 +161,7 @@ async def _task(
             work_dir,
             task_params_path,
             app_definition_path,
-            list(resource),
+            list(resources),
             max_subtasks,
         )
     finally:
@@ -173,14 +173,14 @@ async def _task(
 @test.command()
 @click.argument('app_definition_path', type=click.Path(exists=True))
 @click.argument('task_params_path', type=click.Path(exists=True))
-@click.option('--resource', type=click.Path(exists=True), multiple=True)
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
 @click.option('--max-subtasks', type=click.INT, default=2)
 @click.option('--workdir', type=click.Path(exists=True))
 @click.option('--leave-workdir', is_flag=True)
 def task_from_app_def(
         app_definition_path,
         task_params_path,
-        resource,
+        resources,
         max_subtasks,
         workdir,
         leave_workdir,
@@ -192,7 +192,7 @@ def task_from_app_def(
             _task(
                 task_params_path,
                 app_definition,
-                resource,
+                resources,
                 max_subtasks,
                 workdir,
                 leave_workdir,
@@ -204,14 +204,14 @@ def task_from_app_def(
 @test.command()
 @click.argument('app_id', type=click.STRING)
 @click.argument('task_params_path', type=click.Path(exists=True))
-@click.option('--resource', type=click.Path(exists=True), multiple=True)
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
 @click.option('--max-subtasks', type=click.INT, default=2)
 @click.option('--workdir', type=click.Path(exists=True))
 @click.option('--leave-workdir', is_flag=True)
 def task_from_app_id(
         app_id,
         task_params_path,
-        resource,
+        resources,
         max_subtasks,
         workdir,
         leave_workdir,
@@ -226,7 +226,7 @@ def task_from_app_id(
             _task(
                 task_params_path,
                 app_definition,
-                resource,
+                resources,
                 max_subtasks,
                 workdir,
                 leave_workdir,
