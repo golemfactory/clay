@@ -6,7 +6,7 @@ from pathlib import Path
 from golem_messages.message import ComputeTaskDef
 
 from golem.docker.manager import DockerManager
-from golem.docker.task_thread import DockerTaskThread
+from golem.docker.task_thread import DockerTaskThread, JobException
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
@@ -26,7 +26,7 @@ class TestLocalComputer(TestDirFixture):
     class TestTaskThread(object):
         def __init__(self, result, error_msg):
             self.result = result
-            self.error = False
+            self.error = None
             self.error_msg = error_msg
 
     def test_computer(self):
@@ -82,7 +82,7 @@ class TestLocalComputer(TestDirFixture):
         assert self.success_counter == 2
 
         tt = self.TestTaskThread({'data': "some data"}, None)
-        tt.error = True
+        tt.error = JobException()
         lc.task_computed(tt)
         assert self.last_error is None
         assert self.error_counter == 4

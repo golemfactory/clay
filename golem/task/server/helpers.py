@@ -238,6 +238,7 @@ def send_task_failure(waiting_task_failure) -> None:
         waiting_task_failure.owner.key,
         message.tasks.TaskFailure(
             task_to_compute=task_to_compute,
-            err=waiting_task_failure.err_msg
+            err=waiting_task_failure.err_msg,
+            reason=waiting_task_failure.reason
         ),
     )

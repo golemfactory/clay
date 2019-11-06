@@ -10,7 +10,8 @@ from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.envs.docker import DockerBind
-from golem.task.taskthread import TaskThread, JobException, TimeoutException
+from golem.task.taskthread import TaskThread, JobException, TimeoutException, \
+    BudgetExceededException
 from golem.vm.memorychecker import MemoryChecker
 
 if TYPE_CHECKING:
@@ -20,8 +21,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+EXIT_CODE_BUDGET_EXCEEDED = 111
 EXIT_CODE_MESSAGE = "Subtask computation failed with exit code {}"
 EXIT_CODE_PROBABLE_CAUSES = {
+    EXIT_CODE_BUDGET_EXCEEDED: "CPU budget exceeded",
     137: "probably killed by out-of-memory killer"
 }
 
@@ -220,7 +223,12 @@ class DockerTaskThread(TaskThread):
                 logger.warning(f'Task error - exit_code={exit_code}\n'
                                f'stderr:\n{std_err}\n'
                                f'tail of stdout:\n{std_out}\n')
-                raise JobException(self._exit_code_message(exit_code))
+
+                if exit_code == EXIT_CODE_BUDGET_EXCEEDED:
+                    raise BudgetExceededException(
+                        self._exit_code_message(exit_code))
+                else:
+                    raise JobException(self._exit_code_message(exit_code))
 
         return estm_mem
 
