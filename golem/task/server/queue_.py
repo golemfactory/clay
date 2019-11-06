@@ -86,12 +86,6 @@ class TaskMessagesQueueMixin:
         del self.sessions[node_id]
         if session is None:
             return
-        self.remove_session(session)
-
-    def remove_session(self, session):
-        session.disconnect(
-            message.base.Disconnect.REASON.NoMoreMessages,
-        )
         self.remove_pending_conn(session.conn_id)
 
     def connect_to_nodes(self):
@@ -111,6 +105,7 @@ class TaskMessagesQueueMixin:
                 continue
             if session.is_active:
                 continue
+            session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
             self.remove_session_by_node_id(node_id)
 
     def msg_queue_connection_established(

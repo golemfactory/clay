@@ -1,7 +1,6 @@
-import abc
 import logging
 import time
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 from golem_messages import message
 
@@ -10,36 +9,23 @@ from golem.core.keysauth import get_random_float
 from golem.core.variables import UNVERIFIED_CNT
 from .network import Session
 
+if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from twisted.internet.protocol import Protocol
+
 logger = logging.getLogger(__name__)
 
 
-class FileSession(Session, metaclass=abc.ABCMeta):
-    """Abstract class that represents session interface with additional
-       operations for receiving files"""
-
-    @abc.abstractmethod
-    def data_sent(self, extra_data=None):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def full_data_received(self, extra_data=None):
-        raise NotImplementedError
-
-    @abc.abstractmethod
-    def production_failed(self, extra_data=None):
-        raise NotImplementedError
-
-
-class BasicSession(FileSession):
+class BasicSession(Session):
     """Basic session responsible for managing the connection and reacting
        to different types of messages.
     """
 
-    def __init__(self, conn):
+    def __init__(self, conn: 'Protocol') -> None:
         """
         Create new Session
-        :param Protocol conn: connection protocol implementation that
-                              this session should enhance.
+        :param conn: connection protocol implementation that
+                     this session should enhance.
         """
         Session.__init__(self)
         self.conn = conn
@@ -116,23 +102,6 @@ class BasicSession(FileSession):
             self.dropped()
             return
 
-    def data_sent(self, extra_data=None):
-        """ All data that should be send in stream mode has been send.
-        :param dict|None extra_data: additional information that may be needed
-        """
-        if self.conn.producer:
-            self.conn.producer.close()
-            self.conn.producer = None
-
-    def production_failed(self, extra_data=None):
-        """ Producer encounter error and stopped sending data in stream mode
-        :param dict|None extra_data: additional information that may be needed
-        """
-        self.dropped()
-
-    def full_data_received(self, extra_data=None):
-        pass
-
     def _send_disconnect(self, reason: message.base.Disconnect.REASON):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
@@ -159,7 +128,7 @@ class BasicSafeSession(BasicSession):
 
     key_id: Optional[str] = None
 
-    def __init__(self, conn):
+    def __init__(self, conn: 'Protocol') -> None:
         super().__init__(conn)
         # how many unverified messages can be stored before dropping connection
         self.unverified_cnt = UNVERIFIED_CNT
