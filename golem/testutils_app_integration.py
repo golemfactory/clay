@@ -246,9 +246,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
             docker_images=[image],
             extra_data=params,
             dir_mapping=dir_mapping,
-            timeout=task.task_definition.subtask_timeout,
-            cpu_limit=None
-        )
+            timeout=task.task_definition.subtask_timeout)
 
         logger.info("Running docker image {} on mock provider".format(image))
 

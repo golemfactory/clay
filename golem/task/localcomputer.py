@@ -189,7 +189,6 @@ class LocalComputer:
             dir_mapping=dir_mapping,
             timeout=0,
             check_mem=self.check_mem,
-            cpu_limit=None
         )
 
 

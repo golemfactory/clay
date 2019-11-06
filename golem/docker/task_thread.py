@@ -75,7 +75,7 @@ class DockerTaskThread(TaskThread):
                  extra_data: Dict,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
-                 cpu_limit: Optional[int],
+                 cpu_limit: Optional[int] = None,
                  check_mem: bool = False) -> None:
 
         if not docker_images:

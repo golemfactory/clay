@@ -72,7 +72,7 @@ class DockerJob:
                  work_dir: str,
                  output_dir: str,
                  stats_dir: str,
-                 cpu_limit: Optional[int],
+                 cpu_limit: Optional[int] = None,
                  volumes: Optional[Iterable[str]] = None,
                  environment: Optional[dict] = None,
                  host_config: Optional[Dict] = None,
