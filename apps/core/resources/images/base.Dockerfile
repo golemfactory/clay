@@ -1,8 +1,8 @@
 # Dockerfile for a base image for computing tasks in Golem.
 # Installs python and sets up directories for Golem tasks.
 
-FROM golang:1.13.3 as stats-builder
-RUN git clone --depth 1 --branch 0.2.0 https://github.com/golemfactory/docker-cgroups-stats.git /build
+FROM golang:1.12.7 as stats-builder
+RUN git clone --depth 1 --branch 0.1 https://github.com/golemfactory/docker-cgroups-stats.git /build
 WORKDIR /build
 RUN go build -o docker-cgroups-stats main.go
 
