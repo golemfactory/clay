@@ -120,7 +120,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.config_approver = ConfigApprover(self.config_desc)
 
         if self.config_desc.in_shutdown:
-            self.update_setting('in_shutdown', False)
+            self.update_setting('in_shutdown', 0)
 
         logger.info(
             'Client %s, datadir: %s',
