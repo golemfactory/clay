@@ -26,9 +26,9 @@ logging.basicConfig(level=logging.INFO)
 
 async def test_task(
         work_dir: Path,
-        task_params_path: Path,
-        app_definition_path: Path,
-        resources: List[Path],
+        task_params_path: str,
+        app_definition_path: str,
+        resources: List[str],
         max_subtasks: int,
 ) -> None:
 
@@ -120,7 +120,7 @@ async def test_task(
         subtask_output_dir.mkdir()
         shutil.copy2(
             result_path,
-            subtask_output_dir / result_path.name,
+            subtask_output_dir,
         )
         print('Starting verification')
         verdict = await deferred_from_future(rtm.verify(
