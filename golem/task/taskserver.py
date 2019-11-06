@@ -636,8 +636,12 @@ class TaskServer(
         ) = result
 
     def send_task_failed(
-            self, subtask_id: str, task_id: str, err_msg: str) -> None:
-
+            self,
+            subtask_id: str,
+            task_id: str,
+            err_msg: str,
+            reason=message.TaskFailure.DEFAULT_REASON
+    ) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
@@ -647,7 +651,8 @@ class TaskServer(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 err_msg=err_msg,
-                owner=header.task_owner)
+                owner=header.task_owner,
+                reason=reason)
 
     def new_connection(self, session):
         if not self.active:
@@ -1059,11 +1064,12 @@ class TaskServer(
         if allowed:
             allowed, reason = self.acl_ip.is_allowed(ip_addr)
         if not allowed:
-            logger.info(f'provider is {reason.value}; {ids}')
+            reason_msg = 'unknown reason' if reason is None else reason.value
+            logger.info(f'provider is {reason_msg}; {ids}')
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.acl,
-                details={'acl_reason': reason.value})
+                details={'acl_reason': reason_msg})
             return False
 
         trust = self.client.get_computing_trust(node_id)
@@ -1266,3 +1272,4 @@ class WaitingTaskFailure:
     owner: 'dt_p2p.Node'
     subtask_id: str
     task_id: str
+    reason: message.TaskFailure.REASON
