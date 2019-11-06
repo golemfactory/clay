@@ -1123,7 +1123,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_provider_status_not_accepting_tasks(self, *_):
         # given
-        self.client.config_desc.accept_tasks = False
+        self.client.config_desc.accept_tasks = 0
 
         # when
         status = self.client.get_provider_status()
