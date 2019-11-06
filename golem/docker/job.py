@@ -72,7 +72,7 @@ class DockerJob:
                  work_dir: str,
                  output_dir: str,
                  stats_dir: str,
-                 cpu_limit: int,
+                 cpu_limit: Optional[int],
                  volumes: Optional[Iterable[str]] = None,
                  environment: Optional[dict] = None,
                  host_config: Optional[Dict] = None,
@@ -160,7 +160,8 @@ class DockerJob:
                      self.resources_dir, self.output_dir, self.stats_dir)
 
     def _build_stats_entrypoint(self) -> str:
-        return f'docker-cgroups-stats -l {self.cpu_limit} ' \
+        limit = f'-l {self.cpu_limit} ' if self.cpu_limit else ''
+        return f'docker-cgroups-stats {limit}' \
                f'-o {self.STATS_DIR}/{self.STATS_FILE} ' + self.entrypoint
 
     def _cleanup(self):

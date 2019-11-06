@@ -242,10 +242,13 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         env = task.ENVIRONMENT_CLASS
         image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
 
-        dtt = DockerTaskThread(docker_images=[image],
-                               extra_data=params,
-                               dir_mapping=dir_mapping,
-                               timeout=task.task_definition.subtask_timeout)
+        dtt = DockerTaskThread(
+            docker_images=[image],
+            extra_data=params,
+            dir_mapping=dir_mapping,
+            timeout=task.task_definition.subtask_timeout,
+            cpu_limit=None
+        )
 
         logger.info("Running docker image {} on mock provider".format(image))
 

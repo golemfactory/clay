@@ -184,11 +184,12 @@ class LocalComputer:
             temporary=self.tmp_dir,
         )
         return DockerTaskThread(
-            ctd['docker_images'],
-            ctd['extra_data'],
-            dir_mapping,
-            0,
+            docker_images=ctd['docker_images'],
+            extra_data=ctd['extra_data'],
+            dir_mapping=dir_mapping,
+            timeout=0,
             check_mem=self.check_mem,
+            cpu_limit=None
         )
 
 
