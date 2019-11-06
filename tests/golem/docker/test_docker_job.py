@@ -61,7 +61,7 @@ class TestDockerJob(DockerTestCase):
             DockerJob(None, "scr", [], '/var/lib/resources/',
                       '/var/lib/work', '/var/lib/out')
         job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir,
-                        self.work_dir, self.output_dir, self.stats_dir)
+                        self.work_dir, self.output_dir, self.stats_dir, None)
         self.assertEqual(job.image, self.image)
 
         parameters = {'OUTPUT_DIR': '/golem/output',
@@ -93,7 +93,7 @@ class TestDockerJob(DockerTestCase):
         if self.test_dir:
             shutil.rmtree(self.test_dir)
 
-    def _create_test_job(self, script=TEST_SCRIPT, params=None):
+    def _create_test_job(self, script=TEST_SCRIPT, params=None, cpu_limit=None):
         self.test_job = DockerJob(
             image=self.image,
             entrypoint=f'python3 {script}',
@@ -121,7 +121,8 @@ class TestDockerJob(DockerTestCase):
                         "mode": "rw"
                     }
                 }
-            })
+            },
+            cpu_limit=cpu_limit)
         return self.test_job
 
 
@@ -278,6 +279,24 @@ class TestBaseDockerJob(TestDockerJob):
             line = out.readline().strip()
         print(line)
         self.assertTrue(line.find("python3: can't open file") != -1)
+
+    def test_stats_entrypoint_no_limit(self):
+        with self._create_test_job(script='/non/existent') as job:
+            stats_entrypoint = job._build_stats_entrypoint()
+            self.assertEqual(
+                stats_entrypoint,
+                'docker-cgroups-stats '
+                '-o /golem/stats/stats.json python3 /non/existent'
+            )
+
+    def test_stats_entrypoint_with_limit(self):
+        with self._create_test_job(script='/non/existent', cpu_limit=1) as job:
+            stats_entrypoint = job._build_stats_entrypoint()
+            self.assertEqual(
+                stats_entrypoint,
+                'docker-cgroups-stats '
+                '-l 1 -o /golem/stats/stats.json python3 /non/existent'
+            )
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
