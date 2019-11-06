@@ -19,7 +19,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.node import Node, ShutdownResponse
-from golem.report import Component, Stage, StatusPublisher
+from golem.report import Component, Stage
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
