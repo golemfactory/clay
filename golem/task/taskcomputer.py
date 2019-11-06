@@ -666,6 +666,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
+        cpu_limit = task_header.subtask_budget
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
@@ -688,7 +689,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
             tt: TaskThread = DockerTaskThread(
-                docker_images, extra_data, dir_mapping, task_timeout)
+                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
         elif self.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
