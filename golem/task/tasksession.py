@@ -36,6 +36,9 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    update_requestor_assigned_sum
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task.helpers import calculate_subtask_payment
@@ -45,11 +48,14 @@ from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
-    from .requestedtaskmanager import RequestedTaskManager  # noqa pylint:disable=unused-import
-    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
-    from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
-    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
-    from golem.network.concent.client import ConcentClientService  # noqa pylint:disable=unused-import
+    # pylint: disable=unused-import,ungrouped-imports
+    from twisted.internet.protocol import Protocol
+
+    from .requestedtaskmanager import RequestedTaskManager
+    from .taskcomputer import TaskComputer
+    from .taskmanager import TaskManager
+    from .taskserver import TaskServer
+    from golem.network.concent.client import ConcentClientService
 
 logger = logging.getLogger(__name__)
 
@@ -111,12 +117,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
 
-    def __init__(self, conn):
+    def __init__(self, conn: 'Protocol') -> None:
         """
         Create new Session
-        :param Protocol conn: connection protocol implementation that this
-                              session should enhance
-        :return:
+        :param conn: connection protocol implementation that this
+                     session should enhance
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
@@ -240,10 +245,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug('Invalid message received', exc_info=True)
             return False
         return True
-
-    #######################
-    # FileSession methods #
-    #######################
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
@@ -793,6 +794,29 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.port,
         )
 
+    def _get_payment_value_and_budget(
+            self, rct: message.tasks.ReportComputedTask):
+        task_class = self._get_task_class(
+            rct.task_to_compute.want_to_compute_task.task_header)
+        market_strategy = task_class.PROVIDER_MARKET_STRATEGY
+        payment_value = market_strategy.calculate_payment(rct)
+        budget = market_strategy.calculate_budget(
+            rct.task_to_compute.want_to_compute_task)
+        return payment_value, budget
+
+    @staticmethod
+    def _adjust_requestor_assigned_sum(
+            requestor_id: str, payment_value: int, budget: int):
+        # because we have originally updated the requestor's assigned sum
+        # with the budget value, when we accepted the job
+        # now that we finally know what the actual payment amount is
+        # we need to subtract the difference
+        if payment_value < budget:
+            update_requestor_assigned_sum(
+                requestor_id,
+                payment_value - budget
+            )
+
     @history.provider_history
     def _react_to_subtask_results_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
@@ -821,10 +845,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
-        task_class = self._get_task_class(
-            msg.task_to_compute.want_to_compute_task.task_header)
-        payment_value = task_class.PROVIDER_MARKET_STRATEGY\
-            .calculate_payment(msg.report_computed_task)
+        payment_value, budget = self._get_payment_value_and_budget(
+            msg.report_computed_task)
+        self._adjust_requestor_assigned_sum(
+            msg.requestor_id, payment_value, budget)
 
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
@@ -859,6 +883,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
+
+        payment_value, budget = self._get_payment_value_and_budget(
+            msg.report_computed_task)
+        self._adjust_requestor_assigned_sum(
+            msg.requestor_id, payment_value, budget)
 
         if msg.task_to_compute.concent_enabled:
             self._handle_srr_with_concent_enabled(msg, subtask_rejected)
