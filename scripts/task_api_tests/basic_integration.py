@@ -41,7 +41,7 @@ async def test_task(
     env_manager = envmanager.EnvironmentManager()
     register_built_in_repositories()
     register_environments(
-        work_dir=work_dir,
+        work_dir=str(work_dir),
         env_manager=env_manager)
 
     rtm_work_dir = work_dir / 'rtm'
