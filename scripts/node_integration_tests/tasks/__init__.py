@@ -1,6 +1,7 @@
 import copy
 import typing
 
+from golem.apps.default import BlenderAppDefinition
 
 _TASK_SETTINGS = {
     'default': {
@@ -165,7 +166,7 @@ _TASK_SETTINGS = {
         },
     },
     'task_api_blender': {
-        'app_id': 'c1e99170aa73521af6937f6680065e31',
+        'app_id': BlenderAppDefinition.id,
         'name': '',  # leave empty: Task API output does not contain this name
         'resources': [],
         'max_price_per_hour': str(10 ** 18),
