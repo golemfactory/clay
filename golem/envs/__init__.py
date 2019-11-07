@@ -403,6 +403,7 @@ class Environment(ABC):
         """ Is the Environment supported on this machine? """
         raise NotImplementedError
 
+    @abstractmethod
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
         raise NotImplementedError
@@ -423,9 +424,8 @@ class Environment(ABC):
         """ Get the general performance score for this environment. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+    def parse_prerequisites(self, prerequisites_dict: Dict[str, Any]) \
             -> Prerequisites:
         """ Build Prerequisites struct from supplied dictionary. Returned value
             is of appropriate type for calling install_prerequisites(). """
@@ -438,9 +438,8 @@ class Environment(ABC):
             Returns boolean indicating whether installation was successful. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
+    def parse_config(self, config_dict: Dict[str, Any]) -> EnvConfig:
         """ Build config struct from supplied dictionary. Returned value
             is of appropriate type for calling update_config(). """
         raise NotImplementedError
@@ -455,6 +454,7 @@ class Environment(ABC):
         """ Update configuration. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
+    @abstractmethod
     def listen(
             self,
             event_type: EnvEventType,

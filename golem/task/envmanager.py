@@ -6,7 +6,7 @@ from peewee import PeeweeException
 from twisted.internet.defer import Deferred, inlineCallbacks, DeferredLock
 
 from golem.envs import BenchmarkResult, EnvId, Environment, EnvMetadata
-from golem.envs.auto_setup import auto_setup
+from golem.envs.wrappers.auto_setup import auto_setup
 from golem.model import Performance, EnvConfiguration
 from golem.task.task_api import TaskApiPayloadBuilder
 
