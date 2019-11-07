@@ -1,11 +1,11 @@
 import asyncio
 import logging
 import typing
-from typing import Type
 
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
+from golem_task_api.enums import VerifyResult
 
 from apps.core.task.coretaskstate import RunVerification
 
@@ -15,12 +15,11 @@ from golem.marketplace import RequestorMarketStrategy
 from golem.network import history
 from golem.network.transport import msg_queue
 from golem.task.taskbase import TaskResult
-from golem.task.result.resultmanager import ExtractedPackage
 
 if typing.TYPE_CHECKING:
     # pylint: disable=unused-import
     from golem.core import keysauth
-    from golem.task import taskmanager
+    from golem.task import taskmanager, SubtaskId, TaskId
     from golem.task import requestedtaskmanager
 
 logger = logging.getLogger(__name__)
@@ -34,7 +33,7 @@ class VerificationMixin:
     def verify_results(
             self,
             report_computed_task: message.tasks.ReportComputedTask,
-            extracted_package: ExtractedPackage,
+            files: typing.List[str],
     ) -> None:
         node = dt_p2p.Node(**report_computed_task.node_info)
         task_id = report_computed_task.task_id
@@ -86,18 +85,16 @@ class VerificationMixin:
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
-            task = self.task_manager.tasks[task_id]
-            market_strategy: Type[RequestorMarketStrategy] =\
-                task.REQUESTOR_MARKET_STRATEGY
-            payment_computer =\
-                market_strategy.get_payment_computer(  # type: ignore
-                    task, subtask_id
-                )
+            market_strategy = self._get_market_strategy(task_id, subtask_id)
+            payment_value = market_strategy.calculate_payment(
+                report_computed_task
+            )
             payment = self.accept_result(
+                task_id,
                 subtask_id,
                 report_computed_task.provider_id,
                 task_to_compute.provider_ethereum_address,
-                payment_computer(task_to_compute.want_to_compute_task.price),
+                payment_value,
                 unlock_funds=not (verification_failed
                                   and is_verification_lenient),
             )
@@ -122,12 +119,14 @@ class VerificationMixin:
             )
 
         if self.requested_task_manager.task_exists(task_id):
-            task = asyncio.ensure_future(self.requested_task_manager.verify(
+            failure_results = (VerifyResult.INCONCLUSIVE, VerifyResult.FAILURE)
+            fut = asyncio.ensure_future(self.requested_task_manager.verify(
                 task_id,
-                subtask_id,
-            ))
-            task.add_done_callback(
-                lambda success: verification_finished(False, not success))
+                subtask_id))
+            fut.add_done_callback(
+                lambda f: verification_finished(
+                    False,
+                    f.result() in failure_results))
         else:
             def verification_finished_old():
                 is_verification_lenient = (
@@ -143,11 +142,43 @@ class VerificationMixin:
             self.task_manager.computed_task_received(
                 subtask_id,
                 TaskResult(
-                    files=extracted_package.get_full_path_files(),
+                    files=files,
                     stats=report_computed_task.stats
                 ),
                 verification_finished_old,
             )
+
+    def _get_market_strategy(
+            self,
+            task_id: 'TaskId',
+            subtask_id: 'SubtaskId',
+    ) -> typing.Type[RequestorMarketStrategy]:
+        """ Retrieve the payment computing function for given
+            task_id and subtask_id """
+        task = self.task_manager.tasks.get(task_id)
+        if task:
+            return task.REQUESTOR_MARKET_STRATEGY
+
+        task = self.requested_task_manager.get_requested_task(task_id)
+        if not task:
+            raise RuntimeError(
+                f"Completed verification of subtask {subtask_id} "
+                f"within an unknown task {task_id}")
+
+        subtask = self.requested_task_manager.get_requested_task_subtask(
+            task_id,
+            subtask_id)
+        if not subtask:
+            raise RuntimeError(
+                f"Completed verification of unknown subtask {subtask_id} "
+                f"within task {task_id}")
+
+        app = self.app_manager.app(task.app_id)
+        if not app:
+            raise RuntimeError(
+                f"Completed verification of task {task_id} "
+                f"created by an unknown app {task.app_id}")
+        return app.market_strategy
 
     def send_result_rejected(
             self,

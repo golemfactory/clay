@@ -1,11 +1,11 @@
-from abc import ABC, abstractclassmethod
-from typing import Callable, Optional, List, TYPE_CHECKING
+from abc import ABC, abstractclassmethod, abstractmethod
+from typing import Optional, List
 
 from dataclasses import dataclass
 
-if TYPE_CHECKING:
-    # pylint:disable=unused-import, ungrouped-imports
-    from golem.task.taskbase import Task
+from golem_messages.message.tasks import (
+    ReportComputedTask, WantToComputeTask
+)
 
 
 class ProviderPerformance:
@@ -59,15 +59,26 @@ class RequestorMarketStrategy(ABC):
         """
         raise NotImplementedError()
 
-    @abstractclassmethod
-    def get_payment_computer(cls, task: 'Task', subtask_id: str)\
-            -> Callable[[int], int]:
-        """Returns a function computing payment based on price in TTC.
-        Raises:
-            NotImplementedError: [description]
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
 
-        Returns:
-            Callable[[int], int] -- Function computing payment
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
         """
         raise NotImplementedError()
 
@@ -77,4 +88,27 @@ class ProviderMarketStrategy(ABC):
     @abstractclassmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
+        """
         raise NotImplementedError()

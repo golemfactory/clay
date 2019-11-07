@@ -1,6 +1,7 @@
 import copy
 import typing
 
+from golem.apps.default import BlenderAppDefinition
 
 _TASK_SETTINGS = {
     'default': {
@@ -163,6 +164,23 @@ _TASK_SETTINGS = {
             },
             'wasm_name': 'flite.wasm'
         },
+    },
+    'task_api_blender': {
+        'app_id': BlenderAppDefinition.id,
+        'name': '',  # leave empty: Task API output does not contain this name
+        'resources': [],
+        'max_price_per_hour': str(10 ** 18),
+        'max_subtasks': 1,
+        'min_memory': 0,
+        'task_timeout': 600000,  # 00:10:00
+        'subtask_timeout': 590000,  # 00:09:50
+        'options': {
+            'output_path': '',
+            'resolution': [320, 240],
+            'frames': '1',
+            'format': 'PNG',
+            'compositing': False,
+        }
     },
 }
 

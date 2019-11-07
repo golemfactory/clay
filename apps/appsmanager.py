@@ -8,6 +8,7 @@ from typing import (
     TYPE_CHECKING,
     Tuple,
     Type,
+    Optional,
 )
 
 from golem.config.active import (
@@ -93,3 +94,9 @@ class AppsManager(object):
 
     def get_app(self, task_type_id: str) -> App:
         return self.task_types.get(task_type_id)
+
+    def get_app_for_env(self, env_id: str) -> Optional[App]:
+        for app in self.apps.values():
+            if app.env.get_id() == env_id:
+                return app
+        return None

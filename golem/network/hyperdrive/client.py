@@ -20,6 +20,7 @@ from golem.resource.client import IClient, ClientOptions
 
 log = logging.getLogger(__name__)
 
+GRACE_PERIOD = 300
 
 def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
@@ -75,7 +76,7 @@ class HyperdriveClient(IClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(client_options.timeout)
+            timeout=round_timeout(client_options.timeout) + GRACE_PERIOD
         )
         return response['hash']
 
@@ -167,7 +168,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=round_timeout(client_options.timeout),
+            timeout=round_timeout(client_options.timeout) + GRACE_PERIOD,
             user=golem.tools.talkback.user(),
         )
         return self._async_request(
@@ -268,7 +269,11 @@ class HyperdriveAsyncClient(HyperdriveClient):
             raise HTTPError(response.decode(self.ENCODING))
 
         decoded = response_body.decode(self.ENCODING)
-        deserialized = json.loads(decoded)
+
+        try:
+            deserialized = json.loads(decoded)
+        except json.JSONDecodeError:
+            return None
 
         if parser:
             return parser(deserialized)

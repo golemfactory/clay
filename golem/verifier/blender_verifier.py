@@ -31,9 +31,8 @@ class BlenderVerifier(FrameRenderingVerifier):
 
     def start_verification(self) -> Deferred:
         self.time_started = datetime.utcnow()
-        logger.info(
-            f'Start verification in BlenderVerifier. '
-            f'Subtask_id: {self.subtask_info["subtask_id"]}.')
+        logger.info(f'Start verification in BlenderVerifier. '
+                    f'Subtask_id: {self.subtask_info["subtask_id"]}.')
         try:
             self.start_rendering()
         # pylint: disable=W0703
@@ -52,13 +51,15 @@ class BlenderVerifier(FrameRenderingVerifier):
                 >= subtask_info['total_tasks']:
             crop_resolution_y = resolution_y
         else:
-            border_y_min = numpy.float32(subtask_info['crops'][0]['borders_y'][0])  # noqa pylint: disable=line-too-long
-            border_y_max = numpy.float32(subtask_info['crops'][0]['borders_y'][1])  # noqa pylint: disable=line-too-long
+            border_y_min = numpy.float32(subtask_info['crops'][0]['borders_y'][
+                0])
+            border_y_max = numpy.float32(subtask_info['crops'][0]['borders_y'][
+                1])
 
-            crop_resolution_y = int(round(numpy.float32(
-                resolution_y * border_y_max -
-                resolution_y * border_y_min
-            )))
+            crop_resolution_y = int(
+                round(
+                    numpy.float32(resolution_y * border_y_max -
+                                  resolution_y * border_y_min)))
         return resolution_x, crop_resolution_y
 
     def stop(self):
@@ -95,8 +96,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished.addCallback(success)
         self.finished.addErrback(failure)
 
-        root_dir = Path(os.path.dirname(
-            self.results[0])).parent
+        root_dir = Path(os.path.dirname(self.results[0])).parent
 
         work_dir = os.path.join(root_dir, 'work')
         os.makedirs(work_dir, exist_ok=True)
@@ -117,27 +117,10 @@ class BlenderVerifier(FrameRenderingVerifier):
             work=work_dir,
             output=os.path.join(root_dir, "output"),
             logs=os.path.join(root_dir, "logs"),
-            stats=os.path.join(root_dir, "stats")
-        )
+            stats=os.path.join(root_dir, "stats"))
 
-        extra_data = dict(
-            subtask_paths=['/golem/work/{}'.format(
-                os.path.basename(i)) for i in self.results
-            ],
-            subtask_borders=[
-                self.subtask_info['crop_window'][0],
-                self.subtask_info['crop_window'][2],
-                self.subtask_info['crop_window'][1],
-                self.subtask_info['crop_window'][3],
-            ],
-            scene_path=self.subtask_info['scene_file'],
-            resolution=self.subtask_info['resolution'],
-            samples=self.subtask_info['samples'],
-            frames=self.subtask_info['frames'],
-            output_format=self.subtask_info['output_format'],
-            basefilename='crop',
-            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
-        )
+        extra_data = self._generate_verification_params(self.subtask_info,
+                                                        self.results)
 
         self.docker_task = self.docker_task_cls(
             docker_images=[(self.DOCKER_NAME, self.DOCKER_TAG)],
@@ -146,9 +129,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             timeout=self.timeout)
 
         def error(exception):
-            logger.warning(
-                f'Verification process exception. '
-                f'Subtask_id: {subtask_id}. Exception: {exception}')
+            logger.warning(f'Verification process exception. '
+                           f'Subtask_id: {subtask_id}. Exception: {exception}')
             self.finished.errback(exception)
 
         def callback(*_):
@@ -173,3 +155,24 @@ class BlenderVerifier(FrameRenderingVerifier):
         d = self.docker_task.start()
         d.addErrback(error)
         d.addCallback(callback)
+
+    @classmethod
+    def _generate_verification_params(cls, subtask_info: dict, results: list):
+        return dict(
+            subtask_paths=[
+                '/golem/work/{}'.format(os.path.basename(i)) for i in results
+            ],
+            subtask_borders=[
+                subtask_info['crop_window'][0],
+                subtask_info['crop_window'][2],
+                subtask_info['crop_window'][1],
+                subtask_info['crop_window'][3],
+            ],
+            scene_path=subtask_info['scene_file'],
+            resolution=subtask_info['resolution'],
+            samples=subtask_info['samples'],
+            frames=subtask_info['frames'],
+            output_format=subtask_info['output_format'],
+            basefilename='crop',
+            entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
+        )

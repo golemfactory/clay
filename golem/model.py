@@ -5,7 +5,7 @@ import json
 import pickle
 import sys
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
@@ -30,6 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
+from golem.core.common import datetime_to_timestamp
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -306,7 +307,7 @@ class WalletOperation(BaseModel):
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"WalletOperation. tx_hash={self.tx_hash},"
             f" direction={self.direction}, type={self.operation_type},"
@@ -373,7 +374,7 @@ class TaskPayment(BaseModel):
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"TaskPayment. accepted_ts={self.accepted_ts},"
             f" task={self.task}, subtask={self.subtask},"
@@ -549,10 +550,12 @@ class TaskPreset(BaseModel):
 
 class Performance(BaseModel):
     """ Keeps information about benchmark performance """
+    DEFAULT_CPU_USAGE = 1_000_000_000   # 1 second in nanoseconds
+
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
-    cpu_usage = IntegerField(default=0)  # total CPU usage in nanoseconds
+    cpu_usage = IntegerField(default=DEFAULT_CPU_USAGE)
 
     class Meta:
         database = db
@@ -570,6 +573,16 @@ class Performance(BaseModel):
                 value=performance,
                 cpu_usage=cpu_usage
             ).save()
+
+
+class AppBenchmark(BaseModel):
+
+    hash = CharField(null=False, index=True, unique=True)
+    score = FloatField()
+    cpu_usage = IntegerField(default=1)  # total CPU usage in nanoseconds
+
+    class Meta:
+        database = db
 
 
 class DockerWhitelist(BaseModel):
@@ -733,9 +746,10 @@ class RequestedTask(BaseModel):
     subtask_timeout = IntegerField(null=False)  # milliseconds
     start_time = UTCDateTimeField(null=True)
 
-    max_price_per_hour = IntegerField(null=False)
-
+    max_price_per_hour = HexIntegerField(null=False)
     max_subtasks = IntegerField(null=False)
+    min_memory = IntegerField(null=False, default=0)
+
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
@@ -752,6 +766,13 @@ class RequestedTask(BaseModel):
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
 
+    @property
+    def elapsed_seconds(self) -> Optional[int]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return (default_now() - self.start_time).total_seconds()
+
     def estimated_fee(self) -> float:
         return self.max_price_per_hour * (
             self.subtask_timeout
@@ -767,6 +788,14 @@ class ComputingNode(BaseModel):
     class Meta:
         database = db
 
+    def __repr__(self):
+        return (
+            f"ComputingNode <"
+            f"node_id={self.node_id}, "
+            f"name={self.name}"
+            f">"
+        )
+
 
 class RequestedSubtask(BaseModel):
     task = ForeignKeyField(RequestedTask, null=False, related_name='subtasks')
@@ -776,7 +805,7 @@ class RequestedSubtask(BaseModel):
     payload = JsonField(null=False, default=default_dict())
     inputs = JsonField(null=False, default=default_list())
     start_time = UTCDateTimeField(null=True)
-    price = IntegerField(null=True)
+    price = HexIntegerField(null=True)
     computing_node = ForeignKeyField(
         ComputingNode, null=True, related_name='subtasks')
 
@@ -787,6 +816,16 @@ class RequestedSubtask(BaseModel):
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + datetime.timedelta(
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'task_id': self.task.task_id,  # pylint: disable=no-member
+            'subtask_id': self.subtask_id,
+            'status': self.status.value,  # pylint: disable=no-member
+            'time_started': datetime_to_timestamp(self.start_time),
+            'node_id': self.computing_node.node_id,  # pylint: disable=no-member
+            'node_name': self.computing_node.name,  # pylint: disable=no-member
+        }
 
     class Meta:
         database = db
@@ -801,6 +840,36 @@ class QueuedVerification(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_id', 'subtask_id')
+
+
+class AppConfiguration(BaseModel):
+    app_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class EnvConfiguration(BaseModel):
+    env_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class UsageFactor(BaseModel):
+    provider_node = ForeignKeyField(
+        ComputingNode, null=False, unique=True, related_name='usage_factor')
+    usage_factor = FloatField(default=1.0)
+
+    def __repr__(self):
+        return (
+            f"UsageFactor <"
+            f"provider={self.provider_node_id}, "
+            f"usage_factor={self.usage_factor}"
+            f">"
+        )
 
 
 def collect_db_models(module: str = __name__):

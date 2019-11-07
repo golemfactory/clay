@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 import time
-from typing import Any, Dict, Tuple, Union
+from typing import Any, Dict, Optional, Tuple, Union
 
 from twisted.internet.defer import Deferred
 
@@ -16,6 +16,10 @@ class JobException(RuntimeError):
 
 
 class TimeoutException(JobException):
+    pass
+
+
+class BudgetExceededException(JobException):
     pass
 
 
@@ -37,7 +41,7 @@ class TaskThread(threading.Thread):
         self.res_path = res_path
         self.tmp_path = tmp_path
         self.lock = threading.Lock()
-        self.error = False
+        self.error: Optional[Exception] = None
         self.error_msg = ""
         self.start_time = time.time()
         self.end_time = None
@@ -71,7 +75,7 @@ class TaskThread(threading.Thread):
         with self.lock:
             return self.vm.get_progress()
 
-    def get_error(self):
+    def get_error(self) -> Optional[Exception]:
         with self.lock:
             return self.error
 
@@ -103,7 +107,7 @@ class TaskThread(threading.Thread):
 
         logger.warning("Task computing error %s", exception)
 
-        self.error = True
+        self.error = exception
         self.error_msg = str(exception)
         self.done = True
         self._deferred.errback(exception)

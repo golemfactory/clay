@@ -8,7 +8,18 @@ import time
 import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
-from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import (
+    Any,
+    Dict,
+    Hashable,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Union,
+    TYPE_CHECKING,
+)
 
 from golem_messages import datastructures as msg_datastructures
 from pydispatch import dispatcher
@@ -30,8 +41,8 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
+from golem.core.deferred import deferred_from_future
 from golem.core.fileshelper import du
-from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -39,10 +50,11 @@ from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.transactionsystem import TransactionSystem
+from golem.hardware.presets import HardwarePresets
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -66,7 +78,6 @@ from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
-from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
@@ -74,6 +85,11 @@ from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
+
+
+if TYPE_CHECKING:
+    from golem.task.requestedtaskmanager import RequestedTaskManager
+    from golem.task.taskmanager import TaskManager
 
 
 class ClientTaskComputerEventListener(object):
@@ -120,7 +136,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.config_approver = ConfigApprover(self.config_desc)
 
         if self.config_desc.in_shutdown:
-            self.update_setting('in_shutdown', False)
+            self.update_setting('in_shutdown', 0)
 
         logger.info(
             'Client %s, datadir: %s',
@@ -348,6 +364,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 service.start()
         logger.debug('Started client services')
 
+    @inlineCallbacks
     @report_calls(Component.client, 'stop', stage=Stage.post)
     def stop(self):
         logger.debug('Stopping client services ...')
@@ -360,7 +377,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.concent_filetransfers.running:
             self.concent_filetransfers.stop()
         if self.task_server:
-            self.task_server.quit()
+            yield self.task_server.quit()
         if self.use_monitor and self.monitor:
             self.diag_service.stop()
             # This effectively removes monitor dispatcher connections (weakrefs)
@@ -416,7 +433,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         if self.config_desc.net_masking_enabled:
             mask_udpate_service = MaskUpdateService(
-                task_manager=self.task_server.task_manager,
+                requested_task_manager=self.task_server.requested_task_manager,
+                old_task_manager=self.task_server.task_manager,
                 interval_seconds=self.config_desc.mask_update_interval,
                 update_num_bits=self.config_desc.mask_update_num_bits
             )
@@ -658,9 +676,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
         self.p2pservice.connect(socket_address)
 
+    @inlineCallbacks
     def quit(self):
         logger.info('Shutting down ...')
-        self.stop()
+        yield self.stop()
 
         self.transaction_system.stop()
         if self.diag_service:
@@ -844,10 +863,19 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         task_dict = self.task_server.task_manager.get_task_dict(task_id)
         if not task_dict:
-            return None
-
-        task_state = self.task_server.task_manager.query_task_state(task_id)
-        subtask_ids = list(task_state.subtask_states.keys())
+            # NEW taskmanager
+            logger.debug('get_task(task_id=%r) - NEW', task_id)
+            rtm = self.task_server.requested_task_manager
+            task = rtm.get_requested_task(task_id)
+            if not task:
+                return None
+            subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            task_dict = {'id': task.task_id, 'status': task.status.value}
+        else:
+            # OLD taskmanager
+            logger.debug('get_task(task_id=%r) - OLD', task_id)
+            task_state = self.task_server.task_manager.query_task_state(task_id)
+            subtask_ids = list(task_state.subtask_states.keys())
 
         # Get total value and total fee for payments for the given subtask IDs
         subtasks_payments = \
@@ -893,8 +921,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if task_id:
             return self.get_task(task_id)
 
-        task_keys = self.task_server.task_manager.tasks.keys()
-        tasks = (self.get_task(task_id) for task_id in task_keys)
+        tm = self.task_server.task_manager
+        rtm = self.task_server.requested_task_manager
+
+        task_keys: Set[str] = set()
+        task_keys.update(tm.tasks.keys())
+        task_keys.update(rtm.get_requested_task_ids())
+
+        tasks = (self.get_task(task_id) for task_id in sorted(task_keys))
         filter_fn = None
 
         if return_created_tasks_only:
@@ -913,21 +947,32 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if rtm.task_exists(task_id):
+                subtasks = rtm.get_requested_task_subtasks(task_id)
+                return [subtask.to_dict() for subtask in subtasks]
+            return tm.get_subtasks_dict(task_id)
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str) \
+    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(
-                subtask_id)
+            tm = self.task_server.task_manager
+            rtm = self.task_server.requested_task_manager
+
+            if task_id:
+                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
+                if subtask:
+                    return subtask.to_dict(), None
+            subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
-        except KeyError:
+        except (AttributeError, KeyError):
             return None, "Subtask not found: '{}'".format(subtask_id)
 
     @rpc_utils.expose('comp.task.preview')
@@ -1317,6 +1362,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             = Client._make_connection_status_human_readable_message(status)
         return status
 
+    def has_assigned_task(self) -> bool:
+        if self.task_server is None:
+            return False
+        return self.task_server.task_computer.has_assigned_task()
+
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting
         if self.task_server is None:
@@ -1548,30 +1598,45 @@ class MaskUpdateService(LoopingCallService):
 
     def __init__(
             self,
-            task_manager: TaskManager,
+            requested_task_manager: 'RequestedTaskManager',
+            old_task_manager: 'TaskManager',
             interval_seconds: int,
             update_num_bits: int
     ) -> None:
-        self._task_manager: TaskManager = task_manager
+        self._requested_task_manager = requested_task_manager
+        self._old_task_manager = old_task_manager
         self._update_num_bits = update_num_bits
         self._interval = interval_seconds
         super().__init__(interval_seconds)
 
-    def _run(self) -> None:
-        logger.info('Updating masks')
+    def _run(self):
+        logger.debug('Updating masks')
+        old_task_manager = self._old_task_manager
+        requested_task_manager = self._requested_task_manager
         # Using list() because tasks could be changed by another thread
-        for task_id, task in list(self._task_manager.tasks.items()):
-            if not self._task_manager.task_needs_computation(task_id):
+        for task_id, task in list(old_task_manager.tasks.items()):
+            if not old_task_manager.task_needs_computation(task_id):
                 continue
-            task_state = self._task_manager.query_task_state(task_id)
+            task_state = old_task_manager.query_task_state(task_id)
             if task_state.elapsed_time < self._interval:
                 continue
 
-            self._task_manager.decrease_task_mask(
+            old_task_manager.decrease_task_mask(
                 task_id=task_id,
                 num_bits=self._update_num_bits)
             logger.info('Updating mask for task %r Mask size: %r',
                         task_id, task.header.mask.num_bits)
+
+        for db_task in requested_task_manager.get_started_tasks():
+            elapsed_seconds = db_task.elapsed_seconds
+            if elapsed_seconds is None or elapsed_seconds < self._interval:
+                continue
+
+            requested_task_manager.decrease_task_mask(
+                task_id=db_task.task_id,
+                num_bits=self._update_num_bits)
+            logger.info('Updating mask. task_id=%r, new_mask_size=%r',
+                        db_task.task_id, db_task.mask.num_bits)
 
 
 class DailyJobsService(LoopingCallService):

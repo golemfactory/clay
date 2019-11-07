@@ -6,7 +6,6 @@ import logging
 import os.path
 import re
 import typing
-from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -25,14 +24,17 @@ from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import (
     taskbase,
-    taskkeeper,
     taskstate,
     tasktester,
     requestedtaskmanager,
+    TaskId,
 )
+from golem.task.helpers import calculate_subtask_payment
 
 if typing.TYPE_CHECKING:
-    from golem.client import Client  # noqa pylint: disable=unused-import
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.client import Client
+    from .taskmanager import TaskManager
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -279,7 +281,8 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         raise RuntimeError('TaskServer not ready')
 
     network_size = client.p2pservice.get_estimated_network_size()
-    min_perf = client.task_server.get_min_performance_for_task(task)
+    min_perf = client.task_server.get_min_performance_for_env(
+        task.header.environment)
     perf_rank = client.p2pservice.get_performance_percentile_rank(
         min_perf, task.header.environment)
     potential_num_workers = int(network_size * (1 - perf_rank))
@@ -288,6 +291,10 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         desired_num_workers=desired_num_workers,
         potential_num_workers=potential_num_workers
     )
+
+    if mask is None:
+        mask = masking.Mask()
+
     logger.info(
         f'Task {task.header.task_id} '
         f'initial mask size: {mask.num_bits} '
@@ -460,17 +467,19 @@ class ClientProvider:
     """Provides task related remote procedures that require Client"""
 
     # Add only methods that are exposed via RPC
-    def __init__(self, client):
+    def __init__(self, client: 'Client'):
         self.client = client
 
     @property
-    def task_manager(self):
+    def task_manager(self) -> 'TaskManager':
+        assert self.client.task_server
         return self.client.task_server.task_manager
 
     @property
     def requested_task_manager(
             self,
     ) -> requestedtaskmanager.RequestedTaskManager:
+        assert self.client.task_server
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
@@ -497,7 +506,7 @@ class ClientProvider:
                 force
             )
         except Exception as exc:  # pylint: disable=broad-except
-            self.client.task_manager.task_creation_failed(task_id, str(exc))
+            self.task_manager.task_creation_failed(task_id, str(exc))
             raise
 
         # Fire and forget the next steps after create_task
@@ -539,21 +548,20 @@ class ClientProvider:
         )
         return task_dict, None
 
+    # FIXME: integration tests pass a single argument
     @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(self, task_params: dict, golem_params: dict):
+    def create_task_api_task(
+            self,
+            golem_params: dict,
+            app_params: typing.Optional[dict] = None
+    ) -> TaskId:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
-        create_task_params = requestedtaskmanager.CreateTaskParams(
-            app_id=golem_params['app_id'],
-            name=golem_params['name'],
-            output_directory=Path(golem_params['output_directory']),
-            resources=list(map(Path, golem_params['resources'])),
-            max_price_per_hour=int(golem_params['max_price_per_hour']),
-            max_subtasks=int(golem_params['max_subtasks']),
-            task_timeout=int(golem_params['task_timeout']),
-            subtask_timeout=int(golem_params['subtask_timeout']),
-            concent_enabled=False,  # Concent doesn't support Task API
-        )
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
+        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
+            .parse(golem_params, app_params)
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,
@@ -564,7 +572,7 @@ class ClientProvider:
 
         task_id = self.requested_task_manager.create_task(
             create_task_params,
-            task_params,
+            app_params,
         )
 
         self.client.funds_locker.lock_funds(
@@ -573,6 +581,8 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
@@ -580,6 +590,7 @@ class ClientProvider:
                     self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
@@ -775,7 +786,7 @@ class ClientProvider:
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
-        frame_subtasks: typing.FrozenSet[str] =\
+        frame_subtasks: typing.Optional[typing.FrozenSet[str]] =\
             self.task_manager.get_frame_subtasks(task_id, frame)
 
         if not frame_subtasks:
@@ -943,7 +954,8 @@ class ClientProvider:
         subtask_price: int = 0
 
         if task_id:
-            task: taskbase.Task = self.task_manager.tasks.get(task_id)
+            task: typing.Optional[taskbase.Task] = \
+                self.task_manager.tasks.get(task_id)
             if not task:
                 return None, f'Task not found: {task_id}'
 
@@ -958,8 +970,8 @@ class ClientProvider:
             subtask_timeout: int = common.string_to_timeout(
                 options['subtask_timeout'],
             )
-            subtask_price = taskkeeper.compute_subtask_value(
-                price=int(options['price']),
+            subtask_price = calculate_subtask_payment(
+                price_per_hour=int(options['price']),
                 computation_time=subtask_timeout
             )
 

@@ -8,6 +8,7 @@ import random
 from collections import Counter
 
 from eth_utils import decode_hex
+from golem_messages.datastructures.masking import Mask
 from twisted.internet.defer import inlineCallbacks, Deferred
 
 from golem_messages import (
@@ -21,26 +22,15 @@ from golem_messages.datastructures import tasks as dt_tasks
 
 from golem.core import common
 from golem.core import golem_async
-from golem.core.deferred import sync_wait
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
 from golem.task.envmanager import EnvironmentManager as NewEnvManager
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger(__name__)
-
-
-def compute_subtask_value(price: int, computation_time: int) -> int:
-    """
-    Don't use math.ceil (this is general advice, not specific to the case here)
-    >>> math.ceil(10 ** 18 / 6)
-    166666666666666656
-    >>> (10 ** 18 + 5) // 6
-    166666666666666667
-    """
-    return (price * computation_time + 3599) // 3600
 
 
 def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
@@ -188,7 +178,7 @@ class CompTaskKeeper:
             self.active_tasks[task_id].requests += 1
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, performance)
-        self.active_task_offers[task_id] = compute_subtask_value(
+        self.active_task_offers[task_id] = calculate_subtask_payment(
             price, self.active_tasks[task_id].header.subtask_timeout
         )
         self.dump()
@@ -429,7 +419,8 @@ class TaskHeaderKeeper:
 
     def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
-        if header.mask.matches(decode_hex(self.node.key)):
+        mask = header.mask or Mask()
+        if mask.matches(decode_hex(self.node.key)):
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 
@@ -480,7 +471,8 @@ class TaskHeaderKeeper:
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
-    def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
+    @inlineCallbacks
+    def add_task_header(self, header: dt_tasks.TaskHeader):
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported
@@ -511,7 +503,7 @@ class TaskHeaderKeeper:
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
-            sync_wait(self.update_supported_set(header))
+            yield self.update_supported_set(header)
 
             self.check_max_tasks_per_owner(header.task_owner.key)
 

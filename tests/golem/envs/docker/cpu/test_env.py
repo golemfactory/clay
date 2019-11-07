@@ -594,35 +594,15 @@ class TestCreateHostConfig(TestDockerCPUEnv):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
         port = 4444
         payload = mock_docker_runtime_payload(ports=[port])
-        self.hypervisor.requires_ports_publishing.return_value = True
         host_config = self.env._create_host_config(config, payload)
 
         local_client().create_host_config.assert_called_once_with(
             cpuset_cpus=ANY,
             mem_limit=ANY,
             binds=ANY,
-            port_bindings={port: None},
-            privileged=ANY,
-            network_mode=ANY,
-            dns=ANY,
-            dns_search=ANY,
-            cap_drop=ANY,
-        )
-        self.assertEqual(host_config, local_client().create_host_config())
-
-    @patch_cpu('local_client')
-    def test_nonpublished_ports(self, local_client):
-        config = Mock(spec=DockerCPUConfig, cpu_count=2)
-        port = 4444
-        payload = mock_docker_runtime_payload(ports=[port])
-        self.hypervisor.requires_ports_publishing.return_value = False
-        host_config = self.env._create_host_config(config, payload)
-
-        local_client().create_host_config.assert_called_once_with(
-            cpuset_cpus=ANY,
-            mem_limit=ANY,
-            binds=ANY,
-            port_bindings=None,
+            port_bindings={
+                f'{port}/tcp': {'HostIp': '0.0.0.0', 'HostPort': port},
+            },
             privileged=ANY,
             network_mode=ANY,
             dns=ANY,
