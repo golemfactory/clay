@@ -68,18 +68,26 @@ class SubtaskStatus(Enum):
     failure = "Failure"
     restarted = "Restart"
     cancelled = "Cancelled"
+    timeout = "Timeout"
 
     def is_computed(self) -> bool:
         return self in [self.starting, self.downloading]
 
     def is_active(self) -> bool:
-        return self in [self.starting, self.downloading, self.verifying]
+        return self in SUBTASK_STATUS_ACTIVE
 
     def is_finished(self) -> bool:
         return self == self.finished
 
     def is_finishing(self) -> bool:
         return self in {self.downloading, self.verifying}
+
+
+SUBTASK_STATUS_ACTIVE = [
+    SubtaskStatus.starting,
+    SubtaskStatus.downloading,
+    SubtaskStatus.verifying
+]
 
 
 validate_varchar_inf = functools.partial(
@@ -154,6 +162,8 @@ class SubtaskState(datastructures.Container):
 class TaskStatus(Enum):
     creating = "Creating"
     errorCreating = "Error creating"
+    testing = "Testing"
+    errorTesting = "Error testing"
     notStarted = "Not started"
     creatingDeposit = "Creating the deposit"
     sending = "Sending"
@@ -169,8 +179,7 @@ class TaskStatus(Enum):
         return self in [self.creating, self.errorCreating]
 
     def is_completed(self) -> bool:
-        return self in [self.finished, self.aborted,
-                        self.timeout, self.restarted]
+        return self in TASK_STATUS_COMPLETED
 
     def is_preparing(self) -> bool:
         return self in (
@@ -180,8 +189,23 @@ class TaskStatus(Enum):
         )
 
     def is_active(self) -> bool:
-        return self in [self.sending, self.waiting,
-                        self.starting, self.computing]
+        return self in TASK_STATUS_ACTIVE
+
+
+TASK_STATUS_COMPLETED = [
+    TaskStatus.finished,
+    TaskStatus.aborted,
+    TaskStatus.timeout,
+    TaskStatus.restarted
+]
+
+
+TASK_STATUS_ACTIVE = [
+    TaskStatus.sending,
+    TaskStatus.waiting,
+    TaskStatus.starting,
+    TaskStatus.computing
+]
 
 
 class TaskTestStatus(Enum):
@@ -249,13 +273,15 @@ class SubtaskOp(Operation):
     TIMEOUT = auto()
     RESTARTED = auto()
     VERIFYING = auto()
+    ABORTED = auto()
 
     def is_completed(self) -> bool:
         return self not in (
             SubtaskOp.ASSIGNED,
             SubtaskOp.RESULT_DOWNLOADING,
             SubtaskOp.RESTARTED,
-            SubtaskOp.VERIFYING
+            SubtaskOp.VERIFYING,
+            SubtaskOp.ABORTED,
         )
 
 

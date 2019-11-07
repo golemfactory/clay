@@ -1,5 +1,5 @@
+import asyncio
 import tempfile
-import unittest
 from unittest import mock
 from pathlib import Path
 
@@ -8,13 +8,16 @@ from golem_messages.message import tasks as msg_tasks
 
 from twisted.internet import defer
 
-from golem.core.deferred import sync_wait
+from apps.appsmanager import AppsManager
+
 from golem.resource import resourcemanager
 from golem.task import requestedtaskmanager
 from golem.task import tasksession
+from tests.utils.asyncio import TwistedAsyncioTestCase, AsyncMock
 
 
-class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
+class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
+
     def setUp(self):
         self.ts = tasksession.TaskSession(mock.Mock())
         self.ts.key_id = 'testid'
@@ -24,7 +27,11 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
 
         self.rtm = mock.Mock(spec=requestedtaskmanager.RequestedTaskManager)
         self.rtm.task_exists.return_value = True
+        self.rtm.has_pending_subtasks = AsyncMock(return_value=True)
         self.ts.task_server.requested_task_manager = self.rtm
+
+        self.ts.task_server.client.apps_manager = AppsManager()
+        self.ts.task_server.client.apps_manager.load_all_apps()
 
         self.keys_auth = mock.Mock()
         self.keys_auth._private_key = b'4' * 32
@@ -38,14 +45,16 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
         self.ts.task_server.new_resource_manager = self.resource_manager
 
         self.wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            task_header__environment='BLENDER',
             task_header__sign__privkey=self.keys_auth._private_key,
             price=123,
         )
 
+    @defer.inlineCallbacks
     def test_no_pending_subtasks(self):
         self.rtm.has_pending_subtasks.return_value = False
 
-        self.ts._react_to_want_to_compute_task(self.wtct)
+        yield self.ts._react_to_want_to_compute_task(self.wtct)
 
         self.rtm.has_pending_subtasks.assert_called_once_with(self.wtct.task_id)
         self.ts._cannot_assign_task.assert_called_once_with(
@@ -53,11 +62,12 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
             msg_tasks.CannotAssignTask.REASON.NoMoreSubtasks,
         )
 
+    @defer.inlineCallbacks
     def test_task_finished(self):
         self.rtm.has_pending_subtasks.return_value = True
         self.rtm.is_task_finished.return_value = True
 
-        self.ts._react_to_want_to_compute_task(self.wtct)
+        yield self.ts._react_to_want_to_compute_task(self.wtct)
 
         self.rtm.is_task_finished.assert_called_once_with(self.wtct.task_id)
         self.ts._cannot_assign_task.assert_called_once_with(
@@ -65,6 +75,7 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
             msg_tasks.CannotAssignTask.REASON.TaskFinished,
         )
 
+    @defer.inlineCallbacks
     def test_offer_chosen(self):
         random_dir = Path(tempfile.gettempdir())
         self.rtm.get_subtask_inputs_dir.return_value = random_dir
@@ -74,21 +85,28 @@ class TestTaskApiReactToWantToComputeTask(unittest.TestCase):
             params={'param1': 'value1', 'param2': 'value2'},
             deadline=222,
         )
-        self.rtm.get_next_subtask.return_value = subtask_def
+        subtask_future = asyncio.Future()
+        subtask_future.set_result(subtask_def)
+        self.rtm.get_next_subtask.return_value = subtask_future
         self.rtm.has_pending_subtasks.return_value = True
         shared_resources = []
 
-        def _share(resource):
+        def _share(resource, _):
             return_value = f'hash:{resource}'
             shared_resources.append(return_value)
             return defer.succeed(return_value)
         self.resource_manager.share.side_effect = _share
 
-        sync_wait(self.ts._offer_chosen(True, self.wtct))
+        yield self.ts._offer_chosen(True, self.wtct)
 
-        self.rtm.get_next_subtask.assert_called_once_with(self.wtct.task_id)
+        self.rtm.get_next_subtask.assert_called_once_with(
+            task_id=self.wtct.task_id,
+            computing_node=mock.ANY
+        )
         for r in subtask_def.resources:
-            self.resource_manager.share.assert_any_call(random_dir / r)
+            self.resource_manager.share.assert_any_call(
+                random_dir / r,
+                mock.ANY)
         self.assertEqual(
             len(subtask_def.resources),
             self.resource_manager.share.call_count,

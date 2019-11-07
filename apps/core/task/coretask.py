@@ -145,10 +145,25 @@ class CoreTask(Task):
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=task_definition.subtasks_count,
+            subtask_budget=self.calculate_subtask_budget(task_definition),
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
             timestamp=int(time.time()),
+        )
+
+        logger.debug(
+            "CoreTask TaskHeader "
+            "task_id=%s, environment=%s, deadline=%s, "
+            "subtask_timeout=%s, subtasks_count=%s, subtask_budget=%s, "
+            "estimated_memory=%s, "
+            "max_price=%s, "
+            "concent_enabled=%s, ",
+            th.task_id, th.environment, th.deadline,
+            th.subtask_timeout, th.subtasks_count, th.subtask_budget,
+            th.estimated_memory,
+            th.max_price,
+            th.concent_enabled,
         )
 
         Task.__init__(self, th, task_definition)
@@ -280,9 +295,8 @@ class CoreTask(Task):
         return (self.get_total_tasks() - self.last_task) \
             + self.num_failed_subtasks
 
-    # pylint:disable=unused-argument
-    @classmethod
-    def get_subtasks(cls, part):
+    # pylint:disable=unused-argument,no-self-use
+    def get_subtasks(self, part) -> Dict[str, dict]:
         return dict()
 
     def restart(self):
@@ -518,7 +532,7 @@ class CoreTask(Task):
 
 
 class CoreTaskBuilder(TaskBuilder):
-    TASK_CLASS = CoreTask
+    TASK_CLASS: Type[CoreTask]
     OUTPUT_DIR_TIME_FORMAT = '_%Y-%m-%d_%H-%M-%S'
 
     def __init__(self,
@@ -555,8 +569,6 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.concent_enabled = dictionary.get('concent_enabled', False)
-        if 'optimize_total' in dictionary:
-            definition.optimize_total = bool(dictionary['optimize_total'])
         if 'resources' in dictionary:
             definition.resources = set(dictionary['resources'])
         return definition

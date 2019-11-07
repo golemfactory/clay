@@ -9,8 +9,9 @@ import uuid
 from threading import Lock
 
 from dataclasses import dataclass
-from golem_messages.message.tasks import ComputeTaskDef, TaskHeader
+from golem_messages.message.tasks import ComputeTaskDef, TaskHeader, TaskFailure
 from golem_task_api import ProviderAppClient, constants as task_api_constants
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet import defer
 
@@ -22,8 +23,8 @@ from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.envs import EnvId
-from golem.envs.docker.cpu import DockerCPUConfig, DOCKER_CPU_ENV_ID
-from golem.envs.docker.gpu import DockerGPUConfig, DOCKER_GPU_ENV_ID
+from golem.envs.docker.cpu import DockerCPUConfig
+from golem.envs.docker.gpu import DockerGPUConfig
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
@@ -32,7 +33,7 @@ from golem.task.envmanager import EnvironmentManager
 from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
-from .taskthread import TaskThread
+from .taskthread import TaskThread, BudgetExceededException, TimeoutException
 
 if TYPE_CHECKING:
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
@@ -215,6 +216,7 @@ class TaskComputerAdapter:
             in_background=in_background))
 
     def quit(self) -> None:
+        self._new_computer.quit()
         self._old_computer.quit()
 
 
@@ -393,9 +395,8 @@ class NewTaskComputer:
         return self._work_dir / env_id / task_id
 
     def task_interrupted(self) -> None:
-        assert self.has_assigned_task()
-        assert self._computation is not None
-        self._computation.cancel()
+        if self.has_assigned_task() and self._computation:
+            self._computation.cancel()
 
     def get_current_computing_env(self) -> Optional[EnvId]:
         if self._assigned_task is None:
@@ -430,6 +431,10 @@ class NewTaskComputer:
             docker_gpu.update_config(DockerGPUConfig(**config_dict))
 
         return defer.succeed(None)
+
+    def quit(self):
+        if self.has_assigned_task():
+            self.task_interrupted()
 
 
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
@@ -518,15 +523,20 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         was_success = False
 
         if task_thread.error or task_thread.error_msg:
-
-            if "Task timed out" in task_thread.error_msg:
+            reason = TaskFailure.DEFAULT_REASON
+            # pylint: disable=unidiomatic-typecheck
+            if type(task_thread.error) is TimeoutException:
                 self.stats.increase_stat('tasks_with_timeout')
+                reason = TaskFailure.REASON.TimeExceeded
+            elif type(task_thread.error) is BudgetExceededException:
+                reason = TaskFailure.REASON.BudgetExceeded
             else:
                 self.stats.increase_stat('tasks_with_errors')
                 self.task_server.send_task_failed(
                     subtask_id,
                     subtask['task_id'],
                     task_thread.error_msg,
+                    reason
                 )
 
         elif task_thread.result and 'data' in task_thread.result:
@@ -569,7 +579,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         if not self._is_computing() or self.assigned_subtask is None:
             return None
 
-        c: TaskThread = self.counting_thread
+        c: Optional[TaskThread] = self.counting_thread
         try:
             outfilebasename = c.extra_data.get(  # type: ignore
                 'crops'
@@ -656,6 +666,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
+        cpu_limit = task_header.subtask_budget
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
@@ -677,8 +688,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(docker_images, extra_data,
-                                  dir_mapping, task_timeout)
+            tt: TaskThread = DockerTaskThread(
+                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
         elif self.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)

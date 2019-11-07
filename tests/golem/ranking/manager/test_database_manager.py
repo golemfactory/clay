@@ -251,3 +251,33 @@ class TestDatabaseManager(DatabaseFixture):
         """Should throw exception for WRONG_COMPUTED increase."""
         with self.assertRaises(KeyError):
             Trust.WRONG_COMPUTED.increase('alpha', 0.3)
+
+    def test_update_requestor_assigned_sum(self):
+        REQUESTOR_ID = 'c001d00d'
+        self.assertEqual(
+            dm.get_requestor_assigned_sum(REQUESTOR_ID),
+            0,
+        )
+        dm.update_requestor_assigned_sum(REQUESTOR_ID, 42)
+        self.assertEqual(
+            dm.get_requestor_assigned_sum(REQUESTOR_ID),
+            42,
+        )
+
+    def test_update_requestor_assigned_sum_subtract(self):
+        REQUESTOR_ID = 'c001d00d'
+        dm.update_requestor_assigned_sum(REQUESTOR_ID, 42)
+        self.assertEqual(
+            dm.get_requestor_assigned_sum(REQUESTOR_ID),
+            42,
+        )
+        dm.update_requestor_assigned_sum(REQUESTOR_ID, -22)
+        self.assertEqual(
+            dm.get_requestor_assigned_sum(REQUESTOR_ID),
+            20,
+        )
+        dm.update_requestor_assigned_sum(REQUESTOR_ID, -22)
+        self.assertEqual(
+            dm.get_requestor_assigned_sum(REQUESTOR_ID),
+            0,
+        )

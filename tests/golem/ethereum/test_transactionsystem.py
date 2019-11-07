@@ -724,17 +724,29 @@ class ConcentWithdrawTest(TransactionSystemBase):
     @freeze_time('2018-10-01 14:00:00')
     def test_unlocked(self):
         now = time.time()
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.sci.get_deposit_locked_until.reset_mock()
         self.sci.get_deposit_locked_until.return_value = int(now)
+        self.sci.get_deposit_value.return_value = 10
+        self.sci.withdraw_deposit.return_value = tx_hash
         self.ets.concent_withdraw()
         self.sci.withdraw_deposit.assert_called_once_with()
+        wo_cnt = model.WalletOperation.deposit_transfers().where(
+            model.WalletOperation.direction
+            == model.WalletOperation.DIRECTION.incoming,
+        ).count()
+        self.assertEqual(wo_cnt, 1)
 
 
 class ConcentUnlockTest(TransactionSystemBase):
     def setUp(self):
         super().setUp()
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.ets = self._make_ets(provide_gntdeposit=True)
         self.sci.get_transaction_gas_price.return_value = 2
+        self.sci.withdraw_deposit.return_value = tx_hash
 
     def test_empty(self):
         self.sci.get_deposit_value.return_value = 0
@@ -797,7 +809,6 @@ class DepositPaymentsListTest(TransactionSystemBase):
             created_date=dt,
             modified_date=dt,
         )
-        instance.save(force_insert=True)
 
         self.assertEqual(
             [instance],
@@ -815,11 +826,6 @@ class IncomesListTest(TransactionSystemBase):
             model.WalletOperation.DIRECTION.incoming,
             wallet_operation__operation_type=  # noqa
             model.WalletOperation.TYPE.task_payment,
-        )
-        income.wallet_operation.save(force_insert=True)
-        self.assertEqual(
-            income.save(force_insert=True),
-            1,
         )
         return income
 

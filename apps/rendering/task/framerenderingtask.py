@@ -1,8 +1,14 @@
 import logging
 import math
 import os
-import typing
-from typing import Callable
+from typing import (
+    Callable,
+    Dict,
+    List,
+    TYPE_CHECKING,
+    Type,
+    cast,
+)
 from bisect import insort
 from collections import OrderedDict, defaultdict
 
@@ -14,15 +20,20 @@ from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
 from apps.rendering.resources.utils import handle_opencv_image_error
-from apps.rendering.task.renderingtask import (RenderingTask,
-                                               RenderingTaskBuilder,
-                                               PREVIEW_EXT)
-from apps.rendering.task.renderingtaskstate import RendererDefaults
+from apps.rendering.task.renderingtask import (
+    RenderingTask,
+    RenderingTaskBuilder,
+    PREVIEW_EXT,
+    MIN_PIXELS_PER_SUBTASK,
+)
 from golem.verifier.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
-from golem.rpc import utils as rpc_utils
 from golem.task.taskbase import TaskResult
 from golem.task.taskstate import SubtaskStatus, TaskStatus
+
+if TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from .renderingtaskstate import RenderingTaskDefinition
 
 
 logger = logging.getLogger("apps.rendering")
@@ -30,66 +41,53 @@ logger = logging.getLogger("apps.rendering")
 DEFAULT_PADDING = 4
 
 
-def _calculate_subtasks_count_with_frames(
-        subtasks_count: int,
-        frames: list) -> int:
-    num_frames = len(frames)
-    est_f: float
-    if subtasks_count > num_frames:
-        est_f = math.floor(subtasks_count / num_frames) * num_frames
-        est = int(est_f)
-        if est != subtasks_count:
-            logger.warning("Too many subtasks for this task. %s "
-                           "subtasks will be used", est)
-        return est
+def _round_int(value: int, base: int) -> int:
+    """
+    The built-in round function is rounding to base 10. This allows rounding to
+    other bases.
 
-    est_f = num_frames / math.ceil(num_frames / subtasks_count)
-    est = int(math.ceil(est_f))
-    if est != subtasks_count:
-        logger.warning("Too many subtasks for this task. %s "
-                       "subtasks will be used.", est)
+    It's the same as `round(value / base) * base`, but without using floats,
+    which are slow.
 
-    return est
+    Examples:
+    _round_int(0, 6) == 0
+    _round_int(2, 6) == 0
+    _round_int(3, 6) == 6
+    _round_int(8, 6) == 6
+    _round_int(9, 6) == 12
+
+    For base=1 it returns value.
+    """
+    return ((value + base//2) // base) * base
 
 
 def _calculate_subtasks_count(
         subtasks_count: int,
-        optimize_total: bool,
         use_frames: bool,
         frames: list,
-        defaults: 'RendererDefaults') -> int:
-    if optimize_total or not subtasks_count:
-        if use_frames:
-            return len(frames)
-        return defaults.default_subtasks
+        resolution: List[int]) -> int:
+    if subtasks_count < 1:
+        logger.warning("Cannot set total subtasks to %s. Changing to 1",
+                       subtasks_count)
+        return 1
 
-    if use_frames:
-        return _calculate_subtasks_count_with_frames(
-            subtasks_count=subtasks_count,
-            frames=frames,
-        )
+    max_subtasks_per_frame = resolution[1] // MIN_PIXELS_PER_SUBTASK
+    num_frames = len(frames) if use_frames else 1
+    max_subtasks_count = max_subtasks_per_frame * num_frames
 
-    total = subtasks_count
-    if defaults.min_subtasks <= total <= defaults.max_subtasks:
-        return total
-    return defaults.default_subtasks
+    if subtasks_count <= num_frames:
+        new_subtasks_count = subtasks_count
+    else:  # subtasks_count > num_frames:
+        # round to num_frames, to make sure every frame is divided into
+        # whole number of subtasks.
+        new_subtasks_count = _round_int(subtasks_count, num_frames)
 
+    if new_subtasks_count > max_subtasks_count:
+        return max_subtasks_count
 
-@rpc_utils.expose('comp.task.subtasks.count')
-def legacy_calculate_subtasks_count(
-        subtasks_count: int,
-        optimize_total: bool,
-        use_frames: bool,
-        frames: list) -> int:
-    """
-    TODO: remove this before 0.21
-    """
-    return _calculate_subtasks_count(
-        subtasks_count,
-        optimize_total,
-        use_frames,
-        frames,
-        RendererDefaults())
+    logger.warning("Cannot set total subtasks to %s. Changing to %s",
+                   subtasks_count, new_subtasks_count)
+    return new_subtasks_count
 
 
 class FrameRendererOptions(Options):
@@ -186,7 +184,7 @@ class FrameRenderingTask(RenderingTask):
             return result
         return []
 
-    def get_subtasks(self, part) -> typing.Dict[str, dict]:
+    def get_subtasks(self, part) -> Dict[str, dict]:
         if self.task_definition.options.use_frames:
             subtask_ids = self.frames_subtasks.get(to_unicode(part), [])
             subtask_ids = filter(None, subtask_ids)
@@ -490,7 +488,7 @@ def get_frame_name(output_name, ext, frame_num):
 
 
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
-    TASK_CLASS = FrameRenderingTask
+    TASK_CLASS: Type[FrameRenderingTask]
 
     def __init__(self, owner, task_definition, dir_manager):
         frames = task_definition.options.frames
@@ -511,8 +509,10 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         return dictionary
 
     @classmethod
-    def build_minimal_definition(cls, task_type, dictionary):
-        parent = super(FrameRenderingTaskBuilder, cls)
+    def build_minimal_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
+        parent = cast(Type[RenderingTaskBuilder],
+                      super(FrameRenderingTaskBuilder, cls))
         options = dictionary.get('options') or dict()
 
         frames_string = to_unicode(options.get('frames', 1))
@@ -523,14 +523,23 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
         definition.options.frames_string = frames_string
         definition.options.frames = frames
         definition.options.use_frames = use_frames
+        definition.subtasks_count = int(dictionary['subtasks_count'])
+
+        return definition
+
+    @classmethod
+    def build_full_definition(cls, task_type, dictionary) \
+            -> 'RenderingTaskDefinition':
+        parent = cast(Type[RenderingTaskBuilder],
+                      super(FrameRenderingTaskBuilder, cls))
+
+        definition = parent.build_full_definition(task_type, dictionary)
         definition.subtasks_count = _calculate_subtasks_count(
             subtasks_count=int(dictionary['subtasks_count']),
-            optimize_total=definition.optimize_total,
             use_frames=definition.options.use_frames,
             frames=definition.options.frames,
-            defaults=cls.DEFAULTS(),
+            resolution=definition.resolution,
         )
-
         return definition
 
     @staticmethod

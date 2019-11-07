@@ -14,7 +14,10 @@ from hexbytes import HexBytes
 
 from golem import model
 from golem.core import variables
-from golem.core.common import timestamp_to_datetime
+from golem.core.common import (
+    datetime_to_timestamp,
+    timestamp_to_datetime,
+)
 from golem.ethereum.paymentprocessor import (
     PaymentProcessor,
     PAYMENT_MAX_DELAY,
@@ -65,8 +68,6 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             model.WalletOperation.DIRECTION.outgoing,
             wallet_operation__status=model.WalletOperation.STATUS.awaiting,
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
 
         self.pp.load_from_db()
         expected = [payment]
@@ -112,9 +113,6 @@ class PaymentProcessorInternalTest(PaymentProcessorBase):
             wallet_operation__tx_hash=tx_hash2,
             wallet_operation__status=model.WalletOperation.STATUS.sent,
         )
-        for sent_payment in (sent_payment11, sent_payment12, sent_payment21):
-            sent_payment.wallet_operation.save(force_insert=True)
-            sent_payment.save(force_insert=True)
         self.pp.load_from_db()
         self.assertEqual(3 * value, self.pp.reserved_gntb)
         self.assertEqual(0, self.pp.recipients_count)
@@ -488,8 +486,6 @@ class UpdateOverdueTest(PaymentProcessorBase):
             wallet_operation__status=  # noqa
             model.WalletOperation.STATUS.awaiting,
         )
-        payment.wallet_operation.save(force_insert=True)
-        payment.save(force_insert=True)
         self.pp._awaiting.add(payment)
         return payment
 
@@ -540,3 +536,101 @@ class UpdateOverdueTest(PaymentProcessorBase):
             payment_overdue.refresh().wallet_operation.status,
             model.WalletOperation.STATUS.overdue,
         )
+
+
+class ForcedPaymentBase(PaymentProcessorBase):
+    def setUp(self):
+        super().setUp()
+        tx_hash = (
+            '0xa1360025847dbf4b02c53f4d62424a1f8b77d76d0278938600fd69cde6ec61f5'
+        )
+        # using `build` so that the object is not saved into the db
+        self.payment = model_factory.TaskPayment.build(
+            wallet_operation__operation_type=  # noqa
+            model.WalletOperation.TYPE.task_payment,
+            wallet_operation__direction=  # noqa
+            model.WalletOperation.DIRECTION.outgoing,
+            wallet_operation__status=  # noqa
+            model.WalletOperation.STATUS.awaiting,
+            wallet_operation__tx_hash=tx_hash,
+        )
+
+
+class SentForcedSubtaskPaymentTest(ForcedPaymentBase):
+    def test_not_in_db(self):
+        self.pp.sent_forced_subtask_payment(
+            tx_hash=self.payment.wallet_operation.tx_hash,
+            receiver=self.payment.wallet_operation.recipient_address,
+            subtask_id=self.payment.subtask,
+            amount=self.payment.wallet_operation.amount,
+        )
+
+    def test_found_in_db(self):
+        self.payment = self.pp.add(
+            node_id=self.payment.node,
+            task_id=self.payment.task,
+            subtask_id=self.payment.subtask,
+            eth_addr=self.payment.wallet_operation.recipient_address,
+            value=self.payment.wallet_operation.amount,
+        )
+        self.pp.sent_forced_subtask_payment(
+            tx_hash=self.payment.wallet_operation.tx_hash,
+            receiver=self.payment.wallet_operation.recipient_address,
+            subtask_id=self.payment.subtask,
+            amount=self.payment.wallet_operation.amount,
+        )
+        self.assertNotIn(self.payment, self.pp._awaiting)
+        self.payment = model.TaskPayment.get(
+            model.TaskPayment.id == self.payment.id,
+        )
+        self.assertIs(
+            self.payment.wallet_operation.status,
+            model.WalletOperation.STATUS.arbitraged_by_concent,
+        )
+
+        new_payment = model.TaskPayment.get(
+            model.TaskPayment.id != self.payment.id,
+        )
+        self.assertTrue(new_payment.charged_from_deposit)
+
+
+class SentForcedPayment(ForcedPaymentBase):
+    def test_not_in_db(self):
+        self.pp.sent_forced_payment(
+            tx_hash=self.payment.wallet_operation.tx_hash,
+            receiver=self.payment.wallet_operation.recipient_address,
+            amount=self.payment.wallet_operation.amount,
+            closure_time=datetime_to_timestamp(
+                self.payment.created_date,
+            ),
+        )
+
+    def test_found_in_db(self):
+        self.payment = self.pp.add(
+            node_id=self.payment.node,
+            task_id=self.payment.task,
+            subtask_id=self.payment.subtask,
+            eth_addr=self.payment.wallet_operation.recipient_address,
+            value=self.payment.wallet_operation.amount,
+        )
+        self.pp.sent_forced_payment(
+            tx_hash=self.payment.wallet_operation.tx_hash,
+            receiver=self.payment.wallet_operation.recipient_address,
+            amount=self.payment.wallet_operation.amount,
+            closure_time=datetime_to_timestamp(
+                self.payment.created_date,
+            ),
+        )
+        self.assertNotIn(self.payment, self.pp._awaiting)
+        self.payment = model.TaskPayment.get(
+            model.TaskPayment.id == self.payment.id,
+        )
+        self.assertIs(
+            self.payment.wallet_operation.status,
+            model.WalletOperation.STATUS.arbitraged_by_concent,
+        )
+
+        new_payment = model.TaskPayment.get(
+            model.TaskPayment.id != self.payment.id,
+        )
+        self.assertTrue(new_payment.charged_from_deposit)

@@ -24,7 +24,9 @@ def computed_task_reported(
         report_computed_task,
         after_success=lambda: None,
         after_error=lambda: None):
-    concent_service = task_server.client.concent_service
+    task_id = report_computed_task.task_id
+    subtask_id = report_computed_task.subtask_id
+    is_task_api_task = task_server.requested_task_manager.task_exists(task_id)
 
     # submit a delayed `ForceGetTaskResult` to the Concent
     # in case the download exceeds the maximum allowable download time.
@@ -33,8 +35,9 @@ def computed_task_reported(
     fgtr = message.concents.ForceGetTaskResult(
         report_computed_task=report_computed_task
     )
+    concent_service = task_server.client.concent_service
     concent_service.submit_task_message(
-        report_computed_task.subtask_id,
+        subtask_id,
         fgtr,
         msg_helpers.maximum_download_time(
             report_computed_task.size,
@@ -42,23 +45,22 @@ def computed_task_reported(
     )
 
     # Pepare callbacks for received resources
-    def on_success(extracted_pkg, *_args, **_kwargs):
-        logger.debug("Task result extracted %r", extracted_pkg.__dict__)
+    def on_success(pkg, *_args, **_kwargs):
+        files = [str(pkg)] if is_task_api_task else pkg.get_full_path_files()
+        logger.debug("Task result downloaded: %r", files)
 
         concent_service.cancel_task_message(
-            report_computed_task.subtask_id,
-            'ForceGetTaskResult',
-        )
+            subtask_id,
+            'ForceGetTaskResult')
         task_server.verify_results(
             report_computed_task=report_computed_task,
-            extracted_package=extracted_pkg,
-        )
+            files=files)
         after_success()
 
     def on_error(exc, *_args, **_kwargs):
         logger.warning(
             "Task result error: %s (%s)",
-            report_computed_task.subtask_id,
+            subtask_id,
             exc or "unspecified",
         )
 
@@ -67,22 +69,28 @@ def computed_task_reported(
             # to obtain the task results
             logger.debug('[CONCENT] sending ForceGetTaskResult: %s', fgtr)
             concent_service.submit_task_message(
-                report_computed_task.subtask_id,
+                subtask_id,
                 fgtr,
             )
         after_error()
 
-    task_id = report_computed_task.task_id
     client_options = task_server.get_download_options(
         report_computed_task.options
     )
 
-    requested_task_manager = task_server.requested_task_manager
-    if requested_task_manager.task_exists(task_id):
+    if is_task_api_task:
+        rtm = task_server.requested_task_manager
+        rtm.task_result_incoming(task_id, report_computed_task.subtask_id)
+        download_dir = rtm.get_subtask_outputs_dir(task_id, subtask_id)
+        download_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(
+            "Downloading subtask_id=%s result to '%s'",
+            subtask_id,
+            download_dir)
         deferred = task_server.new_resource_manager.download(
-            report_computed_task.multihash,
-            requested_task_manager.get_subtask_outputs_dir(task_id),
-            client_options,
+            resource_id=report_computed_task.multihash,
+            directory=download_dir,
+            client_options=client_options,
         )
         deferred.addCallback(on_success)
         deferred.addErrback(on_error)
@@ -91,12 +99,12 @@ def computed_task_reported(
         task = task_manager.tasks.get(task_id, None)
         output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
         # Request results
-        task_manager.task_result_incoming(report_computed_task.subtask_id)
+        task_manager.task_result_incoming(subtask_id)
         task_manager.task_result_manager.pull_package(
-            report_computed_task.multihash,
-            report_computed_task.task_id,
-            report_computed_task.subtask_id,
-            report_computed_task.secret,
+            content_hash=report_computed_task.multihash,
+            task_id=task_id,
+            subtask_id=subtask_id,
+            key_or_secret=report_computed_task.secret,
             success=on_success,
             error=on_error,
             client_options=client_options,
@@ -230,6 +238,7 @@ def send_task_failure(waiting_task_failure) -> None:
         waiting_task_failure.owner.key,
         message.tasks.TaskFailure(
             task_to_compute=task_to_compute,
-            err=waiting_task_failure.err_msg
+            err=waiting_task_failure.err_msg,
+            reason=waiting_task_failure.reason
         ),
     )

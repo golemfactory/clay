@@ -6,7 +6,6 @@ import logging
 import os.path
 import re
 import typing
-from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -18,18 +17,19 @@ from apps.rendering.task.renderingtask import RenderingTask
 from golem.core import golem_async
 from golem.core import common
 from golem.core import simpleserializer
-from golem.core.deferred import DeferredSeq
+from golem.core.deferred import DeferredSeq, deferred_from_future
 from golem.ethereum import exceptions as eth_exceptions
 from golem.model import Actor
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import (
     taskbase,
-    taskkeeper,
     taskstate,
     tasktester,
     requestedtaskmanager,
+    TaskId,
 )
+from golem.task.helpers import calculate_subtask_payment
 
 if typing.TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -281,7 +281,8 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         raise RuntimeError('TaskServer not ready')
 
     network_size = client.p2pservice.get_estimated_network_size()
-    min_perf = client.task_server.get_min_performance_for_task(task)
+    min_perf = client.task_server.get_min_performance_for_env(
+        task.header.environment)
     perf_rank = client.p2pservice.get_performance_percentile_rank(
         min_perf, task.header.environment)
     potential_num_workers = int(network_size * (1 - perf_rank))
@@ -290,6 +291,10 @@ def _get_mask_for_task(client, task: coretask.CoreTask) -> masking.Mask:
         desired_num_workers=desired_num_workers,
         potential_num_workers=potential_num_workers
     )
+
+    if mask is None:
+        mask = masking.Mask()
+
     logger.info(
         f'Task {task.header.task_id} '
         f'initial mask size: {mask.num_bits} '
@@ -543,21 +548,20 @@ class ClientProvider:
         )
         return task_dict, None
 
+    # FIXME: integration tests pass a single argument
     @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(self, task_params: dict, golem_params: dict):
+    def create_task_api_task(
+            self,
+            golem_params: dict,
+            app_params: typing.Optional[dict] = None
+    ) -> TaskId:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
-        create_task_params = requestedtaskmanager.CreateTaskParams(
-            app_id=golem_params['app_id'],
-            name=golem_params['name'],
-            output_directory=Path(golem_params['output_directory']),
-            resources=list(map(Path, golem_params['resources'])),
-            max_price_per_hour=int(golem_params['max_price_per_hour']),
-            max_subtasks=int(golem_params['max_subtasks']),
-            task_timeout=int(golem_params['task_timeout']),
-            subtask_timeout=int(golem_params['subtask_timeout']),
-            concent_enabled=False,  # Concent doesn't support Task API
-        )
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
+        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
+            .parse(golem_params, app_params)
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,
@@ -568,7 +572,7 @@ class ClientProvider:
 
         task_id = self.requested_task_manager.create_task(
             create_task_params,
-            task_params,
+            app_params,
         )
 
         self.client.funds_locker.lock_funds(
@@ -577,18 +581,19 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
+        self.client.update_setting('accept_tasks', False)
+
         @defer.inlineCallbacks
         def init_task():
             try:
-                self.requested_task_manager.init_task(task_id)
+                yield deferred_from_future(
+                    self.requested_task_manager.init_task(task_id))
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
+                self.client.update_setting('accept_tasks', True)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
-            # Dummy yield to make this function work with inlineCallbacks.
-            # To be removed when there are other yeilds in this function.
-            yield defer.Deferred()
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
@@ -965,8 +970,8 @@ class ClientProvider:
             subtask_timeout: int = common.string_to_timeout(
                 options['subtask_timeout'],
             )
-            subtask_price = taskkeeper.compute_subtask_value(
-                price=int(options['price']),
+            subtask_price = calculate_subtask_payment(
+                price_per_hour=int(options['price']),
                 computation_time=subtask_timeout
             )
 

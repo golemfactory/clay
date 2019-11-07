@@ -10,6 +10,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
 
 from dataclasses import dataclass, field, asdict
 from docker.errors import APIError
+from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from twisted.internet.defer import Deferred, inlineCallbacks, succeed
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
@@ -36,8 +37,8 @@ from golem.envs import (
     RuntimeInput,
     RuntimeOutput,
     RuntimePayload,
-    RuntimeStatus
-)
+    RuntimeStatus,
+    BenchmarkResult)
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -47,7 +48,6 @@ logger = logging.getLogger(__name__)
 mem = CONSTRAINT_KEYS['mem']
 cpu = CONSTRAINT_KEYS['cpu']
 
-DOCKER_CPU_ENV_ID = 'docker_cpu'
 DOCKER_CPU_METADATA = EnvMetadata(
     id=DOCKER_CPU_ENV_ID,
     description='Docker environment using CPU'
@@ -551,7 +551,9 @@ class DockerCPUEnvironment(EnvironmentBase):
             if runtime.status() == RuntimeStatus.FAILURE:
                 raise RuntimeError('Benchmark run failed.')
             # Benchmark is supposed to output a single line containing a float
-            return float(list(stdout)[0])
+            benchmark_result = BenchmarkResult()
+            benchmark_result.performance = float(list(stdout)[0])
+            return benchmark_result
         finally:
             yield runtime.clean_up()
 
@@ -697,8 +699,11 @@ class DockerCPUEnvironment(EnvironmentBase):
             binds = self._hypervisor.create_volumes(payload.binds)
 
         port_bindings = None
-        if self._hypervisor.requires_ports_publishing() and payload.ports:
-            port_bindings = {port: None for port in payload.ports}
+        if payload.ports:
+            port_bindings = {
+                f'{port}/tcp': {'HostIp': '0.0.0.0', 'HostPort': port}
+                for port in payload.ports
+            }
 
         client = local_client()
         return client.create_host_config(
@@ -721,6 +726,7 @@ class DockerCPUEnvironment(EnvironmentBase):
         image = f"{payload.image}:{payload.tag}"
         volumes = [b.target for b in payload.binds] if payload.binds else None
         host_config = self._create_host_config(config, payload)
+        ports = [(p, 'tcp') for p in payload.ports] if payload.ports else None
 
         return dict(
             image=image,
@@ -729,7 +735,7 @@ class DockerCPUEnvironment(EnvironmentBase):
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,
-            ports=payload.ports,
+            ports=ports,
             host_config=host_config,
             stdin_open=True
         )

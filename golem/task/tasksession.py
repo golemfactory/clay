@@ -18,15 +18,17 @@ from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
 
+from apps.appsmanager import App
+
 import golem
 from golem.core import common
 from golem.core import deferred
 from golem.core import variables
+from golem.core.common import deadline_to_timeout
+from golem.core.deferred import deferred_from_future
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import (
-    Offer, ProviderPerformance
-)
+from golem.marketplace import Offer, ProviderPerformance
 from golem.model import Actor
 from golem.network import history
 from golem.network import nodeskeeper
@@ -34,11 +36,16 @@ from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    update_requestor_assigned_sum
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
-from golem.task import taskkeeper
+from golem.task.helpers import calculate_subtask_payment
+from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
+from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
@@ -158,6 +165,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
+    def _get_app_from_header(
+            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
+        return self.task_server.client.apps_manager.get_app_for_env(
+            task_header.environment
+        )
+
+    def _get_task_class(self, task_header: message.tasks.TaskHeader):
+        app = self._get_app_from_header(task_header)
+        return app.builder.TASK_CLASS if app else Task
+
     ########################
     # BasicSession methods #
     ########################
@@ -263,6 +280,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     # pylint: disable=too-many-return-statements
+    @defer.inlineCallbacks
     def _react_to_want_to_compute_task(self, msg):
         task_id = msg.task_id
         reasons = message.tasks.CannotAssignTask.REASON
@@ -271,8 +289,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.ConcentDisabled)
             return
 
-        if not self.task_manager.is_my_task(task_id) and \
-                not self.requested_task_manager.task_exists(task_id):
+        is_task_api_task = self.requested_task_manager.task_exists(task_id)
+        if not (is_task_api_task or self.task_manager.is_my_task(task_id)):
             self._cannot_assign_task(msg.task_id, reasons.NotMyTask)
             return
 
@@ -286,7 +304,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_id, common.short_node_id(self.key_id))
         logger.info("Received offer to compute. %s", task_node_info)
 
-        self.task_manager.got_wants_to_compute(msg.task_id)
+        if is_task_api_task:
+            self.requested_task_manager.work_offer_received(msg.task_id)
+        else:
+            self.task_manager.got_wants_to_compute(msg.task_id)
 
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         if not self.task_server.should_accept_provider(
@@ -295,8 +316,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        if self.requested_task_manager.task_exists(task_id):
-            if not self.requested_task_manager.has_pending_subtasks(task_id):
+        if is_task_api_task:
+            has_pending_subtasks = yield deferred_from_future(
+                self.requested_task_manager.has_pending_subtasks(task_id))
+            if not has_pending_subtasks:
                 logger.debug("has_pending_subtasks False. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
                 return
@@ -304,6 +327,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 logger.debug("is_task_finished True. %s", task_node_info)
                 self._cannot_assign_task(task_id, reasons.TaskFinished)
                 return
+
+            current_task = self.requested_task_manager.get_requested_task(
+                msg.task_id)
+            current_app = self.task_server.app_manager.app(
+                current_task.app_id)
+            market_strategy = current_app.market_strategy
+            max_price_per_hour = current_task.max_price_per_hour
         else:
             if not self.task_manager.check_next_subtask(
                     msg.task_id, msg.price):
@@ -316,6 +346,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._cannot_assign_task(msg.task_id, reasons.TaskFinished)
                 return
 
+            current_task = self.task_manager.tasks[msg.task_id]
+            market_strategy = current_task.REQUESTOR_MARKET_STRATEGY
+            max_price_per_hour = current_task.header.max_price
+
         if self._handshake_required(self.key_id):
             logger.warning('Can not accept offer: Resource handshake is'
                            ' required. %s', task_node_info)
@@ -326,11 +360,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Can not accept offer: Resource handshake is in'
                            ' progress. %s', task_node_info)
             return
-
-        current_task = self.task_manager.tasks[msg.task_id]
-        market_strategy = self.task_manager.get_market_strategy_for_task(
-            current_task
-        )
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
@@ -348,8 +377,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer = OfferWithCallback(
             self.key_id,
-            ProviderPerformance(msg.perf_index),
-            current_task.header.max_price,
+            ProviderPerformance(msg.cpu_usage / 1e9),
+            max_price_per_hour,
             msg.price,
             functools.partial(self._offer_chosen, True, msg=msg)
         )
@@ -395,10 +424,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info("Offer confirmed, assigning subtask(s)")
-        price = taskkeeper.compute_subtask_value(
-            msg.price,
-            msg.task_header.subtask_timeout,
-        )
+
+        task_class = self._get_task_class(msg.task_header)
+        budget = task_class.REQUESTOR_MARKET_STRATEGY.calculate_budget(msg)
+
         for _i in range(msg.num_subtasks):
             ctd_res = yield self._get_next_ctd(msg)
             if ctd_res is None:
@@ -421,7 +450,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_id=self.key_id,
                 package_hash='sha1:' + package_hash,
                 concent_enabled=msg.concent_enabled,
-                price=price,
+                price=budget,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
                     address=self.address).__dict__
@@ -461,15 +490,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = msg.task_id
 
         if self.requested_task_manager.task_exists(task_id):
-            if not self.requested_task_manager.has_pending_subtasks(task_id):
+            has_pending_subtasks = yield deferred.deferred_from_future(
+                self.requested_task_manager.has_pending_subtasks(task_id))
+            if not has_pending_subtasks:
                 return None
-            subtask_definition = \
-                self.requested_task_manager.get_next_subtask(task_id)
+
+            subtask_definition = yield deferred.deferred_from_future(
+                self.requested_task_manager.get_next_subtask(
+                    task_id=task_id,
+                    computing_node=ComputingNodeDefinition(
+                        name='',  # FIXME: Provide proper node name
+                        node_id=self.key_id
+                    )
+                ))
+            if subtask_definition is None:
+                # Application refused to assign subtask to provider node
+                return None
+
             task_resources_dir = self.requested_task_manager.\
                 get_subtask_inputs_dir(task_id)
+
             rm = self.task_server.new_resource_manager
+            share_options = self.task_server.get_share_options(
+                timeout=deadline_to_timeout(subtask_definition.deadline))
+
             cdn_resources = yield defer.gatherResults([
-                rm.share(task_resources_dir / r)
+                rm.share(task_resources_dir / r, share_options)
                 for r in subtask_definition.resources
             ])
             new_ctd = {
@@ -479,6 +525,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 'deadline': subtask_definition.deadline,
                 'resources': cdn_resources,
                 'performance': msg.perf_index,
+                # The lack of the 'docker_images' property causes
+                # TTC.compute_task_def and RCT.task_to_compute.compute_task_def
+                # to differ and fail signature verification
+                'docker_images': None,
             }
             return new_ctd, '', 1
 
@@ -579,10 +629,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ResourcesTooBig)
             return
 
-        number_of_subtasks = self.task_server.task_keeper\
-            .task_headers[msg.task_id]\
-            .subtasks_count
-        total_task_price = msg.price * number_of_subtasks
+        task_header = msg.want_to_compute_task.task_header
+        total_task_price = calculate_subtask_payment(
+            task_header.max_price,
+            task_header.subtask_timeout
+        ) * task_header.subtasks_count
+
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.get_available_gnt(
             account_address=msg.requestor_ethereum_address,
@@ -654,7 +706,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _react_to_cannot_compute_task(self, msg):
-        if not self.check_provider_for_subtask(msg.subtask_id):
+        if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
@@ -697,8 +749,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.verify_owners(msg, my_role=Actor.Requestor):
             return
 
-        subtask_id = msg.subtask_id
-        if not self.check_provider_for_subtask(subtask_id):
+        if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
@@ -726,7 +777,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 .ResourcesFailure,
             )
             self.task_manager.task_computation_failure(
-                subtask_id,
+                msg.subtask_id,
                 'Error downloading task result'
             )
 
@@ -742,6 +793,29 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port,
         )
+
+    def _get_payment_value_and_budget(
+            self, rct: message.tasks.ReportComputedTask):
+        task_class = self._get_task_class(
+            rct.task_to_compute.want_to_compute_task.task_header)
+        market_strategy = task_class.PROVIDER_MARKET_STRATEGY
+        payment_value = market_strategy.calculate_payment(rct)
+        budget = market_strategy.calculate_budget(
+            rct.task_to_compute.want_to_compute_task)
+        return payment_value, budget
+
+    @staticmethod
+    def _adjust_requestor_assigned_sum(
+            requestor_id: str, payment_value: int, budget: int):
+        # because we have originally updated the requestor's assigned sum
+        # with the budget value, when we accepted the job
+        # now that we finally know what the actual payment amount is
+        # we need to subtract the difference
+        if payment_value < budget:
+            update_requestor_assigned_sum(
+                requestor_id,
+                payment_value - budget
+            )
 
     @history.provider_history
     def _react_to_subtask_results_accepted(
@@ -771,12 +845,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             'ForceSubtaskResults',
         )
 
+        payment_value, budget = self._get_payment_value_and_budget(
+            msg.report_computed_task)
+        self._adjust_requestor_assigned_sum(
+            msg.requestor_id, payment_value, budget)
+
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             payer_address=msg.task_to_compute.requestor_ethereum_address,
-            value=msg.task_to_compute.price,
+            value=payment_value,
             accepted_ts=msg.payment_ts,
         )
         self.dropped()
@@ -804,6 +883,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
+
+        payment_value, budget = self._get_payment_value_and_budget(
+            msg.report_computed_task)
+        self._adjust_requestor_assigned_sum(
+            msg.requestor_id, payment_value, budget)
 
         if msg.task_to_compute.concent_enabled:
             self._handle_srr_with_concent_enabled(msg, subtask_rejected)
@@ -884,7 +968,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_task_failure(self, msg):
-        if self.check_provider_for_subtask(msg.subtask_id):
+        if self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
 
@@ -1032,8 +1116,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.port
         )
 
-    def check_provider_for_subtask(self, subtask_id) -> bool:
-        node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
+    def check_provider_for_subtask(
+            self,
+            task_id: str,
+            subtask_id: str
+    ) -> bool:
+        node_id = self.requested_task_manager.get_node_id_for_subtask(
+            task_id,
+            subtask_id)
+        if node_id is None:
+            node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         if node_id != self.key_id:
             logger.warning('Received message about subtask %r from different '
                            'node %r than expected %r', subtask_id,

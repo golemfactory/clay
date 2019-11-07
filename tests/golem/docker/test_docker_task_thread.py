@@ -86,3 +86,8 @@ class TestExitCodeMessage(TestCase):
         message = DockerTaskThread._exit_code_message(exit_code)
         assert message != EXIT_CODE_MESSAGE.format(exit_code)
         assert "out-of-memory" in message
+
+        exit_code = 111
+        message = DockerTaskThread._exit_code_message(exit_code)
+        assert message != EXIT_CODE_MESSAGE.format(exit_code)
+        assert "CPU budget exceeded" in message

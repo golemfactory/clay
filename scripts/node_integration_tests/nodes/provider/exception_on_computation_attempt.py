@@ -14,8 +14,9 @@ from golemapp import main
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
-from golem.task.taskstate import TaskStatus
+from golem.envs import BenchmarkResult
 from golem.model import Performance
+from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger(__name__)
 
@@ -28,17 +29,31 @@ def run_benchmark_error_performance_0(self, benchmark, task_builder, env_id,
 
     from golem_messages.datastructures.p2p import Node
 
-    def success_callback(performance):
-        logger.info('%s performance is %.2f', env_id, performance)
-        Performance.update_or_create(env_id, performance)
+    def success_callback(result: BenchmarkResult):
+        logger.info('%s benchmark finished. performance=%.2f, cpu_usage=%d',
+                    env_id, result.performance, result.cpu_usage)
+
+        Performance.update_or_create(
+            env_id=env_id,
+            performance=result.performance,
+            cpu_usage=result.cpu_usage
+        )
+
         if success:
-            success(performance)
+            success(result.performance)
 
     def error_callback(err: Union[str, Exception]):
         logger.error("Unable to run %s benchmark: %s", env_id, str(err))
-        Performance.update_or_create(env_id, ACCEPTABLE_PERFORMANCE)
+
+        Performance.update_or_create(
+            env_id=env_id,
+            performance=ACCEPTABLE_PERFORMANCE,
+            cpu_usage=Performance.DEFAULT_CPU_USAGE
+        )
+
         if isinstance(err, str):
             err = Exception(err)
+
         success(ACCEPTABLE_PERFORMANCE)
 
     task_state = TaskDesc()

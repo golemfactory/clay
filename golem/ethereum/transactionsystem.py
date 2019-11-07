@@ -331,29 +331,60 @@ class TransactionSystem(LoopingCallService):
             )
 
         if self.deposit_contract_available:
-            self._sci.subscribe_to_forced_subtask_payments(
-                None,
-                self._sci.get_eth_address(),
-                from_block,
-                lambda event: ik.received_forced_subtask_payment(
-                    event.tx_hash,
-                    event.requestor,
-                    str(bytes32_to_uuid(event.subtask_id)),
-                    event.amount,
-                )
-            )
-            self._sci.subscribe_to_forced_payments(
-                requestor_address=None,
-                provider_address=self._sci.get_eth_address(),
-                from_block=from_block,
-                cb=lambda event: ik.received_forced_payment(
-                    tx_hash=event.tx_hash,
-                    sender=event.requestor,
-                    amount=event.amount,
-                    closure_time=event.closure_time,
-                ),
-            )
             self._schedule_concent_withdraw()
+            self._subscribe_to_concent_events(from_block)
+
+    @sci_required()
+    def _subscribe_to_concent_events(self, from_block):
+        # As a provider
+        self._sci.subscribe_to_forced_subtask_payments(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: self._incomes_keeper.received_forced_subtask_payment(
+                event.tx_hash,
+                event.requestor,
+                str(bytes32_to_uuid(event.subtask_id)),
+                event.amount,
+            )
+        )
+        # As a requestor
+        self._sci.subscribe_to_forced_subtask_payments(
+            self._sci.get_eth_address(),
+            None,
+            from_block,
+            lambda event: self._payment_processor.sent_forced_subtask_payment(
+                tx_hash=event.tx_hash,
+                receiver=event.provider,
+                subtask_id=str(bytes32_to_uuid(event.subtask_id)),
+                amount=event.amount,
+            )
+        )
+
+        # As a provider
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: self._incomes_keeper.received_forced_payment(
+                tx_hash=event.tx_hash,
+                sender=event.requestor,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
+        # As a requestor
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: self._payment_processor.sent_forced_payment(
+                tx_hash=event.tx_hash,
+                receiver=event.provider,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -877,6 +908,17 @@ class TransactionSystem(LoopingCallService):
             return
         tx_hash = self._sci.withdraw_deposit()
         self._concent_withdraw_requested = True
+        model.WalletOperation.create(
+            tx_hash=tx_hash,
+            direction=model.WalletOperation.DIRECTION.incoming,
+            operation_type=model.WalletOperation.TYPE.deposit_transfer,
+            status=model.WalletOperation.STATUS.sent,
+            sender_address=self.deposit_contract_address,
+            recipient_address=self._sci.get_eth_address(),
+            amount=self._sci.get_deposit_value(),
+            currency=model.WalletOperation.CURRENCY.GNT,
+            gas_cost=0,
+        )
 
         def on_confirmed(receipt) -> None:
             self._concent_withdraw_requested = False

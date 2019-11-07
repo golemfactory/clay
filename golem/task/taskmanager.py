@@ -28,12 +28,17 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
+from apps.core.task.coretaskstate import TaskDefinition
+from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, short_node_id, to_unicode, update_dict
-from golem.marketplace import DEFAULT_MARKET_STRATEGY, RequestorMarketStrategy
+from golem.marketplace import (
+    ProviderBrassMarketStrategy,
+    ProviderWasmMarketStrategy,
+    ProviderMarketStrategy)
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network import nodeskeeper
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
@@ -45,7 +50,8 @@ from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
     TaskPurpose, AcceptClientVerdict, TaskResult
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.helpers import calculate_subtask_payment
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -378,12 +384,6 @@ class TaskManager(TaskEventListener):
         for path in broken_paths:
             path.unlink()
 
-    @handle_task_key_error
-    def resources_send(self, task_id):
-        self.tasks_states[task_id].status = TaskStatus.waiting
-        self.notice_task_updated(task_id)
-        logger.info("Resources for task sent. id=%s", task_id)
-
     def got_wants_to_compute(self,
                              task_id: str):
         """
@@ -711,7 +711,7 @@ class TaskManager(TaskEventListener):
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].get_trust_mod(subtask_id)
 
-        logger.error("This is not my subtask. id=%s", subtask_id)
+        logger.warning("Cannot get trust mod for subtask_id=%s", subtask_id)
         return 0
 
     def update_task_signatures(self):
@@ -1277,8 +1277,8 @@ class TaskManager(TaskEventListener):
         header = self.tasks[task_id].header
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
 
-        computation_price = compute_subtask_value(subtask_state.price,
-                                                  header.subtask_timeout)
+        computation_price = calculate_subtask_payment(subtask_state.price,
+                                                      header.subtask_timeout)
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
@@ -1320,14 +1320,10 @@ class TaskManager(TaskEventListener):
 
         update_provider_efficiency(node_id, timeout, computation_time)
 
-    def get_market_strategy_for_task(
-            self, task: Task) -> Type[RequestorMarketStrategy]:
-        market_strategy: Type[RequestorMarketStrategy] = DEFAULT_MARKET_STRATEGY
-
-        try:
-            market_strategy = self.task_types[
-                task.task_definition.task_type.lower()].MARKET_STRATEGY
-        except KeyError:
-            pass
-
-        return market_strategy
+    @staticmethod
+    def get_provider_market_strategy_for_env(
+            env_id: str) -> Type[ProviderMarketStrategy]:
+        # NOTE This assumes ENV_ID == App Type
+        if env_id == WasmTaskEnvironment.ENV_ID:
+            return ProviderWasmMarketStrategy
+        return ProviderBrassMarketStrategy

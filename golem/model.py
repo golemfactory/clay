@@ -5,7 +5,7 @@ import json
 import pickle
 import sys
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
@@ -30,6 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
+from golem.core.common import datetime_to_timestamp
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -53,6 +54,20 @@ def default_now():
 # Bug in peewee_migrate 0.14.0 induces setting __self__
 # noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
 default_now.__self__ = datetime.datetime  # type: ignore
+
+
+def default_dict():
+    return {}
+
+
+default_dict.__self__ = dict  # type: ignore
+
+
+def default_list():
+    return []
+
+
+default_list.__self__ = list  # type: ignore
 
 
 class UTCDateTimeField(DateTimeField):
@@ -263,6 +278,7 @@ class WalletOperation(BaseModel):
         confirmed = enum.auto()
         overdue = enum.auto()
         failed = enum.auto()
+        arbitraged_by_concent = enum.auto()
 
     class DIRECTION(msg_dt.StringEnum):
         incoming = enum.auto()
@@ -291,7 +307,7 @@ class WalletOperation(BaseModel):
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"WalletOperation. tx_hash={self.tx_hash},"
             f" direction={self.direction}, type={self.operation_type},"
@@ -319,6 +335,7 @@ class WalletOperation(BaseModel):
                 cls.status.not_in([
                     cls.STATUS.confirmed,
                     cls.STATUS.failed,
+                    cls.STATUS.arbitraged_by_concent,
                 ]),
                 cls.tx_hash.is_null(False),
                 cls.direction ==
@@ -352,11 +369,12 @@ class TaskPayment(BaseModel):
     expected_amount = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     settled_ts = IntegerField(null=True)  # set if settled by the Concent
+    charged_from_deposit = BooleanField(null=True)
 
     class Meta:
         database = db
 
-    def __str__(self):
+    def __repr__(self):
         return (
             f"TaskPayment. accepted_ts={self.accepted_ts},"
             f" task={self.task}, subtask={self.subtask},"
@@ -532,22 +550,39 @@ class TaskPreset(BaseModel):
 
 class Performance(BaseModel):
     """ Keeps information about benchmark performance """
+    DEFAULT_CPU_USAGE = 1_000_000_000   # 1 second in nanoseconds
+
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
     min_accepted_step = FloatField(default=300.0)
+    cpu_usage = IntegerField(default=DEFAULT_CPU_USAGE)
 
     class Meta:
         database = db
 
-    @classmethod
-    def update_or_create(cls, env_id, performance):
+    @staticmethod
+    def update_or_create(env_id: str, performance: float, cpu_usage: int):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
-            perf.value = performance
-            perf.save()
+            stored = Performance.get(Performance.environment_id == env_id)
+            stored.value = performance
+            stored.cpu_usage = cpu_usage
+            stored.save()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            Performance(
+                environment_id=env_id,
+                value=performance,
+                cpu_usage=cpu_usage
+            ).save()
+
+
+class AppBenchmark(BaseModel):
+
+    hash = CharField(null=False, index=True, unique=True)
+    score = FloatField()
+    cpu_usage = IntegerField(default=1)  # total CPU usage in nanoseconds
+
+    class Meta:
+        database = db
 
 
 class DockerWhitelist(BaseModel):
@@ -704,19 +739,24 @@ class RequestedTask(BaseModel):
     name = CharField(null=True)
     status = StringEnumField(enum_type=taskstate.TaskStatus, null=False)
 
-    prerequisites = JsonField(null=False, default='{}')
+    env_id = CharField(null=True)
+    prerequisites = JsonField(null=False, default=default_dict())
 
     task_timeout = IntegerField(null=False)  # milliseconds
     subtask_timeout = IntegerField(null=False)  # milliseconds
     start_time = UTCDateTimeField(null=True)
 
-    max_price_per_hour = IntegerField(null=False)
-
+    max_price_per_hour = HexIntegerField(null=False)
     max_subtasks = IntegerField(null=False)
+    min_memory = IntegerField(null=False, default=0)
+
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
-    app_params = JsonField(null=False, default='{}')
+    app_params = JsonField(null=False, default=default_dict())
+
+    class Meta:
+        database = db
 
     @property
     def deadline(self) -> Optional[datetime.datetime]:
@@ -725,6 +765,13 @@ class RequestedTask(BaseModel):
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + \
             datetime.timedelta(milliseconds=self.task_timeout)
+
+    @property
+    def elapsed_seconds(self) -> Optional[int]:
+        if self.start_time is None:
+            return None
+        assert isinstance(self.start_time, datetime.datetime)
+        return (default_now() - self.start_time).total_seconds()
 
     def estimated_fee(self) -> float:
         return self.max_price_per_hour * (
@@ -738,16 +785,27 @@ class ComputingNode(BaseModel):
     node_id = CharField(primary_key=True)
     name = CharField(null=False)
 
+    class Meta:
+        database = db
+
+    def __repr__(self):
+        return (
+            f"ComputingNode <"
+            f"node_id={self.node_id}, "
+            f"name={self.name}"
+            f">"
+        )
+
 
 class RequestedSubtask(BaseModel):
     task = ForeignKeyField(RequestedTask, null=False, related_name='subtasks')
     subtask_id = CharField(null=False)
     status = StringEnumField(enum_type=taskstate.SubtaskStatus, null=False)
 
-    payload = JsonField(null=False, default='{}')
-    inputs = JsonField(null=False, default='[]')
+    payload = JsonField(null=False, default=default_dict())
+    inputs = JsonField(null=False, default=default_list())
     start_time = UTCDateTimeField(null=True)
-    price = IntegerField(null=True)
+    price = HexIntegerField(null=True)
     computing_node = ForeignKeyField(
         ComputingNode, null=True, related_name='subtasks')
 
@@ -759,8 +817,59 @@ class RequestedSubtask(BaseModel):
         return self.start_time + datetime.timedelta(
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
 
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'task_id': self.task.task_id,  # pylint: disable=no-member
+            'subtask_id': self.subtask_id,
+            'status': self.status.value,  # pylint: disable=no-member
+            'time_started': datetime_to_timestamp(self.start_time),
+            'node_id': self.computing_node.node_id,  # pylint: disable=no-member
+            'node_name': self.computing_node.name,  # pylint: disable=no-member
+        }
+
     class Meta:
+        database = db
         primary_key = CompositeKey('task', 'subtask_id')
+
+
+class QueuedVerification(BaseModel):
+    task_id = CharField(null=False)
+    subtask_id = CharField(null=False)
+    priority = IntegerField(null=True, index=True)
+
+    class Meta:
+        database = db
+        primary_key = CompositeKey('task_id', 'subtask_id')
+
+
+class AppConfiguration(BaseModel):
+    app_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class EnvConfiguration(BaseModel):
+    env_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class UsageFactor(BaseModel):
+    provider_node = ForeignKeyField(
+        ComputingNode, null=False, unique=True, related_name='usage_factor')
+    usage_factor = FloatField(default=1.0)
+
+    def __repr__(self):
+        return (
+            f"UsageFactor <"
+            f"provider={self.provider_node_id}, "
+            f"usage_factor={self.usage_factor}"
+            f">"
+        )
 
 
 def collect_db_models(module: str = __name__):

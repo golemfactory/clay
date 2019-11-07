@@ -85,7 +85,10 @@ class TestIncomesKeeper(TestWithDatabase):
         self.incomes_keeper.received_forced_payment(
             **kwargs,
         )
-        batch_mock.assert_called_once_with(**kwargs)
+        batch_mock.assert_called_once_with(
+            **kwargs,
+            charged_from_deposit=True,
+        )
 
     def test_received_batch_transfer_closure_time(self):
         sender_node = 64 * 'a'
@@ -205,8 +208,6 @@ class TestIncomesKeeper(TestWithDatabase):
             model.WalletOperation.DIRECTION.incoming,
             **kwargs,
         )
-        income.wallet_operation.save(force_insert=True)
-        income.save(force_insert=True)
         return income
 
     @staticmethod

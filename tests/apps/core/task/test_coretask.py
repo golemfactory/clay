@@ -524,8 +524,6 @@ class TestCoreTaskBuilder(TestCase):
 
     def test_init(self):
         builder = self._get_core_task_builder()
-        assert builder.TASK_CLASS == CoreTaskBuilder.TASK_CLASS
-        assert builder.TASK_CLASS == CoreTask
         assert builder.task_definition is not None
         assert builder.owner is not None
         assert isinstance(builder.dir_manager, MagicMock)
@@ -543,12 +541,6 @@ class TestCoreTaskBuilder(TestCase):
         assert kwargs["arg3"] == c
         assert kwargs["owner"] is not None
         assert isinstance(kwargs["task_definition"], MagicMock)
-
-    def test_build(self):
-        builder = self._get_core_task_builder()
-        # CoreTask is now abstract
-        with self.assertRaises(TypeError):
-            builder.build()
 
     @freeze_time('2019-01-01 00:00:00')
     def test_get_output_path_returns_correct_path(self):

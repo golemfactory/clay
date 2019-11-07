@@ -10,7 +10,6 @@ from typing import (
     Dict,
     List,
     Optional,
-    TYPE_CHECKING,
     TypeVar,
 )
 
@@ -38,7 +37,13 @@ from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
-from golem.report import StatusPublisher, Component, Stage, report_calls
+from golem.report import (
+    Component,
+    EventPublisher,
+    Stage,
+    StatusPublisher,
+    report_calls,
+)
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
@@ -49,11 +54,6 @@ from golem.rpc.session import (
 from golem import terms
 from golem.tools.uploadcontroller import UploadController
 from golem.tools.remotefs import RemoteFS
-
-if TYPE_CHECKING:
-    # pylint:disable=unused-import
-    from golem.rpc.router import SerializerType
-
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -94,8 +94,7 @@ class Node(HardwarePresetsMixin):
                  use_talkback: bool = False,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None,
-                 crossbar_serializer: 'Optional[SerializerType]' = None,
+                 password: Optional[str] = None
                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
@@ -161,8 +160,6 @@ class Node(HardwarePresetsMixin):
         if password is not None:
             if not self.set_password(password):
                 raise Exception("Password incorrect")
-
-        self._crossbar_serializer = crossbar_serializer
 
     def start(self) -> None:
         HardwarePresets.initialize(self._datadir)
@@ -289,7 +286,6 @@ class Node(HardwarePresetsMixin):
             host=self._config_desc.rpc_address,
             port=self._config_desc.rpc_port,
             datadir=self._datadir,
-            crossbar_serializer=self._crossbar_serializer,
         )
         self._reactor.addSystemEventTrigger("before", "shutdown", rpc.stop)
 
@@ -316,6 +312,7 @@ class Node(HardwarePresetsMixin):
             methods = self.get_rpc_mapping()
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
+            EventPublisher.initialize(self._rpc_publisher)
             StatusPublisher.initialize(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
@@ -376,6 +373,8 @@ class Node(HardwarePresetsMixin):
         if self._config_desc.in_shutdown:
             self.client.update_setting('in_shutdown', 0)
             logger.info('Turning off shutdown mode')
+            StatusPublisher.publish(
+                Component.client, 'start', Stage.post)
             return ShutdownResponse.off
 
         # is not providing nor requesting, normal shutdown
@@ -387,6 +386,8 @@ class Node(HardwarePresetsMixin):
         # configure in_shutdown
         logger.info('Enabling shutdown mode, no more tasks can be started')
         self.client.update_setting('in_shutdown', 1)
+        StatusPublisher.publish(
+            Component.client, 'scheduled_shutdown', Stage.pre)
 
         # subscribe to events
 

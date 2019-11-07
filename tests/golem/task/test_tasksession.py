@@ -24,6 +24,8 @@ from pydispatch import dispatcher
 import twisted.internet.address
 from twisted.internet.defer import Deferred
 
+from apps.appsmanager import AppsManager
+
 import golem
 from golem import model, testutils
 from golem.config.active import EthereumConfig
@@ -48,6 +50,7 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from golem.tools.assertlogs import LogTestCase
+from golem.marketplace import ProviderBrassMarketStrategy
 
 from tests.factories import hyperdrive
 
@@ -133,6 +136,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self.ethereum_config = EthereumConfig()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
+        server.client.apps_manager = AppsManager()
+        server.client.apps_manager.load_all_apps()
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -166,6 +171,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _get_wtct(self):
         msg = msg_factories.tasks.WantToComputeTaskFactory(
             concent_enabled=self.use_concent,
+            cpu_usage=int(1e9),
             **self._get_task_parameters(),
         )
         msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member, no-value-for-parameter
@@ -174,6 +180,8 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def _fake_add_task(self):
         task_header = self._get_task_header()
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+        self.task_manager.tasks[self.task_id].REQUESTOR_MARKET_STRATEGY =\
+            RequestorBrassMarketStrategy
 
     def _get_task_header(self):
         task_header = dt_tasks_factory.TaskHeaderFactory(
@@ -183,7 +191,9 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             ),
             subtask_timeout=1,
             max_price=1,
-            deadline=int(time.time() + 3600))
+            deadline=int(time.time() + 3600),
+            environment='BLENDER',
+        )
         task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 
@@ -248,6 +258,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
     def test_cannot_compute_task_computation_failure(self):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.get_node_id_for_subtask.return_value = ts2.key_id
+        ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -258,6 +269,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
+        ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -270,6 +282,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
             reason=message.tasks.CannotComputeTask.REASON.OfferCancelled,
         )
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
+        ts.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts._react_to_cannot_compute_task(msg)
         ts.task_manager.task_computation_cancelled.assert_called_once_with(
             msg.subtask_id,
@@ -294,8 +307,6 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         self._set_task_state()
 
         ts.task_manager.get_next_subtask.return_value = ctd
-        ts.task_manager.get_market_strategy_for_task.return_value =\
-            RequestorBrassMarketStrategy
         ts.task_manager.should_wait_for_node.return_value = False
         ts.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
@@ -373,6 +384,12 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.conn = Mock()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
+        app = Mock()
+        app.builder.TASK_CLASS.\
+            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.conn.server.client.apps_manager.get_app_for_env = Mock(
+            return_value=app
+        )
         self.task_session = TaskSession(self.conn)
         self.peer_keys = cryptography.ECCx(None)
         self.task_session.key_id = encode_hex(self.peer_keys.raw_pubkey)
@@ -533,6 +550,7 @@ class TestTaskSession(TaskSessionTestBase):
     def setUp(self):
         super().setUp()
         self.concent_keys = cryptography.ECCx(None)
+        self.task_session.task_server.task_manager.tasks = dict()
         self.task_session.task_server.client.concent_service.variant = {
             'pubkey': self.concent_keys.raw_pubkey}
 
@@ -572,6 +590,9 @@ class TestTaskSession(TaskSessionTestBase):
                 requestor_keys=requestor_keys,
                 provider_keys=provider_keys,
                 concent_enabled=concent,
+                want_to_compute_task__task_header__subtask_timeout=360,
+                want_to_compute_task__price=10,
+                price=1,
             ),
             sign__privkey=provider_keys.raw_privkey,
         )
@@ -632,6 +653,26 @@ class TestTaskSession(TaskSessionTestBase):
             signal='golem.message',
             message=srr,
             sender=ANY,
+        )
+
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_budget',
+        Mock(return_value=100)
+    )
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_payment',
+        Mock(return_value=75)
+    )
+    def test_budget_vs_payment_difference(self):
+        srr = self._get_srr()
+        with patch('golem.task.tasksession.update_requestor_assigned_sum') \
+                as sum_mock:
+            self.__call_react_to_srr(srr)
+        sum_mock.assert_called_with(
+            srr.requestor_id,
+            -25
         )
 
     def test_result_rejected_with_wrong_key(self, *_):
@@ -790,10 +831,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = True
@@ -807,10 +850,12 @@ class TestTaskSession(TaskSessionTestBase):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
         mock_msg.get_short_hash.return_value = b'wtct hash'
+        mock_msg.task_id = 'task_id'
 
         self._prepare_handshake_test()
 
         ts = self.task_session
+        ts.task_manager.tasks = {'task_id': Mock()}
 
         ts._handshake_required = Mock()
         ts._handshake_required.return_value = False
@@ -952,6 +997,12 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.keys_auth = Mock()
         self.task_server.task_manager = Mock()
         self.task_server.client = Mock()
+        app = Mock()
+        app.builder.TASK_CLASS.\
+            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.task_server.client.apps_manager.get_app_for_env = Mock(
+            return_value=app
+        )
         self.task_server.pending_sessions = set()
         self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
@@ -959,16 +1010,19 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test_react_to_subtask_results_accepted(self):
-        # given
-        rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
-            task_to_compute__requestor_public_key=self.requestor_key_id,
-            task_to_compute__want_to_compute_task__sign__privkey=(
-                self.provider_keys.raw_privkey),
-            task_to_compute__want_to_compute_task__provider_public_key=(
-                self.provider_key_id),
-        )
+    def _get_sra(self):
+        rct = msg_factories.tasks.ReportComputedTaskFactory(**{
+            'task_to_compute__want_to_compute_task'
+            '__task_header__subtask_timeout': 360,
+            'task_to_compute__want_to_compute_task__price': 10,
+            'task_to_compute__price': 1,
+            'task_to_compute__sign__privkey': self.requestor_keys.raw_privkey,
+            'task_to_compute__requestor_public_key': self.requestor_key_id,
+            'task_to_compute__want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey,
+            'task_to_compute__want_to_compute_task__provider_public_key':
+                self.provider_key_id,
+        })
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             sign__privkey=self.requestor_keys.raw_privkey,
             report_computed_task=rct,
@@ -982,6 +1036,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.key_id = self.requestor_key_id
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
+        return sra
+
+    def test_react_to_subtask_results_accepted(self):
+        # given
+        sra = self._get_sra()
 
         dispatch_listener = Mock()
         dispatcher.connect(dispatch_listener, signal='golem.message')
@@ -1009,6 +1068,26 @@ class SubtaskResultsAcceptedTest(TestCase):
             signal='golem.message',
             message=sra,
             sender=ANY,
+        )
+
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_budget',
+        Mock(return_value=100)
+    )
+    @patch(
+        'golem.marketplace.brass_marketplace.'
+        'ProviderBrassMarketStrategy.calculate_payment',
+        Mock(return_value=75)
+    )
+    def test_budget_vs_payment_difference(self):
+        sra = self._get_sra()
+        with patch('golem.task.tasksession.update_requestor_assigned_sum') \
+                as sum_mock:
+            self.task_session._react_to_subtask_results_accepted(sra)
+        sum_mock.assert_called_with(
+            sra.requestor_id,
+            -25
         )
 
     def test_react_with_wrong_key(self):
@@ -1062,6 +1141,7 @@ class ReportComputedTaskTest(
         ts = TaskSession(Mock())
         ts.key_id = "ABC"
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
+        ts.requested_task_manager.get_node_id_for_subtask.return_value = None
         ts.task_manager.subtask2task_mapping = {
             self.subtask_id: self.task_id,
         }
@@ -1100,6 +1180,9 @@ class ReportComputedTaskTest(
         msg = self._prepare_report_computed_task()
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(True)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.task_exists.return_value = False
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.process_report_computed_task',
                    return_value=message.tasks.AckReportComputedTask()):
@@ -1113,6 +1196,9 @@ class ReportComputedTaskTest(
     def test_reject_result_pull_failed_no_concent(self, *_):
         msg = self._prepare_report_computed_task(
             task_to_compute__concent_enabled=False)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.task_exists.return_value = False
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.history.add'):
             self.ts.task_manager.task_result_manager.pull_package = \
@@ -1134,6 +1220,8 @@ class ReportComputedTaskTest(
 
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(False)
+        rtm = self.ts.task_server.requested_task_manager
+        rtm.get_node_id_for_subtask.return_value = None
 
         with patch('golem.network.concent.helpers.process_report_computed_task',
                    return_value=message.tasks.AckReportComputedTask()):

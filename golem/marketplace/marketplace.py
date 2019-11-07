@@ -1,12 +1,20 @@
-from abc import ABC, abstractclassmethod
+from abc import ABC, abstractclassmethod, abstractmethod
 from typing import Optional, List
 
 from dataclasses import dataclass
 
+from golem_messages.message.tasks import (
+    ReportComputedTask, WantToComputeTask
+)
+
 
 class ProviderPerformance:
-    def __init__(self, usage_benchmark):
-        self.usage_benchmark = usage_benchmark
+    def __init__(self, usage_benchmark: float):
+        """
+        Arguments:
+            usage_benchmark {float} -- Use benchmark in seconds
+        """
+        self.usage_benchmark: float = usage_benchmark
 
 
 @dataclass
@@ -15,6 +23,12 @@ class Offer:
     provider_performance: ProviderPerformance
     max_price: float
     price: float
+
+
+@dataclass
+class ProviderPricing:
+    price_per_wallclock_h: int
+    price_per_cpu_h: int
 
 
 class RequestorMarketStrategy(ABC):
@@ -42,5 +56,59 @@ class RequestorMarketStrategy(ABC):
     def get_task_offer_count(cls, task_id: str) -> int:
         """
         Returns number of offers known for the task.
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+
+class ProviderMarketStrategy(ABC):
+
+    @abstractclassmethod
+    def calculate_price(cls, pricing: ProviderPricing, max_price: int,
+                        requestor_id: str) -> int:
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_payment(cls, rct: ReportComputedTask) -> int:
+        """
+        determines the actual payment for the provider,
+        based on the chain of messages pertaining to the computed task
+        :param rct: the provider's computation report message
+        :return: [ GNT wei ]
+        """
+        raise NotImplementedError()
+
+    @classmethod
+    @abstractmethod
+    def calculate_budget(cls, wtct: WantToComputeTask) -> int:
+        """
+        determines the task's budget (maximum payment),
+        based on the chain of messages pertaining to the job (subtask)
+        that's about to be assigned
+        :param wtct: the provider's offer
+        :return: [ GNT wei ]
         """
         raise NotImplementedError()

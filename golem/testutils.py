@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from time import sleep
+from functools import wraps
 
 import ethereum.keys
 import pycodestyle
@@ -18,6 +19,20 @@ from golem.database import Database
 from golem.model import DB_MODELS, db, DB_FIELDS
 
 logger = logging.getLogger(__name__)
+
+
+# Use this decorator if you don't want to remove test directory
+# after test execution.
+# This is debug decorator - don't remove even if it isn't used.
+def keep_testdir_on_fail(fun):
+    @wraps(fun)
+    def wrapper(self, *args, **kwargs):
+        try:
+            fun(self, *args, **kwargs)
+        except BaseException:
+            self.REMOVE_TMP_DIRS = False
+            raise
+    return wrapper
 
 
 class TempDirFixture(unittest.TestCase):
@@ -51,6 +66,11 @@ class TempDirFixture(unittest.TestCase):
 
     def setUp(self):
 
+        # Assume that test passed and temporary files should be removed. If test
+        # fails @keep_temporary_dirtree_if_test_failed will set this variable to
+        # False after this test to keep temporary files.
+        self.REMOVE_TMP_DIRS = True
+
         # KeysAuth uses it. Default val (250k+) slows down the tests terribly
         ethereum.keys.PBKDF2_CONSTANTS['c'] = 1
 
@@ -64,7 +84,8 @@ class TempDirFixture(unittest.TestCase):
     def tearDown(self):
         # Firstly kill Ethereum node to clean up after it later on.
         try:
-            self.__remove_files()
+            if self.REMOVE_TMP_DIRS:
+                self.__remove_files()
         except OSError as e:
             logger.debug("%r", e, exc_info=True)
             tree = ''

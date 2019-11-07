@@ -20,7 +20,7 @@ from golem import testutils
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
-from golem.envs.docker.cpu import DockerCPUEnvironment
+from golem.envs import EnvSupportStatus
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
@@ -39,10 +39,11 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                       testutils.PEP8MixIn):
     PEP8_FILES = ['golem/network/p2p/peersession.py', ]
 
-    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def setUp(self, _):  # pylint: disable=arguments-differ
+    @patch('golem.envs.default.NonHypervisedDockerCPUEnvironment')
+    def setUp(self, docker_env):  # pylint: disable=arguments-differ
         super().setUp()
         random.seed()
+        docker_env.supported.return_value = EnvSupportStatus(True)
         self.peer_session = PeerSession(MagicMock())
         node = dt_p2p_factory.Node()
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
@@ -486,8 +487,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         send_mock.assert_called()
         assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
-    @patch('golem.task.taskserver.NonHypervisedDockerCPUEnvironment')
-    def _gen_data_for_test_react_to_remove_task(self, _):
+    @patch('golem.envs.default.NonHypervisedDockerCPUEnvironment')
+    def _gen_data_for_test_react_to_remove_task(self, docker_env):
+        docker_env.supported.return_value = EnvSupportStatus(True)
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         previous_ka = self.peer_session.p2p_service.keys_auth
         self.peer_session.p2p_service.keys_auth = keys_auth

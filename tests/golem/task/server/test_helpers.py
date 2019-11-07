@@ -182,11 +182,12 @@ class TestComputedTaskReportedTaskApiFlow(unittest.TestCase):
         self.rtm.task_exists.assert_called_once_with(self.rct.task_id)
         self.rtm.get_subtask_outputs_dir.assert_called_once_with(
             self.rct.task_id,
+            self.rct.subtask_id
         )
         self.task_server.new_resource_manager.download.assert_called_once_with(
-            self.rct.multihash,
-            self.rtm.get_subtask_outputs_dir.return_value,
-            self.task_server.get_download_options.return_value,
+            resource_id=self.rct.multihash,
+            directory=self.rtm.get_subtask_outputs_dir(),
+            client_options=self.task_server.get_download_options(),
         )
 
     def test_success_callback(self):

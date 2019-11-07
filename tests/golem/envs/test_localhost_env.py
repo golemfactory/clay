@@ -6,36 +6,23 @@ from golem_task_api import (
     TaskApiService,
     RequestorAppClient
 )
-from golem_task_api.structs import Subtask
+from golem_task_api.enums import VerifyResult
+from golem_task_api.structs import Subtask, Task
 from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
-from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.task.task_api import EnvironmentTaskApiService
-from golem.tools.testwithreactor import uninstall_reactor
 from tests.golem.envs.localhost import (
     LocalhostEnvironment,
     LocalhostConfig,
     LocalhostPrerequisites,
     LocalhostPayloadBuilder
 )
+from tests.utils.asyncio import TwistedAsyncioTestCase
 
 
-class TestLocalhostEnv(TwistedTestCase):
-
-    @classmethod
-    def setUpClass(cls):
-        try:
-            uninstall_reactor()  # Because other tests don't clean up
-        except AttributeError:
-            pass
-        install_reactor()
-
-    @classmethod
-    def tearDownClass(cls):
-        uninstall_reactor()
+class TestLocalhostEnv(TwistedAsyncioTestCase):
 
     @staticmethod
     def _get_service(prereq: LocalhostPrerequisites) -> TaskApiService:
@@ -106,11 +93,31 @@ class TestLocalhostEnv(TwistedTestCase):
         self.assertAlmostEqual(result, benchmark_result, places=5)
 
     @inlineCallbacks
+    def test_create_task(self):
+        task = Task(
+            env_id='test_env',
+            prerequisites={'key': 'value'}
+        )
+
+        async def create_task():
+            return task
+
+        prereq = LocalhostPrerequisites(create_task=create_task)
+        service = self._get_service(prereq)
+        client = yield deferred_from_future(RequestorAppClient.create(service))
+        result = yield deferred_from_future(client.create_task(
+            task_id='whatever',
+            max_subtasks_count=0,
+            task_params={},
+        ))
+        self.assertEqual(result, task)
+        yield deferred_from_future(client.shutdown())
+
+    @inlineCallbacks
     def test_subtasks(self):
         subtask = Subtask(
-            subtask_id='test_subtask',
             params={'param': 'value'},
-            resources=['test_resource']
+            resources=['test_resource'],
         )
         subtasks = [subtask]
 
@@ -135,7 +142,8 @@ class TestLocalhostEnv(TwistedTestCase):
         pending_subtasks = yield deferred_from_future(pending_subtasks_future)
         self.assertTrue(pending_subtasks)
 
-        subtask_future = asyncio.ensure_future(client.next_subtask('whatever'))
+        subtask_future = asyncio.ensure_future(client.next_subtask(
+            'whatever', 'whatever', 'whatever'))
         result = yield deferred_from_future(subtask_future)
         self.assertEqual(result, subtask)
 
@@ -155,25 +163,20 @@ class TestLocalhostEnv(TwistedTestCase):
 
         async def verify(subtask_id):
             if subtask_id == good_subtask_id:
-                return True, None
+                return VerifyResult.SUCCESS, None
             elif subtask_id == bad_subtask_id:
-                return False, 'test_error'
+                return VerifyResult.FAILURE, 'error'
 
         prereq = LocalhostPrerequisites(verify=verify)
         service = self._get_service(prereq)
-        client_future = asyncio.ensure_future(
-            RequestorAppClient.create(service))
-        client = yield deferred_from_future(client_future)
+        client = yield deferred_from_future(RequestorAppClient.create(service))
 
-        good_verify_future = asyncio.ensure_future(
+        good_verify_result = yield deferred_from_future(
             client.verify('test_task', good_subtask_id))
-        good_verify_result = yield deferred_from_future(good_verify_future)
-        self.assertTrue(good_verify_result)
+        self.assertEqual(good_verify_result, (VerifyResult.SUCCESS, ''))
 
-        bad_verify_future = asyncio.ensure_future(
+        bad_verify_result = yield deferred_from_future(
             client.verify('test_task', bad_subtask_id))
-        bad_verify_result = yield deferred_from_future(bad_verify_future)
-        self.assertFalse(bad_verify_result)
+        self.assertEqual(bad_verify_result, (VerifyResult.FAILURE, 'error'))
 
-        shutdown_future = asyncio.ensure_future(client.shutdown())
-        yield deferred_from_future(shutdown_future)
+        yield deferred_from_future(client.shutdown())

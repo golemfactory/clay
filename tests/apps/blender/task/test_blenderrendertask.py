@@ -34,7 +34,7 @@ from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import AcceptClientVerdict, TaskResult
-from golem.task.taskstate import SubtaskStatus, SubtaskState
+from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 

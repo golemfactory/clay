@@ -3,6 +3,7 @@ from queue import Queue, Empty
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from twisted.internet import defer
+from twisted.internet.asyncioreactor import AsyncioSelectorReactor
 from twisted.internet.task import deferLater
 from twisted.internet.threads import deferToThread
 from twisted.python.failure import Failure
@@ -64,7 +65,8 @@ def call_later(delay: int, fn, *args, **kwargs) -> None:
     deferLater(reactor, delay, fn, *args, **kwargs)
 
 
-def deferred_from_future(future: asyncio.Future) -> defer.Deferred:
+def deferred_from_future(future_like) -> defer.Deferred:
+    future = asyncio.ensure_future(future_like)
     # This is a workaround for a bug in Deferred.fromFuture()
     # FIXME: Remove when https://twistedmatrix.com/trac/ticket/9679 is fixed
     def adapt(result):
@@ -94,3 +96,9 @@ def deferred_from_future(future: asyncio.Future) -> defer.Deferred:
     deferred.addCallback(uncancel)
     future.add_done_callback(adapt)
     return deferred
+
+
+def asyncio_main_loop():
+    from twisted.internet import reactor
+    assert isinstance(reactor, AsyncioSelectorReactor)
+    return reactor._asyncioEventloop  # noqa pylint: disable=protected-access
