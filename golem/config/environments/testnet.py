@@ -88,3 +88,7 @@ CONCENT_SUPPORTED_APPS = (
     'blender',
     'blender_nvgpu'
 )
+
+TASK_API_APP_NAMES = [
+    'golemfactory/blenderapp'
+]

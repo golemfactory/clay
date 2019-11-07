@@ -139,8 +139,17 @@ class TaskServer(
         built_in_apps = save_built_in_app_definitions(app_dir)
 
         self.app_manager = app_mgr = app_manager.AppManager()
+        from golem.config.active import TASK_API_APP_NAMES
+        logger.debug('Enabled app_names from config: %r', TASK_API_APP_NAMES)
         for app_def in golem.apps.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
+            logger.debug(
+                'App found in dir. app_id=%r, app_name=%r',
+                app_def.id, app_def.name)
+            if app_def.name in TASK_API_APP_NAMES:
+                logger.debug(
+                    'Registering apps. app_id=%r, app_name=%r',
+                    app_def.id, app_def.name)
+                app_mgr.register_app(app_def)
         for app_id in built_in_apps:
             app_mgr.set_enabled(app_id, True)
 
