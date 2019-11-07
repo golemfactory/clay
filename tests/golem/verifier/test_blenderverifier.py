@@ -206,7 +206,7 @@ class TestBlenderVerifier(TempDirFixture):
             ctd=ComputeTaskDef(
                 deadline=time.time() + 3600,
                 docker_images=[
-                    DockerImage('golemfactory/blender', tag='blender_2.80')
+                    DockerImage('golemfactory/blender', tag='1.13')
                     .to_dict()
                 ],
                 extra_data=self._create_basic_subtask_info(
