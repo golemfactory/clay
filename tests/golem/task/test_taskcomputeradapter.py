@@ -28,8 +28,8 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
         self.old_computer = old_task_computer()
         self.int_stats_keeper = int_stats_keeper()
         config_desc = ClientConfigDescriptor()
-        config_desc.accept_tasks = True
-        config_desc.in_shutdown = False
+        config_desc.accept_tasks = 1
+        config_desc.in_shutdown = 0
         self.task_keeper = mock.Mock()
         self.task_server = mock.Mock(
             spec=TaskServer,
@@ -330,23 +330,23 @@ class TestChangeConfig(TaskComputerAdapterTestBase):
     @defer.inlineCallbacks
     def test_compute_tasks_setting(self):
         yield self._test_compute_tasks(
-            accept_tasks=True,
-            in_shutdown=True,
+            accept_tasks=1,
+            in_shutdown=1,
             expected=False
         )
         yield self._test_compute_tasks(
-            accept_tasks=True,
-            in_shutdown=False,
+            accept_tasks=1,
+            in_shutdown=0,
             expected=True
         )
         yield self._test_compute_tasks(
-            accept_tasks=False,
-            in_shutdown=True,
+            accept_tasks=0,
+            in_shutdown=1,
             expected=False
         )
         yield self._test_compute_tasks(
-            accept_tasks=False,
-            in_shutdown=False,
+            accept_tasks=0,
+            in_shutdown=0,
             expected=False
         )
 
