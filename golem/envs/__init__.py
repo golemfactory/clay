@@ -20,6 +20,7 @@ CounterId = str
 CounterUsage = Any
 
 EnvId = str
+RuntimeId = str
 
 
 class RuntimeEventType(Enum):
@@ -143,7 +144,10 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
         self.close()
 
 
-class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
+RuntimeOutput = Iterable[Union[str, bytes]]
+
+
+class RuntimeOutputBase(RuntimeOutput, ABC):
     """ A handle for reading output (either stdout or stderr) from a running
         Runtime. Yielded items are output lines. Output could be either raw
         (bytes) or decoded (str). """
@@ -160,6 +164,12 @@ class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
 class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
+
+    @abstractmethod
+    def id(self) -> Optional[RuntimeId]:
+        """ Get unique identifier of this Runtime. Might not be available if the
+            Runtime is not yet prepared. """
+        raise NotImplementedError
 
     @abstractmethod
     def prepare(self) -> Deferred:

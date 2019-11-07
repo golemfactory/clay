@@ -20,6 +20,7 @@ from golem.envs import (
     Runtime,
     RuntimeEventListener,
     RuntimeEventType,
+    RuntimeId,
     RuntimeInput,
     RuntimeOutput,
     RuntimePayload,
@@ -33,6 +34,9 @@ class RuntimeWrapper(Runtime):
 
     def __init__(self, runtime: Runtime) -> None:
         self._runtime = runtime
+
+    def id(self) -> Optional[RuntimeId]:
+        return self._runtime.id()
 
     def prepare(self) -> Deferred:
         return self._runtime.prepare()

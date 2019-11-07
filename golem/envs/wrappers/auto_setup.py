@@ -14,7 +14,7 @@ from golem.envs import (
     Runtime,
     RuntimePayload,
 )
-from . import EnvironmentWrapper, RuntimeWrapper
+from golem.envs.wrappers import EnvironmentWrapper, RuntimeWrapper
 
 
 class RuntimeSetupWrapper(RuntimeWrapper):

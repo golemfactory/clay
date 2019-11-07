@@ -37,7 +37,7 @@ from golem import constants as gconst
 from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import short_node_id, deadline_to_timeout
+from golem.core.common import short_node_id, deadline_to_timeout, get_log_dir
 from golem.core.deferred import (
     asyncio_main_loop,
     deferred_from_future,
@@ -129,7 +129,8 @@ class TaskServer(
 
         Path(self.get_task_computer_root()).mkdir(parents=True, exist_ok=True)
 
-        new_env_manager = EnvironmentManager()
+        runtime_logs_dir = get_log_dir(client.datadir)
+        new_env_manager = EnvironmentManager(runtime_logs_dir)
         register_built_in_repositories()
         register_environments(
             work_dir=self.get_task_computer_root(),

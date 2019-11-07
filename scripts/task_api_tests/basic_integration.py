@@ -38,7 +38,9 @@ async def test_task(
     app_manager.register_app(app_definition)
     app_manager.set_enabled(app_definition.id, True)
 
-    env_manager = envmanager.EnvironmentManager()
+    runtime_logs_dir = work_dir / 'runtime_logs'
+    runtime_logs_dir.mkdir()
+    env_manager = envmanager.EnvironmentManager(runtime_logs_dir)
     register_built_in_repositories()
     register_environments(
         work_dir=str(work_dir),

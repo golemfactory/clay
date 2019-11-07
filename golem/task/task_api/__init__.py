@@ -51,7 +51,10 @@ class EnvironmentTaskApiService(TaskApiService):
         )
         self._runtime = self._env.runtime(runtime_payload)
         loop = asyncio.get_event_loop()
-        await self._runtime.prepare().asFuture(loop)
+        d = self._runtime.prepare()
+        f = d.asFuture(loop)
+        await f
+        # await self._runtime.prepare().asFuture(loop)
         await self._runtime.start().asFuture(loop)
         return self._runtime.get_port_mapping(port)
 

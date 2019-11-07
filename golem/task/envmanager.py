@@ -1,12 +1,18 @@
 import logging
+from pathlib import Path
 from typing import Dict, List, Type, Optional
 
 from dataclasses import dataclass
 from peewee import PeeweeException
 from twisted.internet.defer import Deferred, inlineCallbacks, DeferredLock
 
-from golem.envs import BenchmarkResult, EnvId, Environment, EnvMetadata
-from golem.envs.wrappers.auto_setup import auto_setup
+from golem.envs import (
+    BenchmarkResult,
+    EnvId,
+    Environment,
+    EnvMetadata,
+)
+from golem.envs.wrappers import auto_setup, dump_logs
 from golem.model import Performance, EnvConfiguration
 from golem.task.task_api import TaskApiPayloadBuilder
 
@@ -23,7 +29,8 @@ class EnvironmentManager:
         metadata: EnvMetadata
         payload_builder: Type[TaskApiPayloadBuilder]
 
-    def __init__(self):
+    def __init__(self, runtime_logs_dir: Path) -> None:
+        self._runtime_logs_dir = runtime_logs_dir
         self._envs: Dict[EnvId, EnvironmentManager.EnvEntry] = {}
         self._state = EnvStates()
         self._running_benchmark: bool = False
@@ -67,7 +74,22 @@ class EnvironmentManager:
         """ Register an Environment (i.e. make it visible to manager). """
         if metadata.id in self._envs:
             raise ValueError(f"Environment '{metadata.id}' already registered.")
-        wrapped_env = auto_setup(env, self._start_usage, self._end_usage)
+
+        # Apply automatic setup wrapper
+        wrapped_env = auto_setup.auto_setup(
+            env=env,
+            start_usage=self._start_usage,
+            end_usage=self._end_usage
+        )
+
+        # Apply runtime logs wrapper
+        logs_dir = self._runtime_logs_dir / metadata.id
+        logs_dir.mkdir(parents=True, exist_ok=True)
+        wrapped_env = dump_logs.dump_logs(
+            env=wrapped_env,
+            logs_dir=logs_dir
+        )
+
         self._envs[metadata.id] = EnvironmentManager.EnvEntry(
             instance=wrapped_env,
             metadata=metadata,
