@@ -17,7 +17,7 @@ from golem.apps import (
     load_app_from_json_file,
     AppDefinition,
 )
-from golem.apps.default import get_built_in_app_by_id
+from golem.apps.default import APPS, get_built_in_app_by_id
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.envs.default import register_environments
@@ -219,7 +219,11 @@ def task_from_app_id(
 ):
     app_definition = get_built_in_app_by_id(app_id)
     if app_definition is None:
-        print('ERROR: Invalid app_id provided')
+        available_apps = {app.name: app.id for app in APPS}
+        print(
+            'ERROR: Invalid app_id provided. '
+            f'id={app_id}, available={available_apps}'
+        )
         return
     install_reactor()
     return react(
