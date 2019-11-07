@@ -20,10 +20,8 @@ from golem.apps import (
 from golem.apps.default import get_built_in_app_by_id
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
-from golem.envs.default import (
-    register_environments,
-    register_built_in_repositories,
-)
+from golem.envs.default import register_environments
+from golem.envs.docker.whitelist import Whitelist, repository_from_image_name
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
 logging.basicConfig(level=logging.INFO)
@@ -43,7 +41,10 @@ async def test_task(
     app_manager.set_enabled(app_definition.id, True)
 
     env_manager = envmanager.EnvironmentManager()
-    register_built_in_repositories()
+    docker_repo = repository_from_image_name(
+        app_definition.requestor_prereq['image'])
+    if not Whitelist.is_whitelisted(docker_repo):
+        Whitelist.add(docker_repo)
     register_environments(
         work_dir=str(work_dir),
         env_manager=env_manager)
