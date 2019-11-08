@@ -63,7 +63,7 @@ class CreateTaskParams:
     resources: List[Path]
     max_subtasks: int
     max_price_per_hour: int
-    min_memory: int  # FIXME: remove with new Task API ver
+    min_memory: int  # FIXME: refactor for Task API v0.24.0
     concent_enabled: bool
 
 
@@ -152,6 +152,7 @@ class RequestedTaskManager:
             start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
+            # FIXME: refactor for Task API v0.24.0
             min_memory=golem_params.min_memory,
             # Concent is explicitly disabled for task_api for now...
             concent_enabled=False,

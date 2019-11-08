@@ -484,6 +484,7 @@ class ClientProvider:
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
+    @safe_run(_create_task_error)
     def create_task(
             self,
             task_dict: dict,
@@ -502,18 +503,14 @@ class ClientProvider:
         if 'golem' in task_dict and 'app' in task_dict:
             return self._create_task_api_task(
                 task_dict['golem'],
-                task_dict['app'])
-        return self._create_legacy_task(task_dict, force)
+                task_dict['app']), None
+        return self._create_legacy_task(task_dict, force), None
 
-    @safe_run(_create_task_error)
     def _create_legacy_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> typing.Tuple[
-        typing.Optional[TaskId],
-        typing.Optional[typing.Union[str, typing.Dict]]
-    ]:
+    ) -> TaskId:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
@@ -542,17 +539,13 @@ class ClientProvider:
             )
         )
 
-        return task_id, None
+        return task_id
 
-    @safe_run(_create_task_error)
     def _create_task_api_task(
             self,
             golem_params: dict,
             app_params: dict,
-    ) -> typing.Tuple[
-        typing.Optional[TaskId],
-        typing.Optional[typing.Union[str, typing.Dict]]
-    ]:
+    ) -> TaskId:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
         if self.client.has_assigned_task():
@@ -564,13 +557,13 @@ class ClientProvider:
             output_directory=Path(golem_params['output_directory']),
             max_price_per_hour=int(golem_params['max_price_per_hour']),
             max_subtasks=int(golem_params['max_subtasks']),
-            min_memory=int(golem_params['min_memory']),  # FIXME: new API ver
+            # FIXME: refactor for Task API v0.24.0
+            min_memory=int(golem_params['min_memory']),
             task_timeout=int(golem_params['task_timeout']),
             subtask_timeout=int(golem_params['subtask_timeout']),
             concent_enabled=bool(golem_params.get('concent_enabled', False)),
             resources=list(map(Path, golem_params['resources'])),
         )
-        app_params['resources'] = [r.name for r in create_task_params.resources]
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,
@@ -609,7 +602,7 @@ class ClientProvider:
         d = init_task()
         d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
 
-        return task_id, None
+        return task_id
 
     @rpc_utils.expose('comp.task.create.dry_run')
     @safe_run(_create_task_error)

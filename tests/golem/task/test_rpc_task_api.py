@@ -127,8 +127,8 @@ class TestTaskApiCreate(unittest.TestCase):
     def test_has_assigned_task(self):
         self.client.has_assigned_task.return_value = True
 
-        _, err = self.rpc._create_task_api_task(self.get_golem_params(), {})
-        assert 'Cannot create task' in err
+        with self.assertRaises(RuntimeError):
+            self.rpc._create_task_api_task(self.get_golem_params(), {})
 
         self.requested_task_manager.create_task.assert_not_called()
         self.requested_task_manager.init_task.assert_not_called()

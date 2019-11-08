@@ -134,6 +134,7 @@ def construct_test_task(task_package_name: str, task_settings: str) \
 
     if is_task_api_task(task_dict):
         task_dict['golem']['resources'] = resources
+        task_dict['app']['resources'] = [r.name for r in resources]
     else:
         task_dict['resources'] = resources
 
