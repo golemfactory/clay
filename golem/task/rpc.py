@@ -499,9 +499,6 @@ class ClientProvider:
                  on failure
         """
 
-        if self.client.has_assigned_task():
-            raise RuntimeError('Cannot create task while computing')
-
         if 'golem' in task_dict and 'app' in task_dict:
             return self._create_task_api_task(
                 task_dict['golem'],
@@ -557,6 +554,9 @@ class ClientProvider:
         typing.Optional[typing.Union[str, typing.Dict]]
     ]:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
 
         create_task_params = requestedtaskmanager.CreateTaskParams(
             app_id=golem_params['app_id'],
