@@ -54,7 +54,7 @@ from golem.envs.default import (
     register_environments,
     register_built_in_repositories,
 )
-from golem.envs.docker.whitelist import repository_from_image_name, Whitelist
+from golem.envs.docker.whitelist import Whitelist
 from golem.marketplace import ProviderPricing
 from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
@@ -739,9 +739,7 @@ class TaskServer(
         if task_header.environment_prerequisites:
             image_name = task_header.environment_prerequisites['image']
             self._docker_image_discovered(image_name)
-            if not Whitelist.is_whitelisted(
-                    repository_from_image_name(image_name)
-            ):
+            if not Whitelist.is_whitelisted(image_name):
                 logger.info(
                     "Task not added, image not whitelisted."
                     " task_id=%r, image=%r",
@@ -760,7 +758,6 @@ class TaskServer(
                 )
                 logger.debug("task_header=%r", task_header)
                 return False
-
 
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \

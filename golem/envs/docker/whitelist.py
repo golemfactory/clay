@@ -3,7 +3,7 @@ from typing import List
 import golem.model
 
 
-def repository_from_image_name(image_name: str) -> str:
+def _repository_from_image_name(image_name: str) -> str:
     return image_name.rsplit('/', maxsplit=1)[0]
 
 
@@ -40,7 +40,7 @@ class Whitelist:
 
     @staticmethod
     def is_whitelisted(image_name: str) -> bool:
-        repository = repository_from_image_name(image_name)
+        repository = _repository_from_image_name(image_name)
         query = \
             golem.model.DockerWhitelist.select().where(
                 golem.model.DockerWhitelist.repository == repository,
