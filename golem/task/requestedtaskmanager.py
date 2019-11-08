@@ -630,7 +630,7 @@ class RequestedTaskManager:
     ) -> RequestorAppClient:
         if app_id not in self._app_clients:
             logger.info('Creating app_client for app_id=%r', app_id)
-            service = self._get_task_api_service(app_id)
+            service = await self._get_task_api_service(app_id)
             logger.info('Got service for app=%r, service=%r', app_id, service)
             self._app_clients[app_id] = await RequestorAppClient.create(service)
             logger.info(
@@ -638,7 +638,7 @@ class RequestedTaskManager:
                 app_id, self._app_clients[app_id])
         return self._app_clients[app_id]
 
-    def _get_task_api_service(
+    async def _get_task_api_service(
             self,
             app_id: str,
     ) -> EnvironmentTaskApiService:
@@ -651,15 +651,23 @@ class RequestedTaskManager:
         if not self._app_manager.enabled(app_id):
             raise RuntimeError(
                 f"Error connecting to app, app not enabled. app={app_id}")
+
         app = self._app_manager.app(app_id)
         env_id = app.requestor_env
         if not self._env_manager.enabled(env_id):
             raise RuntimeError(
                 "Error connecting to app, environment not enabled."
                 f" env={env_id}, app={app_id}")
+
         env = self._env_manager.environment(env_id)
-        payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
+        loop = asyncio.get_event_loop()
+        if not await env.install_prerequisites(prereq).asFuture(loop):
+            raise RuntimeError(
+                f"Cannot install prerequisites for running app. "
+                f"env={env_id}, app={app_id}")
+
+        payload_builder = self._env_manager.payload_builder(env_id)
         shared_dir = self._app_dir(app_id)
 
         return EnvironmentTaskApiService(

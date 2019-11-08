@@ -10,6 +10,7 @@ from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask
 from mock import ANY, Mock
 import pytest
+from twisted.internet import defer
 
 from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
@@ -62,6 +63,9 @@ class TestRequestedTaskManager:
             public_key=self.public_key,
             root_path=self.rtm_path
         )
+
+        self.env_manager.environment().install_prerequisites.return_value = \
+            defer.succeed(True)
 
         monkeypatch.setattr(
             requestedtaskmanager,
