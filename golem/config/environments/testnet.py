@@ -89,6 +89,6 @@ CONCENT_SUPPORTED_APPS = (
     'blender_nvgpu'
 )
 
-TASK_API_APP_NAMES = [
+TASK_API_IMG_NAMES = [
     'golemfactory/blenderapp'
 ]
