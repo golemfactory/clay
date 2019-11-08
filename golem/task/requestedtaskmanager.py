@@ -63,7 +63,6 @@ class CreateTaskParams:
     resources: List[Path]
     max_subtasks: int
     max_price_per_hour: int
-    min_memory: int  # FIXME: refactor for Task API v0.24.0
     concent_enabled: bool
 
 
@@ -152,8 +151,6 @@ class RequestedTaskManager:
             start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
-            # FIXME: refactor for Task API v0.24.0
-            min_memory=golem_params.min_memory,
             # Concent is explicitly disabled for task_api for now...
             concent_enabled=False,
             # mask = BlobField(null=False, default=masking.Mask().to_bytes()),
@@ -211,6 +208,7 @@ class RequestedTaskManager:
         )
         task.env_id = reply.env_id
         task.prerequisites = reply.prerequisites
+        task.min_memory = reply.inf_requirements.min_memory_mib * (1024 ** 2)
         task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
