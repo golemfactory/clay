@@ -41,6 +41,8 @@ async def test_task(
     app_manager.set_enabled(app_definition.id, True)
 
     env_manager = envmanager.EnvironmentManager()
+    # FIXME: Heavy coupled to docker, change this when adding more envs
+    # https://github.com/golemfactory/golem/pull/4856#discussion_r344162862
     docker_repo = repository_from_image_name(
         app_definition.requestor_prereq['image'])
     if not Whitelist.is_whitelisted(docker_repo):
