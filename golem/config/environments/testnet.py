@@ -3,6 +3,7 @@ from typing import List
 
 from golem_sci import contracts
 from golem_sci.chains import RINKEBY
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
 from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
 from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
@@ -89,6 +90,6 @@ CONCENT_SUPPORTED_APPS = (
     'blender_nvgpu'
 )
 
-TASK_API_IMG_NAMES = [
-    'golemfactory/blenderapp'
+TASK_API_ENVS = [
+    DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 ]
