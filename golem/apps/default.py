@@ -25,16 +25,15 @@ BlenderAppDefinition = AppDefinition(
     max_benchmark_score=10000.,
 )
 
-APPS = [
-    BlenderAppDefinition,
-]
+APPS = {
+    BlenderAppDefinition.id: BlenderAppDefinition
+}
 
 
 def save_built_in_app_definitions(path: Path) -> List[AppId]:
     app_ids = []
 
-    for app in APPS:
-        app_id = app.id
+    for app_id, app in APPS.items():
 
         filename = f"{app.name}_{app.version}_{app_id}.json"
         filename = sanitize_filename(filename, replacement_text="_")
@@ -45,10 +44,3 @@ def save_built_in_app_definitions(path: Path) -> List[AppId]:
             app_ids.append(app_id)
 
     return app_ids
-
-
-def get_built_in_app_by_id(app_id: AppId) -> Optional[AppDefinition]:
-    for app in APPS:
-        if app.id == app_id:
-            return app
-    return None
