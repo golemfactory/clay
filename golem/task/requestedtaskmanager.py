@@ -66,30 +66,6 @@ class CreateTaskParams:
     min_memory: int  # FIXME: remove with new Task API ver
     concent_enabled: bool
 
-    @classmethod
-    def parse(
-            cls,
-            golem_params: Dict[str, Any],
-            app_params: Dict[str, Any],
-    ) -> Tuple['CreateTaskParams', Dict[str, Any]]:
-
-        create_params = cls(
-            app_id=golem_params['app_id'],
-            name=golem_params['name'],
-            output_directory=Path(golem_params['output_directory']),
-            max_price_per_hour=int(golem_params['max_price_per_hour']),
-            max_subtasks=int(golem_params['max_subtasks']),
-            min_memory=int(golem_params['min_memory']),  # FIXME: new API ver
-            task_timeout=int(golem_params['task_timeout']),
-            subtask_timeout=int(golem_params['subtask_timeout']),
-            concent_enabled=bool(golem_params.get('concent_enabled', False)),
-            resources=list(map(Path, golem_params['resources'])),
-        )
-
-        if not app_params.get('resources'):
-            app_params['resources'] = [r.name for r in create_params.resources]
-        return create_params, app_params
-
 
 @dataclass
 class ComputingNodeDefinition:

@@ -6,6 +6,7 @@ import logging
 import os.path
 import re
 import typing
+from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -488,8 +489,8 @@ class ClientProvider:
             task_dict: dict,
             force: bool = False,
     ) -> typing.Tuple[
-            typing.Optional[str],
-            typing.Optional[typing.Union[str, typing.Dict]]
+        typing.Optional[TaskId],
+        typing.Optional[typing.Union[str, typing.Dict]]
     ]:
         """
         :param task_dict: task definition dictionary
@@ -497,6 +498,10 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
+
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
         if 'golem' in task_dict and 'app' in task_dict:
             return self._create_task_api_task(
                 task_dict['golem'],
@@ -509,8 +514,8 @@ class ClientProvider:
             task_dict: dict,
             force: bool = False,
     ) -> typing.Tuple[
-            typing.Optional[str],
-            typing.Optional[typing.Union[str, typing.Dict]]
+        typing.Optional[TaskId],
+        typing.Optional[typing.Union[str, typing.Dict]]
     ]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
@@ -548,16 +553,24 @@ class ClientProvider:
             golem_params: dict,
             app_params: dict,
     ) -> typing.Tuple[
-            typing.Optional[str],
-            typing.Optional[typing.Union[str, typing.Dict]]
+        typing.Optional[TaskId],
+        typing.Optional[typing.Union[str, typing.Dict]]
     ]:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
-        if self.client.has_assigned_task():
-            raise RuntimeError('Cannot create task while computing')
-
-        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
-            .parse(golem_params, app_params)
+        create_task_params = requestedtaskmanager.CreateTaskParams(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            output_directory=Path(golem_params['output_directory']),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            min_memory=int(golem_params['min_memory']),  # FIXME: new API ver
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=bool(golem_params.get('concent_enabled', False)),
+            resources=list(map(Path, golem_params['resources'])),
+        )
+        app_params['resources'] = [r.name for r in create_task_params.resources]
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,

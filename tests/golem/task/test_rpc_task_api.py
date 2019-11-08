@@ -56,7 +56,7 @@ class TestTaskApiCreate(unittest.TestCase):
         }
 
     def test_success(self):
-        task_params = {
+        app_params = {
             'app_param1': 'value1',
             'app_param2': 'value2',
         }
@@ -67,11 +67,14 @@ class TestTaskApiCreate(unittest.TestCase):
         self.requested_task_manager.init_task.return_value = asyncio.Future()
         self.requested_task_manager.init_task.return_value.set_result(None)
 
-        new_task_id = self.rpc._create_task_api_task(golem_params, task_params)
+        new_task_id, _ = self.rpc.create_task({
+            'golem': golem_params,
+            'app': app_params,
+        })
         self.assertEqual(task_id, new_task_id)
         self.requested_task_manager.create_task.assert_called_once_with(
             mock.ANY,
-            task_params,
+            app_params,
         )
         create_task_params = \
             self.requested_task_manager.create_task.call_args[0][0]
@@ -125,7 +128,10 @@ class TestTaskApiCreate(unittest.TestCase):
         self.client.has_assigned_task.return_value = True
 
         with self.assertRaises(RuntimeError):
-            self.rpc._create_task_api_task({}, self.get_golem_params())
+            self.rpc.create_task({
+                'golem': self.get_golem_params(),
+                'app': {},
+            })
 
         self.requested_task_manager.create_task.assert_not_called()
         self.requested_task_manager.init_task.assert_not_called()
@@ -135,7 +141,10 @@ class TestTaskApiCreate(unittest.TestCase):
         self.client.has_assigned_task.return_value = False
         self.requested_task_manager.init_task.side_effect = Exception
 
-        task_id = self.rpc._create_task_api_task(self.get_golem_params(), {})
+        task_id, _ = self.rpc.create_task({
+            'golem': self.get_golem_params(),
+            'app': {},
+        })
 
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
