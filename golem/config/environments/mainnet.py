@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from golem_sci import contracts
 from golem_sci.chains import MAINNET
@@ -80,4 +81,4 @@ CONCENT_SUPPORTED_APPS = (
     'blender_nvgpu'
 )
 
-TASK_API_ENVS = []
+TASK_API_ENVS: List[str] = []
