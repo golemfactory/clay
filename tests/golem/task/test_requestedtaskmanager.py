@@ -7,7 +7,7 @@ from pathlib import Path
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.enums import VerifyResult
-from golem_task_api.structs import Subtask
+from golem_task_api.structs import Subtask, Infrastructure
 from mock import ANY, Mock
 import pytest
 from twisted.internet import defer
@@ -38,7 +38,8 @@ def mock_client(monkeypatch):
 
     client_mock.create_task.return_value = Mock(
         env_id='env_id',
-        prerequisites={}
+        prerequisites={},
+        inf_requirements=Infrastructure(min_memory_mib=2000.),
     )
     return client_mock
 
@@ -92,7 +93,8 @@ class TestRequestedTaskManager:
         prerequisites = {'key': 'value'}
         mock_client.create_task.return_value = Mock(
             env_id=env_id,
-            prerequisites=prerequisites
+            prerequisites=prerequisites,
+            inf_requirements=Infrastructure(min_memory_mib=2000.),
         )
 
         # when
@@ -427,7 +429,7 @@ class TestRequestedTaskManager:
 
     def _build_golem_params(
             self,
-            resources=[],
+            resources=None,
             task_timeout=1,
             subtask_timeout=1
     ) -> CreateTaskParams:
@@ -437,10 +439,9 @@ class TestRequestedTaskManager:
             task_timeout=task_timeout,
             subtask_timeout=subtask_timeout,
             output_directory=self.tmp_path / 'output',
-            resources=resources,
+            resources=resources or [],
             max_subtasks=1,
             max_price_per_hour=1,
-            min_memory=0,
             concent_enabled=False,
         )
 

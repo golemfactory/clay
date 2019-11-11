@@ -525,7 +525,6 @@ class RequestedTaskManager:
             resources=resources,
             max_subtasks=task.max_subtasks,
             max_price_per_hour=task.max_price_per_hour,
-            min_memory=task.min_memory,
             concent_enabled=task.concent_enabled,
         )
         app_params = task.app_params
