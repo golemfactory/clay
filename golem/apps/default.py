@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from pathvalidate import sanitize_filename
