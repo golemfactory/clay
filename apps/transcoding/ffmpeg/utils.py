@@ -51,7 +51,7 @@ class StreamOperator:
                                         task_id: str):
 
         directory_mapping = self._generate_dir_mapping(
-            Path(task_dir) / "resources",
+            Path(task_dir) / "split" / "resources", # This directory is unused
             task_dir,
             "split")
 
