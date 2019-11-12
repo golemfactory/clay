@@ -63,39 +63,8 @@ class CreateTaskParams:
     resources: List[Path]
     max_subtasks: int
     max_price_per_hour: int
-    min_memory: int
+    min_memory: int  # FIXME: refactor for Task API v0.24.0
     concent_enabled: bool
-
-    @classmethod
-    def parse(
-            cls,
-            golem_params: Dict[str, Any],
-            app_params: Optional[Dict[str, Any]] = None
-    ) -> Tuple['CreateTaskParams', Dict[str, Any]]:
-        # FIXME: integration tests workaround
-        if app_params is None:
-            app_params = golem_params['options']
-            app_params['resources'] = golem_params['resources']
-        # FIXME: integration tests workaround
-        golem_params['output_directory'] = golem_params.get(
-            'output_directory',
-            app_params.get('output_path'))
-
-        create_params = cls(
-            app_id=golem_params['app_id'],
-            name=golem_params['name'],
-            output_directory=Path(golem_params['output_directory']),
-            max_price_per_hour=int(golem_params['max_price_per_hour']),
-            max_subtasks=int(golem_params['max_subtasks']),
-            min_memory=int(golem_params['min_memory']),
-            task_timeout=int(golem_params['task_timeout']),
-            subtask_timeout=int(golem_params['subtask_timeout']),
-            concent_enabled=bool(golem_params.get('concent_enabled', False)),
-            resources=list(map(Path, golem_params['resources'])),
-        )
-
-        app_params['resources'] = [r.name for r in create_params.resources]
-        return create_params, app_params
 
 
 @dataclass
@@ -183,6 +152,7 @@ class RequestedTaskManager:
             start_time=None,
             max_price_per_hour=golem_params.max_price_per_hour,
             max_subtasks=golem_params.max_subtasks,
+            # FIXME: refactor for Task API v0.24.0
             min_memory=golem_params.min_memory,
             # Concent is explicitly disabled for task_api for now...
             concent_enabled=False,
@@ -661,7 +631,7 @@ class RequestedTaskManager:
     ) -> RequestorAppClient:
         if app_id not in self._app_clients:
             logger.info('Creating app_client for app_id=%r', app_id)
-            service = self._get_task_api_service(app_id)
+            service = await self._get_task_api_service(app_id)
             logger.info('Got service for app=%r, service=%r', app_id, service)
             self._app_clients[app_id] = await RequestorAppClient.create(service)
             logger.info(
@@ -669,7 +639,7 @@ class RequestedTaskManager:
                 app_id, self._app_clients[app_id])
         return self._app_clients[app_id]
 
-    def _get_task_api_service(
+    async def _get_task_api_service(
             self,
             app_id: str,
     ) -> EnvironmentTaskApiService:
@@ -682,15 +652,23 @@ class RequestedTaskManager:
         if not self._app_manager.enabled(app_id):
             raise RuntimeError(
                 f"Error connecting to app, app not enabled. app={app_id}")
+
         app = self._app_manager.app(app_id)
         env_id = app.requestor_env
         if not self._env_manager.enabled(env_id):
             raise RuntimeError(
                 "Error connecting to app, environment not enabled."
                 f" env={env_id}, app={app_id}")
+
         env = self._env_manager.environment(env_id)
-        payload_builder = self._env_manager.payload_builder(env_id)
         prereq = env.parse_prerequisites(app.requestor_prereq)
+        loop = asyncio.get_event_loop()
+        if not await env.install_prerequisites(prereq).asFuture(loop):
+            raise RuntimeError(
+                f"Cannot install prerequisites for running app. "
+                f"env={env_id}, app={app_id}")
+
+        payload_builder = self._env_manager.payload_builder(env_id)
         shared_dir = self._app_dir(app_id)
 
         return EnvironmentTaskApiService(
