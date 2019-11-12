@@ -695,7 +695,7 @@ class TaskServer(
                 deadline=int(db_task.deadline.timestamp()),
                 subtask_timeout=db_task.subtask_timeout,
                 subtasks_count=db_task.max_subtasks,
-                # estimated_memory=task_definition.estimated_memory,
+                estimated_memory=db_task.min_memory,
                 max_price=db_task.max_price_per_hour,
                 concent_enabled=db_task.concent_enabled,
                 timestamp=int(db_task.start_time.timestamp()),
