@@ -55,11 +55,6 @@ class StreamOperator:
             task_dir,
             "split")
 
-        host_dirs = {
-            'tmp': directory_mapping.temporary,
-            'output': directory_mapping.output,
-        }
-
         input_file_basename = os.path.basename(input_file_on_host)
         input_file_in_container = os.path.join(
             # FIXME: This is a path on the host but docker will create it in
@@ -95,7 +90,7 @@ class StreamOperator:
             except ffmpegException as exception:
                 raise ffmpegExtractSplitError(str(exception)) from exception
 
-        split_result_file = os.path.join(host_dirs['output'],
+        split_result_file = os.path.join(directory_mapping.output,
                                          Commands.EXTRACT_AND_SPLIT.value[1])
         output_files = result.get('data', [])
         if split_result_file not in output_files:
