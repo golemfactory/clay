@@ -102,7 +102,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             extract_video_streams_and_split(
                 input_file,
                 self.get_total_tasks(),
-                self.task_dir,
+                dir_manager,
                 task_id)
 
         if len(chunks) < self.get_total_tasks():
