@@ -50,7 +50,6 @@ class TestTaskApiCreate(unittest.TestCase):
             ],
             'max_price_per_hour': 123,
             'max_subtasks': 4,
-            'min_memory': 0,
             'task_timeout': 60,
             'subtask_timeout': 60,
         }

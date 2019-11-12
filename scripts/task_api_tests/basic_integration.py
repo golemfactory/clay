@@ -12,13 +12,16 @@ from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
 
 from golem import database, model
-from golem.apps import manager as appmanager, load_app_from_json_file
+from golem.apps import (
+    manager as appmanager,
+    load_app_from_json_file,
+    AppDefinition,
+)
+from golem.apps.default import APPS
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
-from golem.envs.default import (
-    register_environments,
-    register_built_in_repositories,
-)
+from golem.envs.default import register_environments
+from golem.envs.docker.whitelist import Whitelist
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
 logging.basicConfig(level=logging.INFO)
@@ -27,12 +30,11 @@ logging.basicConfig(level=logging.INFO)
 async def test_task(
         work_dir: Path,
         task_params_path: str,
-        app_definition_path: str,
+        app_definition: AppDefinition,
         resources: List[str],
         max_subtasks: int,
 ) -> None:
 
-    app_definition = load_app_from_json_file(Path(app_definition_path))
     env_prerequisites = app_definition.requestor_prereq
     app_manager = appmanager.AppManager()
     app_manager.register_app(app_definition)
@@ -41,7 +43,9 @@ async def test_task(
     runtime_logs_dir = work_dir / 'runtime_logs'
     runtime_logs_dir.mkdir()
     env_manager = envmanager.EnvironmentManager(runtime_logs_dir)
-    register_built_in_repositories()
+    # FIXME: Heavy coupled to docker, change this when adding more envs
+    # https://github.com/golemfactory/golem/pull/4856#discussion_r344162862
+    Whitelist.add(app_definition.requestor_prereq['image'])
     register_environments(
         work_dir=str(work_dir),
         env_manager=env_manager)
@@ -70,10 +74,9 @@ async def test_task(
         task_timeout=3600,
         subtask_timeout=3600,
         output_directory=output_dir,
-        resources=resources,
+        resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
         max_price_per_hour=1,
-        min_memory=0,
         concent_enabled=False,
     )
     with open(task_params_path, 'r') as f:
@@ -141,7 +144,7 @@ def test():
 async def _task(
         task_params_path,
         app_definition_path,
-        resource,
+        resources,
         max_subtasks,
         work_dir,
         leave_work_dir,
@@ -159,7 +162,7 @@ async def _task(
             work_dir,
             task_params_path,
             app_definition_path,
-            list(resource),
+            list(resources),
             max_subtasks,
         )
     finally:
@@ -169,27 +172,66 @@ async def _task(
 
 
 @test.command()
-@click.argument('task_params_path', type=click.Path(exists=True))
 @click.argument('app_definition_path', type=click.Path(exists=True))
-@click.option('--resource', type=click.Path(exists=True), multiple=True)
+@click.argument('task_params_path', type=click.Path(exists=True))
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
 @click.option('--max-subtasks', type=click.INT, default=2)
 @click.option('--workdir', type=click.Path(exists=True))
 @click.option('--leave-workdir', is_flag=True)
-def task(
-        task_params_path,
+def task_from_app_def(
         app_definition_path,
-        resource,
+        task_params_path,
+        resources,
         max_subtasks,
         workdir,
         leave_workdir,
 ):
     install_reactor()
+    app_definition = load_app_from_json_file(Path(app_definition_path))
     return react(
         lambda _reactor: ensureDeferred(
             _task(
                 task_params_path,
-                app_definition_path,
-                resource,
+                app_definition,
+                resources,
+                max_subtasks,
+                workdir,
+                leave_workdir,
+            )
+        )
+    )
+
+
+@test.command()
+@click.argument('app_id', type=click.STRING)
+@click.argument('task_params_path', type=click.Path(exists=True))
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
+@click.option('--max-subtasks', type=click.INT, default=2)
+@click.option('--workdir', type=click.Path(exists=True))
+@click.option('--leave-workdir', is_flag=True)
+def task_from_app_id(
+        app_id,
+        task_params_path,
+        resources,
+        max_subtasks,
+        workdir,
+        leave_workdir,
+):
+    app_definition = APPS.get(app_id)
+    if app_definition is None:
+        available_apps = {app.name: app_id for app_id, app in APPS.items()}
+        print(
+            'ERROR: Invalid app_id provided. '
+            f'id={app_id}, available={available_apps}'
+        )
+        return
+    install_reactor()
+    return react(
+        lambda _reactor: ensureDeferred(
+            _task(
+                task_params_path,
+                app_definition,
+                resources,
                 max_subtasks,
                 workdir,
                 leave_workdir,
