@@ -4,7 +4,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Tuple
 from threading import Lock
 
 from apps.transcoding import common
@@ -47,10 +47,13 @@ class StreamOperator:
     def extract_video_streams_and_split(self, # noqa pylint: disable=too-many-locals
                                         input_file_on_host: str,
                                         parts: int,
-                                        dir_manager: DirManager,
+                                        task_dir: str,
                                         task_id: str):
 
-        directory_mapping = self._get_dir_mapping(dir_manager, task_id)
+        directory_mapping = self._generate_dir_mapping(
+            Path(task_dir) / "resources",
+            task_dir,
+            "split")
 
         host_dirs = {
             'tmp': directory_mapping.temporary,
@@ -121,33 +124,34 @@ class StreamOperator:
 
             return streams_list, params.get('metadata', {})
 
-    def _prepare_merge_job(self, task_dir, chunks_on_host):
-        host_dirs = {
-            'resources': os.path.join(task_dir, 'merge', 'resources'),
-            'temporary': os.path.join(task_dir, 'merge', 'work'),
-            'work': os.path.join(task_dir, 'merge', 'work'),
-            'output': os.path.join(task_dir, 'merge', 'output'),
-            'logs': os.path.join(task_dir, 'merge', 'output'),
-            'stats': os.path.join(task_dir, 'merge', 'stats'),
-        }
+    def _prepare_merge_job(self,
+                           task_dir: str,
+                           chunks_on_host)->Tuple[DockerDirMapping, List[str]]:
+
+        directory_mapping: DockerDirMapping = self._generate_dir_mapping(
+            Path(task_dir) / "merge" / "resources",
+            task_dir,
+            "merge")
 
         try:
-            os.makedirs(host_dirs['resources'])
-            os.makedirs(host_dirs['output'])
-            os.makedirs(host_dirs['work'])
-            os.makedirs(host_dirs['stats'])
+            directory_mapping.mkdirs(exist_ok=True)
         except OSError:
             raise ffmpegMergeReplaceError(
                 "Failed to prepare video merge directory structure")
-        chunks_in_container = self._collect_files(
-            task_dir, chunks_on_host,
-            host_dirs['resources'])
 
-        return (host_dirs, chunks_in_container)
+        chunks_in_container = self._collect_files(
+            task_dir,
+            chunks_on_host,
+            directory_mapping.resources)
+
+        return (directory_mapping, chunks_in_container)
 
     @staticmethod
-    def _collect_files(directory, files, resources_dir):
-        # each chunk must be in the same directory
+    def _collect_files(directory: str,
+                       files: List[str],
+                       resources_dir: str) -> List[str]:
+
+        # Each chunk must be in the same directory
         results = list()
         for file in files:
             if not os.path.isfile(file):
@@ -189,7 +193,7 @@ class StreamOperator:
         assert os.path.isfile(input_file_on_host), \
             "Caller is responsible for ensuring that input file exists."
 
-        (host_dirs, chunks_in_container) = self._prepare_merge_job(
+        (dir_mapping, chunks_in_container) = self._prepare_merge_job(
             task_dir,
             chunks_on_host)
 
@@ -224,16 +228,17 @@ class StreamOperator:
         with split_lock:
             try:
                 self._do_job_in_container(
-                    DockerTaskThread.specify_dir_mapping(**host_dirs),
+                    dir_mapping,
                     extra_data,
                     env)
             except ffmpegException as exception:
                 raise ffmpegMergeReplaceError(str(exception)) from exception
 
-        return os.path.join(host_dirs['output'], output_file_basename)
+        return os.path.join(dir_mapping.output, output_file_basename)
 
     @staticmethod
-    def _do_job_in_container(dir_mapping, extra_data: dict,
+    def _do_job_in_container(dir_mapping: DockerDirMapping,
+                             extra_data: dict,
                              env: Optional[Environment] = None,
                              timeout: int = 120):
 
@@ -257,22 +262,15 @@ class StreamOperator:
             raise ffmpegException(dtt.error_msg)
         return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
 
-    @staticmethod
-    def _get_dir_mapping(dir_manager: DirManager, task_id: str):
-        tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
-        resources_task_dir = dir_manager.get_task_resource_dir(task_id)
-
+    @classmethod
+    def _generate_dir_mapping(cls,
+                              resource_dir: str,
+                              task_dir: str,
+                              subdir_name: str):
         return DockerDirMapping.generate(
-            Path(resources_task_dir),
-            Path(tmp_task_dir))
+            Path(resource_dir),
+            Path(task_dir) / subdir_name)
 
-    @staticmethod
-    def _specify_dir_mapping(output, temporary, resources, logs, work):
-        return DockerTaskThread.specify_dir_mapping(output=output,
-                                                    temporary=temporary,
-                                                    resources=resources,
-                                                    logs=logs, work=work,
-                                                    stats=logs)
 
     def get_metadata(self,
                      input_files: List[str],
