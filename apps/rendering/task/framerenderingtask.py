@@ -236,6 +236,9 @@ class FrameRenderingTask(RenderingTask):
             'frame_count': frame_count
         }})
 
+    def subtask_status_updated(self, subtask_id: str) -> None:
+        self._update_subtask_frame_status(subtask_id)
+
     #########################
     # Specific task methods #
     #########################

@@ -623,6 +623,7 @@ class TaskManager(TaskEventListener):
                 .status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
+            new_task.subtask_status_updated(new_subtask_id)
 
         new_task.num_failed_subtasks = \
             new_task.get_total_tasks() - len(subtasks_to_copy)
@@ -687,6 +688,7 @@ class TaskManager(TaskEventListener):
                 new_subtask_id, old_subtask, TaskResult(files=results))
 
             self.__set_subtask_state_finished(new_subtask_id)
+            new_task.subtask_status_updated(new_subtask_id)
 
             self.notice_task_updated(
                 task_id=new_task_id,

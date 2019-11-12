@@ -412,6 +412,9 @@ class Task(abc.ABC):
         """
         return None
 
+    def subtask_status_updated(self, subtask_id: str) -> None:
+        pass
+
 
 class ResultMetadata:
     def __init__(self, compute_time: float) -> None:
