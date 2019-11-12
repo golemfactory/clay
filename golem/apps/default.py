@@ -25,16 +25,15 @@ BlenderAppDefinition = AppDefinition(
     max_benchmark_score=10000.,
 )
 
-APPS = [
-    BlenderAppDefinition,
-]
+APPS = {
+    BlenderAppDefinition.id: BlenderAppDefinition
+}
 
 
 def save_built_in_app_definitions(path: Path) -> List[AppId]:
     app_ids = []
 
-    for app in APPS:
-        app_id = app.id
+    for app_id, app in APPS.items():
 
         filename = f"{app.name}_{app.version}_{app_id}.json"
         filename = sanitize_filename(filename, replacement_text="_")

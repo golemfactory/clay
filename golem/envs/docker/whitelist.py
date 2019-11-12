@@ -17,20 +17,22 @@ class Whitelist:
         ]
 
     @classmethod
-    def add(cls, repository: str) -> bool:
+    def add(cls, image_name: str) -> bool:
         """
         Returns False if the entry was already on the whitelist.
         """
+        repository = _repository_from_image_name(image_name)
         if cls.is_whitelisted(repository):
             return False
         golem.model.DockerWhitelist.create(repository=repository)
         return True
 
     @classmethod
-    def remove(cls, repository: str) -> bool:
+    def remove(cls, image_name: str) -> bool:
         """
         Return False is the entry was not present on the whitelist.
         """
+        repository = _repository_from_image_name(image_name)
         if not cls.is_whitelisted(repository):
             return False
         golem.model.DockerWhitelist.delete().where(
