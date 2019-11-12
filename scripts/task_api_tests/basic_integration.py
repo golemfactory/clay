@@ -21,7 +21,7 @@ from golem.apps.default import APPS
 from golem.core.common import install_reactor
 from golem.core.deferred import deferred_from_future
 from golem.envs.default import register_environments
-from golem.envs.docker.whitelist import Whitelist, repository_from_image_name
+from golem.envs.docker.whitelist import Whitelist
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
 logging.basicConfig(level=logging.INFO)
@@ -43,10 +43,7 @@ async def test_task(
     env_manager = envmanager.EnvironmentManager()
     # FIXME: Heavy coupled to docker, change this when adding more envs
     # https://github.com/golemfactory/golem/pull/4856#discussion_r344162862
-    docker_repo = repository_from_image_name(
-        app_definition.requestor_prereq['image'])
-    if not Whitelist.is_whitelisted(docker_repo):
-        Whitelist.add(docker_repo)
+    Whitelist.add(app_definition.requestor_prereq['image'])
     register_environments(
         work_dir=str(work_dir),
         env_manager=env_manager)
