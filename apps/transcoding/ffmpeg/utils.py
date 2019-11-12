@@ -51,7 +51,7 @@ class StreamOperator:
                                         task_id: str):
 
         directory_mapping = self._generate_dir_mapping(
-            Path(task_dir) / "resources",
+            Path(task_dir) / "split" / "resources", # This directory is unused
             task_dir,
             "split")
 
@@ -275,8 +275,16 @@ class StreamOperator:
     def get_metadata(self,
                      input_files: List[str],
                      resources_dir: str,
-                     work_dir: str,
-                     output_dir: str) -> dict:
+                     work_dir: str) -> dict:
+
+        dir_mapping: DockerDirMapping = self._generate_dir_mapping(
+            resources_dir,
+            work_dir,
+            "metadata")
+
+        # Important: This function expects only one result file.
+        # We can't add logs to output.
+        dir_mapping.logs = dir_mapping.work
 
         assert os.path.isdir(resources_dir)
         assert all([
@@ -285,7 +293,7 @@ class StreamOperator:
         ])
 
         try:
-            os.makedirs(output_dir, exist_ok=True)
+            dir_mapping.mkdirs(exist_ok=True)
         except OSError:
             raise ffmpegException(
                 "Failed to prepare directory structure for get_metadata")
@@ -303,21 +311,9 @@ class StreamOperator:
             },
         }
 
-        stats_dir = os.path.join(
-            os.path.dirname(work_dir),
-            "get-metadata-stats")
-
-        dir_mapping = DockerTaskThread.specify_dir_mapping(
-            output=output_dir,
-            temporary=work_dir,
-            resources=resources_dir,
-            logs=work_dir,
-            work=work_dir,
-            stats=stats_dir)
-
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
-        logger.info('Directories: work {}'.format(work_dir))
+        logger.info('Directories: work {}'.format(dir_mapping.work))
 
         job_result = self._do_job_in_container(dir_mapping, extra_data)
         if 'data' not in job_result:
