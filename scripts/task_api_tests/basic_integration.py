@@ -40,7 +40,9 @@ async def test_task(
     app_manager.register_app(app_definition)
     app_manager.set_enabled(app_definition.id, True)
 
-    env_manager = envmanager.EnvironmentManager()
+    runtime_logs_dir = work_dir / 'runtime_logs'
+    runtime_logs_dir.mkdir()
+    env_manager = envmanager.EnvironmentManager(runtime_logs_dir)
     # FIXME: Heavy coupled to docker, change this when adding more envs
     # https://github.com/golemfactory/golem/pull/4856#discussion_r344162862
     Whitelist.add(app_definition.requestor_prereq['image'])
@@ -72,10 +74,9 @@ async def test_task(
         task_timeout=3600,
         subtask_timeout=3600,
         output_directory=output_dir,
-        resources=resources,
+        resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
         max_price_per_hour=1,
-        min_memory=0,
         concent_enabled=False,
     )
     with open(task_params_path, 'r') as f:

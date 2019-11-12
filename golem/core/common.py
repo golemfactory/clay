@@ -7,7 +7,8 @@ import threading
 from calendar import timegm
 from datetime import datetime
 from functools import wraps
-from typing import Any, Callable, cast, List, TypeVar
+from pathlib import Path
+from typing import Any, Callable, cast, List, TypeVar, Optional
 
 import pytz
 
@@ -238,6 +239,12 @@ def retry(exc_cls, count: int):
     return decorator
 
 
+def get_log_dir(data_dir: Optional[str] = None) -> Path:
+    if data_dir is None:
+        data_dir = simpleenv.get_local_datadir("default")
+    return Path(data_dir) / 'logs'
+
+
 # pylint: disable=too-many-branches,too-many-locals
 def config_logging(
         suffix='',
@@ -252,9 +259,7 @@ def config_logging(
     except ImportError:
         from loggingconfig import LOGGING
 
-    if datadir is None:
-        datadir = simpleenv.get_local_datadir("default")
-    logdir_path = os.path.join(datadir, 'logs')
+    logdir_path = get_log_dir(datadir)
 
     for formatter in LOGGING.get('formatters', {}).values():
         formatter['format'] = f"{formatter_prefix}{formatter['format']}"
@@ -284,14 +289,11 @@ def config_logging(
             LOGGING['loggers']['twisted']['level'] = 'WARNING'
 
     try:
-        if not os.path.exists(logdir_path):
-            os.makedirs(logdir_path)
+        logdir_path.mkdir(parents=True, exist_ok=True)
 
         logging.config.dictConfig(LOGGING)
     except (ValueError, PermissionError) as e:
-        sys.stderr.write(
-            "Can't configure logging in: {} Got: {}\n".format(logdir_path, e)
-        )
+        sys.stderr.write(f"Can't configure logging in {logdir_path} Got: {e}\n")
         return  # Avoid consequent errors
     logging.captureWarnings(True)
 
