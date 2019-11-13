@@ -109,7 +109,7 @@ class EnvironmentManager:
     def enabled(self, env_id: EnvId) -> bool:
         """ Get the state (enabled or not) for an Environment.
             Also returns false when the environment is not registered"""
-        if env_id not in self._state:
+        if env_id not in self._envs or env_id not in self._state:
             return False
         return self._state[env_id]
 
