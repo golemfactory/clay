@@ -27,7 +27,9 @@ from golem.envs.docker.cpu import DockerCPUConfig
 from golem.envs.docker.gpu import DockerGPUConfig
 from golem.hardware import scale_memory, MemSize
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
+from golem.network import history
 from golem.resource.dirmanager import DirManager
+from golem.task.helpers import calculate_max_usage
 from golem.task.task_api import EnvironmentTaskApiService
 from golem.task.envmanager import EnvironmentManager
 from golem.task.timer import ProviderTimer
@@ -666,8 +668,16 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                            subtask_id, task_id)
             return
 
+        task_to_compute = history.get(
+            message_class_name='TaskToCompute',
+            node_id=task_header.task_owner.key,
+            task_id=task_id,
+            subtask_id=subtask_id
+        )
+
         deadline = min(task_header.deadline, subtask_deadline)
-        cpu_limit = task_header.subtask_budget
+        cpu_limit = calculate_max_usage(
+            task_header.subtask_budget, task_to_compute.price)
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
