@@ -80,6 +80,10 @@ class Environment():
         """
         return SupportStatus.ok()
 
+    def is_single_core(self) -> bool:
+        """ Returns true if task runs on single cpu core """
+        return False
+
     def is_accepted(self) -> bool:
         """ Check if user wants to compute tasks from this environment """
         return self.accept_tasks

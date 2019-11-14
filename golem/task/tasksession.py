@@ -606,7 +606,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
             return
 

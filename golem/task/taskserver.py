@@ -59,11 +59,10 @@ from golem.model import TaskPayment
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.network.transport import msg_queue
 from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, SafeProtocol)
+from golem.network.transport.tcpnetwork import (TCPNetwork, SocketAddress,
+                                                SafeProtocol)
 from golem.network.transport.tcpserver import (
-    PendingConnectionsServer,
-)
+    PendingConnectionsServer,)
 from golem.ranking.helper.trust import Trust
 from golem.ranking.manager.database_manager import (
     update_requestor_paid_sum,
@@ -131,9 +130,8 @@ class TaskServer(
 
         new_env_manager = EnvironmentManager()
         register_built_in_repositories()
-        register_environments(
-            work_dir=self.get_task_computer_root(),
-            env_manager=new_env_manager)
+        register_environments(work_dir=self.get_task_computer_root(),
+                              env_manager=new_env_manager)
 
         app_dir = self.get_app_dir()
         built_in_apps = save_built_in_app_definitions(app_dir)
@@ -168,17 +166,17 @@ class TaskServer(
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
         )
-        self.new_resource_manager = ResourceManager(HyperdriveAsyncClient(
-            config_desc.hyperdrive_rpc_port,
-            config_desc.hyperdrive_rpc_address,
-        ))
+        self.new_resource_manager = ResourceManager(
+            HyperdriveAsyncClient(
+                config_desc.hyperdrive_rpc_port,
+                config_desc.hyperdrive_rpc_address,
+            ))
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(
             node_name=config_desc.node_name,
             task_server=self,
             root_path=self.get_task_computer_root(),
-            benchmarks=benchmarks
-        )
+            benchmarks=benchmarks)
         self.app_benchmark_manager = AppBenchmarkManager(
             env_manager=new_env_manager,
             root_path=Path(self.get_task_computer_root()),
@@ -190,8 +188,7 @@ class TaskServer(
             finished_cb=task_finished_cb)
         deferred = self._change_task_computer_config(
             config_desc=config_desc,
-            run_benchmarks=self.benchmark_manager.benchmarks_needed()
-        )
+            run_benchmarks=self.benchmark_manager.benchmarks_needed())
         try:
             sync_wait(deferred, self.BENCHMARK_TIMEOUT)
         except DeferredTimeoutError:
@@ -215,10 +212,10 @@ class TaskServer(
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.forwarded_session_requests = {}
-        self.acl = get_acl(
-            self.client, max_times=config_desc.disallow_id_max_times)
-        self.acl_ip = DenyAcl(
-            self.client, max_times=config_desc.disallow_ip_max_times)
+        self.acl = get_acl(self.client,
+                           max_times=config_desc.disallow_id_max_times)
+        self.acl_ip = DenyAcl(self.client,
+                              max_times=config_desc.disallow_ip_max_times)
         self.resource_handshakes = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
@@ -235,18 +232,11 @@ class TaskServer(
         self.concent_handler = \
             concent_received_handler.TaskServerMessageHandler(self)
 
-        dispatcher.connect(
-            self.income_listener,
-            signal='golem.income'
-        )
-        dispatcher.connect(
-            self.finished_subtask_listener,
-            signal='golem.taskcomputer'
-        )
-        dispatcher.connect(
-            self.finished_task_listener,
-            signal='golem.taskmanager'
-        )
+        dispatcher.connect(self.income_listener, signal='golem.income')
+        dispatcher.connect(self.finished_subtask_listener,
+                           signal='golem.taskcomputer')
+        dispatcher.connect(self.finished_task_listener,
+                           signal='golem.taskmanager')
 
     def sync_network(self, timeout=None):
         if timeout is None:
@@ -303,10 +293,15 @@ class TaskServer(
 
         self.task_computer.quit()
 
-    def get_environment_by_id(
-            self,
-            env_id: str
-    ) -> Optional[Union[OldEnv, NewEnv]]:
+    def is_task_single_core(self, th: dt_tasks.TaskHeader) -> bool:
+        env = self.get_environment_by_id(th.environment)
+        if env is not None and isinstance(env, OldEnv):
+            return env.is_single_core()
+        else:
+            return False
+
+    def get_environment_by_id(self,
+                              env_id: str) -> Optional[Union[OldEnv, NewEnv]]:
         """ Looks for the requested env_id in the new, then the old env_manager.
             Returns None when the environment is not found. """
         keeper = self.task_keeper
@@ -332,12 +327,17 @@ class TaskServer(
                 < self.config_desc.task_request_interval:
             return
 
-        if self.task_computer.has_assigned_task() \
-                or (not self.task_computer.compute_tasks) \
+        if (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
             return
 
-        task_header = self.task_keeper.get_task(self.requested_tasks)
+        if not self.task_computer.can_take_work():
+            return
+
+        compatibile_tasks = self.task_computer.compatible_tasks(
+            self.requested_tasks)
+
+        task_header = self.task_keeper.get_task(compatibile_tasks)
         if task_header is None:
             return
 
@@ -345,11 +345,9 @@ class TaskServer(
         self.task_computer.stats.increase_stat('tasks_requested')
 
         def _request_task_error(e):
-            logger.error(
-                "Failed to request task: task_id=%r, exception=%r",
-                task_header.task_id,
-                e
-            )
+            logger.error("Failed to request task: task_id=%r, exception=%r",
+                         task_header.task_id, e)
+
         # Unyielded deferred, fire and forget requesting a new task
         deferred = self._request_task(task_header)
         deferred.addErrback(_request_task_error)  # pylint: disable=no-member
@@ -359,19 +357,17 @@ class TaskServer(
         try:
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
-                supported = supported.join(SupportStatus.err({
-                    UnsupportReason.MAX_PRICE: theader.max_price}))
+                supported = supported.join(
+                    SupportStatus.err(
+                        {UnsupportReason.MAX_PRICE: theader.max_price}))
 
-            if (
-                    self.client.concent_service.enabled
-                    and self.client.concent_service.required_as_provider
-                    and not theader.concent_enabled
-            ):
+            if (self.client.concent_service.enabled and
+                    self.client.concent_service.required_as_provider and
+                    not theader.concent_enabled):
                 supported = supported.join(
                     SupportStatus.err({
                         UnsupportReason.CONCENT_REQUIRED: True,
-                    }),
-                )
+                    }),)
 
             # prepare env for performance, should always exist at this point
             env_id = theader.environment
@@ -379,9 +375,7 @@ class TaskServer(
             if env is None:
                 supported = supported.join(
                     SupportStatus.err(
-                        {UnsupportReason.ENVIRONMENT_MISSING: env_id}
-                    )
-                )
+                        {UnsupportReason.ENVIRONMENT_MISSING: env_id}))
 
             if not supported.is_ok():
                 logger.debug(
@@ -396,11 +390,16 @@ class TaskServer(
                     )
                 return None
 
+            num_subtasks = 1
             # Check performance
             if isinstance(env, OldEnv):
                 benchmark_result = env.get_benchmark_result()
                 benchmark_score = benchmark_result.performance
                 benchmark_cpu_usage = benchmark_result.cpu_usage
+                if env.is_single_core():
+                    num_subtasks = self.task_computer.free_cores
+                    if num_subtasks == 0:
+                        return None
             else:  # NewEnv
                 try:
                     future = asyncio.run_coroutine_threadsafe(
@@ -410,10 +409,8 @@ class TaskServer(
                         loop=asyncio_main_loop())
                     app_benchmark = yield Deferred.fromFuture(future)
                 except ComputationInProgress as error:
-                    logger.debug(
-                        "Not requesting task_id=%s: %r",
-                        theader.task_id,
-                        error)
+                    logger.debug("Not requesting task_id=%s: %r",
+                                 theader.task_id, error)
                     return None
                 except Exception:  # pylint: disable=broad-except
                     logger.exception("Cannot retrieve benchmark score")
@@ -450,24 +447,19 @@ class TaskServer(
                 ProviderPricing(
                     price_per_wallclock_h=self.config_desc.min_price,
                     price_per_cpu_h=self.config_desc.price_per_cpu_h,
-                ),
-                theader.max_price,
-                theader.task_owner.key
-            )
-            self.task_manager.add_comp_task_request(
-                theader=theader, price=price,
-                performance=benchmark_score
-            )
+                ), theader.max_price, theader.task_owner.key)
+            self.task_manager.add_comp_task_request(theader=theader,
+                                                    price=price,
+                                                    performance=benchmark_score)
             wtct = message.tasks.WantToComputeTask(
                 perf_index=benchmark_score,
                 cpu_usage=benchmark_cpu_usage,
                 price=price,
                 max_resource_size=self.config_desc.max_resource_size,
                 max_memory_size=self.config_desc.max_memory_size,
-
+                num_subtasks=num_subtasks,
                 concent_enabled=self.client.concent_service.enabled
                 if theader.concent_enabled else False,
-
                 provider_public_key=self.keys_auth.key_id,
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
@@ -481,7 +473,7 @@ class TaskServer(
             return theader.task_id
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Cannot send request for task: %s", err)
-            logger.debug("Detailed traceback", exc_info=True)
+            logger.warning("Detailed traceback", exc_info=True)
             self.remove_task_header(theader.task_id)
 
         return None
@@ -490,7 +482,7 @@ class TaskServer(
             self,
             msg: message.tasks.TaskToCompute,
     ) -> bool:
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
@@ -511,8 +503,10 @@ class TaskServer(
 
             defer.gatherResults(deferred_list, consumeErrors=True)\
                 .addCallbacks(
-                    lambda _: self.resource_collected(msg.task_id),
-                    lambda e: self.resource_failure(msg.task_id, e))
+                    lambda _: self.resource_collected(msg.task_id,
+                                                      msg.subtask_id),
+                    lambda e: self.resource_failure(msg.task_id,
+                                                    msg.subtask_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -530,13 +524,8 @@ class TaskServer(
         )
         return True
 
-    def resource_collected(self, task_id: str) -> bool:
-        if self.task_computer.assigned_task_id != task_id:
-            logger.error("Resource collected for a wrong task, %s", task_id)
-            return False
-
-        self.task_computer.start_computation()
-        return True
+    def resource_collected(self, task_id: str, subtask_id: str = None) -> bool:
+        return self.task_computer.start_computation(task_id, subtask_id)
 
     def resource_failure(self, task_id: str, reason: str) -> None:
         if self.task_computer.assigned_task_id != task_id:
@@ -568,9 +557,8 @@ class TaskServer(
         # this is purely for tests
         if self.config_desc.overwrite_results:
             for file_path in result:
-                shutil.copyfile(
-                    src=self.config_desc.overwrite_results,
-                    dst=file_path)
+                shutil.copyfile(src=self.config_desc.overwrite_results,
+                                dst=file_path)
 
         header = self.task_keeper.task_headers[task_id]
 
@@ -578,14 +566,13 @@ class TaskServer(
         last_sending_trial = 0
         stats = stats or {}
 
-        wtr = WaitingTaskResult(
-            task_id=task_id,
-            subtask_id=subtask_id,
-            result=result or (str(task_api_result),),
-            last_sending_trial=last_sending_trial,
-            delay_time=delay_time,
-            owner=header.task_owner,
-            stats=stats)
+        wtr = WaitingTaskResult(task_id=task_id,
+                                subtask_id=subtask_id,
+                                result=result or (str(task_api_result),),
+                                last_sending_trial=last_sending_trial,
+                                delay_time=delay_time,
+                                owner=header.task_owner,
+                                stats=stats)
 
         def enqueue_computed_task_result():
             self.results_to_send[wtr.subtask_id] = wtr
@@ -603,18 +590,15 @@ class TaskServer(
             enqueue_computed_task_result()
 
         def on_result_share_error(err):
-            logger.error(
-                "Cannot share resources for subtask_id=%s: %r",
-                subtask_id, err)
+            logger.error("Cannot share resources for subtask_id=%s: %r",
+                         subtask_id, err)
 
         client_options = self.get_share_options(
             timeout=deadline_to_timeout(header.deadline))
-        deferred = self.new_resource_manager.share(
-            task_api_result,
-            client_options)
+        deferred = self.new_resource_manager.share(task_api_result,
+                                                   client_options)
         deferred.addCallbacks(  # pylint: disable=no-member
-            on_result_share_success,
-            on_result_share_error)
+            on_result_share_success, on_result_share_error)
 
     def _create_and_set_result_package(self, wtr):
         task_result_manager = self.task_manager.task_result_manager
@@ -622,10 +606,8 @@ class TaskServer(
             timeout=self.RESULT_SHARE_TIMEOUT)
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(
-            wtr,
-            client_options,
-            wtr.result_secret)
+        result = task_result_manager.create(wtr, client_options,
+                                            wtr.result_secret)
 
         (
             wtr.result_hash,
@@ -635,13 +617,11 @@ class TaskServer(
             wtr.package_path,
         ) = result
 
-    def send_task_failed(
-            self,
-            subtask_id: str,
-            task_id: str,
-            err_msg: str,
-            reason=message.TaskFailure.DEFAULT_REASON
-    ) -> None:
+    def send_task_failed(self,
+                         subtask_id: str,
+                         task_id: str,
+                         err_msg: str,
+                         reason=message.TaskFailure.DEFAULT_REASON) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
@@ -719,10 +699,8 @@ class TaskServer(
             logger.debug("task_header=%r", task_header)
             return False
         if task_header.deadline < time.time():
-            logger.info(
-                "Task's deadline already in the past. task_id=%r",
-                task_header.task_id
-            )
+            logger.info("Task's deadline already in the past. task_id=%r",
+                        task_header.task_id)
             logger.debug("task_header=%r", task_header)
             return False
 
@@ -769,11 +747,9 @@ class TaskServer(
         return self.results_to_send.pop(subtask_id, None)
 
     @inlineCallbacks
-    def change_config(
-            self,
-            config_desc: ClientConfigDescriptor,
-            run_benchmarks: bool = False
-    ) -> Deferred:  # pylint: disable=arguments-differ
+    def change_config(self,
+                      config_desc: ClientConfigDescriptor,
+                      run_benchmarks: bool = False) -> Deferred:
 
         PendingConnectionsServer.change_config(self, config_desc)
         yield self.task_keeper.change_config(config_desc)
@@ -794,8 +770,8 @@ class TaskServer(
 
         self.task_computer.lock_config(True)
         deferred = Deferred()
-        self.benchmark_manager.run_all_benchmarks(
-            deferred.callback, deferred.errback)
+        self.benchmark_manager.run_all_benchmarks(deferred.callback,
+                                                  deferred.errback)
         yield deferred
         self.task_computer.lock_config(False)
 
@@ -823,14 +799,9 @@ class TaskServer(
         # subtask. Issue #2405
 
     # pylint:disable=too-many-arguments
-    def subtask_accepted(
-            self,
-            sender_node_id: str,
-            task_id: str,
-            subtask_id: str,
-            payer_address: str,
-            value: int,
-            accepted_ts: int):
+    def subtask_accepted(self, sender_node_id: str, task_id: str,
+                         subtask_id: str, payer_address: str, value: int,
+                         accepted_ts: int):
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
         self._task_result_sent(subtask_id)
@@ -847,8 +818,8 @@ class TaskServer(
         """My (provider's) results were accepted by the Concent"""
         logger.debug("Subtask %r settled by the Concent", subtask_id)
         self._task_result_sent(subtask_id)
-        self.client.transaction_system.settle_income(
-            sender_node_id, subtask_id, settled_ts)
+        self.client.transaction_system.settle_income(sender_node_id, subtask_id,
+                                                     settled_ts)
 
     def subtask_waiting(self, task_id, subtask_id=None):
         logger.debug(
@@ -868,8 +839,14 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, task_id, subtask_id, key_id, eth_address: str,
-                      value: int, *, unlock_funds=True) -> TaskPayment:
+    def accept_result(self,
+                      task_id,
+                      subtask_id,
+                      key_id,
+                      eth_address: str,
+                      value: int,
+                      *,
+                      unlock_funds=True) -> TaskPayment:
         # FIXME: trust
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
@@ -894,9 +871,12 @@ class TaskServer(
         elif event == 'overdue_single':
             self._decrease_trust_payment(node_id)
 
-    def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
-                                  event='default', subtask_id=None,
-                                  min_performance=None, **_kwargs):
+    def finished_subtask_listener(
+            self,  # pylint: disable=too-many-arguments
+            event='default',
+            subtask_id=None,
+            min_performance=None,
+            **_kwargs):
 
         if event != 'subtask_finished':
             return
@@ -904,7 +884,6 @@ class TaskServer(
         keeper = self.task_manager.comp_task_keeper
 
         try:
-
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id)
             performance = keeper.active_tasks[task_id].performance
@@ -922,10 +901,12 @@ class TaskServer(
             logger.error("Finished subtask listener: %r", exc)
             return
 
-    def finished_task_listener(self, event='default', task_id=None, op=None,
+    def finished_task_listener(self,
+                               event='default',
+                               task_id=None,
+                               op=None,
                                **_kwargs):
-        if not (event == 'task_status_updated'
-                and self.client.p2pservice):
+        if not (event == 'task_status_updated' and self.client.p2pservice):
             return
         if not (op in [TaskOp.FINISHED, TaskOp.TIMEOUT, TaskOp.ABORTED]):
             return
@@ -957,11 +938,9 @@ class TaskServer(
         prv_port = prv_port or node_info.prv_port
         pub_port = pub_port or node_info.pub_port
 
-        socket_addresses = super().get_socket_addresses(
-            node_info=node_info,
-            prv_port=prv_port,
-            pub_port=pub_port
-        )
+        socket_addresses = super().get_socket_addresses(node_info=node_info,
+                                                        prv_port=prv_port,
+                                                        pub_port=pub_port)
 
         address = self.client.get_suggested_addr(node_info.key)
         if not address:
@@ -978,8 +957,8 @@ class TaskServer(
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
 
     def add_forwarded_session_request(self, key_id, conn_id):
-        self.forwarded_session_requests[key_id] = dict(
-            conn_id=conn_id, time=time.time())
+        self.forwarded_session_requests[key_id] = dict(conn_id=conn_id,
+                                                       time=time.time())
 
     def get_min_performance_for_env(self, env_id: str) -> float:
         env = self.get_environment_by_id(env_id)
@@ -1000,12 +979,8 @@ class TaskServer(
         not_accepted = 'not accepted'
 
     def should_accept_provider(  # pylint: disable=too-many-return-statements
-            self,
-            node_id: str,
-            ip_addr: str,
-            task_id: str,
-            provider_perf: float,
-            max_memory_size: int,
+            self, node_id: str, ip_addr: str, task_id: str,
+            provider_perf: float, max_memory_size: int,
             offer_hash: str) -> bool:
 
         node_name_id = short_node_id(node_id)
@@ -1017,8 +992,7 @@ class TaskServer(
             min_memory = task.header.estimated_memory
             mask = task.header.mask
             accept_client_verdict = task.should_accept_client(
-                node_id,
-                offer_hash)
+                node_id, offer_hash)
         elif self.requested_task_manager.task_exists(task_id):
             req_task = self.requested_task_manager.get_requested_task(task_id)
             assert req_task, "Task missing due a race condition"
@@ -1030,7 +1004,8 @@ class TaskServer(
         else:
             logger.info('Cannot find task in my tasks: %s', ids)
             self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
+                node_id=node_id,
+                task_id=task_id,
                 reason=self.RejectedReason.not_my_task)
             return False
 
@@ -1040,7 +1015,8 @@ class TaskServer(
             logger.info(f'insufficient provider performance: {provider_perf}'
                         f' < {min_accepted_perf}; {ids}')
             self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
+                node_id=node_id,
+                task_id=task_id,
                 reason=self.RejectedReason.performance,
                 details={
                     'provider_perf': provider_perf,
@@ -1052,7 +1028,8 @@ class TaskServer(
             logger.info('insufficient provider memory size: '
                         f'{min_memory} B < {max_memory_size} KiB; {ids}')
             self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
+                node_id=node_id,
+                task_id=task_id,
                 reason=self.RejectedReason.memory_size,
                 details={
                     'memory_size': min_memory,
@@ -1066,10 +1043,10 @@ class TaskServer(
         if not allowed:
             reason_msg = 'unknown reason' if reason is None else reason.value
             logger.info(f'provider is {reason_msg}; {ids}')
-            self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
-                reason=self.RejectedReason.acl,
-                details={'acl_reason': reason_msg})
+            self.notify_provider_rejected(node_id=node_id,
+                                          task_id=task_id,
+                                          reason=self.RejectedReason.acl,
+                                          details={'acl_reason': reason_msg})
             return False
 
         trust = self.client.get_computing_trust(node_id)
@@ -1077,7 +1054,8 @@ class TaskServer(
             logger.info(f'insufficient provider trust level: {trust} < '
                         f'{self.config_desc.computing_trust}; {ids}')
             self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
+                node_id=node_id,
+                task_id=task_id,
                 reason=self.RejectedReason.trust,
                 details={
                     'trust': trust,
@@ -1087,9 +1065,9 @@ class TaskServer(
 
         if not mask.matches(decode_hex(node_id)):
             logger.info(f'network mask mismatch: {ids}')
-            self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
-                reason=self.RejectedReason.netmask)
+            self.notify_provider_rejected(node_id=node_id,
+                                          task_id=task_id,
+                                          reason=self.RejectedReason.netmask)
             return False
 
         if accept_client_verdict != AcceptClientVerdict.ACCEPTED:
@@ -1097,7 +1075,8 @@ class TaskServer(
                         f' for this task at this moment '
                         f'(either waiting for results or previously failed)')
             self.notify_provider_rejected(
-                node_id=node_id, task_id=task_id,
+                node_id=node_id,
+                task_id=task_id,
                 reason=self.RejectedReason.not_accepted,
                 details={
                     'verdict': accept_client_verdict.value,
@@ -1108,7 +1087,9 @@ class TaskServer(
         return True
 
     @classmethod
-    def notify_provider_rejected(cls, node_id: str, task_id: str,
+    def notify_provider_rejected(cls,
+                                 node_id: str,
+                                 task_id: str,
                                  reason: RejectedReason,
                                  details: Optional[Dict[str, Any]] = None):
         dispatcher.send(
@@ -1133,12 +1114,10 @@ class TaskServer(
         return SupportStatus.err({UnsupportReason.REQUESTOR_TRUST: trust})
 
     @rpc_utils.expose('net.peer.disallow')
-    def disallow_node(
-            self,
-            node_id: Union[str, list],
-            timeout_seconds: int = -1,
-            persist: bool = False
-    ) -> None:
+    def disallow_node(self,
+                      node_id: Union[str, list],
+                      timeout_seconds: int = -1,
+                      persist: bool = False) -> None:
         if isinstance(node_id, str):
             node_id = [node_id]
         for item in node_id:
@@ -1177,9 +1156,7 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.acl.new')
     def acl_setup(self, default_rule: str, exceptions: List[str]) -> None:
-        new_acl = setup_acl(self.client,
-                            AclRule[default_rule],
-                            exceptions)
+        new_acl = setup_acl(self.client, AclRule[default_rule], exceptions)
         self.acl = new_acl
 
     def _sync_forwarded_session_requests(self):
@@ -1234,9 +1211,7 @@ class TaskServer(
                     )
 
         for wtf in list(self.failures_to_send.values()):
-            helpers.send_task_failure(
-                waiting_task_failure=wtf,
-            )
+            helpers.send_task_failure(waiting_task_failure=wtf,)
         self.failures_to_send.clear()
 
     # CONFIGURATION METHODS
