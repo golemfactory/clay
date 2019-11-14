@@ -557,8 +557,6 @@ class ClientProvider:
             output_directory=Path(golem_params['output_directory']),
             max_price_per_hour=int(golem_params['max_price_per_hour']),
             max_subtasks=int(golem_params['max_subtasks']),
-            # FIXME: refactor for Task API v0.24.0
-            min_memory=int(golem_params['min_memory']),
             task_timeout=int(golem_params['task_timeout']),
             subtask_timeout=int(golem_params['subtask_timeout']),
             concent_enabled=bool(golem_params.get('concent_enabled', False)),

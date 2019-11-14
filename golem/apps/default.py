@@ -11,7 +11,7 @@ BlenderAppDefinition = AppDefinition(
     name='golemfactory/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
-    version='0.6.0',
+    version='0.7.0',
     description=(
         'Rendering with Blender, the free and open source '
         '3D creation suite'
@@ -19,22 +19,21 @@ BlenderAppDefinition = AppDefinition(
     requestor_env=DOCKER_CPU_ENV_ID,
     requestor_prereq=dict(
         image='golemfactory/blenderapp',
-        tag='0.6.0',
+        tag='0.7.0',
     ),
     market_strategy=RequestorBrassMarketStrategy,
     max_benchmark_score=10000.,
 )
 
-APPS = [
-    BlenderAppDefinition,
-]
+APPS = {
+    BlenderAppDefinition.id: BlenderAppDefinition
+}
 
 
 def save_built_in_app_definitions(path: Path) -> List[AppId]:
     app_ids = []
 
-    for app in APPS:
-        app_id = app.id
+    for app_id, app in APPS.items():
 
         filename = f"{app.name}_{app.version}_{app_id}.json"
         filename = sanitize_filename(filename, replacement_text="_")

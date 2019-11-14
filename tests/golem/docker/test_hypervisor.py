@@ -7,7 +7,7 @@ from subprocess import CalledProcessError
 from typing import Optional, Dict
 from unittest import mock, TestCase
 
-from golem.core.common import is_osx
+from golem.core.common import is_osx, is_windows
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
 from golem.docker.config import DOCKER_VM_NAME as VM_NAME, DEFAULTS
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
@@ -483,9 +483,10 @@ class TestDockerForMacHypervisor(TempDirFixture):
 
 class TestDummyHypervisor(TestCase):
 
+    @mock.patch('golem.docker.hypervisor.dummy.DockerMachineCommandHandler')
     @mock.patch('golem.docker.hypervisor.dummy.local_client')
-    def test_get_port_mapping(self, local_client):
-        container_ip = '127.0.0.1' if is_osx() else '172.17.0.2'
+    def test_get_port_mapping(self, local_client, command_handler):
+        container_ip = '172.17.0.2'
         local_client().inspect_container.return_value = {
             'NetworkSettings': {
                 'Networks': {
@@ -500,7 +501,17 @@ class TestDummyHypervisor(TestCase):
                 }
             }
         }
+        vm_ip = '10.0.0.3'
+        command_handler.run.return_value = vm_ip
+
         hypervisor = DummyHypervisor(mock.Mock())
         host, port = hypervisor.get_port_mapping('container_id', 12345)
-        self.assertEqual(host, container_ip)
+
         self.assertEqual(port, 12345)
+        if is_osx():
+            self.assertEqual(host, '127.0.0.1')
+        elif is_windows():
+            self.assertEqual(host, vm_ip)
+            command_handler.run.assert_called_once_with('ip', VM_NAME)
+        else:
+            self.assertEqual(host, container_ip)
