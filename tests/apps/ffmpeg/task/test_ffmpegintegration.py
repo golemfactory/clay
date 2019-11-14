@@ -14,9 +14,7 @@ from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
-    AudioCodecNotSupportedByContainer
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskStatus
+    AudioCodecNotSupportedByContainer, ffmpegMergeReplaceError
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
@@ -435,7 +433,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     def _prepare_task_def_for_strip_streams(self, strip_streams):
         resource_stream = os.path.join(
             self.RESOURCES,
-            "unsupported-stream.mpg")  # noqa pylint: disable=line-too-long
+            "unsupported-stream.mpg")
         result_file = os.path.join(
             self.root_dir,
             f'test_standalone_strip_streams_{strip_streams}.mp4')
@@ -459,23 +457,11 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         output_file = task.task_definition.output_file
         self.assertTrue(os.path.isfile(output_file))
 
-    # This test want work for two serious reason that we must address
-    # in the future.
-    # Tasks don't have failed state. We can set failure only for subtasks
-    # and they will be restarted until timeout ocures. Whole task can only
-    # be finished, aborted or timeouted. We need additional state, because
-    # we have no guarantee that merge step won't fail.
-    #
-    # The second reason - throwing exception in merge step will be catched
-    # in Defered not in TaskManager, so task manager isn't notified about
-    # failure.
-    @pytest.mark.skip
     @pytest.mark.slow
     def test_video_with_unsupported_streams_should_fail_transcode_without_strip_streams(self):  # noqa pylint: disable=line-too-long
         task_def = self._prepare_task_def_for_strip_streams(strip_streams=False)
         # We know that if we don't strip subtitles and data streams in this
         # particular case ffmpeg won't be able to convert them and fail. But it
         # is not necessarily the case for non-whitelisted streams in general.
-        task: Task = self.execute_task(task_def)
-        print(self.get_task_state(task))
-        self.assertTrue(self.get_task_state(task) == TaskStatus.aborted)
+        with self.assertRaises(ffmpegMergeReplaceError):
+            self.execute_task(task_def)
