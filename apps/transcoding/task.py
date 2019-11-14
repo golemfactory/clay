@@ -85,20 +85,21 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
 
-        logger.debug('Initialization of FFmpegTask')
-
         task_id = self.task_definition.task_id
+
+        logger.debug('Initialization of FFmpegTask: [task_id=%s]', task_id)
+
         task_output_dir = dir_manager.get_task_output_dir(task_id)
-
-        # results from providers are collected in tmp
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
+        
         if not self.task_resources:
-            raise TranscodingException('There is no specified resources')
+            raise TranscodingException(
+                '[task_id={}] There is no input file.'.format(task_id))
 
+        # We expect, that there's only one resource.
         input_file = self.task_resources[0]
 
-        stream_operator = StreamOperator()
-        chunks, video_metadata = stream_operator.\
+        chunks, video_metadata = StreamOperator().\
             extract_video_streams_and_split(
                 input_file,
                 self.get_total_tasks(),
@@ -107,9 +108,10 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
         if len(chunks) < self.get_total_tasks():
             logger.warning('%d subtasks was requested but video splitting '
-                           'process resulted in %d chunks.',
+                           'process resulted in %d chunks. [task_id=%s]',
                            self.get_total_tasks(),
-                           len(chunks))
+                           len(chunks),
+                           task_id)
 
         streams = list(map(lambda x: x if os.path.isabs(x) else os.path
                            .join(task_output_dir, x), chunks))
