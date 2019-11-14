@@ -1,7 +1,9 @@
 from typing import Optional, Dict, Tuple
 
-from golem.core.common import is_osx
+from golem.core.common import is_osx, is_windows
 from golem.docker.client import local_client
+from golem.docker.commands.docker_machine import DockerMachineCommandHandler
+from golem.docker.config import DOCKER_VM_NAME
 from golem.docker.hypervisor import Hypervisor
 
 
@@ -45,8 +47,14 @@ class DummyHypervisor(Hypervisor):
         config = api_client.inspect_container(container_id)
         net_config = config['NetworkSettings']
 
+        # TODO: Remove if-s when NonHypervisedDockerCPUEnvironment is removed
         if is_osx():
             ip_address = '127.0.0.1'
+        elif is_windows():
+            vm_ip = DockerMachineCommandHandler.run('ip', DOCKER_VM_NAME)
+            if vm_ip is None:
+                raise RuntimeError('Cannot retrieve Docker VM IP address')
+            ip_address = vm_ip
         else:
             ip_address = net_config['Networks']['bridge']['IPAddress']
 

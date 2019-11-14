@@ -34,8 +34,10 @@ from golem.envs import (
     EnvSupportStatus,
     Prerequisites,
     RuntimeBase,
+    RuntimeId,
     RuntimeInput,
     RuntimeOutput,
+    RuntimeOutputBase,
     RuntimePayload,
     RuntimeStatus,
     BenchmarkResult)
@@ -74,7 +76,7 @@ class DockerCPUConfig(EnvConfig):
         return cls(work_dirs=work_dirs, **data)
 
 
-class DockerOutput(RuntimeOutput):
+class DockerOutput(RuntimeOutputBase):
 
     def __init__(
             self, raw_output: Iterable[bytes], encoding: Optional[str] = None
@@ -230,6 +232,9 @@ class DockerCPURuntime(RuntimeBase):
 
         self._logger.info("Runtime is no longer running. "
                           "Stopping status update thread.")
+
+    def id(self) -> Optional[RuntimeId]:
+        return self._container_id
 
     def prepare(self) -> Deferred:
         self._change_status(

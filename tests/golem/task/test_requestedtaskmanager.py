@@ -7,9 +7,10 @@ from pathlib import Path
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.enums import VerifyResult
-from golem_task_api.structs import Subtask
+from golem_task_api.structs import Subtask, Infrastructure
 from mock import ANY, Mock
 import pytest
+from twisted.internet import defer
 
 from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
@@ -37,7 +38,8 @@ def mock_client(monkeypatch):
 
     client_mock.create_task.return_value = Mock(
         env_id='env_id',
-        prerequisites={}
+        prerequisites={},
+        inf_requirements=Infrastructure(min_memory_mib=2000.),
     )
     return client_mock
 
@@ -62,6 +64,9 @@ class TestRequestedTaskManager:
             public_key=self.public_key,
             root_path=self.rtm_path
         )
+
+        self.env_manager.environment().install_prerequisites.return_value = \
+            defer.succeed(True)
 
         monkeypatch.setattr(
             requestedtaskmanager,
@@ -88,7 +93,8 @@ class TestRequestedTaskManager:
         prerequisites = {'key': 'value'}
         mock_client.create_task.return_value = Mock(
             env_id=env_id,
-            prerequisites=prerequisites
+            prerequisites=prerequisites,
+            inf_requirements=Infrastructure(min_memory_mib=2000.),
         )
 
         # when
@@ -303,6 +309,28 @@ class TestRequestedTaskManager:
         assert not self.rtm.has_unfinished_tasks()
 
     @pytest.mark.asyncio
+    async def test_subtask_timeout(self, mock_client):
+        self._add_next_subtask_to_client_mock(mock_client)
+        task_timeout = 10
+        subtask_timeout = 1
+        task_id = await self._start_task(
+            task_timeout=task_timeout,
+            subtask_timeout=subtask_timeout)
+        subtask_id = (await self.rtm.get_next_subtask(
+            task_id, self._get_computing_node()
+        )).subtask_id
+
+        # Unfortunately feezegun doesn't mock asyncio's time
+        # and can't be used here
+        await asyncio.sleep(subtask_timeout)
+
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.task == task_id,
+            RequestedSubtask.subtask_id == subtask_id)
+        assert subtask.status == SubtaskStatus.timeout
+        mock_client.abort_subtask.assert_called_once_with(task_id, subtask_id)
+
+    @pytest.mark.asyncio
     async def test_get_started_tasks(self, mock_client):
         # given
         task_id = self._create_task()
@@ -401,19 +429,19 @@ class TestRequestedTaskManager:
 
     def _build_golem_params(
             self,
-            resources=[],
+            resources=None,
             task_timeout=1,
+            subtask_timeout=1
     ) -> CreateTaskParams:
         return CreateTaskParams(
             app_id='a',
             name='a',
             task_timeout=task_timeout,
-            subtask_timeout=1,
+            subtask_timeout=subtask_timeout,
             output_directory=self.tmp_path / 'output',
-            resources=resources,
+            resources=resources or [],
             max_subtasks=1,
             max_price_per_hour=1,
-            min_memory=0,
             concent_enabled=False,
         )
 

@@ -1,60 +1,54 @@
-from pathlib import Path
-from typing import List
-from unittest import mock
-import click
 import json
 import logging
 import shutil
 import tempfile
 import time
+from pathlib import Path
+from typing import List
+from unittest import mock
 
-import golem.apps
-from golem import database, model
-from golem.apps import manager as appmanager
-from golem.core.common import install_reactor
-from golem.core.deferred import deferred_from_future
-from golem.task import envmanager, requestedtaskmanager, taskcomputer
-from golem.task.task_api import docker
-from golem.envs.docker import cpu, whitelist
-
+import click
 from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
+
+from golem import database, model
+from golem.apps import (
+    manager as appmanager,
+    load_app_from_json_file,
+    AppDefinition,
+)
+from golem.apps.default import APPS
+from golem.core.common import install_reactor
+from golem.core.deferred import deferred_from_future
+from golem.envs.default import register_environments
+from golem.envs.docker.whitelist import Whitelist
+from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
 logging.basicConfig(level=logging.INFO)
 
 
 async def test_task(
         work_dir: Path,
-        environment: str,
-        env_prerequisites_json: str,
-        task_params_path: Path,
-        resources: List[Path],
+        task_params_path: str,
+        app_definition: AppDefinition,
+        resources: List[str],
         max_subtasks: int,
 ) -> None:
-    env_prerequisites = json.loads(env_prerequisites_json)
 
+    env_prerequisites = app_definition.requestor_prereq
     app_manager = appmanager.AppManager()
-    app_name = 'test_app'
-    app_manager.register_app(golem.apps.AppDefinition(
-        name=app_name,
-        requestor_env=environment,
-        requestor_prereq=env_prerequisites,
-        max_benchmark_score=1.0,
-    ))
-    app_manager.set_enabled(app_name, True)
+    app_manager.register_app(app_definition)
+    app_manager.set_enabled(app_definition.id, True)
 
-    env_manager = envmanager.EnvironmentManager()
-    docker_cpu_config = cpu.DockerCPUConfig(work_dirs=[work_dir])
-    docker_cpu_env = cpu.DockerCPUEnvironment(docker_cpu_config)
-    docker_image = cpu.DockerCPUEnvironment.parse_prerequisites(
-        env_prerequisites).image
-    whitelist.Whitelist.add(docker_image)
-    env_manager.register_env(
-        docker_cpu_env,
-        cpu.DOCKER_CPU_METADATA,
-        docker.DockerTaskApiPayloadBuilder,
-    )
-    env_manager.set_enabled(cpu.DOCKER_CPU_METADATA.id, True)
+    runtime_logs_dir = work_dir / 'runtime_logs'
+    runtime_logs_dir.mkdir()
+    env_manager = envmanager.EnvironmentManager(runtime_logs_dir)
+    # FIXME: Heavy coupled to docker, change this when adding more envs
+    # https://github.com/golemfactory/golem/pull/4856#discussion_r344162862
+    Whitelist.add(app_definition.requestor_prereq['image'])
+    register_environments(
+        work_dir=str(work_dir),
+        env_manager=env_manager)
 
     rtm_work_dir = work_dir / 'rtm'
     rtm_work_dir.mkdir()
@@ -75,15 +69,14 @@ async def test_task(
     output_dir = work_dir / 'output'
     output_dir.mkdir()
     golem_params = requestedtaskmanager.CreateTaskParams(
-        app_id=app_name,
+        app_id=app_definition.id,
         name='testtask',
         task_timeout=3600,
         subtask_timeout=3600,
         output_directory=output_dir,
-        resources=resources,
+        resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
         max_price_per_hour=1,
-        min_memory=0,
         concent_enabled=False,
     )
     with open(task_params_path, 'r') as f:
@@ -106,7 +99,7 @@ async def test_task(
         print('subtask', subtask_def)
         task_header = mock.Mock(
             task_id=task_id,
-            environment=environment,
+            environment=app_definition.requestor_env,
             environment_prerequisites=env_prerequisites,
             subtask_timeout=3600,
             deadline=time.time() + 3600,
@@ -126,9 +119,13 @@ async def test_task(
         (task_computer.get_subtask_inputs_dir().parent /
             subtask_def.subtask_id).mkdir()
         result_path = await task_computer.compute()
+        print(f'result_path={result_path}')
+        subtask_output_dir = rtm.get_subtask_outputs_dir(
+            task_id, subtask_def.subtask_id)
+        subtask_output_dir.mkdir()
         shutil.copy2(
             result_path,
-            rtm.get_subtask_outputs_dir(task_id, subtask_def.subtask_id),
+            subtask_output_dir,
         )
         print('Starting verification')
         verdict = await deferred_from_future(rtm.verify(
@@ -145,10 +142,9 @@ def test():
 
 
 async def _task(
-        environment,
-        env_prerequisites,
         task_params_path,
-        resource,
+        app_definition_path,
+        resources,
         max_subtasks,
         work_dir,
         leave_work_dir,
@@ -164,10 +160,9 @@ async def _task(
     try:
         await test_task(
             work_dir,
-            environment,
-            env_prerequisites,
             task_params_path,
-            list(resource),
+            app_definition_path,
+            list(resources),
             max_subtasks,
         )
     finally:
@@ -177,30 +172,66 @@ async def _task(
 
 
 @test.command()
-@click.argument('environment', type=click.STRING)
-@click.argument('env_prerequisites', type=click.STRING)
+@click.argument('app_definition_path', type=click.Path(exists=True))
 @click.argument('task_params_path', type=click.Path(exists=True))
-@click.option('--resource', type=click.Path(exists=True), multiple=True)
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
 @click.option('--max-subtasks', type=click.INT, default=2)
 @click.option('--workdir', type=click.Path(exists=True))
 @click.option('--leave-workdir', is_flag=True)
-def task(
-        environment,
-        env_prerequisites,
+def task_from_app_def(
+        app_definition_path,
         task_params_path,
-        resource,
+        resources,
         max_subtasks,
         workdir,
         leave_workdir,
 ):
     install_reactor()
+    app_definition = load_app_from_json_file(Path(app_definition_path))
     return react(
         lambda _reactor: ensureDeferred(
             _task(
-                environment,
-                env_prerequisites,
                 task_params_path,
-                resource,
+                app_definition,
+                resources,
+                max_subtasks,
+                workdir,
+                leave_workdir,
+            )
+        )
+    )
+
+
+@test.command()
+@click.argument('app_id', type=click.STRING)
+@click.argument('task_params_path', type=click.Path(exists=True))
+@click.option('--resources', type=click.Path(exists=True), multiple=True)
+@click.option('--max-subtasks', type=click.INT, default=2)
+@click.option('--workdir', type=click.Path(exists=True))
+@click.option('--leave-workdir', is_flag=True)
+def task_from_app_id(
+        app_id,
+        task_params_path,
+        resources,
+        max_subtasks,
+        workdir,
+        leave_workdir,
+):
+    app_definition = APPS.get(app_id)
+    if app_definition is None:
+        available_apps = {app.name: app_id for app_id, app in APPS.items()}
+        print(
+            'ERROR: Invalid app_id provided. '
+            f'id={app_id}, available={available_apps}'
+        )
+        return
+    install_reactor()
+    return react(
+        lambda _reactor: ensureDeferred(
+            _task(
+                task_params_path,
+                app_definition,
+                resources,
                 max_subtasks,
                 workdir,
                 leave_workdir,

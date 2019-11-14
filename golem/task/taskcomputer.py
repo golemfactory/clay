@@ -408,8 +408,9 @@ class NewTaskComputer:
                                                   to_unit=MemSize.mebi))
 
         # FIXME: Decide how to properly configure environments
-        docker_cpu = self._env_manager.environment(DOCKER_CPU_ENV_ID)
-        docker_cpu.update_config(DockerCPUConfig(**config_dict))
+        if self._env_manager.enabled(DOCKER_CPU_ENV_ID):
+            docker_cpu = self._env_manager.environment(DOCKER_CPU_ENV_ID)
+            docker_cpu.update_config(DockerCPUConfig(**config_dict))
 
         if self._env_manager.enabled(DOCKER_GPU_ENV_ID):
             docker_gpu = self._env_manager.environment(DOCKER_GPU_ENV_ID)

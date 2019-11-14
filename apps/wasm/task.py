@@ -583,7 +583,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
             logger.warning("Assigning task default budget: %d",
                            task_def.budget / denoms.ether)
         else:
-            task_def.budget = dictionary.get('budget') * denoms.ether
+            task_def.budget = round(dictionary.get('budget') * denoms.ether)
 
         return task_def
 
