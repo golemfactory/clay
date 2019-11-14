@@ -850,6 +850,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self._adjust_requestor_assigned_sum(
             msg.requestor_id, payment_value, budget)
 
+        logger.info(
+            "Result accepted. subtask_id=%s, "
+            "requestor_id=%s, payment_value=%s GNT",
+            msg.subtask_id,
+            msg.requestor_id,
+            payment_value / denoms.ether,
+        )
+
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
             task_id=msg.task_id,
