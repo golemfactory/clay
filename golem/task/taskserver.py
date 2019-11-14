@@ -1,4 +1,5 @@
-# pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
+# pylint: disable=too-many-instance-attributes,too-many-public-methods,
+# pylint: disable=too-many-lines
 
 import asyncio
 import functools
@@ -70,6 +71,7 @@ from golem.ranking.manager.database_manager import (
     update_requestor_assigned_sum,
     update_requestor_efficiency,
 )
+from golem.resource.resourcehandshake import ResourceHandshake
 from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task import timer
@@ -205,21 +207,21 @@ class TaskServer(
         self.max_trust = 1.0
         self.min_trust = 0.0
 
-        self.last_messages = []
+        self.last_messages: List[Any] = []
 
-        self.results_to_send = {}
-        self.failures_to_send = {}
+        self.results_to_send: Dict[str, Any] = {}
+        self.failures_to_send: Dict[str, Any] = {}
 
         self.use_ipv6 = use_ipv6
 
         self.forwarded_session_request_timeout = \
             config_desc.waiting_for_task_session_timeout
-        self.forwarded_session_requests = {}
+        self.forwarded_session_requests: Dict[str, Any] = {}
         self.acl = get_acl(self.client,
                            max_times=config_desc.disallow_id_max_times)
         self.acl_ip = DenyAcl(self.client,
                               max_times=config_desc.disallow_ip_max_times)
-        self.resource_handshakes = {}
+        self.resource_handshakes: Dict[str, ResourceHandshake] = {}
         self.requested_tasks: Set[str] = set()
         self._last_task_request_time: float = time.time()
 
@@ -526,7 +528,8 @@ class TaskServer(
         )
         return True
 
-    def resource_collected(self, task_id: str, subtask_id: str = None) -> bool:
+    def resource_collected(self, task_id: str,
+                           subtask_id: Optional[str] = None) -> bool:
         return self.task_computer.start_computation(task_id, subtask_id)
 
     def resource_failure(self, task_id: str, reason: str) -> None:
@@ -536,11 +539,14 @@ class TaskServer(
 
         subtask_id = self.task_computer.assigned_subtask_id
         self.task_computer.task_interrupted(task_id)
-        self.send_task_failed(
-            subtask_id,
-            task_id,
-            f'Error downloading resources: {reason}',
-        )
+        if subtask_id is not None:
+            self.send_task_failed(
+                subtask_id,
+                task_id,
+                f'Error downloading resources: {reason}',
+            )
+        else:
+            logger.error("Missing subtask info for task failure %s", task_id)
 
     def send_results(
             self,
@@ -557,7 +563,7 @@ class TaskServer(
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
         # this is purely for tests
-        if self.config_desc.overwrite_results:
+        if self.config_desc.overwrite_results and result is not None:
             for file_path in result:
                 shutil.copyfile(src=self.config_desc.overwrite_results,
                                 dst=file_path)
@@ -567,10 +573,14 @@ class TaskServer(
         delay_time = 0.0
         last_sending_trial = 0
         stats = stats or {}
+        if result is None:
+            task_result: Tuple = (str(task_api_result),)
+        else:
+            task_result = tuple(result)
 
         wtr = WaitingTaskResult(task_id=task_id,
                                 subtask_id=subtask_id,
-                                result=result or (str(task_api_result),),
+                                result=task_result,
                                 last_sending_trial=last_sending_trial,
                                 delay_time=delay_time,
                                 owner=header.task_owner,

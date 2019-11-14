@@ -1,3 +1,5 @@
+# flake8: noqa
+
 import asyncio
 import logging
 from pathlib import Path
@@ -654,7 +656,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     def _is_single_core_task(self, task_id: str) -> bool:
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
         if task_header is None:
-            return None
+            return False
         return self.task_server.is_task_single_core(task_header)
 
     def task_given(self, ctd: ComputeTaskDef) -> None:
@@ -683,7 +685,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return None
         return self.assigned_subtasks[0].assigned_subtask_id
 
-    def task_interrupted(self, task_id: str, subtask_id: str = None) -> None:
+    def task_interrupted(self, task_id: str,
+                         subtask_id: Optional[str] = None) -> None:
         for computation in self.assigned_subtasks.copy():
             if (subtask_id is None
                     or computation.assigned_subtask_id == subtask_id) \
