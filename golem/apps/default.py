@@ -41,6 +41,6 @@ def save_built_in_app_definitions(path: Path) -> List[AppId]:
 
         if not json_file.exists():
             save_app_to_json_file(app, json_file)
-            app_ids.append(app_id)
+        app_ids.append(app_id)
 
     return app_ids
