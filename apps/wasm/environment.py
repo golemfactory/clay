@@ -7,5 +7,6 @@ class WasmTaskEnvironment(DockerEnvironment):
     ENV_ID = "WASM"
     SHORT_DESCRIPTION = "WASM Sandbox"
 
-    def is_single_core(self):
+    @classmethod
+    def is_single_core(cls):
         return True

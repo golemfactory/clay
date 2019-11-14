@@ -80,7 +80,8 @@ class Environment():
         """
         return SupportStatus.ok()
 
-    def is_single_core(self) -> bool:
+    @classmethod
+    def is_single_core(cls) -> bool:
         """ Returns true if task runs on single cpu core """
         return False
 

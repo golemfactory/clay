@@ -1,4 +1,5 @@
-# -*- coding: utf-8 -*-
+# pylint: disable=too-many-instance-attributes,too-many-public-methods,too-many-lines
+
 import asyncio
 import functools
 import itertools
@@ -7,7 +8,6 @@ import os
 import shutil
 import time
 import weakref
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import (
@@ -20,6 +20,7 @@ from typing import (
     Tuple,
     TYPE_CHECKING,
 )
+from dataclasses import dataclass, field
 
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
@@ -111,6 +112,7 @@ class TaskServer(
     BENCHMARK_TIMEOUT = 60  # s
     RESULT_SHARE_TIMEOUT = 3600 * 24 * 7 * 2  # s
 
+    # pylint: disable=too-many-arguments,too-many-locals,too-many-statements
     def __init__(self,
                  node,
                  config_desc: ClientConfigDescriptor,
@@ -298,8 +300,7 @@ class TaskServer(
         env = self.get_environment_by_id(th.environment)
         if env is not None and isinstance(env, OldEnv):
             return env.is_single_core()
-        else:
-            return False
+        return False
 
     def get_environment_by_id(self,
                               env_id: str) -> Optional[Union[OldEnv, NewEnv]]:
@@ -354,6 +355,7 @@ class TaskServer(
         deferred.addErrback(_request_task_error)  # pylint: disable=no-member
 
     @inlineCallbacks
+    # pylint: disable=too-many-return-statements,too-many-branches
     def _request_task(self, theader: dt_tasks.TaskHeader) -> Deferred:
         try:
             supported = self.should_accept_requestor(theader.task_owner.key)
@@ -506,8 +508,7 @@ class TaskServer(
                 .addCallbacks(
                     lambda _: self.resource_collected(msg.task_id,
                                                       msg.subtask_id),
-                    lambda e: self.resource_failure(msg.task_id,
-                                                    msg.subtask_id, e))
+                    lambda e: self.resource_failure(msg.task_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -534,7 +535,7 @@ class TaskServer(
             return
 
         subtask_id = self.task_computer.assigned_subtask_id
-        self.task_computer.task_interrupted()
+        self.task_computer.task_interrupted(task_id)
         self.send_task_failed(
             subtask_id,
             task_id,
@@ -1171,10 +1172,7 @@ class TaskServer(
                 del self.forwarded_session_requests[key_id]
                 self.final_conn_failure(data['conn_id'])
 
-    def _get_factory(self):
-        return self.factory(self)
-
-    def _listening_established(self, port, **kwargs):
+    def _listening_established(self, port: int) -> None:
         logger.debug('_listening_established(%r)', port)
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))

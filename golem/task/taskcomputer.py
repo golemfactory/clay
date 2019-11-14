@@ -51,6 +51,7 @@ class CompStats(object):
 
 class TaskComputerAdapter:
     """ This class hides old and new task computer under a single interface. """
+
     def __init__(self,
                  task_server: 'TaskServer',
                  env_manager: EnvironmentManager,
@@ -71,7 +72,7 @@ class TaskComputerAdapter:
 
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
-            and not task_server.config_desc.in_shutdown
+                             and not task_server.config_desc.in_shutdown
         self.runnable = True
         self._listeners = []  # type: ignore
 
@@ -99,17 +100,17 @@ class TaskComputerAdapter:
 
     def has_assigned_task(self) -> bool:
         return self._new_computer.has_assigned_task() \
-            or self._old_computer.has_assigned_task()
+               or self._old_computer.has_assigned_task()
 
     @property
     def assigned_task_id(self) -> Optional[str]:
         return self._new_computer.assigned_task_id \
-            or self._old_computer.assigned_task_id
+               or self._old_computer.assigned_task_id
 
     @property
     def assigned_subtask_id(self) -> Optional[str]:
         return self._new_computer.assigned_subtask_id \
-            or self._old_computer.assigned_subtask_id
+               or self._old_computer.assigned_subtask_id
 
     @property
     def support_direct_computation(self) -> bool:
@@ -156,7 +157,7 @@ class TaskComputerAdapter:
     @defer.inlineCallbacks
     def _handle_computation_results(self, task_id: str, subtask_id: str,
                                     computation: defer.Deferred
-                                    ) -> defer.Deferred:
+                                   ) -> defer.Deferred:
         try:
             output_file = yield computation
             # Output file is None if computation was timed out or cancelled
@@ -182,7 +183,7 @@ class TaskComputerAdapter:
         else:
             raise RuntimeError('task_interrupted: No task assigned.')
 
-    def can_take_work(self) -> None:
+    def can_take_work(self) -> bool:
         if self._old_computer.has_assigned_task():
             return self._old_computer.can_take_work()
         return not self._new_computer.has_assigned_task()
@@ -217,7 +218,7 @@ class TaskComputerAdapter:
                       config_desc: ClientConfigDescriptor,
                       in_background: bool = True) -> defer.Deferred:
         self.compute_tasks = config_desc.accept_tasks \
-            and not config_desc.in_shutdown
+                             and not config_desc.in_shutdown
         work_dir = Path(self._task_server.get_task_computer_root())
         yield self._new_computer.change_config(config_desc=config_desc,
                                                work_dir=work_dir)
@@ -594,11 +595,11 @@ class TaskComputation:
             tt: TaskThread = DockerTaskThread(docker_images, extra_data,
                                               dir_mapping, task_timeout,
                                               cpu_limit)
-        elif self.support_direct_computation:
+        elif self.task_computer.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir, task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
-            self.task_server.send_task_failed(
+            task_server.send_task_failed(
                 subtask_id,
                 self.assigned_subtask['task_id'],
                 "Host direct task not supported",
@@ -765,17 +766,20 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         return False
 
     def start_computation(self, task_id: str,
-                          subtask_id: Optional[str]) -> None:
+                          subtask_id: Optional[str]) -> bool:
+        started = False
         for computation in self.assigned_subtasks:
             if computation.assigned_task_id == task_id and (
                     subtask_id is None
                     or computation.assigned_subtask_id == subtask_id):
                 if not computation.computing:
+                    started = True
                     computation.start_computation()
                 else:
                     logger.warning(
                         "compuatation already started " +
                         "(task_id=%s, substask_id=%s)", task_id, subtask_id)
+        return started
 
     def task_finished(self, computation: TaskComputation) -> None:
         ctd = computation.assigned_subtask
@@ -814,10 +818,10 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             if not c.single_core:
                 return set()
             tasks = tasks - {c.assigned_task_id}
-        return set([
+        return {
             task_id for task_id in candidate_tasks
             if self._is_single_core_task(task_id)
-        ])
+        }
 
     def quit(self):
         if self.counting_thread is not None:
