@@ -1,6 +1,8 @@
 from unittest import TestCase, mock
 from uuid import uuid4
 
+from ethereum.utils import denoms
+
 from golem_messages.factories.datastructures import p2p
 from golem.testutils import TempDirFixture
 
@@ -79,6 +81,7 @@ TEST_TASK_DEFINITION_DICT = {
     'type': 'wasm',
     'name': 'wasm',
     'bid': 1,
+    'budget': 0.5,
     'timeout': '00:10:00',
     'subtask_timeout': '00:10:00',
     'options': {
@@ -108,6 +111,7 @@ class WasmTaskBuilderTestCase(TestCase):
             WasmTaskTypeInfo(), TEST_TASK_DEFINITION_DICT,
         )
         self.assertEqual(task_def.subtasks_count, 2)
+        self.assertEqual(task_def.budget, round(0.5 * denoms.ether))
 
         opts: WasmTaskOptions = task_def.options
         self.assertEqual(opts.input_dir, '/input/dir')
