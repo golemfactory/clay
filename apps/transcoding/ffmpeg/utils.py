@@ -10,6 +10,7 @@ from threading import Lock
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
 from golem.docker.image import DockerImage
@@ -55,40 +56,11 @@ class StreamOperator:
             task_dir,
             "split")
 
-        input_file_basename = os.path.basename(input_file_on_host)
-        input_file_in_container = os.path.join(
-            # FIXME: This is a path on the host but docker will create it in
-            # the container. It's unlikely that there's anything there but
-            # it's not guaranteed.
-            "/{}/".format(task_id),
-            input_file_basename)
-
-        # FIXME: The environment is stored globally. Changing it will affect
-        # containers started by other functions that do not do it themselves.
-        env = ffmpegEnvironment(binds=[DockerBind(
-            Path(input_file_on_host),
-            input_file_in_container,
-            'ro')])
-
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.EXTRACT_AND_SPLIT.value[0],
-            'input_file': input_file_in_container,
-            'parts': parts,
-        }
-
-        logger.debug(
-            'Running video stream extraction and splitting '
-            '[params = %s]',
-            extra_data)
-        with split_lock:
-            try:
-                result = self._do_job_in_container(
-                    directory_mapping,
-                    extra_data,
-                    env)
-            except ffmpegException as exception:
-                raise ffmpegExtractSplitError(str(exception)) from exception
+        result = FfmpegDockerAPI().extract_video_streams_and_split(
+            directory_mapping,
+            input_file_on_host,
+            parts
+        )
 
         split_result_file = os.path.join(directory_mapping.output,
                                          Commands.EXTRACT_AND_SPLIT.value[1])
@@ -97,7 +69,8 @@ class StreamOperator:
             raise ffmpegExtractSplitError(
                 f"Result file {split_result_file} does not exist")
 
-        logger.debug('Split result file is = %s [parts = %d]',
+        logger.debug('[task_id = %s] Split result file is = %s [parts = %d]',
+                     task_id,
                      split_result_file,
                      parts)
 
