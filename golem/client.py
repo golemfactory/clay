@@ -959,8 +959,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
-            -> Tuple[Optional[Dict], Optional[str]]:
+    def get_subtask(
+            self,
+            subtask_id: str,
+            task_id: Optional[str] = None,
+    ) -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             tm = self.task_server.task_manager
