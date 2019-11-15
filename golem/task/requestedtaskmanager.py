@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple, Iterable
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
+from golem_messages.datastructures.masking import Mask
 from golem_task_api.dirutils import RequestorDir, RequestorTaskDir
 from golem_task_api.enums import VerifyResult
 from golem_task_api.client import RequestorAppClient
@@ -574,7 +575,9 @@ class RequestedTaskManager:
         )
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         try:
-            task.mask.decrease(num_bits)
+            mask = Mask(task.mask)
+            mask.decrease(num_bits)
+            task.mask = mask.to_bytes()
             task.save()
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
