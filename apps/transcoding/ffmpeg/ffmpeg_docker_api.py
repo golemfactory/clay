@@ -11,20 +11,21 @@ from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from golem.core.common import HandleError
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerTaskThread, \
     DockerBind, DockerDirMapping
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.resource.dirmanager import DirManager
+
+
 
 FFMPEG_DOCKER_IMAGE = ffmpegEnvironment.DOCKER_IMAGE
 FFMPEG_DOCKER_TAG = ffmpegEnvironment.DOCKER_TAG
 FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
 FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
+
 
 # Suffix used to distinguish the temporary container that has no audio or data
 # streams from a complete video
@@ -35,13 +36,13 @@ logger = logging.getLogger(__name__)
 docker_lock = Lock()
 
 
+
+
 class Commands(enum.Enum):
     EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
-
-
 
 
 class FfmpegDockerAPI:

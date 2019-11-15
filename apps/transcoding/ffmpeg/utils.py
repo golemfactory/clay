@@ -1,25 +1,17 @@
-import enum
 import json
 import logging
 import os
 import shutil
 from pathlib import Path
 from typing import List, Optional, Tuple
-from threading import Lock
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
-from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
-from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerTaskThread, \
-    DockerBind, DockerDirMapping
-from golem.environments.environment import Environment
-from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.resource.dirmanager import DirManager
+from golem.docker.task_thread import DockerDirMapping
 
 
 logger = logging.getLogger(__name__)
