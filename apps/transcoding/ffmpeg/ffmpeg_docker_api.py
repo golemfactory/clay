@@ -34,7 +34,7 @@ VIDEO_ONLY_CONTAINER_SUFFIX = '[video-only]'
 
 logger = logging.getLogger(__name__)
 
-split_lock = Lock()
+docker_lock = Lock()
 
 
 class Commands(enum.Enum):
@@ -86,7 +86,7 @@ class FfmpegDockerAPI:
             '[params = %s]',
             extra_data)
 
-        with split_lock:
+        with docker_lock:
             try:
                 result = self._do_job_in_container(
                     self.dir_mapping,
@@ -99,6 +99,54 @@ class FfmpegDockerAPI:
             self._remove_split_intermediate_videos(self.dir_mapping)
 
         return result
+
+    def merge_and_replace_video_streams(
+            self,
+            input_file_on_host,
+            chunks_in_container,
+            output_file_basename,
+            container,
+            strip_unsupported_data_streams=False,
+            strip_unsupported_subtitle_streams=False):
+
+        container_files = {
+            # FIXME: /golem/tmp should not be hard-coded.
+            'in': os.path.join(
+                '/golem/tmp',
+                os.path.basename(input_file_on_host)),
+            'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
+        }
+        extra_data = {
+            'entrypoint': FFMPEG_ENTRYPOINT,
+            'command': Commands.MERGE_AND_REPLACE.value[0],
+            'input_file': container_files['in'],
+            'chunks': chunks_in_container,
+            'output_file': container_files['out'],
+            'container': container.value if container is not None else None,
+            'strip_unsupported_data_streams': strip_unsupported_data_streams,
+            'strip_unsupported_subtitle_streams':
+                strip_unsupported_subtitle_streams
+        }
+
+        logger.debug('Merge and replace params: %s', extra_data)
+
+        # FIXME: The environment is stored globally. Changing it will affect
+        # containers started by other functions that do not do it themselves.
+        env = ffmpegEnvironment(binds=[DockerBind(
+            Path(input_file_on_host),
+            container_files['in'],
+            'ro')])
+
+        with docker_lock:
+            try:
+                results = self._do_job_in_container(
+                    self.dir_mapping,
+                    extra_data,
+                    env)
+            except ffmpegException as exception:
+                raise ffmpegMergeReplaceError(str(exception)) from exception
+
+        return results
 
     @classmethod
     def _removed_intermediate_video_placeholder(cls, filepath: Path):

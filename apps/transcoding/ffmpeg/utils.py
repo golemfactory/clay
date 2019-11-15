@@ -165,42 +165,15 @@ class StreamOperator:
             task_dir,
             chunks_on_host)
 
-        container_files = {
-            # FIXME: /golem/tmp should not be hard-coded.
-            'in': os.path.join(
-                '/golem/tmp',
-                os.path.basename(input_file_on_host)),
-            'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
-        }
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.MERGE_AND_REPLACE.value[0],
-            'input_file': container_files['in'],
-            'chunks': chunks_in_container,
-            'output_file': container_files['out'],
-            'container': container.value if container is not None else None,
-            'strip_unsupported_data_streams': strip_unsupported_data_streams,
-            'strip_unsupported_subtitle_streams':
-                strip_unsupported_subtitle_streams
-        }
-
-        logger.debug('Merge and replace params: %s', extra_data)
-
-        # FIXME: The environment is stored globally. Changing it will affect
-        # containers started by other functions that do not do it themselves.
-        env = ffmpegEnvironment(binds=[DockerBind(
-            Path(input_file_on_host),
-            container_files['in'],
-            'ro')])
-
-        with split_lock:
-            try:
-                self._do_job_in_container(
-                    dir_mapping,
-                    extra_data,
-                    env)
-            except ffmpegException as exception:
-                raise ffmpegMergeReplaceError(str(exception)) from exception
+        ffmpeg_docker_api = FfmpegDockerAPI(dir_mapping)
+        _ = ffmpeg_docker_api.merge_and_replace_video_streams(
+            input_file_on_host,
+            chunks_in_container,
+            output_file_basename,
+            container,
+            strip_unsupported_data_streams,
+            strip_unsupported_subtitle_streams
+        )
 
         return os.path.join(dir_mapping.output, output_file_basename)
 
