@@ -234,12 +234,6 @@ class StreamOperator:
             for input_file in input_files
         ])
 
-        try:
-            dir_mapping.mkdirs(exist_ok=True)
-        except OSError:
-            raise ffmpegException(
-                "Failed to prepare directory structure for get_metadata")
-
         metadata_requests = [{
             'video': input_file,
             'output': f'metadata-logs-{os.path.splitext(input_file)[0]}.json'
