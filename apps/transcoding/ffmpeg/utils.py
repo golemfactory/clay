@@ -35,6 +35,8 @@ class StreamOperator:
                 parts
             )
 
+        FfmpegDockerAPI.remove_split_intermediate_videos(directory_mapping)
+
         output_files = result.get('data', [])
         if split_result_file not in output_files:
             raise ffmpegExtractSplitError(
@@ -146,6 +148,8 @@ class StreamOperator:
             strip_unsupported_data_streams,
             strip_unsupported_subtitle_streams
         )
+
+        FfmpegDockerAPI.remove_merge_intermediate_videos(dir_mapping)
 
         return os.path.join(dir_mapping.output, output_file_basename)
 

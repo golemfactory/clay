@@ -52,8 +52,7 @@ class FfmpegDockerAPI:
 
     def extract_video_streams_and_split(self,
                                         input_file_on_host: str,
-                                        parts: int,
-                                        remove_intermediate_videos=True):
+                                        parts: int):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
@@ -93,10 +92,6 @@ class FfmpegDockerAPI:
                     env)
             except ffmpegException as exception:
                 raise ffmpegExtractSplitError(str(exception)) from exception
-
-
-        if remove_intermediate_videos:
-            self.remove_split_intermediate_videos(self.dir_mapping)
 
         return results, os.path.join(self.dir_mapping.output,
                                      Commands.EXTRACT_AND_SPLIT.value[1])
@@ -216,3 +211,13 @@ class FfmpegDockerAPI:
     def remove_split_output_videos(cls, dir_mapping: DockerDirMapping):
         pattern = '*{}_*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
         cls._remove_intermediate_videos(dir_mapping.output, pattern)
+
+    @classmethod
+    def remove_merge_intermediate_videos(cls, dir_mapping: DockerDirMapping):
+        # Remove merged video without additional streams.
+        pattern = '*{}*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
+        cls._remove_intermediate_videos(dir_mapping.work, pattern)
+
+        # Remove video segments from resource directory.
+        pattern = '*{}_*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
+        cls._remove_intermediate_videos(dir_mapping.resources, pattern)
