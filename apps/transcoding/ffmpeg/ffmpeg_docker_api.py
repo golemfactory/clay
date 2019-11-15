@@ -3,6 +3,8 @@ import json
 import logging
 import os
 import shutil
+import glob
+
 from pathlib import Path
 from typing import List, Optional, Tuple
 from threading import Lock
@@ -49,10 +51,11 @@ class FfmpegDockerAPI:
     def extract_video_streams_and_split(self,
                                         directory_mapping: DockerDirMapping,
                                         input_file_on_host: str,
-                                        parts: int):
+                                        parts: int,
+                                        remove_intermediate_videos=True):
 
         input_file_basename = os.path.basename(input_file_on_host)
-        
+
         # FIXME: This is a path on the host but docker will create it in
         # the container. It's unlikely that there's anything there but
         # it's not guaranteed.
@@ -83,12 +86,28 @@ class FfmpegDockerAPI:
 
         with split_lock:
             try:
-                return self._do_job_in_container(
+                result = self._do_job_in_container(
                     directory_mapping,
                     extra_data,
                     env)
             except ffmpegException as exception:
                 raise ffmpegExtractSplitError(str(exception)) from exception
+
+        if remove_intermediate_videos:
+            self._remove_split_intermediate_videos(directory_mapping)
+
+        return result
+
+    @classmethod
+    def _remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
+        pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
+        print(pattern)
+        files_to_remove = list(Path(dir_mapping.work).glob(pattern))
+
+        logger.info("Removing intermediate files: %s", files_to_remove)
+
+        for file in files_to_remove:
+            os.remove(file)
 
     @staticmethod
     def _do_job_in_container(dir_mapping: DockerDirMapping,
