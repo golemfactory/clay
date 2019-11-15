@@ -75,7 +75,7 @@ class TestRequestedTaskManager:
             lambda *_: TaskState())
 
     @pytest.mark.asyncio
-    async def test_restore_tasks_timedout(self, freezer, mock_client):
+    async def test_restore_tasks_timedout(self, mock_client):
         # given
         mock_loop = MagicMock()
         mock_client.has_pending_subtasks.return_value = True
@@ -91,8 +91,8 @@ class TestRequestedTaskManager:
         mock_loop.time.return_value = datetime.datetime.now().timestamp()
         # when
         with patch(
-                'golem.task.requestedtaskmanager.asyncio.get_event_loop',
-                return_value=mock_loop
+            'golem.task.requestedtaskmanager.asyncio.get_event_loop',
+            return_value=mock_loop
         ):
             self.rtm.restore_tasks()
         # then
@@ -121,8 +121,8 @@ class TestRequestedTaskManager:
         mock_loop.time.return_value = datetime.datetime.now().timestamp()
         # when
         with patch(
-                'golem.task.requestedtaskmanager.asyncio.get_event_loop',
-                return_value=mock_loop
+            'golem.task.requestedtaskmanager.asyncio.get_event_loop',
+            return_value=mock_loop
         ):
             self.rtm.restore_tasks()
         # then
