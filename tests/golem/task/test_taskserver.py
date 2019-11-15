@@ -148,6 +148,7 @@ class TaskServerTestBase(LogTestCase,
         self.client.concent_service.enabled = False
         self.client.keys_auth.key_id = 'key_id'
         self.client.keys_auth.eth_addr = 'eth_addr'
+
         self.ts = TaskServer(
             node=dt_p2p_factory.Node(),
             config_desc=self.ccd,
@@ -237,10 +238,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         env_mock = Mock(spec=OldEnv)
         env_mock.get_benchmark_result = lambda: BenchmarkResult()
+
+        def compatible_tasks(s):
+            print(f'call {s}')
+            return s
+
+        self.ts.task_computer.compatible_tasks = compatible_tasks
+        self.ts.task_computer._old_computer.max_num_cores = 1
+
         self.ts.get_environment_by_id = Mock(return_value=env_mock)
         self._prepare_keys_auth()
         ts.add_task_header(task_header)
         ts._request_random_task()
+
         self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
         self.assertNotIn(task_id, ts.requested_tasks)
@@ -1325,7 +1335,7 @@ class TestSendResults(TaskServerTestBase):
         self.assertIsInstance(result, WaitingTaskResult)
         self.assertEqual(result.task_id, 'task_id')
         self.assertEqual(result.subtask_id, 'subtask_id')
-        self.assertEqual(result.result, ['data'])
+        self.assertEqual(result.result, ('data',))
         self.assertEqual(result.last_sending_trial, 0)
         self.assertEqual(result.delay_time, 0)
         self.assertEqual(result.owner, header.task_owner)
@@ -1402,8 +1412,9 @@ class TestTaskGiven(TaskServerTestBase):
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
             request_resource):
 
-        self.ts.task_computer.has_assigned_task.return_value = True
-        result = self.ts.task_given(Mock())
+        self.ts.task_computer.can_take_work.return_value = False
+        ttc = Mock(compute_task_def=dict(task_id='t1', subtask_id='st1', resources=[]), resources_options=dict())
+        result = self.ts.task_given(ttc)
         self.assertEqual(result, False)
 
         self.ts.task_computer.task_given.assert_not_called()
@@ -1441,24 +1452,6 @@ class TestTaskGiven(TaskServerTestBase):
 
 
 @patch('golem.task.taskserver.logger')
-class TestResourceCollected(TaskServerTestBase):
-
-    def test_wrong_task_id(self, logger_mock):
-        self.ts.task_computer.assigned_task_id = 'test'
-        result = self.ts.resource_collected('wrong_id')
-        self.assertFalse(result)
-        logger_mock.error.assert_called_once()
-        self.ts.task_computer.start_computation.assert_not_called()
-
-    def test_ok(self, logger_mock):
-        self.ts.task_computer.assigned_task_id = 'test'
-        result = self.ts.resource_collected('test')
-        self.assertTrue(result)
-        logger_mock.error.assert_not_called()
-        self.ts.task_computer.start_computation.assert_called_once_with()
-
-
-@patch('golem.task.taskserver.logger')
 @patch('golem.task.taskserver.TaskServer.send_task_failed')
 class TestResourceFailure(TaskServerTestBase):
 
@@ -1470,11 +1463,11 @@ class TestResourceFailure(TaskServerTestBase):
         send_task_failed.assert_not_called()
 
     def test_ok(self, send_task_failed, logger_mock):
-        self.ts.task_computer.assigned_task_id = 'test_task'
+        self.ts.task_computer.assigned_task_ids = {'test_task'}
         self.ts.task_computer.assigned_subtask_id = 'test_subtask'
         self.ts.resource_failure('test_task', 'test_reason')
         logger_mock.error.assert_not_called()
-        self.ts.task_computer.task_interrupted.assert_called_once_with()
+        self.ts.task_computer.task_interrupted.assert_called_once_with('test_task')
         send_task_failed.assert_called_once_with(
             'test_subtask',
             'test_task',
@@ -1500,7 +1493,7 @@ class TestRequestRandomTask(TaskServerTestBase):
     def test_task_already_assigned(self):
         self.ts.config_desc.task_request_interval = 1.0
         self.ts._last_task_request_time = time.time() - 1.0
-        self.ts.task_computer.has_assigned_task.return_value = True
+        self.ts.task_computer.can_take_work.return_value = False
         self.ts.task_computer.compute_tasks = True
         self.ts.task_computer.runnable = True
 
@@ -1678,6 +1671,9 @@ class TestTaskServerConcent(TaskServerTestBase):
     def test_request_task_concent_enabled_but_not_required(self, *_):
         self.ts.client.concent_service.enabled = True
         self.ts.client.concent_service.required_as_provider = False
+        self.ts.task_computer.free_cores = 1
+        print(f'free_cores={self.ts.task_computer.free_cores}')
+
 
         env = Mock(spec=OldEnv)
         env.get_benchmark_result.return_value = BenchmarkResult()

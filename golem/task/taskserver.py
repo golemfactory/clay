@@ -339,9 +339,9 @@ class TaskServer(
             return
 
         compatibile_tasks = self.task_computer.compatible_tasks(
-            self.requested_tasks)
+            set(self.task_keeper.supported_tasks))
 
-        task_header = self.task_keeper.get_task(compatibile_tasks)
+        task_header = self.task_keeper.get_task(supported_tasks=compatibile_tasks)
         if task_header is None:
             return
 
@@ -533,7 +533,7 @@ class TaskServer(
         return self.task_computer.start_computation(task_id, subtask_id)
 
     def resource_failure(self, task_id: str, reason: str) -> None:
-        if self.task_computer.assigned_task_id != task_id:
+        if task_id not in self.task_computer.assigned_task_ids:
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
 

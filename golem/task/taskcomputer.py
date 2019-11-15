@@ -79,7 +79,7 @@ class TaskComputerAdapter:
         self._listeners = []  # type: ignore
 
     @property
-    def free_cores(self):
+    def free_cores(self) -> int:
         if self._new_computer.has_assigned_task():
             return 0
         return self._old_computer.free_cores
@@ -91,7 +91,7 @@ class TaskComputerAdapter:
 
     def task_given(self, ctd: ComputeTaskDef) -> None:
         assert not self._new_computer.has_assigned_task()
-        assert self._old_computer.can_take_work()
+        assert self._old_computer.can_take_work() or self._old_computer.is_disabled()
 
         task_id = ctd['task_id']
         task_header = self._task_server.task_keeper.task_headers[task_id]
@@ -108,6 +108,12 @@ class TaskComputerAdapter:
     def assigned_task_id(self) -> Optional[str]:
         return self._new_computer.assigned_task_id \
                or self._old_computer.assigned_task_id
+
+    @property
+    def assigned_task_ids(self) -> Set[str]:
+        if self._new_computer.has_assigned_task():
+            return {self._new_computer.assigned_task_id}
+        return self._old_computer.assigned_task_ids
 
     @property
     def assigned_subtask_id(self) -> Optional[str]:
@@ -680,6 +686,10 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         return self.assigned_subtasks[0].assigned_task_id
 
     @property
+    def assigned_task_ids(self) -> Set[str]:
+        return { c.assigned_task_id for c in self.assigned_subtasks }
+
+    @property
     def assigned_subtask_id(self) -> Optional[str]:
         if not self.assigned_subtasks:
             return None
@@ -717,6 +727,9 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             ]):
                 return False
             return len(self.assigned_subtasks) < self.max_num_cores
+
+    def is_disabled(self):
+        return self.max_num_cores < 1
 
     @property
     def free_cores(self) -> int:
