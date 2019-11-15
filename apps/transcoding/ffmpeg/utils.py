@@ -21,26 +21,9 @@ from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
 
-FFMPEG_DOCKER_IMAGE = ffmpegEnvironment.DOCKER_IMAGE
-FFMPEG_DOCKER_TAG = ffmpegEnvironment.DOCKER_TAG
-FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
-FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
-FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
-
-# Suffix used to distinguish the temporary container that has no audio or data
-# streams from a complete video
-VIDEO_ONLY_CONTAINER_SUFFIX = '[video-only]'
 
 logger = logging.getLogger(__name__)
 
-split_lock = Lock()
-
-
-class Commands(enum.Enum):
-    EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
-    TRANSCODE = ('transcode', '')
-    MERGE_AND_REPLACE = ('merge-and-replace', '')
-    COMPUTE_METRICS = ('compute-metrics', '')
 
 
 class StreamOperator:
@@ -57,13 +40,12 @@ class StreamOperator:
             "split")
 
         ffmpeg_docker_api = FfmpegDockerAPI(directory_mapping)
-        result = ffmpeg_docker_api.extract_video_streams_and_split(
-            input_file_on_host,
-            parts
-        )
+        result, split_result_file = ffmpeg_docker_api.\
+            extract_video_streams_and_split(
+                input_file_on_host,
+                parts
+            )
 
-        split_result_file = os.path.join(directory_mapping.output,
-                                         Commands.EXTRACT_AND_SPLIT.value[1])
         output_files = result.get('data', [])
         if split_result_file not in output_files:
             raise ffmpegExtractSplitError(
@@ -232,3 +214,5 @@ class StreamOperator:
 
         logger.info('Video metadata obtained successfully!')
         return job_result
+
+

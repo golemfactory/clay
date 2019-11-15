@@ -1,8 +1,6 @@
 import enum
-import json
 import logging
 import os
-import shutil
 import glob
 
 from pathlib import Path
@@ -88,17 +86,19 @@ class FfmpegDockerAPI:
 
         with docker_lock:
             try:
-                result = self._do_job_in_container(
+                results = self._do_job_in_container(
                     self.dir_mapping,
                     extra_data,
                     env)
             except ffmpegException as exception:
                 raise ffmpegExtractSplitError(str(exception)) from exception
 
-        if remove_intermediate_videos:
-            self._remove_split_intermediate_videos(self.dir_mapping)
 
-        return result
+        if remove_intermediate_videos:
+            self.remove_split_intermediate_videos(self.dir_mapping)
+
+        return results, os.path.join(self.dir_mapping.output,
+                                     Commands.EXTRACT_AND_SPLIT.value[1])
 
     def merge_and_replace_video_streams(
             self,
@@ -163,28 +163,6 @@ class FfmpegDockerAPI:
 
         return self._do_job_in_container(self.dir_mapping, extra_data)
 
-    @classmethod
-    def _removed_intermediate_video_placeholder(cls, filepath: Path):
-        # This function creates placeholder after removing
-        # intermediate file. It will be usefull for debugging.
-        placeholder_name = filepath.with_suffix(".removed")
-        Path(placeholder_name).touch()
-
-    @classmethod
-    def _remove_intermediate_videos(cls, files_to_remove: List[Path]):
-        logger.info("Removing intermediate files: %s", files_to_remove)
-
-        for file in files_to_remove:
-            cls._removed_intermediate_video_placeholder(file)
-            os.remove(file)
-
-    @classmethod
-    def _remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
-        pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        files_to_remove = list(Path(dir_mapping.work).glob(pattern))
-
-        cls._remove_intermediate_videos(files_to_remove)
-
     @staticmethod
     def _do_job_in_container(dir_mapping: DockerDirMapping,
                              extra_data: dict,
@@ -210,3 +188,25 @@ class FfmpegDockerAPI:
         if dtt.error:
             raise ffmpegException(dtt.error_msg)
         return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
+
+    @classmethod
+    def _removed_intermediate_video_placeholder(cls, filepath: Path):
+        # This function creates placeholder after removing
+        # intermediate file. It will be usefull for debugging.
+        placeholder_name = filepath.with_suffix(".removed")
+        Path(placeholder_name).touch()
+
+    @classmethod
+    def _remove_intermediate_videos(cls, files_to_remove: List[Path]):
+        logger.info("Removing intermediate files: %s", files_to_remove)
+
+        for file in files_to_remove:
+            cls._removed_intermediate_video_placeholder(file)
+            os.remove(file)
+
+    @classmethod
+    def remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
+        pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
+        files_to_remove = list(Path(dir_mapping.work).glob(pattern))
+
+        cls._remove_intermediate_videos(files_to_remove)

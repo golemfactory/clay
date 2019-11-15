@@ -3,7 +3,7 @@ import os
 
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import Commands, FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
