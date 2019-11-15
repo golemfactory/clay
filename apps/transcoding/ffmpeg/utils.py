@@ -101,12 +101,6 @@ class StreamOperator:
             task_dir,
             "merge")
 
-        try:
-            directory_mapping.mkdirs(exist_ok=True)
-        except OSError:
-            raise ffmpegMergeReplaceError(
-                "Failed to prepare video merge directory structure")
-
         chunks_in_container = self._collect_files(
             task_dir,
             chunks_on_host,
@@ -208,10 +202,17 @@ class StreamOperator:
                               resource_dir: str,
                               task_dir: str,
                               subdir_name: str):
-        return DockerDirMapping.generate(
+        directory_mapping = DockerDirMapping.generate(
             Path(resource_dir),
             Path(task_dir) / subdir_name)
 
+        try:
+            directory_mapping.mkdirs(exist_ok=True)
+        except OSError:
+            raise ffmpegMergeReplaceError(
+                "Failed to prepare video merge directory structure")
+
+        return directory_mapping
 
     def get_metadata(self,
                      input_files: List[str],
