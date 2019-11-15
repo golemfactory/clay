@@ -148,6 +148,21 @@ class FfmpegDockerAPI:
 
         return results
 
+    def get_metadata(self, metadata_requests: List[dict]):
+        extra_data = {
+            'entrypoint': FFMPEG_ENTRYPOINT,
+            'command': Commands.COMPUTE_METRICS.value[0],
+            'metrics_params': {
+                'metadata': metadata_requests,
+            },
+        }
+
+        logger.info('Obtaining video metadata.')
+        logger.debug('Command params: %s', extra_data)
+        logger.info('Directories: work {}'.format(self.dir_mapping.work))
+
+        return self._do_job_in_container(self.dir_mapping, extra_data)
+
     @classmethod
     def _removed_intermediate_video_placeholder(cls, filepath: Path):
         # This function creates placeholder after removing

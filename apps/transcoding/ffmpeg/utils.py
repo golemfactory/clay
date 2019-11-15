@@ -171,32 +171,6 @@ class StreamOperator:
 
         return os.path.join(dir_mapping.output, output_file_basename)
 
-    @staticmethod
-    def _do_job_in_container(dir_mapping: DockerDirMapping,
-                             extra_data: dict,
-                             env: Optional[Environment] = None,
-                             timeout: int = 120):
-
-        if env:
-            EnvironmentsManager().add_environment(env)
-
-        dtt = DockerTaskThread(
-            docker_images=[
-                DockerImage(
-                    repository=FFMPEG_DOCKER_IMAGE,
-                    tag=FFMPEG_DOCKER_TAG
-                )
-            ],
-            extra_data=extra_data,
-            dir_mapping=dir_mapping,
-            timeout=timeout
-        )
-
-        dtt.run()
-        if dtt.error:
-            raise ffmpegException(dtt.error_msg)
-        return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
-
     @classmethod
     def _generate_dir_mapping(cls,
                               resource_dir: str,
@@ -239,19 +213,9 @@ class StreamOperator:
             'output': f'metadata-logs-{os.path.splitext(input_file)[0]}.json'
         } for input_file in input_files]
 
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.COMPUTE_METRICS.value[0],
-            'metrics_params': {
-                'metadata': metadata_requests,
-            },
-        }
+        ffmpeg_docker_api = FfmpegDockerAPI(dir_mapping)
+        job_result = ffmpeg_docker_api.get_metadata(metadata_requests)
 
-        logger.info('Obtaining video metadata.')
-        logger.debug('Command params: %s', extra_data)
-        logger.info('Directories: work {}'.format(dir_mapping.work))
-
-        job_result = self._do_job_in_container(dir_mapping, extra_data)
         if 'data' not in job_result:
             raise ffmpegException(
                 "Failed to obtain video metadata. "
