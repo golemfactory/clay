@@ -7,6 +7,7 @@ import uuid
 
 from pydispatch import dispatcher
 
+from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef, TaskFailure
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -54,7 +55,164 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.task_computer.check_timeout()
         self.task_computer.counting_thread.check_timeout.assert_called_once()
 
-    def test_computation(self):  # pylint: disable=too-many-statements
+    @mock.patch('golem.network.history.get')
+    def test_stuff(self, history):
+        # Given
+        task_id = "test-task-id"
+        subtask_id = "test-subtask-id"
+        deadline = timeout_to_deadline(10)
+
+        ttc_mock = mock.Mock()
+        ttc_mock.price = 0.1
+        history.return_value = ttc_mock
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(
+            task_id=task_id, subtask_id=subtask_id, deadline=deadline)
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(5)
+            ),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(20),
+                subtask_budget=100
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+
+        self.assertEqual(tc.assigned_subtask, None)
+        tc.task_given(ctd)
+        self.assertEqual(tc.assigned_subtask, ctd)
+        self.assertLessEqual(tc.assigned_subtask['deadline'], deadline)
+
+        # When
+        tc.start_computation()
+
+        # Then
+        assert tc.counting_thread is None
+        assert tc.assigned_subtask is None
+        self.task_server.send_task_failed.assert_called_with(
+            subtask_id,
+            task_id,
+            "Host direct task not supported"
+        )
+
+    @mock.patch('golem.network.history.get')
+    def test_stuff2(self, history):
+        # Given
+        task_id = "test-task-id"
+        subtask_id = "test-subtask-id"
+        deadline = timeout_to_deadline(10)
+
+        ttc_mock = mock.Mock()
+        ttc_mock.price = 0.1
+        history.return_value = ttc_mock
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(
+            task_id=task_id, subtask_id=subtask_id, deadline=deadline)
+        ctd['extra_data']['src_code'] = \
+            "cnt=0\n" \
+            "for i in range(10000):\n" \
+            "\tcnt += 1\n" \
+            "output={'data': cnt, 'result_type': 0}"
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(5)
+            ),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(20),
+                subtask_budget=100
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
+        tc.task_given(ctd)
+        tc.start_computation()
+
+        # Then
+        assert tc.counting_thread is not None
+        self.__wait_for_tasks(tc)
+
+        self.assertIsNone(tc.counting_thread)
+        self.assertIsNone(tc.assigned_subtask)
+        self.assertTrue(self.task_server.send_results.called)
+        kwargs = self.task_server.send_results.call_args[1]
+        self.assertEqual(kwargs['subtask_id'], subtask_id)
+        self.assertEqual(kwargs['task_id'], task_id)
+        self.assertEqual(kwargs['result'], 10000)
+        mock_finished.assert_called_once_with()
+
+    @mock.patch('golem.network.history.get')
+    def test_stuff3(self, history):
+        # Given
+        task_id = "test-task-id"
+        subtask_id = "test-subtask-id"
+        deadline = timeout_to_deadline(10)
+
+        ttc_mock = mock.Mock()
+        ttc_mock.price = 0.1
+        history.return_value = ttc_mock
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(
+            task_id=task_id, subtask_id=subtask_id, deadline=deadline)
+        ctd['extra_data']['src_code'] = "raise Exception('some exception')"
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(5)
+            ),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=5,
+                deadline=timeout_to_deadline(20),
+                subtask_budget=100
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
+        tc.task_given(ctd)
+        tc.start_computation()
+        self.__wait_for_tasks(tc)
+
+        # Then
+        self.assertEqual(tc.assigned_subtask, ctd)
+        self.assertLessEqual(tc.assigned_subtask['deadline'],
+                             timeout_to_deadline(5))
+        self.assertIsNone(tc.counting_thread)
+        self.assertIsNone(tc.assigned_subtask)
+        self.task_server.send_task_failed.assert_called_with(
+            subtask_id, task_id, 'some exception', TaskFailure.DEFAULT_REASON)
+        mock_finished.assert_called_once_with()
+        mock_finished.reset_mock()
+
+
+
+    @mock.patch('golem.network.history.get')
+    def test_computation(self, history):  # pylint: disable=too-many-statements
         # FIXME Refactor too single tests and remove disable too many
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
@@ -68,6 +226,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['deadline'] = timeout_to_deadline(10)
         ctd['resources'] = ["abcd", "efgh"]
 
+        ttc_mock = mock.Mock()
+        ttc_mock.price = 0.1
+        history.return_value = ttc_mock
+
         task_server = self.task_server
         task_server.task_keeper.task_headers = {
             ctd['subtask_id']: mock.Mock(
@@ -76,7 +238,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             ),
             ctd['task_id']: mock.Mock(
                 subtask_timeout=5,
-                deadline=timeout_to_deadline(20)
+                deadline=timeout_to_deadline(20),
+                subtask_budget=100
             )
         }
 
