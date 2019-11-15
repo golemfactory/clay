@@ -105,17 +105,20 @@ class FfmpegDockerAPI:
         placeholder_name = filepath.with_suffix(".removed")
         Path(placeholder_name).touch()
 
+    @classmethod
+    def _remove_intermediate_videos(cls, files_to_remove: List[Path]):
+        logger.info("Removing intermediate files: %s", files_to_remove)
+
+        for file in files_to_remove:
+            cls._removed_intermediate_video_placeholder(file)
+            os.remove(file)
 
     @classmethod
     def _remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
         pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
         files_to_remove = list(Path(dir_mapping.work).glob(pattern))
 
-        logger.info("Removing intermediate files: %s", files_to_remove)
-
-        for file in files_to_remove:
-            cls._removed_intermediate_video_placeholder(file)
-            os.remove(file)
+        cls._remove_intermediate_videos(files_to_remove)
 
     @staticmethod
     def _do_job_in_container(dir_mapping: DockerDirMapping,
