@@ -41,7 +41,6 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
-from golem.core.deferred import deferred_from_future
 from golem.core.fileshelper import du
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
@@ -1635,8 +1634,10 @@ class MaskUpdateService(LoopingCallService):
             requested_task_manager.decrease_task_mask(
                 task_id=db_task.task_id,
                 num_bits=self._update_num_bits)
-            logger.info('Updating mask. task_id=%r, new_mask_size=%r',
-                        db_task.task_id, db_task.mask.num_bits)
+            logger.info(
+                'Updating mask. task_id=%r, new_mask_size=%r',
+                db_task.task_id,
+                msg_datastructures.masking.Mask(db_task.mask).num_bits)
 
 
 class DailyJobsService(LoopingCallService):
