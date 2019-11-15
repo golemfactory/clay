@@ -26,10 +26,7 @@ class StreamOperator:
                                         task_dir: str,
                                         task_id: str):
 
-        directory_mapping = self._generate_dir_mapping(
-            Path(task_dir) / "split" / "resources", # This directory is unused
-            task_dir,
-            "split")
+        directory_mapping = self._generate_split_dir_mapping(task_dir)
 
         ffmpeg_docker_api = FfmpegDockerAPI(directory_mapping)
         result, split_result_file = ffmpeg_docker_api.\
@@ -129,6 +126,13 @@ class StreamOperator:
         assert os.path.isfile(input_file_on_host), \
             "Caller is responsible for ensuring that input file exists."
 
+        # Temporary videos can take big amount of disk space.
+        # If we got here, we have all segments already transcoded, so we
+        # can remove them. Merge will produce some new temporary videos so we
+        # need to remove split results as soon as posible, otherwise we can
+        # exhaust disk space.
+        self._remove_split_results(task_dir)
+
         (dir_mapping, chunks_in_container) = self._prepare_merge_job(
             task_dir,
             chunks_on_host)
@@ -161,6 +165,18 @@ class StreamOperator:
                 "Failed to prepare video merge directory structure")
 
         return directory_mapping
+
+    @classmethod
+    def _generate_split_dir_mapping(cls, task_dir: str):
+        return cls._generate_dir_mapping(
+            Path(task_dir) / "split" / "resources", # This directory is unused
+            task_dir,
+            "split")
+
+    @classmethod
+    def _remove_split_results(cls, task_dir: str):
+        dir_mapping = cls._generate_split_dir_mapping(task_dir)
+        FfmpegDockerAPI.remove_split_output_videos(dir_mapping)
 
     def get_metadata(self,
                      input_files: List[str],
@@ -206,5 +222,3 @@ class StreamOperator:
 
         logger.info('Video metadata obtained successfully!')
         return job_result
-
-
