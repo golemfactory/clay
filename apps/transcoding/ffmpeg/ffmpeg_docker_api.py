@@ -99,14 +99,22 @@ class FfmpegDockerAPI:
         return result
 
     @classmethod
+    def _removed_intermediate_video_placeholder(cls, filepath: Path):
+        # This function creates placeholder after removing
+        # intermediate file. It will be usefull for debugging.
+        placeholder_name = filepath.with_suffix(".removed")
+        Path(placeholder_name).touch()
+
+
+    @classmethod
     def _remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
         pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        print(pattern)
         files_to_remove = list(Path(dir_mapping.work).glob(pattern))
 
         logger.info("Removing intermediate files: %s", files_to_remove)
 
         for file in files_to_remove:
+            cls._removed_intermediate_video_placeholder(file)
             os.remove(file)
 
     @staticmethod
