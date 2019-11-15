@@ -5,7 +5,7 @@ import os
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Iterable
+from typing import Any, Dict, List, Optional, Iterable
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -99,6 +99,25 @@ class RequestedTaskManager:
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
         # Created lazily due to cascading errors in tests
         self._verification_queue: Optional[VerificationQueue] = None
+
+    def restore_tasks(self):
+        logger.debug('restore_tasks()')
+        running_tasks = RequestedTask.select() \
+            .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
+
+        loop = asyncio.get_event_loop()
+        for task in running_tasks:
+            if task.deadline is not None and \
+                    task.deadline.timestamp() < loop.time():
+                logger.info('task in progress. task_id=%r', task.task_id)
+                loop.call_at(
+                    task.deadline,
+                    self._time_out_task,
+                    task.task_id,
+                )
+            else:
+                logger.info('task timed out. task_id=%r', task.task_id)
+                self._time_out_task(task.task_id)
 
     def _app_dir(self, app_id: AppId) -> RequestorDir:
         app_dir = RequestorDir(self._root_path / app_id)
@@ -274,6 +293,7 @@ class RequestedTaskManager:
         logger.debug('has_pending_subtasks(task_id=%r)', task_id)
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         if not task.status.is_active():
+            logger.debug('task not active. task_id=%r', task_id)
             return False
         app_client = await self._get_app_client(task.app_id)
         return await app_client.has_pending_subtasks(task.task_id)
@@ -747,7 +767,11 @@ class RequestedTaskManager:
             RequestedSubtask.task_id == task_id,
             RequestedSubtask.status != SubtaskStatus.finished,
         ).scalar()
-        logger.debug('unfinished subtasks: %r', unfinished_subtask_count)
+        logger.debug(
+            '_get_unfinished_subtasks_for_node. node=%r, count=%r',
+            computing_node.node_id,
+            unfinished_subtask_count
+        )
         return unfinished_subtask_count
 
     @staticmethod
