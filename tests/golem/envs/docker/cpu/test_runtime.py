@@ -1,12 +1,14 @@
+import time
+from datetime import timedelta
 from threading import Thread
 from unittest.mock import Mock, patch as _patch, call, ANY
 
+import freezegun
 import pytest
 from docker.errors import APIError
 from twisted.trial.unittest import TestCase
 
-from golem.envs import RuntimeStatus
-from golem.envs.docker import DockerRuntimePayload
+from golem.envs import RuntimeStatus, UsageCounterValues
 from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput, DockerInput, \
     InputSocket
 
@@ -198,6 +200,113 @@ class TestUpdateStatusLoop(TestDockerCPURuntime):
         self.runtime._update_status_loop()
         update_status.assert_called_once()
         sleep.assert_called_once_with(DockerCPURuntime.STATUS_UPDATE_INTERVAL)
+
+
+class TestUpdateCounters(TestDockerCPURuntime):
+
+    @staticmethod
+    def _get_stats(
+            cpu_kernel=0.0, cpu_user=0.0, cpu_total=0.0, ram=0, max_ram=0):
+        return {
+            'cpu_stats': {
+                'cpu_usage': {
+                    'usage_in_kernelmode': cpu_kernel,
+                    'usage_in_usermode': cpu_user,
+                    'total_usage': cpu_total
+                }
+            },
+            'memory_stats': {
+                'usage': ram,
+                'max_usage': max_ram
+            }
+        }
+
+    @freezegun.freeze_time()
+    def test_empty_stream(self):
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        self.client.stats.return_value = ()
+
+        self.runtime._update_counters()
+
+        self.assertEqual(
+            self.runtime.usage_counter_values(), UsageCounterValues())
+
+    @freezegun.freeze_time()
+    def test_not_running(self):
+        self.client.stats.return_value = (self._get_stats(5, 10, 15, 20))
+
+        self.runtime._update_counters()
+
+        self.assertEqual(
+            self.runtime.usage_counter_values(), UsageCounterValues())
+
+    @freezegun.freeze_time('1970-01-01T00:00:00Z', as_arg=True)
+    def test_clock_time(freezer, self):  # pylint: disable=no-self-argument
+        def _get_stats():
+            for _ in range(5):
+                self.assertEqual(
+                    self.runtime.usage_counter_values().clock_ms,
+                    time.time() * 1000)
+                freezer.tick(delta=timedelta(seconds=1))  # noqa pylint: disable=no-member
+                yield self._get_stats()
+
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        self.client.stats.return_value = _get_stats()
+
+        self.runtime._update_counters()
+
+    @freezegun.freeze_time('1970-01-01T00:00:00Z')
+    def test_cpu(self):
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        self.client.stats.return_value = (
+            self._get_stats(1, 2, 3),
+            self._get_stats(2, 4, 6),
+            self._get_stats(5, 10, 15)
+        )
+
+        self.runtime._update_counters()
+
+        self.assertEqual(
+            self.runtime.usage_counter_values(),
+            UsageCounterValues(cpu_kernel_ns=5, cpu_user_ns=10, cpu_total_ns=15)
+        )
+
+    @freezegun.freeze_time('1970-01-01T00:00:00Z')
+    def test_ram(self):
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        self.client.stats.return_value = (
+            self._get_stats(ram=1000, max_ram=1000),
+            self._get_stats(ram=5000, max_ram=5000),
+            self._get_stats(ram=3000, max_ram=5000)
+        )
+
+        self.runtime._update_counters()
+
+        self.assertEqual(
+            self.runtime.usage_counter_values(),
+            UsageCounterValues(ram_max_bytes=5000, ram_avg_bytes=3000)
+        )
+
+    @freezegun.freeze_time('1970-01-01T00:00:00Z')
+    def test_invalid_stats_ignored(self):
+        self.runtime._set_status(RuntimeStatus.RUNNING)
+        self.client.stats.return_value = (
+            {'cpu_stats': '(╯°□°)╯︵ ┻━┻'},
+            self._get_stats(5, 10, 15, 20, 25)
+        )
+
+        self.runtime._update_counters()
+
+        self.assertEqual(
+            self.runtime.usage_counter_values(),
+            UsageCounterValues(
+                cpu_kernel_ns=5,
+                cpu_user_ns=10,
+                cpu_total_ns=15,
+                ram_avg_bytes=20,
+                ram_max_bytes=25
+            )
+        )
 
 
 class TestPrepare(TestDockerCPURuntime):
@@ -465,6 +574,8 @@ class TestStop(TestDockerCPURuntime):
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = False
+        self.runtime._counter_update_thread = Mock(spec=Thread)
+        self.runtime._counter_update_thread.is_alive.return_value = False
         error = APIError("test")
         self.client.stop.side_effect = error
         stopped = self._patch_runtime_async('_stopped')
@@ -475,6 +586,7 @@ class TestStop(TestDockerCPURuntime):
         def _check(_):
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
+            self.runtime._counter_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
             stopped.assert_not_called()
             error_occurred.assert_called_once_with(
@@ -489,6 +601,8 @@ class TestStop(TestDockerCPURuntime):
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = True
+        self.runtime._counter_update_thread = Mock(spec=Thread)
+        self.runtime._counter_update_thread.is_alive.return_value = False
         stopped = self._patch_runtime_async('_stopped')
         error_occurred = self._patch_runtime_async('_error_occurred')
 
@@ -497,6 +611,7 @@ class TestStop(TestDockerCPURuntime):
         def _check(_):
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
+            self.runtime._counter_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
             self.logger.warning.assert_called_once()
             stopped.assert_called_once()
@@ -511,6 +626,8 @@ class TestStop(TestDockerCPURuntime):
         self.runtime._stdin_socket = Mock(spec=InputSocket)
         self.runtime._status_update_thread = Mock(spec=Thread)
         self.runtime._status_update_thread.is_alive.return_value = False
+        self.runtime._counter_update_thread = Mock(spec=Thread)
+        self.runtime._counter_update_thread.is_alive.return_value = False
         stopped = self._patch_runtime_async('_stopped')
         error_occurred = self._patch_runtime_async('_error_occurred')
 
@@ -519,6 +636,7 @@ class TestStop(TestDockerCPURuntime):
         def _check(_):
             self.client.stop.assert_called_once_with("Id")
             self.runtime._status_update_thread.join.assert_called_once()
+            self.runtime._counter_update_thread.join.assert_called_once()
             self.runtime._stdin_socket.close.assert_called_once()
             self.logger.warning.assert_not_called()
             stopped.assert_called_once()

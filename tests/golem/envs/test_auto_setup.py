@@ -197,8 +197,8 @@ class TestAutoSetup(TwistedTestCase):
         payload = Mock(spec_set=RuntimePayload)
         config = Mock(spec_set=EnvConfig)
         runtime = self.wrapped_env.runtime(payload, config)
-        counters = runtime.usage_counters()
-        self.assertEqual(counters, self.runtime.usage_counters())
+        counters = runtime.usage_counter_values()
+        self.assertEqual(counters, self.runtime.usage_counter_values())
 
     def test_runtime_listen(self):
         payload = Mock(spec_set=RuntimePayload)
