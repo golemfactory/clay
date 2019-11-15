@@ -102,10 +102,28 @@ class RequestedTaskManager:
 
     def restore_tasks(self):
         logger.debug('restore_tasks()')
+        loop = asyncio.get_event_loop()
+
+        running_subtasks = RequestedSubtask.select() \
+            .where(RequestedSubtask.status.in_(SUBTASK_STATUS_ACTIVE))
+        for subtask in running_subtasks:
+            subtask_id = subtask.subtask_id
+
+            if subtask.deadline is not None and \
+                    subtask.deadline.timestamp() < loop.time():
+                logger.info('restoring subtask. subtask_id=%r', subtask_id)
+                loop.call_at(
+                    subtask.deadline,
+                    self._time_out_subtask,
+                    subtask.task_id,
+                    subtask_id,
+                )
+            else:
+                logger.info('subtask timed out. subtask_id=%r', subtask_id)
+                self._time_out_subtask(subtask.task_id, subtask_id)
+
         running_tasks = RequestedTask.select() \
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
-
-        loop = asyncio.get_event_loop()
         for task in running_tasks:
             if task.deadline is not None and \
                     task.deadline.timestamp() < loop.time():
