@@ -48,8 +48,10 @@ class Commands(enum.Enum):
 
 class FfmpegDockerAPI:
 
+    def __init__(self, directory_mapping: DockerDirMapping):
+        self.dir_mapping = directory_mapping
+
     def extract_video_streams_and_split(self,
-                                        directory_mapping: DockerDirMapping,
                                         input_file_on_host: str,
                                         parts: int,
                                         remove_intermediate_videos=True):
@@ -87,14 +89,14 @@ class FfmpegDockerAPI:
         with split_lock:
             try:
                 result = self._do_job_in_container(
-                    directory_mapping,
+                    self.dir_mapping,
                     extra_data,
                     env)
             except ffmpegException as exception:
                 raise ffmpegExtractSplitError(str(exception)) from exception
 
         if remove_intermediate_videos:
-            self._remove_split_intermediate_videos(directory_mapping)
+            self._remove_split_intermediate_videos(self.dir_mapping)
 
         return result
 

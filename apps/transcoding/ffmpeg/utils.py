@@ -56,8 +56,8 @@ class StreamOperator:
             task_dir,
             "split")
 
-        result = FfmpegDockerAPI().extract_video_streams_and_split(
-            directory_mapping,
+        ffmpeg_docker_api = FfmpegDockerAPI(directory_mapping)
+        result = ffmpeg_docker_api.extract_video_streams_and_split(
             input_file_on_host,
             parts
         )
