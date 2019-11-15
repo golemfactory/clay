@@ -597,7 +597,7 @@ class TaskComputation:
             tt: TaskThread = DockerTaskThread(docker_images, extra_data,
                                               dir_mapping, task_timeout,
                                               cpu_limit)
-        elif self.task_computer.support_direct_computation:
+        elif tc.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir, task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
@@ -687,6 +687,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
     def task_interrupted(self, task_id: str,
                          subtask_id: Optional[str] = None) -> None:
+        assert bool(self.assigned_subtasks)
         for computation in self.assigned_subtasks.copy():
             if (subtask_id is None
                     or computation.assigned_subtask_id == subtask_id) \
@@ -785,6 +786,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         return started
 
     def task_finished(self, computation: TaskComputation) -> None:
+        assert computation in self.assigned_subtasks
         ctd = computation.assigned_subtask
         assert ctd is not None
         self.assigned_subtasks.remove(computation)
