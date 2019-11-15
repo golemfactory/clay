@@ -139,6 +139,29 @@ class TestRequestedTaskManager:
             assert row.status == TaskStatus.waiting
             assert row.start_time < default_now()
 
+    @pytest.mark.asyncio
+    async def test_error_creating(self, mock_client):
+        # given
+        task_id = self._create_task()
+        # when
+        await self.rtm.init_task(task_id)
+        self.rtm.error_creating(task_id)
+        # then
+        row = RequestedTask.get(RequestedTask.task_id == task_id)
+        assert row.status == TaskStatus.errorCreating
+
+    @pytest.mark.asyncio
+    async def test_error_creating_wrong_status(self, mock_client):
+        # given
+        task_id = self._create_task()
+        # when
+        await self.rtm.init_task(task_id)
+        # Start task to change the status
+        self.rtm.start_task(task_id)
+        # then
+        with pytest.raises(RuntimeError):
+            self.rtm.error_creating(task_id)
+
     def test_task_exists(self):
         task_id = self._create_task()
         assert self.rtm.task_exists(task_id) is True
