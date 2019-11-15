@@ -5,6 +5,7 @@ import pytest
 from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
+from ffmpeg_tools.formats import FrameRate
 from ffmpeg_tools.formats import list_supported_frame_rates
 from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
@@ -23,8 +24,7 @@ from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
     create_split_and_merge_with_resolution_change_test_name, \
     create_split_and_merge_with_frame_rate_change_test_name, \
     create_split_and_merge_with_different_subtask_counts_test_name
-from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration, \
-    parse_ffprobe_frame_rate
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
@@ -157,15 +157,18 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (
             (video, frame_rate)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for frame_rate in (25, '30000/1001', 60)
+            for frame_rate in (
+                FrameRate(25),
+                FrameRate(30000, 1001),
+                FrameRate(60),
+            )
         ),
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
     @pytest.mark.slow
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         source_codec = video["video_codec"]
-        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
-        assert frame_rate_as_str_or_int & list_supported_frame_rates() != set()
+        assert frame_rate in list_supported_frame_rates()
 
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -174,14 +177,14 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             tmp_dir=self.tempdir,
             dont_include_in_option_description=["resolution", "video_codec"])
         operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_frame_rate_change(frame_rate)
+        operation.request_frame_rate_change(str(frame_rate))
         operation.request_video_codec_change(source_codec)
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.exclude_from_diff({'video': {'frame_count'}})
-        fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
+        fuzzy_rate = FuzzyDuration(frame_rate.to_float(), 0.5)
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
@@ -371,7 +374,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
     @pytest.mark.slow
     def test_invalid_frame_rate_should_raise_proper_exception(self):
-        assert 55 not in list_supported_frame_rates()
+        assert FrameRate(55) not in list_supported_frame_rates()
         with self.assertRaises(InvalidFrameRate):
             operation = SimulatedTranscodingOperation(
                 task_executor=self,
