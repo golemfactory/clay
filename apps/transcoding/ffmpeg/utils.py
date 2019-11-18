@@ -93,7 +93,8 @@ class StreamOperator:
                 raise ffmpegMergeReplaceError("Missing result file: {}".format(
                     file))
             if os.path.dirname(file) != directory:
-                raise ffmpegMergeReplaceError("Result file: {} should be in "
+                raise ffmpegMergeReplaceError(
+                    "Result file: {} should be in "
                     "the proper directory: {}".format(file, directory))
 
             results.append(file)

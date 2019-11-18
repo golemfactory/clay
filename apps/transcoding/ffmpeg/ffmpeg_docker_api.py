@@ -92,6 +92,7 @@ class FfmpegDockerAPI:
         return results, os.path.join(self.dir_mapping.output,
                                      Commands.EXTRACT_AND_SPLIT.value[1])
 
+    # pylint: disable=too-many-arguments
     def merge_and_replace_video_streams(
             self,
             input_file_on_host,
@@ -151,7 +152,7 @@ class FfmpegDockerAPI:
 
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
-        logger.info('Directories: work {}'.format(self.dir_mapping.work))
+        logger.info('Directories: work %s'.format(self.dir_mapping.work))
 
         return self._do_job_in_container(self.dir_mapping, extra_data)
 

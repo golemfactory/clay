@@ -35,7 +35,8 @@ class ffmpegTask(TranscodingTask):
                                 self._get_resources_root_dir())
         chunk = DockerJob.get_absolute_resource_path(chunk)
 
-        filename = os.path.splitext(os.path.basename(  # TODO: we trust foreign filename
+        # TODO: we trust foreign filename
+        filename = os.path.splitext(os.path.basename(
             self.chunks[subtask_num]))[0]
         output_extension = os.path.splitext(self.task_definition.output_file)[1]
 
