@@ -174,7 +174,8 @@ class StreamOperator:
     @classmethod
     def _generate_split_dir_mapping(cls, task_dir: str):
         return cls._generate_dir_mapping(
-            Path(task_dir) / "split" / "resources",  # This directory is unused
+            # This directory is unused
+            os.path.join(task_dir, "split", "resources"),
             task_dir,
             "split")
 
