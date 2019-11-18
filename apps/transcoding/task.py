@@ -1,6 +1,7 @@
 import abc
 import logging
 import os
+from pathlib import Path
 from shutil import move
 from threading import Lock
 from typing import Any, Dict, List, Tuple, Optional, Union
@@ -12,6 +13,7 @@ from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
 import apps.transcoding.common
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.transcoding.common import TranscodingException
@@ -72,6 +74,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         self.chunks: List[str] = list()
         self.collected_files: List[str] = list()
         self.task_dir = ""
+        self.resources_dir = ""
 
     def __getstate__(self):
         state = super(TranscodingTask, self).__getstate__()
@@ -89,6 +92,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
         logger.debug('Initialization of FFmpegTask: [task_id=%s]', task_id)
 
+        # Remember resources dir to remove zips when they are not necessary.
+        self.resources_dir = dir_manager.get_task_resource_dir(task_id)
         task_output_dir = dir_manager.get_task_output_dir(task_id)
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
 
@@ -159,6 +164,12 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
     def _merge_video(self):
         logger.info('Merging video [task_id = %s]',
                     self.task_definition.task_id)
+
+        # Remove zip files with resources for providers.
+        # This code is here, because we don't have access to resources_dir
+        # in StreamOperator.
+        FfmpegDockerAPI.remove_intermediate_videos(
+            Path(self.resources_dir), '*.zip')
 
         output_basename = os.path.basename(self.task_definition.output_file)
 
