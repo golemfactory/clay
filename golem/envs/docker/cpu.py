@@ -698,6 +698,8 @@ class DockerCPUEnvironment(EnvironmentBase):
         cpus = hardware.cpus()[:config.cpu_count]
         cpuset_cpus = ','.join(map(str, cpus))
         mem_limit = f'{config.memory_mb}m'  # 'm' is for megabytes
+        mem_reservation = f'{payload.mem_reservation}m' \
+            if payload.mem_reservation else None
 
         binds = None
         if payload.binds is not None:
@@ -710,18 +712,40 @@ class DockerCPUEnvironment(EnvironmentBase):
                 for port in payload.ports
             }
 
+        extra_hosts = payload.extra_hosts if payload.extra_hosts else None
+        links = payload.links if payload.links else None
+        restart_policy = payload.restart_policy if payload.restart_policy \
+            else None
+        network_mode = payload.network_mode if payload.network_mode \
+            else self.NETWORK_MODE
+        dns = payload.dns if payload.dns else self.DNS_SERVERS
+        dns_search = payload.dns_search if payload.dns_search \
+            else self.DNS_SEARCH_DOMAINS
+
         client = local_client()
         return client.create_host_config(
             cpuset_cpus=cpuset_cpus,
             mem_limit=mem_limit,
+            mem_reservation=mem_reservation,
             binds=binds,
             port_bindings=port_bindings,
             privileged=False,
-            network_mode=self.NETWORK_MODE,
-            dns=self.DNS_SERVERS,
-            dns_search=self.DNS_SEARCH_DOMAINS,
-            cap_drop=self.DROPPED_KERNEL_CAPABILITIES
+            network_mode=network_mode,
+            dns=dns,
+            dns_search=dns_search,
+            cap_drop=self.DROPPED_KERNEL_CAPABILITIES,
+            extra_hosts=extra_hosts,
+            links=links,
+            restart_policy=restart_policy
         )
+
+    def _create_networking_config(
+        self,
+        payload: DockerRuntimePayload,
+    ) -> Dict[str, Any]:
+        client = local_client()
+        return client.create_networking_config(payload.networking_config) \
+            if payload.networking_config else {}
 
     def _create_container_config(
             self,
@@ -732,6 +756,10 @@ class DockerCPUEnvironment(EnvironmentBase):
         volumes = [b.target for b in payload.binds] if payload.binds else None
         host_config = self._create_host_config(config, payload)
         ports = [(p, 'tcp') for p in payload.ports] if payload.ports else None
+        networking_config = self._create_networking_config(config, payload)
+        hostname = payload.hostname if payload.hostname else None
+        domainname = payload.domainname if payload.domainname else None
+        healthcheck = payload.healthcheck if payload.healthcheck else None
 
         return dict(
             image=image,
@@ -742,7 +770,11 @@ class DockerCPUEnvironment(EnvironmentBase):
             working_dir=payload.work_dir,
             ports=ports,
             host_config=host_config,
-            stdin_open=True
+            stdin_open=True,
+            networking_config=networking_config,
+            hostname=hostname,
+            domainname=domainname,
+            healthcheck=healthcheck
         )
 
     def _create_runtime(
