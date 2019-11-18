@@ -191,7 +191,7 @@ class FfmpegDockerAPI:
         Path(placeholder_name).touch()
 
     @classmethod
-    def _remove_intermediate_videos(cls, directory: Path, pattern: str):
+    def remove_intermediate_videos(cls, directory: Path, pattern: str):
 
         files_to_remove = list(Path(directory).glob(pattern))
         logger.info("Removing intermediate files: %s", files_to_remove)
@@ -203,19 +203,19 @@ class FfmpegDockerAPI:
     @classmethod
     def remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
         pattern = '*{}'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        cls._remove_intermediate_videos(dir_mapping.work, pattern)
+        cls.remove_intermediate_videos(dir_mapping.work, pattern)
 
     @classmethod
     def remove_split_output_videos(cls, dir_mapping: DockerDirMapping):
         pattern = '*{}_*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        cls._remove_intermediate_videos(dir_mapping.output, pattern)
+        cls.remove_intermediate_videos(dir_mapping.output, pattern)
 
     @classmethod
     def remove_merge_intermediate_videos(cls, dir_mapping: DockerDirMapping):
         # Remove merged video without additional streams.
         pattern = '*{}*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        cls._remove_intermediate_videos(dir_mapping.work, pattern)
+        cls.remove_intermediate_videos(dir_mapping.work, pattern)
 
         # Remove video segments from resource directory.
         pattern = '*{}_*'.format(glob.escape(VIDEO_ONLY_CONTAINER_SUFFIX))
-        cls._remove_intermediate_videos(dir_mapping.resources, pattern)
+        cls.remove_intermediate_videos(dir_mapping.resources, pattern)

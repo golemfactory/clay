@@ -134,6 +134,7 @@ class StreamOperator:
         # need to remove split results as soon as posible, otherwise we can
         # exhaust disk space.
         self._remove_split_results(task_dir)
+        self._remove_providers_results_zips(task_dir)
 
         (dir_mapping, chunks_in_container) = self._prepare_merge_job(
             task_dir,
@@ -181,6 +182,11 @@ class StreamOperator:
     def _remove_split_results(cls, task_dir: str):
         dir_mapping = cls._generate_split_dir_mapping(task_dir)
         FfmpegDockerAPI.remove_split_output_videos(dir_mapping)
+
+    @classmethod
+    def _remove_providers_results_zips(cls, task_dir: str):
+        print(task_dir)
+        FfmpegDockerAPI.remove_intermediate_videos(Path(task_dir), '*.zip')
 
     def get_metadata(self,
                      input_files: List[str],
