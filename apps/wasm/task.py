@@ -566,6 +566,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         dictionary['subtasks_count'] = len(options['subtasks'])
 
         task_def: Any = super().build_full_definition(task_type, dictionary)
+        task_def.options.output_path = cls.get_output_path(dictionary, task_def)
         task_def.options.js_name = options['js_name']
         task_def.options.wasm_name = options['wasm_name']
         task_def.options.input_dir = options['input_dir']
