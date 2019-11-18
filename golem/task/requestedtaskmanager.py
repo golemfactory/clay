@@ -228,6 +228,19 @@ class RequestedTaskManager:
         self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
+    def error_creating(self, task_id: TaskId):
+        """ Marks an already initialized task as errorCreating. """
+        logger.debug('error_creating(task_id=%r)', task_id)
+
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+
+        if not task.status.is_preparing():
+            raise RuntimeError(f"Task {task_id} has already been started")
+
+        task.status = TaskStatus.errorCreating
+        task.save()
+        self._notice_task_updated(task, op=TaskOp.ABORTED)
+
     @staticmethod
     def task_exists(task_id: TaskId) -> bool:
         """ Return whether task of a given task_id exists. """

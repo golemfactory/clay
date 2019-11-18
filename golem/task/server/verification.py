@@ -2,6 +2,8 @@ import asyncio
 import logging
 import typing
 
+from ethereum.utils import denoms
+
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
@@ -89,6 +91,15 @@ class VerificationMixin:
             payment_value = market_strategy.calculate_payment(
                 report_computed_task
             )
+
+            logger.info(
+                "Accepting result. subtask_id=%s, "
+                "provider_id=%s, payment_value=%s GNT",
+                subtask_id,
+                report_computed_task.provider_id,
+                payment_value / denoms.ether,
+            )
+
             payment = self.accept_result(
                 task_id,
                 subtask_id,
