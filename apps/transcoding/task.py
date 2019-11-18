@@ -169,7 +169,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         # This code is here, because we don't have access to resources_dir
         # in StreamOperator.
         FfmpegDockerAPI.remove_intermediate_videos(
-            Path(self.resources_dir), '*.zip')
+            Path(self.resources_dir), '*')
 
         output_basename = os.path.basename(self.task_definition.output_file)
 
