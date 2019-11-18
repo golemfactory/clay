@@ -1360,6 +1360,7 @@ class TestSendResults(TaskServerTestBase):
         self.assertEqual(wtr.result, (str(filepath),))
 
 
+@patch('golem.task.helpers.calculate_max_usage')
 @patch('golem.task.taskserver.TaskServer.request_resource')
 @patch('golem.task.taskserver.update_requestor_assigned_sum')
 @patch('golem.task.taskserver.dispatcher')
@@ -1369,16 +1370,17 @@ class TestTaskGiven(TaskServerTestBase):
 
     def test_ok(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
-            request_resource):
-
+            request_resource, max_usage_mock):
         self.ts.task_computer.has_assigned_task.return_value = False
         ttc = msg_factories.tasks.TaskToComputeFactory()
+        max_cpu_usage = 4242
+        max_usage_mock.return_value = max_cpu_usage
 
         result = self.ts.task_given(ttc)
         self.assertEqual(result, True)
 
         self.ts.task_computer.task_given.assert_called_once_with(
-            ttc.compute_task_def
+            ttc.compute_task_def, max_cpu_usage
         )
         request_resource.assert_called_once_with(
             ttc.task_id,
@@ -1397,6 +1399,10 @@ class TestTaskGiven(TaskServerTestBase):
             price=ttc.price,
         )
         logger_mock.error.assert_not_called()
+        max_usage_mock.assert_called_once_with(
+            ttc.want_to_compute_task.task_header.subtask_budget,
+            ttc.price
+        )
 
     def test_already_assigned(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,

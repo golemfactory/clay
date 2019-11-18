@@ -86,7 +86,11 @@ class TaskComputerAdapter:
         # FIXME: This shouldn't be part of the public interface probably
         return self._old_computer.dir_manager
 
-    def task_given(self, ctd: ComputeTaskDef) -> None:
+    def task_given(
+            self,
+            ctd: ComputeTaskDef,
+            cpu_time_limit: Optional[int] = None
+    ) -> None:
         assert not self._new_computer.has_assigned_task()
         assert not self._old_computer.has_assigned_task()
 
@@ -95,7 +99,7 @@ class TaskComputerAdapter:
         if task_header.environment_prerequisites is not None:
             self._new_computer.task_given(task_header, ctd)
         else:
-            self._old_computer.task_given(ctd)
+            self._old_computer.task_given(ctd, cpu_time_limit)
 
     def has_assigned_task(self) -> bool:
         return self._new_computer.has_assigned_task() \
@@ -475,9 +479,16 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         self.support_direct_computation = False
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd: ComputeTaskDef) -> None:
+        self.cpu_limit: Optional[int] = None
+
+    def task_given(
+            self,
+            ctd: ComputeTaskDef,
+            cpu_time_limit: Optional[int] = None
+    ) -> None:
         assert self.assigned_subtask is None
         self.assigned_subtask = ctd
+        self.cpu_limit = cpu_time_limit
         ProviderTimer.start()
 
     def has_assigned_task(self) -> bool:
@@ -667,7 +678,6 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
-        cpu_limit = task_header.subtask_budget
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
@@ -690,7 +700,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
             tt: TaskThread = DockerTaskThread(
-                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
+                docker_images,
+                extra_data,
+                dir_mapping,
+                task_timeout,
+                self.cpu_limit
+            )
         elif self.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
