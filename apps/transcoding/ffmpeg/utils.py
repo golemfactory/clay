@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
@@ -174,7 +174,7 @@ class StreamOperator:
     @classmethod
     def _generate_split_dir_mapping(cls, task_dir: str):
         return cls._generate_dir_mapping(
-            Path(task_dir) / "split" / "resources", # This directory is unused
+            Path(task_dir) / "split" / "resources",  # This directory is unused
             task_dir,
             "split")
 
@@ -185,7 +185,6 @@ class StreamOperator:
 
     @classmethod
     def _remove_providers_results_zips(cls, task_dir: str):
-        print(task_dir)
         FfmpegDockerAPI.remove_intermediate_videos(Path(task_dir), '*.zip')
 
     def get_metadata(self,

@@ -34,8 +34,6 @@ logger = logging.getLogger(__name__)
 docker_lock = Lock()
 
 
-
-
 class Commands(enum.Enum):
     EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
     TRANSCODE = ('transcode', '')
