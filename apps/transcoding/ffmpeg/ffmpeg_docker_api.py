@@ -152,7 +152,7 @@ class FfmpegDockerAPI:
 
         logger.info('Obtaining video metadata.')
         logger.debug('Command params: %s', extra_data)
-        logger.info('Directories: work %s'.format(self.dir_mapping.work))
+        logger.info('Directories: work %s', self.dir_mapping.work)
 
         return self._do_job_in_container(self.dir_mapping, extra_data)
 
