@@ -3,6 +3,8 @@ from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,)
 import math
 import numpy
 
+from ethereum.utils import denoms
+
 from golem_messages.message.tasks import (
     ReportComputedTask, WantToComputeTask
 )
@@ -203,12 +205,27 @@ def _calculate_usage_payment(rct: ReportComputedTask) -> int:
         rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
     )
     price = rct.task_to_compute.want_to_compute_task.price
+    value = calculate_subtask_payment(price, usage)
+    payment = min(value, task_header.subtask_budget)
 
-    return min(
-        calculate_subtask_payment(price, usage),
-        task_header.subtask_budget
+    logger.debug(
+        "Calculated usage marketplace job value "
+        "(based on price=%s GNT/hour, usage=%s s): %s GNT. "
+        "Requestor's budget (max payment): %s GNT. "
+        "Actual payment amount: %s GNT. ",
+        price / denoms.ether,
+        usage,
+        value / denoms.ether,
+        task_header.subtask_budget / denoms.ether,
+        payment / denoms.ether,
     )
+    return payment
 
 
 def _calculate_usage_budget(wtct: WantToComputeTask) -> int:
-    return wtct.task_header.subtask_budget
+    budget = wtct.task_header.subtask_budget
+    logger.debug(
+        "Using the provided usage marketplace job budget: %s GNT",
+        budget / denoms.ether,
+    )
+    return budget
