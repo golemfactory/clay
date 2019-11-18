@@ -435,6 +435,11 @@ class NewTaskComputer:
 
 @dataclass
 class TaskComputation:
+    """Represents single compuatation in TaskComputer.
+
+    There could be only one non-signle core computation or multiple single-core computations.
+    """
+
     task_computer: 'TaskComputer'
     assigned_subtask: ComputeTaskDef
     counting_thread: Optional[TaskThread] = None
@@ -636,9 +641,6 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                  use_docker_manager=True,
                  finished_cb=None) -> None:
         self.task_server = task_server
-        # Currently computing TaskThread
-        self.counting_thread = None
-
         self.dir_manager: DirManager = DirManager(
             task_server.get_task_computer_root())
 
@@ -649,10 +651,6 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
         self.stats = stats_keeper or IntStatsKeeper(CompStats)
 
-        # So apparently it is perfectly fine for mypy to assign None to a
-        # non-optional variable. And if I tried Optional['ComputeTaskDef']
-        # then I would get "Optional[Any] is not indexable" error.
-        # Get your sh*t together, mypy!
         self.assigned_subtasks: List[TaskComputation] = []
 
         self.support_direct_computation = False
@@ -760,7 +758,6 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                       config_desc: ClientConfigDescriptor,
                       in_background: bool = True) -> defer.Deferred:
 
-        logger.info(f"num_cores={config_desc.num_cores}")
         self.dir_manager = DirManager(
             self.task_server.get_task_computer_root())
 
@@ -815,7 +812,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             task_id = ctd['task_id']
             if not [
                     c for c in self.assigned_subtasks
-                    if c.assigned_subtask_id == task_id
+                    if c.assigned_task_id == task_id
             ]:
                 self.task_server.task_keeper.task_ended(task_id)
 
@@ -842,8 +839,9 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         }
 
     def quit(self):
-        if self.counting_thread is not None:
-            self.counting_thread.end_comp()
+        for computation in self.assigned_subtasks:
+            if computation.counting_thread is not None:
+                computation.counting_thread.end_comp()
 
 
 class PyTaskThread(TaskThread):
