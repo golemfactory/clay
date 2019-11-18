@@ -1,5 +1,6 @@
 from pathlib import Path
 import os
+from typing import Optional, Dict, Any
 
 from golem_task_api import constants as api_constants
 
@@ -21,8 +22,11 @@ class DockerTaskApiPayloadBuilder(TaskApiPayloadBuilder):
             shared_dir: Path,
             command: str,
             port: int,
+            extra_options: Optional[Dict[str, Any]] = None
     ) -> RuntimePayload:
         assert isinstance(prereq, DockerPrerequisites)
+        if not extra_options:
+            extra_options = {}
         return DockerRuntimePayload(
             image=prereq.image,
             tag=prereq.tag,
@@ -33,4 +37,5 @@ class DockerTaskApiPayloadBuilder(TaskApiPayloadBuilder):
                 target=f'/{api_constants.WORK_DIR}',
             )],
             user=None if is_windows() else str(os.getuid()),
+            **extra_options
         )
