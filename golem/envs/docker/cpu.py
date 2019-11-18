@@ -562,6 +562,38 @@ class DockerCPUEnvironment(EnvironmentBase):
         finally:
             yield runtime.clean_up()
 
+    @inlineCallbacks
+    def run_local_container(self, image, tag, extra_options=None) -> Deferred:
+        if not extra_options:
+            extra_options = {}
+        yield self.install_prerequisites(DockerPrerequisites(
+            image=image,
+            tag=tag,
+        ))
+        docker_env = extra_options.get('env', {}) if 'env' in extra_options \
+            else {}
+
+        payload = DockerRuntimePayload(
+            image=image,
+            tag=tag,
+            user=None if is_windows() else str(os.getuid()),
+            env=docker_env,
+            **extra_options
+        )
+        runtime = self.runtime(payload)
+        yield runtime.prepare()
+        # Connect to stdout before starting the runtime because getting if after
+        # the container stops sometimes fails for unclear reasons
+        stdout = runtime.stdout('utf-8')
+        yield runtime.start()
+        yield runtime.wait_until_stopped()
+        try:
+            if runtime.status() == RuntimeStatus.FAILURE:
+                raise RuntimeError('Local container run failed.')
+            return str(stdout)
+        finally:
+            yield runtime.clean_up()
+
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
             -> DockerPrerequisites:

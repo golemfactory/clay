@@ -80,7 +80,7 @@ class ClientConfigDescriptor(object):
 
         self.overwrite_results: typing.Optional[str] = None
 
-        self.enable_cloud: bool = False
+        self.enable_cloud = 0
 
     def __repr__(self):
         return '{}: {}'.format(self.__class__, {
