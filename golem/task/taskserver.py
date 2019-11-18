@@ -102,6 +102,8 @@ from .taskcomputer import TaskComputerAdapter
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
+from golem.cloud.localmanager import LocalContainerManager
+
 
 if TYPE_CHECKING:
     from golem_messages.datastructures import p2p as dt_p2p  # noqa pylint: disable=unused-import,ungrouped-imports
@@ -210,6 +212,13 @@ class TaskServer(
             sync_wait(deferred, self.BENCHMARK_TIMEOUT)
         except DeferredTimeoutError:
             logger.warning('Benchmark computation timed out')
+
+        if self.config_desc.enable_cloud:
+            self.local_container_manager = LocalContainerManager(
+                config_desc=config_desc,
+                env_manager=new_env_manager,
+                root_path=self.get_task_computer_root())
+            self.local_container_manager.run_local_containers()
 
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
