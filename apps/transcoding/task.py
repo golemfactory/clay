@@ -91,7 +91,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
         task_output_dir = dir_manager.get_task_output_dir(task_id)
         self.task_dir = dir_manager.get_task_temporary_dir(task_id)
-        
+
         if not self.task_resources:
             raise TranscodingException(
                 '[task_id={}] There is no input file.'.format(task_id))

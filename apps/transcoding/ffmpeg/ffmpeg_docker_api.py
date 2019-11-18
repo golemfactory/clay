@@ -4,10 +4,9 @@ import os
 import glob
 
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from threading import Lock
 
-from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
@@ -17,7 +16,6 @@ from golem.docker.task_thread import DockerTaskThread, \
     DockerBind, DockerDirMapping
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
-
 
 
 FFMPEG_DOCKER_IMAGE = ffmpegEnvironment.DOCKER_IMAGE
