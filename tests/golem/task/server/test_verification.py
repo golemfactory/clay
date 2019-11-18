@@ -33,10 +33,9 @@ class TestGetMarketStrategy(unittest.TestCase):
         tm = mock.Mock(tasks=tasks)
         rtm = mock.Mock(
             get_requested_task=task_api_tasks.get,
-            get_requested_task_subtask=mock.Mock(
+            get_requested_subtask=mock.Mock(
                 side_effect=(
-                    lambda t, s: task_api_subtasks.get(s)
-                    if t in task_api_tasks else None
+                    lambda s: task_api_subtasks.get(s)
                 ),
             )
         )
