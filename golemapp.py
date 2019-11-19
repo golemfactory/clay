@@ -106,11 +106,16 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--enable-talkback', is_flag=True, default=None)
 @click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
 @click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
+@click.option('--enable-cloud', is_flag=True, default=False,
+              help="Enable Golem Cloud (EXPERIMENTAL)")
+@click.option('--cloud-config', default=None,
+              help="Golem Cloud configuration file (EXPERIMENTAL)")
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback: bool,
-        hyperdrive_port, hyperdrive_rpc_port,
+        hyperdrive_port, hyperdrive_rpc_port, enable_cloud: bool,
+        cloud_config
 ):
     if version:
         print("GOLEM version: {}".format(golem.__version__))
@@ -151,6 +156,10 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             config_desc.hyperdrive_port = hyperdrive_port
         if hyperdrive_rpc_port:
             config_desc.hyperdrive_rpc_port = hyperdrive_rpc_port
+        config_desc.enable_cloud = enable_cloud
+        if enable_cloud:
+            if cloud_config:
+                config_desc.cloud_config = cloud_config
 
         # Golem headless
         install_reactor()
