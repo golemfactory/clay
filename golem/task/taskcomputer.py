@@ -683,8 +683,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         unique_str = str(uuid.uuid4())
 
         logger.info("Starting computation of subtask %r (task: %r, deadline: "
-                    "%r, docker images: %r)", subtask_id, task_id, deadline,
-                    docker_images)
+                    "%r, docker images: %r, cpu limit: %r)", subtask_id,
+                    task_id, deadline, docker_images, self.cpu_limit)
 
         with self.dir_lock:
             resource_dir = self.dir_manager.get_task_resource_dir(task_id)
