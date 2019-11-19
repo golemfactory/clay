@@ -499,7 +499,7 @@ class TaskServer(
         task_header: dt_tasks.TaskHeader = msg.want_to_compute_task.task_header
 
         cpu_time_limit = task_helpers.calculate_max_usage(
-            task_header.subtask_budget, msg.price)
+            task_header.subtask_budget, msg.want_to_compute_task.price)
         self.task_computer.task_given(msg.compute_task_def, cpu_time_limit)
 
         if task_header.environment_prerequisites:
