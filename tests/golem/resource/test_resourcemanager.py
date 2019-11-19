@@ -47,7 +47,7 @@ class TestResourceManager(TempDirFixture):
         assert isinstance(response.result, str)
         assert self.resource_manager._cache[sample_path] == response.result
 
-    @freeze_time(datetime.datetime.utcfromtimestamp(NOW))
+    @freeze_time(datetime.datetime.fromtimestamp(NOW))
     def test_share_cached(self):
         sample_path = self.new_path / "sample.txt"
 
@@ -58,7 +58,7 @@ class TestResourceManager(TempDirFixture):
         self.resource_manager.share(sample_path, self.client_options)
         assert self.client.add_async.call_count == 1
 
-    @freeze_time(datetime.datetime.utcfromtimestamp(NOW))
+    @freeze_time(datetime.datetime.fromtimestamp(NOW))
     def test_share_cache_timed_out(self):
         sample_path = self.new_path / "sample.txt"
 
