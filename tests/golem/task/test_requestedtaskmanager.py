@@ -3,7 +3,6 @@
 
 import asyncio
 from pathlib import Path
-import datetime
 
 from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
@@ -75,10 +74,9 @@ class TestRequestedTaskManager:
             lambda *_: TaskState())
 
     @pytest.mark.asyncio
-    async def test_restore_tasks_timedout(self, mock_client):
+    @pytest.mark.freeze_time("1000")
+    async def test_restore_tasks_timedout(self, freezer, mock_client):
         # given
-        mock_loop = MagicMock()
-        mock_client.has_pending_subtasks.return_value = True
         self._add_next_subtask_to_client_mock(mock_client)
         self.rtm._time_out_task = Mock()
         self.rtm._time_out_subtask = Mock()
@@ -88,13 +86,9 @@ class TestRequestedTaskManager:
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
         subtask = await self.rtm.get_next_subtask(task_id, computing_node)
-        mock_loop.time.return_value = datetime.datetime.now().timestamp()
+        freezer.move_to("1010")
         # when
-        with patch(
-            'golem.task.requestedtaskmanager.asyncio.get_event_loop',
-            return_value=mock_loop
-        ):
-            self.rtm.restore_tasks()
+        self.rtm.restore_tasks()
         # then
         self.rtm._time_out_task.assert_called_once_with(task_id)
         self.rtm._time_out_subtask.assert_called_once_with(
@@ -103,22 +97,18 @@ class TestRequestedTaskManager:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.freeze_time("1000")
-    async def test_restore_tasks_schedule(self, freezer, mock_client):
+    async def test_restore_tasks_schedule(self, mock_client):
         # given
         mock_loop = MagicMock()
-        mock_client.has_pending_subtasks.return_value = True
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task(
-            task_timeout=20,
-            subtask_timeout=20)
+            task_timeout=20000,
+            subtask_timeout=20000)
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
         subtask = await self.rtm.get_next_subtask(task_id, computing_node)
-        freezer.move_to("1010")
-        mock_loop.time.return_value = datetime.datetime.now().timestamp()
         # when
         with patch(
             'golem.task.requestedtaskmanager.asyncio.get_event_loop',

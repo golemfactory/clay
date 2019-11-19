@@ -107,13 +107,15 @@ class RequestedTaskManager:
         running_subtasks = RequestedSubtask.select() \
             .where(RequestedSubtask.status.in_(SUBTASK_STATUS_ACTIVE))
         for subtask in running_subtasks:
+            if subtask.deadline is None:
+                # subtask not started
+                continue
             subtask_id = subtask.subtask_id
-
-            if subtask.deadline is not None and \
-                    subtask.deadline.timestamp() < loop.time():
+            time_left = subtask.deadline.timestamp() - default_now().timestamp()
+            if time_left > 0:
                 logger.info('restoring subtask. subtask_id=%r', subtask_id)
                 loop.call_at(
-                    subtask.deadline,
+                    loop.time() + time_left,
                     self._time_out_subtask,
                     subtask.task_id,
                     subtask_id,
@@ -125,11 +127,14 @@ class RequestedTaskManager:
         running_tasks = RequestedTask.select() \
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
         for task in running_tasks:
-            if task.deadline is not None and \
-                    task.deadline.timestamp() < loop.time():
-                logger.info('task in progress. task_id=%r', task.task_id)
+            if task.deadline is None:
+                # task not started
+                continue
+            time_left = task.deadline.timestamp() - default_now().timestamp()
+            if time_left > 0:
+                logger.info('restoring task. task_id=%r', task.task_id)
                 loop.call_at(
-                    task.deadline,
+                    loop.time() + time_left,
                     self._time_out_task,
                     task.task_id,
                 )
