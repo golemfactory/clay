@@ -142,7 +142,7 @@ class StreamOperator:
             chunks_on_host)
 
         ffmpeg_docker_api = FfmpegDockerAPI(dir_mapping)
-        _ = ffmpeg_docker_api.merge_and_replace_video_streams(
+        ffmpeg_docker_api.merge_and_replace_video_streams(
             input_file_on_host,
             chunks_in_container,
             output_file_basename,
