@@ -1,0 +1,2 @@
+DEFAULT_CLOUD_CONFIG_DIR = 'cloud'
+DEFAULT_CLOUD_CONFIG_FILE = 'cloud.yaml'
