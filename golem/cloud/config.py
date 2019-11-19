@@ -27,7 +27,7 @@ def get_config_path(
     return config_dir_path / config_file
 
 
-def load_config(config_path, config_class=Configuration):
+def load_config(config_path, config_class=Configuration, schema_class=None):
     """Load configuration."""
     config_path = get_path(config_path)
     if not config_path:
@@ -35,5 +35,6 @@ def load_config(config_path, config_class=Configuration):
             f'`config_path` "{config_path}" does not exist.')
     if not issubclass(config_class, Configuration):
         raise TypeError('`config_class` is not inherited from Configuration')
-    config = config_class.load(config_path=config_path)
+    config = config_class.load(config_path=config_path,
+                               schema_class=schema_class)
     return config

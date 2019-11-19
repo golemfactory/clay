@@ -435,6 +435,11 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def run_local_container(self, *args, **kwargs) -> Deferred:
+        """ Run local container in this environment. """
+        raise NotImplementedError
+
+    @abstractmethod
     def parse_prerequisites(self, prerequisites_dict: Dict[str, Any]) \
             -> Prerequisites:
         """ Build Prerequisites struct from supplied dictionary. Returned value
