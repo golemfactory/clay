@@ -199,7 +199,7 @@ class FfmpegDockerAPI:
             try:
                 cls._removed_intermediate_video_placeholder(file)
                 os.remove(file)
-            except:
+            except IOError:
                 pass
 
     @classmethod
