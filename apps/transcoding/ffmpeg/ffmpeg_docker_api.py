@@ -196,8 +196,11 @@ class FfmpegDockerAPI:
         logger.debug("Removing intermediate files: %s", files_to_remove)
 
         for file in files_to_remove:
-            cls._removed_intermediate_video_placeholder(file)
-            os.remove(file)
+            try:
+                cls._removed_intermediate_video_placeholder(file)
+                os.remove(file)
+            except:
+                pass
 
     @classmethod
     def remove_split_intermediate_videos(cls, dir_mapping: DockerDirMapping):
