@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 class TaskResourcesMixin:
     """Resource management functionality of TaskServer"""
 
-    HANDSHAKE_TIMEOUT = 60  # s
+    HANDSHAKE_TIMEOUT = 20  # s
     NONCE_TASK = 'nonce'
 
     resource_handshakes: Dict[str, ResourceHandshake]
