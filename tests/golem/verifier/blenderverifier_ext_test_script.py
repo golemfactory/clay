@@ -6,6 +6,9 @@ import sys
 import traceback
 from typing import List
 
+# Add golem base directory to path.
+sys.path.insert(0, ".")
+
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
