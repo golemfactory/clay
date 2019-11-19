@@ -7,8 +7,9 @@ from ffmpeg_tools.formats import Container
 
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.common import ffmpegException
-from apps.transcoding.ffmpeg.utils import StreamOperator, Commands, \
-    FFMPEG_BASE_SCRIPT
+from apps.transcoding.ffmpeg.utils import StreamOperator
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import \
+     Commands, FFMPEG_BASE_SCRIPT
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -38,19 +39,22 @@ class TestffmpegTranscoding(TempDirFixture):
     def test_extract_and_split_video(self):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
+                task_id = str(uuid.uuid4())
                 chunks, _ = self.stream_operator.\
                     extract_video_streams_and_split(
-                        self.RESOURCE_STREAM, parts, self.dir_manager,
-                        str(uuid.uuid4()))
+                        self.RESOURCE_STREAM, parts,
+                        self.dir_manager.get_task_temporary_dir(task_id),
+                        task_id)
                 self.assertEqual(len(chunks), parts)
 
     def test_extract_and_split_invalid_video(self):
         with self.assertRaises(ffmpegException):
+            task_id = str(uuid.uuid4())
             self.stream_operator.extract_video_streams_and_split(
                 os.path.join(self.RESOURCES,
                              'invalid_test_video2.mp4'),
-                1, self.dir_manager,
-                str(uuid.uuid4()))
+                1, self.dir_manager.get_task_temporary_dir(task_id),
+                task_id)
 
     def test_extract_split_merge_and_replace_video(self):
         parts = 2
@@ -64,7 +68,8 @@ class TestffmpegTranscoding(TempDirFixture):
 
         chunks, _ = self.stream_operator.extract_video_streams_and_split(
             self.RESOURCE_STREAM, parts,
-            self.dir_manager, task_id)
+            task_dir, task_id)
+
         self.assertEqual(len(chunks), parts)
         self.assertEqual(
             set(os.path.splitext(chunk)[1] for chunk in chunks),
@@ -139,22 +144,22 @@ class TestffmpegTranscoding(TempDirFixture):
         merge_job_info = self.stream_operator._prepare_merge_job(
             self.tempdir,
             [])
-        (host_dirs, chunks_in_container) = merge_job_info
+        (dirs_mapping, chunks_in_container) = merge_job_info
 
         self.assertEqual(len(chunks_in_container), 0)
         self.assertEqual(
-            host_dirs['resources'],
+            str(dirs_mapping.resources),
             os.path.join(self.tempdir, 'merge', 'resources')
         )
-        self.assertTrue(os.path.isdir(host_dirs['output']))
+        self.assertTrue(os.path.isdir(dirs_mapping.resources))
         self.assertEqual(
-            host_dirs['output'],
+            str(dirs_mapping.output),
             os.path.join(self.tempdir, 'merge', 'output'))
-        self.assertTrue(os.path.isdir(host_dirs['output']))
+        self.assertTrue(os.path.isdir(dirs_mapping.output))
         self.assertEqual(
-            host_dirs['work'],
+            str(dirs_mapping.work),
             os.path.join(self.tempdir, 'merge', 'work'))
-        self.assertTrue(os.path.isdir(host_dirs['work']))
+        self.assertTrue(os.path.isdir(dirs_mapping.work))
 
     def test_prepare_merge_job_nonexistent_results(self):
         with self.assertRaises(ffmpegException):

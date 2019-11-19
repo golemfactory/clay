@@ -14,7 +14,7 @@ from ffmpeg_tools.validation import UnsupportedVideoCodec, \
 
 from apps.transcoding.common import TranscodingTaskBuilderException
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
-from apps.transcoding.ffmpeg.utils import Commands
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import Commands
 from golem.core.common import timeout_to_deadline
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager

@@ -1,45 +1,21 @@
-import enum
 import json
 import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional
-from threading import Lock
+from typing import List, Tuple
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
-from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
 from golem.core.common import HandleError
-from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerTaskThread, \
-    DockerBind, DockerDirMapping
-from golem.environments.environment import Environment
-from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.resource.dirmanager import DirManager
+from golem.docker.task_thread import DockerDirMapping
 
-FFMPEG_DOCKER_IMAGE = ffmpegEnvironment.DOCKER_IMAGE
-FFMPEG_DOCKER_TAG = ffmpegEnvironment.DOCKER_TAG
-FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
-FFMPEG_ENTRYPOINT = 'python3 ' + FFMPEG_BASE_SCRIPT
-FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
-
-# Suffix used to distinguish the temporary container that has no audio or data
-# streams from a complete video
-VIDEO_ONLY_CONTAINER_SUFFIX = '[video-only]'
 
 logger = logging.getLogger(__name__)
 
-split_lock = Lock()
-
-
-class Commands(enum.Enum):
-    EXTRACT_AND_SPLIT = ('extract-and-split', 'extract-and-split-results.json')
-    TRANSCODE = ('transcode', '')
-    MERGE_AND_REPLACE = ('merge-and-replace', '')
-    COMPUTE_METRICS = ('compute-metrics', '')
 
 
 class StreamOperator:
@@ -47,59 +23,27 @@ class StreamOperator:
     def extract_video_streams_and_split(self, # noqa pylint: disable=too-many-locals
                                         input_file_on_host: str,
                                         parts: int,
-                                        dir_manager: DirManager,
+                                        task_dir: str,
                                         task_id: str):
 
-        directory_mapping = self._get_dir_mapping(dir_manager, task_id)
+        directory_mapping = self._generate_split_dir_mapping(task_dir)
 
-        host_dirs = {
-            'tmp': directory_mapping.temporary,
-            'output': directory_mapping.output,
-        }
+        ffmpeg_docker_api = FfmpegDockerAPI(directory_mapping)
+        result, split_result_file = ffmpeg_docker_api.\
+            extract_video_streams_and_split(
+                input_file_on_host,
+                parts
+            )
 
-        input_file_basename = os.path.basename(input_file_on_host)
-        input_file_in_container = os.path.join(
-            # FIXME: This is a path on the host but docker will create it in
-            # the container. It's unlikely that there's anything there but
-            # it's not guaranteed.
-            "/{}/".format(task_id),
-            input_file_basename)
+        FfmpegDockerAPI.remove_split_intermediate_videos(directory_mapping)
 
-        # FIXME: The environment is stored globally. Changing it will affect
-        # containers started by other functions that do not do it themselves.
-        env = ffmpegEnvironment(binds=[DockerBind(
-            Path(input_file_on_host),
-            input_file_in_container,
-            'ro')])
-
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.EXTRACT_AND_SPLIT.value[0],
-            'input_file': input_file_in_container,
-            'parts': parts,
-        }
-
-        logger.debug(
-            'Running video stream extraction and splitting '
-            '[params = %s]',
-            extra_data)
-        with split_lock:
-            try:
-                result = self._do_job_in_container(
-                    directory_mapping,
-                    extra_data,
-                    env)
-            except ffmpegException as exception:
-                raise ffmpegExtractSplitError(str(exception)) from exception
-
-        split_result_file = os.path.join(host_dirs['output'],
-                                         Commands.EXTRACT_AND_SPLIT.value[1])
         output_files = result.get('data', [])
         if split_result_file not in output_files:
             raise ffmpegExtractSplitError(
                 f"Result file {split_result_file} does not exist")
 
-        logger.debug('Split result file is = %s [parts = %d]',
+        logger.debug('[task_id = %s] Split result file is = %s [parts = %d]',
+                     task_id,
                      split_result_file,
                      parts)
 
@@ -121,40 +65,36 @@ class StreamOperator:
 
             return streams_list, params.get('metadata', {})
 
-    def _prepare_merge_job(self, task_dir, chunks_on_host):
-        host_dirs = {
-            'resources': os.path.join(task_dir, 'merge', 'resources'),
-            'temporary': os.path.join(task_dir, 'merge', 'work'),
-            'work': os.path.join(task_dir, 'merge', 'work'),
-            'output': os.path.join(task_dir, 'merge', 'output'),
-            'logs': os.path.join(task_dir, 'merge', 'output'),
-            'stats': os.path.join(task_dir, 'merge', 'stats'),
-        }
+    def _prepare_merge_job(self,
+                           task_dir: str,
+                           chunks_on_host)->Tuple[DockerDirMapping, List[str]]:
 
-        try:
-            os.makedirs(host_dirs['resources'])
-            os.makedirs(host_dirs['output'])
-            os.makedirs(host_dirs['work'])
-            os.makedirs(host_dirs['stats'])
-        except OSError:
-            raise ffmpegMergeReplaceError(
-                "Failed to prepare video merge directory structure")
+        directory_mapping: DockerDirMapping = self._generate_dir_mapping(
+            Path(task_dir) / "merge" / "resources",
+            task_dir,
+            "merge")
+
         chunks_in_container = self._collect_files(
-            task_dir, chunks_on_host,
-            host_dirs['resources'])
+            task_dir,
+            chunks_on_host,
+            directory_mapping.resources)
 
-        return (host_dirs, chunks_in_container)
+        return (directory_mapping, chunks_in_container)
 
     @staticmethod
-    def _collect_files(directory, files, resources_dir):
-        # each chunk must be in the same directory
+    def _collect_files(directory: str,
+                       files: List[str],
+                       resources_dir: str) -> List[str]:
+
+        # Each chunk must be in the same directory
         results = list()
         for file in files:
             if not os.path.isfile(file):
                 raise ffmpegMergeReplaceError("Missing result file: {}".format(
                     file))
             if os.path.dirname(file) != directory:
-                raise ffmpegMergeReplaceError("Result file: {} should be in "
+                raise ffmpegMergeReplaceError(
+                    "Result file: {} should be in "
                     "the proper directory: {}".format(file, directory))
 
             results.append(file)
@@ -189,96 +129,79 @@ class StreamOperator:
         assert os.path.isfile(input_file_on_host), \
             "Caller is responsible for ensuring that input file exists."
 
-        (host_dirs, chunks_in_container) = self._prepare_merge_job(
+        # Temporary videos can take big amount of disk space.
+        # If we got here, we have all segments already transcoded, so we
+        # can remove them. Merge will produce some new temporary videos so we
+        # need to remove split results as soon as posible, otherwise we can
+        # exhaust disk space.
+        self._remove_split_results(task_dir)
+        self._remove_providers_results_zips(task_dir)
+
+        (dir_mapping, chunks_in_container) = self._prepare_merge_job(
             task_dir,
             chunks_on_host)
 
-        container_files = {
-            # FIXME: /golem/tmp should not be hard-coded.
-            'in': os.path.join(
-                '/golem/tmp',
-                os.path.basename(input_file_on_host)),
-            'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
-        }
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.MERGE_AND_REPLACE.value[0],
-            'input_file': container_files['in'],
-            'chunks': chunks_in_container,
-            'output_file': container_files['out'],
-            'container': container.value if container is not None else None,
-            'strip_unsupported_data_streams': strip_unsupported_data_streams,
-            'strip_unsupported_subtitle_streams':
-                strip_unsupported_subtitle_streams
-        }
-
-        logger.debug('Merge and replace params: %s', extra_data)
-
-        # FIXME: The environment is stored globally. Changing it will affect
-        # containers started by other functions that do not do it themselves.
-        env = ffmpegEnvironment(binds=[DockerBind(
-            Path(input_file_on_host),
-            container_files['in'],
-            'ro')])
-
-        with split_lock:
-            try:
-                self._do_job_in_container(
-                    DockerTaskThread.specify_dir_mapping(**host_dirs),
-                    extra_data,
-                    env)
-            except ffmpegException as exception:
-                raise ffmpegMergeReplaceError(str(exception)) from exception
-
-        return os.path.join(host_dirs['output'], output_file_basename)
-
-    @staticmethod
-    def _do_job_in_container(dir_mapping, extra_data: dict,
-                             env: Optional[Environment] = None,
-                             timeout: int = 120):
-
-        if env:
-            EnvironmentsManager().add_environment(env)
-
-        dtt = DockerTaskThread(
-            docker_images=[
-                DockerImage(
-                    repository=FFMPEG_DOCKER_IMAGE,
-                    tag=FFMPEG_DOCKER_TAG
-                )
-            ],
-            extra_data=extra_data,
-            dir_mapping=dir_mapping,
-            timeout=timeout
+        ffmpeg_docker_api = FfmpegDockerAPI(dir_mapping)
+        ffmpeg_docker_api.merge_and_replace_video_streams(
+            input_file_on_host,
+            chunks_in_container,
+            output_file_basename,
+            container,
+            strip_unsupported_data_streams,
+            strip_unsupported_subtitle_streams
         )
 
-        dtt.run()
-        if dtt.error:
-            raise ffmpegException(dtt.error_msg)
-        return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
+        FfmpegDockerAPI.remove_merge_intermediate_videos(dir_mapping)
 
-    @staticmethod
-    def _get_dir_mapping(dir_manager: DirManager, task_id: str):
-        tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
-        resources_task_dir = dir_manager.get_task_resource_dir(task_id)
+        return os.path.join(dir_mapping.output, output_file_basename)
 
-        return DockerDirMapping.generate(
-            Path(resources_task_dir),
-            Path(tmp_task_dir))
+    @classmethod
+    def _generate_dir_mapping(cls,
+                              resource_dir: str,
+                              task_dir: str,
+                              subdir_name: str):
+        directory_mapping = DockerDirMapping.generate(
+            Path(resource_dir),
+            Path(task_dir) / subdir_name)
 
-    @staticmethod
-    def _specify_dir_mapping(output, temporary, resources, logs, work):
-        return DockerTaskThread.specify_dir_mapping(output=output,
-                                                    temporary=temporary,
-                                                    resources=resources,
-                                                    logs=logs, work=work,
-                                                    stats=logs)
+        try:
+            directory_mapping.mkdirs(exist_ok=True)
+        except OSError:
+            raise ffmpegMergeReplaceError(
+                "Failed to prepare video merge directory structure")
+
+        return directory_mapping
+
+    @classmethod
+    def _generate_split_dir_mapping(cls, task_dir: str):
+        return cls._generate_dir_mapping(
+            # This directory is unused
+            os.path.join(task_dir, "split", "resources"),
+            task_dir,
+            "split")
+
+    @classmethod
+    def _remove_split_results(cls, task_dir: str):
+        dir_mapping = cls._generate_split_dir_mapping(task_dir)
+        FfmpegDockerAPI.remove_split_output_videos(dir_mapping)
+
+    @classmethod
+    def _remove_providers_results_zips(cls, task_dir: str):
+        FfmpegDockerAPI.remove_intermediate_videos(Path(task_dir), '*.zip')
 
     def get_metadata(self,
                      input_files: List[str],
                      resources_dir: str,
-                     work_dir: str,
-                     output_dir: str) -> dict:
+                     work_dir: str) -> dict:
+
+        dir_mapping: DockerDirMapping = self._generate_dir_mapping(
+            resources_dir,
+            work_dir,
+            "metadata")
+
+        # Important: This function expects only one result file.
+        # We can't add logs to output.
+        dir_mapping.logs = dir_mapping.work
 
         assert os.path.isdir(resources_dir)
         assert all([
@@ -286,42 +209,14 @@ class StreamOperator:
             for input_file in input_files
         ])
 
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-        except OSError:
-            raise ffmpegException(
-                "Failed to prepare directory structure for get_metadata")
-
         metadata_requests = [{
             'video': input_file,
             'output': f'metadata-logs-{os.path.splitext(input_file)[0]}.json'
         } for input_file in input_files]
 
-        extra_data = {
-            'entrypoint': FFMPEG_ENTRYPOINT,
-            'command': Commands.COMPUTE_METRICS.value[0],
-            'metrics_params': {
-                'metadata': metadata_requests,
-            },
-        }
+        ffmpeg_docker_api = FfmpegDockerAPI(dir_mapping)
+        job_result = ffmpeg_docker_api.get_metadata(metadata_requests)
 
-        stats_dir = os.path.join(
-            os.path.dirname(work_dir),
-            "get-metadata-stats")
-
-        dir_mapping = DockerTaskThread.specify_dir_mapping(
-            output=output_dir,
-            temporary=work_dir,
-            resources=resources_dir,
-            logs=work_dir,
-            work=work_dir,
-            stats=stats_dir)
-
-        logger.info('Obtaining video metadata.')
-        logger.debug('Command params: %s', extra_data)
-        logger.info('Directories: work {}'.format(work_dir))
-
-        job_result = self._do_job_in_container(dir_mapping, extra_data)
         if 'data' not in job_result:
             raise ffmpegException(
                 "Failed to obtain video metadata. "

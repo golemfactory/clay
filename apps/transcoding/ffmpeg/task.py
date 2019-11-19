@@ -3,7 +3,8 @@ import os
 
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_ENTRYPOINT
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import Commands, \
+    FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
@@ -34,7 +35,8 @@ class ffmpegTask(TranscodingTask):
                                 self._get_resources_root_dir())
         chunk = DockerJob.get_absolute_resource_path(chunk)
 
-        filename = os.path.splitext(os.path.basename(  # TODO: we trust foreign filename
+        # TODO: we trust foreign filename
+        filename = os.path.splitext(os.path.basename(
             self.chunks[subtask_num]))[0]
         output_extension = os.path.splitext(self.task_definition.output_file)[1]
 

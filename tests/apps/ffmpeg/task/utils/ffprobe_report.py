@@ -407,8 +407,7 @@ class FfprobeFormatReport:
             metadata = stream_operator.get_metadata(
                 dirs_and_basenames[key],
                 key,
-                os.path.join(tmp_dir, f"get-metadata-work-{i}/"),
-                os.path.join(tmp_dir, f"get-metadata-output-{i}/"),
+                os.path.join(tmp_dir, f"get-metadata-{i}/"),
             )
             for path in metadata['data']:
                 with open(path) as metadata_file:
