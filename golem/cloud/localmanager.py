@@ -1,11 +1,13 @@
 from pathlib import Path
 import logging
+from typing import Optional
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.resource.dirmanager import DirManager
 from golem.task.envmanager import EnvironmentManager
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 
+from .config import load_config, get_config_path
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +19,7 @@ class LocalContainerManager:
                  config_desc: ClientConfigDescriptor,
                  env_manager: EnvironmentManager,
                  root_path: Path):
+        logger.warn('Enabling Golem Cloud LocalContainerManager')
         self.config_desc = config_desc
         self.env_manager = env_manager
         self.dir_manager = DirManager(root_path)
@@ -29,9 +32,13 @@ class LocalContainerManager:
         return self.env_manager.environment(self._environment)
 
     def _parse_config(self):
-        print(self.config_desc)
-        print(self.dir_manager)
-        print(dir(self.dir_manager))
+        if self.config_desc.cloud_config:
+            config_path = self.config_desc.cloud_config
+        else:
+            config_path = get_config_path()
+        if not config_path.exist():
+            logger.warning(
+                f'Cloud configuration "{config_path}" does not exist.')
 
     def run_local_containers(self):
 
