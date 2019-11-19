@@ -7,9 +7,9 @@ from golem.resource.client import ClientOptions
 from golem.resource.resourcemanager import ResourceManager, ResourceId
 from golem.testutils import TempDirFixture
 
-NOW = 500
+NOW = 1555555555
 TIMEOUT = 10
-VALID_TO = 1000
+VALID_TO = 1555565555
 
 
 class TestResourceManager(TempDirFixture):
