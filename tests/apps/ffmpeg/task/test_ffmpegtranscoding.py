@@ -7,8 +7,9 @@ from ffmpeg_tools.formats import Container
 
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.common import ffmpegException
-from apps.transcoding.ffmpeg.utils import StreamOperator, Commands, \
-    FFMPEG_BASE_SCRIPT
+from apps.transcoding.ffmpeg.utils import StreamOperator
+from apps.transcoding.ffmpeg.ffmpeg_docker_api import \
+     Commands, FFMPEG_BASE_SCRIPT
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread

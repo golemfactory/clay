@@ -221,6 +221,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (_input_report, _output_report, diff) = operation.run(video["path"])
         self.assertEqual(diff, [])
 
+    from golem.testutils import keep_testdir_on_fail
+    @keep_testdir_on_fail
     @pytest.mark.slow
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
