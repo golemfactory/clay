@@ -48,6 +48,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason, AclRule
 from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task import helpers as task_helpers
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
@@ -1360,7 +1361,6 @@ class TestSendResults(TaskServerTestBase):
         self.assertEqual(wtr.result, (str(filepath),))
 
 
-@patch('golem.task.helpers.calculate_max_usage')
 @patch('golem.task.taskserver.TaskServer.request_resource')
 @patch('golem.task.taskserver.update_requestor_assigned_sum')
 @patch('golem.task.taskserver.dispatcher')
@@ -1370,11 +1370,13 @@ class TestTaskGiven(TaskServerTestBase):
 
     def test_ok(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
-            request_resource, max_usage_mock):
+            request_resource):
         self.ts.task_computer.has_assigned_task.return_value = False
         ttc = msg_factories.tasks.TaskToComputeFactory()
-        max_cpu_usage = 4242
-        max_usage_mock.return_value = max_cpu_usage
+
+        task_header: dt_tasks.TaskHeader = ttc.want_to_compute_task.task_header
+        max_cpu_usage: int = task_helpers.calculate_max_usage(
+            task_header.subtask_budget, ttc.want_to_compute_task.price)
 
         result = self.ts.task_given(ttc)
         self.assertEqual(result, True)
@@ -1399,10 +1401,6 @@ class TestTaskGiven(TaskServerTestBase):
             price=ttc.price,
         )
         logger_mock.error.assert_not_called()
-        max_usage_mock.assert_called_once_with(
-            ttc.want_to_compute_task.task_header.subtask_budget,
-            ttc.price
-        )
 
     def test_already_assigned(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
