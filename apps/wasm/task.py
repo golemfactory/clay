@@ -600,7 +600,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
         else:
             output_path = options['output_dir']
 
-        return os.path.join(output_path, '/')
+        return output_path
 
 
 class WasmBenchmarkTask(WasmTask):
