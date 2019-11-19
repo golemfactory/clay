@@ -79,148 +79,150 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
         return task_def_for_transcoding
 
-    @parameterized.expand(
-        (
-            (video, video_codec, container)
-            for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for video_codec, container in (
-                (VideoCodec.FLV1, Container.c_FLV),
-                (VideoCodec.H_264, Container.c_AVI),
-                (VideoCodec.HEVC, Container.c_MP4),
-                (VideoCodec.MJPEG, Container.c_MOV),
-                (VideoCodec.MPEG_1, Container.c_MPEG),
-                (VideoCodec.MPEG_2, Container.c_MPEG),
-                (VideoCodec.MPEG_4, Container.c_MPEGTS),
-                (VideoCodec.VP8, Container.c_WEBM),
-                (VideoCodec.VP9, Container.c_MATROSKA),
-                (VideoCodec.WMV1, Container.c_ASF),
-                (VideoCodec.WMV2, Container.c_ASF),
-            )
-        ),
-        name_func=create_split_and_merge_with_codec_change_test_name
-    )
-    @pytest.mark.slow
-    def test_split_and_merge_with_codec_change(self,
-                                               video,
-                                               video_codec,
-                                               container):
-        source_codec = video["video_codec"]
-        assert video_codec.value in source_codec.get_supported_conversions()
+    # @parameterized.expand(
+    #     (
+    #         (video, video_codec, container)
+    #         for video in VIDEO_FILES  # pylint: disable=undefined-variable
+    #         for video_codec, container in (
+    #             (VideoCodec.FLV1, Container.c_FLV),
+    #             (VideoCodec.H_264, Container.c_AVI),
+    #             (VideoCodec.HEVC, Container.c_MP4),
+    #             (VideoCodec.MJPEG, Container.c_MOV),
+    #             (VideoCodec.MPEG_1, Container.c_MPEG),
+    #             (VideoCodec.MPEG_2, Container.c_MPEG),
+    #             (VideoCodec.MPEG_4, Container.c_MPEGTS),
+    #             (VideoCodec.VP8, Container.c_WEBM),
+    #             (VideoCodec.VP9, Container.c_MATROSKA),
+    #             (VideoCodec.WMV1, Container.c_ASF),
+    #             (VideoCodec.WMV2, Container.c_ASF),
+    #         )
+    #     ),
+    #     name_func=create_split_and_merge_with_codec_change_test_name
+    # )
+    # @pytest.mark.slow
+    # def test_split_and_merge_with_codec_change(self,
+    #                                            video,
+    #                                            video_codec,
+    #                                            container):
+    #     source_codec = video["video_codec"]
+    #     assert video_codec.value in source_codec.get_supported_conversions()
 
-        operation = SimulatedTranscodingOperation(
-            task_executor=self,
-            experiment_name="codec change",
-            resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir,
-            dont_include_in_option_description=["resolution"])
-        operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_video_codec_change(video_codec)
-        operation.request_container_change(container)
-        operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff(
-            FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
-        operation.enable_treating_missing_attributes_as_unchanged()
+    #     operation = SimulatedTranscodingOperation(
+    #         task_executor=self,
+    #         experiment_name="codec change",
+    #         resource_dir=self.RESOURCES,
+    #         tmp_dir=self.tempdir,
+    #         dont_include_in_option_description=["resolution"])
+    #     operation.attach_to_report_set(self._ffprobe_report_set)
+    #     operation.request_video_codec_change(video_codec)
+    #     operation.request_container_change(container)
+    #     operation.request_resolution_change(video["resolution"])
+    #     operation.exclude_from_diff(
+    #         FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+    #     operation.enable_treating_missing_attributes_as_unchanged()
 
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+    #     (_input_report, _output_report, diff) = operation.run(video["path"])
+    #     self.assertEqual(diff, [])
 
-    @parameterized.expand(
-        (
-            (video, resolution)
-            for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for resolution in (
-                [400, 300],
-                [640, 480],
-            )
-        ),
-        name_func=create_split_and_merge_with_resolution_change_test_name
-    )
-    @pytest.mark.slow
-    def test_split_and_merge_with_resolution_change(self, video, resolution):
-        source_codec = video["video_codec"]
-        operation = SimulatedTranscodingOperation(
-            task_executor=self,
-            experiment_name="resolution change",
-            resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir)
-        operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_resolution_change(resolution)
-        operation.request_video_codec_change(source_codec)
-        operation.request_container_change(video['container'])
-        operation.exclude_from_diff(
-            FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
-        operation.enable_treating_missing_attributes_as_unchanged()
+    # @parameterized.expand(
+    #     (
+    #         (video, resolution)
+    #         for video in VIDEO_FILES  # pylint: disable=undefined-variable
+    #         for resolution in (
+    #             [400, 300],
+    #             [640, 480],
+    #         )
+    #     ),
+    #     name_func=create_split_and_merge_with_resolution_change_test_name
+    # )
+    # @pytest.mark.slow
+    # def test_split_and_merge_with_resolution_change(self, video, resolution):
+    #     source_codec = video["video_codec"]
+    #     operation = SimulatedTranscodingOperation(
+    #         task_executor=self,
+    #         experiment_name="resolution change",
+    #         resource_dir=self.RESOURCES,
+    #         tmp_dir=self.tempdir)
+    #     operation.attach_to_report_set(self._ffprobe_report_set)
+    #     operation.request_resolution_change(resolution)
+    #     operation.request_video_codec_change(source_codec)
+    #     operation.request_container_change(video['container'])
+    #     operation.exclude_from_diff(
+    #         FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+    #     operation.enable_treating_missing_attributes_as_unchanged()
 
-        validate_resolution(video["resolution"], resolution)
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+    #     validate_resolution(video["resolution"], resolution)
+    #     (_input_report, _output_report, diff) = operation.run(video["path"])
+    #     self.assertEqual(diff, [])
 
-    @parameterized.expand(
-        (
-            (video, frame_rate)
-            for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for frame_rate in (25, '30000/1001', 60)
-        ),
-        name_func=create_split_and_merge_with_frame_rate_change_test_name
-    )
-    @pytest.mark.slow
-    def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
-        source_codec = video["video_codec"]
-        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
-        assert frame_rate_as_str_or_int & list_supported_frame_rates() != set()
+    # @parameterized.expand(
+    #     (
+    #         (video, frame_rate)
+    #         for video in VIDEO_FILES  # pylint: disable=undefined-variable
+    #         for frame_rate in (25, '30000/1001', 60)
+    #     ),
+    #     name_func=create_split_and_merge_with_frame_rate_change_test_name
+    # )
+    # @pytest.mark.slow
+    # def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
+    #     source_codec = video["video_codec"]
+    #     frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
+    #     assert frame_rate_as_str_or_int & list_supported_frame_rates() != set()
 
-        operation = SimulatedTranscodingOperation(
-            task_executor=self,
-            experiment_name="frame rate change",
-            resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir,
-            dont_include_in_option_description=["resolution", "video_codec"])
-        operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_frame_rate_change(frame_rate)
-        operation.request_video_codec_change(source_codec)
-        operation.request_container_change(video['container'])
-        operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff(
-            FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
-        operation.exclude_from_diff({'video': {'frame_count'}})
-        fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
-        operation.set_override('video', 'frame_rate', fuzzy_rate)
-        operation.enable_treating_missing_attributes_as_unchanged()
+    #     operation = SimulatedTranscodingOperation(
+    #         task_executor=self,
+    #         experiment_name="frame rate change",
+    #         resource_dir=self.RESOURCES,
+    #         tmp_dir=self.tempdir,
+    #         dont_include_in_option_description=["resolution", "video_codec"])
+    #     operation.attach_to_report_set(self._ffprobe_report_set)
+    #     operation.request_frame_rate_change(frame_rate)
+    #     operation.request_video_codec_change(source_codec)
+    #     operation.request_container_change(video['container'])
+    #     operation.request_resolution_change(video["resolution"])
+    #     operation.exclude_from_diff(
+    #         FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+    #     operation.exclude_from_diff({'video': {'frame_count'}})
+    #     fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
+    #     operation.set_override('video', 'frame_rate', fuzzy_rate)
+    #     operation.enable_treating_missing_attributes_as_unchanged()
 
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+    #     (_input_report, _output_report, diff) = operation.run(video["path"])
+    #     self.assertEqual(diff, [])
 
-    @parameterized.expand(
-        (
-            (video, subtasks_count)
-            for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for subtasks_count in (1, 6, 10, video['key_frames'])
-        ),
-        name_func=create_split_and_merge_with_different_subtask_counts_test_name
-    )
-    @pytest.mark.slow
-    def test_split_and_merge_with_different_subtask_counts(self,
-                                                           video,
-                                                           subtasks_count):
-        source_codec = video["video_codec"]
-        operation = SimulatedTranscodingOperation(
-            task_executor=self,
-            experiment_name="number of subtasks",
-            resource_dir=self.RESOURCES,
-            tmp_dir=self.tempdir,
-            dont_include_in_option_description=["resolution", "video_codec"])
-        operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_subtasks_count(subtasks_count)
-        operation.request_video_codec_change(source_codec)
-        operation.request_container_change(video['container'])
-        operation.request_resolution_change(video["resolution"])
-        operation.exclude_from_diff(
-            FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
-        operation.enable_treating_missing_attributes_as_unchanged()
+    # @parameterized.expand(
+    #     (
+    #         (video, subtasks_count)
+    #         for video in VIDEO_FILES  # pylint: disable=undefined-variable
+    #         for subtasks_count in (1, 6, 10, video['key_frames'])
+    #     ),
+    #     name_func=create_split_and_merge_with_different_subtask_counts_test_name
+    # )
+    # @pytest.mark.slow
+    # def test_split_and_merge_with_different_subtask_counts(self,
+    #                                                        video,
+    #                                                        subtasks_count):
+    #     source_codec = video["video_codec"]
+    #     operation = SimulatedTranscodingOperation(
+    #         task_executor=self,
+    #         experiment_name="number of subtasks",
+    #         resource_dir=self.RESOURCES,
+    #         tmp_dir=self.tempdir,
+    #         dont_include_in_option_description=["resolution", "video_codec"])
+    #     operation.attach_to_report_set(self._ffprobe_report_set)
+    #     operation.request_subtasks_count(subtasks_count)
+    #     operation.request_video_codec_change(source_codec)
+    #     operation.request_container_change(video['container'])
+    #     operation.request_resolution_change(video["resolution"])
+    #     operation.exclude_from_diff(
+    #         FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
+    #     operation.enable_treating_missing_attributes_as_unchanged()
 
-        (_input_report, _output_report, diff) = operation.run(video["path"])
-        self.assertEqual(diff, [])
+    #     (_input_report, _output_report, diff) = operation.run(video["path"])
+    #     self.assertEqual(diff, [])
 
+    from golem.testutils import keep_testdir_on_fail
+    @keep_testdir_on_fail
     @pytest.mark.slow
     def test_simple_case(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
@@ -238,6 +240,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         task = self.execute_task(task_def)
         result = task.task_definition.output_file
         self.assertTrue(TestTaskIntegration.check_file_existence(result))
+        assert False
 
     @pytest.mark.slow
     def test_nonexistent_output_dir(self):
