@@ -15,7 +15,7 @@ def calculate_subtask_payment(
     # computation_time is expressed in seconds
     """
     This is equivalent to: math.ceil(price_per_hour * computation_time // 3600)
-    
+
     Don't use math.ceil (this is general advice, not specific to the case here)
     >>> math.ceil(10 ** 18 / 6)
     166666666666666656
@@ -44,5 +44,4 @@ def calculate_max_usage(budget: int, price_per_hour: int) -> int:
     >>> (10 ** 18 + 5) // 6
     166666666666666667
     """
-
     return (budget * 3600 + price_per_hour - 1) // price_per_hour
