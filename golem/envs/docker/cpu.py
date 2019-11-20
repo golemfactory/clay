@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from copy import deepcopy
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
@@ -11,7 +12,7 @@ from typing import Optional, Any, Dict, List, Type, ClassVar, \
 from dataclasses import dataclass, field, asdict
 from docker.errors import APIError
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
-from twisted.internet.defer import Deferred, inlineCallbacks, succeed
+from twisted.internet.defer import Deferred, inlineCallbacks, succeed, CancelledError
 from twisted.internet.threads import deferToThread
 from urllib3.contrib.pyopenssl import WrappedSocket
 
@@ -272,7 +273,14 @@ class DockerCPURuntime(RuntimeBase):
 
         def _clean_up():
             client = local_client()
-            client.remove_container(self._container_id)
+            while self.status() not in (RuntimeStatus.STOPPED,
+                                        RuntimeStatus.FAILURE,
+                                        RuntimeStatus.CLEANING_UP):
+                logger.info(self.status())
+                time.sleep(1)
+            logger.info(f"Removing container: '{self._container_id}'")
+            client.remove_container(self._container_id, force=True)
+            return
 
         # Close STDIN in case it wasn't closed on stop()
         def _close_stdin(res):
@@ -317,26 +325,28 @@ class DockerCPURuntime(RuntimeBase):
 
         def _stop():
             client = local_client()
-            client.stop(self._container_id)
+            yield client.stop(self._container_id)
 
         def _join_status_update_thread(res):
-            self._logger.debug("Joining status update thread...")
+            self._logger.info("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
                 self._logger.warning("Failed to join status update thread.")
             else:
-                self._logger.debug("Status update thread joined.")
+                self._logger.info("Status update thread joined.")
             return res
 
         def _close_stdin(res):
+            self._logger.info("Closing stdin...")
             if self._stdin_socket is not None:
                 self._stdin_socket.close()
             return res
 
         deferred_stop = deferToThread(_stop)
         deferred_stop.addCallback(self._stopped)
-        deferred_stop.addErrback(self._error_callback(
-            f"Stopping container '{self._container_id}' failed."))
+        deferred_stop.addErrback(
+            self._error_callback,
+            f"Stopping container '{self._container_id}' failed.")
         deferred_stop.addBoth(_join_status_update_thread)
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop
@@ -563,36 +573,24 @@ class DockerCPUEnvironment(EnvironmentBase):
             yield runtime.clean_up()
 
     @inlineCallbacks
-    def run_local_container(self, image, tag, extra_options=None) -> Deferred:
-        if not extra_options:
-            extra_options = {}
-        # yield self.install_prerequisites(DockerPrerequisites(
-        #     image=image,
-        #     tag=tag,
-        # ))
-        docker_env = extra_options.get('env', {}) if 'env' in extra_options \
-            else {}
-
-        payload = DockerRuntimePayload(
-            image=image,
-            tag=tag,
-            user=None if is_windows() else str(os.getuid()),
-            env=docker_env,
-            **extra_options
-        )
-        runtime = self.runtime(payload)
+    def run_local_runtime(self, runtime) -> Deferred:
         yield runtime.prepare()
         # Connect to stdout before starting the runtime because getting if after
         # the container stops sometimes fails for unclear reasons
         stdout = runtime.stdout('utf-8')
         yield runtime.start()
-        yield runtime.wait_until_stopped()
         try:
+            yield runtime.wait_until_stopped()
             if runtime.status() == RuntimeStatus.FAILURE:
                 raise RuntimeError('Local container run failed.')
             return str(stdout)
+        except CancelledError as e:
+            logger.error('Local runtime thread cancelled')
         finally:
-            yield runtime.clean_up()
+            try:
+                yield runtime.clean_up()
+            except CancelledError as e:
+                logger.error('Local runtime thread cancelled on cleanup')
 
     @classmethod
     def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
