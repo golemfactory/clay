@@ -61,7 +61,7 @@ class Report:
             # It will be updated below.
             del report_params['crops_params']
             report_params['crops_params'] = dict()
-            report_params['fails'] = list()
+            report_params['fails'] = dict()
 
             for subtasks in report:
                 crops_params = subtasks["crops_params"]
@@ -74,6 +74,7 @@ class Report:
 
                     # Copy fail if it existed.
                     if subtasks.get('fail_reason') is not None:
+                        report_params['fails'][subtask_num] = list()
                         report_params['fails'][subtask_num].append(
                             subtasks['fail_reason'])
 
