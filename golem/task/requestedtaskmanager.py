@@ -496,13 +496,11 @@ class RequestedTaskManager:
             .execute()
 
     @staticmethod
-    def get_requested_task_subtask(
-            task_id: TaskId,
-            subtask_id: SubtaskId
+    def get_requested_subtask(
+            subtask_id: SubtaskId,
     ) -> Optional[RequestedSubtask]:
         try:
             return RequestedSubtask.get(
-                RequestedSubtask.task == task_id,
                 RequestedSubtask.subtask_id == subtask_id)
         except RequestedSubtask.DoesNotExist:
             return None

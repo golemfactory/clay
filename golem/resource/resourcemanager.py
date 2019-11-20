@@ -1,10 +1,10 @@
 import sys
+from datetime import datetime
+from pathlib import Path
 from typing import NewType, Optional, Dict, Tuple, Iterable
 
-from pathlib import Path
 from twisted.internet.defer import inlineCallbacks, FirstError
 
-from golem.core.common import get_timestamp_utc
 from golem.network.hyperdrive.client import HyperdriveAsyncClient
 from golem.resource.client import ClientOptions
 
@@ -48,7 +48,8 @@ class ResourceManager:
             # Missing / invalid timeouts are validated by the client.
             # Don't pre-check it here and set the timeout to max int.
             timeout = client_options.timeout or sys.maxsize
-            now = get_timestamp_utc()
+            # Use system time like simple-transfer does
+            now = datetime.now().timestamp()
 
             # Prevent crashes if the response is empty or invalid
             try:
