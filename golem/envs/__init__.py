@@ -435,8 +435,8 @@ class Environment(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def run_local_container(self, *args, **kwargs) -> Deferred:
-        """ Run local container in this environment. """
+    def run_local_runtime(self, *args, **kwargs) -> Deferred:
+        """ Run local runtime in this environment. """
         raise NotImplementedError
 
     @abstractmethod
