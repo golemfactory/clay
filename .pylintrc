@@ -52,6 +52,7 @@ confidence=
 # --disable=W"
 disable=invalid-name,                   # Pylint is overzealous here
         missing-docstring,              # We don't need a docstring for obvious things!
+        bad-continuation,
         fixme,
 
 # Enable the message, report, category or checker with the given id(s). You can

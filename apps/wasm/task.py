@@ -1,10 +1,10 @@
 import os
-from dataclasses import dataclass
 from copy import deepcopy
 from pathlib import Path, PurePath
 from typing import (
     Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, Type, Set)
 import logging
+from dataclasses import dataclass
 
 from ethereum.utils import denoms
 
@@ -494,9 +494,10 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         return results.files if results else []
 
     @classmethod
-    def calculate_subtask_budget(cls, task_definition: WasmTaskDefinition):  # type:ignore  # noqa pylint:disable=line-too-long
-        num_payable_subtasks = len(task_definition.options.subtasks) * \
-                               (cls.REDUNDANCY_FACTOR + 1)
+    def calculate_subtask_budget(
+        cls, task_definition: WasmTaskDefinition) -> int:
+        num_payable_subtasks = len(
+            task_definition.options.subtasks) * (cls.REDUNDANCY_FACTOR + 1)
         return task_definition.budget // num_payable_subtasks
 
     @property
