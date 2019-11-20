@@ -59,3 +59,27 @@ def are_pixels_equal(
         round_to_black_and_white(subtask_fragment_image)
     )
     return is_result_positive
+
+def assert_crops_match(task_dir: str) -> None:
+
+    try:
+        crops_paths = find_crop_files_in_path(
+            os.path.join(task_dir, 'output'))
+        fragments_paths = find_fragments_in_path(
+            os.path.join(task_dir, "work"))
+    except Exception:
+        raise Exception(
+            "Can't find crop files in output or work directory.")
+
+    assert crops_paths, "There were no crops produced!"
+    assert len(crops_paths) == len(
+        fragments_paths
+    ), "Amount of rendered crops != amount of image fragments!"
+    for crop_path, fragment_path in zip(
+            crops_paths,
+            fragments_paths,
+    ):
+        assert are_pixels_equal(
+            crop_path,
+            fragment_path,
+        ), f"crop: {crop_path} doesn't match: {fragment_path}"

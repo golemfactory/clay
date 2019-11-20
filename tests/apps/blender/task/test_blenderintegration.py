@@ -10,8 +10,7 @@ from golem.tools.ci import ci_skip
 from golem.task.taskbase import Task
 
 from tests.golem.verifier.test_utils.helpers import \
-    find_crop_files_in_path, \
-    are_pixels_equal, find_fragments_in_path
+    assert_crops_match
 
 logger = logging.getLogger(__name__)
 
@@ -76,30 +75,9 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         return task_def_for_blender
 
-    def assert_crops_match(self, task_id: str) -> None:
+    def check_crops_match(self, task_id: str) -> None:
         task_dir = os.path.join(self.tempdir, task_id)
-
-        try:
-            crops_paths = find_crop_files_in_path(
-                os.path.join(task_dir, 'output'))
-            fragments_paths = find_fragments_in_path(
-                os.path.join(task_dir, "work"))
-        except Exception:
-            raise Exception(
-                "Can't find crop files in output or work directory.")
-
-        assert crops_paths, "There were no crops produced!"
-        assert len(crops_paths) == len(
-            fragments_paths
-        ), "Amount of rendered crops != amount of image fragments!"
-        for crop_path, fragment_path in zip(
-                crops_paths,
-                fragments_paths,
-        ):
-            assert are_pixels_equal(
-                crop_path,
-                fragment_path,
-            ), f"crop: {crop_path} doesn't match: {fragment_path}"
+        assert_crops_match(task_dir)
 
     def check_outputs_existence(self, task: Task):
         result = task.task_definition.output_file
@@ -128,7 +106,7 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existence(task)
-        self.assert_crops_match(task.task_definition.task_id)
+        self.check_crops_match(task.task_definition.task_id)
 
     def test_full_task_flow_singleframe(self):
         task_def = self._task_dictionary(
@@ -140,7 +118,7 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         result = task.task_definition.output_file
         self.assertTrue(os.path.isfile(result))
-        self.assert_crops_match(task.task_definition.task_id)
+        self.check_crops_match(task.task_definition.task_id)
 
     def test_failing_case_uneven_divisions(self):
         task_def = self._task_dictionary(
@@ -151,7 +129,7 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existence(task)
-        self.assert_crops_match(task.task_definition.task_id)
+        self.check_crops_match(task.task_definition.task_id)
 
     def test_failing_case_one_subtask(self):
         task_def = self._task_dictionary(
@@ -162,4 +140,4 @@ class TestBlenderIntegration(TestTaskIntegration):
 
         task: Task = self.execute_task(task_def)
         self.check_outputs_existence(task)
-        self.assert_crops_match(task.task_definition.task_id)
+        self.check_crops_match(task.task_definition.task_id)
