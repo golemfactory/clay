@@ -42,8 +42,8 @@ class AppManager:
             raise ValueError(f"Application not registered. app_id={app_id}")
         self._state[app_id] = enabled
         logger.info(
-            "Application %s. app_id=%r",
-            'enabled' if enabled else 'disabled', app_id)
+            "Application %s. app_id=%r", 'enabled' if enabled else 'disabled',
+            app_id)
 
     def apps(self) -> List[Tuple[AppId, AppDefinition]]:
         """ Get all registered apps. """

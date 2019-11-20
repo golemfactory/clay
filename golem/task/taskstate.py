@@ -84,11 +84,8 @@ class SubtaskStatus(Enum):
 
 
 SUBTASK_STATUS_ACTIVE = [
-    SubtaskStatus.starting,
-    SubtaskStatus.downloading,
-    SubtaskStatus.verifying
+    SubtaskStatus.starting, SubtaskStatus.downloading, SubtaskStatus.verifying
 ]
-
 
 validate_varchar_inf = functools.partial(
     validators.validate_varchar,
@@ -98,36 +95,36 @@ validate_varchar_inf = functools.partial(
 
 class SubtaskState(datastructures.Container):
     __slots__ = {
-        'subtask_id': (validators.validate_varchar128, ),
-        'progress': (
-            functools.partial(
-                validators.fail_unless,
-                check=lambda x: isinstance(x, float),
-                fail_msg="Should be a float",
-            ),
-        ),
-        'time_started': (validators.validate_integer, ),
-        'node_id': (validators.validate_varchar128, ),
-        'node_name': (validate_varchar_inf, ),
-        'deadline': (validators.validate_integer, ),
-        'price': (validators.validate_integer, ),
+        'subtask_id': (validators.validate_varchar128,),
+        'progress':
+            (
+                functools.partial(
+                    validators.fail_unless,
+                    check=lambda x: isinstance(x, float),
+                    fail_msg="Should be a float",
+                ),),
+        'time_started': (validators.validate_integer,),
+        'node_id': (validators.validate_varchar128,),
+        'node_name': (validate_varchar_inf,),
+        'deadline': (validators.validate_integer,),
+        'price': (validators.validate_integer,),
         'extra_data': (),
-        'status': (
-            functools.partial(
-                validators.fail_unless,
-                check=lambda x: isinstance(x, (str, SubtaskStatus)),
-                fail_msg="Should be str or SubtaskStatus",
-            ),
-        ),
-        'stdout': (validate_varchar_inf, ),
-        'stderr': (validate_varchar_inf, ),
-        'results': (
-            functools.partial(
-                validators.fail_unless,
-                check=lambda x: isinstance(x, list),
-                fail_msg="Should be a list",
-            ),
-        ),
+        'status':
+            (
+                functools.partial(
+                    validators.fail_unless,
+                    check=lambda x: isinstance(x, (str, SubtaskStatus)),
+                    fail_msg="Should be str or SubtaskStatus",
+                ),),
+        'stdout': (validate_varchar_inf,),
+        'stderr': (validate_varchar_inf,),
+        'results':
+            (
+                functools.partial(
+                    validators.fail_unless,
+                    check=lambda x: isinstance(x, list),
+                    fail_msg="Should be a list",
+                ),),
     }
 
     DEFAULTS = {
@@ -193,17 +190,12 @@ class TaskStatus(Enum):
 
 
 TASK_STATUS_COMPLETED = [
-    TaskStatus.finished,
-    TaskStatus.aborted,
-    TaskStatus.timeout,
+    TaskStatus.finished, TaskStatus.aborted, TaskStatus.timeout,
     TaskStatus.restarted
 ]
 
-
 TASK_STATUS_ACTIVE = [
-    TaskStatus.sending,
-    TaskStatus.waiting,
-    TaskStatus.starting,
+    TaskStatus.sending, TaskStatus.waiting, TaskStatus.starting,
     TaskStatus.computing
 ]
 
@@ -215,6 +207,7 @@ class TaskTestStatus(Enum):
 
 
 class Operation(Enum):
+
     @staticmethod
     def task_related() -> bool:
         return False
@@ -240,11 +233,9 @@ class TaskOp(Operation):
 
     def is_completed(self) -> bool:
         return self in [
-            TaskOp.FINISHED,
-            TaskOp.NOT_ACCEPTED,
-            TaskOp.TIMEOUT,
-            TaskOp.RESTARTED,
-            TaskOp.ABORTED]
+            TaskOp.FINISHED, TaskOp.NOT_ACCEPTED, TaskOp.TIMEOUT,
+            TaskOp.RESTARTED, TaskOp.ABORTED
+        ]
 
     WORK_OFFER_RECEIVED = auto()
     CREATED = auto()

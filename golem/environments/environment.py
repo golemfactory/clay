@@ -8,6 +8,7 @@ from golem.model import Performance
 
 
 class SupportStatus(object):
+
     def __init__(self, ok, desc=None) -> None:
         self.desc = desc or {}
         self._ok = ok

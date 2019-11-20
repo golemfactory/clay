@@ -5,10 +5,7 @@ import enum
 import functools
 import logging
 import time
-from typing import (
-    Any, Callable, TYPE_CHECKING,
-    Optional, Generator
-)
+from typing import (Any, Callable, TYPE_CHECKING, Optional, Generator)
 
 from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
@@ -37,8 +34,7 @@ from golem.network.transport import msg_queue
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.ranking.manager.database_manager import (
-    update_requestor_assigned_sum
-)
+    update_requestor_assigned_sum)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import exceptions
 from golem.task.helpers import calculate_subtask_payment
@@ -66,11 +62,7 @@ def drop_after_attr_error(*args, **_):
 
 
 def get_task_message(
-        message_class_name,
-        node_id,
-        task_id,
-        subtask_id,
-        log_prefix=None):
+    message_class_name, node_id, task_id, subtask_id, log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
@@ -78,8 +70,7 @@ def get_task_message(
         message_class_name=message_class_name,
         node_id=node_id,
         subtask_id=subtask_id,
-        task_id=task_id
-    )
+        task_id=task_id)
     if msg is None:
         logger.debug(
             '%s%s message not found for task %r, subtask: %r',
@@ -92,8 +83,8 @@ def get_task_message(
 
 
 def check_docker_images(
-        ctd: message.ComputeTaskDef,
-        env: DockerEnvironment,
+    ctd: message.ComputeTaskDef,
+    env: DockerEnvironment,
 ):
     for image_dict in ctd['docker_images']:
         image = DockerImage(**image_dict)
@@ -166,10 +157,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _get_app_from_header(
-            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
+        self, task_header: message.tasks.TaskHeader) -> Optional[App]:
         return self.task_server.client.apps_manager.get_app_for_env(
-            task_header.environment
-        )
+            task_header.environment)
 
     def _get_task_class(self, task_header: message.tasks.TaskHeader):
         app = self._get_app_from_header(task_header)
@@ -187,12 +177,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :return None:
         """
         self.task_server.set_last_message(
-            "<-",
-            time.localtime(),
-            msg,
-            self.address,
-            self.port
-        )
+            "<-", time.localtime(), msg, self.address, self.port)
         BasicSafeSession.interpret(self, msg)
 
     def dropped(self):
@@ -255,8 +240,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 proto_id=variables.PROTOCOL_CONST.ID,
                 node_info=self.task_server.client.node,
             ),
-            send_unverified=True
-        )
+            send_unverified=True)
 
     def read_msg_queue(self):
         if not self.key_id:
@@ -275,8 +259,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.tasks.CannotAssignTask(
                 task_id=task_id,
                 reason=reason,
-            ),
-        )
+            ),)
         self.dropped()
 
     # pylint: disable=too-many-return-statements
@@ -311,8 +294,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         offer_hash = binascii.hexlify(msg.get_short_hash()).decode('utf8')
         if not self.task_server.should_accept_provider(
-                self.key_id, self.address, msg.task_id, msg.perf_index,
-                msg.max_memory_size, offer_hash):
+            self.key_id, self.address, msg.task_id, msg.perf_index,
+            msg.max_memory_size, offer_hash):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -330,13 +313,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             current_task = self.requested_task_manager.get_requested_task(
                 msg.task_id)
-            current_app = self.task_server.app_manager.app(
-                current_task.app_id)
+            current_app = self.task_server.app_manager.app(current_task.app_id)
             market_strategy = current_app.market_strategy
             max_price_per_hour = current_task.max_price_per_hour
         else:
-            if not self.task_manager.check_next_subtask(
-                    msg.task_id, msg.price):
+            if not self.task_manager.check_next_subtask(msg.task_id, msg.price):
                 logger.debug("check_next_subtask False. %s", task_node_info)
                 self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
                 return
@@ -351,37 +332,33 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             max_price_per_hour = current_task.header.max_price
 
         if self._handshake_required(self.key_id):
-            logger.warning('Can not accept offer: Resource handshake is'
-                           ' required. %s', task_node_info)
+            logger.warning(
+                'Can not accept offer: Resource handshake is'
+                ' required. %s', task_node_info)
             self.task_server.start_handshake(self.key_id)
             return
 
         elif self._handshake_in_progress(self.key_id):
-            logger.warning('Can not accept offer: Resource handshake is in'
-                           ' progress. %s', task_node_info)
+            logger.warning(
+                'Can not accept offer: Resource handshake is in'
+                ' progress. %s', task_node_info)
             return
 
         # pylint:disable=too-many-instance-attributes,too-many-public-methods
         class OfferWithCallback(Offer):
             # pylint:disable=too-many-arguments
             def __init__(
-                    self,
-                    provider_id: str,
-                    provider_performance: ProviderPerformance,
-                    max_price: float,
-                    price: float,
-                    callback: Callable[..., None]) -> None:
-                super().__init__(provider_id, provider_performance,
-                                 max_price, price)
+                self, provider_id: str,
+                provider_performance: ProviderPerformance, max_price: float,
+                price: float, callback: Callable[..., None]) -> None:
+                super().__init__(
+                    provider_id, provider_performance, max_price, price)
                 self.callback = callback
 
         offer = OfferWithCallback(
-            self.key_id,
-            ProviderPerformance(msg.cpu_usage / 1e9),
-            max_price_per_hour,
-            msg.price,
-            functools.partial(self._offer_chosen, True, msg=msg)
-        )
+            self.key_id, ProviderPerformance(msg.cpu_usage / 1e9),
+            max_price_per_hour, msg.price,
+            functools.partial(self._offer_chosen, True, msg=msg))
 
         def resolution(market_strategy, task_id):
             for offer in market_strategy.resolve_task_offers(task_id):
@@ -395,16 +372,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if market_strategy.get_task_offer_count(msg.task_id) == 1:
             deferred.call_later(
-                self.task_server.config_desc.offer_pooling_interval,
-                resolution,
-                market_strategy,
-                msg.task_id
-            )
+                self.task_server.config_desc.offer_pooling_interval, resolution,
+                market_strategy, msg.task_id)
             logger.info(
                 "Will select providers for task %s in %.1f seconds",
                 msg.task_id,
-                self.task_server.config_desc.offer_pooling_interval
-            )
+                self.task_server.config_desc.offer_pooling_interval)
 
     @defer.inlineCallbacks
     def _offer_chosen(  # pylint: disable=too-many-locals
@@ -437,9 +410,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
 
             logger.info(
-                "Subtask assigned. %s, subtask_id=%r",
-                task_node_info, ctd["subtask_id"]
-            )
+                "Subtask assigned. %s, subtask_id=%r", task_node_info,
+                ctd["subtask_id"])
 
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
@@ -453,18 +425,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=budget,
                 size=package_size,
                 resources_options=self.task_server.get_share_options(
-                    address=self.address).__dict__
-            )
+                    address=self.address).__dict__)
             ttc.generate_ethsig(self.my_private_key)
             if ttc.concent_enabled:
                 logger.debug(
                     f"Signing promissory notes for GNTDeposit at: "
-                    f"{self.deposit_contract_address}"
-                )
+                    f"{self.deposit_contract_address}")
                 ttc.sign_all_promissory_notes(
                     deposit_contract_address=self.deposit_contract_address,
-                    private_key=self.my_private_key
-                )
+                    private_key=self.my_private_key)
 
             signed_ttc = msg_utils.copy_and_sign(
                 msg=ttc,
@@ -483,8 +452,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # pylint: disable=too-many-locals
     @defer.inlineCallbacks
     def _get_next_ctd(
-            self,
-            msg: message.tasks.WantToComputeTask,
+        self,
+        msg: message.tasks.WantToComputeTask,
     ) -> Optional[Generator[defer.Deferred, Any, None]]:
         assert self.key_id is not None
         task_id = msg.task_id
@@ -500,9 +469,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     task_id=task_id,
                     computing_node=ComputingNodeDefinition(
                         name='',  # FIXME: Provide proper node name
-                        node_id=self.key_id
-                    )
-                ))
+                        node_id=self.key_id)))
             if subtask_definition is None:
                 # Application refused to assign subtask to provider node
                 return None
@@ -514,10 +481,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             share_options = self.task_server.get_share_options(
                 timeout=deadline_to_timeout(subtask_definition.deadline))
 
-            cdn_resources = yield defer.gatherResults([
-                rm.share(task_resources_dir / r, share_options)
-                for r in subtask_definition.resources
-            ])
+            cdn_resources = yield defer.gatherResults(
+                [
+                    rm.share(task_resources_dir / r, share_options)
+                    for r in subtask_definition.resources
+                ])
             new_ctd = {
                 'task_id': task_id,
                 'subtask_id': subtask_definition.subtask_id,
@@ -548,11 +516,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if ctd["resources"]:
             resources_result = yield add_resources(
-                self.task_server.client,
-                ctd["resources"],
-                ctd["subtask_id"],
-                common.deadline_to_timeout(ctd["deadline"])
-            )
+                self.task_server.client, ctd["resources"], ctd["subtask_id"],
+                common.deadline_to_timeout(ctd["deadline"]))
             _, _, package_hash, package_size = resources_result
             # overwrite resources so they are serialized by
             # resource_manager
@@ -588,11 +553,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
-        dispatcher.send(
-            signal='golem.message',
-            event='received',
-            message=msg
-        )
+        dispatcher.send(signal='golem.message', event='received', message=msg)
 
         def _cannot_compute(reason):
             logger.debug("Cannot %r", reason)
@@ -600,8 +561,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,
                     reason=reason,
-                ),
-            )
+                ),)
             self.dropped()
 
         reasons = message.tasks.CannotComputeTask.REASON
@@ -611,10 +571,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if (
-                self.concent_service.enabled
-                and self.concent_service.required_as_provider
-                and not msg.concent_enabled
-        ):
+            self.concent_service.enabled and
+            self.concent_service.required_as_provider and
+            not msg.concent_enabled):
             # Provider requires concent
             # if it's enabled locally and marked as required
             _cannot_compute(reasons.ConcentRequired)
@@ -632,20 +591,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_header = msg.want_to_compute_task.task_header
         total_task_price = calculate_subtask_payment(
             task_header.max_price,
-            task_header.subtask_timeout
-        ) * task_header.subtasks_count
+            task_header.subtask_timeout) * task_header.subtasks_count
 
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.get_available_gnt(
-            account_address=msg.requestor_ethereum_address,
-        )
+            account_address=msg.requestor_ethereum_address,)
         if requestors_gntb_balance < total_task_price:
             _cannot_compute(reasons.InsufficientBalance)
             return
         if msg.concent_enabled:
             requestors_deposit_value = transaction_system.concent_balance(
-                account_address=msg.requestor_ethereum_address,
-            )
+                account_address=msg.requestor_ethereum_address,)
             requestors_expected_deposit_value = msg_helpers \
                 .requestor_deposit_amount(
                     total_task_price=total_task_price,
@@ -659,8 +615,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.InsufficientDeposit)
                 return
             requestors_deposit_timelock = transaction_system.concent_timelock(
-                account_address=msg.requestor_ethereum_address,
-            )
+                account_address=msg.requestor_ethereum_address,)
             # 0 - safe to use
             # <anything else> - withdrawal procedure has started
             if requestors_deposit_timelock != 0:
@@ -668,15 +623,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
 
             if not msg.verify_all_promissory_notes(
-                    deposit_contract_address=self.deposit_contract_address):
+                deposit_contract_address=self.deposit_contract_address):
                 _cannot_compute(reasons.PromissoryNoteMissing)
                 logger.debug(
                     f"Requestor failed to provide correct promissory"
                     f"note signatures to compute with the Concent:"
                     f"promissory_note_sig: {msg.promissory_note_sig}, "
                     f"concent_promissory_note_sig: "
-                    f"{msg.concent_promissory_note_sig}."
-                )
+                    f"{msg.concent_promissory_note_sig}.")
                 return
 
         try:
@@ -700,8 +654,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         max_resource_size_kib = self.task_server.config_desc.max_resource_size
         max_resource_size = int(max_resource_size_kib) * 1024
         if resource_size > max_resource_size:
-            logger.info('Subtask with too big resources received: '
-                        f'{resource_size}, only {max_resource_size} available')
+            logger.info(
+                'Subtask with too big resources received: '
+                f'{resource_size}, only {max_resource_size} available')
             return False
         return True
 
@@ -773,13 +728,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # we're immediately sending a rejection message to the Provider
             self.task_server.send_result_rejected(
                 report_computed_task=msg,
-                reason=message.tasks.SubtaskResultsRejected.REASON
-                .ResourcesFailure,
+                reason=message.tasks.SubtaskResultsRejected.REASON.
+                ResourcesFailure,
             )
             self.task_manager.task_computation_failure(
-                msg.subtask_id,
-                'Error downloading task result'
-            )
+                msg.subtask_id, 'Error downloading task result')
 
         task_server_helpers.computed_task_reported(
             task_server=self.task_server,
@@ -795,7 +748,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _get_payment_value_and_budget(
-            self, rct: message.tasks.ReportComputedTask):
+        self, rct: message.tasks.ReportComputedTask):
         task_class = self._get_task_class(
             rct.task_to_compute.want_to_compute_task.task_header)
         market_strategy = task_class.PROVIDER_MARKET_STRATEGY
@@ -806,20 +759,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @staticmethod
     def _adjust_requestor_assigned_sum(
-            requestor_id: str, payment_value: int, budget: int):
+        requestor_id: str, payment_value: int, budget: int):
         # because we have originally updated the requestor's assigned sum
         # with the budget value, when we accepted the job
         # now that we finally know what the actual payment amount is
         # we need to subtract the difference
         if payment_value < budget:
-            update_requestor_assigned_sum(
-                requestor_id,
-                payment_value - budget
-            )
+            update_requestor_assigned_sum(requestor_id, payment_value - budget)
 
     @history.provider_history
     def _react_to_subtask_results_accepted(
-            self, msg: message.tasks.SubtaskResultsAccepted):
+        self, msg: message.tasks.SubtaskResultsAccepted):
         # The message must be verified, and verification requires self.key_id.
         # This assert is for mypy, which only knows that it's Optional[str].
         assert self.key_id is not None
@@ -834,11 +784,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        dispatcher.send(
-            signal='golem.message',
-            event='received',
-            message=msg
-        )
+        dispatcher.send(signal='golem.message', event='received', message=msg)
 
         self.concent_service.cancel_task_message(
             msg.subtask_id,
@@ -870,7 +816,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.provider_history
     def _react_to_subtask_results_rejected(
-            self, msg: message.tasks.SubtaskResultsRejected):
+        self, msg: message.tasks.SubtaskResultsRejected):
         subtask_id = msg.report_computed_task.subtask_id
         if self.check_requestor_for_subtask(subtask_id) != \
                 RequestorCheckResult.OK:
@@ -883,10 +829,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         def subtask_rejected():
             dispatcher.send(
-                signal='golem.message',
-                event='received',
-                message=msg
-            )
+                signal='golem.message', event='received', message=msg)
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
@@ -905,12 +848,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _handle_srr_with_concent_enabled(
-            self, msg: message.tasks.SubtaskResultsRejected,
-            subtask_rejected: Callable[[], None]):
-        if msg.reason == (message.tasks.SubtaskResultsRejected.REASON
-                          .VerificationNegative):
-            logger.debug("_handle_srr_with_concent_enabled: triggering "
-                         "additional verification")
+        self, msg: message.tasks.SubtaskResultsRejected,
+        subtask_rejected: Callable[[], None]):
+        if msg.reason == (
+            message.tasks.SubtaskResultsRejected.REASON.VerificationNegative):
+            logger.debug(
+                "_handle_srr_with_concent_enabled: triggering "
+                "additional verification")
             self._trigger_concent_additional_verification(msg)
             return
 
@@ -924,8 +868,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 and (msg.report_computed_task.task_to_compute.subtask_id ==
                      fgtrf_msg.task_to_compute.subtask_id):
             subtask_id = msg.report_computed_task.subtask_id
-            logger.info("Received ForcedResourcesFailure message. "
-                        "subtask_id=%s", subtask_id)
+            logger.info(
+                "Received ForcedResourcesFailure message. "
+                "subtask_id=%s", subtask_id)
             subtask_rejected()
             return
 
@@ -937,20 +882,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # so that the SRR can be verified independently by the Concent
 
     def _trigger_concent_additional_verification(
-            self, msg: message.tasks.SubtaskResultsRejected):
+        self, msg: message.tasks.SubtaskResultsRejected):
         # if the Concent is enabled for this subtask, as a provider,
         # knowing that we had done a proper job of computing it,
         # we are delegating the verification to the Concent so that
         # we can be paid for this subtask despite the rejection
 
         amount, expected = msg_helpers.provider_deposit_amount(
-            subtask_price=msg.task_to_compute.price,
-        )
+            subtask_price=msg.task_to_compute.price,)
 
         def ask_for_verification(_):
             srv = message.concents.SubtaskResultsVerify(
-                subtask_results_rejected=msg
-            )
+                subtask_results_rejected=msg)
             srv.sign_concent_promissory_note(
                 deposit_contract_address=self.deposit_contract_address,
                 private_key=self.my_private_key,
@@ -971,9 +914,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             expected=expected,
         ).addCallback(ask_for_verification).addErrback(
             lambda failure: logger.warning(
-                "Additional verification deposit failed %s", failure.value,
-            ),
-        )
+                "Additional verification deposit failed %s",
+                failure.value,
+            ),)
 
     def _react_to_task_failure(self, msg):
         if self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
@@ -989,9 +932,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 or (msg.node_info is None):
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
-                msg.proto_id,
-                variables.PROTOCOL_CONST.ID
-            )
+                msg.proto_id, variables.PROTOCOL_CONST.ID)
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
@@ -1020,9 +961,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if send_hello:
             self.send_hello()
         self.send(
-            message.base.RandVal(rand_val=msg.rand_val),
-            send_unverified=True
-        )
+            message.base.RandVal(rand_val=msg.rand_val), send_unverified=True)
 
     def _react_to_rand_val(self, msg):
         # If we disconnect in react_to_hello, we still might get the RandVal
@@ -1034,13 +973,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.Unverified)
 
         self.verified = True
-        self.task_server.verified_conn(self.conn_id, )
+        self.task_server.verified_conn(self.conn_id,)
         self.read_msg_queue()
 
     def _react_to_start_session_response(self, msg):
         raise NotImplementedError(
-            "Implement reversed task session request #4005",
-        )
+            "Implement reversed task session request #4005",)
 
     @history.provider_history
     def _react_to_ack_report_computed_task(self, msg):
@@ -1050,34 +988,31 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report"
-                           " of an unknown task (subtask_id='%s')",
-                           self.key_id, msg.subtask_id)
+            logger.warning(
+                "Requestor '%r' acknowledged a computed task report"
+                " of an unknown task (subtask_id='%s')", self.key_id,
+                msg.subtask_id)
             return
 
-        logger.debug("Requestor '%r' accepted the computed subtask '%r' "
-                     "report", self.key_id, msg.subtask_id)
+        logger.debug(
+            "Requestor '%r' accepted the computed subtask '%r' "
+            "report", self.key_id, msg.subtask_id)
 
         self.concent_service.cancel_task_message(
             msg.subtask_id, 'ForceReportComputedTask')
 
         if msg.task_to_compute.concent_enabled:
             delayed_forcing_msg = message.concents.ForceSubtaskResults(
-                ack_report_computed_task=msg,
-            )
+                ack_report_computed_task=msg,)
             ttc_deadline = datetime.datetime.utcfromtimestamp(
-                msg.task_to_compute.compute_task_def['deadline']
-            )
+                msg.task_to_compute.compute_task_def['deadline'])
             svt = msg_helpers.subtask_verification_time(
-                msg.report_computed_task,
-            )
+                msg.report_computed_task,)
             delay = ttc_deadline + svt - datetime.datetime.utcnow()
             delay += datetime.timedelta(seconds=1)  # added for safety
             logger.debug(
                 '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
-                delayed_forcing_msg,
-                delay
-            )
+                delayed_forcing_msg, delay)
             self.concent_service.submit_task_message(
                 subtask_id=msg.subtask_id,
                 msg=delayed_forcing_msg,
@@ -1088,15 +1023,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.info("Requestor '%r' rejected the computed subtask '%r' "
-                        "report", self.key_id, msg.subtask_id)
+            logger.info(
+                "Requestor '%r' rejected the computed subtask '%r' "
+                "report", self.key_id, msg.subtask_id)
 
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceReportComputedTask')
         else:
-            logger.warning("Requestor '%r' rejected a computed task report of"
-                           "an unknown task (subtask_id='%s')",
-                           self.key_id, msg.subtask_id)
+            logger.warning(
+                "Requestor '%r' rejected a computed task report of"
+                "an unknown task (subtask_id='%s')", self.key_id,
+                msg.subtask_id)
 
     def disconnect(self, reason: message.base.Disconnect.REASON):
         if not self.conn.opened:
@@ -1117,27 +1054,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(
-            "->",
-            time.localtime(),
-            msg,
-            self.address,
-            self.port
-        )
+            "->", time.localtime(), msg, self.address, self.port)
 
-    def check_provider_for_subtask(
-            self,
-            task_id: str,
-            subtask_id: str
-    ) -> bool:
+    def check_provider_for_subtask(self, task_id: str, subtask_id: str) -> bool:
         node_id = self.requested_task_manager.get_node_id_for_subtask(
-            task_id,
-            subtask_id)
+            task_id, subtask_id)
         if node_id is None:
             node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         if node_id != self.key_id:
-            logger.warning('Received message about subtask %r from different '
-                           'node %r than expected %r', subtask_id,
-                           self.key_id, node_id)
+            logger.warning(
+                'Received message about subtask %r from different '
+                'node %r than expected %r', subtask_id, self.key_id, node_id)
             return False
         return True
 
@@ -1148,9 +1075,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if node_id is None:
             return RequestorCheckResult.NOT_FOUND
         if node_id != self.key_id:
-            logger.warning('Received message about task %r from diferrent '
-                           'node %r than expected %r. %s', task_id,
-                           self.key_id, node_id, additional_msg)
+            logger.warning(
+                'Received message about task %r from diferrent '
+                'node %r than expected %r. %s', task_id, self.key_id, node_id,
+                additional_msg)
             return RequestorCheckResult.MISMATCH
         return RequestorCheckResult.OK
 
@@ -1170,18 +1098,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             raise exceptions.CannotComputeTask(reason=reasons.WrongKey)
 
         addresses = [
-            (owner.pub_addr, owner.pub_port),
-            (owner.prv_addr, owner.prv_port)
+            (owner.pub_addr, owner.pub_port), (owner.prv_addr, owner.prv_port)
         ]
 
-        if not any(tcpnetwork.SocketAddress.is_proper_address(addr, port)
-                   for addr, port in addresses):
+        if not any(
+            tcpnetwork.SocketAddress.is_proper_address(addr, port)
+            for addr, port in addresses):
             raise exceptions.CannotComputeTask(reason=reasons.WrongAddress)
 
     def _set_env_params(
-            self,
-            env_id: str,
-            ctd: message.tasks.ComputeTaskDef,
+        self,
+        env_id: str,
+        ctd: message.tasks.ComputeTaskDef,
     ) -> None:
         env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
@@ -1192,43 +1120,42 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             check_docker_images(ctd, env)
 
     def __set_msg_interpretations(self):
-        self._interpretation.update({
-            message.tasks.WantToComputeTask:
-                self._react_to_want_to_compute_task,
-            message.tasks.TaskToCompute:
-                self._react_to_task_to_compute,
-            message.tasks.CannotAssignTask:
-                self._react_to_cannot_assign_task,
-            message.tasks.CannotComputeTask:
-                self._react_to_cannot_compute_task,
-            message.tasks.ReportComputedTask:
-                self._react_to_report_computed_task,
-            message.tasks.SubtaskResultsAccepted:
-                self._react_to_subtask_results_accepted,
-            message.tasks.SubtaskResultsRejected:
-                self._react_to_subtask_results_rejected,
-            message.tasks.TaskFailure:
-                self._react_to_task_failure,
-            message.base.Hello:
-                self._react_to_hello,
-            message.base.RandVal:
-                self._react_to_rand_val,
-            message.tasks.StartSessionResponse:
-                self._react_to_start_session_response,
+        self._interpretation.update(
+            {
+                message.tasks.WantToComputeTask:
+                    self._react_to_want_to_compute_task,
+                message.tasks.TaskToCompute:
+                    self._react_to_task_to_compute,
+                message.tasks.CannotAssignTask:
+                    self._react_to_cannot_assign_task,
+                message.tasks.CannotComputeTask:
+                    self._react_to_cannot_compute_task,
+                message.tasks.ReportComputedTask:
+                    self._react_to_report_computed_task,
+                message.tasks.SubtaskResultsAccepted:
+                    self._react_to_subtask_results_accepted,
+                message.tasks.SubtaskResultsRejected:
+                    self._react_to_subtask_results_rejected,
+                message.tasks.TaskFailure:
+                    self._react_to_task_failure,
+                message.base.Hello:
+                    self._react_to_hello,
+                message.base.RandVal:
+                    self._react_to_rand_val,
+                message.tasks.StartSessionResponse:
+                    self._react_to_start_session_response,
 
-            # Concent messages
-            message.tasks.AckReportComputedTask:
-                self._react_to_ack_report_computed_task,
-            message.tasks.RejectReportComputedTask:
-                self._react_to_reject_report_computed_task,
-        })
+                # Concent messages
+                message.tasks.AckReportComputedTask:
+                    self._react_to_ack_report_computed_task,
+                message.tasks.RejectReportComputedTask:
+                    self._react_to_reject_report_computed_task,
+            })
 
         self.can_be_unverified.extend(
             [
-                message.base.Hello,
-                message.base.RandVal,
+                message.base.Hello, message.base.RandVal,
                 message.base.ChallengeSolution
-            ]
-        )
+            ])
 
         self.can_be_not_encrypted.extend([message.base.Hello])

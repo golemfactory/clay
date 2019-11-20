@@ -7,7 +7,6 @@ from typing import Any, Dict, Optional, Tuple, Union
 
 from twisted.internet.defer import Deferred
 
-
 logger = logging.getLogger("golem.task.taskthread")
 
 
@@ -27,11 +26,12 @@ class TaskThread(threading.Thread):
     result: Union[None, Dict[str, Any], Tuple[Dict[str, Any], int]] = None
 
     # pylint:disable=too-many-arguments
-    def __init__(self,
-                 extra_data: Dict,
-                 res_path: str,
-                 tmp_path: str,
-                 timeout: float = 0) -> None:
+    def __init__(
+        self,
+        extra_data: Dict,
+        res_path: str,
+        tmp_path: str,
+        timeout: float = 0) -> None:
         super(TaskThread, self).__init__()
 
         self.vm = None
@@ -66,8 +66,8 @@ class TaskThread(threading.Thread):
             self.last_time_checking = time_
             if self.task_timeout < 0:
                 try:
-                    raise TimeoutException("Task timed out {:.1f}s"
-                                           .format(self.time_to_compute))
+                    raise TimeoutException(
+                        "Task timed out {:.1f}s".format(self.time_to_compute))
                 except TimeoutException as e:
                     self._fail(e)
 
@@ -121,8 +121,6 @@ class TaskThread(threading.Thread):
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
             self.result, self.error_msg = self.vm.run_task(
-                extra_data['src_code'],
-                extra_data
-            )
+                extra_data['src_code'], extra_data)
         finally:
             self.end_time = time.time()

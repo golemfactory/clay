@@ -98,8 +98,7 @@ class ActionTimers:
     def start(self, identifier: str) -> None:
         """ Initializes the start and finished (= None) timestamps.
         """
-        logger.debug("ActionTimers.start(%s) at %r",
-                     identifier, time.time())
+        logger.debug("ActionTimers.start(%s) at %r", identifier, time.time())
 
         timer = ActionTimer()
         timer.start()
@@ -110,8 +109,8 @@ class ActionTimers:
         """
         timer = self._history.get(identifier)
         if timer and not timer.finished:
-            logger.debug("ActionTimers.finish(%s) at %r",
-                         identifier, time.time())
+            logger.debug(
+                "ActionTimers.finish(%s) at %r", identifier, time.time())
             timer.finish()
 
     def remove(self, identifier: str) -> Optional[float]:

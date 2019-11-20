@@ -33,14 +33,15 @@ from golem.task.taskproviderstats import ProviderStatsManager
 logger = logging.getLogger(__name__)
 
 
-def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
-                                   num_of_res_transfers_needed: int =
-                                   NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER):
+def comp_task_info_keeping_timeout(
+    subtask_timeout: int,
+    resource_size: int,
+    num_of_res_transfers_needed: int = NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER):
     verification_timeout = subtask_timeout
     resource_timeout = helpers.maximum_download_time(resource_size).seconds
     resource_timeout *= num_of_res_transfers_needed
-    return common.timeout_to_deadline(subtask_timeout + verification_timeout
-                                      + resource_timeout)
+    return common.timeout_to_deadline(
+        subtask_timeout + verification_timeout + resource_timeout)
 
 
 class WrongOwnerException(Exception):
@@ -48,6 +49,7 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
+
     def __init__(self, header: dt_tasks.TaskHeader, performance: float) -> None:
         self.header = header
         self.performance = performance
@@ -58,10 +60,7 @@ class CompTaskInfo:
             self.header.subtask_timeout, 0)
 
     def __repr__(self):
-        return "<CompTaskInfo(%r) reqs: %r>" % (
-            self.header,
-            self.requests
-        )
+        return "<CompTaskInfo(%r) reqs: %r>" % (self.header, self.requests)
 
     def check_deadline(self, deadline: float) -> bool:
         """
@@ -75,9 +74,9 @@ class CompTaskInfo:
         expected_deadline = now_ + self.header.subtask_timeout
         if now_ < deadline < expected_deadline + MTD.seconds:
             return True
-        logger.debug('check_deadline failed: (now: %r, deadline: %r, '
-                     'timeout: %r)', now_, deadline,
-                     self.header.subtask_timeout)
+        logger.debug(
+            'check_deadline failed: (now: %r, deadline: %r, '
+            'timeout: %r)', now_, deadline, self.header.subtask_timeout)
         return False
 
 
@@ -153,8 +152,7 @@ class CompTaskKeeper:
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
-                self.dump_path
-            )
+                self.dump_path)
             self.dump_path.unlink()
             return
 
@@ -164,11 +162,7 @@ class CompTaskKeeper:
         self.active_task_offers.update(active_task_offers)
 
     def add_request(
-            self,
-            theader: dt_tasks.TaskHeader,
-            price: int,
-            performance: float
-    ):
+        self, theader: dt_tasks.TaskHeader, price: int, performance: float):
         # price is task_header.max_price
         logger.debug('CT.add_request(%r, %s)', theader, price)
         if price < 0:
@@ -179,8 +173,7 @@ class CompTaskKeeper:
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, performance)
         self.active_task_offers[task_id] = calculate_subtask_payment(
-            price, self.active_tasks[task_id].header.subtask_timeout
-        )
+            price, self.active_tasks[task_id].header.subtask_timeout)
         self.dump()
 
     @handle_key_error
@@ -228,15 +221,18 @@ class CompTaskKeeper:
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
         if not idgenerator.check_id_hex_seed(
-                comp_task_def['subtask_id'],
-                key_id,):
-            logger.info(not_accepted_message, *log_args, "Subtask id was not "
-                                                         "generated from "
-                                                         "requestor's key.")
+            comp_task_def['subtask_id'],
+            key_id,
+        ):
+            logger.info(
+                not_accepted_message, *log_args, "Subtask id was not "
+                "generated from "
+                "requestor's key.")
             return False
         if not task.requests > 0:
-            logger.info(not_accepted_message, *log_args,
-                        "Request for this task was not send.")
+            logger.info(
+                not_accepted_message, *log_args,
+                "Request for this task was not send.")
 
             return False
         if not task.check_deadline(comp_task_def['deadline']):
@@ -245,8 +241,9 @@ class CompTaskKeeper:
             logger.info(not_accepted_message, *log_args, msg)
             return False
         if comp_task_def['subtask_id'] in task.subtasks:
-            logger.info(not_accepted_message, *log_args,
-                        "Definition of this subtask was already received.")
+            logger.info(
+                not_accepted_message, *log_args,
+                "Definition of this subtask was already received.")
             return False
         return True
 
@@ -287,12 +284,12 @@ class CompTaskKeeper:
         self.dump()
 
     def add_package_paths(
-            self, task_id: str, package_paths: typing.List[str]) -> None:
+        self, task_id: str, package_paths: typing.List[str]) -> None:
         self.task_package_paths[task_id] = package_paths
         self.dump()
 
-    def get_package_paths(
-            self, task_id: str) -> typing.Optional[typing.List[str]]:
+    def get_package_paths(self,
+                          task_id: str) -> typing.Optional[typing.List[str]]:
         return self.task_package_paths.get(task_id, None)
 
 
@@ -304,16 +301,16 @@ class TaskHeaderKeeper:
     """
 
     def __init__(
-            self,
-            old_env_manager: OldEnvManager,
-            # FIXME: rename to `env_manager` when old env manager is removed
-            new_env_manager: NewEnvManager,
-            node: dt_p2p.Node,
-            min_price=0.0,
-            remove_task_timeout=180,
-            verification_timeout=3600,
-            max_tasks_per_requestor=10,
-            task_archiver=None):
+        self,
+        old_env_manager: OldEnvManager,
+        # FIXME: rename to `env_manager` when old env manager is removed
+        new_env_manager: NewEnvManager,
+        node: dt_p2p.Node,
+        min_price=0.0,
+        remove_task_timeout=180,
+        verification_timeout=3600,
+        max_tasks_per_requestor=10,
+        task_archiver=None):
         # all computing tasks that this node knows about
         self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
@@ -353,8 +350,7 @@ class TaskHeaderKeeper:
         """
         if header.environment_prerequisites:
             supported = yield self._check_new_environment(
-                header.environment, header.environment_prerequisites
-            )
+                header.environment, header.environment_prerequisites)
         else:
             supported = self._check_old_environment(header.environment)
         supported = supported.join(self.check_mask(header))
@@ -369,8 +365,9 @@ class TaskHeaderKeeper:
             else:
                 loglevel = logging.INFO
 
-            logger.log(loglevel, "Unsupported task %s, reason: %r",
-                       header.task_id, supported.desc)
+            logger.log(
+                loglevel, "Unsupported task %s, reason: %r", header.task_id,
+                supported.desc)
 
         return supported
 
@@ -389,7 +386,7 @@ class TaskHeaderKeeper:
 
     @inlineCallbacks
     def _check_new_environment(
-            self, env_id: str, prerequisites_dict: dict) -> Deferred:
+        self, env_id: str, prerequisites_dict: dict) -> Deferred:
         """ Check if node supports the given environment. Try to install
             the prerequisites. If installation fails the verdict is
             'unsupported'. """
@@ -397,24 +394,21 @@ class TaskHeaderKeeper:
             env = self.new_env_manager.environment(env_id)
         except KeyError:
             logger.info("Environment '%s' not found.", env_id)
-            return SupportStatus.err({
-                UnsupportReason.ENVIRONMENT_MISSING: env_id
-            })
+            return SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_MISSING: env_id})
 
         try:
             prerequisites = env.parse_prerequisites(prerequisites_dict)
         except ValueError:
             logger.info("Parsing prerequisites failed: %r", prerequisites_dict)
-            return SupportStatus.err({
-                UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
-            })
+            return SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id})
 
         installed = yield env.install_prerequisites(prerequisites)
         if not installed:
             logger.info("Installing prerequisites failed: %r", prerequisites)
-            return SupportStatus.err({
-                UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id
-            })
+            return SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_UNSUPPORTED: env_id})
         return SupportStatus.ok()
 
     def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
@@ -434,8 +428,7 @@ class TaskHeaderKeeper:
         max_price = getattr(header, "max_price", None)
         if max_price is not None and max_price >= self.min_price:
             return SupportStatus.ok()
-        return SupportStatus.err(
-            {UnsupportReason.MAX_PRICE: max_price})
+        return SupportStatus.err({UnsupportReason.MAX_PRICE: max_price})
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
@@ -493,9 +486,10 @@ class TaskHeaderKeeper:
                     return True  # We already have a newer version
 
             if task_id in self.removed_tasks:  # recent
-                logger.debug("Received a task which has been already "
-                             "cancelled/removed/timeout/banned/etc "
-                             "Task id %s .", task_id)
+                logger.debug(
+                    "Received a task which has been already "
+                    "cancelled/removed/timeout/banned/etc "
+                    "Task id %s .", task_id)
                 return True
 
             self.task_headers[task_id] = header
@@ -527,11 +521,7 @@ class TaskHeaderKeeper:
         if not support and task_id in self.supported_tasks:
             self.supported_tasks.remove(task_id)
         if support and task_id not in self.supported_tasks:
-            logger.info(
-                "Adding task %r support=%r",
-                task_id,
-                support
-            )
+            logger.info("Adding task %r support=%r", task_id, support)
             self.supported_tasks.append(task_id)
 
     @staticmethod
@@ -569,8 +559,7 @@ class TaskHeaderKeeper:
         if len(not_running) <= self.max_tasks_per_requestor:
             return
 
-        by_age = sorted(not_running,
-                        key=lambda tid: self.last_checking[tid])
+        by_age = sorted(not_running, key=lambda tid: self.last_checking[tid])
 
         # leave alone the first (oldest) max_tasks_per_requestor
         # headers, remove the rest
@@ -578,9 +567,8 @@ class TaskHeaderKeeper:
 
         logger.debug(
             "Limiting tasks for this node, dropping %d tasks. "
-            "owner=%s, ids_to_remove=%r",
-            len(to_remove), common.short_node_id(owner_key_id), to_remove
-        )
+            "owner=%s, ids_to_remove=%r", len(to_remove),
+            common.short_node_id(owner_key_id), to_remove)
 
         for tid in to_remove:
             self.remove_task_header(tid)
@@ -593,8 +581,9 @@ class TaskHeaderKeeper:
             return False
 
         if task_id in self.running_tasks:
-            logger.warning("Can not remove task header, task is running. "
-                           "task_id=%s", task_id)
+            logger.warning(
+                "Can not remove task header, task is running. "
+                "task_id=%s", task_id)
             return False
 
         try:
@@ -604,11 +593,8 @@ class TaskHeaderKeeper:
             pass
 
         for container in (
-                self.task_headers,
-                self.supported_tasks,
-                self.support_status,
-                self.last_checking
-        ):
+            self.task_headers, self.supported_tasks, self.support_status,
+            self.last_checking):
             if isinstance(container, list):
                 try:
                     container.remove(task_id)
@@ -622,8 +608,7 @@ class TaskHeaderKeeper:
                     pass
                 continue
             raise RuntimeError(
-                "Unknown container type {}".format(type(container)),
-            )
+                "Unknown container type {}".format(type(container)),)
 
         self.removed_tasks[task_id] = time.time()
         return True
@@ -638,9 +623,9 @@ class TaskHeaderKeeper:
         return task.task_owner.key
 
     def get_task(
-            self,
-            exclude: typing.Optional[typing.Set[str]] = None,
-            supported_tasks: typing.Optional[typing.Set[str]] = None,
+        self,
+        exclude: typing.Optional[typing.Set[str]] = None,
+        supported_tasks: typing.Optional[typing.Set[str]] = None,
     ) -> typing.Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :param exclude: Task ids to exclude
@@ -662,9 +647,9 @@ class TaskHeaderKeeper:
         for t in list(self.task_headers.values()):
             cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
-                logger.debug("Task owned by %s removed after deadline, "
-                             "task_id: %s",
-                             t.task_owner.key, t.task_id)
+                logger.debug(
+                    "Task owned by %s removed after deadline, "
+                    "task_id: %s", t.task_owner.key, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):
