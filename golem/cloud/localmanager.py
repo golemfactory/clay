@@ -71,3 +71,4 @@ class LocalContainerManager:
                 f'Golem Cloud is starting container: {name} ({image}:{tag})')
             self._containers[name] = self.environment.run_local_container(
                 image, tag, extra_options)
+        logger.info(f'Running containers: {self._containers}')

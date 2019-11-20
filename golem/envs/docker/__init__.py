@@ -25,6 +25,7 @@ class DockerRuntimePayloadData(NamedTuple):
     user: Optional[str] = None
     work_dir: Optional[str] = None
     binds: Optional[List[DockerBind]] = None
+    network_mode: Optional[str] = None
     networking_config: Optional[Dict[str, Any]] = None
     hostname: Optional[str] = None
     domainname: Optional[str] = None
@@ -33,6 +34,8 @@ class DockerRuntimePayloadData(NamedTuple):
     links: Optional[Dict[str, Optional[str]]] = None
     mem_reservation: Optional[int] = None
     restart_policy: Optional[Dict[str, Any]] = None
+    dns: Optional[List[str]] = None
+    dns_search: Optional[List[str]] = None
 
 
 class DockerRuntimePayload(DockerRuntimePayloadData, RuntimePayload):

@@ -566,10 +566,10 @@ class DockerCPUEnvironment(EnvironmentBase):
     def run_local_container(self, image, tag, extra_options=None) -> Deferred:
         if not extra_options:
             extra_options = {}
-        yield self.install_prerequisites(DockerPrerequisites(
-            image=image,
-            tag=tag,
-        ))
+        # yield self.install_prerequisites(DockerPrerequisites(
+        #     image=image,
+        #     tag=tag,
+        # ))
         docker_env = extra_options.get('env', {}) if 'env' in extra_options \
             else {}
 
@@ -788,7 +788,7 @@ class DockerCPUEnvironment(EnvironmentBase):
         volumes = [b.target for b in payload.binds] if payload.binds else None
         host_config = self._create_host_config(config, payload)
         ports = [(p, 'tcp') for p in payload.ports] if payload.ports else None
-        networking_config = self._create_networking_config(config, payload)
+        networking_config = self._create_networking_config(payload)
         hostname = payload.hostname if payload.hostname else None
         domainname = payload.domainname if payload.domainname else None
         healthcheck = payload.healthcheck if payload.healthcheck else None
