@@ -3,17 +3,7 @@ from dataclasses import dataclass
 from copy import deepcopy
 from pathlib import Path, PurePath
 from typing import (
-    Any,
-    Callable,
-    Dict,
-    Generator,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Set
-)
+    Any, Callable, Dict, Generator, Iterator, List, Optional, Tuple, Type, Set)
 import logging
 
 from ethereum.utils import denoms
@@ -22,29 +12,19 @@ from golem_messages.message import ComputeTaskDef
 from golem_messages.datastructures.p2p import Node
 
 from apps.core.task.coretask import (
-    CoreTask,
-    CoreTaskBuilder,
-    CoreTaskTypeInfo
-)
+    CoreTask, CoreTaskBuilder, CoreTaskTypeInfo)
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 from golem.marketplace.wasm_marketplace import (
-    ProviderWasmMarketStrategy,
-    RequestorWasmMarketStrategy,
-    UsageReport
-)
+    ProviderWasmMarketStrategy, RequestorWasmMarketStrategy, UsageReport)
 import golem.model
 from golem.task.taskbase import Task, AcceptClientVerdict, TaskResult
 from golem.task.taskstate import SubtaskStatus
 from golem.task.taskclient import TaskClient
 
 from .vbr import (
-    Actor,
-    BucketVerifier,
-    VerificationResult,
-    NotAllowedError,
-    MissingResultsError
-)
+    Actor, BucketVerifier, VerificationResult, NotAllowedError,
+    MissingResultsError)
 
 NANOSECOND = 1e-9
 
@@ -63,14 +43,16 @@ class VbrSubtask:
     Redundancy. This class hides result handling, subtask spawning
     and subtask related data management from the client code.
     """
+
     # __DEBUG_COUNTER: int = 0
-    def __init__(self, id_gen, name, params, redundancy_factor):
+    def __init__(
+        self, id_gen: Callable[[], str], name: str, params: Dict[str, str],
+        redundancy_factor: int):
         self.id_gen = id_gen
         self.name = name
         self.params = params
-        self.result = None
+        self.result: Optional[TaskResult] = None
         self.redundancy_factor = redundancy_factor
-
         self.subtasks: Dict[str, SubtaskInstance] = {}
         self.verifier = BucketVerifier(
             redundancy_factor, WasmTask.cmp_results, referee_count=1)
@@ -104,15 +86,14 @@ class VbrSubtask:
         return self.subtasks[s_id]
 
     def get_instances(self) -> List[str]:
-        return self.subtasks.keys()
+        return list(self.subtasks.keys())
 
     def add_result(self, s_id: str, task_result: Optional[TaskResult]):
         result_files = task_result.files if task_result else None
-        self.verifier.add_result(
-            self.subtasks[s_id].actor, result_files)
+        self.verifier.add_result(self.subtasks[s_id].actor, result_files)
         self.subtasks[s_id].results = task_result
 
-    def get_result(self) -> TaskResult:
+    def get_result(self) -> Optional[TaskResult]:
         return self.result
 
     def is_finished(self) -> bool:
@@ -140,25 +121,32 @@ class VbrSubtask:
 
     def get_tasks_left(self) -> int:
         return self.get_subtask_count() - len(
-            [s for s in self.subtasks.values()
-             if s['status'] != SubtaskStatus.finished]
-        )
+            [
+                s for s in self.subtasks.values()
+                if s.status != SubtaskStatus.finished
+            ])
 
     def restart_subtask(self, subtask_id: str):
         subtask = self.subtasks[subtask_id]
-        if subtask['status'] != SubtaskStatus.starting:
-            raise ValueError("Cannot restart subtask with status: " +
-                             str(subtask['status']))
-        if subtask['results'] is not None:
+        if subtask.status != SubtaskStatus.starting:
+            raise ValueError(
+                "Cannot restart subtask with status: " + str(subtask.status))
+        if subtask.results is not None and subtask.results.files:
+            logger.warning(
+                "results subtask status=%s results=%s", str(subtask.status),
+                repr(subtask.results))
             raise ValueError("Cannot restart computed VbR subtask")
-        self.verifier.remove_actor(subtask['actor'])
-        subtask['status'] = SubtaskStatus.restarted
+        self.verifier.remove_actor(subtask.actor)
+        subtask.status = SubtaskStatus.restarted
 
 
 class WasmTaskOptions(Options):
+
     class SubtaskOptions:
-        def __init__(self, name: str, exec_args: List[str],
-                     output_file_paths: List[str]) -> None:
+
+        def __init__(
+            self, name: str, exec_args: List[str],
+            output_file_paths: List[str]) -> None:
             self.name: str = name
             self.exec_args: List[str] = exec_args
             self.output_file_paths: List[str] = output_file_paths
@@ -196,6 +184,7 @@ class WasmTaskOptions(Options):
 
 
 class WasmTaskDefinition(TaskDefinition):
+
     def __init__(self) -> None:
         super().__init__()
         self.options = WasmTaskOptions()
@@ -218,9 +207,9 @@ class WasmTaskDefinition(TaskDefinition):
 
 
 class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
-    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] =\
+    REQUESTOR_MARKET_STRATEGY: Type[RequestorWasmMarketStrategy] = \
         RequestorWasmMarketStrategy
-    PROVIDER_MARKET_STRATEGY: Type[ProviderWasmMarketStrategy] =\
+    PROVIDER_MARKET_STRATEGY: Type[ProviderWasmMarketStrategy] = \
         ProviderWasmMarketStrategy
 
     ENVIRONMENT_CLASS = WasmTaskEnvironment
@@ -229,43 +218,40 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
     REDUNDANCY_FACTOR = 1
     CALLBACKS: Dict[str, Callable] = {}
 
-    def __init__(self, task_definition: WasmTaskDefinition,
-                 root_path: Optional[str] = None, owner: Node = None) -> None:
+    def __init__(
+        self,
+        task_definition: WasmTaskDefinition,
+        root_path: Optional[str] = None,
+        owner: Node = None) -> None:
         super().__init__(
-            task_definition=task_definition,
-            root_path=root_path, owner=owner
-        )
+            task_definition=task_definition, root_path=root_path, owner=owner)
         self.task_definition: WasmTaskDefinition = task_definition
         self.options: WasmTaskOptions = task_definition.options
         self.subtasks: List[VbrSubtask] = []
-        self.subtasks_given = {}
 
         for s_name, s_params in self.options.get_subtask_iterator():
-            s_params = {
-                'entrypoint': self.JOB_ENTRYPOINT,
-                **s_params
-            }
-            subtask = VbrSubtask(self.create_subtask_id,
-                                 s_name, s_params, self.REDUNDANCY_FACTOR)
+            s_params = {'entrypoint': self.JOB_ENTRYPOINT, **s_params}
+            subtask = VbrSubtask(
+                self.create_subtask_id, s_name, s_params,
+                self.REDUNDANCY_FACTOR)
             self.subtasks.append(subtask)
 
         self.nodes_blacklist: Set[str] = set()
         self._load_requestor_perf()
 
     def query_extra_data(
-            self, perf_index: float,
-            node_id: Optional[str] = None,
-            node_name: Optional[str] = None) -> Task.ExtraData:
+        self,
+        perf_index: float,
+        node_id: Optional[str] = None,
+        node_name: Optional[str] = None) -> Task.ExtraData:
         for s in self.subtasks:
             if s.is_finished():
                 continue
             next_subtask = s.new_instance(node_id)
             if next_subtask:
                 s_id, s_params = next_subtask
-                self.subtasks_given[s_id] = {
-                    'status': SubtaskStatus.starting,
-                    'node_id': node_id
-                }
+                self.subtasks_given[s_id] = dict(
+                    status=SubtaskStatus.starting, node_id=node_id)
                 ctd = self._new_compute_task_def(s_id, s_params, perf_index)
 
                 return Task.ExtraData(ctd=ctd)
@@ -278,8 +264,7 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         raise KeyError()
 
     @staticmethod
-    def cmp_results(result_list_a: List[Any],
-                    result_list_b: List[Any]) -> bool:
+    def cmp_results(result_list_a: List[Any], result_list_b: List[Any]) -> bool:
         logger.debug("Comparing: %s and %s", result_list_a, result_list_b)
         for r1, r2 in zip(result_list_a, result_list_b):
             with open(r1, 'rb') as f1, open(r2, 'rb') as f2:
@@ -301,31 +286,31 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
                 if verdict == VerificationResult.SUCCESS:
                     # pay up!
                     logger.info("Accepting results for subtask %s", s_id)
-                    self.subtasks_given[s_id]['status'] =\
-                        SubtaskStatus.finished
-                    TaskClient.get_or_initialize(actor.uuid,
-                                                 self.counting_nodes).accept()
+                    self.subtasks_given[s_id]['status'] = SubtaskStatus.finished
+                    TaskClient.get_or_initialize(
+                        actor.uuid, self.counting_nodes).accept()
                 else:
                     logger.info("Rejecting results for subtask %s", s_id)
                     self.subtasks_given[s_id]['status'] = SubtaskStatus.failure
-                    TaskClient.get_or_initialize(actor.uuid,
-                                                 self.counting_nodes).reject()
+                    TaskClient.get_or_initialize(
+                        actor.uuid, self.counting_nodes).reject()
                     logger.info("Blacklisting node: %s", actor.uuid)
                     self.nodes_blacklist.add(actor.uuid)
 
     def _handle_vbr_subtask_result(self, subtask: VbrSubtask):
         # save the results but only if verification was successful
-        result: TaskResult = subtask.get_result()
+        result: Optional[TaskResult] = subtask.get_result()
         if result is not None:
             self.save_results(subtask.name, result.files)
         else:
-            new_subtask = VbrSubtask(self.create_subtask_id, subtask.name,
-                                     subtask.params, subtask.redundancy_factor)
+            new_subtask = VbrSubtask(
+                self.create_subtask_id, subtask.name, subtask.params,
+                subtask.redundancy_factor)
             self.subtasks.append(new_subtask)
 
     def computation_finished(
-            self, subtask_id: str, task_result: TaskResult,
-            verification_finished: Callable[[], None]) -> None:
+        self, subtask_id: str, task_result: TaskResult,
+        verification_finished: Callable[[], None]) -> None:
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -333,7 +318,7 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         WasmTask.CALLBACKS[subtask_id] = verification_finished
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
 
-        self.interpret_task_results(subtask_id, task_result.files)
+        self.interpret_task_results(subtask_id, task_result)
         task_result.files = self.results[subtask_id]
 
         subtask = self._find_vbrsubtask_by_id(subtask_id)
@@ -348,16 +333,18 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
                 s_instance = subtask.get_instance(s_id)
                 if not s_instance.results:
                     continue
-                subtask_usages.append(
-                    (s_instance.actor.uuid,
-                     s_id,
-                     s_instance.results.stats.
-                     cpu_stats.cpu_usage['total_usage'] * NANOSECOND)
-                )
+                if s_instance.results.stats.cpu_stats is not None:
+                    subtask_usages.append(
+                        (
+                            s_instance.actor.uuid, s_id,
+                            s_instance.results.stats.cpu_stats.
+                            cpu_usage['total_usage'] * NANOSECOND))
+                else:
+                    logger.warning(
+                        "invalid result stats %s",
+                        repr(s_instance.results.stats))
             self.REQUESTOR_MARKET_STRATEGY.report_subtask_usages(
-                self.task_definition.task_id,
-                subtask_usages
-            )
+                self.task_definition.task_id, subtask_usages)
 
             for s_id in subtask.get_instances():
                 try:
@@ -381,7 +368,7 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         pass
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        next_subtask_instance = self.subtasks[0]\
+        next_subtask_instance = self.subtasks[0] \
             .new_instance("benchmark_node_id")
 
         if not next_subtask_instance:
@@ -396,13 +383,14 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         next_extra_data['input_dir_name'] = ''
 
         return self._new_compute_task_def(
-            subtask_id=self.create_subtask_id(), extra_data=next_extra_data
-        )
+            subtask_id=self.create_subtask_id(), extra_data=next_extra_data)
 
     def filter_task_results(
-            self, task_results: List[str], subtask_id: str,
-            log_ext: str = ".log",
-            err_log_ext: str = "err.log") -> List[str]:
+        self,
+        task_results: List[str],
+        subtask_id: str,
+        log_ext: str = ".log",
+        err_log_ext: str = "err.log") -> List[str]:
         filtered_task_results: List[str] = []
         for tr in task_results:
             if tr.endswith(err_log_ext):
@@ -414,20 +402,8 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
 
         return filtered_task_results
 
-    def interpret_task_results(
-            self, subtask_id: str, task_results: List[str],
-            sort: bool = True) -> None:
-        self.stdout[subtask_id] = ""
-        self.stderr[subtask_id] = ""
-
-        self.results[subtask_id] = self.filter_task_results(
-            task_results, subtask_id)
-        if sort:
-            self.results[subtask_id].sort()
-
-    def should_accept_client(self,
-                             node_id: str,
-                             offer_hash: str) -> AcceptClientVerdict:
+    def should_accept_client(
+        self, node_id: str, offer_hash: str) -> AcceptClientVerdict:
         """Deciding whether to accept particular node_id for next task
         computation.
 
@@ -455,10 +431,11 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         # to be done at the moment
         return AcceptClientVerdict.SHOULD_WAIT
 
-    def accept_client(self,
-                      node_id: str,
-                      offer_hash: str,
-                      num_subtasks: int = 1) -> AcceptClientVerdict:
+    def accept_client(
+        self,
+        node_id: str,
+        offer_hash: str,
+        num_subtasks: int = 1) -> AcceptClientVerdict:
         client = TaskClient.get_or_initialize(node_id, self.counting_nodes)
         client.start(offer_hash, 1)
         return AcceptClientVerdict.ACCEPTED
@@ -490,9 +467,10 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
 
     def get_active_tasks(self):
         return sum(
-            [0 if s.is_finished() else s.get_subtask_count()
-             for s in self.subtasks]
-        )
+            [
+                0 if s.is_finished() else s.get_subtask_count()
+                for s in self.subtasks
+            ])
 
     def get_tasks_left(self):
         return self.get_active_tasks()
@@ -533,8 +511,7 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         try:
             cpu_usage_str = golem.model.Performance.get(
                 golem.model.Performance.environment_id ==
-                WasmTaskEnvironment.ENV_ID
-            ).cpu_usage
+                WasmTaskEnvironment.ENV_ID).cpu_usage
             cpu_usage: float = float(cpu_usage_str)
         except golem.model.Performance.DoesNotExist:
             cpu_usage: float = 1.0 / NANOSECOND
@@ -556,8 +533,8 @@ class WasmTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def build_full_definition(
-            cls, task_type: 'CoreTaskTypeInfo',
-            dictionary: Dict[str, Any]) -> TaskDefinition:
+        cls, task_type: 'CoreTaskTypeInfo',
+        dictionary: Dict[str, Any]) -> TaskDefinition:
         options = dictionary['options']
 
         # Resources are generated from 'input_dir' later on.
@@ -574,14 +551,14 @@ class WasmTaskBuilder(CoreTaskBuilder):
         task_def.options.subtasks = {
             name: WasmTaskOptions.SubtaskOptions(
                 name, subtask_opts['exec_args'],
-                subtask_opts['output_file_paths']
-            )
+                subtask_opts['output_file_paths'])
             for name, subtask_opts in options['subtasks'].items()
         }
 
         if 'budget' not in dictionary:
-            logger.warning("Assigning task default budget: %d",
-                           task_def.budget / denoms.ether)
+            logger.warning(
+                "Assigning task default budget: %d",
+                task_def.budget / denoms.ether)
         else:
             task_def.budget = round(dictionary.get('budget') * denoms.ether)
 
@@ -589,9 +566,7 @@ class WasmTaskBuilder(CoreTaskBuilder):
 
     @classmethod
     def get_output_path(
-            cls,
-            dictionary: Dict[str, Any],
-            definition: 'TaskDefinition') -> str:
+        cls, dictionary: Dict[str, Any], definition: 'TaskDefinition') -> str:
         options = dictionary['options']
 
         if 'output_path' in options:
@@ -603,9 +578,12 @@ class WasmTaskBuilder(CoreTaskBuilder):
 
 
 class WasmBenchmarkTask(WasmTask):
-    def query_extra_data(self, perf_index: float,
-                         node_id: Optional[str] = None,
-                         node_name: Optional[str] = None) -> Task.ExtraData:
+
+    def query_extra_data(
+        self,
+        perf_index: float,
+        node_id: Optional[str] = None,
+        node_name: Optional[str] = None) -> Task.ExtraData:
         ctd = self.query_extra_data_for_test_task()
         return self.ExtraData(ctd)
 
@@ -615,7 +593,7 @@ class WasmBenchmarkTaskBuilder(WasmTaskBuilder):
 
 
 class WasmTaskTypeInfo(CoreTaskTypeInfo):
+
     def __init__(self) -> None:
         super().__init__(
-            'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder
-        )
+            'WASM', WasmTaskDefinition, WasmTaskOptions, WasmTaskBuilder)
