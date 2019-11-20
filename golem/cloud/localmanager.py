@@ -4,7 +4,7 @@ from copy import deepcopy
 import time
 import os
 
-from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import inlineCallbacks, Deferred
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.resource.dirmanager import DirManager
@@ -48,8 +48,6 @@ class LocalContainerManager:
             yield container_runtime.stop()
             container_status = self.get_status(container_name)
             logger.info(f'Container: {container_name} status: {container_status}')
-        for container_name, container_deferred in self._deferreds.items():
-            yield container_deferred.cancel()
         self._containers = {}
         self._deferreds = {}
 
