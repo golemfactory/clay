@@ -89,7 +89,7 @@ class TestTaskGiven(TaskComputerAdapterTestBase):
         }
         self.adapter.task_given(ctd)
         self.new_computer.task_given.assert_not_called()
-        self.old_computer.task_given.assert_called_once_with(ctd)
+        self.old_computer.task_given.assert_called_once_with(ctd, None)
 
 
 class TestHasAssignedTask(TaskComputerAdapterTestBase):
