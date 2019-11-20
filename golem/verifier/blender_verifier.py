@@ -175,4 +175,5 @@ class BlenderVerifier(FrameRenderingVerifier):
             output_format=subtask_info['output_format'],
             basefilename='crop',
             entrypoint="python3 /golem/entrypoints/verifier_entrypoint.py",
+            crops_count=100,
         )
