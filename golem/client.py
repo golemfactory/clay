@@ -530,6 +530,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
 
+            self.task_server.requested_task_manager.restore_tasks()
+
             if self.monitor:
                 self.diag_service.register(
                     self.p2pservice,
