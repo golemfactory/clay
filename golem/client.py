@@ -530,6 +530,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
 
+            self.task_server.requested_task_manager.restore_tasks()
+
             if self.monitor:
                 self.diag_service.register(
                     self.p2pservice,
@@ -961,17 +963,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def get_subtask(
             self,
             subtask_id: str,
-            task_id: Optional[str] = None,
     ) -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             tm = self.task_server.task_manager
             rtm = self.task_server.requested_task_manager
 
-            if task_id:
-                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
-                if subtask:
-                    return subtask.to_dict(), None
+            subtask = rtm.get_requested_subtask(subtask_id)
+            if subtask:
+                return subtask.to_dict(), None
             subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
         except (AttributeError, KeyError):
