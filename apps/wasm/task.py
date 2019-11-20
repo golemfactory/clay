@@ -494,8 +494,8 @@ class WasmTask(CoreTask):  # pylint: disable=too-many-public-methods
         return results.files if results else []
 
     @classmethod
-    def calculate_subtask_budget(
-        cls, task_definition: WasmTaskDefinition) -> int:
+    def calculate_subtask_budget(cls, task_definition: TaskDefinition) -> int:
+        assert isinstance(task_definition, WasmTaskDefinition)
         num_payable_subtasks = len(
             task_definition.options.subtasks) * (cls.REDUNDANCY_FACTOR + 1)
         return task_definition.budget // num_payable_subtasks
