@@ -44,6 +44,7 @@ logger = logging.getLogger(__name__)
 
 
 class CompStats(object):
+
     def __init__(self):
         self.computed_tasks = 0
         self.tasks_with_timeout = 0
@@ -54,11 +55,13 @@ class CompStats(object):
 class TaskComputerAdapter:
     """ This class hides old and new task computer under a single interface. """
 
-    def __init__(self,
-                 task_server: 'TaskServer',
-                 env_manager: EnvironmentManager,
-                 use_docker_manager: bool = True,
-                 finished_cb: Callable[[], Any] = lambda: None) -> None:
+    def __init__(
+        self,
+        task_server: 'TaskServer',
+        env_manager: EnvironmentManager,
+        use_docker_manager: bool = True,
+        finished_cb: Callable[[], Any] = lambda: None
+    ) -> None:
         self.stats = IntStatsKeeper(CompStats)
         self._task_server = task_server
         self._finished_cb = finished_cb
@@ -66,11 +69,13 @@ class TaskComputerAdapter:
             task_server=task_server,
             stats_keeper=self.stats,
             use_docker_manager=use_docker_manager,
-            finished_cb=finished_cb)
+            finished_cb=finished_cb
+        )
         self._new_computer = NewTaskComputer(
             env_manager=env_manager,
             work_dir=task_server.get_task_computer_root(),
-            stats_keeper=self.stats)
+            stats_keeper=self.stats
+        )
 
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
@@ -91,7 +96,8 @@ class TaskComputerAdapter:
 
     def task_given(self, ctd: ComputeTaskDef) -> None:
         assert not self._new_computer.has_assigned_task()
-        assert self._old_computer.can_take_work() or self._old_computer.is_disabled()
+        assert self._old_computer.can_take_work(
+        ) or self._old_computer.is_disabled()
 
         task_id = ctd['task_id']
         task_header = self._task_server.task_keeper.task_headers[task_id]
@@ -132,7 +138,8 @@ class TaskComputerAdapter:
         if not self._new_computer.has_assigned_task():
             raise ValueError(
                 'Task resources directory only available when a task-api task '
-                'is assigned')
+                'is assigned'
+            )
         return self._new_computer.get_subtask_inputs_dir()
 
     def compatible_tasks(self, candidate_tasks: Set[str]) -> Set[str]:
@@ -140,15 +147,16 @@ class TaskComputerAdapter:
         assert not self._new_computer.has_assigned_task()
         return self._old_computer.compatible_tasks(candidate_tasks)
 
-    def start_computation(self,
-                          res_task_id: str,
-                          res_subtask_id: Optional[str] = None) -> bool:
+    def start_computation(
+        self, res_task_id: str, res_subtask_id: Optional[str] = None
+    ) -> bool:
         if self._new_computer.has_assigned_task():
             task_id = self._new_computer.assigned_task_id
             subtask_id = self._new_computer.assigned_subtask_id
             if task_id != res_task_id:
-                logger.error("Resource collected for a wrong task, %s",
-                             res_task_id)
+                logger.error(
+                    "Resource collected for a wrong task, %s", res_task_id
+                )
                 return False
             computation = self._new_computer.compute()
             self._task_server.task_keeper.task_started(task_id)
@@ -157,15 +165,16 @@ class TaskComputerAdapter:
             return True
         elif self._old_computer.has_assigned_task():
             return self._old_computer.start_computation(
-                res_task_id, res_subtask_id)
+                res_task_id, res_subtask_id
+            )
         else:
             raise RuntimeError('start_computation: No task assigned.')
 
     # FIXME: Move this code to TaskServer when old TaskComputer is removed
     @defer.inlineCallbacks
-    def _handle_computation_results(self, task_id: str, subtask_id: str,
-                                    computation: defer.Deferred
-                                   ) -> defer.Deferred:
+    def _handle_computation_results(
+        self, task_id: str, subtask_id: str, computation: defer.Deferred
+    ) -> defer.Deferred:
         try:
             output_file = yield computation
             # Output file is None if computation was timed out or cancelled
@@ -176,9 +185,9 @@ class TaskComputerAdapter:
                     task_api_result=output_file,
                 )
         except Exception as e:  # pylint: disable=broad-except
-            self._task_server.send_task_failed(subtask_id=subtask_id,
-                                               task_id=task_id,
-                                               err_msg=str(e))
+            self._task_server.send_task_failed(
+                subtask_id=subtask_id, task_id=task_id, err_msg=str(e)
+            )
         finally:
             self._task_server.task_keeper.task_ended(task_id)
             self._finished_cb()
@@ -222,17 +231,20 @@ class TaskComputerAdapter:
             l.lock_config(on)
 
     @defer.inlineCallbacks
-    def change_config(self,
-                      config_desc: ClientConfigDescriptor,
-                      in_background: bool = True) -> defer.Deferred:
+    def change_config(
+        self, config_desc: ClientConfigDescriptor, in_background: bool = True
+    ) -> defer.Deferred:
         self.compute_tasks = config_desc.accept_tasks \
                              and not config_desc.in_shutdown
         work_dir = Path(self._task_server.get_task_computer_root())
-        yield self._new_computer.change_config(config_desc=config_desc,
-                                               work_dir=work_dir)
-        return (yield
-                self._old_computer.change_config(config_desc=config_desc,
-                                                 in_background=in_background))
+        yield self._new_computer.change_config(
+            config_desc=config_desc, work_dir=work_dir
+        )
+        return (
+            yield self._old_computer.change_config(
+                config_desc=config_desc, in_background=in_background
+            )
+        )
 
     def quit(self) -> None:
         self._new_computer.quit()
@@ -253,10 +265,12 @@ class NewTaskComputer:
         subtask_timeout: int
         deadline: int
 
-    def __init__(self,
-                 env_manager: EnvironmentManager,
-                 work_dir: Path,
-                 stats_keeper: Optional[IntStatsKeeper] = None) -> None:
+    def __init__(
+        self,
+        env_manager: EnvironmentManager,
+        work_dir: Path,
+        stats_keeper: Optional[IntStatsKeeper] = None
+    ) -> None:
         self._env_manager = env_manager
         self._work_dir = work_dir
         self._stats_keeper = stats_keeper or IntStatsKeeper(CompStats)
@@ -285,8 +299,9 @@ class NewTaskComputer:
     def _is_computing(self) -> bool:
         return self._computation is not None
 
-    def task_given(self, task_header: TaskHeader,
-                   compute_task_def: ComputeTaskDef) -> None:
+    def task_given(
+        self, task_header: TaskHeader, compute_task_def: ComputeTaskDef
+    ) -> None:
         assert not self.has_assigned_task()
         self._assigned_task = self.AssignedTask(
             task_id=task_header.task_id,
@@ -296,7 +311,8 @@ class NewTaskComputer:
             prereq_dict=task_header.environment_prerequisites,
             performance=compute_task_def['performance'],
             subtask_timeout=task_header.subtask_timeout,
-            deadline=min(task_header.deadline, compute_task_def['deadline']))
+            deadline=min(task_header.deadline, compute_task_def['deadline'])
+        )
         ProviderTimer.start()
         self.get_subtask_inputs_dir().mkdir(parents=True, exist_ok=True)
 
@@ -305,7 +321,8 @@ class NewTaskComputer:
         assert assigned_task is not None
 
         compute_future = asyncio.ensure_future(
-            self._create_client_and_compute())
+            self._create_client_and_compute()
+        )
         self._computation = deferred_from_future(compute_future)
 
         # For some reason GRPC future won't get cancelled if timeout is set to
@@ -331,13 +348,15 @@ class NewTaskComputer:
             env=env,
             payload_builder=payload_builder,
             prereq=prereq,
-            shared_dir=shared_dir)
+            shared_dir=shared_dir
+        )
 
         self._app_client = await ProviderAppClient.create(task_api_service)
         return await self._app_client.compute(
             task_id=assigned_task.task_id,
             subtask_id=assigned_task.subtask_id,
-            subtask_params=assigned_task.subtask_params)
+            subtask_params=assigned_task.subtask_params
+        )
 
     @defer.inlineCallbacks
     def _wait_until_computation_ends(self) -> defer.Deferred:
@@ -348,24 +367,29 @@ class NewTaskComputer:
         success = False
         try:
             output_file = yield self._computation
-            logger.info('Task computation succeeded. task_id=%r subtask_id=%r',
-                        assigned_task.task_id, assigned_task.subtask_id)
+            logger.info(
+                'Task computation succeeded. task_id=%r subtask_id=%r',
+                assigned_task.task_id, assigned_task.subtask_id
+            )
             success = True
             self._stats_keeper.increase_stat('computed_tasks')
             return task_dir / output_file  # Return *absolute* result path
         except defer.CancelledError:
             logger.warning(
                 'Task computation interrupted. task_id=%r subtask_id=%r',
-                assigned_task.task_id, assigned_task.subtask_id)
+                assigned_task.task_id, assigned_task.subtask_id
+            )
         except defer.TimeoutError:
             logger.error(
                 'Task computation timed out. task_id=%r subtask_id=%r',
-                assigned_task.task_id, assigned_task.subtask_id)
+                assigned_task.task_id, assigned_task.subtask_id
+            )
             self._stats_keeper.increase_stat('tasks_with_timeout')
         except Exception:
             logger.exception(
                 'Task computation failed. task_id=%r subtask_id=%r',
-                assigned_task.task_id, assigned_task.subtask_id)
+                assigned_task.task_id, assigned_task.subtask_id
+            )
             self._stats_keeper.increase_stat('tasks_with_errors')
             raise
         finally:
@@ -405,16 +429,21 @@ class NewTaskComputer:
             return None
         return self._assigned_task.env_id
 
-    def change_config(self, config_desc: ClientConfigDescriptor,
-                      work_dir: Path) -> defer.Deferred:
+    def change_config(
+        self, config_desc: ClientConfigDescriptor, work_dir: Path
+    ) -> defer.Deferred:
         assert not self._is_computing()
         self._work_dir = work_dir
 
-        config_dict = dict(work_dirs=[work_dir],
-                           cpu_count=config_desc.num_cores,
-                           memory_mb=scale_memory(config_desc.max_memory_size,
-                                                  unit=MemSize.kibi,
-                                                  to_unit=MemSize.mebi))
+        config_dict = dict(
+            work_dirs=[work_dir],
+            cpu_count=config_desc.num_cores,
+            memory_mb=scale_memory(
+                config_desc.max_memory_size,
+                unit=MemSize.kibi,
+                to_unit=MemSize.mebi
+            )
+        )
 
         # FIXME: Decide how to properly configure environments
         if self._env_manager.enabled(DOCKER_CPU_ENV_ID):
@@ -507,7 +536,8 @@ class TaskComputation:
         except (KeyError, AssertionError):
             logger.error(
                 "Task header not found in task keeper. "
-                "task_id=%r, subtask_id=%r", task_id, subtask_id)
+                "task_id=%r, subtask_id=%r", task_id, subtask_id
+            )
             self._task_finished()
             return
 
@@ -523,11 +553,15 @@ class TaskComputation:
                 reason = TaskFailure.REASON.BudgetExceeded
             else:
                 stats.increase_stat('tasks_with_errors')
-                task_server.send_task_failed(subtask_id, subtask['task_id'],
-                                             task_thread.error_msg, reason)
+                task_server.send_task_failed(
+                    subtask_id, subtask['task_id'], task_thread.error_msg,
+                    reason
+                )
         elif task_thread.result and 'data' in task_thread.result:
-            logger.info("Task %r computed, work_wall_clock_time %s",
-                        subtask_id, str(work_wall_clock_time))
+            logger.info(
+                "Task %r computed, work_wall_clock_time %s", subtask_id,
+                str(work_wall_clock_time)
+            )
             stats.increase_stat('computed_tasks')
 
             assert isinstance(task_thread.result, dict)
@@ -551,10 +585,12 @@ class TaskComputation:
                 "Wrong result format",
             )
 
-        dispatcher.send(signal='golem.monitor',
-                        event='computation_time_spent',
-                        success=was_success,
-                        value=work_time_to_be_paid)
+        dispatcher.send(
+            signal='golem.monitor',
+            event='computation_time_spent',
+            success=was_success,
+            value=work_time_to_be_paid
+        )
         self._task_finished()
 
     def _task_finished(self) -> None:
@@ -575,8 +611,8 @@ class TaskComputation:
         if not task_header:
             logger.warning(
                 "Subtask '%s' of task '%s' cannot be computed: "
-                "task header has been unexpectedly removed", subtask_id,
-                task_id)
+                "task header has been unexpectedly removed", subtask_id, task_id
+            )
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
@@ -588,14 +624,16 @@ class TaskComputation:
         logger.info(
             "Starting computation of subtask %r (task: %r, deadline: "
             "%r, docker images: %r)", subtask_id, task_id, deadline,
-            docker_images)
+            docker_images
+        )
 
         tc = self.task_computer
 
         with tc.dir_lock:
             resource_dir = tc.dir_manager.get_task_resource_dir(task_id)
             temp_dir = os.path.join(
-                tc.dir_manager.get_task_temporary_dir(task_id), unique_str)
+                tc.dir_manager.get_task_temporary_dir(task_id), unique_str
+            )
             # self.dir_manager.clear_temporary(task_id)
 
             if not os.path.exists(temp_dir):
@@ -604,10 +642,11 @@ class TaskComputation:
         if docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(
-                resource_dir, temp_dir)
-            tt: TaskThread = DockerTaskThread(docker_images, extra_data,
-                                              dir_mapping, task_timeout,
-                                              cpu_limit)
+                resource_dir, temp_dir
+            )
+            tt: TaskThread = DockerTaskThread(
+                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit
+            )
         elif tc.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir, task_timeout)
         else:
@@ -635,14 +674,17 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self,
-                 task_server: 'TaskServer',
-                 stats_keeper: Optional[IntStatsKeeper] = None,
-                 use_docker_manager=True,
-                 finished_cb=None) -> None:
+    def __init__(
+        self,
+        task_server: 'TaskServer',
+        stats_keeper: Optional[IntStatsKeeper] = None,
+        use_docker_manager=True,
+        finished_cb=None
+    ) -> None:
         self.task_server = task_server
         self.dir_manager: DirManager = DirManager(
-            task_server.get_task_computer_root())
+            task_server.get_task_computer_root()
+        )
 
         self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
@@ -670,9 +712,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             ProviderTimer.start()
 
         self.assigned_subtasks.append(
-            TaskComputation(task_computer=self,
-                            assigned_subtask=ctd,
-                            single_core=single_core))
+            TaskComputation(
+                task_computer=self,
+                assigned_subtask=ctd,
+                single_core=single_core
+            )
+        )
 
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtasks)
@@ -685,7 +730,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
     @property
     def assigned_task_ids(self) -> Set[str]:
-        return { c.assigned_task_id for c in self.assigned_subtasks }
+        return {c.assigned_task_id for c in self.assigned_subtasks}
 
     @property
     def assigned_subtask_id(self) -> Optional[str]:
@@ -693,8 +738,9 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             return None
         return self.assigned_subtasks[0].assigned_subtask_id
 
-    def task_interrupted(self, task_id: str,
-                         subtask_id: Optional[str] = None) -> None:
+    def task_interrupted(
+        self, task_id: str, subtask_id: Optional[str] = None
+    ) -> None:
         assert bool(self.assigned_subtasks)
         for computation in self.assigned_subtasks.copy():
             if (subtask_id is None
@@ -719,10 +765,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
     def can_take_work(self) -> bool:
         with self.lock:
-            if any([
+            if any(
+                [
                     computation for computation in self.assigned_subtasks
                     if not computation.single_core
-            ]):
+                ]
+            ):
                 return False
             return len(self.assigned_subtasks) < self.max_num_cores
 
@@ -732,10 +780,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     @property
     def free_cores(self) -> int:
         with self.lock:
-            if any([
+            if any(
+                [
                     computation for computation in self.assigned_subtasks
                     if not computation.single_core
-            ]):
+                ]
+            ):
                 return 0
             n = len(self.assigned_subtasks)
             return self.max_num_cores - n if n < self.max_num_cores else 0
@@ -754,12 +804,11 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         return task_header.environment
 
     @defer.inlineCallbacks
-    def change_config(self,
-                      config_desc: ClientConfigDescriptor,
-                      in_background: bool = True) -> defer.Deferred:
+    def change_config(
+        self, config_desc: ClientConfigDescriptor, in_background: bool = True
+    ) -> defer.Deferred:
 
-        self.dir_manager = DirManager(
-            self.task_server.get_task_computer_root())
+        self.dir_manager = DirManager(self.task_server.get_task_computer_root())
 
         dm = self.docker_manager
         assert isinstance(dm, DockerManager)
@@ -771,28 +820,33 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             deferred = defer.Deferred()
             # PyLint thinks dm is of type DockerConfigManager not DockerManager
             # pylint: disable=no-member
-            dm.update_config(status_callback=self._is_computing,
-                             done_callback=deferred.callback,
-                             work_dirs=work_dirs,
-                             in_background=in_background)
+            dm.update_config(
+                status_callback=self._is_computing,
+                done_callback=deferred.callback,
+                work_dirs=work_dirs,
+                in_background=in_background
+            )
             return (yield deferred)
 
         return False
 
-    def start_computation(self, task_id: str,
-                          subtask_id: Optional[str]) -> bool:
+    def start_computation(
+        self, task_id: str, subtask_id: Optional[str]
+    ) -> bool:
         started = False
         for computation in self.assigned_subtasks:
             if computation.assigned_task_id == task_id and (
-                    subtask_id is None
-                    or computation.assigned_subtask_id == subtask_id):
+                subtask_id is None or
+                computation.assigned_subtask_id == subtask_id
+            ):
                 if not computation.computing:
                     started = True
                     computation.start_computation()
                 else:
                     logger.warning(
                         "compuatation already started " +
-                        "(task_id=%s, substask_id=%s)", task_id, subtask_id)
+                        "(task_id=%s, substask_id=%s)", task_id, subtask_id
+                    )
         return started
 
     def task_finished(self, computation: TaskComputation) -> None:
@@ -811,8 +865,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         with self.lock:
             task_id = ctd['task_id']
             if not [
-                    c for c in self.assigned_subtasks
-                    if c.assigned_task_id == task_id
+                c for c in self.assigned_subtasks
+                if c.assigned_task_id == task_id
             ]:
                 self.task_server.task_keeper.task_ended(task_id)
 
@@ -847,14 +901,14 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
     def __init__(self, extra_data, res_path, tmp_path, timeout):
-        super(PyTaskThread, self).__init__(extra_data, res_path, tmp_path,
-                                           timeout)
+        super(PyTaskThread,
+              self).__init__(extra_data, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
     def __init__(self, extra_data, res_path, tmp_path, timeout):
-        super(PyTestTaskThread, self).__init__(extra_data, res_path, tmp_path,
-                                               timeout)
+        super(PyTestTaskThread,
+              self).__init__(extra_data, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()
