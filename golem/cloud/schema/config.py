@@ -45,6 +45,10 @@ class CloudConfigSchemaContainer(Schema):
     restart_policy: Optional[Dict[str, Any]] = fields.Dict(
         keys=fields.Str(),
         values=fields.Str())
+    network_mode: Optional[str] = fields.Str()
+    dns: Optional[List[str]] = fields.List(fields.Str())
+    dns_search: Optional[List[str]] = fields.List(fields.Str())
+    # host_config = fields.Nested(CloudConfigSchemaContainer)
 
 
 class CloudConfigSchemaDeployment(Schema):

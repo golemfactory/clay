@@ -31,6 +31,10 @@ class LocalContainerManager:
         self.cloud_config = None
         self._parse_config()
 
+    def __del__(self):
+        for container_name, container_desc in self._containers.items():
+            container_desc.cancel()
+
     @property
     def environment(self):
         return self.env_manager.environment(DOCKER_CPU_ENV_ID)
