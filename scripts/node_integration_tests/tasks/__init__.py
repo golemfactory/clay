@@ -168,7 +168,7 @@ _TASK_SETTINGS = {
     'task_api_blender': {
         'golem': {
             'app_id': BlenderAppDefinition.id,
-            'name': '',  # leave empty for Task API task integration tests
+            'name': '',
             'resources': [],
             'max_price_per_hour': str(10 ** 18),
             'max_subtasks': 1,
