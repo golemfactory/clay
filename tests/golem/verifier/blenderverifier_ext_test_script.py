@@ -9,6 +9,7 @@ from typing import List
 # Add golem base directory to path.
 sys.path.insert(0, ".")
 
+from golem.testutils import keep_testdir_always
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
@@ -200,10 +201,10 @@ class ExtendedVerifierTestEnv:
 
     def _generate_parameters(self):
         # resolutions_list = [[400, 400]]
-        # subtasks_num_list = range(1, 4)
+        subtasks_num_list = range(1, 4)
         # num_frames = [list(range(1, 2))]
         resolutions_list = [[400, 400]]
-        subtasks_num_list = list(range(1, 40))
+        #subtasks_num_list = list(range(1, 40))
         num_frames = self._generate_num_frames(1, 2)
 
         return self._generate_combinations(resolutions_list, subtasks_num_list,
@@ -237,6 +238,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         super().__init__()
         self.report: Report = Report()
 
+    @keep_testdir_always
     def run_for_parameters_set(self, parameters_set: dict):
 
         resolution = parameters_set['resolution']

@@ -34,6 +34,13 @@ def keep_testdir_on_fail(fun):
             raise
     return wrapper
 
+def keep_testdir_always(fun):
+    @wraps(fun)
+    def wrapper(self, *args, **kwargs):
+        self.REMOVE_TMP_DIRS = False
+        fun(self, *args, **kwargs)
+    return wrapper
+
 
 class TempDirFixture(unittest.TestCase):
     root_dir = None
