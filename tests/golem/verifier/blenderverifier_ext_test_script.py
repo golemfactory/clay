@@ -13,9 +13,6 @@ from golem.testutils import keep_testdir_always
 from golem.task.taskbase import Task
 from tests.apps.blender.task.test_blenderintegration import \
     TestBlenderIntegration
-from tests.golem.verifier.test_utils.helpers import \
-    find_crop_files_in_path, \
-    are_pixels_equal, find_fragments_in_path
 
 logger = logging.getLogger(__name__)
 logging.disable(logging.CRITICAL)
@@ -261,7 +258,7 @@ class ExtendedVerifierTest(TestBlenderIntegration):
 
             try:
                 result = self.verify_subtask(task, subtask_id, result)
-                self._assert_crops_match(task.task_definition.task_id)
+                self.assert_crops_match(task.task_definition.task_id)
 
                 if not result:
                     raise RuntimeError("Verification (decision tree) resulted "
@@ -292,31 +289,6 @@ class ExtendedVerifierTest(TestBlenderIntegration):
         parameters_set_copy['crops_params'][subtask_num] = crops['crops']
 
         return parameters_set_copy
-
-    def _assert_crops_match(self, task_id: str) -> None:
-        task_dir = os.path.join(self.tempdir, task_id)
-
-        try:
-            crops_paths = find_crop_files_in_path(
-                os.path.join(task_dir, 'output'))
-            fragments_paths = find_fragments_in_path(
-                os.path.join(task_dir, "work"))
-        except Exception:
-            raise Exception(
-                "Can't find crop files in output or work directory.")
-
-        assert crops_paths, "There were no crops produced!"
-        assert len(crops_paths) == len(
-            fragments_paths
-        ), "Amount of rendered crops != amount of image fragments!"
-        for crop_path, fragment_path in zip(
-                crops_paths,
-                fragments_paths,
-        ):
-            assert are_pixels_equal(
-                crop_path,
-                fragment_path,
-            ), f"crop: {crop_path} doesn't match: {fragment_path}"
 
     def _deduce_crop_parameters(self, task_id: str) -> dict:
         task_dir = os.path.join(self.tempdir, task_id)
