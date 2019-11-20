@@ -101,8 +101,8 @@ class EnvironmentWrapper(Environment):
     def run_benchmark(self) -> Deferred:
         return self._env.run_benchmark()
 
-    def run_local_container(self, *args, **kwargs) -> Deferred:
-        return self._env.run_local_container(*args, **kwargs)
+    def run_local_runtime(self, *args, **kwargs) -> Deferred:
+        return self._env.run_local_runtime(*args, **kwargs)
 
     def parse_prerequisites(
             self, prerequisites_dict: Dict[str, Any]

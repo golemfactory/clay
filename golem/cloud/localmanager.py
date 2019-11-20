@@ -1,13 +1,17 @@
 from pathlib import Path
 import logging
-from typing import Optional
 from copy import deepcopy
 import time
+import os
+
+from twisted.internet.defer import inlineCallbacks
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.resource.dirmanager import DirManager
 from golem.task.envmanager import EnvironmentManager
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
+from golem.envs.docker import DockerRuntimePayload
+from golem.core.common import is_windows
 
 from .config import load_config, get_config_path
 from .schema.config import CloudConfigSchema
@@ -28,12 +32,26 @@ class LocalContainerManager:
         self.dir_manager = DirManager(root_path)
         self._environment = self.DEFAULT_ENVIRONMENT
         self._containers = {}
+        self._deferreds = {}
         self.cloud_config = None
         self._parse_config()
 
     def __del__(self):
-        for container_name, container_desc in self._containers.items():
-            container_desc.cancel()
+        self.quit()
+
+    @inlineCallbacks
+    def quit(self):
+        logger.info('Golem Cloud is stopping local containers...')
+        for container_name, container_runtime in self._containers.items():
+            container_status = self.get_status(container_name)
+            logger.info(f'Container: {container_name} status: {container_status}')
+            yield container_runtime.stop()
+            container_status = self.get_status(container_name)
+            logger.info(f'Container: {container_name} status: {container_status}')
+        for container_name, container_deferred in self._deferreds.items():
+            yield container_deferred.cancel()
+        self._containers = {}
+        self._deferreds = {}
 
     @property
     def environment(self):
@@ -57,6 +75,27 @@ class LocalContainerManager:
             logger.error(f'Cloud configuration FAILED: {e}')
             return
 
+    def get_status(self, name):
+        if name not in self._containers:
+            return None
+        runtime = self._containers.get(name)
+        return runtime.status()
+
+    def prepare_local_container(self, image, tag, extra_options=None):
+        if not extra_options:
+            extra_options = {}
+        docker_env = extra_options.get('env', {}) if 'env' in extra_options \
+            else {}
+
+        payload = DockerRuntimePayload(
+            image=image,
+            tag=tag,
+            user=None if is_windows() else str(os.getuid()),
+            env=docker_env,
+            **extra_options
+        )
+        return self.environment.runtime(payload)
+
     def run_local_containers(self):
         if not self.cloud_config:
             return None
@@ -73,6 +112,6 @@ class LocalContainerManager:
             del(extra_options['tag'])
             logger.info(
                 f'Golem Cloud is starting container: {name} ({image}:{tag})')
-            self._containers[name] = self.environment.run_local_container(
-                image, tag, extra_options)
-        logger.info(f'Running containers: {self._containers}')
+            runtime = self.prepare_local_container(image, tag, extra_options)
+            self._containers[name] = runtime
+            self._deferreds[name] = self.environment.run_local_runtime(runtime)
