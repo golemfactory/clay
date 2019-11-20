@@ -22,7 +22,8 @@ class AppManager:
                 f"Application already registered. "
                 f"app_name={app.name} app_id={app_id}")
         self._apps[app_id] = app
-        self._state[app_id] = False
+        if app_id not in self._state:
+            self._state[app_id] = False
         logger.info(
             "Application registered. app_name=%r app_id=%r", app.name, app_id)
 
