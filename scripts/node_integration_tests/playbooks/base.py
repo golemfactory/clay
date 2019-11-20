@@ -111,7 +111,11 @@ class NodeTestPlaybook:
 
     @property
     def output_extension(self):
-        return self.task_settings_dict.get('options', {}).get('format')
+        # task-api tasks renamed options to app
+        app = self.task_settings_dict.get('options')
+        if app is None:
+            app = self.task_settings_dict.get('app')
+        return app.get('format')
 
     @property
     def current_step_method(self):
@@ -345,7 +349,12 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file_name = settings.get('name') + '*.' + self.output_extension
+        # Name has moved for task-api tasks
+        if 'golem' in settings:
+            name = settings.get('golem').get('name')
+        else:
+            name = settings.get('name')
+        output_file_name = name + '*.' + self.output_extension
 
         print("Verifying output file: {}".format(output_file_name))
         found_files = list(
