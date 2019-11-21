@@ -18,7 +18,7 @@ from faker.providers import date_time as fake_date_time
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred
 
 from golem import model
 from golem import testutils
@@ -441,8 +441,9 @@ class TestGetTasks(TestClientBase):
         assert len(retrieved_tasks) == 6
         # Check that task start times are sorted in ascending order
         for i in range(len(retrieved_tasks) - 1):
-            date = retrieved_tasks[i]['time_started']
-            next_date = retrieved_tasks[i + 1]['time_started']
+            date = timestamp_to_datetime(retrieved_tasks[i]['time_started'])
+            next_date = timestamp_to_datetime(
+                retrieved_tasks[i + 1]['time_started'])
             assert date < next_date
 
     def test_get_single_task(self):
