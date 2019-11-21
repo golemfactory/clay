@@ -15,10 +15,9 @@ from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.testutils import TempDirFixture, keep_testdir_on_fail
+from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from tests.golem.docker.test_docker_job import TestDockerJob
-
 
 
 @ci_skip
@@ -181,6 +180,7 @@ class TestffmpegTranscoding(TempDirFixture):
                 Container.c_MP4,
                 TranscodingTaskOptions.AudioParams(),
             )
+
 
 class TestffmpegDockerJob(TestDockerJob):
     def _get_test_repository(self):
