@@ -74,7 +74,10 @@ def do_split(path_to_stream, parts):
     return results
 
 
-def do_extract_and_split(input_file, parts, intermediate_container=None):
+def do_extract_and_split(input_file,
+                         parts,
+                         target_container=None,
+                         intermediate_container=None):
     input_basename = os.path.basename(input_file)
     [input_stem, input_extension] = os.path.splitext(input_basename)
 
@@ -94,6 +97,9 @@ def do_extract_and_split(input_file, parts, intermediate_container=None):
         "segments": split_results["segments"],
         "metadata": extract_results["metadata"],
     }
+
+    if target_container is not None:
+        results["muxer_info"] = commands.query_muxer_info(target_container)
 
     results_file = os.path.join(OUTPUT_DIR, "extract-and-split-results.json")
     with open(results_file, 'w') as f:
@@ -268,6 +274,7 @@ def run_ffmpeg(params):
         do_extract_and_split(
             params['input_file'],
             params['parts'],
+            params.get('target_container'),
             params.get('intermediate_container'))
     elif params['command'] == "transcode":
         do_transcode(
