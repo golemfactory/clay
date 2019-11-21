@@ -39,6 +39,7 @@ class Commands(enum.Enum):
     TRANSCODE = ('transcode', '')
     MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
+    QUERY_MUXER_INFO = ('compute-metrics', 'query-muxer-info-results.json')
 
 
 class FfmpegDockerAPI:

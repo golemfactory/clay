@@ -246,6 +246,13 @@ def compute_metrics(metrics_params):
             get_metadata(metadata_request)
 
 
+def query_muxer_info(muxer):
+    results = {"muxer_info": commands.query_muxer_info(muxer)}
+    results_file = os.path.join(OUTPUT_DIR, "query-muxer-info-results.json")
+    with open(results_file, 'w') as f:
+        json.dump(results, f)
+
+
 def run_ffmpeg(params):
     if params['command'] == "extract":
         do_extract(
@@ -294,6 +301,9 @@ def run_ffmpeg(params):
     elif params['command'] == "compute-metrics":
         compute_metrics(
             params["metrics_params"])
+    elif params['command'] == "query-muxer-info":
+        query_muxer_info(
+            params["muxer"])
     else:
         raise InvalidCommand(f"Invalid command: {params['command']}")
 
