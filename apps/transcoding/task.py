@@ -108,7 +108,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             extract_video_streams_and_split(
                 input_file,
                 self.get_total_tasks(),
-                None,
+                self.task_definition.options.output_container,
                 self.task_dir,
                 task_id)
 
@@ -137,6 +137,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             validation.validate_transcoding_params(
                 dst_params,
                 video_metadata,
+                muxer_info,
                 self.task_definition.options.strip_unsupported_data_streams,
                 self.task_definition.options.strip_unsupported_subtitle_streams,
             )
