@@ -40,9 +40,11 @@ class TestffmpegTranscoding(TempDirFixture):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
                 task_id = str(uuid.uuid4())
-                chunks, _ = self.stream_operator.\
+                chunks, _, _ = self.stream_operator.\
                     extract_video_streams_and_split(
-                        self.RESOURCE_STREAM, parts,
+                        self.RESOURCE_STREAM,
+                        parts,
+                        None,
                         self.dir_manager.get_task_temporary_dir(task_id),
                         task_id)
                 self.assertEqual(len(chunks), parts)
@@ -51,9 +53,10 @@ class TestffmpegTranscoding(TempDirFixture):
         with self.assertRaises(ffmpegException):
             task_id = str(uuid.uuid4())
             self.stream_operator.extract_video_streams_and_split(
-                os.path.join(self.RESOURCES,
-                             'invalid_test_video2.mp4'),
-                1, self.dir_manager.get_task_temporary_dir(task_id),
+                os.path.join(self.RESOURCES, 'invalid_test_video2.mp4'),
+                1,
+                None,
+                self.dir_manager.get_task_temporary_dir(task_id),
                 task_id)
 
     def test_extract_split_merge_and_replace_video(self):
@@ -66,9 +69,12 @@ class TestffmpegTranscoding(TempDirFixture):
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         split_output_dir = os.path.join(task_dir, "output")
 
-        chunks, _ = self.stream_operator.extract_video_streams_and_split(
-            self.RESOURCE_STREAM, parts,
-            task_dir, task_id)
+        chunks, _, _ = self.stream_operator.extract_video_streams_and_split(
+            self.RESOURCE_STREAM,
+            parts,
+            output_container,
+            task_dir,
+            task_id)
 
         self.assertEqual(len(chunks), parts)
         self.assertEqual(

@@ -6,6 +6,7 @@ import glob
 from pathlib import Path
 from typing import List, Optional
 from threading import Lock
+from ffmpeg_tools.formats import Container
 
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
@@ -49,7 +50,8 @@ class FfmpegDockerAPI:
 
     def extract_video_streams_and_split(self,
                                         input_file_on_host: str,
-                                        parts: int):
+                                        parts: int,
+                                        target_container: Container):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
@@ -69,11 +71,17 @@ class FfmpegDockerAPI:
             input_file_in_container,
             'ro')])
 
+        if target_container is None:
+            target_container_str = None
+        else:
+            target_container_str = target_container.value
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
             'parts': parts,
+            'target_container': target_container_str,
         }
 
         logger.debug(
