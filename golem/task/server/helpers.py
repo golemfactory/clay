@@ -24,7 +24,9 @@ def computed_task_reported(
         report_computed_task,
         after_success=lambda: None,
         after_error=lambda: None):
-    concent_service = task_server.client.concent_service
+    task_id = report_computed_task.task_id
+    subtask_id = report_computed_task.subtask_id
+    is_task_api_task = task_server.requested_task_manager.task_exists(task_id)
 
     # submit a delayed `ForceGetTaskResult` to the Concent
     # in case the download exceeds the maximum allowable download time.
@@ -33,7 +35,7 @@ def computed_task_reported(
     fgtr = message.concents.ForceGetTaskResult(
         report_computed_task=report_computed_task
     )
-    subtask_id = report_computed_task.subtask_id
+    concent_service = task_server.client.concent_service
     concent_service.submit_task_message(
         subtask_id,
         fgtr,
@@ -43,18 +45,16 @@ def computed_task_reported(
     )
 
     # Pepare callbacks for received resources
-    def on_success(extracted_pkg, *_args, **_kwargs):
-        logger.debug("Task result extracted %r", extracted_pkg.__dict__)
+    def on_success(pkg, *_args, **_kwargs):
+        files = [str(pkg)] if is_task_api_task else pkg.get_full_path_files()
+        logger.debug("Task result downloaded: %r", files)
 
         concent_service.cancel_task_message(
             subtask_id,
-            'ForceGetTaskResult',
-        )
-
+            'ForceGetTaskResult')
         task_server.verify_results(
             report_computed_task=report_computed_task,
-            extracted_package=extracted_pkg,
-        )
+            files=files)
         after_success()
 
     def on_error(exc, *_args, **_kwargs):
@@ -74,16 +74,19 @@ def computed_task_reported(
             )
         after_error()
 
-    task_id = report_computed_task.task_id
     client_options = task_server.get_download_options(
         report_computed_task.options
     )
 
-    rtm = task_server.requested_task_manager
-    if rtm.task_exists(task_id):
+    if is_task_api_task:
+        rtm = task_server.requested_task_manager
         rtm.task_result_incoming(task_id, report_computed_task.subtask_id)
         download_dir = rtm.get_subtask_outputs_dir(task_id, subtask_id)
-        download_dir.mkdir()
+        download_dir.mkdir(parents=True, exist_ok=True)
+        logger.debug(
+            "Downloading subtask_id=%s result to '%s'",
+            subtask_id,
+            download_dir)
         deferred = task_server.new_resource_manager.download(
             resource_id=report_computed_task.multihash,
             directory=download_dir,
@@ -235,6 +238,7 @@ def send_task_failure(waiting_task_failure) -> None:
         waiting_task_failure.owner.key,
         message.tasks.TaskFailure(
             task_to_compute=task_to_compute,
-            err=waiting_task_failure.err_msg
+            err=waiting_task_failure.err_msg,
+            reason=waiting_task_failure.reason
         ),
     )

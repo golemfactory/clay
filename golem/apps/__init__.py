@@ -1,17 +1,17 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Iterator, Tuple, Type
+from typing import Dict, Any, Iterator, Type
 
 from dataclasses import dataclass, field
-from dataclasses_json import config, dataclass_json
+from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
 
 from golem.marketplace import (
-    DEFAULT_REQUESTOR_MARKET_STRATEGY,
     RequestorMarketStrategy,
     requestor_market_strategy_encode,
     requestor_market_strategy_decode,
+    DEFAULT_REQUESTOR_MARKET_STRATEGY,
 )
 
 logger = logging.getLogger(__name__)
@@ -57,6 +57,18 @@ class AppDefinition:
         raise NotImplementedError  # A stub to silence the linters
 
 
+def save_app_to_json_file(app_def: AppDefinition, json_file: Path) -> None:
+    """ Save application definition to the given file in JSON format.
+        Create parent directories if they don't exist. """
+    try:
+        json_file.parent.mkdir(parents=True, exist_ok=True)
+        json_file.write_text(app_def.to_json())
+    except OSError:
+        msg = f"Error writing app definition to file '{json_file}."
+        logger.exception(msg)
+        raise ValueError(msg)
+
+
 def load_app_from_json_file(json_file: Path) -> AppDefinition:
     """ Parse application definition from the given JSON file. Raise ValueError
         if the given file doesn't contain a valid definition. """
@@ -77,47 +89,3 @@ def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
             yield load_app_from_json_file(json_file)
         except ValueError:
             continue
-
-
-class AppManager:
-    """ Manager class for applications using Task API. """
-
-    def __init__(self) -> None:
-        self._apps: Dict[AppId, AppDefinition] = {}
-        self._state: Dict[AppId, bool] = {}
-
-    def register_app(self, app: AppDefinition) -> None:
-        """ Register an application in the manager. """
-        app_id = app.id
-        if app_id in self._apps:
-            raise ValueError(
-                f"Application already registered. "
-                f"app_name={app.name} app_id={app_id}")
-        self._apps[app_id] = app
-        self._state[app_id] = False
-        logger.info(
-            "Application registered. app_name=%r app_id=%r", app.name, app_id)
-
-    def enabled(self, app_id: AppId) -> bool:
-        """ Check if an application with the given ID is registered in the
-            manager and enabled. """
-        return app_id in self._state and self._state[app_id]
-
-    def set_enabled(self, app_id: AppId, enabled: bool) -> None:
-        """ Enable or disable an application. Raise an error if the application
-            is not registered or the environment associated with the application
-            is not available. """
-        if app_id not in self._apps:
-            raise ValueError(f"Application not registered. app_id={app_id}")
-        self._state[app_id] = enabled
-        logger.info(
-            "Application %s. app_id=%r",
-            'enabled' if enabled else 'disabled', app_id)
-
-    def apps(self) -> List[Tuple[AppId, AppDefinition]]:
-        """ Get all registered apps. """
-        return list(self._apps.items())
-
-    def app(self, app_id: AppId) -> AppDefinition:
-        """ Get an app with given ID (assuming it is registered). """
-        return self._apps[app_id]

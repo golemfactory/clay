@@ -116,9 +116,8 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
     @inlineCallbacks
     def test_subtasks(self):
         subtask = Subtask(
-            subtask_id='test_subtask',
             params={'param': 'value'},
-            resources=['test_resource']
+            resources=['test_resource'],
         )
         subtasks = [subtask]
 
@@ -144,7 +143,7 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
         self.assertTrue(pending_subtasks)
 
         subtask_future = asyncio.ensure_future(client.next_subtask(
-            'whatever', 'whatever'))
+            'whatever', 'whatever', 'whatever'))
         result = yield deferred_from_future(subtask_future)
         self.assertEqual(result, subtask)
 

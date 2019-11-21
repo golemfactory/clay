@@ -160,7 +160,7 @@ class AppBenchmarkManager:
         self._root_path = root_path / 'benchmarks'
         self._computing: Optional[str] = None
 
-    async def get_benchmark_score(
+    async def get(
             self,
             env_id: EnvId,
             env_prereq_dict: Dict[str, Any],
@@ -168,7 +168,7 @@ class AppBenchmarkManager:
         prereq_hash = hash_prereq_dict(env_prereq_dict)
 
         try:
-            return AppBenchmark.get(hash=prereq_hash).score
+            return AppBenchmark.get(hash=prereq_hash)
         except AppBenchmark.DoesNotExist:
             pass
 
@@ -185,7 +185,7 @@ class AppBenchmarkManager:
 
         benchmark = AppBenchmark(hash=prereq_hash, score=score)
         benchmark.save()
-        return benchmark.score
+        return benchmark
 
     @staticmethod
     def remove_benchmark_scores() -> None:

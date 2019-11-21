@@ -371,8 +371,10 @@ class Node(HardwarePresetsMixin):
 
         # is in shutdown? turn off as toggle
         if self._config_desc.in_shutdown:
-            self.client.update_setting('in_shutdown', False)
+            self.client.update_setting('in_shutdown', 0)
             logger.info('Turning off shutdown mode')
+            StatusPublisher.publish(
+                Component.client, 'start', Stage.post)
             return ShutdownResponse.off
 
         # is not providing nor requesting, normal shutdown
@@ -383,7 +385,9 @@ class Node(HardwarePresetsMixin):
 
         # configure in_shutdown
         logger.info('Enabling shutdown mode, no more tasks can be started')
-        self.client.update_setting('in_shutdown', True)
+        self.client.update_setting('in_shutdown', 1)
+        StatusPublisher.publish(
+            Component.client, 'scheduled_shutdown', Stage.pre)
 
         # subscribe to events
 

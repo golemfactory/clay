@@ -12,9 +12,12 @@ import golem
 from golem import constants as gconst
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
-from golem.core.keysauth import KeysAuth
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
+
+if typing.TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from twisted.internet.protocol import Protocol
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +65,11 @@ class PeerSession(BasicSafeSession):
 
     ConnectionStateType = SafeProtocol
 
-    def __init__(self, conn):
+    def __init__(self, conn: 'Protocol') -> None:
         """
         Create new session
-        :param Protocol conn: connection protocol implementation that this
-                              session should enhance
-        :return None:
+        :param conn: connection protocol implementation that this
+                     session should enhance
         """
         BasicSafeSession.__init__(self, conn)
         self.p2p_service = self.conn.server
@@ -363,10 +365,10 @@ class PeerSession(BasicSafeSession):
         logger.debug("Running handler for `Tasks`. msg=%r", msg)
         for t in msg.tasks:
             logger.debug("Task information received. task header: %r", t)
-            if not self.p2p_service.add_task_header(t):
-                self.disconnect(
-                    message.base.Disconnect.REASON.BadProtocol
-                )
+            self.p2p_service.add_task_header(t).addErrback(
+                self.disconnect,
+                message.base.Disconnect.REASON.BadProtocol
+            )
 
     def _react_to_remove_task(self, msg):
         if not self._verify_remove_task(msg):

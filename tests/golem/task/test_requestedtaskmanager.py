@@ -11,15 +11,16 @@ from golem_task_api.structs import Subtask
 from mock import ANY, Mock
 import pytest
 
-from golem.app_manager import AppManager
+from golem.apps.manager import AppManager
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
+from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
     ComputingNodeDefinition,
 )
-from golem.task.taskstate import TaskStatus, SubtaskStatus
+from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 from tests.utils.asyncio import AsyncMock
 
@@ -42,10 +43,10 @@ def mock_client(monkeypatch):
 
 
 @pytest.mark.usefixtures('pytest_database_fixture')
-class TestRequestedTaskManager():
+class TestRequestedTaskManager:
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmpdir):
+    def setup_method(self, tmpdir, monkeypatch):
         self.frozen_time = None
         # TODO: Replace with tmp_path when pytest is updated to 5.x
         self.tmp_path = Path(tmpdir)
@@ -61,6 +62,11 @@ class TestRequestedTaskManager():
             public_key=self.public_key,
             root_path=self.rtm_path
         )
+
+        monkeypatch.setattr(
+            requestedtaskmanager,
+            '_build_legacy_task_state',
+            lambda *_: TaskState())
 
     def test_create_task(self):
         # given
@@ -166,6 +172,7 @@ class TestRequestedTaskManager():
         assert row.computing_node.name == computing_node.name
         mock_client.next_subtask.assert_called_once_with(
             task_id=task_id,
+            subtask_id=res.subtask_id,
             opaque_node_id=ANY
         )
 
@@ -353,7 +360,7 @@ class TestRequestedTaskManager():
             task_id,
             self._get_computing_node(),
         )
-        self._add_next_subtask_to_client_mock(mock_client, subtask_id='123')
+        self._add_next_subtask_to_client_mock(mock_client)
         subtask2 = await self.rtm.get_next_subtask(
             task_id,
             self._get_computing_node(node_id='testnodeid2'),
@@ -406,6 +413,7 @@ class TestRequestedTaskManager():
             resources=resources,
             max_subtasks=1,
             max_price_per_hour=1,
+            min_memory=0,
             concent_enabled=False,
         )
 
@@ -416,11 +424,8 @@ class TestRequestedTaskManager():
         return task_id
 
     @staticmethod
-    def _add_next_subtask_to_client_mock(
-            client_mock,
-            subtask_id='testsubtaskid'
-    ):
-        result = Subtask(subtask_id=subtask_id, params={}, resources=[])
+    def _add_next_subtask_to_client_mock(client_mock):
+        result = Subtask(params={}, resources=[])
         client_mock.next_subtask.return_value = result
         client_mock.has_pending_subtasks.return_value = True
 

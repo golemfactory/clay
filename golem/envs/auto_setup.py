@@ -3,8 +3,7 @@ from typing import (
     Callable,
     Dict,
     Optional,
-    Tuple,
-    Type
+    Tuple
 )
 
 from twisted.internet.defer import (
@@ -20,7 +19,6 @@ from golem.envs import (
     EnvEventListener,
     EnvEventType,
     Environment,
-    EnvMetadata,
     EnvStatus,
     EnvSupportStatus,
     Prerequisites,
@@ -91,7 +89,11 @@ class RuntimeSetupWrapper(Runtime):
         self._runtime.listen(event_type, listener)
 
 
-def auto_setup(env: Environment) -> Environment:
+def auto_setup(
+        env: Environment,
+        start_usage: Callable[[Environment], Deferred],
+        end_usage: Callable[[Environment], Deferred]
+) -> Environment:
 
     class EnvSetupWrapper(Environment):
 
@@ -104,7 +106,7 @@ def auto_setup(env: Environment) -> Environment:
             yield self._lock.acquire()
             try:
                 if self._num_users == 0:
-                    yield env.prepare()
+                    yield start_usage(env)
                 self._num_users += 1
             finally:
                 self._lock.release()
@@ -115,7 +117,7 @@ def auto_setup(env: Environment) -> Environment:
             try:
                 self._num_users -= 1
                 if self._num_users == 0:
-                    yield env.clean_up()
+                    yield end_usage(env)
             finally:
                 self._lock.release()
 
