@@ -7,7 +7,7 @@ import uuid
 
 from pydispatch import dispatcher
 
-from golem_messages.message import ComputeTaskDef
+from golem_messages.message import ComputeTaskDef, TaskFailure
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
@@ -18,6 +18,7 @@ from golem.docker.manager import DockerManager
 from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.task.taskcomputer import TaskComputer, PyTaskThread
 from golem.task.taskserver import TaskServer
+from golem.task.taskthread import JobException
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -95,7 +96,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
-            "xxyyzz", "xyz", "Host direct task not supported")
+            "xxyyzz",
+            "xyz",
+            "Host direct task not supported"
+        )
 
         tc.support_direct_computation = True
         tc.task_given(ctd)
@@ -132,7 +136,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtask)
         task_server.send_task_failed.assert_called_with(
-            "aabbcc", "xyz", 'some exception')
+            "aabbcc", "xyz", 'some exception', TaskFailure.DEFAULT_REASON)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
@@ -273,12 +277,12 @@ class TestTaskThread(DatabaseFixture):
         tt = self._new_task_thread(mock.Mock())
         tt._fail(first_error)
 
-        assert tt.error is True
+        self.assertIsNotNone(tt.error)
         assert tt.done is True
         assert tt.error_msg == str(first_error)
 
         tt._fail(second_error)
-        assert tt.error is True
+        self.assertIsNotNone(tt.error)
         assert tt.done is True
         assert tt.error_msg == str(first_error)
 
@@ -363,12 +367,12 @@ class TestTaskMonitor(DatabaseFixture):
 
         # error case
         prepare()
-        task_thread.error = True
+        task_thread.error = JobException()
         check(False)
 
         # success case
         prepare()
-        task_thread.error = False
+        task_thread.error = None
         task_thread.error_msg = None
         task_thread.result = {'data': 'oh senora!!!'}
         check(True)

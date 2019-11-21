@@ -3,17 +3,19 @@ from typing import Dict, List, Type, Optional
 
 from dataclasses import dataclass
 from peewee import PeeweeException
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks, DeferredLock
 
 from golem.envs import BenchmarkResult, EnvId, Environment, EnvMetadata
-from golem.model import Performance
+from golem.envs.auto_setup import auto_setup
+from golem.model import Performance, EnvConfiguration
 from golem.task.task_api import TaskApiPayloadBuilder
 
 logger = logging.getLogger(__name__)
 
 
 class EnvironmentManager:
-    """ Manager class for all Environments. """
+    """ Manager class for all Environments. Ensures that only one environment
+        is used at a time. Lazily cleans up unused environments."""
 
     @dataclass
     class EnvEntry:
@@ -23,8 +25,38 @@ class EnvironmentManager:
 
     def __init__(self):
         self._envs: Dict[EnvId, EnvironmentManager.EnvEntry] = {}
-        self._state: Dict[EnvId, bool] = {}
+        self._state = EnvStates()
         self._running_benchmark: bool = False
+        self._lock = DeferredLock()
+        self._active_env: Optional[Environment] = None
+
+    @inlineCallbacks
+    def _start_usage(self, env: Environment) -> Deferred:
+        yield self._lock.acquire()
+
+        if self._active_env is env:
+            return
+
+        if self._active_env is not None:
+            try:
+                yield self._active_env.clean_up()
+                self._active_env = None
+            except Exception:
+                yield self._lock.release()
+                raise
+
+        try:
+            yield env.prepare()
+            self._active_env = env
+        except Exception:
+            yield self._lock.release()
+            raise
+
+    @inlineCallbacks
+    def _end_usage(self, env: Environment) -> Deferred:
+        if self._active_env is not env:
+            raise ValueError('end_usage called for wrong environment')
+        yield self._lock.release()
 
     def register_env(
             self,
@@ -35,8 +67,9 @@ class EnvironmentManager:
         """ Register an Environment (i.e. make it visible to manager). """
         if metadata.id in self._envs:
             raise ValueError(f"Environment '{metadata.id}' already registered.")
+        wrapped_env = auto_setup(env, self._start_usage, self._end_usage)
         self._envs[metadata.id] = EnvironmentManager.EnvEntry(
-            instance=env,
+            instance=wrapped_env,
             metadata=metadata,
             payload_builder=payload_builder,
         )
@@ -44,7 +77,7 @@ class EnvironmentManager:
 
     def state(self) -> Dict[EnvId, bool]:
         """ Get the state (enabled or not) for all registered Environments. """
-        return dict(self._state)
+        return self._state.copy()
 
     def set_state(self, state: Dict[EnvId, bool]) -> None:
         """ Set the state (enabled or not) for all registered Environments. """
@@ -143,3 +176,41 @@ class EnvironmentManager:
             query.execute()
         except PeeweeException:
             logger.exception(f"Cannot clear performance score for '{env_id}'")
+
+
+class EnvStates:
+
+    @staticmethod
+    def copy() -> Dict[EnvId, bool]:
+        configs = EnvConfiguration.select().execute()
+        return {config.env_id: config.enabled for config in configs}
+
+    def __contains__(self, item):
+        if not isinstance(item, str):
+            self._raise_no_str_type(item)
+
+        return EnvConfiguration.select(EnvConfiguration.env_id) \
+            .where(EnvConfiguration.env_id == item) \
+            .exists()
+
+    def __getitem__(self, item):
+        if not isinstance(item, str):
+            self._raise_no_str_type(item)
+        try:
+            return EnvConfiguration \
+                .get(EnvConfiguration.env_id == item) \
+                .enabled
+        except EnvConfiguration.DoesNotExist:
+            raise KeyError(item)
+
+    def __setitem__(self, key, val):
+        if not isinstance(key, str):
+            self._raise_no_str_type(key)
+        if not isinstance(val, bool):
+            raise TypeError(f"Value is of type {type(val)}; bool expected")
+
+        EnvConfiguration.insert(env_id=key, enabled=val).upsert().execute()
+
+    @staticmethod
+    def _raise_no_str_type(item):
+        raise TypeError(f"Key is of type {type(item)}; str expected")

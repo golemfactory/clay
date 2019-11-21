@@ -5,7 +5,7 @@ import json
 import pickle
 import sys
 import time
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
@@ -30,6 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
+from golem.core.common import datetime_to_timestamp
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -745,9 +746,10 @@ class RequestedTask(BaseModel):
     subtask_timeout = IntegerField(null=False)  # milliseconds
     start_time = UTCDateTimeField(null=True)
 
-    max_price_per_hour = IntegerField(null=False)
-
+    max_price_per_hour = HexIntegerField(null=False)
     max_subtasks = IntegerField(null=False)
+    min_memory = IntegerField(null=False, default=0)
+
     concent_enabled = BooleanField(null=False, default=False)
     mask = BlobField(null=False, default=masking.Mask().to_bytes())
     output_directory = CharField(null=False)
@@ -803,7 +805,7 @@ class RequestedSubtask(BaseModel):
     payload = JsonField(null=False, default=default_dict())
     inputs = JsonField(null=False, default=default_list())
     start_time = UTCDateTimeField(null=True)
-    price = IntegerField(null=True)
+    price = HexIntegerField(null=True)
     computing_node = ForeignKeyField(
         ComputingNode, null=True, related_name='subtasks')
 
@@ -814,6 +816,16 @@ class RequestedSubtask(BaseModel):
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + datetime.timedelta(
             milliseconds=self.task.subtask_timeout)  # pylint: disable=no-member
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'task_id': self.task.task_id,  # pylint: disable=no-member
+            'subtask_id': self.subtask_id,
+            'status': self.status.value,  # pylint: disable=no-member
+            'time_started': datetime_to_timestamp(self.start_time),
+            'node_id': self.computing_node.node_id,  # pylint: disable=no-member
+            'node_name': self.computing_node.name,  # pylint: disable=no-member
+        }
 
     class Meta:
         database = db
@@ -828,6 +840,22 @@ class QueuedVerification(BaseModel):
     class Meta:
         database = db
         primary_key = CompositeKey('task_id', 'subtask_id')
+
+
+class AppConfiguration(BaseModel):
+    app_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
+
+
+class EnvConfiguration(BaseModel):
+    env_id = CharField(primary_key=True)
+    enabled = BooleanField(null=False, default=False)
+
+    class Meta:
+        database = db
 
 
 class UsageFactor(BaseModel):

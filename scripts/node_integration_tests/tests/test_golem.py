@@ -14,6 +14,13 @@ class GolemNodeTest(NodeTestBase):
         """
         self._run_test('golem.regular_run')
 
+    def test_regular_task_api_run(self):
+        """
+        runs a normal, successful task run between a single provider
+        and a single requestor. On the new task_api task types
+        """
+        self._run_test('golem.task_api')
+
     def test_concent(self):
         """
         runs a normal task between a provider and a requestor

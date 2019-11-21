@@ -124,10 +124,17 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             max_price=1010,
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
+            environment='BLENDER',
         )
 
-    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120,
-                       subtask_timeout=120, task_definition=Mock()):
+    def _get_task_mock(  # noqa pylint:disable=too-many-arguments
+            self, task_id="xyz", subtask_id="xxyyzz", timeout=120,
+            subtask_timeout=120,
+            task_definition=Mock(
+                max_price=10,
+                subtask_timeout=3600,
+            )
+    ):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, task_definition)
         task_mock.tmp_dir = self.path
@@ -397,7 +404,13 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
         class TestTask(Task):
             def __init__(self, header, subtasks_id, verify_subtasks):
-                super(TestTask, self).__init__(header, Mock())
+                super(TestTask, self).__init__(
+                    header,
+                    Mock(
+                        max_price=th.max_price,
+                        subtask_timeout=th.subtask_timeout,
+                    )
+                )
                 self.finished = {k: False for k in subtasks_id}
                 self.restarted = {k: False for k in subtasks_id}
                 self.verify_subtasks = verify_subtasks
@@ -958,6 +971,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             header=dt_tasks_factory.TaskHeaderFactory(
                 subtask_timeout=1,
                 max_price=1,
+                environment='BLENDER',
             ),
             task_definition=TaskDefinition())
 
@@ -1261,8 +1275,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def test_add_new_task_creates_output_directory(self, mock_get_dir, *_):
         output_dir_mock = Mock()
         mock_get_dir.return_value = output_dir_mock
-        task_definition = Mock()
-        task_definition.output_file = '/some/output/file.png'
+        task_definition = Mock(
+            max_price=100,
+            subtask_timeout=3600,
+            output_file='/some/output/file.png'
+        )
         task_mock = self._get_task_mock(task_definition=task_definition)
 
         self.tm.add_new_task(task_mock)
@@ -1276,8 +1293,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def test_check_timeouts_removes_output_directory(self, mock_get_dir, *_):
         output_dir_mock = Mock()
         mock_get_dir.return_value = output_dir_mock
-        task_definition = Mock()
-        task_definition.output_file = 'some/output/file.png'
+        task_definition = Mock(
+            max_price=100,
+            subtask_timeout=3600,
+            output_file='some/output/file.png',
+        )
         start_time = datetime.datetime.now()
 
         with freeze_time(start_time):

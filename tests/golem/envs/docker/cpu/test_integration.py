@@ -23,13 +23,13 @@ class TestIntegration(TestCase, DatabaseFixture):
         hypervisor_cls = DockerCPUEnvironment._get_hypervisor_class()
         assert hypervisor_cls is not None, "No supported hypervisor found"
 
-        cls.hypervisor = hypervisor_cls(get_config=lambda: {})
+        cls.hypervisor = hypervisor_cls(get_config_fn=lambda: {})
         cls.vm_was_running = cls.hypervisor.vm_running
 
     @classmethod
     def tearDownClass(cls) -> None:
         if cls.vm_was_running:
-            cls.hypervisor.start_vm()
+            cls.hypervisor.restore_vm()
         super().tearDownClass()
 
     @inlineCallbacks
@@ -99,8 +99,8 @@ class TestIntegration(TestCase, DatabaseFixture):
     @inlineCallbacks
     def test_benchmark(self):
         Whitelist.add(self.env.BENCHMARK_IMAGE.split('/')[0])
-        score = yield self.env.run_benchmark()
-        self.assertGreater(score, 0)
+        benchmark_result = yield self.env.run_benchmark()
+        self.assertGreater(benchmark_result.performance, 0)
 
     @inlineCallbacks
     def test_ports(self):

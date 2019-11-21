@@ -8,10 +8,12 @@ from golem_messages.message import tasks as msg_tasks
 
 from twisted.internet import defer
 
+from apps.appsmanager import AppsManager
+
 from golem.resource import resourcemanager
 from golem.task import requestedtaskmanager
 from golem.task import tasksession
-from tests.utils.asyncio import TwistedAsyncioTestCase
+from tests.utils.asyncio import TwistedAsyncioTestCase, AsyncMock
 
 
 class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
@@ -25,7 +27,11 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
 
         self.rtm = mock.Mock(spec=requestedtaskmanager.RequestedTaskManager)
         self.rtm.task_exists.return_value = True
+        self.rtm.has_pending_subtasks = AsyncMock(return_value=True)
         self.ts.task_server.requested_task_manager = self.rtm
+
+        self.ts.task_server.client.apps_manager = AppsManager()
+        self.ts.task_server.client.apps_manager.load_all_apps()
 
         self.keys_auth = mock.Mock()
         self.keys_auth._private_key = b'4' * 32
@@ -39,14 +45,16 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
         self.ts.task_server.new_resource_manager = self.resource_manager
 
         self.wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            task_header__environment='BLENDER',
             task_header__sign__privkey=self.keys_auth._private_key,
             price=123,
         )
 
+    @defer.inlineCallbacks
     def test_no_pending_subtasks(self):
         self.rtm.has_pending_subtasks.return_value = False
 
-        self.ts._react_to_want_to_compute_task(self.wtct)
+        yield self.ts._react_to_want_to_compute_task(self.wtct)
 
         self.rtm.has_pending_subtasks.assert_called_once_with(self.wtct.task_id)
         self.ts._cannot_assign_task.assert_called_once_with(
@@ -54,11 +62,12 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
             msg_tasks.CannotAssignTask.REASON.NoMoreSubtasks,
         )
 
+    @defer.inlineCallbacks
     def test_task_finished(self):
         self.rtm.has_pending_subtasks.return_value = True
         self.rtm.is_task_finished.return_value = True
 
-        self.ts._react_to_want_to_compute_task(self.wtct)
+        yield self.ts._react_to_want_to_compute_task(self.wtct)
 
         self.rtm.is_task_finished.assert_called_once_with(self.wtct.task_id)
         self.ts._cannot_assign_task.assert_called_once_with(
@@ -82,7 +91,7 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
         self.rtm.has_pending_subtasks.return_value = True
         shared_resources = []
 
-        def _share(resource):
+        def _share(resource, _):
             return_value = f'hash:{resource}'
             shared_resources.append(return_value)
             return defer.succeed(return_value)
@@ -95,7 +104,9 @@ class TestTaskApiReactToWantToComputeTask(TwistedAsyncioTestCase):
             computing_node=mock.ANY
         )
         for r in subtask_def.resources:
-            self.resource_manager.share.assert_any_call(random_dir / r)
+            self.resource_manager.share.assert_any_call(
+                random_dir / r,
+                mock.ANY)
         self.assertEqual(
             len(subtask_def.resources),
             self.resource_manager.share.call_count,

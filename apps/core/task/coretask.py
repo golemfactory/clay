@@ -145,10 +145,25 @@ class CoreTask(Task):
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=task_definition.subtasks_count,
+            subtask_budget=self.calculate_subtask_budget(task_definition),
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
             timestamp=int(time.time()),
+        )
+
+        logger.debug(
+            "CoreTask TaskHeader "
+            "task_id=%s, environment=%s, deadline=%s, "
+            "subtask_timeout=%s, subtasks_count=%s, subtask_budget=%s, "
+            "estimated_memory=%s, "
+            "max_price=%s, "
+            "concent_enabled=%s, ",
+            th.task_id, th.environment, th.deadline,
+            th.subtask_timeout, th.subtasks_count, th.subtask_budget,
+            th.estimated_memory,
+            th.max_price,
+            th.concent_enabled,
         )
 
         Task.__init__(self, th, task_definition)

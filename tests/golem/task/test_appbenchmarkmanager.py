@@ -22,7 +22,6 @@ PREREQ_DICT = dict(key='value')
 PREREQ_HASH = '0xdeadbeef'
 
 
-@pytest.mark.usefixtures('pytest_database_fixture')
 class TestAppBenchmarkManager:
 
     def setup_env(self, env_id):
@@ -32,7 +31,7 @@ class TestAppBenchmarkManager:
         self.env_manager.register_env(env, metadata, payload_builder)
 
     @pytest.fixture(autouse=True)
-    def setup_method(self, tmpdir, event_loop):
+    def setup_method(self, pytest_database_fixture, tmpdir, event_loop):  # noqa
         # pylint: disable=attribute-defined-outside-init
         self.env_manager = EnvironmentManager()
         self.app_benchmark_manager = AppBenchmarkManager(
@@ -48,12 +47,12 @@ class TestAppBenchmarkManager:
         app_benchmark.save()
 
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
-            score = await self.app_benchmark_manager.get_benchmark_score(
+            benchmark = await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 
         assert not self.app_benchmark_manager._run_benchmark.called
-        assert score == 1000.
+        assert benchmark.score == 1000.
 
     @pytest.mark.asyncio
     async def test_get_benchmark_score_new(self):
@@ -63,12 +62,12 @@ class TestAppBenchmarkManager:
         app_benchmark.save()
 
         with patch(f'{PACKAGE}.hash_prereq_dict', return_value=PREREQ_HASH):
-            score = await self.app_benchmark_manager.get_benchmark_score(
+            benchmark = await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 
         assert self.app_benchmark_manager._run_benchmark.called
-        assert score == 10.
+        assert benchmark.score == 10.
 
     @pytest.mark.asyncio
     async def test_get_benchmark_score_exception(self):
@@ -76,7 +75,7 @@ class TestAppBenchmarkManager:
         self.app_benchmark_manager._computing = True
 
         with pytest.raises(ComputationInProgress):
-            await self.app_benchmark_manager.get_benchmark_score(
+            await self.app_benchmark_manager.get(
                 env_id=ENV_ID,
                 env_prereq_dict=PREREQ_DICT)
 

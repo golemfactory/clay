@@ -183,6 +183,11 @@ def update_requestor_assigned_sum(node_id: str, amount: int) -> None:
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
         rank.requestor_assigned_sum += amount
+        if rank.requestor_assigned_sum < 0:
+            logger.error('LocalRank.requestor_assigned_sum '
+                         'unexpectedly negative, setting to 0. '
+                         'node_id=%r', node_id)
+            rank.requestor_assigned_sum = 0
         rank.save()
 
 
