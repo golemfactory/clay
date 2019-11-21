@@ -95,7 +95,8 @@ class EnvironmentManager:
             metadata=metadata,
             payload_builder=payload_builder,
         )
-        self._state[metadata.id] = False
+        if metadata.id not in self._state:
+            self._state[metadata.id] = False
 
     def state(self) -> Dict[EnvId, bool]:
         """ Get the state (enabled or not) for all registered Environments. """
