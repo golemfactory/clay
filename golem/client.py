@@ -935,7 +935,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if return_created_tasks_only:
             filter_fn = self._filter_task_created_status
 
-        return list(filter(filter_fn, tasks))
+        filtered = list(filter(filter_fn, tasks))
+        stuff = sorted(filtered, key=lambda task: task['time_started'])
+        logger.critical(stuff)
+        return stuff
 
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:
