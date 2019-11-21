@@ -21,19 +21,19 @@ class InvalidCommand(Exception):
 def do_extract(input_file,
                output_file,
                selected_streams,
-               container=None):
+               intermediate_container=None):
 
     video_metadata = commands.get_metadata_json(input_file)
-    if container is None:
+    if intermediate_container is None:
         format_demuxer = meta.get_format(video_metadata)
-        container = formats.\
+        intermediate_container = formats.\
             get_safe_intermediate_format_for_demuxer(format_demuxer)
 
     commands.extract_streams(
         input_file,
         output_file,
         selected_streams,
-        container)
+        intermediate_container)
 
     results = {
         "metadata": video_metadata,
@@ -49,13 +49,14 @@ def do_split(path_to_stream, parts):
     video_metadata = commands.get_metadata_json(path_to_stream)
     video_length = meta.get_duration(video_metadata)
     format_demuxer = meta.get_format(video_metadata)
-    container = formats.get_safe_intermediate_format_for_demuxer(format_demuxer)
+    intermediate_container = formats.get_safe_intermediate_format_for_demuxer(
+        format_demuxer)
 
     segment_list_path = commands.split_video(
         path_to_stream,
         OUTPUT_DIR,
         video_length / parts,
-        container)
+        intermediate_container)
 
     with open(segment_list_path) as segment_list_file:
         segment_filenames = segment_list_file.read().splitlines()
@@ -73,7 +74,7 @@ def do_split(path_to_stream, parts):
     return results
 
 
-def do_extract_and_split(input_file, parts, container=None):
+def do_extract_and_split(input_file, parts, intermediate_container=None):
     input_basename = os.path.basename(input_file)
     [input_stem, input_extension] = os.path.splitext(input_basename)
 
@@ -84,7 +85,7 @@ def do_extract_and_split(input_file, parts, container=None):
     extract_results = do_extract(input_file,
                                  intermediate_file,
                                  ['v'],
-                                 container)
+                                 intermediate_container)
 
     split_results = do_split(intermediate_file, parts)
 
@@ -149,7 +150,7 @@ def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
     return list_filename
 
 
-def do_merge(chunks, outputfilename, container=None):
+def do_merge(chunks, outputfilename, target_container=None):
     if len(chunks) <= 0:
         raise commands.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
@@ -167,7 +168,7 @@ def do_merge(chunks, outputfilename, container=None):
     commands.merge_videos(
         ffconcat_list_filename,
         outputfilename,
-        container)
+        target_container)
 
 
 def do_replace(input_file,
@@ -175,7 +176,7 @@ def do_replace(input_file,
                output_file,
                stream_type,
                targs,
-               container=None,
+               target_container=None,
                strip_unsupported_data_streams=False,
                strip_unsupported_subtitle_streams=False):
 
@@ -185,7 +186,7 @@ def do_replace(input_file,
         output_file,
         stream_type,
         targs,
-        container,
+        target_container,
         strip_unsupported_data_streams,
         strip_unsupported_subtitle_streams)
 
@@ -194,7 +195,7 @@ def do_merge_and_replace(input_file,
                          chunks,
                          output_file,
                          targs,
-                         container=None,
+                         target_container=None,
                          strip_unsupported_data_streams=False,
                          strip_unsupported_subtitle_streams=False):
 
@@ -205,14 +206,14 @@ def do_merge_and_replace(input_file,
         WORK_DIR,
         f"{output_stem}[video-only]{output_extension}")
 
-    do_merge(chunks, intermediate_file, container)
+    do_merge(chunks, intermediate_file, target_container)
     do_replace(
         input_file,
         intermediate_file,
         output_file,
         'v',
         targs,
-        container,
+        target_container,
         strip_unsupported_data_streams,
         strip_unsupported_subtitle_streams)
 
@@ -251,7 +252,7 @@ def run_ffmpeg(params):
             params['input_file'],
             params['output_file'],
             params['selected_streams'],
-            params.get('container'))
+            params.get('intermediate_container'))
     elif params['command'] == "split":
         do_split(
             params['path_to_stream'],
@@ -260,7 +261,7 @@ def run_ffmpeg(params):
         do_extract_and_split(
             params['input_file'],
             params['parts'],
-            params.get('container'))
+            params.get('intermediate_container'))
     elif params['command'] == "transcode":
         do_transcode(
             params['track'],
@@ -270,7 +271,7 @@ def run_ffmpeg(params):
         do_merge(
             params['chunks'],
             params['output_stream'],
-            params.get('container'))
+            params.get('target_container'))
     elif params['command'] == "replace":
         do_replace(
             params['input_file'],
@@ -278,7 +279,7 @@ def run_ffmpeg(params):
             params['output_file'],
             params['stream_type'],
             params['targs'],
-            params.get('container'),
+            params.get('target_container'),
             params.get('strip_unsupported_data_streams'),
             params.get('strip_unsupported_subtitle_streams'))
     elif params['command'] == "merge-and-replace":
@@ -287,7 +288,7 @@ def run_ffmpeg(params):
             params['chunks'],
             params['output_file'],
             params['targs'],
-            params.get('container'),
+            params.get('target_container'),
             params.get('strip_unsupported_data_streams'),
             params.get('strip_unsupported_subtitle_streams'))
     elif params['command'] == "compute-metrics":

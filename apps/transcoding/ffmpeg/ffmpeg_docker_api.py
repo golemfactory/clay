@@ -98,7 +98,7 @@ class FfmpegDockerAPI:
             input_file_on_host,
             chunks_in_container,
             output_file_basename,
-            container,
+            target_container,
             audio_params,
             strip_unsupported_data_streams=False,
             strip_unsupported_subtitle_streams=False):
@@ -119,13 +119,18 @@ class FfmpegDockerAPI:
             targs['audio'] = targs.get('audio', {})
             targs['audio']['bitrate'] = audio_params.bitrate
 
+        if target_container is None:
+            target_container_str = None
+        else:
+            target_container_str = target_container.value
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.MERGE_AND_REPLACE.value[0],
             'input_file': container_files['in'],
             'chunks': chunks_in_container,
             'output_file': container_files['out'],
-            'container': container.value if container is not None else None,
+            'target_container': target_container_str,
             'targs': targs,
             'strip_unsupported_data_streams': strip_unsupported_data_streams,
             'strip_unsupported_subtitle_streams':
