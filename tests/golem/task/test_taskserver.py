@@ -48,6 +48,7 @@ from golem.resource.resourcemanager import ResourceManager
 from golem.task import tasksession
 from golem.task.acl import DenyReason as AclDenyReason, AclRule
 from golem.task.benchmarkmanager import BenchmarkManager
+from golem.task import helpers as task_helpers
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
@@ -1370,15 +1371,18 @@ class TestTaskGiven(TaskServerTestBase):
     def test_ok(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
             request_resource):
-
         self.ts.task_computer.has_assigned_task.return_value = False
         ttc = msg_factories.tasks.TaskToComputeFactory()
+
+        task_header: dt_tasks.TaskHeader = ttc.want_to_compute_task.task_header
+        max_cpu_usage: int = task_helpers.calculate_max_usage(
+            task_header.subtask_budget, ttc.want_to_compute_task.price)
 
         result = self.ts.task_given(ttc)
         self.assertEqual(result, True)
 
         self.ts.task_computer.task_given.assert_called_once_with(
-            ttc.compute_task_def
+            ttc.compute_task_def, max_cpu_usage
         )
         request_resource.assert_called_once_with(
             ttc.task_id,
