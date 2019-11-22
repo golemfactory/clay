@@ -134,9 +134,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
-        if self.config_desc.in_shutdown:
-            self.update_setting('in_shutdown', 0)
-
         logger.info(
             'Client %s, datadir: %s',
             node_info_str(self.config_desc.node_name,
@@ -229,6 +226,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # TODO: Move to message queue #3160
         self._task_finished_cb = task_finished_cb
         self._update_hw_preset = update_hw_preset
+
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', 0)
 
         dispatcher.connect(
             self.p2p_listener,
