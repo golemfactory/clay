@@ -107,12 +107,17 @@ def make_mock_ets(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
-def make_client(*_, **kwargs):
+def make_client(*_, config_desc_attrs=None, **kwargs):
     config_desc = ClientConfigDescriptor()
     config_desc.max_memory_size = 1024 * 1024  # 1 GiB
     config_desc.num_cores = 1
     config_desc.hyperdrive_rpc_address = DEFAULT_HYPERDRIVE_RPC_ADDRESS
     config_desc.hyperdrive_rpc_port = DEFAULT_HYPERDRIVE_RPC_PORT
+
+    if config_desc_attrs:
+        for k, v in config_desc_attrs.items():
+            setattr(config_desc, k, v)
+
     default_kwargs = {
         'app_config': Mock(),
         'config_desc': config_desc,
@@ -148,6 +153,18 @@ class TestClientBase(DatabaseFixture):
             self.client.quit()
         super().tearDown()
 
+
+class TestClientInit(DatabaseFixture):
+    def setUp(self):
+        super().setUp()
+
+    def test_client_init_shutdown(self):
+        client = make_client(
+            datadir=self.path,
+            config_desc_attrs={
+                'in_shutdown': 1
+            })
+        self.assertIsInstance(client, Client)
 
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary'
