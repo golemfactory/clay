@@ -228,7 +228,7 @@ class TestRPCNoAuth(_TestRouter):
         crossbar_dir = join(self.path, 'definitely_not_exists')
         router = CrossbarRouter(datadir=crossbar_dir,
                                 generate_secrets=True)
-        assert exists(crossbar_dir)
+        assert exists(str(crossbar_dir))
         self.assertIsInstance(router, CrossbarRouter)
         self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
 

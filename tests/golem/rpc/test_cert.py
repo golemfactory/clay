@@ -1,117 +1,54 @@
-import os
-from unittest.mock import patch
-
-from OpenSSL import crypto
+from unittest.mock import patch, Mock
 
 from golem.rpc.cert import CertificateManager
 from golem.testutils import TempDirFixture
 
 
-class TestCertificateManager(TempDirFixture):
+class TestGenerateArtifacts(TempDirFixture):
 
-    @patch('golem.rpc.cert.is_windows', return_value=False)
-    def test_init(self, *_):
-        cert_manager = CertificateManager(self.tempdir)
-        assert not cert_manager.forward_secrecy
-        assert cert_manager.key_path.startswith(self.tempdir)
-        assert cert_manager.cert_path.startswith(self.tempdir)
-        assert cert_manager.dh_path == ''
+    def setUp(self):
+        super().setUp()
+        self.cert_manager = CertificateManager(self.tempdir)
 
-    @patch('golem.rpc.cert.is_windows', return_value=True)
-    def test_init_windows(self, *_):
-        cert_manager = CertificateManager(self.tempdir)
-        assert not cert_manager.forward_secrecy
-        assert cert_manager.key_path.startswith(self.tempdir)
-        assert cert_manager.cert_path.startswith(self.tempdir)
-        assert cert_manager.dh_path.startswith(self.tempdir)
+    @patch('golem.rpc.cert.DH_PARAM_BITS', 512)
+    @patch('golem.crypto.RSA_KEY_SIZE', 1024)
+    @patch('golem.crypto.DH_KEY_SIZE', 1024)
+    def test_generate_if_needed(self):
+        cert_manager = self.cert_manager
+        cert_manager.generate_if_needed()
 
-    def test_init_with_forward_secrecy(self):
-        cert_manager = CertificateManager(self.tempdir,
-                                          setup_forward_secrecy=True)
-        assert cert_manager.forward_secrecy
-        assert cert_manager.key_path.startswith(self.tempdir)
-        assert cert_manager.cert_path.startswith(self.tempdir)
-        assert cert_manager.dh_path.startswith(self.tempdir)
+        key = cert_manager.key_path.read_bytes()
+        cert = cert_manager.cert_path.read_bytes()
+        dh = cert_manager.dh_path.read_bytes()
 
-    @patch('golem.rpc.cert.is_windows', return_value=False)
-    @patch('golem.rpc.cert.crypto')
-    @patch('golem.rpc.cert.CertificateManager._generate_dh_params')
-    @patch('golem.rpc.cert.CertificateManager._generate_key_pair')
-    @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
-    def test_generate_if_needed(self, create_cert, gen_key_pair, gen_dh_params,
-                                *_):
-        cert_manager = CertificateManager(self.tempdir,
-                                          setup_forward_secrecy=True)
-        with patch('builtins.open'):
-            cert_manager.generate_if_needed()
+        assert key
+        assert cert
+        assert dh
 
-        assert gen_dh_params.called
-        assert gen_key_pair.called
-        assert create_cert.called
+        cert_manager.generate_if_needed()
 
-    @patch('golem.rpc.cert.is_windows', return_value=True)
-    @patch('golem.rpc.cert.crypto')
-    @patch('golem.rpc.cert.CertificateManager._generate_dh_params')
-    @patch('golem.rpc.cert.CertificateManager._generate_key_pair')
-    @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
-    def test_generate_if_needed_windows(self, create_cert, gen_key_pair,
-                                        gen_dh_params, *_):
-        cert_manager = CertificateManager(self.tempdir)
-        with patch('builtins.open'):
-            cert_manager.generate_if_needed()
-
-        assert gen_dh_params.called
-        assert gen_key_pair.called
-        assert create_cert.called
-
-    @patch('golem.rpc.cert.is_windows', return_value=False)
-    @patch('golem.rpc.cert.crypto')
-    @patch('golem.rpc.cert.CertificateManager._generate_dh_params')
-    @patch('golem.rpc.cert.CertificateManager._generate_key_pair')
-    @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
-    def test_generate_if_needed_no_fw_secrecy(self, create_cert, gen_key_pair,
-                                              gen_dh_params, *_):
-        cert_manager = CertificateManager(self.tempdir,
-                                          setup_forward_secrecy=False)
-        with patch('builtins.open'):
-            cert_manager.generate_if_needed()
-
-        assert not gen_dh_params.called
-        assert gen_key_pair.called
-        assert create_cert.called
-
-    def test_generate_dh_params(self):
-        cert_manager = CertificateManager(self.tempdir,
-                                          setup_forward_secrecy=True)
-        cert_manager._generate_dh_params(cert_manager.dh_path, bits=512)
-        with open(cert_manager.dh_path, 'rb') as f:
-            assert f.read()
-
-    def test_generate_key_pair(self):
-        cert_manager = CertificateManager(self.tempdir)
-        cert_manager._generate_key_pair(cert_manager.key_path, bits=512)
-        assert isinstance(cert_manager.read_key(), crypto.PKey)
-
-    def test_create_and_sign_certificate(self):
-        cert_manager = CertificateManager(self.tempdir)
-        cert_manager._generate_key_pair(cert_manager.key_path, bits=1024)
-
-        key = cert_manager.read_key()
-        cert_manager._create_and_sign_certificate(key, cert_manager.cert_path)
-        assert cert_manager.read_certificate()
+        assert key == cert_manager.key_path.read_bytes()
+        assert cert == cert_manager.cert_path.read_bytes()
+        assert dh == cert_manager.dh_path.read_bytes()
 
     def test_generate_secrets(self):
-        cert_manager = CertificateManager(self.tempdir)
+        cert_manager = self.cert_manager
         cert_manager.generate_secrets()
 
-        assert set(os.listdir(cert_manager.secrets_path)) == \
-            set(f"{x}.{cert_manager.SECRET_EXT}"
-                for x in cert_manager.CrossbarUsers.__members__.keys())
+        generated_names = set(map(
+            lambda p: p.name,
+            cert_manager.secrets_path.iterdir()))
+        expected_names = set(
+            f"{x}.{cert_manager.SECRET_EXT}"
+            for x in cert_manager.CrossbarUsers.__members__.keys())
 
-    @patch("secrets.token_hex", return_value="secret")
-    def test_get_secret(self, *_):
-        cert_manager = CertificateManager(self.tempdir)
+        assert generated_names == expected_names
+
+    @patch("secrets.token_hex", Mock(return_value="secret"))
+    def test_get_secret(self):
+        cert_manager = self.cert_manager
         cert_manager.generate_secrets()
 
-        assert all(cert_manager.get_secret(x) == "secret"
-                   for x in cert_manager.CrossbarUsers.__members__.values())
+        assert all(
+            cert_manager.get_secret(x) == "secret"
+            for x in cert_manager.CrossbarUsers.__members__.values())

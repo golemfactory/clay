@@ -121,9 +121,9 @@ class CrossbarRouter(object):
 
         if address.ssl:
             ws_endpoint["tls"] = {
-                "key": cert_manager.key_path,
-                "certificate": cert_manager.cert_path,
-                "dhparam": cert_manager.dh_path,
+                "key": str(cert_manager.key_path),
+                "certificate": str(cert_manager.cert_path),
+                "dhparam": str(cert_manager.dh_path),
             }
 
         return {
