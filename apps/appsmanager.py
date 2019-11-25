@@ -102,6 +102,6 @@ class AppsManager(object):
                 return app
         return None
 
-    def get_task_class_for_env(self, env_id: str) -> Type[Task]:
+    def get_task_class_for_env(self, env_id: str):
         app = self.get_app_for_env(env_id)
         return app.builder.TASK_CLASS if app else Task

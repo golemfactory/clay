@@ -164,7 +164,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _get_task_class(
-            self, task_header: message.tasks.TaskHeader) -> Type[Task]:
+            self, task_header: message.tasks.TaskHeader):
         return self.task_server.client.apps_manager.get_task_class_for_env(
             task_header.environment
         )

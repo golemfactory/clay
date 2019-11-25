@@ -1412,8 +1412,8 @@ class TestTaskGiven(TaskServerTestBase):
             task_header.subtask_budget, ttc.want_to_compute_task.price)
 
         with patch(
-                'apps.appsmanager.AppsManager.get_task_class_for_env',
-                return_value=mock_task_class
+            'apps.appsmanager.AppsManager.get_task_class_for_env',
+            return_value=mock_task_class
         ):
             result = self.ts.task_given(ttc)
             self.assertEqual(result, True)
