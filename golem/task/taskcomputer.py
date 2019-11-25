@@ -100,7 +100,7 @@ class TaskComputerAdapter:
             cpu_time_limit: Optional[int] = None
     ) -> None:
         assert not self._new_computer.has_assigned_task()
-        assert not self._old_computer.can_take_work() or \
+        assert self._old_computer.can_take_work() or \
             self._old_computer.is_disabled()
 
         task_id = ctd['task_id']
@@ -595,8 +595,7 @@ class TaskComputation:
 
         else:
             stats.increase_stat('tasks_with_errors')
-
-        task_server.send_task_failed(
+            task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
                 "Wrong result format",
