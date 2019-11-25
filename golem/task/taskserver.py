@@ -79,10 +79,11 @@ from golem.task import helpers as task_helpers
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.exceptions import ComputationInProgress
-from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.benchmarkmanager import AppBenchmarkManager, BenchmarkManager
 from golem.task.envmanager import EnvironmentManager
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import RequestedTaskManager
+from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
@@ -717,6 +718,13 @@ class TaskServer(
         started_tasks = self.requested_task_manager.get_started_tasks()
         signed_headers = []
         for db_task in started_tasks:
+            # FIXME: store the value in RequestedTask
+            # https://github.com/golemfactory/golem/pull/
+            # 4926#discussion_r349627722
+            subtask_budget = calculate_subtask_payment(
+                db_task.max_price_per_hour,
+                db_task.subtask_timeout
+            )
             task_header = dt_tasks.TaskHeader(
                 min_version=str(gconst.GOLEM_MIN_VERSION),
                 task_id=db_task.task_id,
@@ -725,6 +733,7 @@ class TaskServer(
                 task_owner=self.node,
                 deadline=int(db_task.deadline.timestamp()),
                 subtask_timeout=db_task.subtask_timeout,
+                subtask_budget=subtask_budget,
                 subtasks_count=db_task.max_subtasks,
                 estimated_memory=db_task.min_memory,
                 max_price=db_task.max_price_per_hour,

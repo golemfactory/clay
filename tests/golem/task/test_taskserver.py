@@ -916,6 +916,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         mock_task_header.return_value = mock_th_instance
 
         mock_db_task = Mock()
+        mock_db_task.subtask_timeout = 3600.
+        mock_db_task.max_price_per_hour = 0.5 * 10 ** 18
         mock_db_task.start_time.timestamp.return_value = 1
         mock_db_task.deadline.timestamp.return_value = 1
         task_list = [mock_db_task]
