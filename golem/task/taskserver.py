@@ -694,6 +694,9 @@ class TaskServer(
         started_tasks = self.requested_task_manager.get_started_tasks()
         signed_headers = []
         for db_task in started_tasks:
+            # FIXME: store the value in RequestedTask
+            # https://github.com/golemfactory/golem/pull/
+            # 4926#discussion_r349627722
             subtask_budget = calculate_subtask_payment(
                 db_task.max_price_per_hour,
                 db_task.subtask_timeout
