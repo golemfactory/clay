@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+import contextlib
 import datetime
 import functools
 import json
@@ -956,15 +958,31 @@ class TransactionSystem(LoopingCallService):
 
         # Sometimes web3 may throw but it's fine here, we'll just update the
         # balances next time
-        try:
+        @contextlib.contextmanager
+        def safe_update(currency):
+            try:
+                yield
+            except TypeError:
+                # TypeError("unsupported operand type(s)
+                #           for -=: 'NoneType' and 'int'",)
+                # SCI was unprepared for geth to return None
+                log.info(
+                    'Failed to update %s balance: geth connection issue',
+                    currency,
+                )
+                log.debug('Update balance error details', exc_info=True)
+            except Exception as e:  # pylint: disable=broad-except
+                log.warning('Failed to update %s balance: %r', currency, e)
+                log.debug('Update balance error details', exc_info=True)
+
+        with safe_update('ETH'):
             self._eth_balance = self._sci.get_eth_balance(addr)
             self._last_eth_update = now
 
+        with safe_update('GNT'):
             self._gnt_balance = self._sci.get_gnt_balance(addr)
             self._gntb_balance = self._sci.get_gntb_balance(addr)
             self._last_gnt_update = now
-        except Exception as e:  # pylint: disable=broad-except
-            log.warning('Failed to update balances: %r', e)
 
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches

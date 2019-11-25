@@ -4,6 +4,8 @@ from typing import List, Optional, Tuple
 
 from dataclasses import dataclass
 
+from ethereum.utils import denoms
+
 from golem_messages.message.tasks import (
     ReportComputedTask, WantToComputeTask
 )
@@ -98,15 +100,32 @@ class ProviderBrassMarketStrategy(ProviderMarketStrategy):
 
 def _calculate_brass_payment(rct: ReportComputedTask) -> int:
     task_header = rct.task_to_compute.want_to_compute_task.task_header
+    price = rct.task_to_compute.want_to_compute_task.price
+    timeout = task_header.subtask_timeout
 
-    return calculate_subtask_payment(
-        rct.task_to_compute.want_to_compute_task.price,
-        task_header.subtask_timeout
+    payment = calculate_subtask_payment(price, timeout)
+
+    logger.debug(
+        "Calculated Brass marketplace job payment "
+        "(based on price=%s GNT/hour, timeout=%s s): %s GNT",
+        price / denoms.ether,
+        timeout,
+        payment / denoms.ether,
     )
+    return payment
 
 
 def _calculate_brass_budget(wtct: WantToComputeTask) -> int:
-    return calculate_subtask_payment(
-        wtct.price,
-        wtct.task_header.subtask_timeout,
+    price = wtct.price
+    timeout = wtct.task_header.subtask_timeout
+
+    budget = calculate_subtask_payment(price, timeout)
+
+    logger.debug(
+        "Calculated Brass marketplace job budget "
+        "(based on price=%s GNT/hour, timeout=%s s): %s GNT",
+        price / denoms.ether,
+        timeout,
+        budget / denoms.ether,
     )
+    return budget

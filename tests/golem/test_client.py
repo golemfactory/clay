@@ -13,10 +13,12 @@ from unittest.mock import (
 )
 
 from ethereum.utils import denoms
+from faker import Faker
+from faker.providers import date_time as fake_date_time
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred
 
 from golem import model
 from golem import testutils
@@ -30,7 +32,8 @@ from golem.client import Client, ClientTaskComputerEventListener, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import EthereumConfig
-from golem.core.common import timeout_to_string
+from golem.core.common import datetime_to_timestamp_utc, timeout_to_string, \
+    timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
@@ -104,12 +107,17 @@ def make_mock_ets(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
-def make_client(*_, **kwargs):
+def make_client(*_, config_desc_attrs=None, **kwargs):
     config_desc = ClientConfigDescriptor()
     config_desc.max_memory_size = 1024 * 1024  # 1 GiB
     config_desc.num_cores = 1
     config_desc.hyperdrive_rpc_address = DEFAULT_HYPERDRIVE_RPC_ADDRESS
     config_desc.hyperdrive_rpc_port = DEFAULT_HYPERDRIVE_RPC_PORT
+
+    if config_desc_attrs:
+        for k, v in config_desc_attrs.items():
+            setattr(config_desc, k, v)
+
     default_kwargs = {
         'app_config': Mock(),
         'config_desc': config_desc,
@@ -145,6 +153,18 @@ class TestClientBase(DatabaseFixture):
             self.client.quit()
         super().tearDown()
 
+
+class TestClientInit(DatabaseFixture):
+    def setUp(self):
+        super().setUp()
+
+    def test_client_init_shutdown(self):
+        client = make_client(
+            datadir=self.path,
+            config_desc_attrs={
+                'in_shutdown': 1
+            })
+        self.assertIsInstance(client, Client)
 
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary'
@@ -389,15 +409,37 @@ class TestGetTasks(TestClientBase):
 
     def setUp(self):
         super().setUp()
+
+        fake = Faker()
+        fake.add_provider(fake_date_time)
+
         tm_tasks = {
-            'task_1': {'status': TaskStatus.creating.value},
-            'task_2': {'status': TaskStatus.errorCreating.value},
-            'task_3': {'status': TaskStatus.aborted.value},
+            'task_1': {
+                'status': TaskStatus.creating.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_2': {
+                'status': TaskStatus.errorCreating.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_3': {
+                'status': TaskStatus.aborted.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
         }
         rtm_tasks = {
-            'task_4': {'status': TaskStatus.computing.value},
-            'task_5': {'status': TaskStatus.finished.value},
-            'task_6': {'status': TaskStatus.creatingDeposit.value},
+            'task_4': {
+                'status': TaskStatus.computing.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_5': {
+                'status': TaskStatus.finished.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_6': {
+                'status': TaskStatus.creatingDeposit.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
         }
 
         self.tasks = dict()
@@ -414,6 +456,12 @@ class TestGetTasks(TestClientBase):
         retrieved_tasks = self.client.get_tasks()
         assert isinstance(retrieved_tasks, list)
         assert len(retrieved_tasks) == 6
+        # Check that task start times are sorted in ascending order
+        for i in range(len(retrieved_tasks) - 1):
+            date = timestamp_to_datetime(retrieved_tasks[i]['time_started'])
+            next_date = timestamp_to_datetime(
+                retrieved_tasks[i + 1]['time_started'])
+            assert date < next_date
 
     def test_get_single_task(self):
         self.client.get_task = lambda task_id: self.tasks[task_id]

@@ -591,6 +591,7 @@ class ClientProvider:
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
                 self.client.update_setting('accept_tasks', True)
+                self.requested_task_manager.error_creating(task_id)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)

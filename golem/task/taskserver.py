@@ -72,6 +72,7 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.resource.resourcemanager import ResourceManager
 from golem.rpc import utils as rpc_utils
+from golem.task import helpers as task_helpers
 from golem.task import timer
 from golem.task.acl import get_acl, setup_acl, AclRule, _DenyAcl as DenyAcl
 from golem.task.exceptions import ComputationInProgress
@@ -505,8 +506,13 @@ class TaskServer(
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
-        self.task_computer.task_given(msg.compute_task_def)
-        if msg.want_to_compute_task.task_header.environment_prerequisites:
+        task_header: dt_tasks.TaskHeader = msg.want_to_compute_task.task_header
+
+        cpu_time_limit = task_helpers.calculate_max_usage(
+            task_header.subtask_budget, msg.want_to_compute_task.price)
+        self.task_computer.task_given(msg.compute_task_def, cpu_time_limit)
+
+        if task_header.environment_prerequisites:
             subtask_inputs_dir = self.task_computer.get_subtask_inputs_dir()
             resources_options = msg.resources_options or dict()
             client_options = self.resource_manager.build_client_options(
