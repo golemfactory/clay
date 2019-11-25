@@ -384,11 +384,10 @@ class TaskSessionTestBase(ConcentMessageMixin, LogTestCase,
         self.conn = Mock()
         self.conn.server.client.transaction_system.deposit_contract_address = \
             EthereumConfig().deposit_contract_address
-        app = Mock()
-        app.builder.TASK_CLASS.\
-            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
-        self.conn.server.client.apps_manager.get_app_for_env = Mock(
-            return_value=app
+        task_class = Mock()
+        task_class.PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.conn.server.client.apps_manager.get_task_class_for_env = Mock(
+            return_value=task_class
         )
         self.task_session = TaskSession(self.conn)
         self.peer_keys = cryptography.ECCx(None)
@@ -997,11 +996,10 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.keys_auth = Mock()
         self.task_server.task_manager = Mock()
         self.task_server.client = Mock()
-        app = Mock()
-        app.builder.TASK_CLASS.\
-            PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
-        self.task_server.client.apps_manager.get_app_for_env = Mock(
-            return_value=app
+        task_class = Mock()
+        task_class.PROVIDER_MARKET_STRATEGY = ProviderBrassMarketStrategy
+        self.task_server.client.apps_manager.get_task_class_for_env = Mock(
+            return_value=task_class
         )
         self.task_server.pending_sessions = set()
         self.task_session.conn.server = self.task_server

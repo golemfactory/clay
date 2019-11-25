@@ -1374,15 +1374,11 @@ class TestTaskGiven(TaskServerTestBase):
         self.ts.task_computer.has_assigned_task.return_value = False
         ttc = msg_factories.tasks.TaskToComputeFactory()
 
-        task_header: dt_tasks.TaskHeader = ttc.want_to_compute_task.task_header
-        max_cpu_usage: int = task_helpers.calculate_max_usage(
-            task_header.subtask_budget, ttc.want_to_compute_task.price)
-
         result = self.ts.task_given(ttc)
         self.assertEqual(result, True)
 
         self.ts.task_computer.task_given.assert_called_once_with(
-            ttc.compute_task_def, max_cpu_usage
+            ttc.compute_task_def, None
         )
         request_resource.assert_called_once_with(
             ttc.task_id,
