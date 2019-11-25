@@ -16,6 +16,7 @@ from golem.config.active import (
 )
 from golem.core.common import get_golem_path
 from golem.environments.environment import SupportStatus
+from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
@@ -100,3 +101,7 @@ class AppsManager(object):
             if app.env.get_id() == env_id:
                 return app
         return None
+
+    def get_task_class_for_env(self, env_id: str) -> Type[Task]:
+        app = self.get_app_for_env(env_id)
+        return app.builder.TASK_CLASS if app else Task
