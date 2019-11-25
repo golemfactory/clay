@@ -52,7 +52,7 @@ if TYPE_CHECKING:
     from twisted.internet.protocol import Protocol
 
     from .requestedtaskmanager import RequestedTaskManager
-    from .taskcomputer import TaskComputer
+    from .taskcomputer import TaskComputerAdapter
     from .taskmanager import TaskManager
     from .taskserver import TaskServer
     from golem.network.concent.client import ConcentClientService
@@ -144,7 +144,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.requested_task_manager
 
     @property
-    def task_computer(self) -> 'TaskComputer':
+    def task_computer(self) -> 'TaskComputerAdapter':
         return self.task_server.task_computer
 
     @property
@@ -606,7 +606,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
             return
 

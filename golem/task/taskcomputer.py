@@ -1,7 +1,9 @@
+# flake8: noqa
+
 import asyncio
 import logging
 from pathlib import Path
-from typing import Optional, TYPE_CHECKING, Callable, Any
+from typing import Optional, TYPE_CHECKING, Callable, Any, List, Set
 
 import os
 import time
@@ -106,6 +108,12 @@ class TaskComputerAdapter:
             or self._old_computer.has_assigned_task()
 
     @property
+    def assigned_task_ids(self) -> Set[str]:
+        if self._new_computer.has_assigned_task():
+            return {self._new_computer.assigned_task_id}
+        return self._old_computer.assigned_task_ids
+
+    @property
     def assigned_task_id(self) -> Optional[str]:
         return self._new_computer.assigned_task_id \
             or self._old_computer.assigned_task_id
@@ -130,16 +138,28 @@ class TaskComputerAdapter:
                 'is assigned')
         return self._new_computer.get_subtask_inputs_dir()
 
-    def start_computation(self) -> None:
+    def compatible_tasks(self, candidate_tasks: Set[str]) -> Set[str]:
+        """finds compatible tasks subset"""
+        assert not self._new_computer.has_assigned_task()
+        return self._old_computer.compatible_tasks(candidate_tasks)
+
+    def start_computation(
+        self, res_task_id: str, res_subtask_id: Optional[str] = None) -> bool:
         if self._new_computer.has_assigned_task():
-            task_id = self.assigned_task_id
-            subtask_id = self.assigned_subtask_id
+            task_id = self._new_computer.assigned_task_id
+            subtask_id = self._new_computer.assigned_subtask_id
+            if task_id != res_task_id:
+                logger.error(
+                    "Resource collected for a wrong task, %s", res_task_id)
+                return False
             computation = self._new_computer.compute()
             self._task_server.task_keeper.task_started(task_id)
             # Fire and forget because it resolves when computation ends
             self._handle_computation_results(task_id, subtask_id, computation)
+            return True
         elif self._old_computer.has_assigned_task():
-            self._old_computer.start_computation()
+            return self._old_computer.start_computation(
+                res_task_id, res_subtask_id)
         else:
             raise RuntimeError('start_computation: No task assigned.')
 
@@ -170,13 +190,18 @@ class TaskComputerAdapter:
             self._task_server.task_keeper.task_ended(task_id)
             self._finished_cb()
 
-    def task_interrupted(self) -> None:
+    def task_interrupted(self, task_id: str) -> None:
         if self._new_computer.has_assigned_task():
             self._new_computer.task_interrupted()
         elif self._old_computer.has_assigned_task():
-            self._old_computer.task_interrupted()
+            self._old_computer.task_interrupted(task_id)
         else:
             raise RuntimeError('task_interrupted: No task assigned.')
+
+    def can_take_work(self) -> bool:
+        if self._old_computer.has_assigned_task():
+            return self._old_computer.can_take_work()
+        return not self._new_computer.has_assigned_task()
 
     def check_timeout(self) -> None:
         # No active timeout checking is needed for the new computer
@@ -572,8 +597,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                 was_success = True
 
         else:
-            self.stats.increase_stat('tasks_with_errors')
-            self.task_server.send_task_failed(
+            stats.increase_stat('tasks_with_errors')
+            task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
                 "Wrong result format",
@@ -738,16 +763,40 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
             subtask_id=ctd['subtask_id'],
             min_performance=ctd['performance'],
         )
-
         with self.lock:
-            self.counting_thread = None
-        self.task_server.task_keeper.task_ended(ctd['task_id'])
+            task_id = ctd['task_id']
+            if not [
+                c for c in self.assigned_subtasks
+                if c.assigned_task_id == task_id
+            ]:
+                self.task_server.task_keeper.task_ended(task_id)
+
         if self.finished_cb:
             self.finished_cb()
 
+    def compatible_tasks(self, candidate_tasks: Set[str]) -> Set[str]:
+        """Finds subset of candidate tasks that can be executed with current
+        running tasks.
+
+        :param candidate_tasks:
+        :return:
+        """
+        if not self.assigned_subtasks:
+            return candidate_tasks
+        tasks = candidate_tasks
+        for c in self.assigned_subtasks:
+            if not c.single_core:
+                return set()
+            tasks = tasks - {c.assigned_task_id}
+        return {
+            task_id for task_id in candidate_tasks
+            if self._is_single_core_task(task_id)
+        }
+
     def quit(self):
-        if self.counting_thread is not None:
-            self.counting_thread.end_comp()
+        for computation in self.assigned_subtasks:
+            if computation.counting_thread is not None:
+                computation.counting_thread.end_comp()
 
 
 class PyTaskThread(TaskThread):
