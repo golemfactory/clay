@@ -3,7 +3,7 @@
 FROM golang:alpine as stats-builder
 ENV CGO_ENABLED=0
 RUN apk add --no-cache git gcc musl-dev openssl ca-certificates
-RUN git clone --depth 1 --branch 0.1 https://github.com/golemfactory/docker-cgroups-stats.git /build
+RUN git clone --depth 1 --branch 0.2.0 https://github.com/golemfactory/docker-cgroups-stats.git /build
 WORKDIR /build
 RUN go build -o docker-cgroups-stats main.go
 
