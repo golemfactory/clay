@@ -111,3 +111,24 @@ class TestGetOperations(EthereumBase, testutils.DatabaseFixture):
             count,
             1,
         )
+
+    def test_operation_type(self):
+        operation_types = model.WalletOperation.TYPE
+        _ = model_factory.WalletOperation(
+            operation_type=operation_types.deposit_transfer,
+        )
+
+        count0, _result0 = self.ets_provider.get_operations(
+            operation_type=operation_types.task_payment,
+        )
+        self.assertEqual(
+            count0,
+            0,
+        )
+        count, _result = self.ets_provider.get_operations(
+            operation_type=operation_types.deposit_transfer,
+        )
+        self.assertEqual(
+            count,
+            1,
+        )
