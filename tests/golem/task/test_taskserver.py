@@ -52,7 +52,7 @@ from golem.task import helpers as task_helpers
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.server import concent as server_concent
 from golem.task.taskarchiver import TaskArchiver
-from golem.task.taskbase import AcceptClientVerdict
+from golem.task.taskbase import AcceptClientVerdict, Task
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, CompTaskInfo
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import (
@@ -1401,6 +1401,27 @@ class TestTaskGiven(TaskServerTestBase):
             price=ttc.price,
         )
         logger_mock.error.assert_not_called()
+
+    def test_cpu_limit(self, *_):
+        self.ts.task_computer.has_assigned_task.return_value = False
+        ttc = msg_factories.tasks.TaskToComputeFactory()
+        mock_task_class = Mock(spec=Task)
+        mock_task_class.PROVIDER_MARKET_STRATEGY.SET_CPU_TIME_LIMIT = True
+        task_header: dt_tasks.TaskHeader = ttc.want_to_compute_task.task_header
+        cpu_time_limit: int = task_helpers.calculate_max_usage(
+            task_header.subtask_budget, ttc.want_to_compute_task.price)
+
+        with patch(
+                'apps.appsmanager.AppsManager.get_task_class_for_env',
+                return_value=mock_task_class
+        ):
+            result = self.ts.task_given(ttc)
+            self.assertEqual(result, True)
+
+        self.ts.task_computer.task_given.assert_called_once_with(
+            ttc.compute_task_def, cpu_time_limit
+        )
+
 
     def test_already_assigned(
             self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
