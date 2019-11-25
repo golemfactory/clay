@@ -838,15 +838,13 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c = self.client
         self.assertIsNone(c.rpc_publisher)
 
-        rpc_session = Mock()
-        publisher = Publisher(rpc_session)
+        publisher = Mock()
 
         c.set_rpc_publisher(publisher)
-        self.assertIsInstance(c.rpc_publisher, Publisher)
-        self.assertIs(c.rpc_publisher.session, rpc_session)
+        self.assertIs(c.rpc_publisher, publisher)
 
         c.config_changed()
-        rpc_session.publish.assert_called_with(Environment.evt_opts_changed)
+        publisher.publish.assert_called_with(Environment.evt_opts_changed)
 
     def test_test_status(self, *_):
         c = self.client

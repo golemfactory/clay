@@ -6,16 +6,15 @@
 # was used.
 
 
+import asyncio
 import os
-import pprint
 import time
 from multiprocessing import Process
 import typing
-from unittest import mock, skip
+from unittest import mock
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
-import psutil
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
@@ -91,6 +90,7 @@ class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
 
     # pylint: disable=too-many-instance-attributes
     class State(object):
+        DEBUG = True
 
         def __init__(self):
             self.done = False
@@ -112,9 +112,12 @@ class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
             self.process = None
 
         def add_errors(self, *errors):
-            print('Errors: {}'.format(pprint.pformat(errors)))
+            if self.DEBUG:
+                import traceback
+                traceback.print_exc()
             if errors:
-                self.errors += errors
+                self.errors += [
+                    f"{e.__class__.__qualname__}({e})" for e in errors]
             else:
                 self.errors += ['Unknown error']
 
@@ -125,7 +128,16 @@ class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
 
     def setUp(self):
         super().setUp()
+        self.loop = asyncio.new_event_loop()
+        # Mimic AsyncIOReactor
+        self.reactor_thread.reactor._asyncioEventloop = self.loop
+        asyncio.set_event_loop(self.loop)
         self.state = _TestRouter.State()
+
+    def tearDown(self):
+        super().tearDown()
+        self.loop.stop()
+        asyncio.set_event_loop(None)
 
     @inlineCallbacks
     def _start_backend_session(self, *_):
@@ -205,9 +217,27 @@ class _TestRouter(KillLeftoverChildrenTestMixin, TestDirFixtureWithReactor):
         self._wait_for_process(expect_error=expect_error)
 
     def in_subprocess(self, *args, **kwargs):
+        import threading
+        deferred_finished = threading.Event()
+        deadline = time.time() + self.TIMEOUT
+
         deferred = self._start_router(*args, **kwargs)
         deferred.addCallback(lambda *args: print('Router finished', args))
         deferred.addErrback(self.state.add_errors)
+        deferred.addCallbacks(
+            lambda *args: deferred_finished.set(),
+            lambda *args: deferred_finished.set(),
+        )
+
+        async def wait():
+            while True:
+                if time.time() > deadline:
+                    print("Stopping loop due to timeout")
+                    deferred_finished.set()
+                if deferred_finished.is_set():
+                    return
+                await asyncio.sleep(0.1)
+        self.loop.run_until_complete(wait())
 
     def _start_router(self, *args, **kwargs):
         raise NotImplementedError()

@@ -3,7 +3,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 import autobahn
-from twisted.internet.defer import Deferred
+from twisted.internet import defer
 
 from golem.rpc import session as rpc_session
 from golem.rpc import utils as rpc_utils
@@ -15,6 +15,7 @@ from golem.rpc.session import (
     WebSocketAddress,
 )
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.testwithreactor import TestWithReactor
 
 
 class TestRPCAddress(unittest.TestCase):
@@ -64,8 +65,9 @@ class TestObjectMethodMap(unittest.TestCase):
         self.assertEqual(expected, result)
 
 
-class TestPublisher(LogTestCase):
+class TestPublisher(TestWithReactor, LogTestCase):
 
+    @defer.inlineCallbacks
     def test_publish(self):
         session = Session(WebSocketAddress('localhost', 12345, 'golem'))
         publisher = Publisher(session)
@@ -80,7 +82,7 @@ class TestPublisher(LogTestCase):
         session.is_closing.return_value = True
 
         with self.assertNoLogs(logger, level='WARNING'):
-            publisher.publish('alias', 1234, kw='arg')
+            yield publisher.publish('alias', 1234, kw='arg')
         assert not session.publish.called
 
         # Not connected, session not closing
@@ -88,14 +90,14 @@ class TestPublisher(LogTestCase):
         session.is_closing.return_value = False
 
         with self.assertLogs(logger, level='WARNING'):
-            publisher.publish('alias', 1234, kw='arg')
+            yield publisher.publish('alias', 1234, kw='arg')
         assert not session.publish.called
 
         # Connected
         session.connected = True
         session.is_closing.return_value = False
 
-        publisher.publish('alias', 1234, kw='arg')
+        yield publisher.publish('alias', 1234, kw='arg')
         session.publish.assert_called_with('alias', 1234, kw='arg')
 
 
@@ -109,7 +111,7 @@ class TestClient(unittest.TestCase):
     def setUp(self):
         self.session = Mock()
         self.session.is_attached.return_value = True
-        self.session.call.side_effect = lambda *_, **__: Deferred()
+        self.session.call.side_effect = lambda *_, **__: defer.Deferred()
         self.session.is_closing = lambda *_: self.session._goodbye_sent or \
             self.session._transport_is_closing
 
@@ -138,7 +140,7 @@ class TestClient(unittest.TestCase):
         )
         deferred = client.method_1(arg1=1, arg2='2')
 
-        self.assertIsInstance(deferred, Deferred)
+        self.assertIsInstance(deferred, defer.Deferred)
         self.assertFalse(deferred.called)
 
         self.session.connected = True
@@ -162,7 +164,7 @@ class TestClient(unittest.TestCase):
         client._session._transport_is_closing = True
         deferred = client.method_1(arg1=1, arg2='2')
 
-        self.assertIsInstance(deferred, Deferred)
+        self.assertIsInstance(deferred, defer.Deferred)
         self.assertFalse(deferred.called)
 
     def test_call_connected(self, *_):
@@ -172,7 +174,7 @@ class TestClient(unittest.TestCase):
         client._on_error = Mock()
         deferred = client._call('test', arg1=1, arg2='2')
 
-        self.assertIsInstance(deferred, Deferred)
+        self.assertIsInstance(deferred, defer.Deferred)
         self.assertFalse(deferred.called)
         client._on_error.assert_not_called()
 
@@ -184,7 +186,7 @@ class TestSession(unittest.TestCase):
         address = WebSocketAddress('host', 1234, 'realm')
         session = Session(address)
 
-        assert isinstance(session.ready, Deferred)
+        assert isinstance(session.ready, defer.Deferred)
         assert isinstance(session.config, autobahn.wamp.types.ComponentConfig)
 
         assert session.config.realm == 'realm'

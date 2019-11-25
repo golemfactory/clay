@@ -114,7 +114,7 @@ def get_event_loop():
         return asyncio.get_event_loop()
     except RuntimeError:  # no event loop in current thread
         from twisted.internet import reactor
-        return reactor._asyncioEventloop
+        return reactor._asyncioEventloop  # pylint: disable=protected-access
 
 
 def soon():
@@ -195,3 +195,23 @@ def run_in_thread():
             )
         return curry
     return wrapped
+
+
+def task_as_deferred(task: asyncio.Task) -> defer.Deferred:
+    """Wraps Task result in twisted.Deferred
+
+    Enables to run asyncio Task inside a code expecting Deferred.
+    """
+    deferred = defer.Deferred()
+
+    def cbk(future: asyncio.Future):
+        try:
+            deferred.callback(future.result())
+        except asyncio.CancelledError:
+            deferred.errback(
+                defer.CancelledError(future.exception()),
+            )
+        except Exception:  # pylint: disable=broad-except
+            deferred.errback(future.exception())
+    task.add_done_callback(cbk)
+    return deferred

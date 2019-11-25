@@ -1,3 +1,5 @@
+import asyncio
+import datetime
 import functools
 import logging
 import typing
@@ -15,6 +17,7 @@ from twisted.internet.endpoints import (
     TCP4ClientEndpoint, TCP6ClientEndpoint, SSL4ClientEndpoint
 )
 
+from golem.core import golem_async
 from golem.rpc.common import X509_COMMON_NAME
 from golem.rpc import utils as rpc_utils
 
@@ -284,20 +287,21 @@ class Publisher:  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
-    def publish(self, event_alias, *args, **kwargs) \
-            -> typing.Optional[Deferred]:
-        """
-        :return: deferred autobahn.wamp.request.Publication on success or None
-                 if session is closing or there's an error
-        """
+    def publish(self, event_alias, *args, **kwargs) -> Deferred:
+        """Twisted.Deferred based interface of aio_publish"""
+        task = self.aio_publish(event_alias, *args, **kwargs)
+        return golem_async.task_as_deferred(task)
+
+    @golem_async.taskify()
+    @golem_async.throttle(datetime.timedelta(milliseconds=50))
+    def aio_publish(self, event_alias, *args, **kwargs) -> asyncio.Task:
+        """Tries to publish an event"""
         if self.session.is_open():
             try:
-                return self.session.publish(str(event_alias), *args,
-                                            **kwargs)
+                self.session.publish(str(event_alias), *args, **kwargs)
             except WampError as e:
                 logger.error("RPC: Cannot publish '%s', because %r",
                              event_alias, e)
         elif not self.session.is_closing():
             logger.warning("RPC: Cannot publish '%s', session is not yet "
                            "established", event_alias)
-        return None
