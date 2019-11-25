@@ -166,6 +166,7 @@ class TestStartComputation(TaskComputerAdapterTestBase):
             'test_subtask',
             self.new_computer.compute())
 
+
 class TestHandleComputationResults(TaskComputerAdapterTestBase):
 
     @defer.inlineCallbacks

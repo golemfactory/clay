@@ -560,12 +560,12 @@ class TaskServer(
         return True
 
     def resource_collected(
-            self, 
-            task_id: str, 
+            self,
+            task_id: str,
             subtask_id: Optional[str] = None
     ) -> bool:
         return self.task_computer.start_computation(task_id, subtask_id)
- 
+
     def resource_failure(self, task_id: str, reason: str) -> None:
         if task_id not in self.task_computer.assigned_task_ids:
             logger.error("Resource failure for a wrong task, %s", task_id)
@@ -578,7 +578,6 @@ class TaskServer(
                 subtask_id, task_id, f'Error downloading resources: {reason}')
         else:
             logger.error("Missing subtask info for task failure %s", task_id)
-
 
     def send_results(
             self,

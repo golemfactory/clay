@@ -1417,7 +1417,12 @@ class TestTaskGiven(TaskServerTestBase):
             request_resource):
 
         self.ts.task_computer.can_take_work.return_value = False
-        ttc = Mock(compute_task_def=dict(task_id='t1', subtask_id='st1', resources=[]), resources_options=dict())
+        ttc = Mock(
+                compute_task_def=dict(
+                    task_id='t1',
+                    subtask_id='st1',
+                    resources=[]),
+                resources_options=dict())
         result = self.ts.task_given(ttc)
         self.assertEqual(result, False)
 
@@ -1471,7 +1476,8 @@ class TestResourceFailure(TaskServerTestBase):
         self.ts.task_computer.assigned_subtask_id = 'test_subtask'
         self.ts.resource_failure('test_task', 'test_reason')
         logger_mock.error.assert_not_called()
-        self.ts.task_computer.task_interrupted.assert_called_once_with('test_task')
+        self.ts.task_computer.task_interrupted.assert_called_once_with(
+                'test_task')
         send_task_failed.assert_called_once_with(
             'test_subtask',
             'test_task',
@@ -1677,7 +1683,6 @@ class TestTaskServerConcent(TaskServerTestBase):
         self.ts.client.concent_service.required_as_provider = False
         self.ts.task_computer.free_cores = 1
         print(f'free_cores={self.ts.task_computer.free_cores}')
-
 
         env = Mock(spec=OldEnv)
         env.get_benchmark_result.return_value = BenchmarkResult()

@@ -50,7 +50,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsInstance(tc, TaskComputer)
 
     def test_check_timeout(self):
-        cc = TaskComputation(task_computer=self.task_computer, assigned_subtask=mock.Mock())
+        cc = TaskComputation(
+            task_computer=self.task_computer,
+            assigned_subtask=mock.Mock())
         cc.counting_thread = mock.Mock()
         self.task_computer.assigned_subtasks.append(cc)
         self.task_computer.check_timeout()
@@ -91,8 +93,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertFalse(tc.assigned_subtasks)
         tc.task_given(ctd)
         self.assertTrue(tc.assigned_subtasks)
-        self.assertLessEqual(tc.assigned_subtasks[-1].assigned_subtask['deadline'],
-                             timeout_to_deadline(10))
+        self.assertLessEqual(
+            tc.assigned_subtasks[-1].assigned_subtask['deadline'],
+            timeout_to_deadline(10))
 
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
         assert not tc._is_computing()
@@ -107,8 +110,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_given(ctd)
         tc.start_computation(ctd['task_id'], None)
         assert tc._is_computing()
-        self.assertGreater(tc.assigned_subtasks[-1].counting_thread.time_to_compute, 8)
-        self.assertLessEqual(tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
+        self.assertGreater(
+            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 8)
+        self.assertLessEqual(
+            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         self.__wait_for_tasks(tc)
@@ -129,7 +134,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "raise Exception('some exception')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        [ comp ] = tc.assigned_subtasks
+        [comp] = tc.assigned_subtasks
         self.assertEqual(comp.assigned_subtask, ctd)
         self.assertLessEqual(comp.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
@@ -163,8 +168,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_given(ctd)
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
         self.assertTrue(tc._is_computing())
-        self.assertGreater(tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
-        self.assertLessEqual(tc.assigned_subtasks[-1].counting_thread.time_to_compute, 20)
+        self.assertGreater(
+            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
+        self.assertLessEqual(
+            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 20)
         self.__wait_for_tasks(tc)
 
         ctd['subtask_id'] = "xxyyzz2"
@@ -202,13 +209,13 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.lock = Lock()
         task_computer.dir_lock = Lock()
 
-        task_part = TaskComputation(task_computer=task_computer, assigned_subtask=ComputeTaskDef(
-            task_id=task_id,
-            subtask_id=subtask_id,
-            docker_images=[],
-            extra_data=mock.Mock(),
-            deadline=time.time() + 3600
-        ))
+        task_part = TaskComputation(
+            task_computer=task_computer, assigned_subtask=ComputeTaskDef(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                docker_images=[],
+                extra_data=mock.Mock(),
+                deadline=time.time() + 3600))
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
@@ -445,8 +452,11 @@ class TestTaskGiven(TestTaskComputerBase):
     def test_ok(self, provider_timer):
         ctd = mock.Mock()
         self.task_computer.task_given(ctd)
-        self.assertEqual(self.task_computer.assigned_subtasks[-1].assigned_subtask, ctd)
+        self.assertEqual(
+            self.task_computer.assigned_subtasks[-1].assigned_subtask,
+            ctd)
         provider_timer.start.assert_called_once_with()
+
 
 class TestTaskInterrupted(TestTaskComputerBase):
 
@@ -471,7 +481,10 @@ class TestTaskFinished(TestTaskComputerBase):
 
     def test_no_assigned_subtask(self):
         with self.assertRaises(AssertionError):
-            self.task_computer.task_finished(TaskComputation(task_computer=self.task_computer, assigned_subtask=mock.Mock()))
+            self.task_computer.task_finished(
+                TaskComputation(
+                    task_computer=self.task_computer,
+                    assigned_subtask=mock.Mock()))
 
     @mock.patch('golem.task.taskcomputer.dispatcher')
     @mock.patch('golem.task.taskcomputer.ProviderTimer')
@@ -482,7 +495,9 @@ class TestTaskFinished(TestTaskComputerBase):
             performance=123
         )
 
-        ast = TaskComputation(task_computer=self.task_computer, assigned_subtask=ctd, counting_thread=mock.Mock)
+        ast = TaskComputation(
+                task_computer=self.task_computer, assigned_subtask=ctd,
+                counting_thread=mock.Mock)
         self.task_computer.assigned_subtasks.append(ast)
         self.task_computer.finished_cb = mock.Mock()
 

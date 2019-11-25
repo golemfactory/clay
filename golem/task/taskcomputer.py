@@ -155,7 +155,10 @@ class TaskComputerAdapter:
         return self._old_computer.compatible_tasks(candidate_tasks)
 
     def start_computation(
-        self, res_task_id: str, res_subtask_id: Optional[str] = None) -> bool:
+            self,
+            res_task_id: str,
+            res_subtask_id: Optional[str] = None
+    ) -> bool:
         if self._new_computer.has_assigned_task():
             task_id = self._new_computer.assigned_task_id
             subtask_id = self._new_computer.assigned_subtask_id
@@ -480,8 +483,8 @@ class NewTaskComputer:
 
 @dataclass
 class TaskComputation:
-    """Represents single compuatation in TaskComputer.
-    There could be only one non-signle core computation or multiple single-core computations.
+    """Represents single compuatation in TaskComputer.  There could be only one
+    non-signle core computation or multiple single-core computations.
     """
     task_computer: 'TaskComputer'
     assigned_subtask: ComputeTaskDef
@@ -492,10 +495,10 @@ class TaskComputation:
     @property
     def assigned_subtask_id(self) -> str:
         return self.assigned_subtask.get('subtask_id')
- 
+
     @property
     def assigned_task_id(self) -> str:
-         return self.assigned_subtask.get('task_id')
+        return self.assigned_subtask.get('task_id')
 
     @property
     def computing(self) -> bool:
@@ -504,7 +507,7 @@ class TaskComputation:
     def check_timeout(self):
         if self.counting_thread is not None:
             self.counting_thread.check_timeout()
- 
+
     def task_interrupted(self) -> None:
         assert self.assigned_subtask is not None
         self._task_finished()
@@ -570,8 +573,8 @@ class TaskComputation:
                 stats.increase_stat('tasks_with_errors')
 
             task_server.send_task_failed(
-                    subtask_id, subtask['task_id'], task_thread.error_msg,
-                    reason)
+                subtask_id, subtask['task_id'], task_thread.error_msg,
+                reason)
 
         elif task_thread.result and 'data' in task_thread.result:
 
@@ -601,7 +604,8 @@ class TaskComputation:
                 "Wrong result format",
             )
 
-        dispatcher.send(signal='golem.monitor', event='computation_time_spent', 
+        dispatcher.send(
+            signal='golem.monitor', event='computation_time_spent',
             success=was_success, value=work_time_to_be_paid)
         self._task_finished()
 
@@ -652,7 +656,7 @@ class TaskComputation:
         if docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(
-                    resource_dir, temp_dir)
+                resource_dir, temp_dir)
             tt: TaskThread = DockerTaskThread(
                 docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
         elif tc.support_direct_computation:
@@ -683,11 +687,12 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     dir_lock = Lock()
 
     def __init__(
-        self,
-        task_server: 'TaskServer',
-        stats_keeper: Optional[IntStatsKeeper] = None,
-        use_docker_manager=True,
-        finished_cb=None) -> None:
+            self,
+            task_server: 'TaskServer',
+            stats_keeper: Optional[IntStatsKeeper] = None,
+            use_docker_manager=True,
+            finished_cb=None
+    ) -> None:
         self.task_server = task_server
         self.dir_manager: DirManager = DirManager(
             task_server.get_task_computer_root())
@@ -748,7 +753,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         return self.assigned_subtasks[0].assigned_subtask_id
 
     def task_interrupted(
-        self,
+            self,
             task_id: str,
             subtask_id: Optional[str] = None
     ) -> None:
@@ -777,8 +782,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     def can_take_work(self) -> bool:
         with self.lock:
             if any([
-                computation for computation in self.assigned_subtasks
-                if not computation.single_core
+                    computation for computation in self.assigned_subtasks
+                    if not computation.single_core
             ]):
                 return False
             return len(self.assigned_subtasks) < self.max_num_cores
@@ -790,8 +795,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
     def free_cores(self) -> int:
         with self.lock:
             if any([
-                computation for computation in self.assigned_subtasks
-                if not computation.single_core
+                    computation for computation in self.assigned_subtasks
+                    if not computation.single_core
             ]):
                 return 0
             n = len(self.assigned_subtasks)
@@ -812,9 +817,9 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
 
     @defer.inlineCallbacks
     def change_config(
-        self,
-        config_desc: ClientConfigDescriptor,
-        in_background: bool = True
+            self,
+            config_desc: ClientConfigDescriptor,
+            in_background: bool = True
     ) -> defer.Deferred:
 
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
@@ -846,7 +851,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         started = False
         for computation in self.assigned_subtasks:
             if computation.assigned_task_id == task_id and (
-                subtask_id is None or
+                    subtask_id is None or
                     computation.assigned_subtask_id == subtask_id):
                 if not computation.computing:
                     started = True
@@ -873,8 +878,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
         with self.lock:
             task_id = ctd['task_id']
             if not [
-                c for c in self.assigned_subtasks
-                if c.assigned_task_id == task_id
+                    c for c in self.assigned_subtasks
+                    if c.assigned_task_id == task_id
             ]:
                 self.task_server.task_keeper.task_ended(task_id)
 
