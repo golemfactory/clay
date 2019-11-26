@@ -292,6 +292,14 @@ class RequestedTaskManager:
         return result
 
     @staticmethod
+    def subtask_exists(subtask_id: SubtaskId) -> bool:
+        """ Return whether subtask of a given subtask_id exists. """
+        logger.debug('subtask_exists(subtask_id=%r)', subtask_id)
+        result = RequestedSubtask.select(RequestedSubtask.subtask_id) \
+            .where(RequestedSubtask.subtask_id == subtask_id).exists()
+        return result
+
+    @staticmethod
     def is_task_finished(task_id: TaskId) -> bool:
         """ Return True if there is no more computation needed for this
         task because the task has finished, e.g. completed successfully, timed
@@ -506,6 +514,25 @@ class RequestedTaskManager:
         await self._abort_task_and_shutdown(task)
         self._notice_task_updated(task, op=TaskOp.ABORTED)
 
+    async def abort_subtask(self, subtask_id: SubtaskId) -> None:
+        subtask = RequestedSubtask.get(
+            RequestedSubtask.subtask_id == subtask_id)
+
+        await self._abort_subtask(subtask)
+        subtask.status = SubtaskStatus.cancelled
+        subtask.save()
+
+    async def delete_task(self, task_id: TaskId) -> None:
+        await self.abort_task(task_id)
+
+        RequestedSubtask.delete().where(
+            RequestedSubtask.task == task_id
+        ).execute()
+
+        RequestedTask.delete().where(
+            RequestedTask.task_id == task_id
+        ).execute()
+
     @staticmethod
     def get_started_tasks() -> List[RequestedTask]:
         return RequestedTask.select().where(
@@ -564,8 +591,33 @@ class RequestedTaskManager:
 
     async def restart_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
+        subtask_ids = self.get_requested_task_subtask_ids(task_id)
+
+        app_client = await self._get_app_client(task.app_id)
+        await app_client.discard_subtasks(task_id, subtask_ids)
+
         task.status = TaskStatus.waiting
         task.save()
+
+    async def restart_subtasks(
+            self,
+            task_id: TaskId,
+            subtask_ids: Iterable[str]
+    ) -> None:
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        subtasks = RequestedSubtask.select().where(
+            RequestedSubtask.task == task,
+            RequestedSubtask.subtask_id.in_(subtask_ids)
+        )
+
+        app_client = await self._get_app_client(task.app_id)
+        await app_client.discard_subtasks(
+            task_id,
+            list(subtask_ids))
+
+        for subtask in subtasks:
+            subtask.status = SubtaskStatus.cancelled
+            subtask.save()
 
     async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
