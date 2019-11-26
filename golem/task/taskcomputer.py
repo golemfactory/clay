@@ -120,8 +120,7 @@ class TaskComputerAdapter:
             task_id = self._new_computer.assigned_task_id
             if task_id is not None:
                 return {task_id}
-            else:
-                return set()
+            return set()
         return self._old_computer.assigned_task_ids
 
     @property

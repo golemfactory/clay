@@ -134,7 +134,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['extra_data']['src_code'] = "raise Exception('some exception')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        [comp] = tc.assigned_subtasks
+        assert len(tc.assigned_subtasks) == 1
+        comp = tc.assigned_subtasks[0]
         self.assertEqual(comp.assigned_subtask, ctd)
         self.assertLessEqual(comp.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
@@ -496,8 +497,8 @@ class TestTaskFinished(TestTaskComputerBase):
         )
 
         ast = TaskComputation(
-                task_computer=self.task_computer, assigned_subtask=ctd,
-                counting_thread=mock.Mock)
+            task_computer=self.task_computer, assigned_subtask=ctd,
+            counting_thread=mock.Mock)
         self.task_computer.assigned_subtasks.append(ast)
         self.task_computer.finished_cb = mock.Mock()
 
