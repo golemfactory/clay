@@ -35,6 +35,19 @@ Here is an example of a new task-api JSON file.
 ### golem
 
 The golem block of the JSON is meant for the input golem needs, these are the same for all apps
+```
+...
+    "golem": {
+        "app_id": "efb3db3a99a9616c77d1ce7ab8c514fa",
+        "name": "",
+        "resources": ["/absolute/path/to/resources/file.blend"],
+        "max_price_per_hour": "1.000.000.000.000.000.000",
+        "max_subtasks": 1,
+        "task_timeout": 600000,
+        "subtask_timeout": 590000,
+    },
+...
+```
 
 #### golem.app_id
 
@@ -44,7 +57,7 @@ You can get the build in app_id's with the command `golemcli ...` (TBD)
 
 #### golem.name
 
-Name of the task in the GUI, not related to task-api
+Name of the task in the GUI, not related to task-api. Allowed to be empty
 
 #### golem.resources
 
@@ -72,14 +85,26 @@ Subtask timeout in milliseconds, so 1000 is one second, 600000 is 10 minutes.
 The app block contains app specific input parameters, these are different per app.
 TODO: Move this to app specific readme.md
 
+```
+...
+    "app": {
+        "resources": ["file.blend"],
+        "resolution": [320, 240],
+        "frames": "1",
+        "format": "PNG",
+        "compositing": "False",
+    }
+...
+```
+
 #### app.resources
 
 A relative list of the resources, currently only one level.
-TO FIX: allow folders and generate the list by defauld based on golem.resources
+TO FIX: allow folders and generate the list by default based on golem.resources
 
 #### app.resolution
 
-Resolution of the blender render
+Resolution of the blender render in pixels
 
 #### app.frames
 
