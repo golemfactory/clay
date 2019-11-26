@@ -1,0 +1,106 @@
+# Running a task on Task-Api
+
+Task-API has been enabled on testnet since the 0.22.0 release.
+For this first release there is no GUI implementation yet, so this guide will use the CLI only.
+
+## Short summary:
+
+- Create new task-api JSON file
+- Run the file using the cli
+
+## Prepare a JSON
+
+Here is an example of a new task-api JSON file.
+
+```JSON
+{
+    "golem": {
+        "app_id": "efb3db3a99a9616c77d1ce7ab8c514fa",
+        "name": "",
+        "resources": ["/absolute/path/to/resources/file.blend"],
+        "max_price_per_hour": "1.000.000.000.000.000.000",
+        "max_subtasks": 1,
+        "task_timeout": 600000,
+        "subtask_timeout": 590000,
+    },
+    "app": {
+        "resources": ["file.blend"],
+        "resolution": [320, 240],
+        "frames": "1",
+        "format": "PNG",
+        "compositing": "False",
+    }
+}
+```
+### golem
+
+The golem block of the JSON is meant for the input golem needs, these are the same for all apps
+
+#### golem.app_id
+
+App id is the unique identifier of the app including its version.
+You can get the build in app_id's with the command `golemcli ...` (TBD)
+`efb3db3a99a9616c77d1ce7ab8c514fa` is `golemfactory/blenderapp:0.7.0` the only available option at the time.
+
+#### golem.name
+
+Name of the task in the GUI, not related to task-api
+
+#### golem.resources
+
+List of absolute paths to the files required for running this task
+
+#### golem.max_price_per_hour
+
+Max price to pay for the computation per hour, always passed as sting ( in "").
+The golem token has 18 digits, so for 1 GNT add 18 zero's.
+
+#### golem.max_subtasks
+
+Amount of subtasks to split the task into.
+
+#### golem.task_timeout
+
+Task timeout in milliseconds, so 1000 is one second, 600000 is 10 minutes.
+
+#### golem.subtask_timeout
+
+Subtask timeout in milliseconds, so 1000 is one second, 600000 is 10 minutes.
+
+### app
+
+The app block contains app specific input parameters, these are different per app.
+TODO: Move this to app specific readme.md
+
+#### app.resources
+
+A relative list of the resources, currently only one level.
+TO FIX: allow folders and generate the list by defauld based on golem.resources
+
+#### app.resolution
+
+Resolution of the blender render
+
+#### app.frames
+
+Frames to select during the blender render
+
+#### app.format
+
+Output format for the blender render
+
+#### app.compositing
+
+Use compositing for the blender render?
+
+## Run a task-api task
+
+To run a task-api task you use the same command as the old ones.
+
+```
+golemcli tasks create ./task_api_json_file.json
+```
+
+the task will show up in the `golemcli tasks show` but not listen to all `golemcli tasks *` commands
+To help debug the task-api computation there are extra logs stored in your `logs/app_name/` folder.
+Please provide the generated logs next to the regular logs when creating issues.
