@@ -507,7 +507,7 @@ class TaskServer(
             subtask_inputs_dir = self.task_computer.get_subtask_inputs_dir()
             resources_options = msg.resources_options or dict(options={})
             client_options = self.resource_manager.build_client_options(
-                **resources_options['options'])
+                **resources_options.get('options', {}))
 
             deferred_list = [
                 self.new_resource_manager.download(
