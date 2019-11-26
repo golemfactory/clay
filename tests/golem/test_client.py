@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-lines
+# pylint: disable=protected-access,too-many-lines,no-member
 import os
 import time
 import uuid

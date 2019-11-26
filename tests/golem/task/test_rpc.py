@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-ancestors
+# pylint: disable=protected-access,too-many-ancestors,too-many-lines
 import copy
 import itertools
 from tempfile import TemporaryDirectory

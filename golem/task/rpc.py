@@ -690,8 +690,9 @@ class ClientProvider:
         """
         logger.info('Restarting task. task_id=%r', task_id)
         logger.debug('force=%r, disable_concent=%r', force, disable_concent)
-
-        if self.client.task_server.requested_task_manager.task_exists(task_id):
+        assert self.client.task_server
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
             result = yield self.restart_task_api_task(task_id)
             return result
         return self.restart_legacy_task(task_id, force, disable_concent)
@@ -700,7 +701,8 @@ class ClientProvider:
     def restart_task_api_task(
             self,
             task_id: str,
-    ) -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
+    ):
+        assert self.client.task_server
         rtm = self.client.task_server.requested_task_manager
 
         try:
@@ -808,11 +810,13 @@ class ClientProvider:
             task_id: str,
             subtask_ids: typing.List[str],
             ignore_gas_price: bool = False,
-    ) -> None:
+    ):
         logger.info('Restarting subtasks. task_id=%r', task_id)
 
         rtm = self.requested_task_manager
         task = rtm.get_requested_task(task_id)
+        if not task:
+            raise RuntimeError(f'Task not found: {task_id!r}')
 
         self._validate_enough_funds_to_pay_for_task(
             task.max_price_per_hour,

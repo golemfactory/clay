@@ -1184,6 +1184,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return DictSerializer.dump(state)
 
     def _assert_not_task_api_task(self, task_id: str):
+        assert self.task_server
         if self.task_server.requested_task_manager.task_exists(task_id):
             raise RuntimeError("Task API: unsupported RPC call")
 

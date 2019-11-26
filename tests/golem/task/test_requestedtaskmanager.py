@@ -417,6 +417,7 @@ class TestRequestedTaskManager:
         assert len(results) == 1
         assert list(results)[0].task_id == task_id
 
+    # pylint: disable=unused-argument
     @pytest.mark.asyncio
     async def test_restart_task(self, mock_client, monkeypatch):
         task_timeout = 0.1
@@ -433,6 +434,7 @@ class TestRequestedTaskManager:
         await self.rtm.restart_task(task_id)
         assert app_client.discard_subtasks.called
         assert not self.rtm.is_task_finished(task_id)
+    # pylint: enable=unused-argument
 
     @pytest.mark.asyncio
     async def test_duplicate_task(self, mock_client):

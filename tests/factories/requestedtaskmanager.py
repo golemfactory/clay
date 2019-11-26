@@ -1,4 +1,4 @@
-# pylint: disable=attribute-defined-outside-init
+# pylint: disable=attribute-defined-outside-init,too-many-instance-attributes
 from asyncio import Future
 from unittest.mock import Mock
 
@@ -9,7 +9,7 @@ from tests.utils.asyncio import AsyncMock
 
 
 def async_done_mock_fn() -> Future:
-    future = Future()
+    future: Future = Future()
     future.done()
     return AsyncMock(return_value=future)
 
