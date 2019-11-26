@@ -7,7 +7,7 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import (
     Any,
     Dict,
@@ -871,10 +871,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            if task.start_time is None:
+                time_started = model.default_now().timestamp()
+            else:
+                time_started = task.start_time.timestamp()
             task_dict = {
                 'id': task.task_id,
                 'status': task.status.value,
-                'time_started': task.start_time or datetime.now(),
+                'time_started': time_started,
             }
         else:
             # OLD taskmanager
