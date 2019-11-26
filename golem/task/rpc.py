@@ -678,7 +678,6 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.restart')
     @defer.inlineCallbacks
-    @safe_run(_restart_task_error)
     def restart_task(
             self,
             task_id: str,
@@ -710,6 +709,7 @@ class ClientProvider:
             return None, str(exc)
         return task_id, None
 
+    @safe_run(_restart_task_error)
     def restart_legacy_task(
             self,
             task_id: str,
@@ -761,7 +761,6 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.subtasks.restart')
     @defer.inlineCallbacks
-    @safe_run(_restart_subtasks_error)
     def restart_subtasks(
             self,
             task_id: str,
@@ -788,11 +787,50 @@ class ClientProvider:
         """
         rtm = self.requested_task_manager
         if rtm.task_exists(task_id):
-            logger.info('Restarting subtasks. task_id=%r', task_id)
-            yield deferred_from_future(
-                rtm.restart_subtasks(task_id, subtask_ids))
-            return None
+            try:
+                yield self.restart_task_api_task_subtasks(
+                    task_id,
+                    subtask_ids,
+                    ignore_gas_price)
+                return None
+            except Exception as exc:  # pylint: disable=broad-except
+                return str(exc)
 
+        return self.restart_legacy_task_subtasks(
+            task_id,
+            subtask_ids,
+            ignore_gas_price,
+            disable_concent)
+
+    @defer.inlineCallbacks
+    def restart_task_api_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+    ) -> None:
+        logger.info('Restarting subtasks. task_id=%r', task_id)
+
+        rtm = self.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+
+        self._validate_enough_funds_to_pay_for_task(
+            task.max_price_per_hour,
+            len(subtask_ids),
+            task.concent_enabled,
+            ignore_gas_price
+        )
+
+        yield deferred_from_future(rtm.restart_subtasks(task_id, subtask_ids))
+
+    @safe_run(_restart_subtasks_error)
+    def restart_legacy_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return f'Task not found: {task_id!r}'

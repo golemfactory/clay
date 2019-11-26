@@ -758,11 +758,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
+    @inlineCallbacks
     def purge_tasks(self):
         tasks = self.get_tasks()
         logger.debug('Deleting %d tasks ...', len(tasks))
         for t in tasks:
-            self.delete_task(t['id'])
+            yield self.delete_task(t['id'])
 
     @rpc_utils.expose('net.ident')
     def get_node(self):

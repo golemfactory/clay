@@ -294,7 +294,7 @@ class RequestedTaskManager:
     @staticmethod
     def subtask_exists(subtask_id: SubtaskId) -> bool:
         """ Return whether subtask of a given subtask_id exists. """
-        logger.debug('subtask_exists(subtask_id=%r)', subtask_id)
+        logger.debug('subtask_exists(task_id=%r)', subtask_id)
         result = RequestedSubtask.select(RequestedSubtask.subtask_id) \
             .where(RequestedSubtask.subtask_id == subtask_id).exists()
         return result
