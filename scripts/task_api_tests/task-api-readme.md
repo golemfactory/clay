@@ -101,6 +101,9 @@ To run a task-api task you use the same command as the old ones.
 golemcli tasks create ./task_api_json_file.json
 ```
 
-the task will show up in the `golemcli tasks show` but not listen to all `golemcli tasks *` commands
+Then you can use `golemcli tasks show` to list the task
+We also implemented `golemcli tasks abort`, `.. delete` and `.. restart_subtask`
+Other commands are not supported yet, they will be added soon
+
 To help debug the task-api computation there are extra logs stored in your `logs/app_name/` folder.
 Please provide the generated logs next to the regular logs when creating issues.
