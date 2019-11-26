@@ -418,14 +418,20 @@ class TestRequestedTaskManager:
         assert list(results)[0].task_id == task_id
 
     @pytest.mark.asyncio
-    async def test_restart_task(self, mock_client):
+    async def test_restart_task(self, mock_client, monkeypatch):
         task_timeout = 0.1
         task_id = await self._start_task(task_timeout=task_timeout)
+
         # Wait for the task to timeout
         await asyncio.sleep(task_timeout)
         assert self.rtm.is_task_finished(task_id)
 
+        app_client = AsyncMock(discard_subtasks=AsyncMock())
+        get_app_client = AsyncMock(return_value=app_client)
+        monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
+
         await self.rtm.restart_task(task_id)
+        assert app_client.discard_subtasks.called
         assert not self.rtm.is_task_finished(task_id)
 
     @pytest.mark.asyncio
