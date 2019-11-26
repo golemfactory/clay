@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator
+    Optional, Generator, Type
 )
 
 from ethereum.utils import denoms
@@ -17,8 +17,6 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
-
-from apps.appsmanager import App
 
 import golem
 from golem.core import common
@@ -165,15 +163,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _get_app_from_header(
-            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
-        return self.task_server.client.apps_manager.get_app_for_env(
+    def _get_task_class(
+            self, task_header: message.tasks.TaskHeader):
+        return self.task_server.client.apps_manager.get_task_class_for_env(
             task_header.environment
         )
-
-    def _get_task_class(self, task_header: message.tasks.TaskHeader):
-        app = self._get_app_from_header(task_header)
-        return app.builder.TASK_CLASS if app else Task
 
     ########################
     # BasicSession methods #

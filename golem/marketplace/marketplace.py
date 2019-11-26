@@ -33,15 +33,16 @@ class ProviderPricing:
 
 class RequestorMarketStrategy(ABC):
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def add(cls, task_id: str, offer: Offer):
         """
         Called when a WantToComputeTask arrives.
         """
         raise NotImplementedError()
 
-    # pylint: disable-msg=line-too-long
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
         """
         Arguments:
@@ -52,7 +53,8 @@ class RequestorMarketStrategy(ABC):
         """
         raise NotImplementedError()
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def get_task_offer_count(cls, task_id: str) -> int:
         """
         Returns number of offers known for the task.
@@ -84,6 +86,8 @@ class RequestorMarketStrategy(ABC):
 
 
 class ProviderMarketStrategy(ABC):
+
+    SET_CPU_TIME_LIMIT: bool = False
 
     @classmethod
     @abstractmethod
