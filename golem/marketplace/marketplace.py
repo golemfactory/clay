@@ -85,7 +85,8 @@ class RequestorMarketStrategy(ABC):
 
 class ProviderMarketStrategy(ABC):
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
         raise NotImplementedError()
