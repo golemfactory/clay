@@ -871,7 +871,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
-            task_dict = {'id': task.task_id, 'status': task.status.value}
+            if task.start_time is None:
+                time_started = model.default_now().timestamp()
+            else:
+                time_started = task.start_time.timestamp()
+            task_dict = {
+                'id': task.task_id,
+                'status': task.status.value,
+                'time_started': time_started,
+            }
         else:
             # OLD taskmanager
             logger.debug('get_task(task_id=%r) - OLD', task_id)
@@ -935,7 +943,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if return_created_tasks_only:
             filter_fn = self._filter_task_created_status
 
-        return list(filter(filter_fn, tasks))
+        filtered_tasks = list(filter(filter_fn, tasks))
+        return sorted(filtered_tasks, key=lambda task: task['time_started'])
 
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:

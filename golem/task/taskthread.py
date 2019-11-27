@@ -44,7 +44,7 @@ class TaskThread(threading.Thread):
         self.error: Optional[Exception] = None
         self.error_msg = ""
         self.start_time = time.time()
-        self.end_time = None
+        self.end_time: Optional[float] = None
         self.use_timeout = timeout != 0
         self.task_timeout = timeout
         self.time_to_compute = self.task_timeout
