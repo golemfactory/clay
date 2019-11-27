@@ -176,9 +176,7 @@ class VerificationMixin:
                 f"Completed verification of subtask {subtask_id} "
                 f"within an unknown task {task_id}")
 
-        subtask = self.requested_task_manager.get_requested_task_subtask(
-            task_id,
-            subtask_id)
+        subtask = self.requested_task_manager.get_requested_subtask(subtask_id)
         if not subtask:
             raise RuntimeError(
                 f"Completed verification of unknown subtask {subtask_id} "

@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator
+    Optional, Generator, Type
 )
 
 from ethereum.utils import denoms
@@ -17,8 +17,6 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
-
-from apps.appsmanager import App
 
 import golem
 from golem.core import common
@@ -52,7 +50,7 @@ if TYPE_CHECKING:
     from twisted.internet.protocol import Protocol
 
     from .requestedtaskmanager import RequestedTaskManager
-    from .taskcomputer import TaskComputer
+    from .taskcomputer import TaskComputerAdapter
     from .taskmanager import TaskManager
     from .taskserver import TaskServer
     from golem.network.concent.client import ConcentClientService
@@ -144,7 +142,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.requested_task_manager
 
     @property
-    def task_computer(self) -> 'TaskComputer':
+    def task_computer(self) -> 'TaskComputerAdapter':
         return self.task_server.task_computer
 
     @property
@@ -165,15 +163,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _get_app_from_header(
-            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
-        return self.task_server.client.apps_manager.get_app_for_env(
+    def _get_task_class(
+            self, task_header: message.tasks.TaskHeader):
+        return self.task_server.client.apps_manager.get_task_class_for_env(
             task_header.environment
         )
-
-    def _get_task_class(self, task_header: message.tasks.TaskHeader):
-        app = self._get_app_from_header(task_header)
-        return app.builder.TASK_CLASS if app else Task
 
     ########################
     # BasicSession methods #
@@ -606,7 +600,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
             return
 
