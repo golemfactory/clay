@@ -93,7 +93,6 @@ class CallScheduler:
             timeout: float,
             call: Callable[..., Any],
     ) -> None:
-
         def on_timeout():
             self._timers.pop(key, None)
             call()
@@ -101,11 +100,14 @@ class CallScheduler:
         loop = asyncio.get_event_loop()
 
         self.cancel(key)
-        self._timers[key] = loop.call_at(loop.time() + timeout, on_timeout)
+        self._timers[key] = loop.call_at(
+            loop.time() + timeout,
+            on_timeout)
 
     def cancel(self, key):
-        if key in self._timers:
-            self._timers[key].cancel()
+        timer = self._timers.pop(key, None)
+        if timer:
+            timer.cancel()
 
 
 class RequestedTaskManager:
