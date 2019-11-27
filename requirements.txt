@@ -40,7 +40,7 @@ eventlet==0.24.1
 fs==2.4.4
 Golem-Messages==3.14.1
 Golem-Smart-Contracts-Interface==1.10.3
-Golem-Task-Api==0.24.0
+Golem-Task-Api==0.24.3
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0

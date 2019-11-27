@@ -13,6 +13,7 @@ import pytest
 from twisted.internet import defer
 
 from golem.apps.manager import AppManager
+from golem.apps.ssl import create_golem_ssl_context_files
 from golem.model import default_now, RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
 from golem.task import requestedtaskmanager
@@ -52,6 +53,7 @@ class TestRequestedTaskManager:
         self.frozen_time = None
         # TODO: Replace with tmp_path when pytest is updated to 5.x
         self.tmp_path = Path(tmpdir)
+        create_golem_ssl_context_files(self.tmp_path)
 
         self.env_manager = Mock(spec=EnvironmentManager)
         self.app_manager = Mock(spec=AppManager)
@@ -74,8 +76,8 @@ class TestRequestedTaskManager:
             lambda *_: TaskState())
 
     @pytest.mark.asyncio
-    @pytest.mark.freeze_time("1000")
-    async def test_restore_tasks_timedout(self, freezer, mock_client):
+    @pytest.mark.freeze_time("2020")
+    async def test_restore_tasks_timed_out(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
         self.rtm._time_out_task = Mock()
@@ -86,7 +88,7 @@ class TestRequestedTaskManager:
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
         subtask = await self.rtm.get_next_subtask(task_id, computing_node)
-        freezer.move_to("1010")
+        freezer.move_to("2030")
         # when
         self.rtm.restore_tasks()
         # then
@@ -255,7 +257,7 @@ class TestRequestedTaskManager:
         )
 
     @pytest.mark.asyncio
-    @pytest.mark.freeze_time("1000")
+    @pytest.mark.freeze_time("2020")
     async def test_verify(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
@@ -271,7 +273,7 @@ class TestRequestedTaskManager:
         mock_client.has_pending_subtasks.return_value = False
         subtask_id = subtask.subtask_id
         # when
-        freezer.move_to("1010")
+        freezer.move_to("2030")
         res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -287,7 +289,7 @@ class TestRequestedTaskManager:
         assert not self.rtm.has_unfinished_tasks()
 
     @pytest.mark.asyncio
-    @pytest.mark.freeze_time("1000")
+    @pytest.mark.freeze_time("2020")
     async def test_verify_failed(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
@@ -300,7 +302,7 @@ class TestRequestedTaskManager:
 
         subtask_id = subtask.subtask_id
         # when
-        freezer.move_to("1010")
+        freezer.move_to("2030")
         res = await self.rtm._verify(task_id, subtask.subtask_id)
 
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -316,7 +318,7 @@ class TestRequestedTaskManager:
         assert self.rtm.has_unfinished_tasks()
 
     @pytest.mark.asyncio
-    @pytest.mark.freeze_time("1000")
+    @pytest.mark.freeze_time("2020")
     async def test_abort(self, freezer, mock_client):
         # given
         self._add_next_subtask_to_client_mock(mock_client)
@@ -329,7 +331,7 @@ class TestRequestedTaskManager:
 
         subtask_id = subtask.subtask_id
         # when
-        freezer.move_to("1010")
+        freezer.move_to("2030")
         await self.rtm.abort_task(task_id)
         task_row = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_row = RequestedSubtask.get(

@@ -23,6 +23,15 @@ def disable_benchmarks(request):
     request.addfinalizer(ctx.__exit__)
 
 
+@pytest.fixture(scope="function", autouse=True)
+def clean_task_api_ssl_context_config(request):
+    ctx = mock.patch(
+        'golem.apps.ssl.SSLContextConfig',
+        mock.Mock(key_and_cert_directory=None))
+    ctx.__enter__()
+    request.addfinalizer(ctx.__exit__)
+
+
 @pytest.fixture(autouse=True)
 def clean_dispatcher():
     """

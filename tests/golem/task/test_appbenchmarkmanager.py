@@ -6,6 +6,7 @@ from pathlib import Path
 from mock import patch, MagicMock
 import pytest
 
+from golem.apps.ssl import create_golem_ssl_context_files
 from golem.envs import Environment, EnvMetadata
 from golem.model import AppBenchmark
 from golem.task.benchmarkmanager import AppBenchmarkManager
@@ -33,6 +34,7 @@ class TestAppBenchmarkManager:
     @pytest.fixture(autouse=True)
     def setup_method(self, pytest_database_fixture, tmpdir, event_loop):  # noqa
         # pylint: disable=attribute-defined-outside-init
+        create_golem_ssl_context_files(Path(tmpdir))
         self.env_manager = EnvironmentManager(Path(tmpdir))
         self.app_benchmark_manager = AppBenchmarkManager(
             env_manager=self.env_manager,

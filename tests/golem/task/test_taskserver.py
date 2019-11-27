@@ -6,7 +6,6 @@ import time
 import unittest
 from datetime import datetime, timedelta
 import random
-import tempfile
 import uuid
 from math import ceil
 from pathlib import Path
@@ -26,7 +25,7 @@ from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from requests import HTTPError
 
 from golem import testutils
-from golem.appconfig import AppConfig
+from golem.apps.ssl import create_golem_ssl_context_files
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import common
 from golem.core.deferred import sync_wait
@@ -125,6 +124,15 @@ def get_mock_task(
     return task_mock
 
 
+def get_ccd() -> ClientConfigDescriptor:
+    config = ClientConfigDescriptor()
+    config.hardware_preset_name = 'default'
+    config.num_cores = 1
+    config.max_memory_size = 1024 * 1024
+    config.max_resource_size = 1024 * 1024
+    return config
+
+
 def _assert_log_msg(logger_mock, msg):
     assert len(logger_mock.output) == 1
     assert logger_mock.output[0].strip() == msg
@@ -143,9 +151,8 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         docker_env.supported.return_value = EnvSupportStatus(True)
-        self.ccd = ClientConfigDescriptor()
-        self.ccd.init_from_app_config(
-            AppConfig.load_config(tempfile.mkdtemp(), 'cfg'))
+
+        self.ccd = get_ccd()
         self.client.concent_service.enabled = False
         self.client.keys_auth.key_id = 'key_id'
         self.client.keys_auth.eth_addr = 'eth_addr'
@@ -213,11 +220,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_request(self, tar, docker_env, *_):
         docker_env.supported.return_value = EnvSupportStatus(True)
 
-        ccd = ClientConfigDescriptor()
-        ccd.min_price = 10
+        self.ccd.min_price = 10
         self.ts = ts = TaskServer(
             node=dt_p2p_factory.Node(),
-            config_desc=ccd,
+            config_desc=self.ccd,
             client=self.client,
             use_docker_manager=False,
             task_archiver=tar,
@@ -982,7 +988,7 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
         for parent in TaskServerBase.__bases__:
             parent.setUp(self)
         random.seed()
-        self.ccd = self._get_config_desc()
+        self.ccd = get_ccd()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
@@ -996,13 +1002,6 @@ class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def tearDown(self):
         for parent in TaskServerBase.__bases__:
             parent.tearDown(self)
-
-    def _get_config_desc(self):
-        ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
-        ccd.max_memory_size = 1024 * 1024  # 1 GiB
-        ccd.num_cores = 1
-        return ccd
 
 
 # pylint: disable=too-many-ancestors
@@ -1143,7 +1142,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                    '.register_handler',):
             self.ts = TaskServer(
                 node=self.node,
-                config_desc=ClientConfigDescriptor(),
+                config_desc=get_ccd(),
                 client=self.client,
                 use_docker_manager=False,
             )
@@ -1579,7 +1578,7 @@ class TestChangeConfig(TaskServerTestBase):
 
         change_tc_config.return_value = defer.succeed(None)
         change_tk_config.return_value = defer.succeed(None)
-        config_desc = ClientConfigDescriptor()
+        config_desc = self.ccd
 
         yield self.ts.change_config(config_desc, run_benchmarks=True)
         change_tc_config.assert_called_once_with(config_desc, True)
@@ -1596,7 +1595,7 @@ class ChangeTaskComputerConfig(TaskServerTestBase):
         change_tc_config.return_value = defer.succeed(False)
         run_benchmarks = self._patch_ts_async('benchmark_manager')\
             .run_all_benchmarks
-        config_desc = ClientConfigDescriptor()
+        config_desc = self.ccd
 
         yield self.ts._change_task_computer_config(config_desc, False)
         change_tc_config.assert_called_once_with(config_desc)
@@ -1617,7 +1616,7 @@ class ChangeTaskComputerConfig(TaskServerTestBase):
             callback(None)
 
         run_benchmarks.side_effect = _check
-        config_desc = ClientConfigDescriptor()
+        config_desc = self.ccd
 
         yield self.ts._change_task_computer_config(config_desc, False)
         task_computer.change_config.assert_called_once_with(config_desc)
@@ -1641,7 +1640,7 @@ class ChangeTaskComputerConfig(TaskServerTestBase):
             callback(None)
 
         run_benchmarks.side_effect = _check
-        config_desc = ClientConfigDescriptor()
+        config_desc = self.ccd
 
         yield self.ts._change_task_computer_config(config_desc, True)
         task_computer.change_config.assert_called_once_with(config_desc)
@@ -1814,6 +1813,7 @@ class TestNewTaskComputerIntegration(
     ):
         testutils.TestWithClient.setUp(self)
         testutils.DatabaseFixture.setUp(self)
+        create_golem_ssl_context_files(Path(self.tempdir))
 
         docker_env.supported.return_value = EnvSupportStatus(True)
         docker_env.return_value = LocalhostEnvironment(
@@ -1835,7 +1835,7 @@ class TestNewTaskComputerIntegration(
         self.task_finished = defer.Deferred()
         self.task_server = TaskServer(
             node=dt_p2p_factory.Node(),
-            config_desc=ClientConfigDescriptor(),
+            config_desc=get_ccd(),
             client=self.client,
             task_finished_cb=lambda: self.task_finished.callback(None),
             use_docker_manager=False

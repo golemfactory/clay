@@ -9,6 +9,7 @@ from golem_task_api import ProviderAppClient, TaskApiService
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
 from twisted.internet import defer
 
+from golem.apps.ssl import create_golem_ssl_context_files
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.deferred import deferred_from_future
 from golem.core.statskeeper import IntStatsKeeper
@@ -27,6 +28,7 @@ class NewTaskComputerTestBase(TwistedAsyncioTestCase, TempDirFixture):
             return env_id == DOCKER_CPU_ENV_ID
 
         super().setUp()
+        create_golem_ssl_context_files(Path(self.tempdir))
         self.env_manager = mock.Mock(spec=EnvironmentManager)
         self.env_manager.enabled.side_effect = enabled
         self.stats_keeper = mock.Mock(spec=IntStatsKeeper)
@@ -272,7 +274,7 @@ class TestCompute(NewTaskComputerTestBase):
 
 class TestCreateClientAndCompute(NewTaskComputerTestBase):
     @defer.inlineCallbacks
-    def test_client_client_and_compute(self):
+    def test_create_client_and_compute(self):
         # Given
         service = mock.Mock(spec_set=TaskApiService)
         task_api_service_cls = self._patch_async('EnvironmentTaskApiService')
@@ -310,7 +312,9 @@ class TestCreateClientAndCompute(NewTaskComputerTestBase):
             shared_dir=self.work_dir / self.env_id / self.task_id,
             payload_builder=self.env_manager.payload_builder()
         )
-        provider_app_client_cls.create.assert_called_once_with(service)
+        provider_app_client_cls.create.assert_called_once_with(
+            service,
+            ssl_context=mock.ANY)
         client.compute.assert_called_once_with(
             task_id=self.task_id,
             subtask_id=self.subtask_id,

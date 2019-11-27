@@ -15,6 +15,10 @@ from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet import defer
 
+from golem.apps.ssl import (
+    create_golem_ssl_context,
+    create_app_ssl_context_files,
+)
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
 from golem.core.deferred import deferred_from_future
@@ -325,7 +329,12 @@ class NewTaskComputer:
             shared_dir=shared_dir
         )
 
-        self._app_client = await ProviderAppClient.create(task_api_service)
+        create_app_ssl_context_files(shared_dir)
+        ssl_context = create_golem_ssl_context(shared_dir)
+
+        self._app_client = await ProviderAppClient.create(
+            task_api_service,
+            ssl_context=ssl_context)
         return await self._app_client.compute(
             task_id=assigned_task.task_id,
             subtask_id=assigned_task.subtask_id,

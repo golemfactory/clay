@@ -18,6 +18,10 @@ from pydispatch import dispatcher
 
 from golem.apps import AppId
 from golem.apps.manager import AppManager
+from golem.apps.ssl import (
+    create_golem_ssl_context,
+    create_app_ssl_context_files
+)
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -687,7 +691,12 @@ class RequestedTaskManager:
             logger.info('Creating app_client for app_id=%r', app_id)
             service = await self._get_task_api_service(app_id)
             logger.info('Got service for app=%r, service=%r', app_id, service)
-            self._app_clients[app_id] = await RequestorAppClient.create(service)
+            shared_dir = self._app_dir(app_id)
+            create_app_ssl_context_files(shared_dir)
+            ssl_context = create_golem_ssl_context(shared_dir)
+            self._app_clients[app_id] = await RequestorAppClient.create(
+                service,
+                ssl_context=ssl_context)
             logger.info(
                 'app_client created for app_id=%r, clients=%r',
                 app_id, self._app_clients[app_id])
