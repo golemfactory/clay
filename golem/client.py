@@ -76,9 +76,9 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
+from golem.task import taskstate
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -87,6 +87,8 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.core.service import IService
     from golem.task.requestedtaskmanager import RequestedTaskManager
     from golem.task.taskmanager import TaskManager
 
@@ -313,6 +315,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
 
         op = kwargs['op'] if 'op' in kwargs else None
+        if op is taskstate.TaskOp.WORK_OFFER_RECEIVED:
+            # Drop this event to avoid publisher flooding
+            # main twisteds reactor thread
+            return
 
         if op is not None and op.subtask_related():
             self._publish(Task.evt_subtask_status, kwargs['task_id'],
@@ -945,8 +951,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:
         return bool(task) and task['status'] not in (
-            TaskStatus.creating.value,
-            TaskStatus.errorCreating.value)
+            taskstate.TaskStatus.creating.value,
+            taskstate.TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
