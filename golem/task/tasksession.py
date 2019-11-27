@@ -1081,16 +1081,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
+        subtask_known = False
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.info("Requestor '%r' rejected the computed subtask '%r' "
-                        "report", self.key_id, msg.subtask_id)
-
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceReportComputedTask')
-        else:
-            logger.warning("Requestor '%r' rejected a computed task report of"
-                           "an unknown task (subtask_id='%s')",
-                           self.key_id, msg.subtask_id)
+            subtask_known = True
+        logger.log(
+            logging.INFO if subtask_known else logging.WARNING,
+            "ReportComputedTask rejected by the requestor%s. "
+            "requestor_id='%r', subtask_id='%r', reason='%s'",
+            '' if subtask_known else ' and the subtask is unknown to us',
+            self.key_id, msg.subtask_id, msg.reason
+        )
 
     def disconnect(self, reason: message.base.Disconnect.REASON):
         if not self.conn.opened:
