@@ -691,22 +691,44 @@ class ClientProvider:
         logger.info('Restarting task. task_id=%r', task_id)
         logger.debug('force=%r, disable_concent=%r', force, disable_concent)
         assert self.client.task_server
+
         rtm = self.client.task_server.requested_task_manager
         if rtm.task_exists(task_id):
-            result = yield self.restart_task_api_task(task_id)
+            result = yield self.restart_task_api_task(
+                task_id,
+                force,
+                disable_concent)
             return result
+
         return self.restart_legacy_task(task_id, force, disable_concent)
 
     @defer.inlineCallbacks
     def restart_task_api_task(
             self,
             task_id: str,
+            force: bool = False,
+            disable_concent: bool = False,
     ):
         assert self.client.task_server
         rtm = self.client.task_server.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+        if not task:
+            return None, f"Unknown task: {task_id}"
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.max_price_per_hour,
+                task.max_subtasks,
+                False if disable_concent else task.concent_enabled,
+                force)
+        except eth_exceptions.NotEnoughFunds as exc:
+            return None, str(exc)
 
         try:
             yield deferred_from_future(rtm.restart_task(task_id))
+            yield deferred_from_future(rtm.duplicate_task(
+                task_id,
+                task.output_directory))
         except Exception as exc:  # pylint: disable=broad-except
             return None, str(exc)
         return task_id, None

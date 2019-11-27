@@ -569,5 +569,3 @@ class TestCallScheduler:
 
         scheduler.schedule('fn', 1., lambda: False)
         assert cancel.called
-
-
