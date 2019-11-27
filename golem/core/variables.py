@@ -54,8 +54,11 @@ CONCENT_CHOICES: dict = {
             '0x74751ae0b80276dB6b9310b7F8F79fe044205b83',
     },
     'main': {
-        'url': 'http://main.concent.golem.network',
-        'pubkey': b"\xfch\x8e.\xe8\x1b\xe2\x95\x9c7&D\xe4\xfb\x9d\x88\xe2\xd90\x14t\xfd\x81pC\x93B\xefo\xda.\xd8\x85'\x02m\xf0\xc1\x8c\xf9\xb1\xfe\xd7uc\xd7\x81\x94\r\xe8\xce\xed(%TmX\xba\xd5\xc2Y\x0c9\x8b",  # noqa pylint: disable=line-too-long
+        'url': 'https://main.concent.golem.network',
+        'pubkey': b"\x0b\xb2\x03OY\xcb0\xaa\x85\xac\x00 #\x8a\x8b\x98\xd6\xd3yeq7V\xcf\xa2\xa8%\xda\x05\xecHn\xdfe\xc0/\x97\xfd\x13\xf4\x9a\x81\xfdO\xf6\x81\x19\xaa\xd9\xb79]\x16\xad*\xfa\x9a\x88blV\xccr\x9c",  # noqa pylint: disable=line-too-long
+        'certificate': str(CONCENT_CERTIFICATES_DIR / 'main.crt'),
+        'deposit_contract_address':
+            '0x98d3ca6528A2532Ffd9BDef50F92189568932570',
     },
 }
 
