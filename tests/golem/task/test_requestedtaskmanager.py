@@ -8,7 +8,7 @@ from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Infrastructure
-from mock import ANY, call, MagicMock, Mock, patch
+from mock import ANY, call, MagicMock, Mock
 import pytest
 from twisted.internet import defer
 
@@ -20,7 +20,7 @@ from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
     ComputingNodeDefinition,
-)
+    CallScheduler)
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 from tests.utils.asyncio import AsyncMock
@@ -97,9 +97,8 @@ class TestRequestedTaskManager:
         )
 
     @pytest.mark.asyncio
-    async def test_restore_tasks_schedule(self, mock_client):
+    async def test_restore_tasks_schedule(self, mock_client, monkeypatch):
         # given
-        mock_loop = MagicMock()
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task(
@@ -110,16 +109,14 @@ class TestRequestedTaskManager:
         computing_node = self._get_computing_node()
         subtask = await self.rtm.get_next_subtask(task_id, computing_node)
         # when
-        with patch(
-            'golem.task.requestedtaskmanager.asyncio.get_event_loop',
-            return_value=mock_loop
-        ):
-            self.rtm.restore_tasks()
+        schedule = MagicMock()
+        monkeypatch.setattr(self.rtm._timeouts, 'schedule', schedule)
+        self.rtm.restore_tasks()
         # then
-        assert mock_loop.call_at.call_count == 2
-        mock_loop.call_at.assert_has_calls([
-            call(ANY, ANY, task_id, subtask.subtask_id),
-            call(ANY, ANY, task_id),
+        assert schedule.call_count == 2
+        schedule.assert_has_calls([
+            call(subtask.subtask_id, ANY, ANY),
+            call(task_id, ANY, ANY),
         ])
 
     def test_create_task(self):
@@ -433,7 +430,6 @@ class TestRequestedTaskManager:
 
         await self.rtm.restart_task(task_id)
         assert app_client.discard_subtasks.called
-        assert not self.rtm.is_task_finished(task_id)
     # pylint: enable=unused-argument
 
     @pytest.mark.asyncio
@@ -543,3 +539,35 @@ class TestRequestedTaskManager:
             node_id=node_id,
             name='testnodename',
         )
+
+
+class TestCallScheduler:
+
+    @pytest.mark.asyncio
+    async def test_schedule(self, monkeypatch):
+        loop = Mock(time=Mock(return_value=10**8))
+        monkeypatch.setattr(
+            requestedtaskmanager.asyncio,
+            'get_event_loop',
+            Mock(return_value=loop))
+
+        scheduler = CallScheduler()
+        scheduler.schedule('fn', 1000., lambda: True)
+        loop.call_at.assert_called_with(10**8 + 1000., ANY)
+
+    @pytest.mark.asyncio
+    async def test_reschedule(self, monkeypatch):
+        cancel = Mock()
+        monkeypatch.setattr(asyncio.TimerHandle, 'cancel', cancel)
+
+        scheduler = CallScheduler()
+        scheduler.schedule('fn', 1000., lambda: True)
+        assert not cancel.called
+
+        scheduler.schedule('fn2', 1000., lambda: True)
+        assert not cancel.called
+
+        scheduler.schedule('fn', 1., lambda: False)
+        assert cancel.called
+
+

@@ -1,11 +1,13 @@
 import asyncio
 import hashlib
 import logging
+from functools import partial
+
 import os
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Iterable
+from typing import Any, Callable, Dict, Iterable, List, Optional
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -81,6 +83,31 @@ class SubtaskDefinition:
     deadline: int
 
 
+class CallScheduler:
+    def __init__(self):
+        self._timers: Dict[str, asyncio.TimerHandle] = dict()
+
+    def schedule(
+            self,
+            key: str,
+            timeout: float,
+            call: Callable[..., Any],
+    ) -> None:
+
+        def on_timeout():
+            self._timers.pop(key, None)
+            call()
+
+        loop = asyncio.get_event_loop()
+
+        self.cancel(key)
+        self._timers[key] = loop.call_at(loop.time() + timeout, on_timeout)
+
+    def cancel(self, key):
+        if key in self._timers:
+            self._timers[key].cancel()
+
+
 class RequestedTaskManager:
 
     def __init__(
@@ -97,12 +124,12 @@ class RequestedTaskManager:
         self._app_manager = app_manager
         self._public_key: bytes = public_key
         self._app_clients: Dict[EnvId, RequestorAppClient] = {}
+        self._timeouts = CallScheduler()
         # Created lazily due to cascading errors in tests
         self._verification_queue: Optional[VerificationQueue] = None
 
     def restore_tasks(self):
         logger.debug('restore_tasks()')
-        loop = asyncio.get_event_loop()
 
         running_subtasks = RequestedSubtask.select() \
             .where(RequestedSubtask.status.in_(SUBTASK_STATUS_ACTIVE))
@@ -114,12 +141,7 @@ class RequestedTaskManager:
             time_left = subtask.deadline.timestamp() - default_now().timestamp()
             if time_left > 0:
                 logger.info('restoring subtask. subtask_id=%r', subtask_id)
-                loop.call_at(
-                    loop.time() + time_left,
-                    self._time_out_subtask,
-                    subtask.task_id,
-                    subtask_id,
-                )
+                self._schedule_subtask_timeout(subtask, time_left)
             else:
                 logger.info('subtask timed out. subtask_id=%r', subtask_id)
                 self._time_out_subtask(subtask.task_id, subtask_id)
@@ -133,11 +155,8 @@ class RequestedTaskManager:
             time_left = task.deadline.timestamp() - default_now().timestamp()
             if time_left > 0:
                 logger.info('restoring task. task_id=%r', task.task_id)
-                loop.call_at(
-                    loop.time() + time_left,
-                    self._time_out_task,
-                    task.task_id,
-                )
+                self._schedule_task_timeout(task, time_left)
+                self._notice_task_updated(task, op=TaskOp.RESTORED)
             else:
                 logger.info('task timed out. task_id=%r', task.task_id)
                 self._time_out_task(task.task_id)
@@ -150,6 +169,25 @@ class RequestedTaskManager:
     def _task_dir(self, task_id: TaskId) -> RequestorTaskDir:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
         return self._app_dir(task.app_id).task_dir(task_id)
+
+    def _schedule_task_timeout(
+            self,
+            task: RequestedTask,
+            timeout: float
+    ) -> None:
+        call = partial(self._time_out_task, task.task_id)
+        self._timeouts.schedule(task.task_id, timeout, call)
+
+    def _schedule_subtask_timeout(
+            self,
+            subtask: RequestedSubtask,
+            timeout: float
+    ) -> None:
+        call = partial(
+            self._time_out_subtask,
+            subtask.task_id,
+            subtask.subtask_id)
+        self._timeouts.schedule(subtask.subtask_id, timeout, call)
 
     def get_task_inputs_dir(self, task_id: TaskId) -> Path:
         """ Return a path to the directory where task resources should be
@@ -201,12 +239,7 @@ class RequestedTaskManager:
             app_params=app_params,
         )
 
-        loop = asyncio.get_event_loop()
-        loop.call_at(
-            loop.time() + golem_params.task_timeout,
-            self._time_out_task,
-            task.task_id,
-        )
+        self._schedule_task_timeout(task, golem_params.task_timeout)
 
         logger.debug(
             'create_task(task_id=%r) - prepare directories. app_id=%s',
@@ -401,13 +434,8 @@ class RequestedTaskManager:
         task.status = TaskStatus.computing
         task.save()
 
-        loop = asyncio.get_event_loop()
-        loop.call_at(
-            loop.time() + task.subtask_timeout,
-            self._time_out_subtask,
-            subtask.task,
-            subtask.subtask_id,
-        )
+        self._schedule_subtask_timeout(subtask, task.subtask_timeout)
+
         ProviderComputeTimers.start(subtask_id)
         return SubtaskDefinition(
             subtask_id=subtask_id,
@@ -512,6 +540,7 @@ class RequestedTaskManager:
             self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
         await self._abort_task_and_shutdown(task)
+        self._timeouts.cancel(task_id)
         self._notice_task_updated(task, op=TaskOp.ABORTED)
 
     async def abort_subtask(self, subtask_id: SubtaskId) -> None:
@@ -521,6 +550,7 @@ class RequestedTaskManager:
         await self._abort_subtask(subtask)
         subtask.status = SubtaskStatus.cancelled
         subtask.save()
+        self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
     async def delete_task(self, task_id: TaskId) -> None:
         await self.abort_task(task_id)
@@ -590,14 +620,18 @@ class RequestedTaskManager:
             return None
 
     async def restart_task(self, task_id: TaskId) -> None:
-        task = RequestedTask.get(RequestedTask.task_id == task_id)
         subtask_ids = self.get_requested_task_subtask_ids(task_id)
+        await self.restart_subtasks(task_id, subtask_ids)
 
-        app_client = await self._get_app_client(task.app_id)
-        await app_client.discard_subtasks(task_id, subtask_ids)
-
-        task.status = TaskStatus.waiting
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        task.status = TaskStatus.restarted
         task.save()
+        self._schedule_task_timeout(task, task.task_timeout)
+
+    async def restart_subtask(self, subtask_id) -> None:
+        subtask = self.get_requested_subtask(subtask_id)
+        if subtask:
+            await self.restart_subtasks(subtask.task.task_id, [subtask_id])
 
     async def restart_subtasks(
             self,
@@ -616,8 +650,9 @@ class RequestedTaskManager:
             list(subtask_ids))
 
         for subtask in subtasks:
-            subtask.status = SubtaskStatus.cancelled
+            subtask.status = SubtaskStatus.restarted
             subtask.save()
+            self._schedule_subtask_timeout(subtask, task.subtask_timeout)
 
     async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -919,6 +954,7 @@ class RequestedTaskManager:
         logger.debug('_finish_subtask(subtask=%r, op=%r)', subtask, op)
         subtask_id = subtask.subtask_id
         ProviderComputeTimers.finish(subtask_id)
+        self._timeouts.cancel(subtask_id)
         self._notice_task_updated(subtask.task, subtask_id=subtask_id, op=op)
         node_id = subtask.computing_node.node_id
         subtask_timeout = subtask.task.subtask_timeout
