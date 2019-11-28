@@ -785,7 +785,7 @@ class TestTaskSession(TaskSessionTestBase):
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
         cancel.reset_mock()
-        session._react_to_reject_report_computed_task(msg_ack)
+        session._react_to_reject_report_computed_task(msg_rej)
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
