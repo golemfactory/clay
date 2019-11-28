@@ -430,11 +430,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd, package_hash, package_size = ctd_res
             logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
 
-            logger.info(
-                "Subtask assigned. %s, subtask_id=%r",
-                task_node_info, ctd["subtask_id"]
-            )
-
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
@@ -466,6 +461,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
             self.send(ttc)
+
+            logger.info(
+                "Subtask assigned. %s, subtask_id=%r",
+                task_node_info, ctd["subtask_id"]
+            )
 
             history.add(
                 msg=signed_ttc,
@@ -588,8 +588,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message=msg
         )
 
+        logger.info(
+            "Received subtask. task_id: %r, subtask_id: %r, requestor_id: %r",
+            ctd["task_id"],
+            ctd["subtask_id"],
+            common.short_node_id(msg.requestor_id)
+        )
+
         def _cannot_compute(reason):
-            logger.debug("Cannot %r", reason)
+            logger.info(
+                "Cannot compute subtask. subtask_id: %r, reason: %r",
+                ctd["subtask_id"],
+                reason
+            )
+
             self.send(
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,
@@ -705,7 +717,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info(
-            "Provider can't compute subtask: %r Reason: %r",
+            "Provider can't compute subtask. subtask_id: %r, reason: %r",
             msg.subtask_id,
             msg.reason,
         )
