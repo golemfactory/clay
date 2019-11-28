@@ -1,13 +1,13 @@
+# pylint: disable=too-many-ancestors
 import asyncio
+import os
 import uuid
 from datetime import datetime
-
-from twisted.internet.defer import inlineCallbacks
-
-import os
 from pathlib import Path
 from unittest import mock
-from mock import Mock, call
+from unittest.mock import Mock, call
+
+from twisted.internet.defer import inlineCallbacks
 
 from golem.client import Client
 from golem.ethereum import fundslocker, transactionsystem
@@ -215,7 +215,7 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
             name=str(uuid.uuid4()))
 
         rtm = self.requested_task_manager
-        for i in range(3):
+        for _ in range(3):
             rtm.get_next_subtask(task_id, computing_node)
 
         for subtask in rtm.get_requested_task_subtasks(task_id):
@@ -236,7 +236,7 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
             name=str(uuid.uuid4()))
 
         rtm = self.requested_task_manager
-        for i in range(3):
+        for _ in range(3):
             rtm.get_next_subtask(task_id, computing_node)
 
         ts = self.client.transaction_system
