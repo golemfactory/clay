@@ -583,25 +583,25 @@ class ClientProvider:
 
         self.client.update_setting('accept_tasks', False)
 
-        @defer.inlineCallbacks
-        def init_task():
-            try:
-                yield deferred_from_future(
-                    self.requested_task_manager.init_task(task_id))
-            except Exception:
-                self.client.funds_locker.remove_task(task_id)
-                self.client.update_setting('accept_tasks', True)
-                self.requested_task_manager.error_creating(task_id)
-                raise
-            else:
-                self.requested_task_manager.start_task(task_id)
-
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
-        d = init_task()
+        d = self._init_task_api_task(task_id)
         d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
 
         return task_id
+
+    @defer.inlineCallbacks
+    def _init_task_api_task(self, task_id: str):
+        try:
+            yield deferred_from_future(
+                self.requested_task_manager.init_task(task_id))
+        except Exception:
+            self.client.funds_locker.remove_task(task_id)
+            self.client.update_setting('accept_tasks', True)
+            self.requested_task_manager.error_creating(task_id)
+            raise
+        else:
+            self.requested_task_manager.start_task(task_id)
 
     @rpc_utils.expose('comp.task.create.dry_run')
     @safe_run(_create_task_error)
@@ -726,9 +726,6 @@ class ClientProvider:
 
         try:
             yield deferred_from_future(rtm.restart_task(task_id))
-            yield deferred_from_future(rtm.duplicate_task(
-                task_id,
-                task.output_directory))
         except Exception as exc:  # pylint: disable=broad-except
             return None, str(exc)
         return task_id, None
@@ -833,6 +830,11 @@ class ClientProvider:
             subtask_ids: typing.List[str],
             ignore_gas_price: bool = False,
     ):
+        """ Restart selected subtasks within an active task. This method's
+            behaviour differs from 'restart_legacy_task_subtasks' in that
+            it does not create a new task and does not copy the finished
+            subtask state / results. Task API does not currently allow to
+            manage subtask state within the app. """
         logger.info('Restarting subtasks. task_id=%r', task_id)
 
         rtm = self.requested_task_manager

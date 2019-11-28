@@ -1,8 +1,11 @@
 import asyncio
+import uuid
+from datetime import datetime
+
+from twisted.internet.defer import inlineCallbacks
+
 import os
 from pathlib import Path
-import tempfile
-import unittest
 from unittest import mock
 from mock import Mock, call
 
@@ -11,48 +14,52 @@ from golem.ethereum import fundslocker, transactionsystem
 from golem.task import requestedtaskmanager
 from golem.task import taskserver
 from golem.task import rpc
+from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem.testutils import DatabaseFixture
+from tests.utils.asyncio import AsyncMock, TwistedAsyncioTestCase
 
 
-class TestTaskApiCreate(unittest.TestCase):
+class TaskApiBase(DatabaseFixture):
+
     def setUp(self):
-        self.client = Mock(spec=Client)
-        self.client.transaction_system = Mock(
-            spec=transactionsystem.TransactionSystem,
-        )
-        self.client.transaction_system.get_available_gnt.return_value = 1000
-        self.client.transaction_system.get_available_eth.return_value = 1000
-        self.client.transaction_system.eth_for_batch_payment.return_value = 10
+        super().setUp()
 
-        self.client.concent_service = Mock()
-        self.client.concent_service.available.return_value = False
+        client = Mock(spec=Client)
+        client.has_assigned_task.return_value = False
+        client.transaction_system = Mock(
+            spec=transactionsystem.TransactionSystem)
+        client.transaction_system.get_available_gnt.return_value = 1000
+        client.transaction_system.get_available_eth.return_value = 1000
+        client.transaction_system.eth_for_batch_payment.return_value = 10
+        client.concent_service = Mock()
+        client.concent_service.available.return_value = False
+        client.task_server = Mock(spec=taskserver.TaskServer)
+        client.funds_locker = Mock(spec=fundslocker.FundsLocker)
 
         self.requested_task_manager = Mock(
-            spec=requestedtaskmanager.RequestedTaskManager,
-        )
-        self.client.task_server = Mock(spec=taskserver.TaskServer)
+            spec=requestedtaskmanager.RequestedTaskManager)
+        self.client = client
         self.client.task_server.requested_task_manager = \
             self.requested_task_manager
-
-        self.client.funds_locker = Mock(spec=fundslocker.FundsLocker)
-
         self.rpc = rpc.ClientProvider(self.client)
 
-    @staticmethod
-    def get_golem_params():
-        random_dir = tempfile.gettempdir()
+    def get_golem_params(self):
         return {
             'app_id': 'testappid',
             'name': 'testname',
-            'output_directory': random_dir,
+            'output_directory': self.tempdir,
             'resources': [
-                os.path.join(random_dir, 'resource1'),
-                os.path.join(random_dir, 'resource2'),
+                os.path.join(self.tempdir, 'resource1'),
+                os.path.join(self.tempdir, 'resource2'),
             ],
             'max_price_per_hour': 123,
             'max_subtasks': 4,
             'task_timeout': 60,
             'subtask_timeout': 60,
         }
+
+
+class TestTaskApiCreate(TaskApiBase):
 
     def test_success(self):
         app_params = {
@@ -61,7 +68,6 @@ class TestTaskApiCreate(unittest.TestCase):
         }
         golem_params = self.get_golem_params()
         task_id = 'test_task_id'
-        self.client.has_assigned_task.return_value = False
         self.requested_task_manager.create_task.return_value = task_id
         self.requested_task_manager.init_task.return_value = asyncio.Future()
         self.requested_task_manager.init_task.return_value.set_result(None)
@@ -134,7 +140,6 @@ class TestTaskApiCreate(unittest.TestCase):
         self.client.funds_locker.lock_funds.assert_not_called()
 
     def test_failed_init(self):
-        self.client.has_assigned_task.return_value = False
         self.requested_task_manager.init_task.side_effect = Exception
 
         task_id, _ = self.rpc.create_task({
@@ -148,3 +153,116 @@ class TestTaskApiCreate(unittest.TestCase):
             call('accept_tasks', False),
             call('accept_tasks', True)
         ))
+
+
+@mock.patch('golem.task.requestedtaskmanager.shutil', Mock())
+class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
+
+    def setUp(self):
+        TwistedAsyncioTestCase.setUp(self)
+        TaskApiBase.setUp(self)
+
+        create_task = AsyncMock(return_value=Mock(
+            env_id='env',
+            prerequisites={},
+            inf_requirements=Mock(min_memory_mib=1000.)))
+        next_subtask = AsyncMock(return_value=Mock(
+            params={},
+            resources=['resource_1', 'resource_2']))
+        app_client = AsyncMock(
+            create_task=create_task,
+            next_subtask=next_subtask)
+
+        self.requested_task_manager = requestedtaskmanager.RequestedTaskManager(
+            env_manager=Mock(),
+            app_manager=Mock(),
+            public_key=os.urandom(32),
+            root_path=Path(self.tempdir))
+        self.requested_task_manager._get_app_client = AsyncMock(
+            return_value=app_client)
+        self.client.task_server.requested_task_manager = \
+            self.requested_task_manager
+
+    @inlineCallbacks
+    def test_restart_task(self):
+        task_id = yield self._create_task()
+
+        rtm = self.requested_task_manager
+        assert len(rtm.get_requested_task_ids()) == 1
+        assert rtm.get_requested_task(task_id).status is TaskStatus.waiting
+
+        yield self.rpc.restart_task(task_id)
+        assert rtm.get_requested_task(task_id).status is TaskStatus.aborted
+        assert len(rtm.get_requested_task_ids()) == 2
+
+    @inlineCallbacks
+    def test_restart_task_not_enough_funds(self):
+        task_id = yield self._create_task()
+
+        ts = self.client.transaction_system
+        ts.get_available_gnt.return_value = 0
+        ts.get_available_eth.return_value = 0
+
+        new_task_id, error = yield self.rpc.restart_task(task_id)
+        assert new_task_id is None
+        assert 'Not enough funds' in error
+
+    @inlineCallbacks
+    def test_restart_subtasks(self):
+        task_id = yield self._create_task()
+        computing_node = requestedtaskmanager.ComputingNodeDefinition(
+            node_id=str(uuid.uuid4()),
+            name=str(uuid.uuid4()))
+
+        rtm = self.requested_task_manager
+        for i in range(3):
+            rtm.get_next_subtask(task_id, computing_node)
+
+        for subtask in rtm.get_requested_task_subtasks(task_id):
+            assert subtask.status is SubtaskStatus.starting
+
+        subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+        result = yield self.rpc.restart_subtasks(task_id, subtask_ids)
+
+        assert result is None
+        for subtask in rtm.get_requested_task_subtasks(task_id):
+            assert subtask.status is SubtaskStatus.restarted
+
+    @inlineCallbacks
+    def test_restart_subtasks_not_enough_funds(self):
+        task_id = yield self._create_task()
+        computing_node = requestedtaskmanager.ComputingNodeDefinition(
+            node_id=str(uuid.uuid4()),
+            name=str(uuid.uuid4()))
+
+        rtm = self.requested_task_manager
+        for i in range(3):
+            rtm.get_next_subtask(task_id, computing_node)
+
+        ts = self.client.transaction_system
+        ts.get_available_gnt.return_value = 0
+        ts.get_available_eth.return_value = 0
+
+        subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+        result = yield self.rpc.restart_subtasks(task_id, subtask_ids)
+        assert "Not enough funds" in result
+
+    @inlineCallbacks
+    def _create_task(self):
+        # we need to wait for _init_task_api_task
+        with mock.patch.object(self.rpc, '_init_task_api_task'):
+            task_id, _ = self.rpc.create_task({
+                'golem': self.get_golem_params(),
+                'app': {},
+            })
+        yield self.rpc._init_task_api_task(task_id)
+        return task_id
+
+    @staticmethod
+    def _create_subtask_definition(*_):
+        return requestedtaskmanager.SubtaskDefinition(
+            subtask_id=str(uuid.uuid4()),
+            resources=['input_1', 'input_2'],
+            params={},
+            deadline=int(datetime.now().timestamp() + 3600.),
+        )
