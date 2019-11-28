@@ -542,7 +542,6 @@ class RequestedTaskManager:
             self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
         await self._abort_task_and_shutdown(task)
-        self._timeouts.cancel(task_id)
         self._notice_task_updated(task, op=TaskOp.ABORTED)
 
     async def abort_subtask(self, subtask_id: SubtaskId) -> None:
@@ -621,14 +620,15 @@ class RequestedTaskManager:
         except DoesNotExist:
             return None
 
-    async def restart_task(self, task_id: TaskId) -> None:
-        subtask_ids = self.get_requested_task_subtask_ids(task_id)
-        await self.restart_subtasks(task_id, subtask_ids)
-
+    async def restart_task(self, task_id: TaskId) -> Optional[TaskId]:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
-        task.status = TaskStatus.restarted
-        task.save()
-        self._schedule_task_timeout(task, task.task_timeout)
+        if not task.status.is_active():
+            return None
+
+        new_task_id = await self.duplicate_task(task_id, task.output_directory)
+        await self.init_task(new_task_id)
+        await self.abort_task(task_id)
+        return new_task_id
 
     async def restart_subtask(self, subtask_id) -> None:
         subtask = self.get_requested_subtask(subtask_id)
@@ -654,7 +654,7 @@ class RequestedTaskManager:
         for subtask in subtasks:
             subtask.status = SubtaskStatus.restarted
             subtask.save()
-            self._schedule_subtask_timeout(subtask, task.subtask_timeout)
+            self._finish_subtask(subtask, SubtaskOp.RESTARTED)
 
     async def duplicate_task(self, task_id: TaskId, output_dir: Path) -> TaskId:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
@@ -938,8 +938,14 @@ class RequestedTaskManager:
     ):
         logger.debug(
             "_notice_task_updated(task_id=%s, subtask_id=%s, op=%s)",
-            db_task.task_id, subtask_id, op,
-        )
+            db_task.task_id, subtask_id, op)
+
+        # Cancel a task timeout timer
+        if isinstance(op, TaskOp) and op.is_completed():
+            self._timeouts.cancel(db_task.task_id)
+        # Cancel a subtask timeout timer
+        if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
+            self._timeouts.cancel(subtask_id)
 
         dispatcher.send(
             signal='golem.taskmanager',
@@ -956,7 +962,6 @@ class RequestedTaskManager:
         logger.debug('_finish_subtask(subtask=%r, op=%r)', subtask, op)
         subtask_id = subtask.subtask_id
         ProviderComputeTimers.finish(subtask_id)
-        self._timeouts.cancel(subtask_id)
         self._notice_task_updated(subtask.task, subtask_id=subtask_id, op=op)
         node_id = subtask.computing_node.node_id
         subtask_timeout = subtask.task.subtask_timeout

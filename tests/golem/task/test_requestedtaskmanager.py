@@ -414,9 +414,29 @@ class TestRequestedTaskManager:
         assert len(results) == 1
         assert list(results)[0].task_id == task_id
 
-    # pylint: disable=unused-argument
     @pytest.mark.asyncio
     async def test_restart_task(self, mock_client, monkeypatch):
+        task_timeout = 0.1
+        task_id = await self._start_task(task_timeout=task_timeout)
+
+        create_task = AsyncMock(return_value=Mock(
+            env_id='env',
+            prerequisites={},
+            inf_requirements=Mock(min_memory_mib=1000.)))
+        app_client = AsyncMock(
+            abort_task=AsyncMock(),
+            create_task=create_task,
+            discard_subtasks=AsyncMock())
+        get_app_client = AsyncMock(return_value=app_client)
+        monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
+
+        await self.rtm.restart_task(task_id)
+        assert app_client.create_task.called
+        assert app_client.abort_task.called
+
+    # pylint: disable=unused-argument
+    @pytest.mark.asyncio
+    async def test_restart_task_after_timeout(self, mock_client, monkeypatch):
         task_timeout = 0.1
         task_id = await self._start_task(task_timeout=task_timeout)
 
@@ -424,12 +444,16 @@ class TestRequestedTaskManager:
         await asyncio.sleep(task_timeout)
         assert self.rtm.is_task_finished(task_id)
 
-        app_client = AsyncMock(discard_subtasks=AsyncMock())
+        app_client = AsyncMock(
+            abort_task=AsyncMock(),
+            create_task=AsyncMock(return_value='task_id'),
+            discard_subtasks=AsyncMock())
         get_app_client = AsyncMock(return_value=app_client)
         monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
 
         await self.rtm.restart_task(task_id)
-        assert app_client.discard_subtasks.called
+        assert not app_client.create_task.called
+        assert not app_client.abort_task.called
     # pylint: enable=unused-argument
 
     @pytest.mark.asyncio
