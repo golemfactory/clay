@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,no-member
 # ^^ Pytest fixtures in the same file require the same name
 
 import asyncio
@@ -19,8 +19,7 @@ from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
-    ComputingNodeDefinition,
-    CallScheduler)
+    ComputingNodeDefinition)
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
 from tests.factories.task import requestedtaskmanager as rtm_factory
@@ -562,33 +561,3 @@ class TestRequestedTaskManager:
             node_id=node_id,
             name='testnodename',
         )
-
-
-class TestCallScheduler:
-
-    @pytest.mark.asyncio
-    async def test_schedule(self, monkeypatch):
-        loop = Mock(time=Mock(return_value=10**8))
-        monkeypatch.setattr(
-            requestedtaskmanager.asyncio,
-            'get_event_loop',
-            Mock(return_value=loop))
-
-        scheduler = CallScheduler()
-        scheduler.schedule('fn', 1000., lambda: True)
-        loop.call_at.assert_called_with(10**8 + 1000., ANY)
-
-    @pytest.mark.asyncio
-    async def test_reschedule(self, monkeypatch):
-        cancel = Mock()
-        monkeypatch.setattr(asyncio.TimerHandle, 'cancel', cancel)
-
-        scheduler = CallScheduler()
-        scheduler.schedule('fn', 1000., lambda: True)
-        assert not cancel.called
-
-        scheduler.schedule('fn2', 1000., lambda: True)
-        assert not cancel.called
-
-        scheduler.schedule('fn', 1., lambda: False)
-        assert cancel.called

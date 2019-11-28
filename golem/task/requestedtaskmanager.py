@@ -7,7 +7,7 @@ import os
 import shutil
 from datetime import timedelta
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -20,6 +20,7 @@ from pydispatch import dispatcher
 
 from golem.apps import AppId
 from golem.apps.manager import AppManager
+from golem.core.golem_async import CallScheduler
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -81,33 +82,6 @@ class SubtaskDefinition:
     resources: List[str]
     params: Dict[str, Any]
     deadline: int
-
-
-class CallScheduler:
-    def __init__(self):
-        self._timers: Dict[str, asyncio.TimerHandle] = dict()
-
-    def schedule(
-            self,
-            key: str,
-            timeout: float,
-            call: Callable[..., Any],
-    ) -> None:
-        def on_timeout():
-            self._timers.pop(key, None)
-            call()
-
-        loop = asyncio.get_event_loop()
-
-        self.cancel(key)
-        self._timers[key] = loop.call_at(
-            loop.time() + timeout,
-            on_timeout)
-
-    def cancel(self, key):
-        timer = self._timers.pop(key, None)
-        if timer:
-            timer.cancel()
 
 
 class RequestedTaskManager:
