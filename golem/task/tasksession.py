@@ -596,7 +596,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         def _cannot_compute(reason):
-            logger.info("Cannot compute subtask. reason: %r", reason)
+            logger.info(
+                "Cannot compute subtask. subtask_id: %r, reason: %r",
+                ctd["subtask_id"],
+                reason
+            )
+
             self.send(
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,
@@ -712,7 +717,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info(
-            "Provider can't compute subtask: %r Reason: %r",
+            "Provider can't compute subtask. subtask_id: %r, reason: %r",
             msg.subtask_id,
             msg.reason,
         )
