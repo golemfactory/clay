@@ -82,7 +82,7 @@ def _calculate_subtasks_count(
         # whole number of subtasks.
         new_subtasks_count = _round_int(subtasks_count, num_frames)
 
-    if new_subtasks_count > max_subtasks_count:
+    if new_subtasks_count >= max_subtasks_count:
         return max_subtasks_count
 
     logger.warning("Cannot set total subtasks to %s. Changing to %s",
