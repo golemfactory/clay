@@ -54,8 +54,10 @@ from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests.factories import model as model_factory
-from tests.factories import requestedtaskmanager as rtm_factory
-from tests.factories.task import taskstate as taskstate_factory
+from tests.factories.task import (
+    taskstate as taskstate_factory,
+    requestedtaskmanager as rtm_factory,
+)
 
 random = Random(__name__)
 

@@ -10,12 +10,14 @@ from unittest.mock import Mock, call
 from twisted.internet.defer import inlineCallbacks
 
 from golem.client import Client
+from golem.core.deferred import deferred_from_future
 from golem.ethereum import fundslocker, transactionsystem
 from golem.task import requestedtaskmanager
 from golem.task import taskserver
 from golem.task import rpc
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem.testutils import DatabaseFixture
+from tests.factories.task import requestedtaskmanager as rtm_factory
 from tests.utils.asyncio import AsyncMock, TwistedAsyncioTestCase
 
 
@@ -156,38 +158,29 @@ class TestTaskApiCreate(TaskApiBase):
 
 
 @mock.patch('golem.task.requestedtaskmanager.shutil', Mock())
-class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
+class TestTaskOperations(TwistedAsyncioTestCase, TaskApiBase):
 
     def setUp(self):
         TwistedAsyncioTestCase.setUp(self)
         TaskApiBase.setUp(self)
-
-        create_task = AsyncMock(return_value=Mock(
-            env_id='env',
-            prerequisites={},
-            inf_requirements=Mock(min_memory_mib=1000.)))
-        next_subtask = AsyncMock(return_value=Mock(
-            params={},
-            resources=['resource_1', 'resource_2']))
-        app_client = AsyncMock(
-            create_task=create_task,
-            next_subtask=next_subtask)
 
         self.requested_task_manager = requestedtaskmanager.RequestedTaskManager(
             env_manager=Mock(),
             app_manager=Mock(),
             public_key=os.urandom(32),
             root_path=Path(self.tempdir))
+        self.requested_task_manager._finish_subtask = Mock()
+        self.requested_task_manager._shutdown_app_client = AsyncMock()
         self.requested_task_manager._get_app_client = AsyncMock(
-            return_value=app_client)
+            return_value=rtm_factory.MockRequestorAppClient())
         self.client.task_server.requested_task_manager = \
             self.requested_task_manager
 
     @inlineCallbacks
     def test_restart_task(self):
+        rtm = self.requested_task_manager
         task_id = yield self._create_task()
 
-        rtm = self.requested_task_manager
         assert len(rtm.get_requested_task_ids()) == 1
         assert rtm.get_requested_task(task_id).status is TaskStatus.waiting
 
@@ -209,19 +202,20 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
 
     @inlineCallbacks
     def test_restart_subtasks(self):
-        task_id = yield self._create_task()
-        computing_node = requestedtaskmanager.ComputingNodeDefinition(
-            node_id=str(uuid.uuid4()),
-            name=str(uuid.uuid4()))
-
         rtm = self.requested_task_manager
+        task_id = yield self._create_task()
+
         for _ in range(3):
-            rtm.get_next_subtask(task_id, computing_node)
+            sd = yield deferred_from_future(
+                rtm.get_next_subtask(task_id, self._create_computing_node()))
+            assert isinstance(sd, requestedtaskmanager.SubtaskDefinition)
+            assert rtm.subtask_exists(sd.subtask_id)
 
         for subtask in rtm.get_requested_task_subtasks(task_id):
             assert subtask.status is SubtaskStatus.starting
 
         subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+        assert len(subtask_ids) == 3
         result = yield self.rpc.restart_subtasks(task_id, subtask_ids)
 
         assert result is None
@@ -230,14 +224,14 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
 
     @inlineCallbacks
     def test_restart_subtasks_not_enough_funds(self):
-        task_id = yield self._create_task()
-        computing_node = requestedtaskmanager.ComputingNodeDefinition(
-            node_id=str(uuid.uuid4()),
-            name=str(uuid.uuid4()))
-
         rtm = self.requested_task_manager
+        task_id = yield self._create_task()
+
         for _ in range(3):
-            rtm.get_next_subtask(task_id, computing_node)
+            sd = yield deferred_from_future(
+                rtm.get_next_subtask(task_id, self._create_computing_node()))
+            assert isinstance(sd, requestedtaskmanager.SubtaskDefinition)
+            assert rtm.subtask_exists(sd.subtask_id)
 
         ts = self.client.transaction_system
         ts.get_available_gnt.return_value = 0
@@ -246,6 +240,22 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
         subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
         result = yield self.rpc.restart_subtasks(task_id, subtask_ids)
         assert "Not enough funds" in result
+
+    @inlineCallbacks
+    def test_abort_subtask(self):
+        rtm = self.requested_task_manager
+        task_id = yield self._create_task()
+
+        for _ in range(3):
+            sd = yield deferred_from_future(
+                rtm.get_next_subtask(task_id, self._create_computing_node()))
+            assert isinstance(sd, requestedtaskmanager.SubtaskDefinition)
+            yield deferred_from_future(rtm.abort_subtask(sd.subtask_id))
+
+        subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+        for subtask_id in subtask_ids:
+            subtask = rtm.get_requested_subtask(subtask_id)
+            assert subtask.status == SubtaskStatus.cancelled
 
     @inlineCallbacks
     def _create_task(self):
@@ -266,3 +276,9 @@ class TestRestartTask(TwistedAsyncioTestCase, TaskApiBase):
             params={},
             deadline=int(datetime.now().timestamp() + 3600.),
         )
+
+    @staticmethod
+    def _create_computing_node():
+        return requestedtaskmanager.ComputingNodeDefinition(
+            node_id=str(uuid.uuid4()),
+            name=str(uuid.uuid4()))

@@ -23,6 +23,7 @@ from golem.task.requestedtaskmanager import (
     CallScheduler)
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
+from tests.factories.task import requestedtaskmanager as rtm_factory
 from tests.utils.asyncio import AsyncMock
 
 
@@ -417,17 +418,9 @@ class TestRequestedTaskManager:
     # pylint: disable=unused-argument
     @pytest.mark.asyncio
     async def test_restart_task(self, mock_client, monkeypatch):
-        task_timeout = 0.1
-        task_id = await self._start_task(task_timeout=task_timeout)
+        task_id = await self._start_task(task_timeout=0.1)
 
-        create_task = AsyncMock(return_value=Mock(
-            env_id='env',
-            prerequisites={},
-            inf_requirements=Mock(min_memory_mib=1000.)))
-        app_client = AsyncMock(
-            abort_task=AsyncMock(),
-            create_task=create_task,
-            discard_subtasks=AsyncMock())
+        app_client = rtm_factory.MockRequestorAppClient()
         get_app_client = AsyncMock(return_value=app_client)
         monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
 
@@ -444,16 +437,22 @@ class TestRequestedTaskManager:
         await asyncio.sleep(task_timeout)
         assert self.rtm.is_task_finished(task_id)
 
-        app_client = AsyncMock(
-            abort_task=AsyncMock(),
-            create_task=AsyncMock(return_value='task_id'),
-            discard_subtasks=AsyncMock())
+        app_client = rtm_factory.MockRequestorAppClient()
         get_app_client = AsyncMock(return_value=app_client)
         monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
 
         await self.rtm.restart_task(task_id)
         assert not app_client.create_task.called
         assert not app_client.abort_task.called
+
+    @pytest.mark.asyncio
+    async def test_delete_task(self, mock_client):
+        task_id = await self._start_task(task_timeout=10.)
+        assert self.rtm.get_requested_task(task_id)
+
+        await self.rtm.delete_task(task_id)
+        assert not self.rtm.get_requested_task(task_id)
+
     # pylint: enable=unused-argument
 
     @pytest.mark.asyncio
