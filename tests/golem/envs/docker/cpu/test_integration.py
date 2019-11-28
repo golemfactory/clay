@@ -111,7 +111,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         ))
         self.assertTrue(installed)
 
-        port = 4444
+        port = 3333
         runtime = self.env.runtime(DockerRuntimePayload(
             image="busybox",
             tag="latest",
