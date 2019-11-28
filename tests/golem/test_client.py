@@ -166,6 +166,7 @@ class TestClientInit(DatabaseFixture):
             })
         self.assertIsInstance(client, Client)
 
+
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary'
     '.register_handler',
@@ -1365,6 +1366,17 @@ class TestGetTask(TestClientBase):
                 ),
             ]
         self.client.get_task(uuid.uuid4())
+
+
+class TestTaskManagerListener(TestClientBase):
+    @patch('golem.client.Client._publish')
+    def test_work_offer_received(self, mock_publish):  # noqa pylint: disable=no-self-use
+        dispatcher.send(
+            signal="golem.taskmanager",
+            event="task_status_updated",
+            op=taskstate.TaskOp.WORK_OFFER_RECEIVED,
+        )
+        mock_publish.assert_not_called()
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):
