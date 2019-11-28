@@ -70,5 +70,6 @@ def surge_detector(timeout: datetime.timedelta, treshold: int):
                 _reset()
             key = f"{args}{kwargs}"
             calls_counters[key] = calls_counters.get(key, 0) + 1
+            return f(*args, **kwargs)
         return curry
     return wrapped
