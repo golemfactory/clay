@@ -6,6 +6,7 @@ import logging
 import os.path
 import re
 import typing
+from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -484,14 +485,32 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
-    def create_task(self, task_dict, force=False) \
-            -> typing.Tuple[typing.Optional[str],
-                            typing.Optional[typing.Union[str, typing.Dict]]]:
+    def create_task(
+            self,
+            task_dict: dict,
+            force: bool = False,
+    ) -> typing.Tuple[
+        typing.Optional[TaskId],
+        typing.Optional[typing.Union[str, typing.Dict]]
+    ]:
         """
+        :param task_dict: task definition dictionary
         :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
+
+        if 'golem' in task_dict and 'app' in task_dict:
+            return self._create_task_api_task(
+                task_dict['golem'],
+                task_dict['app']), None
+        return self._create_legacy_task(task_dict, force), None
+
+    def _create_legacy_task(
+            self,
+            task_dict: dict,
+            force: bool = False,
+    ) -> TaskId:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
@@ -520,48 +539,29 @@ class ClientProvider:
             )
         )
 
-        return task_id, None
+        return task_id
 
-    @rpc_utils.expose('comp.task.create.dry_run')
-    @safe_run(_create_task_error)
-    def create_task_dry_run(self, task_dict) \
-            -> typing.Tuple[typing.Optional[dict],
-                            typing.Optional[str]]:
-        """
-        Dry run creating a task.
-        This works by creating a TaskDefinition object (like 'comp.taks.create'
-        would to) and dumping it back to dict (like 'comp.task' would do).
-        Golem performs task_dict validation and possibly changes some fields.
-        This task is not passed for computation.
-        :param task_dict: Task description dictionary. The same as for
-                          'comp.task.create'.
-        :return: (task_dict, None) on success; (None, error_message) on failure.
-        """
-        validate_client(self.client)
-        prepare_and_validate_task_dict(self.client, task_dict)
-        task_definition, task_builder_type = \
-            self.task_manager.create_task_definition(task_dict)
-        task_dict = common.update_dict(
-            {'progress': 0.0},
-            taskstate.TaskState().to_dictionary(),
-            task_builder_type.build_dictionary(task_definition),
-        )
-        return task_dict, None
-
-    # FIXME: integration tests pass a single argument
-    @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(
+    def _create_task_api_task(
             self,
             golem_params: dict,
-            app_params: typing.Optional[dict] = None
+            app_params: dict,
     ) -> TaskId:
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
         if self.client.has_assigned_task():
             raise RuntimeError('Cannot create task while computing')
 
-        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
-            .parse(golem_params, app_params)
+        create_task_params = requestedtaskmanager.CreateTaskParams(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            output_directory=Path(golem_params['output_directory']),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=bool(golem_params.get('concent_enabled', False)),
+            resources=list(map(Path, golem_params['resources'])),
+        )
 
         self._validate_enough_funds_to_pay_for_task(
             create_task_params.max_price_per_hour,
@@ -591,6 +591,7 @@ class ClientProvider:
             except Exception:
                 self.client.funds_locker.remove_task(task_id)
                 self.client.update_setting('accept_tasks', True)
+                self.requested_task_manager.error_creating(task_id)
                 raise
             else:
                 self.requested_task_manager.start_task(task_id)
@@ -601,6 +602,32 @@ class ClientProvider:
         d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
 
         return task_id
+
+    @rpc_utils.expose('comp.task.create.dry_run')
+    @safe_run(_create_task_error)
+    def create_task_dry_run(self, task_dict) \
+            -> typing.Tuple[typing.Optional[dict],
+                            typing.Optional[str]]:
+        """
+        Dry run creating a task.
+        This works by creating a TaskDefinition object (like 'comp.taks.create'
+        would to) and dumping it back to dict (like 'comp.task' would do).
+        Golem performs task_dict validation and possibly changes some fields.
+        This task is not passed for computation.
+        :param task_dict: Task description dictionary. The same as for
+                          'comp.task.create'.
+        :return: (task_dict, None) on success; (None, error_message) on failure.
+        """
+        validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
+        task_definition, task_builder_type = \
+            self.task_manager.create_task_definition(task_dict)
+        task_dict = common.update_dict(
+            {'progress': 0.0},
+            taskstate.TaskState().to_dictionary(),
+            task_builder_type.build_dictionary(task_definition),
+        )
+        return task_dict, None
 
     def _validate_enough_funds_to_pay_for_task(
             self,

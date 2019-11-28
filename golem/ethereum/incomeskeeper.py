@@ -112,7 +112,7 @@ class IncomesKeeper:
             accepted_ts: int) -> model.TaskPayment:
         logger.info(
             "Expected income - sender_node: %s, subtask: %s, "
-            "payer: %s, value: %f",
+            "payer: %s, value: %.18f",
             sender_node,
             subtask_id,
             payer_address,

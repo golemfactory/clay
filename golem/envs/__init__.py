@@ -20,6 +20,7 @@ CounterId = str
 CounterUsage = Any
 
 EnvId = str
+RuntimeId = str
 
 
 class RuntimeEventType(Enum):
@@ -143,7 +144,10 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
         self.close()
 
 
-class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
+RuntimeOutput = Iterable[Union[str, bytes]]
+
+
+class RuntimeOutputBase(RuntimeOutput, ABC):
     """ A handle for reading output (either stdout or stderr) from a running
         Runtime. Yielded items are output lines. Output could be either raw
         (bytes) or decoded (str). """
@@ -160,6 +164,12 @@ class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
 class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
+
+    @abstractmethod
+    def id(self) -> Optional[RuntimeId]:
+        """ Get unique identifier of this Runtime. Might not be available if the
+            Runtime is not yet prepared. """
+        raise NotImplementedError
 
     @abstractmethod
     def prepare(self) -> Deferred:
@@ -403,6 +413,7 @@ class Environment(ABC):
         """ Is the Environment supported on this machine? """
         raise NotImplementedError
 
+    @abstractmethod
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
         raise NotImplementedError
@@ -423,9 +434,8 @@ class Environment(ABC):
         """ Get the general performance score for this environment. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+    def parse_prerequisites(self, prerequisites_dict: Dict[str, Any]) \
             -> Prerequisites:
         """ Build Prerequisites struct from supplied dictionary. Returned value
             is of appropriate type for calling install_prerequisites(). """
@@ -438,9 +448,8 @@ class Environment(ABC):
             Returns boolean indicating whether installation was successful. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
+    def parse_config(self, config_dict: Dict[str, Any]) -> EnvConfig:
         """ Build config struct from supplied dictionary. Returned value
             is of appropriate type for calling update_config(). """
         raise NotImplementedError
@@ -455,6 +464,7 @@ class Environment(ABC):
         """ Update configuration. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
+    @abstractmethod
     def listen(
             self,
             event_type: EnvEventType,

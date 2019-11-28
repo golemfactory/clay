@@ -22,14 +22,17 @@ class AppManager:
                 f"Application already registered. "
                 f"app_name={app.name} app_id={app_id}")
         self._apps[app_id] = app
-        self._state[app_id] = False
+        if app_id not in self._state:
+            self._state[app_id] = False
         logger.info(
             "Application registered. app_name=%r app_id=%r", app.name, app_id)
 
     def enabled(self, app_id: AppId) -> bool:
         """ Check if an application with the given ID is registered in the
             manager and enabled. """
-        return app_id in self._state and self._state[app_id]
+        return app_id in self._apps and \
+            app_id in self._state and \
+            self._state[app_id]
 
     def set_enabled(self, app_id: AppId, enabled: bool) -> None:
         """ Enable or disable an application. Raise an error if the application

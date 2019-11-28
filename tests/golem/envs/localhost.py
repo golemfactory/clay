@@ -2,12 +2,14 @@ import asyncio
 import logging
 import multiprocessing
 import signal
+import uuid
 from pathlib import Path
 from typing import Optional, Dict, Any, Tuple, List, Awaitable, Callable
 
 import dill
 from dataclasses import dataclass, asdict
 from golem_task_api import RequestorAppHandler, ProviderAppHandler, entrypoint
+from golem_task_api.dirutils import RequestorTaskDir
 from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Task
 from twisted.internet import defer, threads
@@ -24,6 +26,7 @@ from golem.envs import (
     Prerequisites,
     Runtime,
     RuntimeBase,
+    RuntimeId,
     RuntimeInput,
     RuntimeOutput,
     RuntimePayload
@@ -72,6 +75,7 @@ class LocalhostPayload(RuntimePayload):
     command: str
     shared_dir: Path
     prerequisites: LocalhostPrerequisites
+    runtime_id: Optional[RuntimeId] = None
 
 
 class LocalhostPayloadBuilder(TaskApiPayloadBuilder):
@@ -142,6 +146,16 @@ class LocalhostAppHandler(RequestorAppHandler, ProviderAppHandler):
         return await self._prereq.compute(  # type: ignore
             subtask_id, subtask_params)
 
+    async def abort_task(self, task_work_dir: RequestorTaskDir) -> None:
+        pass
+
+    async def abort_subtask(
+            self,
+            task_work_dir: RequestorTaskDir,
+            subtask_id: str
+    ) -> None:
+        pass
+
 
 class LocalhostRuntime(RuntimeBase):
 
@@ -150,6 +164,8 @@ class LocalhostRuntime(RuntimeBase):
             payload: LocalhostPayload,
     ) -> None:
         super().__init__(logger)
+        self._id = payload.runtime_id or str(uuid.uuid4())
+
         # From docs: Start a fresh python interpreter process. Unnecessary
         # file descriptors and handles from the parent process will not
         # be inherited.
@@ -160,6 +176,9 @@ class LocalhostRuntime(RuntimeBase):
             daemon=True
         )
         self._shutdown_deferred: Optional[defer.Deferred] = None
+
+    def id(self) -> Optional[RuntimeId]:
+        return self._id
 
     def prepare(self) -> defer.Deferred:
         self._prepared()
@@ -219,10 +238,10 @@ class LocalhostRuntime(RuntimeBase):
         raise NotImplementedError
 
     def stdout(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        raise NotImplementedError
+        return []
 
     def stderr(self, encoding: Optional[str] = None) -> RuntimeOutput:
-        raise NotImplementedError
+        return []
 
     def get_port_mapping(self, port: int) -> Tuple[str, int]:
         return '127.0.0.1', port

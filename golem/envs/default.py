@@ -56,8 +56,11 @@ def register_environments(
         env_manager: EnvironmentManager
 ) -> None:
 
-    if NonHypervisedDockerCPUEnvironment.supported().supported:
-        _register_docker_cpu_env(work_dir, env_manager)
+    from golem.config.active import TASK_API_ENVS
+    if DOCKER_CPU_ENV_ID in TASK_API_ENVS:
+        if NonHypervisedDockerCPUEnvironment.supported().supported:
+            _register_docker_cpu_env(work_dir, env_manager)
 
-    if NonHypervisedDockerGPUEnvironment.supported().supported:
-        _register_docker_gpu_env(work_dir, env_manager)
+    if DOCKER_GPU_ENV_ID in TASK_API_ENVS:
+        if NonHypervisedDockerGPUEnvironment.supported().supported:
+            _register_docker_gpu_env(work_dir, env_manager)

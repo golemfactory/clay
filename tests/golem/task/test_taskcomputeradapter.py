@@ -28,8 +28,8 @@ class TaskComputerAdapterTestBase(TwistedTestCase):
         self.old_computer = old_task_computer()
         self.int_stats_keeper = int_stats_keeper()
         config_desc = ClientConfigDescriptor()
-        config_desc.accept_tasks = True
-        config_desc.in_shutdown = False
+        config_desc.accept_tasks = 1
+        config_desc.in_shutdown = 0
         self.task_keeper = mock.Mock()
         self.task_server = mock.Mock(
             spec=TaskServer,
@@ -61,12 +61,6 @@ class TestTaskGiven(TaskComputerAdapterTestBase):
         with self.assertRaises(AssertionError):
             self.adapter.task_given(ComputeTaskDef())
 
-    def test_old_computer_has_assigned_task(self):
-        self.new_computer.has_assigned_task.return_value = False
-        self.old_computer.has_assigned_task.return_value = True
-        with self.assertRaises(AssertionError):
-            self.adapter.task_given(ComputeTaskDef())
-
     def test_new_task_ok(self):
         self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = False
@@ -89,7 +83,7 @@ class TestTaskGiven(TaskComputerAdapterTestBase):
         }
         self.adapter.task_given(ctd)
         self.new_computer.task_given.assert_not_called()
-        self.old_computer.task_given.assert_called_once_with(ctd)
+        self.old_computer.task_given.assert_called_once_with(ctd, None)
 
 
 class TestHasAssignedTask(TaskComputerAdapterTestBase):
@@ -152,7 +146,7 @@ class TestStartComputation(TaskComputerAdapterTestBase):
         self.new_computer.has_assigned_task.return_value = False
         self.old_computer.has_assigned_task.return_value = False
         with self.assertRaises(RuntimeError):
-            self.adapter.start_computation()
+            self.adapter.start_computation('dupa')
 
     @mock.patch('golem.task.taskcomputer.TaskComputerAdapter.'
                 '_handle_computation_results')
@@ -162,7 +156,7 @@ class TestStartComputation(TaskComputerAdapterTestBase):
         self.new_computer.assigned_task_id = 'test_task'
         self.new_computer.assigned_subtask_id = 'test_subtask'
 
-        self.adapter.start_computation()
+        self.adapter.start_computation('test_task')
 
         self.new_computer.compute.assert_called_once()
         self.old_computer.start_computation.assert_not_called()
@@ -171,18 +165,6 @@ class TestStartComputation(TaskComputerAdapterTestBase):
             'test_task',
             'test_subtask',
             self.new_computer.compute())
-
-    @mock.patch('golem.task.taskcomputer.TaskComputerAdapter.'
-                '_handle_computation_results')
-    def test_assigned_old_task(self, handle_results):
-        self.new_computer.has_assigned_task.return_value = False
-        self.old_computer.has_assigned_task.return_value = True
-
-        self.adapter.start_computation()
-
-        self.new_computer.compute.assert_not_called()
-        self.old_computer.start_computation.assert_called_once()
-        handle_results.assert_not_called()
 
 
 class TestHandleComputationResults(TaskComputerAdapterTestBase):
@@ -218,29 +200,6 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
         )
         self.task_server.send_results.assert_not_called()
         self.finished_callback.assert_called_once_with()
-
-
-class TestTaskInterrupted(TaskComputerAdapterTestBase):
-
-    def test_no_assigned_task(self):
-        self.new_computer.has_assigned_task.return_value = False
-        self.old_computer.has_assigned_task.return_value = False
-        with self.assertRaises(RuntimeError):
-            self.adapter.task_interrupted()
-
-    def test_assigned_new_task(self):
-        self.new_computer.has_assigned_task.return_value = True
-        self.old_computer.has_assigned_task.return_value = False
-        self.adapter.task_interrupted()
-        self.new_computer.task_interrupted.assert_called_once()
-        self.old_computer.task_interrupted.assert_not_called()
-
-    def test_assigned_old_task(self):
-        self.new_computer.has_assigned_task.return_value = False
-        self.old_computer.has_assigned_task.return_value = True
-        self.adapter.task_interrupted()
-        self.new_computer.task_interrupted.assert_not_called()
-        self.old_computer.task_interrupted.assert_called_once()
 
 
 class TestCheckTimeout(TaskComputerAdapterTestBase):
@@ -330,23 +289,23 @@ class TestChangeConfig(TaskComputerAdapterTestBase):
     @defer.inlineCallbacks
     def test_compute_tasks_setting(self):
         yield self._test_compute_tasks(
-            accept_tasks=True,
-            in_shutdown=True,
+            accept_tasks=1,
+            in_shutdown=1,
             expected=False
         )
         yield self._test_compute_tasks(
-            accept_tasks=True,
-            in_shutdown=False,
+            accept_tasks=1,
+            in_shutdown=0,
             expected=True
         )
         yield self._test_compute_tasks(
-            accept_tasks=False,
-            in_shutdown=True,
+            accept_tasks=0,
+            in_shutdown=1,
             expected=False
         )
         yield self._test_compute_tasks(
-            accept_tasks=False,
-            in_shutdown=False,
+            accept_tasks=0,
+            in_shutdown=0,
             expected=False
         )
 

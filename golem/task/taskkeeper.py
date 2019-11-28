@@ -639,14 +639,16 @@ class TaskHeaderKeeper:
 
     def get_task(
             self,
-            exclude: typing.Optional[typing.Set[str]] = None
+            exclude: typing.Optional[typing.Set[str]] = None,
+            supported_tasks: typing.Optional[typing.Set[str]] = None,
     ) -> typing.Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
         """
         logger.debug("`get_task` called. exclude=%r", exclude)
-        tasks = self.supported_tasks
+        tasks = list(supported_tasks) \
+            if supported_tasks is not None else self.supported_tasks
         if exclude:
             tasks = [t for t in tasks if t not in exclude]
         if not tasks:

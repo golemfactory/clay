@@ -111,7 +111,12 @@ class NodeTestPlaybook:
 
     @property
     def output_extension(self):
-        return self.task_settings_dict.get('options', {}).get('format')
+        settings = self.task_settings_dict
+        if helpers.is_task_api_task(settings):
+            app = settings.get('app')
+        else:
+            app = settings.get('options')
+        return app.get('format')
 
     @property
     def current_step_method(self):
@@ -345,7 +350,11 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file_name = settings.get('name') + '*.' + self.output_extension
+        if helpers.is_task_api_task(settings):
+            name = ''
+        else:
+            name = settings.get('name')
+        output_file_name = name + '*.' + self.output_extension
 
         print("Verifying output file: {}".format(output_file_name))
         found_files = list(
