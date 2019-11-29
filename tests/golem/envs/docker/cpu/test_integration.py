@@ -13,6 +13,7 @@ from golem.tools.ci import ci_skip
 
 
 @ci_skip
+@pytest.mark.slow
 class TestIntegration(TestCase, DatabaseFixture):
 
     @classmethod
@@ -172,7 +173,8 @@ class TestIntegration(TestCase, DatabaseFixture):
             max_ram = runtime.usage_counter_values().ram_max_bytes
             self.assertLessEqual(avg_ram, max_ram)
             self.assertGreater(max_ram, num_bytes)
-            self.assertLess(max_ram, 2 * num_bytes)
+            # Upper bound is very loose because it is highly unpredictable
+            self.assertLess(max_ram, 10 * num_bytes)
         finally:
             yield runtime.clean_up()
 
@@ -196,5 +198,7 @@ class TestIntegration(TestCase, DatabaseFixture):
             self.assertApproximates(
                 (cpu_user + cpu_kernel), cpu_total, 0.1 * sec_ns)
             self.assertGreater(cpu_total, 0.9 * seconds * sec_ns)
+            # Upper bound is very loose because it is highly unpredictable
+            self.assertLess(cpu_total, 10 * seconds * sec_ns)
         finally:
             yield runtime.clean_up()
