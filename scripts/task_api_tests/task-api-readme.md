@@ -66,7 +66,7 @@ List of absolute paths to the files required for running this task
 
 #### golem.max_price_per_hour
 
-Max price to pay for the computation per hour, always passed as sting ( in "").
+Max price to pay for the computation per hour, always passed as string ( in "").
 The golem token has 18 digits, so for 1 GNT add 18 zero's.
 
 #### golem.max_subtasks
@@ -113,7 +113,7 @@ Frames to select during the blender render
 
 #### app.format
 
-Output format for the blender render
+Output format for the blender render ( PNG, JPEG or EXR )
 
 #### app.compositing
 
