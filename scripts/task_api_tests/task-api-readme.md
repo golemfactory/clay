@@ -2,6 +2,7 @@
 
 Task-API has been enabled on testnet since the 0.22.0 release.
 For this first release there is no GUI implementation yet, so this guide will use the CLI only.
+When you create a task with CLI it will not show up in GUI
 
 ## Short summary:
 
@@ -57,7 +58,7 @@ You can get the build in app_id's with the command `golemcli ...` (TBD)
 
 #### golem.name
 
-Name of the task in the GUI, not related to task-api. Allowed to be empty
+Name of the task in the GUI, not related to task-api. Allowed to be empty. Will not be used in this first release, GUI does not show tasks
 
 #### golem.resources
 
