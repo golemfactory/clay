@@ -600,7 +600,7 @@ class RequestedTaskManager:
             await self.abort_task(task_id)
         new_task_id = await self.duplicate_task(task_id, task.output_directory)
         await self.init_task(new_task_id)
-        await self.start_task(new_task_id)
+        self.start_task(new_task_id)
         return new_task_id
 
     async def restart_subtask(self, subtask_id) -> None:
