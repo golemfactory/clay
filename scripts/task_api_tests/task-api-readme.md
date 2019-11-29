@@ -35,7 +35,7 @@ Here is an example of a new task-api JSON file.
 ```
 ### golem
 
-The golem block of the JSON is meant for the input golem needs, these are the same for all apps
+The golem block of the JSON is meant for the input Golem needs, these are the same for all apps
 ```
 ...
     "golem": {
