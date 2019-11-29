@@ -441,7 +441,7 @@ class TestRequestedTaskManager:
         monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
 
         await self.rtm.restart_task(task_id)
-        assert not app_client.create_task.called
+        assert app_client.create_task.called
         assert not app_client.abort_task.called
 
     @pytest.mark.asyncio
