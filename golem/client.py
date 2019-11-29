@@ -737,8 +737,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         rtm = self.task_server.requested_task_manager
         subtask = rtm.get_requested_subtask(subtask_id)
         if subtask:
-            yield deferred_from_future(rtm.restart_subtask(subtask_id))
             self.funds_locker.add_subtask(subtask.task.task_id)
+            yield deferred_from_future(rtm.restart_subtask(subtask_id))
             return
 
         task_manager = self.task_server.task_manager
