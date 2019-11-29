@@ -41,7 +41,6 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
-from golem.core.deferred import deferred_from_future
 from golem.core.fileshelper import du
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
@@ -135,9 +134,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
 
-        if self.config_desc.in_shutdown:
-            self.update_setting('in_shutdown', 0)
-
         logger.info(
             'Client %s, datadir: %s',
             node_info_str(self.config_desc.node_name,
@@ -230,6 +226,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # TODO: Move to message queue #3160
         self._task_finished_cb = task_finished_cb
         self._update_hw_preset = update_hw_preset
+
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', 0)
 
         dispatcher.connect(
             self.p2p_listener,
@@ -530,6 +529,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
+
+            self.task_server.requested_task_manager.restore_tasks()
 
             if self.monitor:
                 self.diag_service.register(
@@ -870,7 +871,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
-            task_dict = {'id': task.task_id, 'status': task.status.value}
+            if task.start_time is None:
+                time_started = model.default_now().timestamp()
+            else:
+                time_started = task.start_time.timestamp()
+            task_dict = {
+                'id': task.task_id,
+                'status': task.status.value,
+                'time_started': time_started,
+            }
         else:
             # OLD taskmanager
             logger.debug('get_task(task_id=%r) - OLD', task_id)
@@ -934,7 +943,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if return_created_tasks_only:
             filter_fn = self._filter_task_created_status
 
-        return list(filter(filter_fn, tasks))
+        filtered_tasks = list(filter(filter_fn, tasks))
+        return sorted(filtered_tasks, key=lambda task: task['time_started'])
 
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:
@@ -959,17 +969,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
-            -> Tuple[Optional[Dict], Optional[str]]:
+    def get_subtask(
+            self,
+            subtask_id: str,
+    ) -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             tm = self.task_server.task_manager
             rtm = self.task_server.requested_task_manager
 
-            if task_id:
-                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
-                if subtask:
-                    return subtask.to_dict(), None
+            subtask = rtm.get_requested_subtask(subtask_id)
+            if subtask:
+                return subtask.to_dict(), None
             subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
         except (AttributeError, KeyError):
@@ -1635,8 +1646,10 @@ class MaskUpdateService(LoopingCallService):
             requested_task_manager.decrease_task_mask(
                 task_id=db_task.task_id,
                 num_bits=self._update_num_bits)
-            logger.info('Updating mask. task_id=%r, new_mask_size=%r',
-                        db_task.task_id, db_task.mask.num_bits)
+            logger.info(
+                'Updating mask. task_id=%r, new_mask_size=%r',
+                db_task.task_id,
+                msg_datastructures.masking.Mask(db_task.mask).num_bits)
 
 
 class DailyJobsService(LoopingCallService):

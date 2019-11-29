@@ -45,11 +45,13 @@ def async_run(request, success=None, error=None):
             success(result)
 
 
-class TestTaskHeaderKeeperIsSupported(LogTestCase):
+class TestTaskHeaderKeeperIsSupported(TempDirFixture, LogTestCase):
+
     def setUp(self) -> None:
+        super().setUp()
         self.tk = TaskHeaderKeeper(
             old_env_manager=OldEnvManager(),
-            new_env_manager=NewEnvManager(),
+            new_env_manager=NewEnvManager(self.new_path),
             node=dt_p2p_factory.Node(),
             min_price=10.0)
         self.tk.old_env_manager.environments = {}
@@ -123,12 +125,12 @@ class TestTaskHeaderKeeperIsSupported(LogTestCase):
         self.assertIn(UnsupportReason.MASK_MISMATCH, supported.desc)
 
 
-class TaskHeaderKeeperBase(LogTestCase):
+class TaskHeaderKeeperBase(TempDirFixture, LogTestCase):
     def setUp(self):
         super().setUp()
         self.thk = taskkeeper.TaskHeaderKeeper(
             old_env_manager=OldEnvManager(),
-            new_env_manager=NewEnvManager(),
+            new_env_manager=NewEnvManager(self.new_path),
             node=dt_p2p_factory.Node(),
             min_price=10.0,
         )
@@ -140,7 +142,7 @@ class TestTaskHeaderKeeperWithArchiver(TaskHeaderKeeperBase):
         self.tar = mock.Mock(spec=taskarchiver.TaskArchiver)
         self.thk = TaskHeaderKeeper(
             old_env_manager=OldEnvManager(),
-            new_env_manager=NewEnvManager(),
+            new_env_manager=NewEnvManager(self.new_path),
             node=dt_p2p_factory.Node(),
             min_price=10.0,
             task_archiver=self.tar,
@@ -314,7 +316,7 @@ class TestTaskHeaderKeeper(TaskHeaderKeeperBase):
 
         tk = TaskHeaderKeeper(
             old_env_manager=OldEnvManager(),
-            new_env_manager=NewEnvManager(),
+            new_env_manager=NewEnvManager(self.new_path),
             node=dt_p2p_factory.Node(),
             min_price=10,
             max_tasks_per_requestor=10)

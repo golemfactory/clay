@@ -365,10 +365,7 @@ class PeerSession(BasicSafeSession):
         logger.debug("Running handler for `Tasks`. msg=%r", msg)
         for t in msg.tasks:
             logger.debug("Task information received. task header: %r", t)
-            self.p2p_service.add_task_header(t).addErrback(
-                self.disconnect,
-                message.base.Disconnect.REASON.BadProtocol
-            )
+            self.p2p_service.add_task_header(t)
 
     def _react_to_remove_task(self, msg):
         if not self._verify_remove_task(msg):

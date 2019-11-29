@@ -25,7 +25,7 @@ class TestTaskQueueMixin(
         self.server.client = self.client
         self.server.task_keeper = taskkeeper.TaskHeaderKeeper(
             old_env_manager=self.client.environments_manager,
-            new_env_manager=NewEnvManager(),
+            new_env_manager=NewEnvManager(self.new_path),
             node=self.client.node,
             min_price=0
         )
