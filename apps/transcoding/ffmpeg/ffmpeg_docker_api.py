@@ -40,7 +40,7 @@ class Commands(enum.Enum):
     TRANSCODE = ('transcode', '')
     MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
-    QUERY_MUXER_INFO = ('compute-metrics', 'query-muxer-info-results.json')
+    QUERY_MUXER_INFO = ('query-muxer-info', 'query-muxer-info-results.json')
     QUERY_ENCODER_INFO = (
         'query-encoder-info',
         'query-encoder-info-results.json')
