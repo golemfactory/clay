@@ -12,6 +12,7 @@ import ffmpeg_tools.validation as validation
 import ffmpeg_tools.exceptions as exceptions
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
+from ffmpeg_tools.meta import get_codecs, get_resolutions
 
 import apps.transcoding.common
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
@@ -91,6 +92,32 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         super(TranscodingTask, self).__setstate__(state)
         self.lock = Lock()
 
+    def _autofill_video_codec_from_metadata(self, metadata: dict) -> None:
+        target_video_codec = self.task_definition.options.video_params.codec
+        if target_video_codec is None:
+            src_codecs = get_codecs(metadata, 'video')
+            if len(src_codecs) > 0:
+                self.task_definition.options.video_params.codec = src_codecs[0]
+
+                if len(src_codecs) > 1:
+                    logger.warn(
+                        "Found multiple video streams while trying to determine"
+                        " source video codec. Ignoring all but the first one.")
+
+    def _autofill_resolution_from_metadata(self, metadata: dict) -> None:
+        target_resolution = self.task_definition.options.video_params.resolution
+        if target_resolution is None:
+            src_resolutions = get_resolutions(metadata)
+            if len(src_resolutions) > 0:
+                self.task_definition.options.video_params.resolution = \
+                    src_resolutions[0]
+
+                if len(src_resolutions) > 1:
+                    logger.warn(
+                        "Found multiple video streams while trying to determine"
+                        " source video resolution. Ignoring all but the first"
+                        " one.")
+
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
 
@@ -132,6 +159,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         self.task_resources = streams
         self.chunks = streams
         self.task_definition.subtasks_count = len(chunks)
+
+        self._autofill_video_codec_from_metadata(video_metadata)
+        self._autofill_resolution_from_metadata(video_metadata)
 
         try:
             validation.validate_video(video_metadata)
