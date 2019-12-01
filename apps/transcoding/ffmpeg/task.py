@@ -1,6 +1,9 @@
 import logging
 import os
 
+from ffmpeg_tools.codecs import AudioCodec, VideoCodec
+from ffmpeg_tools.formats import Container
+
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import Commands, \
@@ -45,18 +48,23 @@ class ffmpegTask(TranscodingTask):
 
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
-        vc = video_params.codec.value if video_params.codec else None
-        if transcoding_options.output_container is not None:
-            target_container_str = transcoding_options.output_container.value
+
+        if isinstance(video_params.codec, VideoCodec):
+            raw_video_codec = video_params.codec.value
         else:
-            target_container_str = None
+            raw_video_codec = video_params.codec
+
+        if isinstance(transcoding_options.output_container, Container):
+            raw_container = transcoding_options.output_container.value
+        else:
+            raw_container = transcoding_options.output_container
 
         extra_data = {
             'track': chunk,
             'targs': {
-                'container': target_container_str,
+                'container': raw_container,
                 'video': {
-                    'codec': vc,
+                    'codec': raw_video_codec,
                     'bitrate': video_params.bitrate
                 },
                 'resolution': resolution,

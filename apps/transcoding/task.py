@@ -392,13 +392,13 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
                 not output_container.is_supported_audio_codec(audio_codec):
             raise AudioCodecNotSupportedByContainer(
                 'Container {} does not support {}'.format(
-                    output_container.value, audio_codec.value))
+                    output_container, audio_codec))
 
         if video_codec and \
                 not output_container.is_supported_video_codec(video_codec):
             raise VideoCodecNotSupportedByContainer(
                 'Container {} does not support {}'.format(
-                    output_container.value, video_codec.value))
+                    output_container, video_codec))
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,

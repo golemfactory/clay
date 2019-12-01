@@ -4,7 +4,7 @@ import os
 import glob
 
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Union
 from threading import Lock
 from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.formats import Container
@@ -52,12 +52,12 @@ class FfmpegDockerAPI:
     def __init__(self, directory_mapping: DockerDirMapping):
         self.dir_mapping = directory_mapping
 
-    def extract_video_streams_and_split(self,
-                                        input_file_on_host: str,
-                                        parts: int,
-                                        target_container: Optional[Container],
-                                        target_audio_codec: Optional[
-                                            AudioCodec],):
+    def extract_video_streams_and_split(
+            self,
+            input_file_on_host: str,
+            parts: int,
+            target_container: Optional[Union[Container, str]],
+            target_audio_codec: Optional[Union[AudioCodec, str]]):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
@@ -77,23 +77,23 @@ class FfmpegDockerAPI:
             input_file_in_container,
             'ro')])
 
-        if target_container is None:
-            target_container_str = None
+        if isinstance(target_container, Container):
+            raw_target_container = target_container.value
         else:
-            target_container_str = target_container.value
+            raw_target_container = target_container
 
-        if target_audio_codec is None:
-            target_audio_codec_str = None
+        if isinstance(target_audio_codec, AudioCodec):
+            raw_target_audio_codec = target_audio_codec.value
         else:
-            target_audio_codec_str = target_audio_codec.value
+            raw_target_audio_codec = target_audio_codec
 
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
             'parts': parts,
-            'target_container': target_container_str,
-            'target_audio_codec': target_audio_codec_str,
+            'target_container': raw_target_container,
+            'target_audio_codec': raw_target_audio_codec,
         }
 
         logger.debug(
@@ -135,15 +135,18 @@ class FfmpegDockerAPI:
         targs = {}
         if audio_params.codec is not None:
             targs['audio'] = targs.get('audio', {})
-            targs['audio']['codec'] = audio_params.codec.value
+            if isinstance(audio_params.codec, AudioCodec):
+                targs['audio']['codec'] = audio_params.codec.value
+            else:
+                targs['audio']['codec'] = audio_params.codec
         if audio_params.bitrate is not None:
             targs['audio'] = targs.get('audio', {})
             targs['audio']['bitrate'] = audio_params.bitrate
 
-        if target_container is None:
-            target_container_str = None
+        if isinstance(target_container, Container):
+            raw_target_container = target_container.value
         else:
-            target_container_str = target_container.value
+            raw_target_container = target_container
 
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
@@ -151,7 +154,7 @@ class FfmpegDockerAPI:
             'input_file': container_files['in'],
             'chunks': chunks_in_container,
             'output_file': container_files['out'],
-            'target_container': target_container_str,
+            'target_container': raw_target_container,
             'targs': targs,
             'strip_unsupported_data_streams': strip_unsupported_data_streams,
             'strip_unsupported_subtitle_streams':
