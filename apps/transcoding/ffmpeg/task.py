@@ -1,15 +1,13 @@
 import logging
 import os
 
-from ffmpeg_tools.codecs import AudioCodec, VideoCodec
-from ffmpeg_tools.formats import Container
-
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import Commands, \
     FFMPEG_ENTRYPOINT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
+from golem.core.common import value_if_enum
 from golem.docker.job import DockerJob
 from golem.verifier.ffmpeg_verifier import FFmpegVerifier
 
@@ -49,22 +47,13 @@ class ffmpegTask(TranscodingTask):
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
 
-        if isinstance(video_params.codec, VideoCodec):
-            raw_video_codec = video_params.codec.value
-        else:
-            raw_video_codec = video_params.codec
-
-        if isinstance(transcoding_options.output_container, Container):
-            raw_container = transcoding_options.output_container.value
-        else:
-            raw_container = transcoding_options.output_container
-
         extra_data = {
             'track': chunk,
             'targs': {
-                'container': raw_container,
+                'container':
+                    value_if_enum(transcoding_options.output_container),
                 'video': {
-                    'codec': raw_video_codec,
+                    'codec': value_if_enum(video_params.codec),
                     'bitrate': video_params.bitrate
                 },
                 'resolution': resolution,
