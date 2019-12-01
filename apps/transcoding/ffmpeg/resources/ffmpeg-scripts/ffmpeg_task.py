@@ -259,6 +259,13 @@ def query_muxer_info(muxer):
         json.dump(results, f)
 
 
+def query_encoder_info(encoder):
+    results = {"encoder_info": commands.query_encoder_info(encoder)}
+    results_file = os.path.join(OUTPUT_DIR, "query-encoder-info-results.json")
+    with open(results_file, 'w') as f:
+        json.dump(results, f)
+
+
 def run_ffmpeg(params):
     if params['command'] == "extract":
         do_extract(
@@ -311,6 +318,9 @@ def run_ffmpeg(params):
     elif params['command'] == "query-muxer-info":
         query_muxer_info(
             params["muxer"])
+    elif params['command'] == "query-encoder-info":
+        query_encoder_info(
+            params["encoder"])
     else:
         raise InvalidCommand(f"Invalid command: {params['command']}")
 
