@@ -54,7 +54,7 @@ class FfmpegDockerAPI:
     def extract_video_streams_and_split(self,
                                         input_file_on_host: str,
                                         parts: int,
-                                        target_container: Container):
+                                        target_container: Optional[Container]):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
