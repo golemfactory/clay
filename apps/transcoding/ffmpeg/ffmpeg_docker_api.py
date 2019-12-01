@@ -6,6 +6,7 @@ import glob
 from pathlib import Path
 from typing import List, Optional
 from threading import Lock
+from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.formats import Container
 
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
@@ -54,7 +55,9 @@ class FfmpegDockerAPI:
     def extract_video_streams_and_split(self,
                                         input_file_on_host: str,
                                         parts: int,
-                                        target_container: Optional[Container]):
+                                        target_container: Optional[Container],
+                                        target_audio_codec: Optional[AudioCodec
+                                                                    ],):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
@@ -79,12 +82,18 @@ class FfmpegDockerAPI:
         else:
             target_container_str = target_container.value
 
+        if target_audio_codec is None:
+            target_audio_codec_str = None
+        else:
+            target_audio_codec_str = target_audio_codec.value
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
             'parts': parts,
             'target_container': target_container_str,
+            'target_audio_codec': target_audio_codec_str,
         }
 
         logger.debug(

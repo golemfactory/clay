@@ -40,10 +40,11 @@ class TestffmpegTranscoding(TempDirFixture):
         for parts in [1, 2]:
             with self.subTest('Testing splitting', parts=parts):
                 task_id = str(uuid.uuid4())
-                chunks, _, _ = self.stream_operator.\
+                chunks, _, _, _ = self.stream_operator.\
                     extract_video_streams_and_split(
                         self.RESOURCE_STREAM,
                         parts,
+                        None,
                         None,
                         self.dir_manager.get_task_temporary_dir(task_id),
                         task_id)
@@ -55,6 +56,7 @@ class TestffmpegTranscoding(TempDirFixture):
             self.stream_operator.extract_video_streams_and_split(
                 os.path.join(self.RESOURCES, 'invalid_test_video2.mp4'),
                 1,
+                None,
                 None,
                 self.dir_manager.get_task_temporary_dir(task_id),
                 task_id)
@@ -69,10 +71,11 @@ class TestffmpegTranscoding(TempDirFixture):
         task_dir = self.dir_manager.get_task_temporary_dir(task_id)
         split_output_dir = os.path.join(task_dir, "output")
 
-        chunks, _, _ = self.stream_operator.extract_video_streams_and_split(
+        chunks, _, _, _ = self.stream_operator.extract_video_streams_and_split(
             self.RESOURCE_STREAM,
             parts,
             output_container,
+            None,
             task_dir,
             task_id)
 

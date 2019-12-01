@@ -105,11 +105,12 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         # We expect, that there's only one resource.
         input_file = self.task_resources[0]
 
-        (chunks, video_metadata, muxer_info) = StreamOperator().\
+        (chunks, video_metadata, muxer_info, encoder_info) = StreamOperator().\
             extract_video_streams_and_split(
                 input_file,
                 self.get_total_tasks(),
                 self.task_definition.options.output_container,
+                self.task_definition.options.audio_params.codec,
                 self.task_dir,
                 task_id)
 
@@ -139,6 +140,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 dst_params,
                 video_metadata,
                 muxer_info,
+                encoder_info,
                 self.task_definition.options.strip_unsupported_data_streams,
                 self.task_definition.options.strip_unsupported_subtitle_streams,
             )
