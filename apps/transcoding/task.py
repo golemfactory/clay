@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Tuple, Optional, Union
 import golem_messages.message
 
 import ffmpeg_tools.validation as validation
+import ffmpeg_tools.exceptions as exceptions
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
 
@@ -142,7 +143,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 self.task_definition.options.strip_unsupported_subtitle_streams,
             )
 
-        except validation.InvalidVideo as e:
+        except exceptions.InvalidVideo as e:
             logger.error(e.response_message)
             raise e
 
@@ -324,7 +325,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
 
             return task_def
 
-        except validation.InvalidVideo as e:
+        except exceptions.InvalidVideo as e:
             logger.warning(e.response_message)
             raise e
 

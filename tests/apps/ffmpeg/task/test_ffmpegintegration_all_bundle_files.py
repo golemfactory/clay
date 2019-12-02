@@ -3,8 +3,9 @@ import os
 import pytest
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, FrameRate, list_supported_frame_rates
-from ffmpeg_tools.validation import InvalidResolution, \
-    UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution
+from ffmpeg_tools.validation import validate_resolution
+from ffmpeg_tools.exceptions import InvalidResolution, \
+    UnsupportedVideoCodecConversion, InvalidFrameRate
 from parameterized import parameterized
 
 from golem.tools.ci import ci_skip

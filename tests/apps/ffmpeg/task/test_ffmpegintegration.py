@@ -7,10 +7,10 @@ from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 from ffmpeg_tools.formats import FrameRate
 from ffmpeg_tools.formats import list_supported_frame_rates
-from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
+from ffmpeg_tools.validation import validate_resolution
+from ffmpeg_tools.exceptions import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
-    UnsupportedAudioCodec, UnsupportedVideoCodec, \
-    validate_resolution, UnsupportedStream
+    UnsupportedAudioCodec, UnsupportedVideoCodec, UnsupportedStream
 from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \

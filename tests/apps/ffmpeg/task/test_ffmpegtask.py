@@ -9,7 +9,7 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.validation import UnsupportedVideoCodec, \
+from ffmpeg_tools.exceptions import UnsupportedVideoCodec, \
     UnsupportedAudioCodec, UnsupportedVideoFormat
 
 from apps.transcoding.common import TranscodingTaskBuilderException
@@ -48,7 +48,7 @@ class TestffmpegTask(TempDirFixture):
     def _build_ffmpeg_task(self, subtasks_count=1, stream=RESOURCE_STREAM):
         td = self.tt.task_builder_type.build_definition(
             self.tt, self._task_dictionary(subtasks_count, stream))
-        
+
         dir_manager = DirManager(self.tempdir)
         task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
                                          dir_manager).build()
