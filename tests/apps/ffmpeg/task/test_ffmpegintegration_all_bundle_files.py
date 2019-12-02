@@ -248,12 +248,15 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
 
         try:
             validate_resolution(video["resolution"], resolution)
-            (_input_report, _output_report, diff) = operation.run(video["path"])
-            self.assertEqual(diff, [])
         except InvalidResolution:
             with self.assertRaises(InvalidResolution):
                 operation.run(video["path"])
+
             pytest.skip("Target resolution not supported")
+        else:
+            (_input_report, _output_report, diff) = operation.run(video["path"])
+            self.assertEqual(diff, [])
+
 
     @parameterized.expand(
         (
