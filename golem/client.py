@@ -1583,14 +1583,24 @@ class NetworkConnectionPublisherService(LoopingCallService):
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
+        self._last_value = self.poll()
 
     def _run_async(self):
         # Skip the async_run call and publish events in the main thread
         self._run()
 
     def _run(self):
-        self._client._publish(Network.evt_connection,
-                              self._client.connection_status())
+        current_value = self.poll()
+        if current_value == self._last_value:
+            return
+        self._last_value = current_value
+        self._client._publish(  # pylint: disable=protected-access
+            Network.evt_connection,
+            self._last_value,
+        )
+
+    def poll(self) -> Dict[str, Any]:
+        return self._client.connection_status()
 
 
 class TaskArchiverService(LoopingCallService):
