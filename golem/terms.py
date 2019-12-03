@@ -37,5 +37,5 @@ class TermsOfUse(TermsOfUseBase):
 
 class ConcentTermsOfUse(TermsOfUseBase):
     ACCEPTED_KEY = 'concent_terms_of_use_accepted'
-    VERSION = 0
+    VERSION = 1
     PATH = Path('golem/CONCENT_TERMS.html')

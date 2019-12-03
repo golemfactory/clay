@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-ancestors
+# pylint: disable=protected-access,too-many-ancestors,too-many-lines
 import copy
 import itertools
 from tempfile import TemporaryDirectory
@@ -306,7 +306,8 @@ class TestRestartTask(ProviderBase):
         task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
         with mock.patch('golem.task.rpc._prepare_task') as prep_mock:
-            new_task_id, error = self.provider.restart_task(task.header.task_id)
+            deferred = self.provider.restart_task(task.header.task_id)
+            new_task_id, error = golem_deferred.sync_wait(deferred)
             prep_mock.assert_called_once()
 
         mock_validate_funds.assert_called_once_with(
@@ -732,20 +733,20 @@ class TestRestartSubtasks(ProviderBase):
     def test_task_unknown(self, *_):
         task_id = 'unknown-task-uuid'
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=task_id,
-            subtask_ids=self.subtask_ids
-        )
+            subtask_ids=self.subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertIn(task_id, error)
 
     def test_subtask_mismatch(self, *_):
         subtask_ids = ['im-not-from-this-task']
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=self.task_id,
-            subtask_ids=subtask_ids
-        )
+            subtask_ids=subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error, f'Subtask does not belong to the given task.'
                                 f'task_id: {self.task_id}, '
@@ -761,10 +762,10 @@ class TestRestartSubtasks(ProviderBase):
                 currency='ETH'
             )
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=self.task.header.task_id,
-            subtask_ids=self.subtask_ids
-        )
+            subtask_ids=self.subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
         self.assertIsNotNone(error['error_msg'])
@@ -841,10 +842,10 @@ class TestRestartFrameSubtasks(ProviderBase):
             'golem.task.taskmanager.TaskManager.get_frame_subtasks',
             return_value=mock_frame_subtasks
         ):
-            error = self.provider.restart_frame_subtasks(
+            deferred = self.provider.restart_frame_subtasks(
                 task_id=task_id,
-                frame=1
-            )
+                frame=1)
+            error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error, f'Task not found: {task_id!r}')
 
@@ -881,8 +882,8 @@ class TestExceptionPropagation(ProviderBase):
         self.provider.task_manager.assert_task_can_be_restarted\
             .side_effect = Exception("Test")
 
-        result = self.provider.restart_task(0)
-
+        deferred = self.provider.restart_task("0")
+        result = golem_deferred.sync_wait(deferred)
         self.assertEqual(result, (None, "Test"))
 
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")

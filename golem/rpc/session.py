@@ -1,3 +1,4 @@
+import datetime
 import functools
 import logging
 import typing
@@ -15,6 +16,7 @@ from twisted.internet.endpoints import (
     TCP4ClientEndpoint, TCP6ClientEndpoint, SSL4ClientEndpoint
 )
 
+from golem.decorators import surge_detector
 from golem.rpc.common import X509_COMMON_NAME
 from golem.rpc import utils as rpc_utils
 
@@ -284,6 +286,10 @@ class Publisher:  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
+    @surge_detector(
+        timeout=datetime.timedelta(seconds=2),
+        treshold=10,
+    )
     def publish(self, event_alias, *args, **kwargs) \
             -> typing.Optional[Deferred]:
         """

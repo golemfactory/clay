@@ -529,6 +529,12 @@ class TaskServer(
 
         self.task_computer.task_given(msg.compute_task_def, cpu_time_limit)
 
+        resource_downloaded = functools.partial(
+            self._resource_downloaded,
+            msg.subtask_id,
+            msg.requestor_id,
+            msg.price)
+
         if task_header.environment_prerequisites:
             subtask_inputs_dir = self.task_computer.get_subtask_inputs_dir()
             resources_options = msg.resources_options or dict(options={})
@@ -543,11 +549,14 @@ class TaskServer(
                 ) for resource_id in msg.compute_task_def['resources']
             ]
 
-            defer.gatherResults(deferred_list, consumeErrors=True)\
-                .addCallbacks(
-                    lambda _: self.resource_collected(msg.task_id,
-                                                      msg.subtask_id),
-                    lambda e: self.resource_failure(msg.task_id, e))
+            defer.gatherResults(
+                deferred_list,
+                consumeErrors=True,
+            ).addCallback(
+                lambda _: resource_downloaded()
+            ).addCallbacks(
+                lambda _: self.resource_collected(msg.task_id, msg.subtask_id),
+                lambda e: self.resource_failure(msg.task_id, e))
         else:
             self.request_resource(
                 msg.task_id,
@@ -555,15 +564,24 @@ class TaskServer(
                 msg.compute_task_def['resources'],
                 msg.resources_options,
             )
+            resource_downloaded()
+
+        return True
+
+    def _resource_downloaded(
+            self,
+            subtask_id: str,
+            requestor_id: str,
+            price: int,
+    ) -> None:
         self.requested_tasks.clear()
-        update_requestor_assigned_sum(msg.requestor_id, msg.price)
+        update_requestor_assigned_sum(requestor_id, price)
         dispatcher.send(
             signal='golem.subtask',
             event='started',
-            subtask_id=msg.subtask_id,
-            price=msg.price,
+            subtask_id=subtask_id,
+            price=price,
         )
-        return True
 
     def resource_collected(
             self,
