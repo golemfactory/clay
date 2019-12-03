@@ -479,3 +479,29 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         task: Task = self.execute_task(task_def)
         print(self.get_task_state(task))
         self.assertTrue(self.get_task_state(task) == TaskStatus.aborted)
+
+    def test_dont_retry_failed_subtask_more_than_1_time(self):
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
+        result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            video_options={
+                'codec': 'h265',
+                'resolution': [320, 240],
+                'frame_rate': "25",
+            })
+
+        task: Task = self.start_task(task_def)
+
+        for i in range(2):
+            self._fail_next_subtask_and_verify(task)
+
+        self.assertFalse(task.needs_computation())
+        self.assertTrue(task.finished_computation())
+        # self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
+
+    def _fail_next_subtask_and_verify(self, task: Task):
+        result, subtask_id = self.fail_computing_next_subtask(task)
+        self.verify_subtask(task, subtask_id, result)

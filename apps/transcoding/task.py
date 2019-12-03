@@ -65,10 +65,15 @@ class TranscodingTaskDefinition(TaskDefinition):
 
 
 class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
+
+    MAX_SUBTASK_RETRIES_AFTER_FAIL = 2
+
     def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs) \
             -> None:
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
+        self.subtask_exceeded_max_retries_after_fail = False
+        self.number_of_failed_subtask_tries = dict()
         self.task_definition = task_definition
         self.lock = Lock()
         self.chunks: List[str] = list()
@@ -217,6 +222,52 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         curr = self.last_task + 1
         self.last_task = curr
         return curr - 1
+
+    def _should_retry_failed_subtask(self, failed_subtask_id):
+        task_number = self._get_subtask_number_from_id(failed_subtask_id)
+        number_of_fails = self.number_of_failed_subtask_tries[task_number]
+        return number_of_fails < TranscodingTask.MAX_SUBTASK_RETRIES_AFTER_FAIL
+
+    def _increment_number_of_subtask_fails(self, failed_subtask_id):
+        subtask_number = self._get_subtask_number_from_id(failed_subtask_id)
+        if subtask_number not in self.number_of_failed_subtask_tries.keys():
+            self.number_of_failed_subtask_tries[subtask_number] = 0
+        self.number_of_failed_subtask_tries[subtask_number] += 1
+
+    def _get_subtask_number_from_id(self, subtask_id):
+        return self.subtasks_given[subtask_id]["subtask_num"]
+
+    def needs_computation(self):
+        if self.subtask_exceeded_max_retries_after_fail:
+            return False
+        return super().needs_computation()
+
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
+        self._increment_number_of_subtask_fails(subtask_id)
+        if not self._should_retry_failed_subtask(subtask_id):
+            self.subtask_exceeded_max_retries_after_fail = True
+        super().computation_failed(subtask_id)
+
+    # this decides whether finish the task or not
+    def finished_computation(self):
+        if self.subtask_exceeded_max_retries_after_fail:
+            return self._all_subtasks_have_ended_status()
+        return super().finished_computation()
+
+    def _all_subtasks_have_ended_status(self):
+        subtasks = self.subtasks_given.values()
+        ended_subtasks = [subtask for subtask in subtasks if TranscodingTask._is_subtask_ended(subtask)]
+        return len(ended_subtasks) == len(subtasks)
+
+    @staticmethod
+    def _is_subtask_ended(subtask):
+        return subtask['status'] in [
+            SubtaskStatus.finished,
+            SubtaskStatus.failure,
+            SubtaskStatus.timeout,
+            SubtaskStatus.cancelled,
+            SubtaskStatus.resent
+        ]
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
