@@ -24,13 +24,11 @@ class ResourceManager:
 
     def build_client_options(
             self,
-            peers: Optional[Peers] = None,
             **kwargs,
     ) -> ClientOptions:
         """ Return client-specific request options """
 
-        return self._client.build_options(
-            peers=peers, **kwargs)
+        return self._client.build_options(**kwargs)
 
     @inlineCallbacks
     def share(

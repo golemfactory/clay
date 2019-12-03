@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator
+    Optional, Generator, Type
 )
 
 from ethereum.utils import denoms
@@ -17,8 +17,6 @@ from golem_messages import message
 from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
-
-from apps.appsmanager import App
 
 import golem
 from golem.core import common
@@ -52,7 +50,7 @@ if TYPE_CHECKING:
     from twisted.internet.protocol import Protocol
 
     from .requestedtaskmanager import RequestedTaskManager
-    from .taskcomputer import TaskComputer
+    from .taskcomputer import TaskComputerAdapter
     from .taskmanager import TaskManager
     from .taskserver import TaskServer
     from golem.network.concent.client import ConcentClientService
@@ -144,7 +142,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.requested_task_manager
 
     @property
-    def task_computer(self) -> 'TaskComputer':
+    def task_computer(self) -> 'TaskComputerAdapter':
         return self.task_server.task_computer
 
     @property
@@ -165,15 +163,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _get_app_from_header(
-            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
-        return self.task_server.client.apps_manager.get_app_for_env(
+    def _get_task_class(
+            self, task_header: message.tasks.TaskHeader):
+        return self.task_server.client.apps_manager.get_task_class_for_env(
             task_header.environment
         )
-
-    def _get_task_class(self, task_header: message.tasks.TaskHeader):
-        app = self._get_app_from_header(task_header)
-        return app.builder.TASK_CLASS if app else Task
 
     ########################
     # BasicSession methods #
@@ -436,11 +430,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd, package_hash, package_size = ctd_res
             logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
 
-            logger.info(
-                "Subtask assigned. %s, subtask_id=%r",
-                task_node_info, ctd["subtask_id"]
-            )
-
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
@@ -472,6 +461,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
             self.send(ttc)
+
+            logger.info(
+                "Subtask assigned. %s, subtask_id=%r",
+                task_node_info, ctd["subtask_id"]
+            )
 
             history.add(
                 msg=signed_ttc,
@@ -594,8 +588,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message=msg
         )
 
+        logger.info(
+            "Received subtask. task_id: %r, subtask_id: %r, requestor_id: %r",
+            ctd["task_id"],
+            ctd["subtask_id"],
+            common.short_node_id(msg.requestor_id)
+        )
+
         def _cannot_compute(reason):
-            logger.debug("Cannot %r", reason)
+            logger.info(
+                "Cannot compute subtask. subtask_id: %r, reason: %r",
+                ctd["subtask_id"],
+                reason
+            )
+
             self.send(
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,
@@ -606,7 +612,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
             return
 
@@ -711,7 +717,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         logger.info(
-            "Provider can't compute subtask: %r Reason: %r",
+            "Provider can't compute subtask. subtask_id: %r, reason: %r",
             msg.subtask_id,
             msg.reason,
         )
@@ -1087,16 +1093,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
+        subtask_known = False
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.info("Requestor '%r' rejected the computed subtask '%r' "
-                        "report", self.key_id, msg.subtask_id)
-
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceReportComputedTask')
-        else:
-            logger.warning("Requestor '%r' rejected a computed task report of"
-                           "an unknown task (subtask_id='%s')",
-                           self.key_id, msg.subtask_id)
+            subtask_known = True
+        logger.log(
+            logging.INFO if subtask_known else logging.WARNING,
+            "ReportComputedTask rejected by the requestor%s. "
+            "requestor_id='%r', subtask_id='%r', reason='%s'",
+            '' if subtask_known else ' and the subtask is unknown to us',
+            self.key_id, msg.subtask_id, msg.reason
+        )
 
     def disconnect(self, reason: message.base.Disconnect.REASON):
         if not self.conn.opened:
