@@ -641,7 +641,9 @@ class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
         )
 
     @patch('golem.client.logger')
-    def test_run(self, logger):
+    @patch('golem.client.NetworkConnectionPublisherService.poll')
+    def test_run(self, poll_mock, logger):
+        poll_mock.return_value = {'random_key': random.random()}
         self.service._run()
 
         logger.debug.assert_not_called()
