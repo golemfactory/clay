@@ -178,6 +178,8 @@ def geomean(a: Iterable[float]) -> float:
 
 class ProviderWasmMarketStrategy(ProviderMarketStrategy):
 
+    SET_CPU_TIME_LIMIT: bool = True
+
     @classmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
