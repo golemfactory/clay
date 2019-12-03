@@ -44,7 +44,7 @@ CONCENT_CHOICES: dict = {
         'pubkey': b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x84\x81b6C\xe8\xe0\xdb\\.P\x00;rZM\xafQI\xf7G\x95\xe3\xe3.h\x19\xf1\x0f\xfa\x8c\xed\x12:\x88\x8aK\x00C9 \xf0~P',  # noqa pylint: disable=line-too-long
         'certificate': str(CONCENT_CERTIFICATES_DIR / 'staging.crt'),
         'deposit_contract_address':
-            '0x863f24E4E4217692Def7EFc0824A42c7D0585B26',
+            '0x884443710CDe8Bb56D10E81059513fb1c4Bf32A3',
     },
     'test': {
         'url': 'https://test.concent.golem.network',
@@ -55,8 +55,7 @@ CONCENT_CHOICES: dict = {
     },
     'main': {
         'url': 'https://main.concent.golem.network',
-        'pubkey': b"\x0b\xb2\x03OY\xcb0\xaa\x85\xac\x00 #\x8a\x8b\x98\xd6\xd3yeq7V\xcf\xa2\xa8%\xda\x05\xecHn\xdfe\xc0/\x97\xfd\x13\xf4\x9a\x81\xfdO\xf6\x81\x19\xaa\xd9\xb79]\x16\xad*\xfa\x9a\x88blV\xccr\x9c",  # noqa pylint: disable=line-too-long
-        'certificate': str(CONCENT_CERTIFICATES_DIR / 'main.crt'),
+        'pubkey': b'F[\x03\xa8\xab[\x98\xd4\xd4$\xf8\xe1\x0fG\x92\xa1\xb2\xef*\xc5`}\xb52\xaaU\x1f\xd4\x8b\t\xb5=r\\\x8c\x07A`\x8c\x1a\x83\x01>@\x9b\x87\x17\x8d/\xfc\x0b\xa5\xe1\x80.\x9dm\xbcQ\x93hR\x1f6',  # noqa pylint: disable=line-too-long
         'deposit_contract_address':
             '0x98d3ca6528A2532Ffd9BDef50F92189568932570',
     },
