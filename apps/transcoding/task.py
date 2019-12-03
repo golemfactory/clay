@@ -243,9 +243,13 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         return super().needs_computation()
 
     def computation_failed(self, subtask_id: str, ban_node: bool = True):
-        self._increment_number_of_subtask_fails(subtask_id)
-        if not self._should_retry_failed_subtask(subtask_id):
-            self.subtask_exceeded_max_retries_after_fail = True
+        status = self.subtasks_given[subtask_id]['status']
+        print("SUBTASK " + subtask_id + " " + str(status))
+        if status == SubtaskStatus.failure:
+            self._increment_number_of_subtask_fails(subtask_id)
+            if not self._should_retry_failed_subtask(subtask_id):
+                self.subtask_exceeded_max_retries_after_fail = True
+            print("COMPUTATION FAILED")
         super().computation_failed(subtask_id)
 
     # this decides whether finish the task or not

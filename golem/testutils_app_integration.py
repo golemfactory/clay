@@ -8,6 +8,8 @@ from random import SystemRandom
 from typing import Tuple, List
 from unittest.mock import patch
 from pathlib import Path
+from datetime import datetime
+import time
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -155,6 +157,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         return result, subtask_id
 
     def query_next_subtask(self, task: Task):
+        print("TASK: " + str(task))
         ctd: ComputeTaskDef = self.task_manager. \
             get_next_subtask(node_id=self._generate_node_id(),
                              task_id=task.task_definition.task_id,
@@ -163,7 +166,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
                                  task.price /
                                  task.task_definition.subtasks_count),
                              offer_hash="blaa offeeeeer")
-
+        print("CTD: " + str(ctd))
         return ctd["subtask_id"], ctd
 
     def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int,
@@ -189,6 +192,15 @@ class TestTaskIntegration(TestDatabaseWithReactor):
                                                      task_id,
                                                      subtask_id)
         return TaskResult(result)
+
+    def timeout_next_subtask(self, task: Task):
+        subtask_id, ctd = self.query_next_subtask(task)
+        deadline = datetime.fromtimestamp(ctd['deadline'])
+        now = datetime.now()
+        time.sleep((deadline - now).seconds + 0.5)
+
+        result = self.execute_on_mock_provider(task, ctd, subtask_id, 0)
+        return result, subtask_id
 
     def verify_subtask(self, task: Task, subtask_id, result):
         task_id = task.task_definition.task_id
