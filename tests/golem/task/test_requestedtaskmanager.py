@@ -1,4 +1,4 @@
-# pylint: disable=redefined-outer-name
+# pylint: disable=redefined-outer-name,no-member
 # ^^ Pytest fixtures in the same file require the same name
 
 import asyncio
@@ -8,7 +8,7 @@ from freezegun import freeze_time
 from golem_task_api.client import RequestorAppClient
 from golem_task_api.enums import VerifyResult
 from golem_task_api.structs import Subtask, Infrastructure
-from mock import ANY, call, MagicMock, Mock, patch
+from mock import ANY, call, MagicMock, Mock
 import pytest
 from twisted.internet import defer
 
@@ -19,10 +19,10 @@ from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (
     CreateTaskParams,
     RequestedTaskManager,
-    ComputingNodeDefinition,
-)
+    ComputingNodeDefinition)
 from golem.task.taskstate import TaskStatus, SubtaskStatus, TaskState
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
+from tests.factories.task import requestedtaskmanager as rtm_factory
 from tests.utils.asyncio import AsyncMock
 
 
@@ -97,9 +97,8 @@ class TestRequestedTaskManager:
         )
 
     @pytest.mark.asyncio
-    async def test_restore_tasks_schedule(self, mock_client):
+    async def test_restore_tasks_schedule(self, mock_client, monkeypatch):
         # given
-        mock_loop = MagicMock()
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task(
@@ -110,16 +109,14 @@ class TestRequestedTaskManager:
         computing_node = self._get_computing_node()
         subtask = await self.rtm.get_next_subtask(task_id, computing_node)
         # when
-        with patch(
-            'golem.task.requestedtaskmanager.asyncio.get_event_loop',
-            return_value=mock_loop
-        ):
-            self.rtm.restore_tasks()
+        schedule = MagicMock()
+        monkeypatch.setattr(self.rtm._timeouts, 'schedule', schedule)
+        self.rtm.restore_tasks()
         # then
-        assert mock_loop.call_at.call_count == 2
-        mock_loop.call_at.assert_has_calls([
-            call(ANY, ANY, task_id, subtask.subtask_id),
-            call(ANY, ANY, task_id),
+        assert schedule.call_count == 2
+        schedule.assert_has_calls([
+            call(subtask.subtask_id, ANY, ANY),
+            call(task_id, ANY, ANY),
         ])
 
     def test_create_task(self):
@@ -417,16 +414,45 @@ class TestRequestedTaskManager:
         assert len(results) == 1
         assert list(results)[0].task_id == task_id
 
+    # pylint: disable=unused-argument
     @pytest.mark.asyncio
-    async def test_restart_task(self, mock_client):
+    async def test_restart_task(self, mock_client, monkeypatch):
+        task_id = await self._start_task(task_timeout=0.1)
+
+        app_client = rtm_factory.MockRequestorAppClient()
+        get_app_client = AsyncMock(return_value=app_client)
+        monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
+
+        await self.rtm.restart_task(task_id)
+        assert app_client.create_task.called
+        assert app_client.abort_task.called
+
+    @pytest.mark.asyncio
+    async def test_restart_task_after_timeout(self, mock_client, monkeypatch):
         task_timeout = 0.1
         task_id = await self._start_task(task_timeout=task_timeout)
+
         # Wait for the task to timeout
         await asyncio.sleep(task_timeout)
         assert self.rtm.is_task_finished(task_id)
 
+        app_client = rtm_factory.MockRequestorAppClient()
+        get_app_client = AsyncMock(return_value=app_client)
+        monkeypatch.setattr(self.rtm, '_get_app_client', get_app_client)
+
         await self.rtm.restart_task(task_id)
-        assert not self.rtm.is_task_finished(task_id)
+        assert app_client.create_task.called
+        assert not app_client.abort_task.called
+
+    @pytest.mark.asyncio
+    async def test_delete_task(self, mock_client):
+        task_id = await self._start_task(task_timeout=10.)
+        assert self.rtm.get_requested_task(task_id)
+
+        await self.rtm.delete_task(task_id)
+        assert not self.rtm.get_requested_task(task_id)
+
+    # pylint: enable=unused-argument
 
     @pytest.mark.asyncio
     async def test_duplicate_task(self, mock_client):

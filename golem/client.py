@@ -41,6 +41,7 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
+from golem.core.deferred import deferred_from_future
 from golem.core.fileshelper import du
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
@@ -725,34 +726,52 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return result
 
     @rpc_utils.expose('comp.task.abort')
+    @inlineCallbacks
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
-        self.task_server.task_manager.abort_task(task_id)
+        rtm = self.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            yield deferred_from_future(rtm.abort_task(task_id))
+        else:
+            self.task_server.task_manager.abort_task(task_id)
 
     @rpc_utils.expose('comp.task.subtask.restart')
+    @inlineCallbacks
     def restart_subtask(self, subtask_id):
-        logger.debug("restarting subtask %s", subtask_id)
-        task_manager = self.task_server.task_manager
+        logger.debug("Restarting subtask %s", subtask_id)
 
+        rtm = self.task_server.requested_task_manager
+        subtask = rtm.get_requested_subtask(subtask_id)
+        if subtask:
+            self.funds_locker.add_subtask(subtask.task.task_id)
+            yield deferred_from_future(rtm.restart_subtask(subtask_id))
+            return
+
+        task_manager = self.task_server.task_manager
         task_id = task_manager.get_task_id(subtask_id)
         self.funds_locker.add_subtask(task_id)
-
         task_manager.restart_subtask(subtask_id)
 
     @rpc_utils.expose('comp.task.delete')
+    @inlineCallbacks
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
-        self.task_server.task_manager.delete_task(task_id)
+        rtm = self.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            yield deferred_from_future(rtm.delete_task(task_id))
+        else:
+            self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
+    @inlineCallbacks
     def purge_tasks(self):
         tasks = self.get_tasks()
         logger.debug('Deleting %d tasks ...', len(tasks))
         for t in tasks:
-            self.delete_task(t['id'])
+            yield self.delete_task(t['id'])
 
     @rpc_utils.expose('net.ident')
     def get_node(self):
@@ -994,6 +1013,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.task.preview')
     def get_task_preview(self, task_id, single=False):
+        self._assert_not_task_api_task(task_id)
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
@@ -1167,8 +1187,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
+        self._assert_not_task_api_task(task_id)
         state = self.task_server.task_manager.query_task_state(task_id)
         return DictSerializer.dump(state)
+
+    def _assert_not_task_api_task(self, task_id: str):
+        assert self.task_server
+        if self.task_server.requested_task_manager.task_exists(task_id):
+            raise RuntimeError("Task API: unsupported RPC call")
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.resource_server.download_resources(

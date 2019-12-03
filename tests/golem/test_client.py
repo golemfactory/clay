@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-lines
+# pylint: disable=protected-access,too-many-lines,no-member
 import os
 import time
 import uuid
@@ -54,7 +54,10 @@ from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests.factories import model as model_factory
-from tests.factories.task import taskstate as taskstate_factory
+from tests.factories.task import (
+    taskstate as taskstate_factory,
+    requestedtaskmanager as rtm_factory,
+)
 
 random = Random(__name__)
 
@@ -497,7 +500,8 @@ class TestClientRestartSubtasks(TestClientBase):
             10,
         )
 
-        self.client.task_server = Mock()
+        self.client.task_server = Mock(
+            requested_task_manager=rtm_factory.MockRequestedTaskManager())
 
     def test_restart_subtask(self):
         # given
@@ -505,7 +509,7 @@ class TestClientRestartSubtasks(TestClientBase):
             self.task_id
 
         # when
-        self.client.restart_subtask('subtask_id')
+        sync_wait(self.client.restart_subtask('subtask_id'))
 
         # then
         self.client.task_server.task_manager.restart_subtask.\
@@ -717,6 +721,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.monitor = Mock()
         self.client._update_hw_preset = Mock()
         self.client.task_server.change_config = Mock()
+        self.client.task_server.requested_task_manager = \
+            rtm_factory.MockRequestedTaskManager()
 
     def test_node(self, *_):
         c = self.client
@@ -912,12 +918,13 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_delete_task(self, *_):
         c = self.client
-        c.remove_task_header = Mock()
         c.remove_task = Mock()
-        c.task_server = Mock()
+        c.remove_task_header = Mock()
+        c.task_server.remove_task_header = Mock()
+        c.task_server.task_manager.delete_task = Mock()
 
         task_id = str(uuid.uuid4())
-        c.delete_task(task_id)
+        sync_wait(c.delete_task(task_id))
         assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
@@ -925,14 +932,15 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_purge_tasks(self, *_):
         c = self.client
-        c.remove_task_header = Mock()
         c.remove_task = Mock()
-        c.task_server = Mock()
+        c.remove_task_header = Mock()
+        c.task_server.remove_task_header = Mock()
+        c.task_server.task_manager.delete_task = Mock()
 
         task_id = str(uuid.uuid4())
         c.get_tasks = Mock(return_value=[{'id': task_id}, ])
 
-        c.purge_tasks()
+        sync_wait(c.purge_tasks())
         assert c.get_tasks.called
         assert c.task_server.remove_task_header.called
         assert c.remove_task.called
