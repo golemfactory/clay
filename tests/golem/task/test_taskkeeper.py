@@ -6,6 +6,7 @@ import time
 import unittest.mock as mock
 
 from eth_utils import encode_hex
+from ethereum.utils import denoms
 from freezegun import freeze_time
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
@@ -508,8 +509,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             header.subtask_timeout = 3
 
             test_headers.append(header)
-            price_bid = int(random.random() * 100)
-            ctk.add_request(header, price_bid, 0.0)
+            price = calculate_subtask_payment(
+                int(random.random() * 100),
+                header.subtask_timeout,
+            )
+            ctk.add_request(header, price, 0.0)
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
@@ -517,10 +521,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 header.task_id,
             )
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 1)
-            price = calculate_subtask_payment(
-                price_bid,
-                header.subtask_timeout,
-            )
             ttc = msg_factories.tasks.TaskToComputeFactory(
                 price=price,
                 size=1024
@@ -573,21 +573,26 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header = get_task_header()
         header.task_id = "xyz"
         header.subtask_timeout = 1
+
         with self.assertRaises(TypeError):
             ctk.add_request(header, "not a number", 0.0)
         with self.assertRaises(ValueError):
             ctk.add_request(header, -2, 0.0)
-        ctk.add_request(header, 5 * 10 ** 18, 0.0)
+
+        budget = 5 * denoms.ether
+        ctk.add_request(header, budget, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
+        self.assertEqual(ctk.active_task_offers["xyz"], budget)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        ctk.add_request(header, 1 * 10 ** 17, 0.0)
+        budget = 0.1 * denoms.ether
+        ctk.add_request(header, budget, 0.0)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
-        self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
+        self.assertEqual(ctk.active_task_offers["xyz"], budget)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
-        ctk.add_request(header, 314 * 10 ** 15, 0.0)
-        self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
+        budget = 314 * denoms.finney
+        ctk.add_request(header, budget, 0.0)
+        self.assertEqual(ctk.active_task_offers["xyz2"], budget)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
@@ -614,17 +619,16 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk = CompTaskKeeper(Path(self.path))
         th = get_task_header()
         task_id = th.task_id
-        price_bid = 5
-        ctk.add_request(th, price_bid, 0.0)
+        price = calculate_subtask_payment(
+            int(random.random() * 100),
+            th.subtask_timeout,
+        )
+        ctk.add_request(th, price, 0.0)
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
-        price = calculate_subtask_payment(
-            price_bid,
-            th.subtask_timeout,
-        )
         ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
         ttc.compute_task_def = ctd
         self.assertTrue(ctk.receive_subtask(ttc))
@@ -662,7 +666,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         with self.assertLogs(logger, level="INFO") as logs:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask %s for task %s. ' \
-               'Request for this task was not send.' % (subtask_id, task_id)\
+               'Request for this task was not sent.' % (subtask_id, task_id)\
                in logs.output[0]
 
         ctk.active_tasks[task_id].requests = 1
