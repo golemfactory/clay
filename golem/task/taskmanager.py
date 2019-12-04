@@ -805,6 +805,12 @@ class TaskManager(TaskEventListener):
         )
 
     @handle_subtask_key_error
+    def __set_subtask_state_timed_out(self, subtask_id: str):
+        task_id = self.subtask2task_mapping[subtask_id]
+        self.tasks[task_id].subtasks_given[subtask_id]['status'] \
+            = SubtaskStatus.timeout
+
+    @handle_subtask_key_error
     def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:
         task_id = self.subtask2task_mapping[subtask_id]
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -908,7 +914,8 @@ class TaskManager(TaskEventListener):
                         logger.info("Subtask %r dies with status %r",
                                     s.subtask_id,
                                     s.status.value)
-                        s.status = SubtaskStatus.failure
+                        s.status = SubtaskStatus.timeout
+                        self.__set_subtask_state_timed_out(s.subtask_id)
                         nodes_with_timeouts.append(s.node_id)
                         t.computation_failed(s.subtask_id)
                         s.stderr = "[GOLEM] Timeout"
