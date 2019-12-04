@@ -228,23 +228,28 @@ class CompTaskKeeper:
         if not idgenerator.check_id_hex_seed(
                 comp_task_def['subtask_id'],
                 key_id,):
-            logger.info(not_accepted_message, *log_args, "Subtask id was not "
-                                                         "generated from "
-                                                         "requestor's key.")
+            logger.warning(
+                not_accepted_message,
+                *log_args,
+                "Subtask id was not generated from requestor's key.")
             return False
         if not task.requests > 0:
-            logger.info(not_accepted_message, *log_args,
-                        "Request for this task was not sent.")
+            logger.warning(
+                not_accepted_message,
+                *log_args,
+                "Request for this task was not sent.")
 
             return False
         if not task.check_deadline(comp_task_def['deadline']):
             msg = "Request for this task has wrong deadline %r" % \
                   comp_task_def['deadline']
-            logger.info(not_accepted_message, *log_args, msg)
+            logger.warning(not_accepted_message, *log_args, msg)
             return False
         if comp_task_def['subtask_id'] in task.subtasks:
-            logger.info(not_accepted_message, *log_args,
-                        "Definition of this subtask was already received.")
+            logger.warning(
+                not_accepted_message,
+                *log_args,
+                "Definition of this subtask was already received.")
             return False
         return True
 

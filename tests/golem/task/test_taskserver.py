@@ -1430,10 +1430,16 @@ class TestTaskGiven(TaskServerTestBase):
             ttc.compute_task_def, cpu_time_limit
         )
 
-
+    @patch('golem.task.taskkeeper.CompTaskKeeper.receive_subtask',
+           return_value=True)
     def test_already_assigned(
-            self, logger_mock, dispatcher_mock, update_requestor_assigned_sum,
-            request_resource):
+            self,
+            _receive_mock,
+            logger_mock,
+            dispatcher_mock,
+            update_requestor_assigned_sum,
+            request_resource
+    ):
 
         self.ts.task_computer.can_take_work.return_value = False
         ttc = Mock(

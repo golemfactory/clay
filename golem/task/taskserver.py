@@ -521,6 +521,9 @@ class TaskServer(
             self,
             msg: message.tasks.TaskToCompute,
     ) -> bool:
+        if not self.task_manager.comp_task_keeper.receive_subtask(msg):
+            return False
+
         if not self.task_computer.can_take_work():
             logger.error("Trying to assign a task, when it's already assigned")
             return False
