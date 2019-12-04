@@ -19,17 +19,18 @@ Here is an example of a new task-api JSON file.
         "app_id": "efb3db3a99a9616c77d1ce7ab8c514fa",
         "name": "",
         "resources": ["/absolute/path/to/resources/file.blend"],
-        "max_price_per_hour": "1.000.000.000.000.000.000",
+        "max_price_per_hour": "1000000000000000000",
         "max_subtasks": 1,
         "task_timeout": 600000,
         "subtask_timeout": 590000,
+        "output_directory": "/absolute/path/to/output/"
     },
     "app": {
         "resources": ["file.blend"],
         "resolution": [320, 240],
         "frames": "1",
         "format": "PNG",
-        "compositing": "False",
+        "compositing": "False"
     }
 }
 ```
@@ -42,10 +43,11 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
         "app_id": "efb3db3a99a9616c77d1ce7ab8c514fa",
         "name": "",
         "resources": ["/absolute/path/to/resources/file.blend"],
-        "max_price_per_hour": "1.000.000.000.000.000.000",
+        "max_price_per_hour": "1000000000000000000",
         "max_subtasks": 1,
         "task_timeout": 600000,
         "subtask_timeout": 590000,
+        "output_directory": "/absolute/path/to/output/"
     },
 ...
 ```
@@ -93,7 +95,7 @@ TODO: Move this to app specific readme.md
         "resolution": [320, 240],
         "frames": "1",
         "format": "PNG",
-        "compositing": "False",
+        "compositing": "False"
     }
 ...
 ```
