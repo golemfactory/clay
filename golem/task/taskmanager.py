@@ -764,7 +764,11 @@ class TaskManager(TaskEventListener):
         def verification_finished_():
             logger.debug("Verification finished. subtask_id=%s", subtask_id)
             ss = self.__set_subtask_state_finished(subtask_id)
-            if not self.tasks[task_id].verify_subtask(subtask_id):
+            if self.tasks[task_id].verify_subtask(subtask_id):
+                self.notice_task_updated(task_id,
+                                         subtask_id=subtask_id,
+                                         op=SubtaskOp.FINISHED)
+            else:
                 logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.status = SubtaskStatus.failure
                 ss.stderr = "[GOLEM] Not accepted"
@@ -772,12 +776,7 @@ class TaskManager(TaskEventListener):
                     task_id,
                     subtask_id=subtask_id,
                     op=SubtaskOp.NOT_ACCEPTED)
-                verification_finished()
-                return
 
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.FINISHED)
 
             verification_finished()
 
@@ -807,8 +806,12 @@ class TaskManager(TaskEventListener):
     @handle_subtask_key_error
     def __set_subtask_state_timed_out(self, subtask_id: str):
         task_id = self.subtask2task_mapping[subtask_id]
-        self.tasks[task_id].subtasks_given[subtask_id]['status'] \
-            = SubtaskStatus.timeout
+        try:
+            self.tasks[task_id].subtasks_given[subtask_id]['status']\
+                = SubtaskStatus.timeout
+        except AttributeError as error:
+            logger.warning("Couldn't retrieve subtask %s from task %s. %r"
+                           .format(subtask_id, task_id, error))
 
     @handle_subtask_key_error
     def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:
