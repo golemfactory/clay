@@ -125,6 +125,9 @@ class RequestedTaskManager:
         running_tasks = RequestedTask.select() \
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
         for task in running_tasks:
+            if task.status == TaskStatus.creating:
+                self.error_creating(task.task_id)
+                continue
             if task.deadline is None:
                 # task not started
                 continue
@@ -215,8 +218,6 @@ class RequestedTaskManager:
             app_params=app_params,
         )
 
-        self._schedule_task_timeout(task, golem_params.task_timeout)
-
         logger.debug(
             'create_task(task_id=%r) - prepare directories. app_id=%s',
             task.task_id,
@@ -276,6 +277,8 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.start_time = default_now()
         task.save()
+        task_timeout = timedelta(milliseconds=task.task_timeout).total_seconds()
+        self._schedule_task_timeout(task, task_timeout)
         self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
@@ -397,8 +400,9 @@ class RequestedTaskManager:
         )
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
+        subtask_timeout = timedelta(milliseconds=task.subtask_timeout)
         deadline = datetime_to_timestamp_utc(min(
-            subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
+            subtask.start_time + subtask_timeout,
             task_deadline
         ))
 
@@ -410,7 +414,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.computing
         task.save()
 
-        self._schedule_subtask_timeout(subtask, task.subtask_timeout)
+        self._schedule_subtask_timeout(subtask, subtask_timeout.total_seconds())
 
         ProviderComputeTimers.start(subtask_id)
         return SubtaskDefinition(
