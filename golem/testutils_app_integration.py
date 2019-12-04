@@ -157,7 +157,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         return result, subtask_id
 
     def query_next_subtask(self, task: Task):
-        print("TASK: " + str(task))
         ctd: ComputeTaskDef = self.task_manager. \
             get_next_subtask(node_id=self._generate_node_id(),
                              task_id=task.task_definition.task_id,
@@ -166,7 +165,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
                                  task.price /
                                  task.task_definition.subtasks_count),
                              offer_hash="blaa offeeeeer")
-        print("CTD: " + str(ctd))
         return ctd["subtask_id"], ctd
 
     def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int,

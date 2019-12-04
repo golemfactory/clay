@@ -500,7 +500,8 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
         self.assertFalse(task.needs_computation())
         self.assertTrue(task.finished_computation())
-        # self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
+        print(self.get_task_state(task))
+        self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
 
     def _fail_next_subtask_and_verify(self, task: Task):
         result, subtask_id = self.fail_computing_next_subtask(task)
@@ -522,5 +523,5 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         task: Task = self.start_task(task_def)
 
         for i in range(5):
-            result, subtask_id = self.timeout_next_subtask(task)
+            self.timeout_next_subtask(task)
             self.task_manager.check_timeouts()
