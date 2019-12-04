@@ -5,8 +5,8 @@ import pytest
 from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.formats import FrameRate
 from ffmpeg_tools.formats import list_supported_frame_rates
+from ffmpeg_tools.frame_rate import FrameRate
 from ffmpeg_tools.validation import validate_resolution
 from ffmpeg_tools.exceptions import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
