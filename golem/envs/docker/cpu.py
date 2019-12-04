@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from copy import deepcopy
 from pathlib import Path
 from socket import socket, SocketIO, SHUT_WR
@@ -25,8 +26,7 @@ from golem.docker.hypervisor.dummy import DummyHypervisor
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.envs import (
-    CounterId,
-    CounterUsage,
+    BenchmarkResult,
     EnvConfig,
     EnvironmentBase,
     EnvMetadata,
@@ -40,7 +40,9 @@ from golem.envs import (
     RuntimeOutputBase,
     RuntimePayload,
     RuntimeStatus,
-    BenchmarkResult)
+    UsageCounter,
+    UsageCounterValues
+)
 from golem.envs.docker import DockerRuntimePayload, DockerPrerequisites
 from golem.envs.docker.whitelist import Whitelist
 
@@ -180,6 +182,10 @@ class DockerCPURuntime(RuntimeBase):
         self._stdin_socket: Optional[InputSocket] = None
         self._port_mapper = port_mapper
 
+        self._counter_update_thread: Optional[Thread] = None
+        self._counters = UsageCounterValues()
+        self._num_samples = 0
+
         self._container_config = client.create_container_config(
             **container_config)
 
@@ -232,6 +238,56 @@ class DockerCPURuntime(RuntimeBase):
 
         self._logger.info("Runtime is no longer running. "
                           "Stopping status update thread.")
+
+    def _update_counters(self) -> None:
+        start_time = time.time()
+        client = local_client()
+        stream = iter(
+            client.stats(self._container_id, decode=True, stream=True))
+
+        # Container cannot be removed when the stream is being read and the
+        # stream will not terminate until the container is removed.
+        # Therefore an explicit status check is needed.
+        active_status = (RuntimeStatus.RUNNING, RuntimeStatus.STARTING)
+        while self.status() in active_status:
+            self._counters.clock_ms = (time.time() - start_time) * 1000
+
+            try:
+                stats = next(stream)
+            except StopIteration:
+                break
+            except APIError:
+                logger.error("Cannot get docker stats")
+                continue
+
+            try:
+                cpu_stats = stats['cpu_stats']['cpu_usage']
+                logger.debug("CPU usage: %r", cpu_stats)
+                # Using max because Docker sometimes output all zeros when the
+                # container is shutting down.
+                self._counters.cpu_kernel_ns = max(
+                    self._counters.cpu_kernel_ns,
+                    cpu_stats['usage_in_kernelmode'])
+                self._counters.cpu_user_ns = max(
+                    self._counters.cpu_user_ns,
+                    cpu_stats['usage_in_usermode'])
+                self._counters.cpu_total_ns = max(
+                    self._counters.cpu_total_ns,
+                    cpu_stats['total_usage'])
+
+                mem_stats = stats['memory_stats']
+                logger.debug("RAM usage: %r", mem_stats)
+                self._counters.ram_max_bytes = mem_stats['max_usage']
+                total_usage = self._counters.ram_avg_bytes * self._num_samples
+                self._counters.ram_avg_bytes = (
+                    (total_usage + mem_stats['usage']) /
+                    (self._num_samples + 1)
+                )
+
+                self._num_samples += 1
+            except (KeyError, TypeError):
+                if self.status() is RuntimeStatus.RUNNING:
+                    self._logger.warning("Invalid Docker stats: %r", stats)
 
     def id(self) -> Optional[RuntimeId]:
         return self._container_id
@@ -291,9 +347,16 @@ class DockerCPURuntime(RuntimeBase):
         self._change_status(
             from_status=RuntimeStatus.PREPARED,
             to_status=RuntimeStatus.STARTING)
-        self._logger.info("Starting container '%s'...", self._container_id)
+
+        # Counter thread must be spawned before starting the container because
+        # some containers exit so fast we wouldn't get any stats otherwise.
+        self._logger.debug("Spawning counter update thread...")
+        self._counter_update_thread = Thread(target=self._update_counters)
+        self._counter_update_thread.start()
+        self._logger.debug("Status counter thread spawned.")
 
         def _start():
+            self._logger.info("Starting container '%s'...", self._container_id)
             client = local_client()
             client.start(self._container_id)
 
@@ -319,6 +382,15 @@ class DockerCPURuntime(RuntimeBase):
             client = local_client()
             client.stop(self._container_id)
 
+        def _join_counter_update_thread(res):
+            self._logger.debug("Joining counter update thread...")
+            self._counter_update_thread.join(1)
+            if self._counter_update_thread.is_alive():
+                self._logger.warning("Failed to join counter update thread.")
+            else:
+                self._logger.debug("Counter update thread joined.")
+            return res
+
         def _join_status_update_thread(res):
             self._logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
@@ -337,6 +409,7 @@ class DockerCPURuntime(RuntimeBase):
         deferred_stop.addCallback(self._stopped)
         deferred_stop.addErrback(self._error_callback(
             f"Stopping container '{self._container_id}' failed."))
+        deferred_stop.addBoth(_join_counter_update_thread)
         deferred_stop.addBoth(_join_status_update_thread)
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop
@@ -419,8 +492,8 @@ class DockerCPURuntime(RuntimeBase):
         assert self._container_id is not None
         return self._port_mapper.get_port_mapping(self._container_id, port)
 
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        raise NotImplementedError
+    def usage_counter_values(self) -> UsageCounterValues:
+        return deepcopy(self._counters)
 
 
 class DockerCPUEnvironment(EnvironmentBase):
@@ -673,6 +746,16 @@ class DockerCPUEnvironment(EnvironmentBase):
             self._error_occurred(e, "Reconfiguring hypervisor failed.")
             raise
         self._logger.info("Hypervisor successfully reconfigured.")
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        return [
+            UsageCounter.CLOCK_MS,
+            UsageCounter.CPU_TOTAL_NS,
+            UsageCounter.CPU_USER_NS,
+            UsageCounter.CPU_KERNEL_NS,
+            UsageCounter.RAM_MAX_BYTES,
+            UsageCounter.RAM_AVG_BYTES
+        ]
 
     def runtime(
             self,

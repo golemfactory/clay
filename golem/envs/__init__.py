@@ -16,8 +16,29 @@ from twisted.python.failure import Failure
 from golem.core.simpleserializer import DictSerializable
 from golem.model import Performance
 
-CounterId = str
-CounterUsage = Any
+
+class UsageCounter(Enum):
+    CLOCK_MS = 'clock_ms'
+
+    CPU_TOTAL_NS = 'cpu_total_ns'
+    CPU_USER_NS = 'cpu_user_ns'
+    CPU_KERNEL_NS = 'cpu_kernel_ns'
+
+    RAM_MAX_BYTES = 'ram_max_bytes'
+    RAM_AVG_BYTES = 'ram_avg_bytes'
+
+
+@dataclass
+class UsageCounterValues:
+    clock_ms: float = 0.0
+
+    cpu_total_ns: float = 0.0
+    cpu_user_ns: float = 0.0
+    cpu_kernel_ns: float = 0.0
+
+    ram_max_bytes: int = 0
+    ram_avg_bytes: float = 0.0
+
 
 EnvId = str
 RuntimeId = str
@@ -238,7 +259,7 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
+    def usage_counter_values(self) -> UsageCounterValues:
         """ For each usage counter supported by the Environment (e.g. clock
             time) get current usage by this Runtime. """
         raise NotImplementedError
@@ -388,7 +409,6 @@ class RuntimeBase(Runtime, ABC):
 class EnvMetadata:
     id: EnvId
     description: str = ''
-    supported_counters: List[CounterId] = field(default_factory=list)
     custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -471,6 +491,10 @@ class Environment(ABC):
             listener: EnvEventListener
     ) -> None:
         """ Register a listener for a given type of Environment events. """
+        raise NotImplementedError
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        """ Get list of usage counters supported by this environment. """
         raise NotImplementedError
 
     @abstractmethod
