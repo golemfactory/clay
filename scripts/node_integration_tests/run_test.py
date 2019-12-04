@@ -121,9 +121,6 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
 def main():
     args = parse_args()
 
-    if args.mainnet:
-        set_environment('mainnet', CONCENT_DISABLED)
-
     config, playbook_class = get_config_and_playbook_class(args.test_path)
 
     override_config(config, args)

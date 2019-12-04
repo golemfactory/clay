@@ -44,7 +44,7 @@ class EthereumConfig:
         }
 
         os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
-            CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
+            CONCENT_ENVIRONMENT_VARIABLE, 'main'
         )
 
         self.CONCENT_VARIANT = CONCENT_CHOICES[
