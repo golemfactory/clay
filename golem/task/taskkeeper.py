@@ -166,21 +166,18 @@ class CompTaskKeeper:
     def add_request(
             self,
             theader: dt_tasks.TaskHeader,
-            price: int,
+            budget: int,
             performance: float
     ):
-        # price is task_header.max_price
-        logger.debug('CT.add_request(%r, %s)', theader, price)
-        if price < 0:
-            raise ValueError("Price should be greater or equal zero")
+        logger.debug('add_request. theader=%r, budget=%r', theader, budget)
+        if budget < 0:
+            raise ValueError("Budget should be greater or equal zero")
         task_id = theader.task_id
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader, performance)
-        self.active_task_offers[task_id] = calculate_subtask_payment(
-            price, self.active_tasks[task_id].header.subtask_timeout
-        )
+        self.active_task_offers[task_id] = budget
         self.dump()
 
     @handle_key_error
@@ -189,7 +186,7 @@ class CompTaskKeeper:
 
     @handle_key_error
     def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
-        logger.debug('CT.receive_subtask()')
+        logger.debug('receive_subtask. task_to_compute=%r', task_to_compute)
 
         comp_task_def = task_to_compute.compute_task_def
         if not self.check_comp_task_def(comp_task_def):
@@ -201,13 +198,14 @@ class CompTaskKeeper:
         comp_task_price = self.active_task_offers[task_id]
 
         if task_to_compute.price != comp_task_price:
-            logger.info(
-                "Can't accept subtask %r for %r."
-                " %r<TTC.price> != %r<CTI.subtask_price>",
-                task_to_compute.subtask_id,
-                task_to_compute.task_id,
+            logger.warning(
+                "Can't accept subtask: "
+                "%r<TTC.price> != %r<CTI.subtask_price>. "
+                "task_id=%r, subtask_id=%r",
                 task_to_compute.price,
                 comp_task_price,
+                task_to_compute.task_id,
+                task_to_compute.subtask_id,
             )
             return False
 
@@ -236,7 +234,7 @@ class CompTaskKeeper:
             return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
-                        "Request for this task was not send.")
+                        "Request for this task was not sent.")
 
             return False
         if not task.check_deadline(comp_task_def['deadline']):
