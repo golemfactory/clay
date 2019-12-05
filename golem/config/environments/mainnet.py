@@ -4,8 +4,8 @@ from typing import List
 from golem_sci import contracts
 from golem_sci.chains import MAINNET
 
-from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
-from . import CONCENT_ENVIRONMENT_VARIABLE
+from golem.core.variables import PROTOCOL_CONST
+from . import CONCENT_ENVIRONMENT_VARIABLE, init_concent_config
 
 
 # CORE
@@ -44,12 +44,10 @@ class EthereumConfig:
         }
 
         os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
-            CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
+            CONCENT_ENVIRONMENT_VARIABLE, 'main'
         )
 
-        self.CONCENT_VARIANT = CONCENT_CHOICES[
-            os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
-        ]
+        init_concent_config(self)
 
         self.WITHDRAWALS_ENABLED = True
 

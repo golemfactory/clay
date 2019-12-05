@@ -5,8 +5,8 @@ from golem_sci import contracts
 from golem_sci.chains import RINKEBY
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
-from golem.core.variables import PROTOCOL_CONST, CONCENT_CHOICES
-from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
+from golem.core.variables import PROTOCOL_CONST
+from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE, init_concent_config
 
 # CORE
 
@@ -48,16 +48,7 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
             CONCENT_ENVIRONMENT_VARIABLE, 'test'
         )
 
-        self.CONCENT_VARIANT = CONCENT_CHOICES[
-            os.environ.get(CONCENT_ENVIRONMENT_VARIABLE, 'disabled')
-        ]
-
-        self.deposit_contract_address = \
-            self.CONCENT_VARIANT.get('deposit_contract_address')
-
-        if self.deposit_contract_address:
-            self.CONTRACT_ADDRESSES[contracts.GNTDeposit] = \
-                self.deposit_contract_address
+        init_concent_config(self)
 
         self.WITHDRAWALS_ENABLED = False
 
