@@ -806,12 +806,13 @@ class TaskManager(TaskEventListener):
     @handle_subtask_key_error
     def __set_subtask_state_timed_out(self, subtask_id: str):
         task_id = self.subtask2task_mapping[subtask_id]
-        try:
+        if hasattr(self.tasks[task_id], "subtasks_given"):
             self.tasks[task_id].subtasks_given[subtask_id]['status']\
-                = SubtaskStatus.timeout
-        except AttributeError as error:
-            logger.warning("Couldn't retrieve subtask %s from task %s. %r"
-                           .format(subtask_id, task_id, error))
+                = SubtaskStatus.timeout  # type: ignore
+        else:
+            logger.warning("Couldn't retrieve subtask %s from task %s. "
+                           "Task doesn't have 'subtasks_given' attribute."
+                           .format(subtask_id, task_id))
 
     @handle_subtask_key_error
     def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:

@@ -185,7 +185,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
     def produce_no_output_on_mock_provider(self, task: Task, subtask_id: int):
         task_id = task.task_definition.task_id
-        result = []
+        result: List[str] = []
         result = self._collect_results_from_provider(result,
                                                      task_id,
                                                      subtask_id)

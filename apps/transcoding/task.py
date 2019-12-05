@@ -72,8 +72,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
             -> None:
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
-        self.subtask_exceeded_max_retries_after_fail = False
-        self.number_of_failed_subtask_tries = dict()
+        self.subtask_exceeded_max_retries_after_fail: bool = False
+        self.number_of_failed_subtask_tries: Dict[str, int] = dict()
         self.task_definition = task_definition
         self.lock = Lock()
         self.chunks: List[str] = list()
