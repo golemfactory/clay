@@ -63,7 +63,7 @@ class ProviderProxy(HTTPProvider):
                 self._register_retry()
 
                 retry = retries < SINGLE_QUERY_RETRY_LIMIT \
-                    or self._retries < RETRY_COUNT_LIMIT
+                    and self._retries < RETRY_COUNT_LIMIT
 
                 logger.debug(
                     "GETH: request failure%s"
