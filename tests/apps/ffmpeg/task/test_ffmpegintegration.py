@@ -16,6 +16,9 @@ from parameterized import parameterized
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
     AudioCodecNotSupportedByContainer
+
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskStatus
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
@@ -468,7 +471,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         # is not necessarily the case for non-whitelisted streams in general.
         with self.assertRaises(UnsupportedStream):
             self.execute_task(task_def)
-    
+
     def test_dont_retry_failed_subtask_more_than_1_time(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -484,7 +487,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
         task: Task = self.start_task(task_def)
 
-        for i in range(2):
+        for _ in range(2):
             self._fail_next_subtask_and_verify(task)
 
         self.assertFalse(task.needs_computation())
@@ -511,6 +514,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         task_def['subtask_timeout'] = '00:00:01'
         task: Task = self.start_task(task_def)
 
-        for i in range(5):
+        for _ in range(5):
             self.timeout_next_subtask(task)
             self.task_manager.check_timeouts()
