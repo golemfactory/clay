@@ -1,5 +1,6 @@
 import itertools
 import logging
+import random
 import socket
 import time
 
@@ -18,7 +19,9 @@ class ProviderProxy(HTTPProvider):
 
     def __init__(self, initial_addr_list) -> None:
         super().__init__()
-        self._initial_addr_list = initial_addr_list
+        initial_addr_list = list(initial_addr_list)
+        random.shuffle(initial_addr_list)
+
         self._node_addresses = itertools.cycle(initial_addr_list)
         self.provider = self._create_remote_rpc_provider()
 
