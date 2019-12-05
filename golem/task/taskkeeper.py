@@ -168,7 +168,12 @@ class CompTaskKeeper:
             budget: int,
             performance: float
     ):
-        logger.debug('add_request. theader=%r, budget=%r', theader, budget)
+        logger.debug(
+            'CompTaskKeeper: add_request. theader=%r, budget=%r',
+            theader,
+            budget
+        )
+
         if budget < 0:
             raise ValueError("Budget should be greater than zero.")
         task_id = theader.task_id
@@ -194,15 +199,15 @@ class CompTaskKeeper:
         task_id = task_to_compute.task_id
         subtask_id = task_to_compute.subtask_id
         comp_task_info = self.active_tasks[task_id]
-        comp_task_price = self.active_task_offers[task_id]
+        subtask_budget = self.active_task_offers[task_id]
 
-        if task_to_compute.price != comp_task_price:
+        if task_to_compute.price != subtask_budget:
             logger.info(
                 "Can't accept subtask: "
-                "%r<TTC.price> != %r<CTI.subtask_price>. "
+                "%r (TTC.price) != %r (subtask_budget). "
                 "task_id=%r, subtask_id=%r",
                 task_to_compute.price,
-                comp_task_price,
+                subtask_budget,
                 task_to_compute.task_id,
                 task_to_compute.subtask_id,
             )
