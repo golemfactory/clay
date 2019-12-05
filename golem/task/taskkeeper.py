@@ -170,7 +170,7 @@ class CompTaskKeeper:
     ):
         logger.debug('add_request. theader=%r, budget=%r', theader, budget)
         if budget < 0:
-            raise ValueError("Budget should be greater or equal zero")
+            raise ValueError("Budget should be greater than zero.")
         task_id = theader.task_id
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
@@ -197,7 +197,7 @@ class CompTaskKeeper:
         comp_task_price = self.active_task_offers[task_id]
 
         if task_to_compute.price != comp_task_price:
-            logger.warning(
+            logger.info(
                 "Can't accept subtask: "
                 "%r<TTC.price> != %r<CTI.subtask_price>. "
                 "task_id=%r, subtask_id=%r",
@@ -227,13 +227,13 @@ class CompTaskKeeper:
         if not idgenerator.check_id_hex_seed(
                 comp_task_def['subtask_id'],
                 key_id,):
-            logger.warning(
+            logger.info(
                 not_accepted_message,
                 *log_args,
                 "Subtask id was not generated from requestor's key.")
             return False
         if not task.requests > 0:
-            logger.warning(
+            logger.info(
                 not_accepted_message,
                 *log_args,
                 "Request for this task was not sent.")
@@ -242,10 +242,10 @@ class CompTaskKeeper:
         if not task.check_deadline(comp_task_def['deadline']):
             msg = "Request for this task has wrong deadline %r" % \
                   comp_task_def['deadline']
-            logger.warning(not_accepted_message, *log_args, msg)
+            logger.info(not_accepted_message, *log_args, msg)
             return False
         if comp_task_def['subtask_id'] in task.subtasks:
-            logger.warning(
+            logger.info(
                 not_accepted_message,
                 *log_args,
                 "Definition of this subtask was already received.")
