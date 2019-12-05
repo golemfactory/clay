@@ -500,7 +500,6 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
         self.assertFalse(task.needs_computation())
         self.assertTrue(task.finished_computation())
-        print(self.get_task_state(task))
         self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
 
     def _fail_next_subtask_and_verify(self, task: Task):

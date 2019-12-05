@@ -224,8 +224,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         return curr - 1
 
     def _should_retry_failed_subtask(self, failed_subtask_id):
-        task_number = self._get_subtask_number_from_id(failed_subtask_id)
-        number_of_fails = self.number_of_failed_subtask_tries[task_number]
+        subtask_number = self._get_subtask_number_from_id(failed_subtask_id)
+        number_of_fails = self.number_of_failed_subtask_tries[subtask_number]
         return number_of_fails < TranscodingTask.MAX_SUBTASK_RETRIES_AFTER_FAIL
 
     def _increment_number_of_subtask_fails(self, failed_subtask_id):
