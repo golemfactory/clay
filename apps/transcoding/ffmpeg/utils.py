@@ -4,6 +4,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import List, Tuple
+from ffmpeg_tools.formats import Container
 
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
@@ -23,6 +24,7 @@ class StreamOperator:
     def extract_video_streams_and_split(self, # noqa pylint: disable=too-many-locals
                                         input_file_on_host: str,
                                         parts: int,
+                                        target_container: Container,
                                         task_dir: str,
                                         task_id: str):
 
@@ -32,7 +34,8 @@ class StreamOperator:
         result, split_result_file = ffmpeg_docker_api.\
             extract_video_streams_and_split(
                 input_file_on_host,
-                parts
+                parts,
+                target_container,
             )
 
         FfmpegDockerAPI.remove_split_intermediate_videos(directory_mapping)
@@ -63,7 +66,11 @@ class StreamOperator:
                 input_file_on_host,
                 streams_list)
 
-            return streams_list, params.get('metadata', {})
+            return (
+                streams_list,
+                params.get('metadata', {}),
+                params.get('muxer_info', {}),
+            )
 
     def _prepare_merge_job(self,
                            task_dir: str,
@@ -121,6 +128,7 @@ class StreamOperator:
             output_file_basename,
             task_dir,
             container,
+            audio_params,
             strip_unsupported_data_streams=False,
             strip_unsupported_subtitle_streams=False):
 
@@ -147,6 +155,7 @@ class StreamOperator:
             chunks_in_container,
             output_file_basename,
             container,
+            audio_params,
             strip_unsupported_data_streams,
             strip_unsupported_subtitle_streams
         )

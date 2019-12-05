@@ -3,8 +3,10 @@ import os
 import pytest
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container, list_supported_frame_rates
-from ffmpeg_tools.validation import InvalidResolution, \
-    UnsupportedVideoCodecConversion, InvalidFrameRate, validate_resolution
+from ffmpeg_tools.frame_rate import FrameRate
+from ffmpeg_tools.validation import validate_resolution
+from ffmpeg_tools.exceptions import InvalidResolution, \
+    UnsupportedVideoCodecConversion, InvalidFrameRate
 from parameterized import parameterized
 
 from golem.tools.ci import ci_skip
@@ -257,7 +259,12 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         (
             (video, frame_rate)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for frame_rate in (1, 25, '30000/1001', 60)
+            for frame_rate in (
+                FrameRate(1),
+                FrameRate(25),
+                FrameRate(30000, 1001),
+                FrameRate(60),
+            )
         ),
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
@@ -271,14 +278,14 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
             tmp_dir=self.tempdir,
             dont_include_in_option_description=["resolution", "video_codec"])
         operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_frame_rate_change(frame_rate)
+        operation.request_frame_rate_change(str(frame_rate))
         operation.request_video_codec_change(source_codec)
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.exclude_from_diff({'video': {'frame_count'}})
-        fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
+        fuzzy_rate = FuzzyDuration(frame_rate.to_float(), 0.5)
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
@@ -296,10 +303,8 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
             pytest.skip("Transcoding is not possible for this file without"
                         "also changing the video codec.")
 
-        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
-        if frame_rate_as_str_or_int & list_supported_frame_rates() != set():
-            (_input_report, _output_report, diff) = operation.run(
-                video["path"])
+        if frame_rate.normalized() in list_supported_frame_rates():
+            (_input_report, _output_report, diff) = operation.run(video["path"])
             self.assertEqual(diff, [])
         else:
             with self.assertRaises(InvalidFrameRate):

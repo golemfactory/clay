@@ -6,6 +6,7 @@ import glob
 from pathlib import Path
 from typing import List, Optional
 from threading import Lock
+from ffmpeg_tools.formats import Container
 
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
@@ -39,6 +40,7 @@ class Commands(enum.Enum):
     TRANSCODE = ('transcode', '')
     MERGE_AND_REPLACE = ('merge-and-replace', '')
     COMPUTE_METRICS = ('compute-metrics', '')
+    QUERY_MUXER_INFO = ('compute-metrics', 'query-muxer-info-results.json')
 
 
 class FfmpegDockerAPI:
@@ -48,7 +50,8 @@ class FfmpegDockerAPI:
 
     def extract_video_streams_and_split(self,
                                         input_file_on_host: str,
-                                        parts: int):
+                                        parts: int,
+                                        target_container: Container):
 
         input_file_basename = os.path.basename(input_file_on_host)
 
@@ -68,11 +71,17 @@ class FfmpegDockerAPI:
             input_file_in_container,
             'ro')])
 
+        if target_container is None:
+            target_container_str = None
+        else:
+            target_container_str = target_container.value
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
             'parts': parts,
+            'target_container': target_container_str,
         }
 
         logger.debug(
@@ -98,7 +107,8 @@ class FfmpegDockerAPI:
             input_file_on_host,
             chunks_in_container,
             output_file_basename,
-            container,
+            target_container,
+            audio_params,
             strip_unsupported_data_streams=False,
             strip_unsupported_subtitle_streams=False):
 
@@ -109,13 +119,28 @@ class FfmpegDockerAPI:
                 os.path.basename(input_file_on_host)),
             'out': os.path.join(DockerJob.OUTPUT_DIR, output_file_basename),
         }
+
+        targs = {}
+        if audio_params.codec is not None:
+            targs['audio'] = targs.get('audio', {})
+            targs['audio']['codec'] = audio_params.codec.value
+        if audio_params.bitrate is not None:
+            targs['audio'] = targs.get('audio', {})
+            targs['audio']['bitrate'] = audio_params.bitrate
+
+        if target_container is None:
+            target_container_str = None
+        else:
+            target_container_str = target_container.value
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.MERGE_AND_REPLACE.value[0],
             'input_file': container_files['in'],
             'chunks': chunks_in_container,
             'output_file': container_files['out'],
-            'container': container.value if container is not None else None,
+            'target_container': target_container_str,
+            'targs': targs,
             'strip_unsupported_data_streams': strip_unsupported_data_streams,
             'strip_unsupported_subtitle_streams':
                 strip_unsupported_subtitle_streams
