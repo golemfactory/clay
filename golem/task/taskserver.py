@@ -39,7 +39,12 @@ from golem import constants as gconst
 from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import short_node_id, deadline_to_timeout, get_log_dir
+from golem.core.common import (
+    short_node_id,
+    deadline_to_timeout,
+    get_log_dir,
+    get_timestamp_utc,
+)
 from golem.core.deferred import (
     asyncio_main_loop,
     deferred_from_future,
@@ -781,7 +786,7 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
-        if task_header.deadline < time.time():
+        if task_header.deadline < get_timestamp_utc():
             logger.info(
                 "Task's deadline already in the past. task_id=%r",
                 task_header.task_id

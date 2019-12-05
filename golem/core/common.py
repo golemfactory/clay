@@ -14,6 +14,7 @@ import pytz
 
 from golem.core import simpleenv
 from golem.decorators import locked
+from golem.model import default_now
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -120,7 +121,7 @@ def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
 
 
 def get_timestamp_utc():
-    now = datetime.now(pytz.utc)
+    now = default_now()
     return datetime_to_timestamp(now)
 
 
