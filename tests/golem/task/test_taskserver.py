@@ -1378,7 +1378,8 @@ class TestSendResults(TaskServerTestBase):
         self.assertEqual(wtr.result, (str(filepath),))
 
 
-@patch('golem.task.taskkeeper.CompTaskKeeper.receive_subtask', return_value=True)
+@patch('golem.task.taskkeeper.CompTaskKeeper.receive_subtask',
+       return_value=True)
 @patch('golem.task.taskserver.TaskServer.request_resource')
 @patch('golem.task.taskserver.update_requestor_assigned_sum')
 @patch('golem.task.taskserver.dispatcher')

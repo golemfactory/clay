@@ -27,7 +27,6 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.environments.environmentsmanager import \
     EnvironmentsManager as OldEnvManager
 from golem.task.envmanager import EnvironmentManager as NewEnvManager
-from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger(__name__)
