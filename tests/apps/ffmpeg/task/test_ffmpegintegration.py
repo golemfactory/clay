@@ -6,17 +6,16 @@ from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
 from ffmpeg_tools.formats import list_supported_frame_rates
-from ffmpeg_tools.validation import InvalidResolution, InvalidFrameRate, \
+from ffmpeg_tools.frame_rate import FrameRate
+from ffmpeg_tools.validation import validate_resolution
+from ffmpeg_tools.exceptions import InvalidResolution, InvalidFrameRate, \
     UnsupportedTargetVideoFormat, UnsupportedVideoFormat, \
-    UnsupportedAudioCodec, UnsupportedVideoCodec, \
-    validate_resolution
+    UnsupportedAudioCodec, UnsupportedVideoCodec, UnsupportedStream
 from parameterized import parameterized
 
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
     AudioCodecNotSupportedByContainer
-from golem.task.taskbase import Task
-from golem.task.taskstate import TaskStatus
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
@@ -25,8 +24,7 @@ from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
     create_split_and_merge_with_resolution_change_test_name, \
     create_split_and_merge_with_frame_rate_change_test_name, \
     create_split_and_merge_with_different_subtask_counts_test_name
-from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration, \
-    parse_ffprobe_frame_rate
+from tests.apps.ffmpeg.task.utils.ffprobe_report import FuzzyDuration
 from tests.apps.ffmpeg.task.utils.simulated_transcoding_operation import \
     SimulatedTranscodingOperation
 
@@ -159,15 +157,18 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         (
             (video, frame_rate)
             for video in VIDEO_FILES  # pylint: disable=undefined-variable
-            for frame_rate in (25, '30000/1001', 60)
+            for frame_rate in (
+                FrameRate(25),
+                FrameRate(30000, 1001),
+                FrameRate(60),
+            )
         ),
         name_func=create_split_and_merge_with_frame_rate_change_test_name
     )
     @pytest.mark.slow
     def test_split_and_merge_with_frame_rate_change(self, video, frame_rate):
         source_codec = video["video_codec"]
-        frame_rate_as_str_or_int = set([frame_rate, str(frame_rate)])
-        assert frame_rate_as_str_or_int & list_supported_frame_rates() != set()
+        assert frame_rate in list_supported_frame_rates()
 
         operation = SimulatedTranscodingOperation(
             task_executor=self,
@@ -176,14 +177,14 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
             tmp_dir=self.tempdir,
             dont_include_in_option_description=["resolution", "video_codec"])
         operation.attach_to_report_set(self._ffprobe_report_set)
-        operation.request_frame_rate_change(frame_rate)
+        operation.request_frame_rate_change(str(frame_rate))
         operation.request_video_codec_change(source_codec)
         operation.request_container_change(video['container'])
         operation.request_resolution_change(video["resolution"])
         operation.exclude_from_diff(
             FfmpegIntegrationBase.ATTRIBUTES_NOT_PRESERVED_IN_CONVERSIONS)
         operation.exclude_from_diff({'video': {'frame_count'}})
-        fuzzy_rate = FuzzyDuration(parse_ffprobe_frame_rate(frame_rate), 0.5)
+        fuzzy_rate = FuzzyDuration(frame_rate.to_float(), 0.5)
         operation.set_override('video', 'frame_rate', fuzzy_rate)
         operation.enable_treating_missing_attributes_as_unchanged()
 
@@ -373,7 +374,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
     @pytest.mark.slow
     def test_invalid_frame_rate_should_raise_proper_exception(self):
-        assert 55 not in list_supported_frame_rates()
+        assert FrameRate(55) not in list_supported_frame_rates()
         with self.assertRaises(InvalidFrameRate):
             operation = SimulatedTranscodingOperation(
                 task_executor=self,
@@ -435,7 +436,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
     def _prepare_task_def_for_strip_streams(self, strip_streams):
         resource_stream = os.path.join(
             self.RESOURCES,
-            "unsupported-stream.mpg")  # noqa pylint: disable=line-too-long
+            "unsupported-stream.mpg")
         result_file = os.path.join(
             self.root_dir,
             f'test_standalone_strip_streams_{strip_streams}.mp4')
@@ -459,27 +460,15 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         output_file = task.task_definition.output_file
         self.assertTrue(os.path.isfile(output_file))
 
-    # This test want work for two serious reason that we must address
-    # in the future.
-    # Tasks don't have failed state. We can set failure only for subtasks
-    # and they will be restarted until timeout ocures. Whole task can only
-    # be finished, aborted or timeouted. We need additional state, because
-    # we have no guarantee that merge step won't fail.
-    #
-    # The second reason - throwing exception in merge step will be catched
-    # in Defered not in TaskManager, so task manager isn't notified about
-    # failure.
-    @pytest.mark.skip
     @pytest.mark.slow
     def test_video_with_unsupported_streams_should_fail_transcode_without_strip_streams(self):  # noqa pylint: disable=line-too-long
         task_def = self._prepare_task_def_for_strip_streams(strip_streams=False)
         # We know that if we don't strip subtitles and data streams in this
         # particular case ffmpeg won't be able to convert them and fail. But it
         # is not necessarily the case for non-whitelisted streams in general.
-        task: Task = self.execute_task(task_def)
-        print(self.get_task_state(task))
-        self.assertTrue(self.get_task_state(task) == TaskStatus.aborted)
-
+        with self.assertRaises(UnsupportedStream):
+            self.execute_task(task_def)
+    
     def test_dont_retry_failed_subtask_more_than_1_time(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -506,6 +495,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         result, subtask_id = self.fail_computing_next_subtask(task)
         self.verify_subtask(task, subtask_id, result)
 
+    @pytest.mark.slow
     def test_subtask_timeout_is_not_failure(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')

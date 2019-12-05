@@ -9,7 +9,7 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.validation import UnsupportedVideoCodec, \
+from ffmpeg_tools.exceptions import UnsupportedVideoCodec, \
     UnsupportedAudioCodec, UnsupportedVideoFormat
 
 from apps.transcoding.common import TranscodingTaskBuilderException
@@ -48,7 +48,7 @@ class TestffmpegTask(TempDirFixture):
     def _build_ffmpeg_task(self, subtasks_count=1, stream=RESOURCE_STREAM):
         td = self.tt.task_builder_type.build_definition(
             self.tt, self._task_dictionary(subtasks_count, stream))
-        
+
         dir_manager = DirManager(self.tempdir)
         task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
                                          dir_manager).build()
@@ -209,15 +209,12 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(extra_data['track'],
                          '/golem/resources/test_video[video-only]_0.mp4')
         vargs = extra_data['targs']['video']
-        aargs = extra_data['targs']['audio']
         self.assertEqual(vargs['codec'], d['options']['video']['codec'])
         self.assertEqual(vargs['bitrate'], d['options']['video']['bit_rate'])
         self.assertEqual(extra_data['targs']['resolution'],
                          d['options']['video']['resolution'])
         self.assertEqual(extra_data['targs']['frame_rate'],
                          d['options']['video']['frame_rate'])
-        self.assertEqual(aargs['codec'], d['options']['audio']['codec'])
-        self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
         self.assertEqual(extra_data['output_stream'],
                          '/golem/output/test_video[video-only]_0_TC.mp4')
 
