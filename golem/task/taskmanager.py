@@ -777,7 +777,6 @@ class TaskManager(TaskEventListener):
                     subtask_id=subtask_id,
                     op=SubtaskOp.NOT_ACCEPTED)
 
-
             verification_finished()
 
             if self.tasks_states[task_id].status.is_active():
@@ -807,10 +806,10 @@ class TaskManager(TaskEventListener):
     def __set_subtask_state_timed_out(self, subtask_id: str):
         task_id = self.subtask2task_mapping[subtask_id]
         if hasattr(self.tasks[task_id], "subtasks_given"):
-            self.tasks[task_id].subtasks_given[subtask_id]['status']\
-                = SubtaskStatus.timeout  # type: ignore
+            # pylint: disable=line-too-long
+            self.tasks[task_id].subtasks_given[subtask_id]['status'] = SubtaskStatus.timeout  # type: ignore # noqa: E501
         else:
-            logger.warning("Couldn't retrieve subtask %s from task %s. "
+            logger.warning("Couldn't retrieve subtask {} from task {}. "
                            "Task doesn't have 'subtasks_given' attribute."
                            .format(subtask_id, task_id))
 

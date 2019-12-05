@@ -258,7 +258,8 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
 
     def _all_subtasks_have_ended_status(self):
         subtasks = self.subtasks_given.values()
-        ended_subtasks = [subtask for subtask in subtasks if TranscodingTask._is_subtask_ended(subtask)]
+        ended_subtasks = [subtask for subtask in subtasks
+                          if TranscodingTask._is_subtask_ended(subtask)]
         return len(ended_subtasks) == len(subtasks)
 
     @staticmethod
