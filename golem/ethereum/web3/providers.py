@@ -3,6 +3,7 @@ import logging
 import random
 import socket
 import time
+import typing
 
 from web3.exceptions import CannotHandleRequest
 from web3.providers.rpc import HTTPProvider
@@ -30,7 +31,7 @@ class ProviderProxy(HTTPProvider):
         )
         self._init_retries_count()
 
-    def _init_retries_count(self, ts: float = None):
+    def _init_retries_count(self, ts: typing.Optional[float] = None):
         self._retries = 0
         self._first_retry_time = ts
 
