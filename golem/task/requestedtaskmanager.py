@@ -277,8 +277,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.start_time = default_now()
         task.save()
-        task_timeout = timedelta(milliseconds=task.task_timeout).total_seconds()
-        self._schedule_task_timeout(task, task_timeout)
+        self._schedule_task_timeout(task, task.task_timeout)
         self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
@@ -400,9 +399,8 @@ class RequestedTaskManager:
         )
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
-        subtask_timeout = timedelta(milliseconds=task.subtask_timeout)
         deadline = datetime_to_timestamp_utc(min(
-            subtask.start_time + subtask_timeout,
+            subtask.start_time + timedelta(seconds=task.subtask_timeout),
             task_deadline
         ))
 
@@ -414,7 +412,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.computing
         task.save()
 
-        self._schedule_subtask_timeout(subtask, subtask_timeout.total_seconds())
+        self._schedule_subtask_timeout(subtask, task.subtask_timeout)
 
         ProviderComputeTimers.start(subtask_id)
         return SubtaskDefinition(
