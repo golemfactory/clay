@@ -1292,7 +1292,6 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                 event='task_status_updated', task_id=task_id, op=op)
             remove_task.assert_called_once_with(task_id)
             remove_task_funds_lock.assert_called_once_with(task_id)
-            update_setting.assert_called_once_with('accept_tasks', True)
             self.ts.client.reset_mock()
 
 

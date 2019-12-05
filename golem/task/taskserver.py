@@ -354,6 +354,9 @@ class TaskServer(
         if not self.task_computer.can_take_work():
             return
 
+        if self.requested_task_manager.has_unfinished_tasks():
+            return
+
         compatible_tasks = self.task_computer.compatible_tasks(
             set(self.task_keeper.supported_tasks))
 
@@ -993,8 +996,6 @@ class TaskServer(
             return
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
-        if not self.requested_task_manager.has_unfinished_tasks():
-            self.client.update_setting('accept_tasks', True)
 
     def _increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)

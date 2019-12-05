@@ -128,8 +128,6 @@ class TestTaskApiCreate(TaskApiBase):
         )
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
-        self.client.update_setting.assert_called_once_with(
-            'accept_tasks', False)
 
     def test_has_assigned_task(self):
         self.client.has_assigned_task.return_value = True
@@ -151,10 +149,6 @@ class TestTaskApiCreate(TaskApiBase):
 
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
-        self.client.update_setting.assert_has_calls((
-            call('accept_tasks', False),
-            call('accept_tasks', True)
-        ))
 
 
 @mock.patch('golem.task.requestedtaskmanager.shutil', Mock())

@@ -1431,6 +1431,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 'environment': environment
             }
 
+        # computing a task
+        if self.task_server.requested_task_manager.has_unfinished_tasks():
+            return {
+                'status': 'Requesting a task',
+            }
+
         # not accepting tasks
         if not self.config_desc.accept_tasks:
             return {
