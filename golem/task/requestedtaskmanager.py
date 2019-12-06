@@ -24,10 +24,10 @@ from golem.core.golem_async import CallScheduler
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    default_now,
 )
 from golem.model import (
     ComputingNode,
-    default_now,
     RequestedTask,
     RequestedSubtask,
 )
@@ -114,7 +114,7 @@ class RequestedTaskManager:
                 # subtask not started
                 continue
             subtask_id = subtask.subtask_id
-            time_left = subtask.deadline.timestamp() - default_now().timestamp()
+            time_left = subtask.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring subtask. subtask_id=%r', subtask_id)
                 self._schedule_subtask_timeout(subtask, time_left)
@@ -128,7 +128,7 @@ class RequestedTaskManager:
             if task.deadline is None:
                 # task not started
                 continue
-            time_left = task.deadline.timestamp() - default_now().timestamp()
+            time_left = task.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring task. task_id=%r', task.task_id)
                 self._schedule_task_timeout(task, time_left)

@@ -30,7 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
-from golem.core.common import datetime_to_timestamp
+from golem.core.common import datetime_to_timestamp, default_now
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -44,16 +44,6 @@ db = GolemSqliteDatabase(None, threadlocals=True,
                              ('foreign_keys', True),
                              ('busy_timeout', 1000),
                              ('journal_mode', 'WAL')))
-
-
-# Use proxy function to always use current .utcnow() (allows mocking)
-def default_now():
-    return datetime.datetime.now(tz=datetime.timezone.utc)
-
-
-# Bug in peewee_migrate 0.14.0 induces setting __self__
-# noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
-default_now.__self__ = datetime.datetime  # type: ignore
 
 
 def default_dict():
