@@ -72,6 +72,7 @@ class ProviderProxy(HTTPProvider):
 
                 if not retry:
                     nodes_tried += 1
+                    retries = 0
                     self._handle_remote_rpc_provider_failure(
                         method,
                         nodes_tried >= self._single_query_node_limit
