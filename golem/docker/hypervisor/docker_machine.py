@@ -99,7 +99,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]['HostPort'])
         ip = self.command('ip', self._vm_name)
         assert isinstance(ip, str)
-        return ip, port
+        return ip.strip(), port
 
     @property
     def config_dir(self):
