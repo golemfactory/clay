@@ -13,7 +13,8 @@ import pytest
 from twisted.internet import defer
 
 from golem.apps.manager import AppManager
-from golem.model import default_now, RequestedTask, RequestedSubtask
+from golem.core.common import default_now
+from golem.model import RequestedTask, RequestedSubtask
 from golem.task.envmanager import EnvironmentManager
 from golem.task import requestedtaskmanager
 from golem.task.requestedtaskmanager import (

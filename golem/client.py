@@ -898,7 +898,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
             if task.start_time is None:
-                time_started = model.default_now().timestamp()
+                time_started = get_timestamp_utc()
             else:
                 time_started = task.start_time.timestamp()
             task_dict = {
