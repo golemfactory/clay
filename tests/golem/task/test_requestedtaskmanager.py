@@ -103,8 +103,8 @@ class TestRequestedTaskManager:
         self._add_next_subtask_to_client_mock(mock_client)
 
         task_id = self._create_task(
-            task_timeout=20000,
-            subtask_timeout=20000)
+            task_timeout=20,
+            subtask_timeout=20)
         await self.rtm.init_task(task_id)
         self.rtm.start_task(task_id)
         computing_node = self._get_computing_node()
@@ -430,7 +430,7 @@ class TestRequestedTaskManager:
 
     @pytest.mark.asyncio
     async def test_restart_task_after_timeout(self, mock_client, monkeypatch):
-        task_timeout = 0.1
+        task_timeout = 1
         task_id = await self._start_task(task_timeout=task_timeout)
 
         # Wait for the task to timeout
