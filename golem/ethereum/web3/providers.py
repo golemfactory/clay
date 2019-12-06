@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 RETRY_COUNT_LIMIT = 10
 RETRY_COUNT_INTERVAL = 1800  # seconds
 SINGLE_QUERY_RETRY_LIMIT = 3
-SINGLE_QUERY_NODE_LIMIT = 3
+SINGLE_QUERY_NODE_LIMIT = 2
 
 
 class ProviderProxy(HTTPProvider):
