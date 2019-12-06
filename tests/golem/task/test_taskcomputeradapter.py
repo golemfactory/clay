@@ -276,34 +276,32 @@ class TestLockConfig(TaskComputerAdapterTestBase):
 
 class TestChangeConfig(TaskComputerAdapterTestBase):
 
-    @defer.inlineCallbacks
     def _test_compute_tasks(self, accept_tasks, in_shutdown, expected):
         self.task_server.get_task_computer_root.return_value = '/test'
         config_desc = ClientConfigDescriptor()
         config_desc.accept_tasks = accept_tasks
         config_desc.in_shutdown = in_shutdown
 
-        yield self.adapter.change_config(config_desc)
+        self.adapter._task_server.config_desc = config_desc
         self.assertEqual(self.adapter.compute_tasks, expected)
 
-    @defer.inlineCallbacks
     def test_compute_tasks_setting(self):
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=1,
             in_shutdown=1,
             expected=False
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=1,
             in_shutdown=0,
             expected=True
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=0,
             in_shutdown=1,
             expected=False
         )
-        yield self._test_compute_tasks(
+        self._test_compute_tasks(
             accept_tasks=0,
             in_shutdown=0,
             expected=False
