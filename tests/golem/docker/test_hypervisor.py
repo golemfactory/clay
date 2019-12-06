@@ -182,7 +182,8 @@ class TestDockerMachineHypervisor(LogTestCase):
         }
         hypervisor = MockHypervisor()
         vm_ip = '192.168.64.151'
-        with mock.patch.object(hypervisor, 'command', return_value=vm_ip):
+        cmd_out = vm_ip + '\n'
+        with mock.patch.object(hypervisor, 'command', return_value=cmd_out):
             host, port = hypervisor.get_port_mapping('container_id', 12345)
         self.assertEqual(host, vm_ip)
         self.assertEqual(port, 54321)
@@ -502,7 +503,7 @@ class TestDummyHypervisor(TestCase):
             }
         }
         vm_ip = '10.0.0.3'
-        command_handler.run.return_value = vm_ip
+        command_handler.run.return_value = vm_ip + '\n'
 
         hypervisor = DummyHypervisor(mock.Mock())
         host, port = hypervisor.get_port_mapping('container_id', 12345)
