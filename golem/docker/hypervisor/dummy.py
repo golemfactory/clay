@@ -54,7 +54,7 @@ class DummyHypervisor(Hypervisor):
             vm_ip = DockerMachineCommandHandler.run('ip', DOCKER_VM_NAME)
             if vm_ip is None:
                 raise RuntimeError('Cannot retrieve Docker VM IP address')
-            ip_address = vm_ip
+            ip_address = vm_ip.strip()
         else:
             ip_address = net_config['Networks']['bridge']['IPAddress']
 
