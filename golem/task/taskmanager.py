@@ -764,7 +764,11 @@ class TaskManager(TaskEventListener):
         def verification_finished_():
             logger.debug("Verification finished. subtask_id=%s", subtask_id)
             ss = self.__set_subtask_state_finished(subtask_id)
-            if not self.tasks[task_id].verify_subtask(subtask_id):
+            if self.tasks[task_id].verify_subtask(subtask_id):
+                self.notice_task_updated(task_id,
+                                         subtask_id=subtask_id,
+                                         op=SubtaskOp.FINISHED)
+            else:
                 logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.status = SubtaskStatus.failure
                 ss.stderr = "[GOLEM] Not accepted"
@@ -772,12 +776,6 @@ class TaskManager(TaskEventListener):
                     task_id,
                     subtask_id=subtask_id,
                     op=SubtaskOp.NOT_ACCEPTED)
-                verification_finished()
-                return
-
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.FINISHED)
 
             verification_finished()
 
@@ -803,6 +801,17 @@ class TaskManager(TaskEventListener):
         self.tasks[task_id].computation_finished(
             subtask_id, result, verification_finished_
         )
+
+    @handle_subtask_key_error
+    def __set_subtask_state_timed_out(self, subtask_id: str):
+        task_id = self.subtask2task_mapping[subtask_id]
+        if hasattr(self.tasks[task_id], "subtasks_given"):
+            # pylint: disable=line-too-long
+            self.tasks[task_id].subtasks_given[subtask_id]['status'] = SubtaskStatus.timeout  # type: ignore # noqa: E501
+        else:
+            logger.warning("Couldn't retrieve subtask {} from task {}. "
+                           "Task doesn't have 'subtasks_given' attribute."
+                           .format(subtask_id, task_id))
 
     @handle_subtask_key_error
     def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:
@@ -908,7 +917,8 @@ class TaskManager(TaskEventListener):
                         logger.info("Subtask %r dies with status %r",
                                     s.subtask_id,
                                     s.status.value)
-                        s.status = SubtaskStatus.failure
+                        s.status = SubtaskStatus.timeout
+                        self.__set_subtask_state_timed_out(s.subtask_id)
                         nodes_with_timeouts.append(s.node_id)
                         t.computation_failed(s.subtask_id)
                         s.stderr = "[GOLEM] Timeout"

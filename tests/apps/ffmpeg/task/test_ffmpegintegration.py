@@ -16,6 +16,9 @@ from parameterized import parameterized
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     ffmpegException, VideoCodecNotSupportedByContainer, \
     AudioCodecNotSupportedByContainer
+
+from golem.task.taskbase import Task
+from golem.task.taskstate import TaskStatus
 from golem.testutils_app_integration import TestTaskIntegration
 from golem.tools.ci import ci_skip
 from tests.apps.ffmpeg.task.ffmpeg_integration_base import \
@@ -468,3 +471,49 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         # is not necessarily the case for non-whitelisted streams in general.
         with self.assertRaises(UnsupportedStream):
             self.execute_task(task_def)
+
+    def test_dont_retry_failed_subtask_more_than_1_time(self):
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
+        result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            video_options={
+                'codec': 'h265',
+                'resolution': [320, 240],
+                'frame_rate': "25",
+            })
+
+        task: Task = self.start_task(task_def)
+
+        for _ in range(2):
+            self._fail_next_subtask_and_verify(task)
+
+        self.assertFalse(task.needs_computation())
+        self.assertTrue(task.finished_computation())
+        self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
+
+    def _fail_next_subtask_and_verify(self, task: Task):
+        result, subtask_id = self.fail_computing_next_subtask(task)
+        self.verify_subtask(task, subtask_id, result)
+
+    @pytest.mark.slow
+    def test_subtask_timeout_is_not_failure(self):
+        resource_stream = os.path.join(self.RESOURCES, 'test_video2')
+        result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
+        task_def = self._create_task_def_for_transcoding(
+            resource_stream,
+            result_file,
+            container=Container.c_MP4.value,
+            video_options={
+                'codec': 'h265',
+                'resolution': [320, 240],
+                'frame_rate': "25",
+            })
+        task_def['subtask_timeout'] = '00:00:01'
+        task: Task = self.start_task(task_def)
+
+        for _ in range(5):
+            self.timeout_next_subtask(task)
+            self.task_manager.check_timeouts()
