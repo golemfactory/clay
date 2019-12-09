@@ -6,7 +6,6 @@ from docker.errors import APIError
 from twisted.trial.unittest import TestCase
 
 from golem.envs import RuntimeStatus
-from golem.envs.docker import DockerRuntimePayload
 from golem.envs.docker.cpu import DockerCPURuntime, DockerOutput, DockerInput, \
     InputSocket
 

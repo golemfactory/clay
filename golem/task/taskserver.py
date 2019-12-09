@@ -483,10 +483,7 @@ class TaskServer(
                     price_per_wallclock_h=self.config_desc.min_price,
                     price_per_cpu_h=self.config_desc.price_per_cpu_h,
                 ), theader.max_price, theader.task_owner.key)
-            self.task_manager.add_comp_task_request(
-                theader=theader, price=price,
-                performance=benchmark_score
-            )
+
             wtct = message.tasks.WantToComputeTask(
                 perf_index=benchmark_score,
                 cpu_usage=benchmark_cpu_usage,
@@ -501,10 +498,20 @@ class TaskServer(
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
+
+            task_class = self.client.apps_manager.get_task_class_for_env(
+                theader.environment)
+            budget = task_class.PROVIDER_MARKET_STRATEGY.calculate_budget(wtct)
+            self.task_manager.add_comp_task_request(
+                task_header=theader,
+                budget=budget,
+                performance=benchmark_score,
+            )
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
             )
+
             timer.ProviderTTCDelayTimers.start(wtct.task_id)
             self.requested_tasks.add(theader.task_id)
             return theader.task_id
@@ -519,6 +526,9 @@ class TaskServer(
             self,
             msg: message.tasks.TaskToCompute,
     ) -> bool:
+        if not self.task_manager.comp_task_keeper.receive_subtask(msg):
+            return False
+
         if not self.task_computer.can_take_work():
             logger.error("Trying to assign a task, when it's already assigned")
             return False

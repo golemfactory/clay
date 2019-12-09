@@ -490,8 +490,6 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
     def test_react_to_task_to_compute(self):
         ctd = self.ctd()
         ttc = self.ttc_prepare_and_react(ctd)
-        self.task_session.task_manager.\
-            comp_task_keeper.receive_subtask.assert_called_with(ttc)
         self.task_session.task_server.task_given.assert_called_with(ttc)
         self.conn.close.assert_not_called()
 
