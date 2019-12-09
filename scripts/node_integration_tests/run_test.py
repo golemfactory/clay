@@ -132,11 +132,8 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
 
 def main():
     args = parse_args()
-
     config, playbook_class = get_config_and_playbook_class(args.test_path)
-
     override_config(config, args)
-
     run_playbook(playbook_class, config)
 
 
