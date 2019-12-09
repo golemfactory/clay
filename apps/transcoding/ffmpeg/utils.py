@@ -3,7 +3,8 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
+from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.formats import Container
 
 from apps.transcoding import common
@@ -25,6 +26,8 @@ class StreamOperator:
                                         input_file_on_host: str,
                                         parts: int,
                                         target_container: Container,
+                                        target_audio_codec: Optional[AudioCodec
+                                                                    ],
                                         task_dir: str,
                                         task_id: str):
 
@@ -36,6 +39,7 @@ class StreamOperator:
                 input_file_on_host,
                 parts,
                 target_container,
+                target_audio_codec,
             )
 
         FfmpegDockerAPI.remove_split_intermediate_videos(directory_mapping)
@@ -70,6 +74,7 @@ class StreamOperator:
                 streams_list,
                 params.get('metadata', {}),
                 params.get('muxer_info', {}),
+                params.get('encoder_info', {}),
             )
 
     def _prepare_merge_job(self,
