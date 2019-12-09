@@ -81,7 +81,7 @@ async def test_task(
     )
     with open(task_params_path, 'r') as f:
         task_params = json.load(f)
-    task_id = rtm.create_task(golem_params, task_params)
+    task_id = await rtm.create_task(golem_params, task_params)
     print('Task created', task_id)
     await deferred_from_future(rtm.init_task(task_id))
     rtm.start_task(task_id)
