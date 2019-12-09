@@ -71,8 +71,8 @@ async def test_task(
     golem_params = requestedtaskmanager.CreateTaskParams(
         app_id=app_definition.id,
         name='testtask',
-        task_timeout=3600,
-        subtask_timeout=3600,
+        task_timeout=4,
+        subtask_timeout=4,
         output_directory=output_dir,
         resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
@@ -101,7 +101,7 @@ async def test_task(
             task_id=task_id,
             environment=app_definition.requestor_env,
             environment_prerequisites=env_prerequisites,
-            subtask_timeout=3600,
+            subtask_timeout=4,
             deadline=time.time() + 3600,
         )
         ctd = {

@@ -24,10 +24,10 @@ from golem.core.golem_async import CallScheduler
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    default_now,
 )
 from golem.model import (
     ComputingNode,
-    default_now,
     RequestedTask,
     RequestedSubtask,
 )
@@ -114,7 +114,7 @@ class RequestedTaskManager:
                 # subtask not started
                 continue
             subtask_id = subtask.subtask_id
-            time_left = subtask.deadline.timestamp() - default_now().timestamp()
+            time_left = subtask.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring subtask. subtask_id=%r', subtask_id)
                 self._schedule_subtask_timeout(subtask, time_left)
@@ -125,10 +125,13 @@ class RequestedTaskManager:
         running_tasks = RequestedTask.select() \
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
         for task in running_tasks:
+            if task.status == TaskStatus.creating:
+                self.error_creating(task.task_id)
+                continue
             if task.deadline is None:
                 # task not started
                 continue
-            time_left = task.deadline.timestamp() - default_now().timestamp()
+            time_left = task.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring task. task_id=%r', task.task_id)
                 self._schedule_task_timeout(task, time_left)
@@ -215,8 +218,6 @@ class RequestedTaskManager:
             app_params=app_params,
         )
 
-        self._schedule_task_timeout(task, golem_params.task_timeout)
-
         logger.debug(
             'create_task(task_id=%r) - prepare directories. app_id=%s',
             task.task_id,
@@ -276,6 +277,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.start_time = default_now()
         task.save()
+        self._schedule_task_timeout(task, task.task_timeout)
         self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
@@ -398,7 +400,7 @@ class RequestedTaskManager:
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
         deadline = datetime_to_timestamp_utc(min(
-            subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
+            subtask.start_time + timedelta(seconds=task.subtask_timeout),
             task_deadline
         ))
 

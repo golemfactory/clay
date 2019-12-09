@@ -5,7 +5,7 @@ import subprocess
 import sys
 import threading
 from calendar import timegm
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, cast, List, TypeVar, Optional
@@ -119,8 +119,18 @@ def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
     return stdout.strip()
 
 
+# Use proxy function to always use current .utcnow() (allows mocking)
+def default_now():
+    return datetime.now(tz=timezone.utc)
+
+
+# Bug in peewee_migrate 0.14.0 induces setting __self__
+# noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
+default_now.__self__ = datetime  # type: ignore
+
+
 def get_timestamp_utc():
-    now = datetime.now(pytz.utc)
+    now = default_now()
     return datetime_to_timestamp(now)
 
 
