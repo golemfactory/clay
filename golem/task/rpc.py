@@ -425,7 +425,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
+    logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -517,28 +517,18 @@ class ClientProvider:
         task = _create_task(self.client, task_dict)
         task_id = task.header.task_id
 
-        try:
-            self._validate_enough_funds_to_pay_for_task(
-                task.subtask_price,
-                task.get_total_tasks(),
-                task.header.concent_enabled,
-                force
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            self.task_manager.task_creation_failed(task_id, str(exc))
-            raise
+        self._validate_enough_funds_to_pay_for_task(
+            task.subtask_price,
+            task.get_total_tasks(),
+            task.header.concent_enabled,
+            force
+        )
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
         deferred.addErrback(
-            lambda failure: _create_task_error(
-                e=failure.value,
-                _self=self,
-                task_dict=task_dict,
-                force=force
-            )
-        )
-
+            lambda failure: self.client.task_manager.task_creation_failed(
+                task_id, str(failure.value)))
         return task_id
 
     def _create_task_api_task(
