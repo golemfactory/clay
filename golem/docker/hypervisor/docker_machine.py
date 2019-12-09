@@ -89,9 +89,6 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
                 return [l.strip().split()[0] for l in lines]
         return []
 
-    def requires_ports_publishing(self) -> bool:
-        return True
-
     def get_port_mapping(self, container_id: str, port: int) -> Tuple[str, int]:
         api_client = local_client()
         c_config = api_client.inspect_container(container_id)

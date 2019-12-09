@@ -1,10 +1,12 @@
-from typing import Optional, Dict, Tuple
+from contextlib import contextmanager
+from pathlib import Path
+from typing import Optional, Dict, Tuple, List
 
-from golem.core.common import is_osx, is_windows
+from golem.core.common import is_osx
 from golem.docker.client import local_client
-from golem.docker.commands.docker_machine import DockerMachineCommandHandler
-from golem.docker.config import DOCKER_VM_NAME
+from golem.docker.config import GetConfigFunction, DOCKER_VM_NAME
 from golem.docker.hypervisor import Hypervisor
+from golem.docker.hypervisor.hyperv import HyperVHypervisor
 
 
 class DummyHypervisor(Hypervisor):
@@ -50,13 +52,72 @@ class DummyHypervisor(Hypervisor):
         # TODO: Remove if-s when NonHypervisedDockerCPUEnvironment is removed
         if is_osx():
             ip_address = '127.0.0.1'
-        elif is_windows():
-            vm_ip = DockerMachineCommandHandler.run('ip', DOCKER_VM_NAME)
-            if vm_ip is None:
-                raise RuntimeError('Cannot retrieve Docker VM IP address')
-            ip_address = vm_ip.strip()
         else:
             ip_address = net_config['Networks']['bridge']['IPAddress']
 
         port = int(net_config['Ports'][f'{port}/tcp'][0]['HostPort'])
         return ip_address, port
+
+
+class DummyHyperVHypervisor(HyperVHypervisor):
+    """ Hypervisor class that doesn't manage the VM state but does use
+        HyperVHypervisor logic for directory sharing and port mapping. """
+
+    __instance = None
+
+    @classmethod
+    def is_available(cls) -> bool:
+        return True
+
+    @classmethod
+    def instance(
+            cls,
+            get_config_fn: GetConfigFunction,
+            docker_vm: str = DOCKER_VM_NAME
+    ) -> 'Hypervisor':
+        # Do **NOT** use cls._instance because it is shared with superclass!
+        if not cls.__instance:
+            cls.__instance = cls._new_instance(get_config_fn, docker_vm)
+        return cls.__instance
+
+    def remove(self, name: Optional[str] = None) -> bool:
+        return True
+
+    def vm_running(self, name: Optional[str] = None) -> bool:
+        return True
+
+    def start_vm(self, name: Optional[str] = None) -> None:
+        pass
+
+    def stop_vm(self, name: Optional[str] = None) -> bool:
+        return True
+
+    def restore_vm(self, vm_name: Optional[str] = None) -> None:
+        pass
+
+    def save_vm(self, vm_name: Optional[str] = None) -> None:
+        pass
+
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        return True
+
+    def constrain(self, name: Optional[str] = None, **params) -> None:
+        pass
+
+    def constraints(self, name: Optional[str] = None) -> Dict:
+        return {}
+
+    def update_work_dirs(self, work_dirs: List[Path]) -> None:
+        Hypervisor.update_work_dirs(self, work_dirs)
+
+    @contextmanager
+    def reconfig_ctx(self, name: Optional[str] = None):
+        yield name or self._vm_name
+
+    @contextmanager
+    def restart_ctx(self, name: Optional[str] = None):
+        yield name or self._vm_name
+
+    @contextmanager
+    def recover_ctx(self, name: Optional[str] = None):
+        yield name or self._vm_name
