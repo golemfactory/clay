@@ -571,7 +571,7 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
-        self.client.update_setting('accept_tasks', False)
+        self.client.update_setting('accept_tasks', False, False)
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
@@ -587,7 +587,7 @@ class ClientProvider:
                 self.requested_task_manager.init_task(task_id))
         except Exception:
             self.client.funds_locker.remove_task(task_id)
-            self.client.update_setting('accept_tasks', True)
+            self.client.update_setting('accept_tasks', True, False)
             self.requested_task_manager.error_creating(task_id)
             raise
         else:

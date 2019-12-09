@@ -206,10 +206,6 @@ class Node(HardwarePresetsMixin):
     def quit(self) -> None:
 
         def _quit():
-            docker_manager = self._docker_manager
-            if docker_manager:
-                docker_manager.quit()
-
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
@@ -504,6 +500,11 @@ class Node(HardwarePresetsMixin):
             self._docker_manager = DockerManager.install(self._config_desc)
             self._docker_manager.check_environment()
             self._docker_manager.apply_config()
+
+            # It has to be *during* shutdown because stopping client occurs
+            # before shutdown and it needs docker manager to be running
+            self._reactor.addSystemEventTrigger(
+                "during", "shutdown", self._docker_manager.quit)
 
         return threads.deferToThread(start_docker)
 
