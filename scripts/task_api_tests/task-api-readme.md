@@ -21,8 +21,8 @@ Here is an example of a new task-api JSON file.
         "resources": ["/absolute/path/to/resources/file.blend"],
         "max_price_per_hour": "1_000_000_000_000_000_000",
         "max_subtasks": 1,
-        "task_timeout": 600000,
-        "subtask_timeout": 590000,
+        "task_timeout": 600,
+        "subtask_timeout": 590,
         "output_directory": "/absolute/path/to/output/"
     },
     "app": {
@@ -45,8 +45,8 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
         "resources": ["/absolute/path/to/resources/file.blend"],
         "max_price_per_hour": "1_000_000_000_000_000_000",
         "max_subtasks": 1,
-        "task_timeout": 600000,
-        "subtask_timeout": 590000,
+        "task_timeout": 600,
+        "subtask_timeout": 590,
         "output_directory": "/absolute/path/to/output/"
     },
 ...
@@ -77,11 +77,11 @@ Amount of subtasks to split the task into.
 
 #### golem.task_timeout
 
-Task timeout in milliseconds, so 1000 is one second, 600000 is 10 minutes.
+Task timeout in seconds, 600 is 10 minutes.
 
 #### golem.subtask_timeout
 
-Subtask timeout in milliseconds, so 1000 is one second, 600000 is 10 minutes.
+Subtask timeout in seconds, 600 is 10 minutes.
 
 ### app
 
