@@ -4,7 +4,8 @@ import os
 import sys
 from typing import Any, Dict, Optional
 
-from ffmpeg_tools import codecs, commands, formats, meta, validation
+from ffmpeg_tools import codecs, commands, formats, \
+    meta, validation, exceptions
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
@@ -96,7 +97,7 @@ def _fetch_encoder_info_if_requested(
 
     try:
         audio_codec = codecs.AudioCodec(audio_codec_name)
-    except validation.UnsupportedAudioCodec:
+    except exceptions.UnsupportedAudioCodec:
         # Getting an unsupported codec is entirely possible here because
         # validations have not been performed yet. Now we know that they
         # won't pass so there's no point in crashing the container.
@@ -181,13 +182,13 @@ def sorted_transcoded_video_paths(transcoded_video_paths):
 
 def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
     if len(chunks) <= 0:
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
 
     if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
         # It would be possible to handle chunks residing in different
         # directories but it's not implemented (and not needed right now).
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "All video chunks to merge must be in the same directory")
 
     # NOTE: The way the ffmpeg merge command works now, the list file
@@ -215,13 +216,13 @@ def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
 
 def do_merge(chunks, outputfilename, target_container=None):
     if len(chunks) <= 0:
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
 
     if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
         # It would be possible to handle chunks residing in different
         # directories but it's not implemented (and not needed right now).
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "All video chunks to merge must be in the same directory")
 
     ffconcat_list_filename = build_and_store_ffconcat_list(
@@ -390,7 +391,7 @@ def run():
 
     try:
         run_ffmpeg(params)
-    except commands.CommandFailed as e:
+    except exceptions.CommandFailed as e:
         print(e.command, file=sys.stderr)
         exit(e.error_code)
 
