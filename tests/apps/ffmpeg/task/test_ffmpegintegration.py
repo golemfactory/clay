@@ -472,6 +472,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(UnsupportedStream):
             self.execute_task(task_def)
 
+    @pytest.mark.slow
     def test_dont_retry_failed_subtask_more_than_1_time(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
