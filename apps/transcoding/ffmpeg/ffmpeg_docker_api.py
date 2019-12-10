@@ -56,8 +56,8 @@ class FfmpegDockerAPI:
                                         input_file_on_host: str,
                                         parts: int,
                                         target_container: Optional[Container],
-                                        target_audio_codec: Optional[AudioCodec
-                                                                    ],):
+                                        target_audio_codec: Optional[
+                                            AudioCodec],):
 
         input_file_basename = os.path.basename(input_file_on_host)
 

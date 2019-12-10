@@ -5,7 +5,7 @@ import sys
 from typing import Any, Dict, Optional
 
 from ffmpeg_tools import codecs, commands, formats, \
-    meta, validation, exceptions
+    meta, exceptions
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
