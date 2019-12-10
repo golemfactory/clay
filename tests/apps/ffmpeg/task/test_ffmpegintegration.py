@@ -472,6 +472,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         with self.assertRaises(UnsupportedStream):
             self.execute_task(task_def)
 
+    @pytest.mark.slow
     def test_dont_retry_failed_subtask_more_than_1_time(self):
         resource_stream = os.path.join(self.RESOURCES, 'test_video2')
         result_file = os.path.join(self.root_dir, 'test_simple_case.mp4')
@@ -492,7 +493,7 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
 
         self.assertFalse(task.needs_computation())
         self.assertTrue(task.finished_computation())
-        self.assertTrue(self.get_task_state(task) == TaskStatus.finished)
+        self.assertEqual(self.get_task_state(task), TaskStatus.finished)
 
     def _fail_next_subtask_and_verify(self, task: Task):
         result, subtask_id = self.fail_computing_next_subtask(task)

@@ -2,8 +2,10 @@ import json
 import re
 import os
 import sys
+from typing import Any, Dict, Optional
 
-from ffmpeg_tools import commands, formats, meta
+from ffmpeg_tools import codecs, commands, formats, \
+    meta, exceptions
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"
@@ -74,9 +76,58 @@ def do_split(path_to_stream, parts):
     return results
 
 
+def _fetch_encoder_info_if_requested(
+        target_audio_codec: str,
+        muxer_info: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+
+    encoder_info_requested = (
+        target_audio_codec is not None
+        # Even if encoder info was not explicitly requested by specifying an
+        # audio codec,
+        or muxer_info is not None
+        and "default_audio_codec" in muxer_info
+    )
+    if not encoder_info_requested:
+        return None
+
+    if target_audio_codec is not None:
+        audio_codec_name = target_audio_codec
+    else:
+        audio_codec_name = muxer_info["default_audio_codec"]
+
+    try:
+        audio_codec = codecs.AudioCodec(audio_codec_name)
+    except exceptions.UnsupportedAudioCodec:
+        # Getting an unsupported codec is entirely possible here because
+        # validations have not been performed yet. Now we know that they
+        # won't pass so there's no point in crashing the container.
+        # Just return empty encoder info and let the validations handle
+        # the problem gracefully.
+        print(
+            f"WARNING: Could not fetch encoder info for unsupported codec "
+            f"'{audio_codec_name}'",
+            file=sys.stderr)
+        return None
+
+    encoder = audio_codec.get_encoder()
+    if encoder is None:
+        # There's no encoder assigned to this codec in ffmpeg_tools.
+        # Probably ffmpeg does not even have an encoder for this format.
+        # Again, this is something that should be detected by validations
+        # but they have not been performed yet.
+        print(
+            f"WARNING: Could not fetch encoder info for codec "
+            f"'{audio_codec_name}' because it has no encoder assigned.",
+            file=sys.stderr)
+        return None
+
+    return commands.query_encoder_info(encoder)
+
+
 def do_extract_and_split(input_file,
                          parts,
                          target_container=None,
+                         target_audio_codec=None,
                          intermediate_container=None):
     input_basename = os.path.basename(input_file)
     [input_stem, input_extension] = os.path.splitext(input_basename)
@@ -101,6 +152,13 @@ def do_extract_and_split(input_file,
     if target_container is not None:
         results["muxer_info"] = commands.query_muxer_info(target_container)
 
+    encoder_info = _fetch_encoder_info_if_requested(
+        target_audio_codec,
+        results["muxer_info"] if "muxer_info" in results else None,
+    )
+    if encoder_info is not None:
+        results["encoder_info"] = encoder_info
+
     results_file = os.path.join(OUTPUT_DIR, "extract-and-split-results.json")
     with open(results_file, 'w') as f:
         json.dump(results, f)
@@ -124,13 +182,13 @@ def sorted_transcoded_video_paths(transcoded_video_paths):
 
 def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
     if len(chunks) <= 0:
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
 
     if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
         # It would be possible to handle chunks residing in different
         # directories but it's not implemented (and not needed right now).
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "All video chunks to merge must be in the same directory")
 
     # NOTE: The way the ffmpeg merge command works now, the list file
@@ -158,13 +216,13 @@ def build_and_store_ffconcat_list(chunks, output_filename, list_basename):
 
 def do_merge(chunks, outputfilename, target_container=None):
     if len(chunks) <= 0:
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "Need at least one video segment to perform a merge operation")
 
     if len(set(os.path.dirname(chunk) for chunk in chunks)) >= 2:
         # It would be possible to handle chunks residing in different
         # directories but it's not implemented (and not needed right now).
-        raise commands.InvalidArgument(
+        raise exceptions.InvalidArgument(
             "All video chunks to merge must be in the same directory")
 
     ffconcat_list_filename = build_and_store_ffconcat_list(
@@ -259,6 +317,13 @@ def query_muxer_info(muxer):
         json.dump(results, f)
 
 
+def query_encoder_info(encoder):
+    results = {"encoder_info": commands.query_encoder_info(encoder)}
+    results_file = os.path.join(OUTPUT_DIR, "query-encoder-info-results.json")
+    with open(results_file, 'w') as f:
+        json.dump(results, f)
+
+
 def run_ffmpeg(params):
     if params['command'] == "extract":
         do_extract(
@@ -275,6 +340,7 @@ def run_ffmpeg(params):
             params['input_file'],
             params['parts'],
             params.get('target_container'),
+            params.get('target_audio_codec'),
             params.get('intermediate_container'))
     elif params['command'] == "transcode":
         do_transcode(
@@ -311,6 +377,9 @@ def run_ffmpeg(params):
     elif params['command'] == "query-muxer-info":
         query_muxer_info(
             params["muxer"])
+    elif params['command'] == "query-encoder-info":
+        query_encoder_info(
+            params["encoder"])
     else:
         raise InvalidCommand(f"Invalid command: {params['command']}")
 
@@ -322,7 +391,7 @@ def run():
 
     try:
         run_ffmpeg(params)
-    except commands.CommandFailed as e:
+    except exceptions.CommandFailed as e:
         print(e.command, file=sys.stderr)
         exit(e.error_code)
 
