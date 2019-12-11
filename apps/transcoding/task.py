@@ -12,7 +12,7 @@ import ffmpeg_tools.validation as validation
 import ffmpeg_tools.exceptions as exceptions
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.meta import get_codecs, get_resolutions
+from ffmpeg_tools.meta import count_streams, get_video_codec, get_resolution
 
 import apps.transcoding.common
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
@@ -95,28 +95,23 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
     def _autofill_video_codec_from_metadata(self, metadata: dict) -> None:
         target_video_codec = self.task_definition.options.video_params.codec
         if target_video_codec is None:
-            src_codecs = get_codecs(metadata, 'video')
-            if len(src_codecs) > 0:
-                self.task_definition.options.video_params.codec = src_codecs[0]
+            if count_streams(metadata, 'video') >= 2:
+                raise exceptions.InvalidVideo(
+                    "Files with more than 1 video stream are not supported.")
 
-                if len(src_codecs) > 1:
-                    logger.warn(
-                        "Found multiple video streams while trying to determine"
-                        " source video codec. Ignoring all but the first one.")
+            src_codec = get_video_codec(metadata)
+            self.task_definition.options.video_params.codec = src_codec
 
     def _autofill_resolution_from_metadata(self, metadata: dict) -> None:
         target_resolution = self.task_definition.options.video_params.resolution
         if target_resolution is None:
-            src_resolutions = get_resolutions(metadata)
-            if len(src_resolutions) > 0:
-                self.task_definition.options.video_params.resolution = \
-                    src_resolutions[0]
+            if count_streams(metadata, 'video') >= 2:
+                raise exceptions.InvalidVideo(
+                    "Files with more than 1 video stream are not supported.")
 
-                if len(src_resolutions) > 1:
-                    logger.warn(
-                        "Found multiple video streams while trying to determine"
-                        " source video resolution. Ignoring all but the first"
-                        " one.")
+            src_resolution = get_resolution(metadata)
+            self.task_definition.options.video_params.resolution = \
+                src_resolution
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
