@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
-from golem.docker.hypervisor.dummy import DummyHypervisor
+from golem.core.common import is_windows
+from golem.docker.hypervisor.dummy import DummyHypervisor, DummyHyperVHypervisor
 from golem.envs.docker.cpu import DockerCPUEnvironment
 from golem.envs.docker.gpu import DockerGPUEnvironment, DockerGPUConfig
 
@@ -14,6 +15,8 @@ class NonHypervisedDockerCPUEnvironment(DockerCPUEnvironment):
 
     @classmethod
     def _get_hypervisor_class(cls):
+        if is_windows():
+            return DummyHyperVHypervisor
         return DummyHypervisor
 
 
