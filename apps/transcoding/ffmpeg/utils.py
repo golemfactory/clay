@@ -3,7 +3,7 @@ import logging
 import os
 import shutil
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 from ffmpeg_tools.codecs import AudioCodec
 from ffmpeg_tools.formats import Container
 
@@ -22,14 +22,14 @@ logger = logging.getLogger(__name__)
 
 class StreamOperator:
     @HandleError(ValueError, common.not_valid_json)
-    def extract_video_streams_and_split(  # noqa pylint: disable=too-many-locals
-            self,
-            input_file_on_host: str,
-            parts: int,
-            target_container: Union[Container, str],
-            target_audio_codec: Optional[Union[AudioCodec, str]],
-            task_dir: str,
-            task_id: str):
+    def extract_video_streams_and_split(self, # noqa pylint: disable=too-many-locals
+                                        input_file_on_host: str,
+                                        parts: int,
+                                        target_container: Container,
+                                        target_audio_codec: Optional[AudioCodec
+                                                                    ],
+                                        task_dir: str,
+                                        task_id: str):
 
         directory_mapping = self._generate_split_dir_mapping(task_dir)
 
