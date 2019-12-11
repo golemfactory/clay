@@ -1,42 +1,80 @@
+import datetime
+import time
 from unittest import TestCase
 from unittest.mock import patch, Mock
 
-from golem.ethereum.web3.providers import ProviderProxy
+import freezegun
 
+from golem.ethereum.web3.providers import (
+    ProviderProxy,
+    RETRY_COUNT_INTERVAL,
+    SINGLE_QUERY_RETRY_LIMIT,
+)
 
 @patch('web3.providers.rpc.HTTPProvider')
 class TestProviders(TestCase):
+    def setUp(self):
+        self._nodes_list = ['http://golem', 'http://melog']
+        self.proxy = ProviderProxy(self._nodes_list)
+        self.provider = Mock()
 
     def test_successful_calls(self, *_):
-        proxy = ProviderProxy(['http://golem'])
-        proxy.provider = Mock()
-        proxy.provider.make_request = Mock(return_value="Working")
+        self.proxy.provider.make_request = Mock(return_value="Working")
 
-        result = proxy.make_request("a", [])
+        result = self.proxy.make_request("a", [])
 
         self.assertEqual(result, "Working")
-        proxy.provider.make_request.assert_called_once_with("a", [])
+        self.proxy.provider.make_request.assert_called_once_with("a", [])
 
     def test_recoverable_errors(self, *_):
-        proxy = ProviderProxy(['http://golem'])
-        proxy.provider = Mock()
-        proxy.provider.make_request = Mock(side_effect=[None, "Working"])
+        self.proxy.provider.make_request = Mock(side_effect=[None, "Working"])
 
-        result = proxy.make_request("a", [])
+        result = self.proxy.make_request("a", [])
 
         self.assertEqual(result, "Working")
-        proxy.provider.make_request.assert_called_with("a", [])
-        self.assertEqual(proxy.provider.make_request.call_count, 2)
+        self.proxy.provider.make_request.assert_called_with("a", [])
+        self.assertEqual(self.proxy.provider.make_request.call_count, 2)
 
+    @patch(
+        'golem.ethereum.web3.providers.HTTPProvider.make_request',
+        Mock(side_effect=ConnectionError()))
     def test_unrecoverable_errors(self, *_):
-        proxy = ProviderProxy(['http://golem'])
-        proxy.provider = Mock()
-        proxy.provider.make_request = Mock(side_effect=ConnectionError())
-
         result = None
         with self.assertRaises(Exception):
-            result = proxy.make_request("a", [])
+            result = self.proxy.make_request("a", [])
 
         self.assertEqual(result, None)
-        proxy.provider.make_request.assert_called_with("a", [])
-        self.assertEqual(proxy.provider.make_request.call_count, 3)
+        self.proxy.provider.make_request.assert_called_with("a", [])
+        self.assertEqual(
+            self.proxy.provider.make_request.call_count,
+            SINGLE_QUERY_RETRY_LIMIT * len(self._nodes_list)
+        )
+
+    def test_first_retry(self, *_):
+        with freezegun.freeze_time(datetime.datetime.utcnow()):
+            now = time.time()
+            self.proxy._register_retry()
+
+        self.assertEqual(self.proxy._first_retry_time, now)
+        self.assertEqual(self.proxy._retries, 1)
+
+    def test_subsequent_retry(self, *_):
+        with freezegun.freeze_time(datetime.datetime.utcnow()):
+            frt = time.time() - RETRY_COUNT_INTERVAL / 2
+            self.proxy._first_retry_time = frt
+            self.proxy._retries = 2
+            self.proxy._register_retry()
+
+        self.assertEqual(self.proxy._first_retry_time, frt)
+        self.assertEqual(self.proxy._retries, 3)
+
+    def test_subsequent_distant_retry(self, *_):
+        with freezegun.freeze_time(datetime.datetime.utcnow()):
+            now = time.time()
+            frt = now - RETRY_COUNT_INTERVAL - 1
+            self.proxy._first_retry_time = frt
+            self._retries = 2
+            self.proxy._register_retry()
+
+        self.assertEqual(self.proxy._first_retry_time, now)
+        self.assertEqual(self.proxy._retries, 1)
