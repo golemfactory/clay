@@ -296,7 +296,7 @@ class TestffmpegTask(TempDirFixture):
 
             self.assertEqual(
                 ffmpeg_task.task_definition.options.video_params.codec,
-                'h264')
+                VideoCodec.H_264)
 
             self.assertEqual(
                 ffmpeg_task.task_definition.options.video_params.resolution,

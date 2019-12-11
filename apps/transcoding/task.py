@@ -99,7 +99,7 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
                 raise exceptions.InvalidVideo(
                     "Files with more than 1 video stream are not supported.")
 
-            src_codec = get_video_codec(metadata)
+            src_codec = VideoCodec(get_video_codec(metadata))
             self.task_definition.options.video_params.codec = src_codec
 
     def _autofill_resolution_from_metadata(self, metadata: dict) -> None:
