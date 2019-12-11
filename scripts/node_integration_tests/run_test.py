@@ -112,8 +112,11 @@ def override_config(config: 'TestConfigBase', args: argparse.Namespace) -> None:
                 'concent',
                 'mainnet',
         ]:
-            for node_config in config.nodes.values():
-                setattr(node_config, k, v)
+            for node_configs in config.nodes.values():
+                if not isinstance(node_configs, list):
+                    node_configs = [node_configs]
+                for node_config in node_configs:
+                    setattr(node_config, k, v)
         elif k == 'datadir':
             for node_name, datadir in v.items():
                 node_id = NodeId(node_name)
