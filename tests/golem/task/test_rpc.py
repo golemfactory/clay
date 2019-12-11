@@ -142,42 +142,43 @@ class TestCreateTask(ProviderBase, TestClientBase):
             return defer.succeed(f(*args, **kwargs))
 
         with mock.patch('golem.core.deferred.deferToThread', execute):
-            result = self.provider.create_task(self._get_task_dict())
+            result = golem_deferred.sync_wait(
+                self.provider.create_task(self._get_task_dict()))
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
     def test_create_task_fail_no_type(self, *_):
-        task_id, error = self.provider.create_task({})
+        task_id, error = golem_deferred.sync_wait(
+            self.provider.create_task({}))
         self.assertIsNone(task_id)
         self.assertIn('must be one of', error)
 
     def test_create_task_fail_unknown_type(self, *_):
-        task_id, error = self.provider.create_task(
-            self._get_task_dict(**{'type': 'project_2501'})
-        )
+        task_dict = self._get_task_dict(**{'type': 'project_2501'})
+        task_id, error = golem_deferred.sync_wait(
+            self.provider.create_task(task_dict))
         self.assertIsNone(task_id)
         self.assertIn('must be one of', error)
 
     def test_create_task_fail_no_name(self, *_):
         t = self._get_task_dict()
         del t['name']
-        result = self.provider.create_task(t)
+        result = golem_deferred.sync_wait(self.provider.create_task(t))
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_too_long_name(self, *_):
-        result = self.provider.create_task(
-            self._get_task_dict(name='This name has 27 characters')
-        )
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(
+                self._get_task_dict(name='This name has 27 characters')))
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_illegal_character_in_name(self, *_):
-        result = self.provider.create_task(
-            self._get_task_dict(name="Golem task/")
-        )
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(self._get_task_dict(name="Golem task/")))
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
@@ -190,7 +191,8 @@ class TestCreateTask(ProviderBase, TestClientBase):
             currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
-        result = self.provider.create_task(self._get_task_dict())
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(self._get_task_dict()))
 
         rpc.enqueue_new_task.assert_not_called()
         self.assertIn('validate_lock_funds_possibility', str(mocked))
@@ -215,7 +217,8 @@ class TestCreateTask(ProviderBase, TestClientBase):
             except Exception as exc:  # pylint: disable=broad-except
                 return defer.fail(exc)
         with mock.patch('golem.core.deferred.deferToThread', execute):
-            result = self.provider.create_task(self._get_task_dict())
+            result = golem_deferred.sync_wait(
+                self.provider.create_task(self._get_task_dict()))
 
         task_manager = self.client.task_server.task_manager
         assert len(task_manager.tasks) == 1
@@ -898,7 +901,8 @@ class TestExceptionPropagation(ProviderBase):
         t.name = "test"
         mock_method.side_effect = Exception("Test")
 
-        result = self.provider.create_task(t.to_dict())
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(t.to_dict()))
         mock_method.assert_called()
         self.assertEqual(result, (None, "Test"))
 
