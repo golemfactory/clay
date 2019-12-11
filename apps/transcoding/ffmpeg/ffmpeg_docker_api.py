@@ -12,7 +12,6 @@ from ffmpeg_tools.formats import Container
 from apps.transcoding.common import ffmpegException, ffmpegExtractSplitError, \
     ffmpegMergeReplaceError
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from golem.core.common import value_if_enum
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerTaskThread, \
@@ -78,13 +77,23 @@ class FfmpegDockerAPI:
             input_file_in_container,
             'ro')])
 
+        if isinstance(target_container, Container):
+            raw_target_container = target_container.value
+        else:
+            raw_target_container = target_container
+
+        if isinstance(target_audio_codec, AudioCodec):
+            raw_target_audio_codec = target_audio_codec.value
+        else:
+            raw_target_audio_codec = target_audio_codec
+
         extra_data = {
             'entrypoint': FFMPEG_ENTRYPOINT,
             'command': Commands.EXTRACT_AND_SPLIT.value[0],
             'input_file': input_file_in_container,
             'parts': parts,
-            'target_container': value_if_enum(target_container),
-            'target_audio_codec': value_if_enum(target_audio_codec),
+            'target_container': raw_target_container,
+            'target_audio_codec': raw_target_audio_codec,
         }
 
         logger.debug(
