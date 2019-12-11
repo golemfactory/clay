@@ -19,6 +19,7 @@ from golem.docker.task_thread import DockerDirMapping
 logger = logging.getLogger(__name__)
 
 
+
 class StreamOperator:
     @HandleError(ValueError, common.not_valid_json)
     def extract_video_streams_and_split(  # noqa pylint: disable=too-many-locals

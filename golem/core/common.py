@@ -6,7 +6,6 @@ import sys
 import threading
 from calendar import timegm
 from datetime import datetime
-from enum import Enum
 from functools import wraps
 from typing import Any, Callable, cast, List, TypeVar
 
@@ -165,21 +164,6 @@ def node_info_str(name, node_id):
 
 def short_node_id(node_id):
     return f'{node_id[:8]}..{node_id[-8:]}'
-
-
-def value_if_enum(x: Any) -> Any:
-    """
-    Helper for conveniently dealing with parameters that may contain either
-    an Enum member or its value.
-
-    Returns the thing it gets unless the value is an enum member - in that case
-    returns its `.value`.
-    """
-
-    if not isinstance(x, Enum):
-        return x
-
-    return x.value
 
 
 class HandleError(object):

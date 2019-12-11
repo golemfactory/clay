@@ -2,12 +2,11 @@
 
 import os
 import unittest
-from enum import Enum
 from unittest.mock import patch, ANY, Mock
 from unittest import TestCase
 
 
-from golem.core.common import to_unicode, retry, value_if_enum
+from golem.core.common import to_unicode, retry
 from golem.core.common import HandleKeyError, HandleAttributeError, \
     config_logging, get_timestamp_utc, timestamp_to_datetime, \
     datetime_to_timestamp, timeout_to_deadline, deadline_to_timeout
@@ -17,11 +16,6 @@ from golem.testutils import TempDirFixture
 
 def handle_error(*args, **kwargs):
     return 6
-
-
-class DummyEnum(Enum):
-    A = 'a'
-    B = 'b'
 
 
 class TestCommon(TestCase):
@@ -42,19 +36,6 @@ class TestCommon(TestCase):
         source = None
         result = to_unicode(source)
         assert result is None
-
-    def test_value_if_enum(self):
-        source = DummyEnum.A
-        result = value_if_enum(source)
-        assert result == source.value
-
-        source = 'a'
-        result = value_if_enum(source)
-        assert result == source
-
-        source = None
-        result = value_if_enum(source)
-        assert result == source
 
 
 class TestHandleKeyError(TestCase):
