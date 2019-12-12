@@ -11,16 +11,23 @@ from golem.rpc.session import Session, WebSocketAddress
 
 class RPCClient:
 
-    def __init__(self,
-                 datadir: str,
-                 host: str = CROSSBAR_HOST,
-                 port: int = CROSSBAR_PORT,
-                 realm: str = CROSSBAR_REALM,
-                 ssl: bool = True) -> None:
+    def __init__(  # pylint: disable=too-many-arguments
+            self,
+            datadir: str,
+            mainnet: bool,
+            host: str = CROSSBAR_HOST,
+            port: int = CROSSBAR_PORT,
+            realm: str = CROSSBAR_REALM,
+            ssl: bool = True,
+    ) -> None:
 
         address = WebSocketAddress(host, port, realm, ssl)
+        local_datadir = get_local_datadir(
+            datadir,
+            env_suffix='mainnet' if mainnet else 'rinkeby',
+        )
         cert_manager = CertificateManager(
-            os.path.join(get_local_datadir(datadir), CROSSBAR_DIR)
+            os.path.join(local_datadir, CROSSBAR_DIR)
         )
         crsb_user = cert_manager.CrossbarUsers.golemcli
         secret = cert_manager.get_secret(crsb_user)
@@ -58,5 +65,3 @@ class RPCClient:
     def shutdown(self, *_):
         if self.session:
             self.session.disconnect()
-
-
