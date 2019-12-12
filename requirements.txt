@@ -2,6 +2,7 @@
 appdirs==1.4.3
 argh==0.26.2
 asn1crypto==0.22.0
+async-generator==1.10
 attrs==17.4.0
 autobahn==19.6.2
 Automat==0.6.0

@@ -484,15 +484,12 @@ class ClientProvider:
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
-    @safe_run(_create_task_error)
+    @defer.inlineCallbacks
     def create_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> typing.Tuple[
-        typing.Optional[TaskId],
-        typing.Optional[typing.Union[str, typing.Dict]]
-    ]:
+    ):
         """
         :param task_dict: task definition dictionary
         :param force: if True will ignore warnings
@@ -501,16 +498,21 @@ class ClientProvider:
         """
 
         if 'golem' in task_dict and 'app' in task_dict:
-            return self._create_task_api_task(
-                task_dict['golem'],
-                task_dict['app']), None
-        return self._create_legacy_task(task_dict, force), None
+            try:
+                task_id = yield self._create_task_api_task(
+                    task_dict['golem'],
+                    task_dict['app'])
+                return task_id, None
+            except Exception as exc:  # pylint: disable=broad-except
+                return None, str(exc)
+        return self._create_legacy_task(task_dict, force)
 
+    @safe_run(_create_task_error)
     def _create_legacy_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> TaskId:
+    ) -> typing.Tuple[TaskId, typing.Optional[str]]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
@@ -529,13 +531,14 @@ class ClientProvider:
         deferred.addErrback(
             lambda failure: self.client.task_manager.task_creation_failed(
                 task_id, str(failure.value)))
-        return task_id
+        return task_id, None
 
+    @defer.inlineCallbacks
     def _create_task_api_task(
             self,
             golem_params: dict,
             app_params: dict,
-    ) -> TaskId:
+    ):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
         if self.client.has_assigned_task():
@@ -560,10 +563,10 @@ class ClientProvider:
             False,
         )
 
-        task_id = self.requested_task_manager.create_task(
+        future = self.requested_task_manager.create_task(
             create_task_params,
-            app_params,
-        )
+            app_params)
+        task_id = yield deferred_from_future(future)
 
         self.client.funds_locker.lock_funds(
             task_id,
