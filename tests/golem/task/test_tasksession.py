@@ -259,6 +259,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.get_node_id_for_subtask.return_value = ts2.key_id
         ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
+        ts2.requested_task_manager.subtask_exists.return_value = False
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -283,6 +284,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         )
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
         ts.requested_task_manager.get_node_id_for_subtask.return_value = None
+        ts.requested_task_manager.subtask_exists.return_value = False
         ts._react_to_cannot_compute_task(msg)
         ts.task_manager.task_computation_cancelled.assert_called_once_with(
             msg.subtask_id,
