@@ -425,7 +425,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
+    logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -484,15 +484,12 @@ class ClientProvider:
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
-    @safe_run(_create_task_error)
+    @defer.inlineCallbacks
     def create_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> typing.Tuple[
-        typing.Optional[TaskId],
-        typing.Optional[typing.Union[str, typing.Dict]]
-    ]:
+    ):
         """
         :param task_dict: task definition dictionary
         :param force: if True will ignore warnings
@@ -501,51 +498,47 @@ class ClientProvider:
         """
 
         if 'golem' in task_dict and 'app' in task_dict:
-            return self._create_task_api_task(
-                task_dict['golem'],
-                task_dict['app']), None
-        return self._create_legacy_task(task_dict, force), None
+            try:
+                task_id = yield self._create_task_api_task(
+                    task_dict['golem'],
+                    task_dict['app'])
+                return task_id, None
+            except Exception as exc:  # pylint: disable=broad-except
+                return None, str(exc)
+        return self._create_legacy_task(task_dict, force)
 
+    @safe_run(_create_task_error)
     def _create_legacy_task(
             self,
             task_dict: dict,
             force: bool = False,
-    ) -> TaskId:
+    ) -> typing.Tuple[TaskId, typing.Optional[str]]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
         task_id = task.header.task_id
 
-        try:
-            self._validate_enough_funds_to_pay_for_task(
-                task.subtask_price,
-                task.get_total_tasks(),
-                task.header.concent_enabled,
-                force
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            self.task_manager.task_creation_failed(task_id, str(exc))
-            raise
+        self._validate_enough_funds_to_pay_for_task(
+            task.subtask_price,
+            task.get_total_tasks(),
+            task.header.concent_enabled,
+            force
+        )
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
         deferred.addErrback(
-            lambda failure: _create_task_error(
-                e=failure.value,
-                _self=self,
-                task_dict=task_dict,
-                force=force
-            )
-        )
+            lambda failure: self.client.task_manager.task_creation_failed(
+                task_id, str(failure.value)))
+        return task_id, None
 
-        return task_id
-
+    @defer.inlineCallbacks
     def _create_task_api_task(
             self,
             golem_params: dict,
             app_params: dict,
-    ) -> TaskId:
+    ):
         logger.info('Creating Task API task. golem_params=%r', golem_params)
 
         if self.client.has_assigned_task():
@@ -570,10 +563,10 @@ class ClientProvider:
             False,
         )
 
-        task_id = self.requested_task_manager.create_task(
+        future = self.requested_task_manager.create_task(
             create_task_params,
-            app_params,
-        )
+            app_params)
+        task_id = yield deferred_from_future(future)
 
         self.client.funds_locker.lock_funds(
             task_id,
@@ -581,7 +574,7 @@ class ClientProvider:
             create_task_params.max_subtasks,
         )
 
-        self.client.update_setting('accept_tasks', False)
+        self.client.update_setting('accept_tasks', False, False)
 
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
@@ -597,7 +590,7 @@ class ClientProvider:
                 self.requested_task_manager.init_task(task_id))
         except Exception:
             self.client.funds_locker.remove_task(task_id)
-            self.client.update_setting('accept_tasks', True)
+            self.client.update_setting('accept_tasks', True, False)
             self.requested_task_manager.error_creating(task_id)
             raise
         else:

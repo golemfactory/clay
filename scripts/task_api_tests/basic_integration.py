@@ -71,8 +71,8 @@ async def test_task(
     golem_params = requestedtaskmanager.CreateTaskParams(
         app_id=app_definition.id,
         name='testtask',
-        task_timeout=3600,
-        subtask_timeout=3600,
+        task_timeout=4,
+        subtask_timeout=4,
         output_directory=output_dir,
         resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
@@ -81,7 +81,7 @@ async def test_task(
     )
     with open(task_params_path, 'r') as f:
         task_params = json.load(f)
-    task_id = rtm.create_task(golem_params, task_params)
+    task_id = await rtm.create_task(golem_params, task_params)
     print('Task created', task_id)
     await deferred_from_future(rtm.init_task(task_id))
     rtm.start_task(task_id)
@@ -101,7 +101,7 @@ async def test_task(
             task_id=task_id,
             environment=app_definition.requestor_env,
             environment_prerequisites=env_prerequisites,
-            subtask_timeout=3600,
+            subtask_timeout=4,
             deadline=time.time() + 3600,
         )
         ctd = {

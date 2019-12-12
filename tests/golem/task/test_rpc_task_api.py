@@ -61,20 +61,32 @@ class TaskApiBase(DatabaseFixture):
         }
 
 
-class TestTaskApiCreate(TaskApiBase):
+class TestTaskApiCreate(TwistedAsyncioTestCase, TaskApiBase):
 
+    def setUp(self):
+        TwistedAsyncioTestCase.setUp(self)
+        TaskApiBase.setUp(self)
+
+        self.task_id = 'test_task_id'
+
+        create_future = asyncio.Future()
+        create_future.set_result(self.task_id)
+        init_future = asyncio.Future()
+        init_future.set_result(None)
+
+        self.requested_task_manager.create_task.return_value = create_future
+        self.requested_task_manager.init_task.return_value = init_future
+
+    @inlineCallbacks
     def test_success(self):
         app_params = {
             'app_param1': 'value1',
             'app_param2': 'value2',
         }
         golem_params = self.get_golem_params()
-        task_id = 'test_task_id'
-        self.requested_task_manager.create_task.return_value = task_id
-        self.requested_task_manager.init_task.return_value = asyncio.Future()
-        self.requested_task_manager.init_task.return_value.set_result(None)
+        task_id = self.task_id
 
-        new_task_id, _ = self.rpc.create_task({
+        new_task_id, _ = yield self.rpc.create_task({
             'golem': golem_params,
             'app': app_params,
         })
@@ -129,22 +141,24 @@ class TestTaskApiCreate(TaskApiBase):
 
         self.requested_task_manager.init_task.assert_called_once_with(task_id)
         self.client.update_setting.assert_called_once_with(
-            'accept_tasks', False)
+            'accept_tasks', False, False)
 
+    @inlineCallbacks
     def test_has_assigned_task(self):
         self.client.has_assigned_task.return_value = True
 
         with self.assertRaises(RuntimeError):
-            self.rpc._create_task_api_task(self.get_golem_params(), {})
+            yield self.rpc._create_task_api_task(self.get_golem_params(), {})
 
         self.requested_task_manager.create_task.assert_not_called()
         self.requested_task_manager.init_task.assert_not_called()
         self.client.funds_locker.lock_funds.assert_not_called()
 
+    @inlineCallbacks
     def test_failed_init(self):
-        self.requested_task_manager.init_task.side_effect = Exception
+        self.requested_task_manager.init_task = Exception
 
-        task_id, _ = self.rpc.create_task({
+        task_id, _ = yield self.rpc.create_task({
             'golem': self.get_golem_params(),
             'app': {},
         })
@@ -152,17 +166,16 @@ class TestTaskApiCreate(TaskApiBase):
         self.client.funds_locker.remove_task.assert_called_once_with(task_id)
         self.requested_task_manager.start_task.assert_not_called()
         self.client.update_setting.assert_has_calls((
-            call('accept_tasks', False),
-            call('accept_tasks', True)
+            call('accept_tasks', False, False),
+            call('accept_tasks', True, False)
         ))
 
 
-@mock.patch('golem.task.requestedtaskmanager.shutil', Mock())
 class TestTaskOperations(TwistedAsyncioTestCase, TaskApiBase):
 
     def setUp(self):
-        TwistedAsyncioTestCase.setUp(self)
         TaskApiBase.setUp(self)
+        TwistedAsyncioTestCase.setUp(self)
 
         self.requested_task_manager = requestedtaskmanager.RequestedTaskManager(
             env_manager=Mock(),
@@ -175,6 +188,9 @@ class TestTaskOperations(TwistedAsyncioTestCase, TaskApiBase):
             return_value=rtm_factory.MockRequestorAppClient())
         self.client.task_server.requested_task_manager = \
             self.requested_task_manager
+
+        # use TestCase.patch instead of unittest.mock.patch for TwistedTestCase
+        self.patch(requestedtaskmanager, 'shutil', mock.Mock())
 
     @inlineCallbacks
     def test_restart_task(self):
@@ -261,7 +277,7 @@ class TestTaskOperations(TwistedAsyncioTestCase, TaskApiBase):
     def _create_task(self):
         # we need to wait for _init_task_api_task
         with mock.patch.object(self.rpc, '_init_task_api_task'):
-            task_id, _ = self.rpc.create_task({
+            task_id, _ = yield self.rpc.create_task({
                 'golem': self.get_golem_params(),
                 'app': {},
             })
