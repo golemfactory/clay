@@ -518,7 +518,6 @@ class DockerCPUEnvironment(EnvironmentBase):
         'mac_admin',
         'mac_override',
         'mknod',
-        'net_admin',
         'net_bind_service',
         'net_raw',
         'setfcap',
