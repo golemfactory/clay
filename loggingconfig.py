@@ -98,6 +98,7 @@ LOGGING = {
             'propagate': True,
         },
         'golem.network': {'propagate': True},
+        'golem.network.concent.received_handler': {'propagate': True},
         'golem.network.transport': {'propagate': True},
         'apps': {
             'level': 'DEBUG',
