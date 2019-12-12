@@ -218,7 +218,9 @@ class TestNode(TestWithDatabase):
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
-                                     concent_variant=concent_disabled,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'main'
+                                     ],
                                      use_monitor=None,
                                      use_talkback=None,
                                      password=None)
@@ -295,7 +297,9 @@ class TestNode(TestWithDatabase):
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
-                                     concent_variant=concent_disabled,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'main'
+                                     ],
                                      use_monitor=None,
                                      use_talkback=None,
                                      password=None)

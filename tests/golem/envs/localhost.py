@@ -16,12 +16,9 @@ from twisted.internet import defer, threads
 
 from golem.core.common import is_windows
 from golem.envs import (
-    CounterId,
-    CounterUsage,
     EnvConfig,
     EnvId,
     EnvironmentBase,
-    EnvMetadata,
     EnvSupportStatus,
     Prerequisites,
     Runtime,
@@ -29,7 +26,9 @@ from golem.envs import (
     RuntimeId,
     RuntimeInput,
     RuntimeOutput,
-    RuntimePayload
+    RuntimePayload,
+    UsageCounter,
+    UsageCounterValues
 )
 from golem.envs import BenchmarkResult
 from golem.model import Performance
@@ -246,8 +245,8 @@ class LocalhostRuntime(RuntimeBase):
     def get_port_mapping(self, port: int) -> Tuple[str, int]:
         return '127.0.0.1', port
 
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
-        return {}
+    def usage_counter_values(self) -> UsageCounterValues:
+        return UsageCounterValues()
 
     def call(self, alias: str, *args, **kwargs) -> defer.Deferred:
         raise NotImplementedError
@@ -284,14 +283,6 @@ class LocalhostEnvironment(EnvironmentBase):
         return defer.succeed(
             BenchmarkResult(1.0, Performance.DEFAULT_CPU_USAGE))
 
-    def metadata(self) -> EnvMetadata:
-        return EnvMetadata(
-            id=self._env_id,
-            description='Localhost environment',
-            supported_counters=[],
-            custom_metadata={}
-        )
-
     @classmethod
     def parse_prerequisites(
             cls,
@@ -315,6 +306,9 @@ class LocalhostEnvironment(EnvironmentBase):
 
     def update_config(self, config: EnvConfig) -> None:
         self._config_updated(config)
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        return []
 
     def runtime(
             self,

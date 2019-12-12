@@ -583,25 +583,25 @@ class ClientProvider:
 
         self.client.update_setting('accept_tasks', False)
 
-        @defer.inlineCallbacks
-        def init_task():
-            try:
-                yield deferred_from_future(
-                    self.requested_task_manager.init_task(task_id))
-            except Exception:
-                self.client.funds_locker.remove_task(task_id)
-                self.client.update_setting('accept_tasks', True)
-                self.requested_task_manager.error_creating(task_id)
-                raise
-            else:
-                self.requested_task_manager.start_task(task_id)
-
         # Do not yield, this is a fire and forget deferred as it may take long
         # time to complete and shouldn't block the RPC call.
-        d = init_task()
+        d = self._init_task_api_task(task_id)
         d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
 
         return task_id
+
+    @defer.inlineCallbacks
+    def _init_task_api_task(self, task_id: str):
+        try:
+            yield deferred_from_future(
+                self.requested_task_manager.init_task(task_id))
+        except Exception:
+            self.client.funds_locker.remove_task(task_id)
+            self.client.update_setting('accept_tasks', True)
+            self.requested_task_manager.error_creating(task_id)
+            raise
+        else:
+            self.requested_task_manager.start_task(task_id)
 
     @rpc_utils.expose('comp.task.create.dry_run')
     @safe_run(_create_task_error)
@@ -618,6 +618,7 @@ class ClientProvider:
                           'comp.task.create'.
         :return: (task_dict, None) on success; (None, error_message) on failure.
         """
+        self._assert_not_task_api_dict(task_dict)
         validate_client(self.client)
         prepare_and_validate_task_dict(self.client, task_dict)
         task_definition, task_builder_type = \
@@ -676,7 +677,7 @@ class ClientProvider:
             raise eth_exceptions.NotEnoughFunds(missing_funds)
 
     @rpc_utils.expose('comp.task.restart')
-    @safe_run(_restart_task_error)
+    @defer.inlineCallbacks
     def restart_task(
             self,
             task_id: str,
@@ -689,7 +690,53 @@ class ClientProvider:
         """
         logger.info('Restarting task. task_id=%r', task_id)
         logger.debug('force=%r, disable_concent=%r', force, disable_concent)
+        assert self.client.task_server
 
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            result = yield self.restart_task_api_task(
+                task_id,
+                force,
+                disable_concent)
+            return result
+
+        return self.restart_legacy_task(task_id, force, disable_concent)
+
+    @defer.inlineCallbacks
+    def restart_task_api_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False,
+    ):
+        assert self.client.task_server
+        rtm = self.client.task_server.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+        if not task:
+            return None, f"Unknown task: {task_id}"
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.max_price_per_hour,
+                task.max_subtasks,
+                False if disable_concent else task.concent_enabled,
+                force)
+        except eth_exceptions.NotEnoughFunds as exc:
+            return None, str(exc)
+
+        try:
+            yield deferred_from_future(rtm.restart_task(task_id))
+        except Exception as exc:  # pylint: disable=broad-except
+            return None, str(exc)
+        return task_id, None
+
+    @safe_run(_restart_task_error)
+    def restart_legacy_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
@@ -734,7 +781,7 @@ class ClientProvider:
         return new_task.header.task_id, None
 
     @rpc_utils.expose('comp.task.subtasks.restart')
-    @safe_run(_restart_subtasks_error)
+    @defer.inlineCallbacks
     def restart_subtasks(
             self,
             task_id: str,
@@ -759,6 +806,59 @@ class ClientProvider:
         :return: In case of any errors, returns the representation of the error
         (either a string or a dict). Otherwise, returns None.
         """
+        rtm = self.requested_task_manager
+        if rtm.task_exists(task_id):
+            try:
+                yield self.restart_task_api_task_subtasks(
+                    task_id,
+                    subtask_ids,
+                    ignore_gas_price)
+                return None
+            except Exception as exc:  # pylint: disable=broad-except
+                return str(exc)
+
+        return self.restart_legacy_task_subtasks(
+            task_id,
+            subtask_ids,
+            ignore_gas_price,
+            disable_concent)
+
+    @defer.inlineCallbacks
+    def restart_task_api_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+    ):
+        """ Restart selected subtasks within an active task. This method's
+            behaviour differs from 'restart_legacy_task_subtasks' in that
+            it does not create a new task and does not copy the finished
+            subtask state / results. Task API does not currently allow to
+            manage subtask state within the app. """
+        logger.info('Restarting subtasks. task_id=%r', task_id)
+
+        rtm = self.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+        if not task:
+            raise RuntimeError(f'Task not found: {task_id!r}')
+
+        self._validate_enough_funds_to_pay_for_task(
+            task.max_price_per_hour,
+            len(subtask_ids),
+            task.concent_enabled,
+            ignore_gas_price
+        )
+
+        yield deferred_from_future(rtm.restart_subtasks(task_id, subtask_ids))
+
+    @safe_run(_restart_subtasks_error)
+    def restart_legacy_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return f'Task not found: {task_id!r}'
@@ -810,6 +910,7 @@ class ClientProvider:
             task_id: str,
             frame: int
     ) -> typing.Optional[typing.Union[str, typing.Dict]]:
+        self._assert_not_task_api_task(task_id)
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
@@ -923,6 +1024,7 @@ class ClientProvider:
         :return: a result, error tuple. When the result is present the error
         should be None (and vice-versa).
         """
+        self._assert_not_task_api_task(task_id)
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return None, f'Task not found: {task_id}'
@@ -979,6 +1081,8 @@ class ClientProvider:
         """
         subtask_count: int = 0
         subtask_price: int = 0
+
+        self._assert_not_task_api_task(task_id)
 
         if task_id:
             task: typing.Optional[taskbase.Task] = \
@@ -1043,6 +1147,7 @@ class ClientProvider:
         (along with an error message) if the task is not known or it is not a
         rendering task.
         """
+        self._assert_not_task_api_task(task_id)
         task = self.task_manager.tasks.get(task_id)
         if task is None:
             return None, f"Task not found: '{task_id}'"
@@ -1058,3 +1163,16 @@ class ClientProvider:
             fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None
+
+    def _assert_not_task_api_task(self, task_id):
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            self._raise_task_api_not_supported()
+
+    def _assert_not_task_api_dict(self, task_dict: dict):
+        if 'golem' in task_dict and 'app' in task_dict:
+            self._raise_task_api_not_supported()
+
+    @staticmethod
+    def _raise_task_api_not_supported():
+        raise RuntimeError("Task API: unsupported RPC call")
