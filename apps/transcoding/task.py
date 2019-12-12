@@ -12,7 +12,7 @@ import ffmpeg_tools.validation as validation
 import ffmpeg_tools.exceptions as exceptions
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
-from ffmpeg_tools.meta import count_streams, get_video_codec, get_resolution
+from ffmpeg_tools.meta import get_video_codec, get_resolution
 
 import apps.transcoding.common
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
@@ -95,20 +95,12 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
     def _autofill_video_codec_from_metadata(self, metadata: dict) -> None:
         target_video_codec = self.task_definition.options.video_params.codec
         if target_video_codec is None:
-            if count_streams(metadata, 'video') >= 2:
-                raise exceptions.InvalidVideo(
-                    "Files with more than 1 video stream are not supported.")
-
             src_codec = VideoCodec(get_video_codec(metadata))
             self.task_definition.options.video_params.codec = src_codec
 
     def _autofill_resolution_from_metadata(self, metadata: dict) -> None:
         target_resolution = self.task_definition.options.video_params.resolution
         if target_resolution is None:
-            if count_streams(metadata, 'video') >= 2:
-                raise exceptions.InvalidVideo(
-                    "Files with more than 1 video stream are not supported.")
-
             src_resolution = get_resolution(metadata)
             self.task_definition.options.video_params.resolution = \
                 src_resolution
