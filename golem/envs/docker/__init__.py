@@ -20,7 +20,7 @@ class DockerRuntimePayloadData(NamedTuple):
     image: str
     tag: str
     command: Optional[str] = None
-    ports: Optional[List[int]] = None
+    ports: Optional[List[str]] = None
     env: Optional[Dict[str, str]] = None
     user: Optional[str] = None
     work_dir: Optional[str] = None
