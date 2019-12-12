@@ -288,16 +288,15 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(len(set(resources1 + resources2)), 2)
 
     def test_task_parameter_autofill(self):
-        with TemporaryDirectory(prefix='test-autofill') as tmp_dir:
-            ffmpeg_task = self._build_ffmpeg_task(
-                video_codec=None,
-                resolution=None,
-            )
+        ffmpeg_task = self._build_ffmpeg_task(
+            video_codec=None,
+            resolution=None,
+        )
 
-            self.assertEqual(
-                ffmpeg_task.task_definition.options.video_params.codec,
-                VideoCodec.H_264)
+        self.assertEqual(
+            ffmpeg_task.task_definition.options.video_params.codec,
+            VideoCodec.H_264)
 
-            self.assertEqual(
-                ffmpeg_task.task_definition.options.video_params.resolution,
-                [320, 240])
+        self.assertEqual(
+            ffmpeg_task.task_definition.options.video_params.resolution,
+            [320, 240])
