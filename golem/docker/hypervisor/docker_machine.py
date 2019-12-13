@@ -1,3 +1,4 @@
+import ipaddress
 import logging
 import os
 import subprocess
@@ -94,9 +95,17 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         c_config = api_client.inspect_container(container_id)
         port = int(
             c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]['HostPort'])
-        ip = self.command('ip', self._vm_name)
+        raw_ip = self.command('ip', self._vm_name)
+        ip = None
+        for line in raw_ip.splitlines():
+            if len(line) > 0 and line[0].isnumeric():
+                try:
+                    ipaddress.ip_address(line)
+                    ip = line
+                except ValueError:
+                    pass
         assert isinstance(ip, str)
-        return ip.strip(), port
+        return ip, port
 
     @property
     def config_dir(self):
