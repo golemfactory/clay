@@ -518,3 +518,17 @@ class TestFfmpegIntegration(FfmpegIntegrationBase):
         for _ in range(5):
             self.timeout_next_subtask(task)
             self.task_manager.check_timeouts()
+
+    def test_video_codec_and_resolution_should_be_taken_from_source_file_if_not_specified(self):  # noqa pylint: disable=line-too-long
+        operation = SimulatedTranscodingOperation(
+            task_executor=self,
+            experiment_name=None,
+            resource_dir=self.RESOURCES,
+            tmp_dir=self.tempdir)
+        operation.request_container_change(Container.c_MP4)
+        operation.set_override('video', 'codec_name', VideoCodec.H_264.value)
+        operation.set_override('video', 'width', 320)
+        operation.set_override('video', 'width', 240)
+
+        (_input_report, _output_report, diff) = operation.run("test_video2")
+        self.assertEqual(diff, [])

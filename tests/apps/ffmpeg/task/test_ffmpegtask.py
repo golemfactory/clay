@@ -45,9 +45,20 @@ class TestffmpegTask(TempDirFixture):
             work_dirs=[self.new_path],
             in_background=True)
 
-    def _build_ffmpeg_task(self, subtasks_count=1, stream=RESOURCE_STREAM):
+    def _build_ffmpeg_task(
+            self,
+            subtasks_count=1,
+            stream=RESOURCE_STREAM,
+            video_codec='h264',
+            resolution=[320, 240]):
+
         td = self.tt.task_builder_type.build_definition(
-            self.tt, self._task_dictionary(subtasks_count, stream))
+            self.tt,
+            self._task_dictionary(
+                subtasks_count,
+                stream,
+                video_codec,
+                resolution))
 
         dir_manager = DirManager(self.tempdir)
         task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
@@ -55,7 +66,13 @@ class TestffmpegTask(TempDirFixture):
         task.initialize(dir_manager)
         return task
 
-    def _task_dictionary(self, subtasks_count=1, stream=RESOURCE_STREAM):
+    def _task_dictionary(
+            self,
+            subtasks_count=1,
+            stream=RESOURCE_STREAM,
+            video_codec='h264',
+            resolution=[320, 240]):
+
         return {
             'type': 'FFMPEG',
             'name': 'test task',
@@ -68,8 +85,8 @@ class TestffmpegTask(TempDirFixture):
                 'output_path': '/tmp/',
                 'video': {
                     'bit_rate': 18,
-                    'codec': 'h264',
-                    'resolution': [320, 240],
+                    'codec': video_codec,
+                    'resolution': resolution,
                     'frame_rate': 25
                 },
                 'audio': {
@@ -269,3 +286,17 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(len(resources1), 1)
         self.assertEqual(len(resources2), 1)
         self.assertEqual(len(set(resources1 + resources2)), 2)
+
+    def test_task_parameter_autofill(self):
+        ffmpeg_task = self._build_ffmpeg_task(
+            video_codec=None,
+            resolution=None,
+        )
+
+        self.assertEqual(
+            ffmpeg_task.task_definition.options.video_params.codec,
+            VideoCodec.H_264)
+
+        self.assertEqual(
+            ffmpeg_task.task_definition.options.video_params.resolution,
+            [320, 240])
