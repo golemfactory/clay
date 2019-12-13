@@ -4,6 +4,16 @@ input_file="$1"
 
 log_level=error
 
+function strip_matching_line_endings {
+    local lines="$1"
+    local ending="$2"
+
+    local IFS=$'\n'
+    line_array=($lines)
+    stripped_line_array=("${line_array[@]%$ending}")
+    printf "%s\n" "${stripped_line_array[@]}"
+}
+
 function ffprobe_show_entries {
     local input_file="$1"
     local query="$2"
@@ -55,8 +65,7 @@ function ffprobe_show_entries {
             cut --delimiter '|' --field 2
     )"
 
-    result="${raw_result%side_data}"
-    printf "%s" "$result"
+    printf "%s" "$(strip_matching_line_endings "$raw_result" side_data)"
 }
 
 width="$(ffprobe_show_entries  "$input_file" stream=width  "v:0")"
@@ -83,10 +92,10 @@ for (( index=0; index < ${audio_stream_count}; index=index+1 )); do
 done
 
 frames=$(ffprobe_show_entries "$input_file" frame=pict_type v:0)
-frame_count="$(echo   -n "$frames"                   | wc --chars)"
-i_frame_count="$(echo -n "$frames" | sed 's/[^I]//g' | wc --chars)"
-p_frame_count="$(echo -n "$frames" | sed 's/[^P]//g' | wc --chars)"
-b_frame_count="$(echo -n "$frames" | sed 's/[^B]//g' | wc --chars)"
+frame_count="$(echo   -n "$frames"                              | grep --count "")" || true
+i_frame_count="$(echo -n "$frames" | tr --delete --complement I | wc --chars)"
+p_frame_count="$(echo -n "$frames" | tr --delete --complement P | wc --chars)"
+b_frame_count="$(echo -n "$frames" | tr --delete --complement B | wc --chars)"
 
 frame_rate="$(ffprobe_show_entries "$input_file" stream=avg_frame_rate "v:0")"
 if [[ "$frame_rate" != "0/0" ]]; then

@@ -12,6 +12,7 @@ import ffmpeg_tools.validation as validation
 import ffmpeg_tools.exceptions as exceptions
 from ffmpeg_tools.codecs import VideoCodec, AudioCodec
 from ffmpeg_tools.formats import Container
+from ffmpeg_tools.meta import get_video_codec, get_resolution
 
 import apps.transcoding.common
 from apps.transcoding.ffmpeg.ffmpeg_docker_api import FfmpegDockerAPI
@@ -91,6 +92,19 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         super(TranscodingTask, self).__setstate__(state)
         self.lock = Lock()
 
+    def _autofill_video_codec_from_metadata(self, metadata: dict) -> None:
+        target_video_codec = self.task_definition.options.video_params.codec
+        if target_video_codec is None:
+            src_codec = VideoCodec(get_video_codec(metadata))
+            self.task_definition.options.video_params.codec = src_codec
+
+    def _autofill_resolution_from_metadata(self, metadata: dict) -> None:
+        target_resolution = self.task_definition.options.video_params.resolution
+        if target_resolution is None:
+            src_resolution = get_resolution(metadata)
+            self.task_definition.options.video_params.resolution = \
+                src_resolution
+
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
 
@@ -132,6 +146,9 @@ class TranscodingTask(CoreTask):  # pylint: disable=too-many-instance-attributes
         self.task_resources = streams
         self.chunks = streams
         self.task_definition.subtasks_count = len(chunks)
+
+        self._autofill_video_codec_from_metadata(video_metadata)
+        self._autofill_resolution_from_metadata(video_metadata)
 
         try:
             validation.validate_video(video_metadata)
