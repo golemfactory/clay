@@ -365,8 +365,10 @@ class RequestedTaskManager:
     @staticmethod
     def has_unfinished_tasks() -> bool:
         """ Return True iff there are any tasks that need computation. """
-        return RequestedTask.select()\
+        result = RequestedTask.select()\
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED)).exists()
+        logger.debug('has_unfinished_tasks() = %r', result)
+        return result
 
     async def has_pending_subtasks(self, task_id: TaskId) -> bool:
         """ Return True is there are pending subtasks waiting for

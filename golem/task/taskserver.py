@@ -1001,6 +1001,12 @@ class TaskServer(
 
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
+        logger.debug(
+            'finished_task_listener(event=%r, task_id=%r, op=%r)',
+            event,
+            task_id,
+            op
+        )
         if not (event == 'task_status_updated'
                 and self.client.p2pservice):
             return
