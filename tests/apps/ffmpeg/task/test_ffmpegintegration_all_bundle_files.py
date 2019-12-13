@@ -242,18 +242,21 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         if not video['container'].is_supported_video_codec(source_codec.value):
             pytest.skip("Target video codec not supported by the container")
 
-        if source_codec.can_convert(source_codec.value):
+        if not source_codec.can_convert(source_codec.value):
             pytest.skip("Transcoding is not possible for this file without"
                         "also changing the video codec.")
 
         try:
             validate_resolution(video["resolution"], resolution)
-            (_input_report, _output_report, diff) = operation.run(video["path"])
-            self.assertEqual(diff, [])
         except InvalidResolution:
             with self.assertRaises(InvalidResolution):
                 operation.run(video["path"])
+
             pytest.skip("Target resolution not supported")
+        else:
+            (_input_report, _output_report, diff) = operation.run(video["path"])
+            self.assertEqual(diff, [])
+
 
     @parameterized.expand(
         (
@@ -299,7 +302,7 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         if not video['container'].is_supported_video_codec(source_codec.value):
             pytest.skip("Target video codec not supported by the container")
 
-        if source_codec.can_convert(source_codec.value):
+        if not source_codec.can_convert(source_codec.value):
             pytest.skip("Transcoding is not possible for this file without"
                         "also changing the video codec.")
 
@@ -349,7 +352,7 @@ class TestFfmpegIntegrationFullBundleSet(FfmpegIntegrationBase):
         if not video['container'].is_supported_video_codec(source_codec.value):
             pytest.skip("Target video codec not supported by the container")
 
-        if source_codec.can_convert(source_codec.value):
+        if not source_codec.can_convert(source_codec.value):
             pytest.skip("Transcoding is not possible for this file without"
                         "also changing the video codec.")
 
