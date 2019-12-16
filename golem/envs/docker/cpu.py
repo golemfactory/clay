@@ -446,12 +446,8 @@ class DockerCPUEnvironment(EnvironmentBase):
         'audit_write',
         'mac_admin',
         'mac_override',
-        'mknod',
-        'net_bind_service',
-        'net_raw',
         'setfcap',
         'setpcap',
-        'sys_admin',
         'sys_boot',
         'sys_chroot',
         'sys_module',
@@ -460,6 +456,12 @@ class DockerCPUEnvironment(EnvironmentBase):
         'sys_resource',
         'sys_time',
         'sys_tty_config'
+    ]
+    ADDED_KERNEL_CAPABILITIES: ClassVar[List[str]] = [
+        'mknod',
+        'net_admin',
+        'net_raw',
+        'net_bind_service',
     ]
 
     BENCHMARK_IMAGE = 'golemfactory/cpu_benchmark:1.0'
@@ -734,12 +736,21 @@ class DockerCPUEnvironment(EnvironmentBase):
         if payload.binds is not None:
             binds = self._hypervisor.create_volumes(payload.binds)
 
-        port_bindings = None
-        if payload.ports:
-            port_bindings = {
-                f'{port}/tcp': {'HostIp': '0.0.0.0', 'HostPort': port}
-                for port in payload.ports
-            }
+        if not payload.port_bindings:
+            port_bindings = None
+            if payload.ports:
+                port_bindings = {}
+                for port in payload.ports:
+                    port = str(port)
+                    if port.find('/') > -1:
+                        port, protocol = port.split('/')
+                    else:
+                        port = port
+                        protocol = 'tcp'
+                    port_bindings[f'{port}/{protocol}'] = {
+                        'HostIp': '0.0.0.0', 'HostPort': port}
+        else:
+            port_bindings = payload.port_bindings
 
         extra_hosts = payload.extra_hosts if payload.extra_hosts else None
         links = payload.links if payload.links else None
@@ -763,6 +774,7 @@ class DockerCPUEnvironment(EnvironmentBase):
             dns=dns,
             dns_search=dns_search,
             cap_drop=self.DROPPED_KERNEL_CAPABILITIES,
+            cap_add=self.ADDED_KERNEL_CAPABILITIES,
             extra_hosts=extra_hosts,
             links=links,
             restart_policy=restart_policy
@@ -786,14 +798,13 @@ class DockerCPUEnvironment(EnvironmentBase):
         host_config = self._create_host_config(config, payload)
         ports = []
         for p in payload.ports:
-            if p.find(':') > -1:
-                host_port, container_port = p.split(':')
+            p = str(p)
+            if p.find('/') > -1:
+                container_port, protocol = p.split('/')
             else:
                 container_port = p
                 protocol = 'tcp'
-            if container_port.find('/') > -1:
-                port, protocol = p.split('/')
-            ports.append((port, protocol))
+            ports.append((int(container_port), protocol))
         networking_config = self._create_networking_config(payload)
         hostname = payload.hostname if payload.hostname else None
         domainname = payload.domainname if payload.domainname else None

@@ -1,14 +1,7 @@
-from marshmallow import Schema, fields
+from marshmallow import Schema, fields, pre_load, ValidationError
 
 from typing import Optional, List, Any, Dict
-
 from golem.envs.docker import DockerBind
-
-
-class CloudConfigSchemaBind(Schema):
-    source = fields.Str()
-    target = fields.Str()
-    mode = fields.Str()
 
 
 class CloudConfigSchemaNetworkingEndpoint(Schema):
@@ -19,15 +12,42 @@ class CloudConfigSchemaNetworkingEndpoint(Schema):
     link_local_ips = fields.List(fields.Str())
 
 
+class CloudConfigBindField(fields.Field):
+    source = fields.Str()
+    target = fields.Str()
+    mode = fields.Str()
+
+    def _serialize(self, value, attr, obj, **kwargs):
+        source = value.get('source')
+        target = value.get('target')
+        mode = value.get('mode', ':ro')
+        return f'{source}:{target}{mode}'
+
+    def _deserialize(self, value, attr, data, **kwargs):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            parts = value.split(':')
+            bind = DockerBind(*parts)
+        elif isinstance(value, dict):
+            bind = DockerBind(**value)
+        elif isinstance(value, DockerBind):
+            bind = value
+        else:
+            raise ValidationError(
+                "Bind must be defined either as str or dict.")
+        return bind
+
+
 class CloudConfigSchemaContainer(Schema):
     image = fields.Str(required=True)
     tag = fields.Str(required=True, default='latest')
     command: Optional[str] = fields.Str()
-    ports: Optional[List[int]] = fields.List(fields.Int())
+    ports: Optional[List[str]] = fields.List(fields.Str())
     env: Optional[Dict[str, str]] = fields.Dict(keys=fields.Str(),
                                                 values=fields.Str())
     work_dir: Optional[str] = fields.Str()
-    binds: Optional[List[DockerBind]] = None
+    binds: Optional[List[Any]] = fields.List(CloudConfigBindField())
     networking_config: Optional[Dict[str, Any]] = fields.Dict(
         keys=fields.Str(),
         values=fields.Nested(CloudConfigSchemaNetworkingEndpoint))
@@ -49,6 +69,28 @@ class CloudConfigSchemaContainer(Schema):
     dns: Optional[List[str]] = fields.List(fields.Str())
     dns_search: Optional[List[str]] = fields.List(fields.Str())
     # host_config = fields.Nested(CloudConfigSchemaContainer)
+
+    @pre_load
+    def process_binds(self, data, **kwargs):
+        binds = data.get("binds")
+        bind_list = []
+        if binds:
+            for bind in binds:
+                if isinstance(bind, str):
+                    bind_parts = bind.split(':')
+                    try:
+                        bind_mode = bind_parts[2] if len(bind_parts) == 3 \
+                            else 'ro'
+                    except IndexError:
+                        bind_mode = 'ro'
+                    bind = {
+                        'source': bind_parts[0],
+                        'target': bind_parts[1],
+                        'mode': bind_mode
+                    }
+                bind_list.append(bind)
+        data["binds"] = bind_list
+        return data
 
 
 class CloudConfigSchemaDeployment(Schema):
