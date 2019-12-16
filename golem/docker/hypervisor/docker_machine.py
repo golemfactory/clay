@@ -97,11 +97,13 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             c_config['NetworkSettings']['Ports'][f'{port}/tcp'][0]['HostPort'])
         raw_ip = self.command('ip', self._vm_name)
         ip = None
+        assert isinstance(raw_ip, str)
         for line in raw_ip.splitlines():
-            if len(line) > 0 and line[0].isnumeric():
+            if line and line[0].isnumeric():
                 try:
                     ipaddress.ip_address(line)
                     ip = line
+                    break
                 except ValueError:
                     pass
         assert isinstance(ip, str)
