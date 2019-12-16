@@ -383,6 +383,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             for offer in market_strategy.resolve_task_offers(task_id):
                 try:
                     offer.callback()
+                    break
                 except Exception as e:
                     logger.error(e)
 
@@ -419,7 +420,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
-        logger.info("Offer confirmed, assigning subtask(s)")
+        logger.info("Offer confirmed, assigning subtask(s). %r", task_node_info)
 
         task_class = self._get_task_class(msg.task_header)
         budget = task_class.REQUESTOR_MARKET_STRATEGY.calculate_budget(msg)
