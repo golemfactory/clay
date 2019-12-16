@@ -37,7 +37,7 @@ class DockerCommandHandler:
         return bool(shutil.which('docker'))
 
     @classmethod
-    def run(
+    def run(  # noqa pylint: disable=too-many-arguments
             cls,
             command_name: str,
             vm_name: Optional[str] = None,
@@ -76,7 +76,7 @@ class DockerCommandHandler:
                 return
 
     @classmethod
-    def _command(
+    def _command(  # noqa pylint: disable=too-many-arguments
             cls,
             command: List[str],
             vm_name: Optional[str] = None,
