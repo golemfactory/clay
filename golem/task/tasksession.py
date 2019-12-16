@@ -7,7 +7,7 @@ import logging
 import time
 from typing import (
     Any, Callable, TYPE_CHECKING,
-    Optional, Generator, Type
+    Optional, Generator
 )
 
 from ethereum.utils import denoms
@@ -43,7 +43,6 @@ from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
@@ -710,6 +709,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
+    @defer.inlineCallbacks
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
@@ -721,14 +721,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.reason,
         )
 
-        config = self.task_server.config_desc
-        timeout = config.computation_cancellation_timeout
-
-        self.task_manager.task_computation_cancelled(
-            msg.subtask_id,
-            msg.reason,
-            timeout,
-        )
+        if self.requested_task_manager.subtask_exists(msg.subtask_id):
+            yield deferred_from_future(
+                self.requested_task_manager.abort_subtask(msg.subtask_id)
+            )
+        else:
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+            self.task_manager.task_computation_cancelled(
+                msg.subtask_id,
+                msg.reason,
+                timeout,
+            )
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):

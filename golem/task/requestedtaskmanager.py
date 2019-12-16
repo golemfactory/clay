@@ -996,7 +996,13 @@ class RequestedTaskManager:
         )
         update_provider_efficacy(node_id, op)
         if subtask_timeout is not None:
-            update_provider_efficiency(node_id, subtask_timeout, comp_time)
+            if comp_time:
+                update_provider_efficiency(node_id, subtask_timeout, comp_time)
+            else:
+                logger.warning(
+                    "Could not obtain computation time for subtask: %r",
+                    subtask_id
+                )
             dispatcher.send(
                 signal='golem.subtask',
                 event='finished',
