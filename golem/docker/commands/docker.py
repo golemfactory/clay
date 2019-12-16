@@ -37,19 +37,22 @@ class DockerCommandHandler:
         return bool(shutil.which('docker'))
 
     @classmethod
-    def run(cls,
+    def run(
+            cls,
             command_name: str,
             vm_name: Optional[str] = None,
             args: Optional[Union[Tuple, List[str]]] = None,
-            shell: bool = False) -> Optional[str]:
+            shell: bool = False,
+            timeout: Optional[float] = None
+    ) -> Optional[str]:
 
         command = cls.commands.get(command_name)
         if not command:
             logger.error('Unknown command: %s', command_name)
         elif isinstance(command, list):
-            return cls._command(command[:], vm_name, args, shell)
+            return cls._command(command[:], vm_name, args, shell, timeout)
         elif callable(command):
-            return command(vm_name, args, shell)
+            return command(vm_name, args, shell, timeout)
         return None
 
     @classmethod
@@ -73,11 +76,14 @@ class DockerCommandHandler:
                 return
 
     @classmethod
-    def _command(cls,
-                 command: List[str],
-                 vm_name: Optional[str] = None,
-                 args: Optional[Union[Tuple, List[str]]] = None,
-                 shell: bool = False) -> str:
+    def _command(
+            cls,
+            command: List[str],
+            vm_name: Optional[str] = None,
+            args: Optional[Union[Tuple, List[str]]] = None,
+            shell: bool = False,
+            timeout: Optional[float] = None
+    ) -> str:
 
         if args:
             command += list(args)
@@ -95,7 +101,8 @@ class DockerCommandHandler:
                 startupinfo=SUBPROCESS_STARTUP_INFO,
                 shell=shell,
                 stdin=subprocess.DEVNULL,
-                stderr=subprocess.STDOUT
+                stderr=subprocess.STDOUT,
+                timeout=timeout
             )
         except FileNotFoundError as exc:
             raise subprocess.CalledProcessError(127, str(exc))

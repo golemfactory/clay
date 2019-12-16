@@ -22,6 +22,9 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     DRIVER_PARAM_NAME = "--driver"
     DRIVER_NAME: ClassVar[str]
 
+    REGENERATE_CERTIFICATES_TIMEOUT = 120.0  # sec
+    RESTART_VM_TIMEOUT = 120.0  # sec
+
     def __init__(self,
                  get_config_fn: GetConfigFunction,
                  vm_name: str = DOCKER_VM_NAME) -> None:
@@ -141,24 +144,28 @@ Ensure that you try the following before reporting an issue:
         else:
             logger.warning('DockerMachine: env update failed')
 
-    def _recover(self):
+    def _recover(self, restarted=False):
         try:
-            self.command('regenerate_certs', self._vm_name)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to env the VM: %s -- %s",
-                           e, e.output)
+            self.command(
+                'regenerate_certs', self._vm_name,
+                timeout=self.REGENERATE_CERTIFICATES_TIMEOUT)
+        except subprocess.SubprocessError as e:
+            logger.warning(
+                "DockerMachine: failed to regenerate certificates: %s -- %s",
+                e, e.output)
         else:
             return self._set_env(retried=True)
 
-        try:
-            self.command('restart', self._vm_name)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to restart the VM: %s -- %s",
-                           e, e.output)
-        else:
-            return self._set_env(retried=True)
+        if not restarted:
+            try:
+                self.command(
+                    'restart', self._vm_name, timeout=self.RESTART_VM_TIMEOUT)
+            except subprocess.SubprocessError as e:
+                logger.warning("DockerMachine:"
+                               " failed to restart the VM: %s -- %s",
+                               e, e.output)
+            else:
+                return self._recover(restarted=True)
 
         try:
             if self.remove(self._vm_name):
