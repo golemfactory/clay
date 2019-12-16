@@ -36,6 +36,7 @@ class DockerRuntimePayloadData(NamedTuple):
     restart_policy: Optional[Dict[str, Any]] = None
     dns: Optional[List[str]] = None
     dns_search: Optional[List[str]] = None
+    port_bindings: Optional[Dict[str, Dict[str, str]]] = None
 
 
 class DockerRuntimePayload(DockerRuntimePayloadData, RuntimePayload):
