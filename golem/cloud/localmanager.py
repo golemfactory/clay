@@ -4,7 +4,7 @@ from copy import deepcopy
 import time
 import os
 
-from twisted.internet.defer import inlineCallbacks, Deferred
+from twisted.internet.defer import inlineCallbacks
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.resource.dirmanager import DirManager
@@ -17,6 +17,8 @@ from .config import load_config, get_config_path
 from .schema.config import CloudConfigSchema
 
 logger = logging.getLogger(__name__)
+
+CONTAINER_RUN_DELAY = 5
 
 
 class LocalContainerManager:
@@ -44,10 +46,12 @@ class LocalContainerManager:
         logger.info('Golem Cloud is stopping local containers...')
         for container_name, container_runtime in self._containers.items():
             container_status = self.get_status(container_name)
-            logger.info(f'Container: {container_name} status: {container_status}')
+            logger.info(
+                f'Container: {container_name} status: {container_status}')
             yield container_runtime.stop()
             container_status = self.get_status(container_name)
-            logger.info(f'Container: {container_name} status: {container_status}')
+            logger.info(
+                f'Container: {container_name} status: {container_status}')
         self._containers = {}
         self._deferreds = {}
 
@@ -82,7 +86,7 @@ class LocalContainerManager:
     def prepare_local_container(self, image, tag, extra_options=None):
         if not extra_options:
             extra_options = {}
-        docker_env = extra_options.get('env', {}) if 'env' in extra_options \
+        docker_env = extra_options.pop('env') if 'env' in extra_options \
             else {}
 
         payload = DockerRuntimePayload(
@@ -113,3 +117,4 @@ class LocalContainerManager:
             runtime = self.prepare_local_container(image, tag, extra_options)
             self._containers[name] = runtime
             self._deferreds[name] = self.environment.run_local_runtime(runtime)
+            time.sleep(CONTAINER_RUN_DELAY)
