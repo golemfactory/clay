@@ -318,7 +318,8 @@ class TaskServer(
 
     @inlineCallbacks
     def quit(self):
-        self.local_container_manager.quit()
+        if self.config_desc.enable_cloud:
+            self.local_container_manager.quit()
         try:
             future = self.requested_task_manager.stop()
             yield deferred_from_future(asyncio.wait_for(future, timeout=30.))
