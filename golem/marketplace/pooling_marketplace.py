@@ -14,12 +14,14 @@ class RequestorPoolingMarketStrategy(RequestorMarketStrategy):
     def add(cls, task_id: str, offer: Offer):
         if task_id not in cls._pools:
             cls._pools[task_id] = []
-        cls._pools[task_id].append(offer)
+        task_pool = cls._pools[task_id]
+        if offer.provider_id not in [o.provider_id for o in task_pool]:
+            task_pool.append(offer)
 
-        logger.debug(
-            "Offer accepted & added to pool. offer=%s",
-            offer,
-        )
+            logger.debug(
+                "Offer accepted & added to pool. offer=%s",
+                offer,
+            )
 
     @classmethod
     def get_task_offer_count(cls, task_id: str) -> int:
