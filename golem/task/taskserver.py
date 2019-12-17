@@ -951,9 +951,11 @@ class TaskServer(
     def accept_result(self, task_id, subtask_id, key_id, eth_address: str,
                       value: int, *, unlock_funds=True) -> TaskPayment:
         # FIXME: trust
-        mod = min(
-            max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
-            self.max_trust)
+        if self.requested_task_manager.task_exists(task_id):
+            trust = 1.0
+        else:
+            trust = self.task_manager.get_trust_mod(subtask_id)
+        mod = min(max(trust, self.min_trust), self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
         payment = self.client.transaction_system.add_payment_info(
             node_id=key_id,
