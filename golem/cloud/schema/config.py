@@ -68,7 +68,6 @@ class CloudConfigSchemaContainer(Schema):
     network_mode: Optional[str] = fields.Str()
     dns: Optional[List[str]] = fields.List(fields.Str())
     dns_search: Optional[List[str]] = fields.List(fields.Str())
-    # host_config = fields.Nested(CloudConfigSchemaContainer)
 
     @pre_load
     def process_binds(self, data, **kwargs):
