@@ -383,7 +383,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             for offer in market_strategy.resolve_task_offers(task_id):
                 try:
                     offer.callback()
-                    break
                 except Exception as e:
                     logger.error(e)
 
