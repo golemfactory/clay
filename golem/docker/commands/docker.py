@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 CallableCommand = Callable[
-    [Optional[str], Union[Tuple, List[str], None], Optional[bool]],  # args
+    [
+        Optional[str],
+        Union[Tuple, List[str], None],
+        Optional[bool],
+        Optional[float]
+    ],  # args
     Optional[str]  # return value
 ]
 
