@@ -797,14 +797,15 @@ class DockerCPUEnvironment(EnvironmentBase):
         volumes = [b.target for b in payload.binds] if payload.binds else None
         host_config = self._create_host_config(config, payload)
         ports = []
-        for p in payload.ports:
-            p = str(p)
-            if p.find('/') > -1:
-                container_port, protocol = p.split('/')
-            else:
-                container_port = p
-                protocol = 'tcp'
-            ports.append((int(container_port), protocol))
+        if payload.ports:
+            for p in payload.ports:
+                p = str(p)
+                if p.find('/') > -1:
+                    container_port, protocol = p.split('/')
+                else:
+                    container_port = p
+                    protocol = 'tcp'
+                ports.append((int(container_port), protocol))
         networking_config = self._create_networking_config(payload)
         hostname = payload.hostname if payload.hostname else None
         domainname = payload.domainname if payload.domainname else None
