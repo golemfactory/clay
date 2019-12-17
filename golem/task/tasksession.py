@@ -380,11 +380,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         def resolution(market_strategy, task_id):
-            for offer in market_strategy.resolve_task_offers(task_id):
-                try:
-                    offer.callback()
-                except Exception as e:
-                    logger.error(e)
+            offers = market_strategy.resolve_task_offers(task_id)
+            if offers:
+                for offer in offers:
+                    try:
+                        offer.callback()
+                    except Exception as e:
+                        logger.error(e)
 
         market_strategy.add(msg.task_id, offer)
         logger.debug("Offer accepted & added to pool. offer=%s", offer)
