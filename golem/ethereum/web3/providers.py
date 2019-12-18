@@ -53,7 +53,7 @@ class ProviderProxy(HTTPProvider):
                     'GETH: request successful %s (%r, %r) -- result = %r',
                     self.provider.endpoint_uri, method, params, response
                 )
-            except (ConnectionError, ValueError,
+            except (ConnectionError,
                     socket.error, CannotHandleRequest) as exc:
                 retries += 1
                 self._register_retry()
