@@ -189,12 +189,19 @@ class TaskComputerAdapter:
     ) -> defer.Deferred:
         try:
             output_file = yield computation
-            # Output file is None if computation was timed out or cancelled
+            # Output file is None if computation was cancelled
             if output_file is not None:
                 self._task_server.send_results(
                     subtask_id=subtask_id,
                     task_id=task_id,
                     task_api_result=output_file,
+                )
+            else:
+                self._task_server.send_task_failed(
+                    subtask_id=subtask_id,
+                    task_id=task_id,
+                    err_msg="Subtask cancelled",
+                    decrease_trust=False
                 )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
@@ -401,6 +408,7 @@ class NewTaskComputer:
                 assigned_task.subtask_id
             )
             self._stats_keeper.increase_stat('tasks_with_timeout')
+            raise RuntimeError('Task computation timed out')
         except Exception:
             logger.exception(
                 'Task computation failed. task_id=%r subtask_id=%r',
