@@ -186,6 +186,22 @@ class TestHandleComputationResults(TaskComputerAdapterTestBase):
         self.finished_callback.assert_called_once_with()
 
     @defer.inlineCallbacks
+    def test_cancelled(self):
+        yield self.adapter._handle_computation_results(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            computation=defer.succeed(None)
+        )
+        self.task_server.send_task_failed.assert_called_once_with(
+            task_id='test_task',
+            subtask_id='test_subtask',
+            err_msg='Subtask cancelled',
+            decrease_trust=False
+        )
+        self.task_server.send_results.assert_not_called()
+        self.finished_callback.assert_called_once_with()
+
+    @defer.inlineCallbacks
     def test_error(self):
         error = RuntimeError('test_error')
         yield self.adapter._handle_computation_results(
