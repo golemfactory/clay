@@ -108,7 +108,7 @@ class TestRequestorBrassMarketStrategy(TestCase):
     TASK_A = 'aaa'
 
     @staticmethod
-    def _mock_offer():
+    def _mock_offer(provider_id='provider_1'):
         mock_offer = MagicMock(spec_set=[
             'provider_id',
             'provider_performance',
@@ -117,7 +117,7 @@ class TestRequestorBrassMarketStrategy(TestCase):
             'reputation',
             'quality',
         ])
-        mock_offer.provider_id = 'provider_1'
+        mock_offer.provider_id = provider_id
         mock_offer.provider_performance = ProviderPerformance(100)
         mock_offer.max_price = 5000
         mock_offer.reputation = 1.0
@@ -131,7 +131,8 @@ class TestRequestorBrassMarketStrategy(TestCase):
     def test_empty_after_choice(self):
         offer = self._mock_offer()
         RequestorBrassMarketStrategy.add(self.TASK_A, offer)
-        RequestorBrassMarketStrategy.add(self.TASK_A, offer)
+        offer2 = self._mock_offer('provider_2')
+        RequestorBrassMarketStrategy.add(self.TASK_A, offer2)
         self.assertEqual(
             RequestorBrassMarketStrategy.get_task_offer_count(self.TASK_A), 2)
 
@@ -142,7 +143,8 @@ class TestRequestorBrassMarketStrategy(TestCase):
     def test_resolution_length_correct(self):
         offer = self._mock_offer()
         RequestorBrassMarketStrategy.add(self.TASK_A, offer)
-        RequestorBrassMarketStrategy.add(self.TASK_A, offer)
+        offer2 = self._mock_offer('provider_2')
+        RequestorBrassMarketStrategy.add(self.TASK_A, offer2)
         self.assertEqual(
             RequestorBrassMarketStrategy.get_task_offer_count(self.TASK_A), 2)
         result = RequestorBrassMarketStrategy.resolve_task_offers(self.TASK_A)
