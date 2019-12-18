@@ -1,6 +1,6 @@
 import sys
 import logging
-from typing import List, Optional, Tuple
+from typing import List, Tuple
 
 from dataclasses import dataclass
 
@@ -39,10 +39,10 @@ class BrassMarketOffer:
 class RequestorBrassMarketStrategy(RequestorPoolingMarketStrategy):
     # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str) -> List[Offer]:
         logger.info("Ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
-            return None
+            return []
 
         offers = cls._pools.pop(task_id)
 
