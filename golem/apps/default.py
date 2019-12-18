@@ -11,7 +11,7 @@ BlenderAppDefinition = AppDefinition(
     name='golemfactory/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
-    version='0.7.0',
+    version='0.7.2',
     description=(
         'Rendering with Blender, the free and open source '
         '3D creation suite'
@@ -19,7 +19,7 @@ BlenderAppDefinition = AppDefinition(
     requestor_env=DOCKER_CPU_ENV_ID,
     requestor_prereq=dict(
         image='golemfactory/blenderapp',
-        tag='0.7.0',
+        tag='0.7.2',
     ),
     market_strategy=RequestorBrassMarketStrategy,
     max_benchmark_score=10000.,
