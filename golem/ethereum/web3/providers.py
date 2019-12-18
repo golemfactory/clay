@@ -91,8 +91,8 @@ class ProviderProxy(HTTPProvider):
     def _handle_remote_rpc_provider_failure(self, method: str, final: bool):
         if final:
             raise Exception(
-                "GETH: Node limit exhausted, request failed."
-                f" method='{method}'",
+                f"GETH: Node limit exhausted, request failed. "
+                f"method='{method}'"
             )
         logger.warning(
             "GETH: '%s' request failed on '%s', "
