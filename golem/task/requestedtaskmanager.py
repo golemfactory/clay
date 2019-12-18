@@ -534,6 +534,7 @@ class RequestedTaskManager:
                     self._move_task_results(
                         task_id,
                         Path(task.output_directory))
+                    logger.info("Task finished. task_id=%r", task.task_id)
                     await self._shutdown_app_client(task.app_id)
                     self._notice_task_updated(task, op=TaskOp.FINISHED)
 

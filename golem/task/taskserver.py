@@ -710,12 +710,14 @@ class TaskServer(
             subtask_id: str,
             task_id: str,
             err_msg: str,
-            reason=message.TaskFailure.DEFAULT_REASON
+            reason=message.TaskFailure.DEFAULT_REASON,
+            decrease_trust=True
     ) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(header.task_owner.key)
+            if decrease_trust:
+                Trust.REQUESTED.decrease(header.task_owner.key)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
                 task_id=task_id,

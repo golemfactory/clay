@@ -253,9 +253,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def read_msg_queue(self):
         if not self.key_id:
+            logger.debug('skipping queue, no key_id')
             return
         if not self.verified:
+            logger.debug('skipping queue, not verified. key_id=%r', self.key_id)
             return
+        logger.debug('sending messages for key. %r', self.key_id)
         for msg in msg_queue.get(self.key_id):
             self.send(msg)
 
