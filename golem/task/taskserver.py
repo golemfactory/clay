@@ -964,7 +964,8 @@ class TaskServer(
             value=value,
             eth_address=eth_address,
         )
-        if unlock_funds:
+        # task lock is removed before subtask, suppress warning in this case
+        if unlock_funds and self.client.funds_locker.has_task(task_id):
             self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment)
