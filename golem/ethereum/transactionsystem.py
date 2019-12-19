@@ -1,13 +1,13 @@
 # pylint: disable=too-many-lines
 import contextlib
 import datetime
+import enum
 import functools
 import json
 import logging
 import os
 import random
 import time
-from enum import Enum
 from pathlib import Path
 from typing import (
     Any,
@@ -24,6 +24,7 @@ from typing import (
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import is_address
+from golem_messages import datastructures as msg_datastructures
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
     contracts,
@@ -81,16 +82,23 @@ def gnt_deposit_required():
     return wrapper
 
 
-class ConversionStatus(Enum):
+class ConversionStatus(enum.Enum):
     NONE = 0
     OPENING_GATE = 1
     TRANSFERRING = 2
     UNFINISHED = 3
 
 
-class FaucetRequests(Enum):
+class FaucetRequests(enum.Enum):
     ETH = 0
     GNT = 1
+
+
+class CacheKey(msg_datastructures.StringEnum):
+    ETH = enum.auto()
+    GNT = enum.auto()
+    GNTB = enum.auto()
+    GNTDeposit = enum.auto()
 
 
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
@@ -136,21 +144,21 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
     @property
     def _eth_balance(self) -> int:
         try:
-            return self.cache_get('ETH')  # type: ignore
+            return self.cache_get(CacheKey.ETH)  # type: ignore
         except KeyError:
             return 0
 
     @property
     def _gnt_balance(self) -> int:
         try:
-            return self.cache_get('GNT')  # type: ignore
+            return self.cache_get(CacheKey.GNT)  # type: ignore
         except KeyError:
             return 0
 
     @property
     def _gntb_balance(self) -> int:
         try:
-            return self.cache_get('GNTB')  # type: ignore
+            return self.cache_get(CacheKey.GNTB)  # type: ignore
         except KeyError:
             return 0
 
@@ -520,8 +528,8 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
             'eth_available': self.get_available_eth(),
             'eth_locked': self.get_locked_eth(),
             'block_number': self._sci.get_latest_confirmed_block_number(),
-            'gnt_update_time': self.cache_lastmod('GNTB'),
-            'eth_update_time': self.cache_lastmod('ETH'),
+            'gnt_update_time': self.cache_lastmod(CacheKey.GNTB),
+            'eth_update_time': self.cache_lastmod(CacheKey.ETH),
         }
 
     def lock_funds_for_payments(self, price: int, num: int) -> None:
@@ -782,7 +790,7 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
             account_address = self._sci.get_eth_address()
         if cached and (account_address == self._sci.get_eth_address()):
             try:
-                self.cache_get('concent_balance')
+                self.cache_get(CacheKey.GNTDeposit)
             except KeyError:
                 return 0
         return self._sci.get_deposit_value(
@@ -1008,17 +1016,17 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
                 log.debug('Update balance error details', exc_info=True)
 
         with safe_update('ETH'):
-            self.cache_set('ETH', self._sci.get_eth_balance(addr))
+            self.cache_set(CacheKey.ETH, self._sci.get_eth_balance(addr))
 
         with safe_update('GNT'):
-            self.cache_set('GNT', self._sci.get_gnt_balance(addr))
+            self.cache_set(CacheKey.GNT, self._sci.get_gnt_balance(addr))
 
         with safe_update('GNTB'):
-            self.cache_set('GNTB', self._sci.get_gntb_balance(addr))
+            self.cache_set(CacheKey.GNTB, self._sci.get_gntb_balance(addr))
 
         with safe_update('deposit'):
             self.cache_set(
-                'concent_balance',
+                CacheKey.GNTDeposit,
                 self._sci.get_deposit_value(
                     account_address=self._sci.get_eth_address(),
                 ),

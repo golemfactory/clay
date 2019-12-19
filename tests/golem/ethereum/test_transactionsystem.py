@@ -23,7 +23,10 @@ from golem import model
 from golem import testutils
 from golem.core import deferred
 from golem.ethereum import exceptions
-from golem.ethereum.transactionsystem import TransactionSystem
+from golem.ethereum.transactionsystem import (
+    CacheKey,
+    TransactionSystem,
+)
 from golem.ethereum.exceptions import NotEnoughFunds
 
 from tests.factories import model as model_factory
@@ -578,7 +581,7 @@ class ConcentDepositTest(TransactionSystemBase):
     def test_not_enough(self):
         self.sci.GAS_TRANSFER_AND_CALL = 9999
         self.sci.get_deposit_value.return_value = 0
-        self.ets.cache_set('GNTB', 0)
+        self.ets.cache_set(CacheKey.GNTB, 0)
         with self.assertRaises(exceptions.NotEnoughFunds):
             self.ets.validate_concent_deposit_possibility(
                 required=10,
@@ -594,8 +597,8 @@ class ConcentDepositTest(TransactionSystemBase):
     ):
         self.sci.get_deposit_value.return_value = 0
         self.sci.get_transaction_gas_price.return_value = 2
-        self.ets.cache_set('GNTB', gntb_balance)
-        self.ets.cache_set('ETH', denoms.ether)
+        self.ets.cache_set(CacheKey.GNTB, gntb_balance)
+        self.ets.cache_set(CacheKey.ETH, denoms.ether)
         self.ets.lock_funds_for_payments(subtask_price, subtask_count)
         tx_hash = \
             '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
