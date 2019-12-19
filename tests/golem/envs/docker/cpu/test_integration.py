@@ -13,6 +13,7 @@ from golem.tools.ci import ci_skip
 
 
 @ci_skip
+@pytest.mark.slow
 class TestIntegration(TestCase, DatabaseFixture):
 
     @classmethod
@@ -23,13 +24,13 @@ class TestIntegration(TestCase, DatabaseFixture):
         hypervisor_cls = DockerCPUEnvironment._get_hypervisor_class()
         assert hypervisor_cls is not None, "No supported hypervisor found"
 
-        cls.hypervisor = hypervisor_cls(get_config=lambda: {})
+        cls.hypervisor = hypervisor_cls(get_config_fn=lambda: {})
         cls.vm_was_running = cls.hypervisor.vm_running
 
     @classmethod
     def tearDownClass(cls) -> None:
         if cls.vm_was_running:
-            cls.hypervisor.start_vm()
+            cls.hypervisor.restore_vm()
         super().tearDownClass()
 
     @inlineCallbacks
@@ -43,6 +44,14 @@ class TestIntegration(TestCase, DatabaseFixture):
         self.env = DockerCPUEnvironment(config)
         yield self.env.prepare()
 
+        # Download busybox image
+        Whitelist.add("busybox")
+        installed = yield self.env.install_prerequisites(DockerPrerequisites(
+            image="busybox",
+            tag="latest"
+        ))
+        self.assertTrue(installed)
+
     @inlineCallbacks
     def tearDown(self):
         yield self.env.clean_up()
@@ -51,14 +60,6 @@ class TestIntegration(TestCase, DatabaseFixture):
     @pytest.mark.timeout(120)  # 120 sec should be well enough for this test
     @inlineCallbacks
     def test_io(self):
-        # Download image
-        Whitelist.add("busybox")
-        installed = yield self.env.install_prerequisites(DockerPrerequisites(
-            image="busybox",
-            tag="latest"
-        ))
-        self.assertTrue(installed)
-
         # Create runtime
         runtime = self.env.runtime(DockerRuntimePayload(
             image="busybox",
@@ -104,14 +105,7 @@ class TestIntegration(TestCase, DatabaseFixture):
 
     @inlineCallbacks
     def test_ports(self):
-        Whitelist.add("busybox")
-        installed = yield self.env.install_prerequisites(DockerPrerequisites(
-            image="busybox",
-            tag="latest"
-        ))
-        self.assertTrue(installed)
-
-        port = 4444
+        port = 3333
         runtime = self.env.runtime(DockerRuntimePayload(
             image="busybox",
             tag="latest",
@@ -130,4 +124,81 @@ class TestIntegration(TestCase, DatabaseFixture):
                 sock.close()
         finally:
             yield runtime.stop()
+            yield runtime.clean_up()
+
+    @inlineCallbacks
+    def test_memory_counter(self):
+        mib = 1024 * 1024
+        num_bytes = 10 * mib
+
+        malloc_code = f"""
+        #include <stdlib.h>
+        #include <unistd.h>
+
+        int main(void) {{
+            int i, n = {num_bytes};
+            char * ptr;
+            ptr = (char *) malloc (n);
+            ptr[0] = 1;
+            for (i = 1; i < n; ++i) {{
+                ptr[i] = ptr[i-1];
+            }}
+            sleep(5);
+            free(ptr);
+            return 0;
+        }}
+        """
+
+        Whitelist.add("frolvlad/alpine-gcc")
+        installed = yield self.env.install_prerequisites(DockerPrerequisites(
+            image="frolvlad/alpine-gcc",
+            tag="latest"
+        ))
+        self.assertTrue(installed)
+
+        runtime = self.env.runtime(DockerRuntimePayload(
+            image="frolvlad/alpine-gcc",
+            tag="latest",
+            command="sh -c 'gcc -O0 -o x.exe -xc - ; ./x.exe'"
+        ))
+        yield runtime.prepare()
+        yield runtime.start()
+        try:
+            stdin = runtime.stdin(encoding="utf-8")
+            stdin.write(malloc_code)
+            stdin.close()
+            yield runtime.wait_until_stopped()
+
+            avg_ram = runtime.usage_counter_values().ram_avg_bytes
+            max_ram = runtime.usage_counter_values().ram_max_bytes
+            self.assertLessEqual(avg_ram, max_ram)
+            self.assertGreater(max_ram, num_bytes)
+            # Upper bound is very loose because it is highly unpredictable
+            self.assertLess(max_ram, 10 * num_bytes)
+        finally:
+            yield runtime.clean_up()
+
+    @inlineCallbacks
+    def test_cpu_counter(self):
+        seconds = 10
+        sec_ns = 1_000_000_000
+        runtime = self.env.runtime(DockerRuntimePayload(
+            image="busybox",
+            tag="latest",
+            command=f"sh -c '(dd if=/dev/zero of=/dev/null) & pid=$! ; "
+                    f"sleep {seconds} ; kill $pid'"
+        ))
+        yield runtime.prepare()
+        yield runtime.start()
+        yield runtime.wait_until_stopped()
+        try:
+            cpu_user = runtime.usage_counter_values().cpu_user_ns
+            cpu_kernel = runtime.usage_counter_values().cpu_kernel_ns
+            cpu_total = runtime.usage_counter_values().cpu_total_ns
+            self.assertApproximates(
+                (cpu_user + cpu_kernel), cpu_total, 0.1 * sec_ns)
+            self.assertGreater(cpu_total, 0.9 * seconds * sec_ns)
+            # Upper bound is very loose because it is highly unpredictable
+            self.assertLess(cpu_total, 10 * seconds * sec_ns)
+        finally:
             yield runtime.clean_up()
