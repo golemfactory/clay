@@ -208,6 +208,11 @@ class IncomesKeeper:
             return
 
         for income in incomes:
+            logger.debug(
+                "Marking payment as overdue. sender=%s, amount=%s",
+                income.wallet_operation.sender_address,
+                income.wallet_operation.amount,
+            )
             income.wallet_operation.status = \
                 model.WalletOperation.STATUS.overdue
             income.wallet_operation.save()

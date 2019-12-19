@@ -2,6 +2,7 @@
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
+async-generator==1.10
 autobahn==19.6.2
 Automat==0.6.0
 base58
@@ -19,13 +20,14 @@ enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==3.14.1
-Golem-Smart-Contracts-Interface==1.10.3
-Golem-Task-Api==0.24.0
+Golem-Smart-Contracts-Interface==1.10.4
+Golem-Task-Api==0.24.1
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
 marshmallow
 miniupnpc<2.1,>=2.0
+multidict<4.7.0
 ndg-httpsclient
 netifaces==0.10.4
 numpy==1.15.4

@@ -1,13 +1,14 @@
 import asyncio
 import hashlib
 import logging
-from functools import partial
-
 import os
 import shutil
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
+
+import async_generator
 
 from dataclasses import dataclass
 from golem_messages import idgenerator
@@ -24,10 +25,10 @@ from golem.core.golem_async import CallScheduler
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    default_now,
 )
 from golem.model import (
     ComputingNode,
-    default_now,
     RequestedTask,
     RequestedSubtask,
 )
@@ -114,7 +115,7 @@ class RequestedTaskManager:
                 # subtask not started
                 continue
             subtask_id = subtask.subtask_id
-            time_left = subtask.deadline.timestamp() - default_now().timestamp()
+            time_left = subtask.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring subtask. subtask_id=%r', subtask_id)
                 self._schedule_subtask_timeout(subtask, time_left)
@@ -125,10 +126,13 @@ class RequestedTaskManager:
         running_tasks = RequestedTask.select() \
             .where(RequestedTask.status.not_in(TASK_STATUS_COMPLETED))
         for task in running_tasks:
+            if task.status == TaskStatus.creating:
+                self.error_creating(task.task_id)
+                continue
             if task.deadline is None:
                 # task not started
                 continue
-            time_left = task.deadline.timestamp() - default_now().timestamp()
+            time_left = task.deadline.timestamp() - get_timestamp_utc()
             if time_left > 0:
                 logger.info('restoring task. task_id=%r', task.task_id)
                 self._schedule_task_timeout(task, time_left)
@@ -188,18 +192,31 @@ class RequestedTaskManager:
             placed. """
         return self._task_dir(task_id).subtask_outputs_dir(subtask_id)
 
-    def create_task(
+    async def create_task(
             self,
             golem_params: CreateTaskParams,
             app_params: Dict[str, Any],
     ) -> TaskId:
+        task_id = idgenerator.generate_id(self._public_key)
+        app_id = golem_params.app_id
+
+        async with self._task_creation_ctx(task_id, app_id):
+            self._create_task(task_id, golem_params, app_params)
+        return task_id
+
+    def _create_task(
+            self,
+            task_id: TaskId,
+            golem_params: CreateTaskParams,
+            app_params: Dict[str, Any],
+    ):
         """ Creates an entry in the storage about the new task and assigns
         the task_id to it. The task then has to be initialized and started. """
         logger.debug('create_task(golem_params=%r, app_params=%r)',
                      golem_params, app_params)
 
         task = RequestedTask.create(
-            task_id=idgenerator.generate_id(self._public_key),
+            task_id=task_id,
             app_id=golem_params.app_id,
             name=golem_params.name,
             status=TaskStatus.creating,
@@ -214,8 +231,6 @@ class RequestedTaskManager:
             output_directory=golem_params.output_directory,
             app_params=app_params,
         )
-
-        self._schedule_task_timeout(task, golem_params.task_timeout)
 
         logger.debug(
             'create_task(task_id=%r) - prepare directories. app_id=%s',
@@ -235,9 +250,12 @@ class RequestedTaskManager:
         )
         logger.debug('raw_task=%r', task)
         self._notice_task_updated(task, op=TaskOp.CREATED)
-        return task.task_id
 
     async def init_task(self, task_id: TaskId) -> None:
+        async with self._task_creation_ctx(task_id):
+            await self._init_task(task_id)
+
+    async def _init_task(self, task_id: TaskId) -> None:
         """ Initialize the task by calling create_task on the Task API.
         The application performs validation of the params which may result in
         an error marking the task as failed. """
@@ -264,6 +282,32 @@ class RequestedTaskManager:
         task.save()
         logger.debug('init_task(task_id=%r) after', task_id)
 
+    @async_generator.asynccontextmanager
+    @async_generator.async_generator
+    async def _task_creation_ctx(
+            self,
+            task_id: TaskId,
+            app_id: Optional[AppId] = None,
+    ):
+        try:
+            await async_generator.yield_()
+        except Exception:  # pylint: disable=broad-except
+            try:
+                task = RequestedTask.get(task_id=task_id)
+                task.status = TaskStatus.errorCreating
+                task.save()
+                if not app_id:
+                    app_id = task.app_id
+            except RequestedTask.DoesNotExist:
+                pass
+            try:
+                if app_id:
+                    await self._shutdown_app_client(app_id)
+            except Exception:  # pylint: disable=broad-except
+                logger.exception(
+                    'Failed to shut down client. app_id=%r', app_id)
+            raise
+
     def start_task(self, task_id: TaskId) -> None:
         """ Marks an already initialized task as ready for computation. """
         logger.debug('start_task(task_id=%r)', task_id)
@@ -276,6 +320,7 @@ class RequestedTaskManager:
         task.status = TaskStatus.waiting
         task.start_time = default_now()
         task.save()
+        self._schedule_task_timeout(task, task.task_timeout)
         self._notice_task_updated(task, op=TaskOp.STARTED)
         logger.info("Task %s started", task_id)
 
@@ -398,7 +443,7 @@ class RequestedTaskManager:
         task_deadline = task.deadline
         assert task_deadline is not None, "No deadline, is start_time empty?"
         deadline = datetime_to_timestamp_utc(min(
-            subtask.start_time + timedelta(milliseconds=task.subtask_timeout),
+            subtask.start_time + timedelta(seconds=task.subtask_timeout),
             task_deadline
         ))
 
@@ -489,6 +534,7 @@ class RequestedTaskManager:
                     self._move_task_results(
                         task_id,
                         Path(task.output_directory))
+                    logger.info("Task finished. task_id=%r", task.task_id)
                     await self._shutdown_app_client(task.app_id)
                     self._notice_task_updated(task, op=TaskOp.FINISHED)
 
@@ -645,7 +691,7 @@ class RequestedTaskManager:
             concent_enabled=task.concent_enabled,
         )
         app_params = task.app_params
-        return self.create_task(golem_params, app_params)
+        return await self.create_task(golem_params, app_params)
 
     async def discard_subtasks(
             self,
@@ -951,7 +997,13 @@ class RequestedTaskManager:
         )
         update_provider_efficacy(node_id, op)
         if subtask_timeout is not None:
-            update_provider_efficiency(node_id, subtask_timeout, comp_time)
+            if comp_time:
+                update_provider_efficiency(node_id, subtask_timeout, comp_time)
+            else:
+                logger.warning(
+                    "Could not obtain computation time for subtask: %r",
+                    subtask_id
+                )
             dispatcher.send(
                 signal='golem.subtask',
                 event='finished',

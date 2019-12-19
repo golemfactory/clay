@@ -846,12 +846,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return value
 
     @rpc_utils.expose('env.opt.update')
-    def update_setting(self, key, value):
+    def update_setting(self, key, value, update_config=True):
         logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
-        self.change_config(self.config_desc)
+        if update_config:
+            self.change_config(self.config_desc)
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
@@ -897,7 +898,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
             if task.start_time is None:
-                time_started = model.default_now().timestamp()
+                time_started = get_timestamp_utc()
             else:
                 time_started = task.start_time.timestamp()
             task_dict = {

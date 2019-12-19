@@ -259,6 +259,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         ts2 = self._get_requestor_tasksession()
         ts2.task_manager.get_node_id_for_subtask.return_value = ts2.key_id
         ts2.requested_task_manager.get_node_id_for_subtask.return_value = None
+        ts2.requested_task_manager.subtask_exists.return_value = False
         ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
@@ -283,6 +284,7 @@ class TaskSessionTaskToComputeTest(TestDirFixtureWithReactor):
         )
         ts.task_manager.get_node_id_for_subtask.return_value = ts.key_id
         ts.requested_task_manager.get_node_id_for_subtask.return_value = None
+        ts.requested_task_manager.subtask_exists.return_value = False
         ts._react_to_cannot_compute_task(msg)
         ts.task_manager.task_computation_cancelled.assert_called_once_with(
             msg.subtask_id,
@@ -490,8 +492,6 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
     def test_react_to_task_to_compute(self):
         ctd = self.ctd()
         ttc = self.ttc_prepare_and_react(ctd)
-        self.task_session.task_manager.\
-            comp_task_keeper.receive_subtask.assert_called_with(ttc)
         self.task_session.task_server.task_given.assert_called_with(ttc)
         self.conn.close.assert_not_called()
 

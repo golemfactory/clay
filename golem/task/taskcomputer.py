@@ -77,9 +77,6 @@ class TaskComputerAdapter:
             stats_keeper=self.stats
         )
 
-        # Should this node behave as provider and compute tasks?
-        self.compute_tasks = task_server.config_desc.accept_tasks \
-            and not task_server.config_desc.in_shutdown
         self.runnable = True
         self._listeners = []  # type: ignore
 
@@ -93,6 +90,12 @@ class TaskComputerAdapter:
     def dir_manager(self) -> DirManager:
         # FIXME: This shouldn't be part of the public interface probably
         return self._old_computer.dir_manager
+
+    @property
+    def compute_tasks(self):
+        # Should this node behave as provider and compute tasks?
+        config = self._task_server.config_desc
+        return config.accept_tasks and not config.in_shutdown
 
     def task_given(
             self,
@@ -186,12 +189,19 @@ class TaskComputerAdapter:
     ) -> defer.Deferred:
         try:
             output_file = yield computation
-            # Output file is None if computation was timed out or cancelled
+            # Output file is None if computation was cancelled
             if output_file is not None:
                 self._task_server.send_results(
                     subtask_id=subtask_id,
                     task_id=task_id,
                     task_api_result=output_file,
+                )
+            else:
+                self._task_server.send_task_failed(
+                    subtask_id=subtask_id,
+                    task_id=task_id,
+                    err_msg="Subtask cancelled",
+                    decrease_trust=False
                 )
         except Exception as e:  # pylint: disable=broad-except
             self._task_server.send_task_failed(
@@ -247,8 +257,6 @@ class TaskComputerAdapter:
             config_desc: ClientConfigDescriptor,
             in_background: bool = True
     ) -> defer.Deferred:
-        self.compute_tasks = config_desc.accept_tasks \
-            and not config_desc.in_shutdown
         work_dir = Path(self._task_server.get_task_computer_root())
         yield self._new_computer.change_config(
             config_desc=config_desc,
@@ -400,6 +408,7 @@ class NewTaskComputer:
                 assigned_task.subtask_id
             )
             self._stats_keeper.increase_stat('tasks_with_timeout')
+            raise RuntimeError('Task computation timed out')
         except Exception:
             logger.exception(
                 'Task computation failed. task_id=%r subtask_id=%r',

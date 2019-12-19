@@ -39,7 +39,12 @@ from golem import constants as gconst
 from golem.apps import manager as app_manager
 from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import short_node_id, deadline_to_timeout, get_log_dir
+from golem.core.common import (
+    short_node_id,
+    deadline_to_timeout,
+    get_log_dir,
+    get_timestamp_utc,
+)
 from golem.core.deferred import (
     asyncio_main_loop,
     deferred_from_future,
@@ -478,10 +483,7 @@ class TaskServer(
                     price_per_wallclock_h=self.config_desc.min_price,
                     price_per_cpu_h=self.config_desc.price_per_cpu_h,
                 ), theader.max_price, theader.task_owner.key)
-            self.task_manager.add_comp_task_request(
-                theader=theader, price=price,
-                performance=benchmark_score
-            )
+
             wtct = message.tasks.WantToComputeTask(
                 perf_index=benchmark_score,
                 cpu_usage=benchmark_cpu_usage,
@@ -496,10 +498,20 @@ class TaskServer(
                 provider_ethereum_address=self.keys_auth.eth_addr,
                 task_header=theader,
             )
+
+            task_class = self.client.apps_manager.get_task_class_for_env(
+                theader.environment)
+            budget = task_class.PROVIDER_MARKET_STRATEGY.calculate_budget(wtct)
+            self.task_manager.add_comp_task_request(
+                task_header=theader,
+                budget=budget,
+                performance=benchmark_score,
+            )
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
             )
+
             timer.ProviderTTCDelayTimers.start(wtct.task_id)
             self.requested_tasks.add(theader.task_id)
             return theader.task_id
@@ -514,6 +526,9 @@ class TaskServer(
             self,
             msg: message.tasks.TaskToCompute,
     ) -> bool:
+        if not self.task_manager.comp_task_keeper.receive_subtask(msg):
+            return False
+
         if not self.task_computer.can_take_work():
             logger.error("Trying to assign a task, when it's already assigned")
             return False
@@ -695,12 +710,14 @@ class TaskServer(
             subtask_id: str,
             task_id: str,
             err_msg: str,
-            reason=message.TaskFailure.DEFAULT_REASON
+            reason=message.TaskFailure.DEFAULT_REASON,
+            decrease_trust=True
     ) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(header.task_owner.key)
+            if decrease_trust:
+                Trust.REQUESTED.decrease(header.task_owner.key)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
                 task_id=task_id,
@@ -781,7 +798,7 @@ class TaskServer(
             )
             logger.debug("task_header=%r", task_header)
             return False
-        if task_header.deadline < time.time():
+        if task_header.deadline < get_timestamp_utc():
             logger.info(
                 "Task's deadline already in the past. task_id=%r",
                 task_header.task_id
@@ -994,7 +1011,7 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
         if not self.requested_task_manager.has_unfinished_tasks():
-            self.client.update_setting('accept_tasks', True)
+            self.client.update_setting('accept_tasks', True, False)
 
     def _increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)
