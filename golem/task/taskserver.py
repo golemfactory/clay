@@ -721,12 +721,14 @@ class TaskServer(
             subtask_id: str,
             task_id: str,
             err_msg: str,
-            reason=message.TaskFailure.DEFAULT_REASON
+            reason=message.TaskFailure.DEFAULT_REASON,
+            decrease_trust=True
     ) -> None:
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(header.task_owner.key)
+            if decrease_trust:
+                Trust.REQUESTED.decrease(header.task_owner.key)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
                 task_id=task_id,
@@ -960,9 +962,11 @@ class TaskServer(
     def accept_result(self, task_id, subtask_id, key_id, eth_address: str,
                       value: int, *, unlock_funds=True) -> TaskPayment:
         # FIXME: trust
-        mod = min(
-            max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
-            self.max_trust)
+        if self.requested_task_manager.task_exists(task_id):
+            trust = 1.0
+        else:
+            trust = self.task_manager.get_trust_mod(subtask_id)
+        mod = min(max(trust, self.min_trust), self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
         payment = self.client.transaction_system.add_payment_info(
             node_id=key_id,
@@ -971,7 +975,8 @@ class TaskServer(
             value=value,
             eth_address=eth_address,
         )
-        if unlock_funds:
+        # task lock is removed before subtask, suppress warning in this case
+        if unlock_funds and self.client.funds_locker.has_task(task_id):
             self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment ts: %r',
                      subtask_id, payment)

@@ -2001,7 +2001,7 @@ class TestNewTaskComputerIntegration(
         )
         yield self.task_server.quit()
 
-    # FIXME: this test is on macOS
+    # FIXME: this test is unstable on macOS
     @unittest.skipIf(sys.platform.startswith('darwin'), 'Unstable on macOS')
     @defer.inlineCallbacks
     def test_computation_timed_out(self):
@@ -2022,10 +2022,17 @@ class TestNewTaskComputerIntegration(
         self.resource_manager.share.asssert_not_called()
 
         self.assertNotIn(self.subtask_id, self.task_server.results_to_send)
-        self.assertNotIn(self.subtask_id, self.task_server.failures_to_send)
+        failure_to_send = self.task_server.failures_to_send[self.subtask_id]
+        self.assertEqual(failure_to_send.task_id, self.task_id)
+        self.assertEqual(failure_to_send.subtask_id, self.subtask_id)
+        self.assertEqual(
+            failure_to_send.owner,
+            msg.want_to_compute_task.task_header.task_owner)
+        self.assertIn('Task computation timed out', failure_to_send.err_msg)
 
         self.trust.REQUESTED.increase.assert_not_called()
-        self.trust.REQUESTED.decrease.assert_not_called()
+        self.trust.REQUESTED.decrease.assert_called_once_with(
+            msg.want_to_compute_task.task_header.task_owner.key)
 
         self.assertEqual(
             self.task_header_keeper.method_calls, [

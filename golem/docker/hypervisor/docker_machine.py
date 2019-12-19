@@ -22,6 +22,9 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     DRIVER_PARAM_NAME = "--driver"
     DRIVER_NAME: ClassVar[str]
 
+    REGENERATE_CERTIFICATES_TIMEOUT = 120.0  # sec
+    RESTART_VM_TIMEOUT = 120.0  # sec
+
     def __init__(self,
                  get_config_fn: GetConfigFunction,
                  vm_name: str = DOCKER_VM_NAME) -> None:
@@ -81,7 +84,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             # DON'T use the '-q' option. It doesn't list VMs in invalid state
             output = self.command('list')
         except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine: failed to list VMs: %r", e)
+            logger.warning("Failed to list VMs: %r", e)
         else:
             if output:
                 # Skip first line (header) and last (empty)
@@ -119,7 +122,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             output = self.command('env', self._vm_name,
                                   args=('--shell', 'cmd'))
         except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine: failed to update env for VM: %s", e)
+            logger.warning("Failed to update env for VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
             if not retried:
                 return self._recover()
@@ -141,24 +144,35 @@ Ensure that you try the following before reporting an issue:
         else:
             logger.warning('DockerMachine: env update failed')
 
-    def _recover(self):
+    def _recover(self, restarted=False):
+        def _log_warning(msg, e):
+            logger.warning(
+                "Failed to regenerate certificates: %s -- %s",
+                e,
+                e.output
+            )
+
         try:
-            self.command('regenerate_certs', self._vm_name)
+            self.command(
+                'regenerate_certs', self._vm_name,
+                timeout=self.REGENERATE_CERTIFICATES_TIMEOUT)
         except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to env the VM: %s -- %s",
-                           e, e.output)
+            _log_warning("Failed to regenerate certificates", e)
+        except subprocess.TimeoutExpired as e:
+            _log_warning("Timeout in regenerate certificates", e)
         else:
             return self._set_env(retried=True)
 
-        try:
-            self.command('restart', self._vm_name)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to restart the VM: %s -- %s",
-                           e, e.output)
-        else:
-            return self._set_env(retried=True)
+        if not restarted:
+            try:
+                self.command(
+                    'restart', self._vm_name, timeout=self.RESTART_VM_TIMEOUT)
+            except subprocess.CalledProcessError as e:
+                _log_warning("Failed to restart the VM", e)
+            except subprocess.TimeoutExpired as e:
+                _log_warning("Timeout in restart the VM", e)
+            else:
+                return self._recover(restarted=True)
 
         try:
             if self.remove(self._vm_name):

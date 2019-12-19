@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import datetime
 import time
 from unittest import TestCase
@@ -10,6 +11,7 @@ from golem.ethereum.web3.providers import (
     RETRY_COUNT_INTERVAL,
     SINGLE_QUERY_RETRY_LIMIT,
 )
+
 
 @patch('web3.providers.rpc.HTTPProvider')
 class TestProviders(TestCase):
@@ -50,6 +52,25 @@ class TestProviders(TestCase):
             SINGLE_QUERY_RETRY_LIMIT * len(self._nodes_list)
         )
 
+    @patch(
+        'golem.ethereum.web3.providers.HTTPProvider.make_request',
+        side_effect=ValueError({
+            'code': -32000,
+            'message': 'missing trie node 32de5daba1d1013d41aca01c66772685576afb925779aa35d4d5a9de6e41d8c0 (path )',  # noqa pylint: disable=line-too-long
+        }),
+    )
+    def test_non_connection_error(self, *_):
+        result = None
+        with self.assertRaises(ValueError):
+            result = self.proxy.make_request("a", [])
+
+        self.assertEqual(result, None)
+        self.proxy.provider.make_request.assert_called_once_with("a", [])
+        self.assertEqual(
+            self.proxy.provider.make_request.call_count,
+            1,
+        )
+
     def test_first_retry(self, *_):
         with freezegun.freeze_time(datetime.datetime.utcnow()):
             now = time.time()
@@ -73,7 +94,7 @@ class TestProviders(TestCase):
             now = time.time()
             frt = now - RETRY_COUNT_INTERVAL - 1
             self.proxy._first_retry_time = frt
-            self._retries = 2
+            self.proxy._retries = 2
             self.proxy._register_retry()
 
         self.assertEqual(self.proxy._first_retry_time, now)
