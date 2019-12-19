@@ -143,24 +143,15 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
 
     @property
     def _eth_balance(self) -> int:
-        try:
-            return self.cache_get(CacheKey.ETH)  # type: ignore
-        except KeyError:
-            return 0
+        return self.cache_get(CacheKey.ETH, default=0)  # type: ignore
 
     @property
     def _gnt_balance(self) -> int:
-        try:
-            return self.cache_get(CacheKey.GNT)  # type: ignore
-        except KeyError:
-            return 0
+        return self.cache_get(CacheKey.GNT, default=0)  # type: ignore
 
     @property
     def _gntb_balance(self) -> int:
-        try:
-            return self.cache_get(CacheKey.GNTB)  # type: ignore
-        except KeyError:
-            return 0
+        return self.cache_get(CacheKey.GNTB, default=0)  # type: ignore
 
     @property   # type: ignore
     @sci_required()
@@ -789,10 +780,10 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
         if account_address is None:
             account_address = self._sci.get_eth_address()
         if cached and (account_address == self._sci.get_eth_address()):
-            try:
-                self.cache_get(CacheKey.GNTDeposit)
-            except KeyError:
-                return 0
+            return self.cache_get(  # type: ignore
+                CacheKey.GNTDeposit,
+                default=0,
+            )
         return self._sci.get_deposit_value(
             account_address=account_address,
         )

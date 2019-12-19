@@ -752,7 +752,7 @@ class ConcentUnlockTest(TransactionSystemBase):
         self.sci.withdraw_deposit.return_value = tx_hash
 
     def test_empty(self):
-        self.sci.get_deposit_value.return_value = 0
+        self.ets.cache_set(CacheKey.GNTDeposit, 0)
         self.ets.concent_unlock()
         self.sci.unlock_deposit.assert_not_called()
 

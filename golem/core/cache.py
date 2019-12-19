@@ -17,8 +17,13 @@ class MemCacheMixin:
             self._cache_store: typing.Dict[str, CacheEntry] = {}
         return self._cache_store
 
-    def cache_get(self, key) -> object:
-        return self._cache[key].value
+    def cache_get(self, key, **kwargs) -> object:
+        try:
+            return self._cache[key].value
+        except KeyError:
+            if 'default' in kwargs:
+                return kwargs['default']
+            raise
 
     def cache_set(self, key, value) -> None:
         entry = CacheEntry(value=value, timestamp=time.time())
