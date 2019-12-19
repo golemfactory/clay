@@ -578,7 +578,7 @@ class ConcentDepositTest(TransactionSystemBase):
     def test_not_enough(self):
         self.sci.GAS_TRANSFER_AND_CALL = 9999
         self.sci.get_deposit_value.return_value = 0
-        self.ets._gntb_balance = 0
+        self.ets.cache_set('GNTB', 0)
         with self.assertRaises(exceptions.NotEnoughFunds):
             self.ets.validate_concent_deposit_possibility(
                 required=10,
@@ -594,8 +594,8 @@ class ConcentDepositTest(TransactionSystemBase):
     ):
         self.sci.get_deposit_value.return_value = 0
         self.sci.get_transaction_gas_price.return_value = 2
-        self.ets._gntb_balance = gntb_balance
-        self.ets._eth_balance = denoms.ether
+        self.ets.cache_set('GNTB', gntb_balance)
+        self.ets.cache_set('ETH', denoms.ether)
         self.ets.lock_funds_for_payments(subtask_price, subtask_count)
         tx_hash = \
             '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
@@ -783,6 +783,19 @@ class ConcentUnlockTest(TransactionSystemBase):
         call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
 
 
+class ConcentBalanceTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.ets = self._make_ets(provide_gntdeposit=True)
+
+    def test_default(self):
+        del self.ets._cache_store
+        self.assertEqual(
+            self.ets.concent_balance(),
+            0,
+        )
+
+
 class DepositPaymentsListTest(TransactionSystemBase):
 
     def test_empty(self):
@@ -917,3 +930,18 @@ class TransactionConfirmationTest(TransactionSystemBase):
             operation.status,
             model.WalletOperation.STATUS.confirmed,
         )
+
+
+class DefaultBalancesTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        del self.ets._cache_store
+
+    def test_eth(self):
+        self.assertEqual(self.ets._eth_balance, 0)
+
+    def test_gnt(self):
+        self.assertEqual(self.ets._gnt_balance, 0)
+
+    def test_gntb(self):
+        self.assertEqual(self.ets._gntb_balance, 0)

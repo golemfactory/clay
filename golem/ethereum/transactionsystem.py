@@ -32,9 +32,11 @@ from golem_sci import (
     SmartContractsInterface,
     TransactionReceipt,
 )
+from golem_sci import exceptions as sci_exceptions
 from twisted.internet import defer
 
 from golem import model
+from golem.core.cache import MemCacheMixin
 from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
@@ -92,7 +94,7 @@ class FaucetRequests(Enum):
 
 
 # pylint:disable=too-many-instance-attributes,too-many-public-methods
-class TransactionSystem(LoopingCallService):
+class TransactionSystem(LoopingCallService, MemCacheMixin):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
@@ -125,16 +127,32 @@ class TransactionSystem(LoopingCallService):
             (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
 
-        self._eth_balance: int = 0
-        self._gnt_balance: int = 0
-        self._gntb_balance: int = 0
-        self._last_eth_update: Optional[float] = None
-        self._last_gnt_update: Optional[float] = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
         self._gntb_withdrawn: int = 0
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
+
+    @property
+    def _eth_balance(self) -> int:
+        try:
+            return self.cache_get('ETH')  # type: ignore
+        except KeyError:
+            return 0
+
+    @property
+    def _gnt_balance(self) -> int:
+        try:
+            return self.cache_get('GNT')  # type: ignore
+        except KeyError:
+            return 0
+
+    @property
+    def _gntb_balance(self) -> int:
+        try:
+            return self.cache_get('GNTB')  # type: ignore
+        except KeyError:
+            return 0
 
     @property   # type: ignore
     @sci_required()
@@ -502,8 +520,8 @@ class TransactionSystem(LoopingCallService):
             'eth_available': self.get_available_eth(),
             'eth_locked': self.get_locked_eth(),
             'block_number': self._sci.get_latest_confirmed_block_number(),
-            'gnt_update_time': self._last_gnt_update,
-            'eth_update_time': self._last_eth_update,
+            'gnt_update_time': self.cache_lastmod('GNTB'),
+            'eth_update_time': self.cache_lastmod('ETH'),
         }
 
     def lock_funds_for_payments(self, price: int, num: int) -> None:
@@ -754,10 +772,19 @@ class TransactionSystem(LoopingCallService):
 
     @gnt_deposit_required()
     @sci_required()
-    def concent_balance(self, account_address: Optional[str] = None) -> int:
+    def concent_balance(
+            self,
+            account_address: Optional[str] = None,
+            cached: bool = True,
+    ) -> int:
         self._sci: SmartContractsInterface
         if account_address is None:
             account_address = self._sci.get_eth_address()
+        if cached and (account_address == self._sci.get_eth_address()):
+            try:
+                self.cache_get('concent_balance')
+            except KeyError:
+                return 0
         return self._sci.get_deposit_value(
             account_address=account_address,
         )
@@ -792,7 +819,8 @@ class TransactionSystem(LoopingCallService):
                 'Gas price is high. It can take some time to mine deposit.',
             )
 
-        required_deposit_difference = required - self.concent_balance()
+        required_deposit_difference = required -\
+            self.concent_balance(cached=False)
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required_deposit_difference:
             missing_funds.append(exceptions.MissingFunds(
@@ -824,7 +852,7 @@ class TransactionSystem(LoopingCallService):
             expected: int) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         self._sci: SmartContractsInterface
-        current = self.concent_balance()
+        current = self.concent_balance(cached=False)
         if current >= required:
             if self.concent_timelock() != 0:
                 self._sci.lock_deposit()
@@ -952,8 +980,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _refresh_balances(self) -> None:
-        self._sci: SmartContractsInterface
-        now = time.mktime(datetime.datetime.today().timetuple())
+        assert isinstance(self._sci, SmartContractsInterface)
         addr = self._sci.get_eth_address()
 
         # Sometimes web3 may throw but it's fine here, we'll just update the
@@ -971,18 +998,31 @@ class TransactionSystem(LoopingCallService):
                     currency,
                 )
                 log.debug('Update balance error details', exc_info=True)
+            except sci_exceptions.MissingTrieNode:
+                log.debug(
+                    'Failed to update %s balance: missing trie node',
+                    currency,
+                )
             except Exception as e:  # pylint: disable=broad-except
                 log.warning('Failed to update %s balance: %r', currency, e)
                 log.debug('Update balance error details', exc_info=True)
 
         with safe_update('ETH'):
-            self._eth_balance = self._sci.get_eth_balance(addr)
-            self._last_eth_update = now
+            self.cache_set('ETH', self._sci.get_eth_balance(addr))
 
         with safe_update('GNT'):
-            self._gnt_balance = self._sci.get_gnt_balance(addr)
-            self._gntb_balance = self._sci.get_gntb_balance(addr)
-            self._last_gnt_update = now
+            self.cache_set('GNT', self._sci.get_gnt_balance(addr))
+
+        with safe_update('GNTB'):
+            self.cache_set('GNTB', self._sci.get_gntb_balance(addr))
+
+        with safe_update('deposit'):
+            self.cache_set(
+                'concent_balance',
+                self._sci.get_deposit_value(
+                    account_address=self._sci.get_eth_address(),
+                ),
+            )
 
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
