@@ -6,6 +6,7 @@ import time
 import typing
 import random
 from collections import Counter
+import traceback
 
 from eth_utils import decode_hex
 from golem_messages.datastructures.masking import Mask
@@ -522,6 +523,7 @@ class TaskHeaderKeeper:
             return True
         except (KeyError, TypeError, WrongOwnerException) as err:
             logger.warning("Wrong task header received: {}".format(err))
+            logger.warning(traceback.format_exc())
             return False
 
     @inlineCallbacks
