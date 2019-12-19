@@ -18,6 +18,11 @@ class MemCacheMixin:
         return self._cache_store
 
     def cache_get(self, key, **kwargs) -> object:
+        """Returns value
+
+        Unless `default` keyword argument is specified,
+        will raise KeyError if key is not found in cache.
+        """
         try:
             return self._cache[key].value
         except KeyError:
