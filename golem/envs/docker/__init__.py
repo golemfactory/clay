@@ -47,6 +47,7 @@ class DockerPrerequisitesData(NamedTuple):
     """ This exists because NamedTuple must be single superclass """
     image: str
     tag: str
+    extra_vars: Optional[str] = None
 
 
 class DockerPrerequisites(DockerPrerequisitesData, Prerequisites):
