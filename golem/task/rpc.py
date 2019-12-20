@@ -681,8 +681,13 @@ class ClientProvider:
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
-        logger.info('Restarting task. task_id=%r', task_id)
-        logger.debug('force=%r, disable_concent=%r', force, disable_concent)
+        logger.info('Attempting to restart task. task_id=%r', task_id)
+        logger.debug(
+            'restart_task. task_id=%r, force=%r, disable_concent=%r',
+            task_id,
+            force,
+            disable_concent
+        )
         assert self.client.task_server
 
         rtm = self.client.task_server.requested_task_manager
@@ -759,6 +764,11 @@ class ClientProvider:
         del task_dict['id']
         if disable_concent:
             task_dict['concent_enabled'] = False
+
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
 
         new_task = _create_task(self.client, task_dict)
         # Fire and forget the next steps after create_task
