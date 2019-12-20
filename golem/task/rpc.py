@@ -978,6 +978,11 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
+
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
         _restart_subtasks(
             client=self.client,
