@@ -574,7 +574,9 @@ class RequestedTaskManager:
         self._finish_subtask(subtask, SubtaskOp.ABORTED)
 
     async def delete_task(self, task_id: TaskId) -> None:
-        await self.abort_task(task_id)
+        task = RequestedTask.get(RequestedTask.task_id == task_id)
+        if task.status.is_active():
+            await self.abort_task(task_id)
 
         RequestedSubtask.delete().where(
             RequestedSubtask.task == task_id
