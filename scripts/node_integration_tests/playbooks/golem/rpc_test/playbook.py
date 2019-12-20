@@ -7,6 +7,7 @@ from ...test_config_base import NodeId
 class Playbook(NodeTestPlaybook):
     def step_verify_deposit_balance_call(self):
         def on_success(_):
+            print("Deposit balance retrieved correctly.")
             self.next()
 
         def on_error(error):
@@ -17,14 +18,5 @@ class Playbook(NodeTestPlaybook):
 
     steps = (
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider),
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.requestor),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.provider),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.requestor),
-        partial(NodeTestPlaybook.step_connect, node_id=NodeId.requestor,
-                target_node=NodeId.provider),
-        partial(NodeTestPlaybook.step_verify_connection,
-                node_id=NodeId.requestor, target_node=NodeId.provider),
         step_verify_deposit_balance_call,
     )
