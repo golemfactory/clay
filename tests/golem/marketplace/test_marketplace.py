@@ -126,7 +126,7 @@ class TestRequestorBrassMarketStrategy(TestCase):
 
     def test_choose_from_empty_pool(self):
         offers = RequestorBrassMarketStrategy.resolve_task_offers(self.TASK_A)
-        self.assertIsNone(offers)
+        self.assertEqual(offers, [])
 
     def test_empty_after_choice(self):
         offer = self._mock_offer()
