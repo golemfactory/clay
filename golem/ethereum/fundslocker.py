@@ -84,3 +84,6 @@ class FundsLocker:
         logger.info('Adding subtask lock for task %r', task_id)
         task_lock.num_tasks += num
         self.transaction_system.lock_funds_for_payments(task_lock.price, num)
+
+    def has_task(self, task_id):
+        return task_id in self.task_lock

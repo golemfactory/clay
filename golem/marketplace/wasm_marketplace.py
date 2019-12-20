@@ -1,5 +1,5 @@
 import logging
-from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,)
+from typing import (List, Dict, ClassVar, Tuple, Iterable,)
 import math
 import numpy
 
@@ -86,12 +86,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             logger.info("RWMS: Provider %s has excessive usage factor: %f",
                         provider_id, r)
 
-    # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str) -> List[Offer]:
         logger.info("RWMS: ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
-            return None
+            return []
 
         max_factor: float = cls._max_usage_factor
         offers: List[Offer] = cls._pools.pop(task_id)
