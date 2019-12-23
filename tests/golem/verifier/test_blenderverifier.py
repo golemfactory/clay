@@ -176,7 +176,7 @@ class TestBlenderVerifier(TempDirFixture):
             scene_file='/golem/resources/chessboard_400x400.blend',
             resolution=[400, 400],
             use_compositing=False,
-            samples=30,
+            samples=0,
             frames=[1],
             output_format='PNG',
             use_frames=False,
@@ -206,7 +206,8 @@ class TestBlenderVerifier(TempDirFixture):
             ctd=ComputeTaskDef(
                 deadline=time.time() + 3600,
                 docker_images=[
-                    DockerImage('golemfactory/blender', tag='1.9').to_dict()
+                    DockerImage('golemfactory/blender', tag='1.13')
+                    .to_dict()
                 ],
                 extra_data=self._create_basic_subtask_info(
                     borders_y=borders_y,
@@ -255,7 +256,7 @@ class TestBlenderVerifier(TempDirFixture):
             x_min: float,
             x_max: float,
     ) -> None:
-        self.subtask_info['samples'] = 30
+        self.subtask_info['samples'] = 0
         self.subtask_info['scene_file'] = \
             '/golem/resources/chessboard_400x400.blend'
         self.resources = [
@@ -435,7 +436,7 @@ class TestUnitBlenderVerifier:
                 'scene_file': '/golem/resources/chessboard_400x400.blend',
                 'resolution': [400, 400],
                 'frames': [1],
-                'samples': 30,
+                'samples': 0,
                 'output_format': 'PNG',
                 'subtask_id': 'qwerty1234',
                 'entrypoint': 'python3 /golem/entrypoints/'

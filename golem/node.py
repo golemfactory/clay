@@ -206,10 +206,6 @@ class Node(HardwarePresetsMixin):
     def quit(self) -> None:
 
         def _quit():
-            docker_manager = self._docker_manager
-            if docker_manager:
-                docker_manager.quit()
-
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
@@ -251,6 +247,7 @@ class Node(HardwarePresetsMixin):
 
     @rpc_utils.expose('comp.task.results_purge')
     def purge_task_results(self, task_id):
+        self._assert_not_task_api_task(task_id)
         path = self.get_temp_results_path_for_task(task_id)
         self.tempfs.removetree(path)
 
@@ -260,6 +257,7 @@ class Node(HardwarePresetsMixin):
 
     @rpc_utils.expose('comp.task.subtask_results')
     def get_subtask_results(self, task_id, subtask_id):
+        self._assert_not_task_api_task(task_id)
         task = self.client.task_server.task_manager.tasks[task_id]
         results = task.get_results(subtask_id)
         res_path = self.get_temp_results_path_for_task(subtask_id)
@@ -269,12 +267,18 @@ class Node(HardwarePresetsMixin):
 
     @rpc_utils.expose('comp.task.result')
     def get_task_results(self, task_id):
+        self._assert_not_task_api_task(task_id)
         # FIXME Obtain task state in less hacky way
         state = self.client.task_server.task_manager.query_task_state(task_id)
         res_path = self.get_temp_results_path_for_task(task_id)
         outs = self.remotefs.copy_files_to_tmp_location(state.outputs,
                                                         res_path)
         return outs
+
+    def _assert_not_task_api_task(self, task_id):
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            raise RuntimeError("Task API: unsupported RPC call")
 
     @rpc_utils.expose('golem.mainnet')
     @classmethod
@@ -496,6 +500,11 @@ class Node(HardwarePresetsMixin):
             self._docker_manager = DockerManager.install(self._config_desc)
             self._docker_manager.check_environment()
             self._docker_manager.apply_config()
+
+            # It has to be *during* shutdown because stopping client occurs
+            # before shutdown and it needs docker manager to be running
+            self._reactor.addSystemEventTrigger(
+                "during", "shutdown", self._docker_manager.quit)
 
         return threads.deferToThread(start_docker)
 

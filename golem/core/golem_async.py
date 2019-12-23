@@ -3,7 +3,7 @@ import concurrent.futures
 import datetime
 import functools
 import logging
-from typing import Callable, Optional
+from typing import Any, Callable, Dict, Optional
 
 from twisted.internet import defer
 from twisted.internet import threads
@@ -195,3 +195,30 @@ def run_in_thread():
             )
         return curry
     return wrapped
+
+
+class CallScheduler:
+    def __init__(self):
+        self._timers: Dict[str, asyncio.TimerHandle] = dict()
+
+    def schedule(
+            self,
+            key: str,
+            timeout: float,
+            call: Callable[..., Any],
+    ) -> None:
+        def on_timeout():
+            self._timers.pop(key, None)
+            call()
+
+        loop = asyncio.get_event_loop()
+
+        self.cancel(key)
+        self._timers[key] = loop.call_at(
+            loop.time() + timeout,
+            on_timeout)
+
+    def cancel(self, key):
+        timer = self._timers.pop(key, None)
+        if timer:
+            timer.cancel()

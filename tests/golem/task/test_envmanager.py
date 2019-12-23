@@ -13,7 +13,7 @@ from golem.testutils import DatabaseFixture
 class EnvManagerBaseTest(DatabaseFixture):
     def setUp(self):
         super().setUp()
-        self.manager = EnvironmentManager()
+        self.manager = EnvironmentManager(self.new_path)
 
     def register_env(self, env_id):
         env = MagicMock(spec=Environment)
@@ -123,6 +123,40 @@ class TestAutoSetup(  # pylint: disable=too-many-ancestors
         yield runtime2.prepare()
         env1.clean_up.assert_called_once()
         env2.prepare.assert_called_once()
+
+
+class TestRuntimeLogs(  # pylint: disable=too-many-ancestors
+        EnvManagerBaseTest,
+        TwistedTestCase
+):
+
+    @defer.inlineCallbacks
+    def test_runtime_logs(self):
+        env_id = 'env'
+        runtime_id = 'runtime'
+        stdout = ['ąąą\n', 'bbb\n', 'ććć\n']
+        stderr = ['ddd\n', 'ęęę\n', 'fff\n']
+
+        env, *_ = self.register_env(env_id)
+        env.runtime().id.return_value = runtime_id
+        env.runtime().stdout.return_value = stdout
+        env.runtime().stderr.return_value = stderr
+
+        wrapped_env = self.manager.environment("env")
+        runtime = wrapped_env.runtime(Mock())
+
+        yield runtime.prepare()
+        yield runtime.clean_up()
+
+        stdout_path = self.new_path / env_id / f'{runtime_id}_stdout.txt'
+        self.assertTrue(stdout_path.exists())
+        with stdout_path.open(mode='r', encoding='utf-8') as file:
+            self.assertEqual(list(file), stdout)
+
+        stderr_path = self.new_path / env_id / f'{runtime_id}_stderr.txt'
+        self.assertTrue(stderr_path.exists())
+        with stderr_path.open(mode='r', encoding='utf-8') as file:
+            self.assertEqual(list(file), stderr)
 
 
 class TestEnvironmentManagerDB(  # pylint: disable=too-many-ancestors

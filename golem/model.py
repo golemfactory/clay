@@ -30,7 +30,7 @@ from peewee import (
 import semantic_version
 
 from golem.core import common
-from golem.core.common import datetime_to_timestamp
+from golem.core.common import datetime_to_timestamp, default_now
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
@@ -44,16 +44,6 @@ db = GolemSqliteDatabase(None, threadlocals=True,
                              ('foreign_keys', True),
                              ('busy_timeout', 1000),
                              ('journal_mode', 'WAL')))
-
-
-# Use proxy function to always use current .utcnow() (allows mocking)
-def default_now():
-    return datetime.datetime.now(tz=datetime.timezone.utc)
-
-
-# Bug in peewee_migrate 0.14.0 induces setting __self__
-# noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
-default_now.__self__ = datetime.datetime  # type: ignore
 
 
 def default_dict():
@@ -742,8 +732,8 @@ class RequestedTask(BaseModel):
     env_id = CharField(null=True)
     prerequisites = JsonField(null=False, default=default_dict())
 
-    task_timeout = IntegerField(null=False)  # milliseconds
-    subtask_timeout = IntegerField(null=False)  # milliseconds
+    task_timeout = IntegerField(null=False)  # seconds
+    subtask_timeout = IntegerField(null=False)  # seconds
     start_time = UTCDateTimeField(null=True)
 
     max_price_per_hour = HexIntegerField(null=False)
@@ -764,7 +754,7 @@ class RequestedTask(BaseModel):
             return None
         assert isinstance(self.start_time, datetime.datetime)
         return self.start_time + \
-            datetime.timedelta(milliseconds=self.task_timeout)
+            datetime.timedelta(seconds=self.task_timeout)
 
     @property
     def elapsed_seconds(self) -> Optional[int]:
@@ -777,7 +767,7 @@ class RequestedTask(BaseModel):
         return self.max_price_per_hour * (
             self.subtask_timeout
             * self.max_subtasks
-            / 60 / 1000  # subtask timeout is miliseconds, convert to hour
+            / 60  # subtask timeout is seconds, convert to hour
         )
 
 

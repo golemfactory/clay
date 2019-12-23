@@ -5,9 +5,10 @@ import subprocess
 import sys
 import threading
 from calendar import timegm
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
-from typing import Any, Callable, cast, List, TypeVar
+from pathlib import Path
+from typing import Any, Callable, cast, List, TypeVar, Optional
 
 import pytz
 
@@ -118,8 +119,18 @@ def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
     return stdout.strip()
 
 
+# Use proxy function to always use current .utcnow() (allows mocking)
+def default_now():
+    return datetime.now(tz=timezone.utc)
+
+
+# Bug in peewee_migrate 0.14.0 induces setting __self__
+# noqa SEE: https://github.com/klen/peewee_migrate/blob/c55cb8c3664c3d59e6df3da7126b3ddae3fb7b39/peewee_migrate/auto.py#L64  # pylint: disable=line-too-long
+default_now.__self__ = datetime  # type: ignore
+
+
 def get_timestamp_utc():
-    now = datetime.now(pytz.utc)
+    now = default_now()
     return datetime_to_timestamp(now)
 
 
@@ -206,14 +217,6 @@ class HandleKeyError(HandleError):
         )
 
 
-class HandleValueError(HandleError):
-    def __init__(self, handle_error):
-        super(HandleValueError, self).__init__(
-            ValueError,
-            handle_error
-        )
-
-
 class HandleAttributeError(HandleError):
     def __init__(self, handle_error):
         super(HandleAttributeError, self).__init__(
@@ -246,6 +249,12 @@ def retry(exc_cls, count: int):
     return decorator
 
 
+def get_log_dir(data_dir: Optional[str] = None) -> Path:
+    if data_dir is None:
+        data_dir = simpleenv.get_local_datadir("default")
+    return Path(data_dir) / 'logs'
+
+
 # pylint: disable=too-many-branches,too-many-locals
 def config_logging(
         suffix='',
@@ -260,9 +269,7 @@ def config_logging(
     except ImportError:
         from loggingconfig import LOGGING
 
-    if datadir is None:
-        datadir = simpleenv.get_local_datadir("default")
-    logdir_path = os.path.join(datadir, 'logs')
+    logdir_path = get_log_dir(datadir)
 
     for formatter in LOGGING.get('formatters', {}).values():
         formatter['format'] = f"{formatter_prefix}{formatter['format']}"
@@ -292,14 +299,11 @@ def config_logging(
             LOGGING['loggers']['twisted']['level'] = 'WARNING'
 
     try:
-        if not os.path.exists(logdir_path):
-            os.makedirs(logdir_path)
+        logdir_path.mkdir(parents=True, exist_ok=True)
 
         logging.config.dictConfig(LOGGING)
     except (ValueError, PermissionError) as e:
-        sys.stderr.write(
-            "Can't configure logging in: {} Got: {}\n".format(logdir_path, e)
-        )
+        sys.stderr.write(f"Can't configure logging in {logdir_path} Got: {e}\n")
         return  # Avoid consequent errors
     logging.captureWarnings(True)
 

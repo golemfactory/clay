@@ -22,3 +22,4 @@ class TestConfig(ConcentTestConfigBase):
             provider_config,
             provider_config_2,
         ]
+        self.enable_concent()

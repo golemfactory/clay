@@ -3,7 +3,7 @@ import time
 
 from typing import List
 
-from web3 import Web3, HTTPProvider
+from web3 import Web3
 
 from golem.ethereum.web3.providers import ProviderProxy
 from golem.report import report_calls, Component

@@ -592,7 +592,7 @@ class TestCreateHostConfig(TestDockerCPUEnv):
     @patch_cpu('local_client')
     def test_published_ports(self, local_client):
         config = Mock(spec=DockerCPUConfig, cpu_count=2)
-        port = 4444
+        port = 3333
         payload = mock_docker_runtime_payload(ports=[port])
         host_config = self.env._create_host_config(config, payload)
 
