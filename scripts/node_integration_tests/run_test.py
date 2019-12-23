@@ -90,7 +90,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         '--concent',
         choices=variables.CONCENT_CHOICES,
-        default='staging',
         help="choose concent option",
     )
     return parser.parse_args()
