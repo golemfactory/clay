@@ -506,6 +506,7 @@ class TaskServer(
                 task_header=theader,
                 budget=budget,
                 performance=benchmark_score,
+                num_subtasks=num_subtasks,
             )
             msg_queue.put(
                 node_id=theader.task_owner.key,
