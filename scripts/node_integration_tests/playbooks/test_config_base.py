@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 CONCENT_STAGING = 'staging'
 CONCENT_DISABLED = 'disabled'
+CONCENT_MAIN = 'main'
 
 
 class NodeConfig:

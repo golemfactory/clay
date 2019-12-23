@@ -249,7 +249,8 @@ class TestHyperVHypervisor(TestCase):
             ['docker-machine', '--native-ssh', 'ssh'],
             None,
             [self.hyperv._vm_name, ANY],
-            False
+            False,
+            None,
         )
         self.assertIn("foo 123", command.call_args[0][2][1])
         logger.error.assert_not_called()

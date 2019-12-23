@@ -20,7 +20,7 @@ class TaskState:
         self.payment_booked = False
         self.payment_settled = False
         self.subtask_states: Dict[str, SubtaskState] = {}
-        self.resource_hash = None
+        self.resource_hash: Optional[str] = None
         self.package_hash = None
         self.package_path = None
         self.package_size = None

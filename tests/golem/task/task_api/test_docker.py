@@ -12,7 +12,7 @@ class TestDockerPayloadBuilder(TestCase):
         prereq = DockerPrerequisites(image='image', tag='tag')
         shared_dir = Path('shared_dir')
         command = 'cmd'
-        port = 4444
+        port = 3333
 
         payload = DockerTaskApiPayloadBuilder.create_payload(
             prereq,

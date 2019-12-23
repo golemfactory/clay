@@ -48,7 +48,7 @@ def catch_and_print_exceptions(f):
     return wrapper
 
 
-class NodeTestPlaybook:
+class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, too-many-public-methods
     INTERVAL = 1
     RECONNECT_COUNTDOWN_INITIAL = 10
     RPC_TASK_CREATE = 'comp.task.create'
@@ -84,6 +84,7 @@ class NodeTestPlaybook:
         self.nodes_ports: typing.Dict[NodeId, int] = {}
         self.nodes_keys: bidict[NodeId, str] = bidict()
         self.nodes_exit_codes: typing.Dict[NodeId, typing.Optional[int]] = {}
+        self.nodes_addresses: typing.Dict[NodeId, str] = {}
 
         self._loop = task.LoopingCall(self.run)
         self.start_time: float = 0
@@ -111,7 +112,12 @@ class NodeTestPlaybook:
 
     @property
     def output_extension(self):
-        return self.task_settings_dict.get('options', {}).get('format')
+        settings = self.task_settings_dict
+        if helpers.is_task_api_task(settings):
+            app = settings.get('app')
+        else:
+            app = settings.get('options')
+        return app.get('format')
 
     @property
     def current_step_method(self):
@@ -123,7 +129,7 @@ class NodeTestPlaybook:
         if isinstance(step, partial):
             kwargs = ", ".join(f"{k}={v}" for k, v in step.keywords.items())
             return step.func.__name__ + '(' + kwargs + ')'
-        return step.__name__
+        return step.__name__  # pylint: disable=no-member
 
     @property
     def time_elapsed(self) -> float:
@@ -171,8 +177,12 @@ class NodeTestPlaybook:
             self.next()
 
         else:
-            print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
-                node_id.value, gnt_balance, gntb_balance, eth_balance))
+            print(
+                f"Waiting for {node_id.value}"
+                " GNT(B)/converted GNTB/ETH"
+                f" ({gnt_balance}/{gntb_balance}/{eth_balance})"
+                f" addr: {self.nodes_addresses.get(node_id)}"
+            )
             self.has_requested_eth = True
             time.sleep(15)
 
@@ -194,11 +204,27 @@ class NodeTestPlaybook:
         return self.call(node_id, 'net.ident.key',
                          on_success=on_success, on_error=on_error)
 
+    def step_get_address(self, node_id: NodeId):
+        def on_success(result):
+            print(f"{node_id.value} address: {result}")
+            self.nodes_addresses[node_id] = result
+            self.next()
+
+        def on_error(_):
+            print(f"Waiting for the {node_id.value} address...")
+            time.sleep(1)
+
+        return self.call(
+            node_id, 'pay.ident',
+            on_success=on_success,
+            on_error=on_error,
+        )
+
     def step_configure(self, node_id: NodeId):
         opts = self.config.current_nodes[node_id].opts
         if not opts:
             self.next()
-            return
+            return None
 
         def on_success(_):
             print(f"Configured {node_id.value}")
@@ -345,7 +371,11 @@ class NodeTestPlaybook:
 
     def step_verify_output(self):
         settings = self.task_settings_dict
-        output_file_name = settings.get('name') + '*.' + self.output_extension
+        if helpers.is_task_api_task(settings):
+            name = ''
+        else:
+            name = settings.get('name')
+        output_file_name = name + '*.' + self.output_extension
 
         print("Verifying output file: {}".format(output_file_name))
         found_files = list(
@@ -504,7 +534,9 @@ class NodeTestPlaybook:
 
     initial_steps: typing.Tuple = (
         partial(step_get_key, node_id=NodeId.provider),
+        partial(step_get_address, node_id=NodeId.provider),
         partial(step_get_key, node_id=NodeId.requestor),
+        partial(step_get_address, node_id=NodeId.requestor),
         partial(step_configure, node_id=NodeId.provider),
         partial(step_configure, node_id=NodeId.requestor),
         partial(step_get_network_info, node_id=NodeId.provider),
@@ -528,16 +560,26 @@ class NodeTestPlaybook:
     )
 
     @staticmethod
-    def _call_rpc(method, *args, port, datadir, on_success, on_error, **kwargs):
+    def _call_rpc(
+            method,
+            *args,
+            port,
+            datadir,
+            mainnet,
+            on_success,
+            on_error,
+            **kwargs,
+    ):
         try:
             client = RPCClient(
                 host='localhost',
                 port=port,
                 datadir=datadir,
+                mainnet=mainnet,
             )
         except CertificateError as e:
             on_error(e)
-            return
+            return None
 
         return client.call(method, *args,
                            on_success=on_success,
@@ -553,6 +595,7 @@ class NodeTestPlaybook:
             method,
             port=node_config.rpc_port,
             datadir=node_config.datadir,
+            mainnet=node_config.mainnet,
             *args,
             on_success=catch_and_print_exceptions(on_success),
             on_error=catch_and_print_exceptions(on_error),
