@@ -6,7 +6,7 @@ import shutil
 from datetime import timedelta
 from functools import partial
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 import async_generator
 
