@@ -7,8 +7,11 @@ from .test_config import NodeId
 class Playbook(NodeTestPlaybook):
     steps = (
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.requestor),
+        partial(NodeTestPlaybook.step_get_address, node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider),
+        partial(NodeTestPlaybook.step_get_address, node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider2),
+        partial(NodeTestPlaybook.step_get_address, node_id=NodeId.provider2),
 
         partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider),
 
