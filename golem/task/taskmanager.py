@@ -1152,10 +1152,13 @@ class TaskManager(TaskEventListener):
             self,
             task_header: message.tasks.TaskHeader,
             budget: int,
-            performance: float
+            performance: float,
+            num_subtasks: int,
     ):
         """ Add a header of a task which this node may try to compute """
-        self.comp_task_keeper.add_request(task_header, budget, performance)
+        self.comp_task_keeper.add_request(
+            task_header, budget, performance, num_subtasks
+        )
 
     def __add_subtask_to_tasks_states(self, node_id,
                                       ctd, price: int):

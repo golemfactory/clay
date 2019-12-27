@@ -1,6 +1,7 @@
 # pylint: disable=protected-access,too-many-ancestors,too-many-lines
 import copy
 import itertools
+from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
@@ -358,6 +359,11 @@ class TestRestartTask(ProviderBase):
         assert task_manager.tasks_states[
             task.header.task_id].status == taskstate.TaskStatus.restarted
 
+        task_def = task_manager.get_task_definition_dict(
+            task_manager.tasks[new_task_id])
+        output_path = Path(task_def['options']['output_path'])
+        self.assertEqual(str(output_path.parent), task_output_path)
+
 
 class TestGetMaskForTask(test_client.TestClientBase):
     def test_get_mask_for_task(self, *_):
@@ -673,7 +679,7 @@ class TestRestartSubtasks(ProviderBase):
     @mock.patch('golem.task.rpc.enqueue_new_task')
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
     @mock.patch('golem.task.rpc._restart_subtasks')
-    def test_empty_subtasks_list(self, restart_subtasks_mock, *_):
+    def test_empty_subtasks_list(self, restart_mock, *_):
         ignore_gas_price = fake.pybool()
         disable_concent = fake.pybool()
 
@@ -691,13 +697,17 @@ class TestRestartSubtasks(ProviderBase):
             disable_concent=disable_concent,
         )
 
-        restart_subtasks_mock.assert_called_once_with(
+        restart_mock.assert_called_once_with(
             client=self.client,
             old_task_id=self.task_id,
             task_dict=mock.ANY,
             subtask_ids_to_copy={'finished-subtask-id'},
             ignore_gas_price=ignore_gas_price
         )
+
+        task_dict = restart_mock.call_args[1]['task_dict']
+        output_path = task_dict['options']['output_path']
+        self.assertEqual(output_path, task_output_path)
 
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
     @mock.patch('golem.client.Client.restart_subtask')
@@ -763,6 +773,10 @@ class TestRestartSubtasks(ProviderBase):
             subtask_ids_to_copy={'finished-subtask-id'},
             ignore_gas_price=ignore_gas_price
         )
+
+        task_dict = restart_mock.call_args[1]['task_dict']
+        output_path = task_dict['options']['output_path']
+        self.assertEqual(output_path, task_output_path)
 
     def test_task_unknown(self, *_):
         task_id = 'unknown-task-uuid'
