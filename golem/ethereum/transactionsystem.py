@@ -1015,13 +1015,14 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
         with safe_update('GNTB'):
             self.cache_set(CacheKey.GNTB, self._sci.get_gntb_balance(addr))
 
-        with safe_update('deposit'):
-            self.cache_set(
-                CacheKey.GNTDeposit,
-                self._sci.get_deposit_value(
-                    account_address=self._sci.get_eth_address(),
-                ),
-            )
+        if self.deposit_contract_available:
+            with safe_update('deposit'):
+                self.cache_set(
+                    CacheKey.GNTDeposit,
+                    self._sci.get_deposit_value(
+                        account_address=self._sci.get_eth_address(),
+                    ),
+                )
 
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
