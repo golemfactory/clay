@@ -989,17 +989,25 @@ class TaskServer(
 
         try:
             task_id = keeper.get_task_id_for_subtask(subtask_id)
-            header = keeper.get_task_header(task_id)
-            performance = keeper.active_tasks[task_id].performance
             computation_time = timer.ProviderTimer.time
 
-            update_requestor_efficiency(
-                node_id=keeper.get_node_for_task_id(task_id),
-                timeout=header.subtask_timeout,
-                computation_time=computation_time,
-                performance=performance,
-                min_performance=min_performance,
-            )
+            if computation_time:
+                header = keeper.get_task_header(task_id)
+                performance = keeper.active_tasks[task_id].performance
+                update_requestor_efficiency(
+                    node_id=keeper.get_node_for_task_id(task_id),
+                    timeout=header.subtask_timeout,
+                    computation_time=computation_time,
+                    performance=performance,
+                    min_performance=min_performance,
+                )
+            else:
+                logger.warning(
+                    "Subtask finished with empty computation time. "
+                    "task_id=%r, subtask_id=%r",
+                    task_id,
+                    subtask_id
+                )
 
         except (KeyError, ValueError, AttributeError) as exc:
             logger.error("Finished subtask listener: %r", exc)

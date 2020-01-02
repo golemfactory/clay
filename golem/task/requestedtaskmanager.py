@@ -1001,7 +1001,9 @@ class RequestedTaskManager:
                 update_provider_efficiency(node_id, subtask_timeout, comp_time)
             else:
                 logger.warning(
-                    "Could not obtain computation time for subtask: %r",
+                    "Subtask finished with empty computation time. "
+                    "task_id=%r, subtask_id=%r",
+                    subtask.task_id,
                     subtask_id
                 )
             dispatcher.send(
