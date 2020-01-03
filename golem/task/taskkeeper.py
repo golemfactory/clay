@@ -47,10 +47,14 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader, performance: float) -> None:
+    def __init__(
+            self,
+            header: dt_tasks.TaskHeader,
+            performance: float,
+            num_subtasks: int) -> None:
         self.header = header
         self.performance = performance
-        self.requests = 1
+        self.requests = num_subtasks
         self.subtasks: typing.Dict[str, message.tasks.ComputeTaskDef] = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
@@ -166,7 +170,8 @@ class CompTaskKeeper:
             self,
             theader: dt_tasks.TaskHeader,
             budget: int,
-            performance: float
+            performance: float,
+            num_subtasks: int,
     ):
         logger.debug(
             'CompTaskKeeper: add_request. theader=%r, budget=%r',
@@ -178,9 +183,15 @@ class CompTaskKeeper:
             raise ValueError("Budget should be greater than zero.")
         task_id = theader.task_id
         if task_id in self.active_tasks:
-            self.active_tasks[task_id].requests += 1
+            self.active_tasks[task_id].requests += num_subtasks
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader, performance)
+            self.active_tasks[task_id] = CompTaskInfo(
+                theader, performance, num_subtasks)
+
+        logger.debug(
+            "CT added active task: task_id=%s, requests=%s",
+            task_id, self.active_tasks[task_id].requests)
+
         self.active_task_offers[task_id] = budget
         self.dump()
 
@@ -218,6 +229,10 @@ class CompTaskKeeper:
         header = self.get_task_header(task_id)
         comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
             header.subtask_timeout, task_to_compute.size)
+
+        logger.debug(
+            "CT received subtask: task_id=%s, subtask_id=%s, requests=%s",
+            task_id, subtask_id, self.active_tasks[task_id].requests)
 
         self.subtask_to_task[subtask_id] = task_id
         self.dump()
