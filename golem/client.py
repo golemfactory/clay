@@ -23,6 +23,7 @@ from typing import (
 
 from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
+from golem_task_api.envs import DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -923,6 +924,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 last_updated = get_timestamp_utc()
             else:
                 last_updated = task.end_time.timestamp()
+            # compute_on
+            compute_on = 'cpu'
+            if task.env_id == DOCKER_GPU_ENV_ID:
+                compute_on = 'gpu'
             # estimated_cost and estimated_fee
             subtask_price = calculate_subtask_payment(
                 task.max_price_per_hour,
@@ -942,7 +947,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 'last_updated': last_updated,
                 'name': task.name,
                 'bid': float(task.max_price_per_hour) / denoms.ether,
-                'compute_on': task.env_id,
+                'compute_on': compute_on,
                 'concent_enabled': task.concent_enabled,
                 'subtask_timeout': str(timedelta(seconds=task.subtask_timeout)),
                 'timeout': str(timedelta(seconds=task.task_timeout)),
