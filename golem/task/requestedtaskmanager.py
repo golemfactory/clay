@@ -295,6 +295,7 @@ class RequestedTaskManager:
             try:
                 task = RequestedTask.get(task_id=task_id)
                 task.status = TaskStatus.errorCreating
+                task.end_time = default_now()
                 task.save()
                 if not app_id:
                     app_id = task.app_id
@@ -334,6 +335,7 @@ class RequestedTaskManager:
             raise RuntimeError(f"Task {task_id} has already been started")
 
         task.status = TaskStatus.errorCreating
+        task.end_time = default_now()
         task.save()
         self._notice_task_updated(task, op=TaskOp.ABORTED)
 
@@ -529,6 +531,7 @@ class RequestedTaskManager:
             if not await self.has_pending_subtasks(task_id):
                 if not self._get_pending_subtasks(task_id):
                     task.status = TaskStatus.finished
+                    task.end_time = default_now()
                     task.save()
 
                     self._move_task_results(
@@ -554,6 +557,7 @@ class RequestedTaskManager:
                 f"Task not active, can not abort. task_id={task_id}")
 
         task.status = TaskStatus.aborted
+        task.end_time = default_now()
         task.save()
 
         for subtask in self._get_pending_subtasks(task_id):
@@ -604,6 +608,15 @@ class RequestedTaskManager:
     def get_requested_task_ids() -> List[TaskId]:
         tasks = RequestedTask.select(RequestedTask.task_id).execute()
         return [task.task_id for task in tasks]
+
+    @staticmethod
+    def count_finished_subtasks(task_id: TaskId) -> float:
+        return RequestedSubtask.select(
+            fn.Count(RequestedSubtask.subtask_id)
+        ).where(
+            RequestedSubtask.task_id == task_id,
+            RequestedSubtask.status == SubtaskStatus.finished,
+        ).scalar()
 
     @staticmethod
     def get_requested_task_subtask_ids(task_id: TaskId) -> List[SubtaskId]:
@@ -850,6 +863,7 @@ class RequestedTaskManager:
         logger.info("Task timed out. task_id=%r", task_id)
 
         task.status = TaskStatus.timeout
+        task.end_time = default_now()
         task.save()
 
         for subtask in self._get_pending_subtasks(task_id):
