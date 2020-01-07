@@ -517,6 +517,7 @@ class TaskServer(
                 task_header=theader,
                 budget=budget,
                 performance=benchmark_score,
+                num_subtasks=num_subtasks,
             )
             msg_queue.put(
                 node_id=theader.task_owner.key,
@@ -1002,14 +1003,28 @@ class TaskServer(
             header = keeper.get_task_header(task_id)
             performance = keeper.active_tasks[task_id].performance
             computation_time = timer.ProviderTimer.time
+            node_id = keeper.get_node_for_task_id(task_id)
 
-            update_requestor_efficiency(
-                node_id=keeper.get_node_for_task_id(task_id),
-                timeout=header.subtask_timeout,
-                computation_time=computation_time,
-                performance=performance,
-                min_performance=min_performance,
-            )
+            if computation_time:
+                logger.debug(
+                    "updating requestor efficiency. "
+                    "node_id=%s, timeout=%s, computation_timer=%s, "
+                    "performance=%s, min_performance=%s",
+                    node_id, header.subtask_timeout, computation_time,
+                    performance, min_performance
+                )
+
+                update_requestor_efficiency(
+                    node_id=node_id,
+                    timeout=header.subtask_timeout,
+                    computation_time=computation_time,
+                    performance=performance,
+                    min_performance=min_performance,
+                )
+            else:
+                logger.debug(
+                    "still computing, will update requestor efficiency later"
+                )
 
         except (KeyError, ValueError, AttributeError) as exc:
             logger.error("Finished subtask listener: %r", exc)

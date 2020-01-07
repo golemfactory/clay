@@ -687,6 +687,7 @@ class TaskComputation:
         tc.task_server.task_keeper.task_started(task_id)
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
+
 class TaskComputer:  # pylint: disable=too-many-instance-attributes
     """ TaskComputer is responsible for task computations that take
     place in Golem application. Tasks are started in separate threads. """

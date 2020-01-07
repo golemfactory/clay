@@ -1900,7 +1900,7 @@ class TestNewTaskComputerIntegration(
         task_header.task_id = self.task_id
         task_header.environment = self.env_id
         task_header.environment_prerequisites = prereq.to_dict()
-        comp_task_info = CompTaskInfo(task_header, 1.2)
+        comp_task_info = CompTaskInfo(task_header, 1.2, 1)
 
         self.task_header_keeper.task_headers = {self.task_id: task_header}
         self.comp_task_keeper.get_task_id_for_subtask.return_value = \

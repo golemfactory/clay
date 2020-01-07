@@ -100,6 +100,14 @@ LOGGING = {
         'golem.network': {'propagate': True},
         'golem.network.concent.received_handler': {'propagate': True},
         'golem.network.transport': {'propagate': True},
+        'golem.network.transport.session': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
+        'golem.network.transport.tcpserver': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
         'apps': {
             'level': 'DEBUG',
             'propagate': True,
