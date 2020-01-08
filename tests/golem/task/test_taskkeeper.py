@@ -513,7 +513,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 int(random.random() * 100),
                 header.subtask_timeout,
             )
-            ctk.add_request(header, price, 0.0)
+            ctk.add_request(header, price, 0.0, 1)
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
@@ -575,32 +575,32 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         header.subtask_timeout = 1
 
         with self.assertRaises(TypeError):
-            ctk.add_request(header, "not a number", 0.0)
+            ctk.add_request(header, "not a number", 0.0, 1)
         with self.assertRaises(ValueError):
-            ctk.add_request(header, -2, 0.0)
+            ctk.add_request(header, -2, 0.0, 1)
 
         budget = 5 * denoms.ether
-        ctk.add_request(header, budget, 0.0)
+        ctk.add_request(header, budget, 0.0, 1)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_task_offers["xyz"], budget)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         budget = 0.1 * denoms.ether
-        ctk.add_request(header, budget, 0.0)
+        ctk.add_request(header, budget, 0.0, 1)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_task_offers["xyz"], budget)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
         budget = 314 * denoms.finney
-        ctk.add_request(header, budget, 0.0)
+        ctk.add_request(header, budget, 0.0, 1)
         self.assertEqual(ctk.active_task_offers["xyz2"], budget)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
         with self.assertRaises(ValueError):
-            ctk.add_request(thread, -1, 0.0)
+            ctk.add_request(thread, -1, 0.0, 1)
         with self.assertRaises(TypeError):
-            ctk.add_request(thread, '1', 0.0)
-        ctk.add_request(thread, 12, 0.0)
+            ctk.add_request(thread, '1', 0.0, 1)
+        ctk.add_request(thread, 12, 0.0, 1)
 
         ctd = ComputeTaskDef()
         ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
@@ -623,7 +623,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             int(random.random() * 100),
             th.subtask_timeout,
         )
-        ctk.add_request(th, price, 0.0)
+        ctk.add_request(th, price, 0.0, 1)
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -655,7 +655,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk = CompTaskKeeper(self.new_path)
         header = get_task_header()
         task_id = header.task_id
-        ctk.add_request(header, 40003, 0.0)
+        ctk.add_request(header, 40003, 0.0, 1)
         ctk.active_tasks[task_id].requests = 0
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         comp_task_def = {
