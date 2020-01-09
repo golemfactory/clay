@@ -1,5 +1,10 @@
-from scripts.node_integration_tests.playbooks.base import NodeTestPlaybook
+from apps.blender.resources.images.entrypoints.scripts.verifier_tools\
+    .file_extension import matcher
+from ...base import NodeTestPlaybook
 
 
 class Playbook(NodeTestPlaybook):
-    RPC_TASK_CREATE = 'comp.task_api.create'
+    @property
+    def output_extension(self):
+        extension = super().output_extension
+        return matcher.get_expected_extension(extension)

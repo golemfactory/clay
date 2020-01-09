@@ -13,6 +13,12 @@ class ActionTimer:
         self._started: Optional[float] = None
         self._finished: Optional[float] = time.time()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}: " \
+               f"started={self._started}, " \
+               f"finished={self._finished}, " \
+               f"time={self.time}"
+
     @property
     def finished(self) -> bool:
         return self._finished is not None

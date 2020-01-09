@@ -735,6 +735,7 @@ class RequestedTask(BaseModel):
     task_timeout = IntegerField(null=False)  # seconds
     subtask_timeout = IntegerField(null=False)  # seconds
     start_time = UTCDateTimeField(null=True)
+    end_time = UTCDateTimeField(null=True)
 
     max_price_per_hour = HexIntegerField(null=False)
     max_subtasks = IntegerField(null=False)
