@@ -46,16 +46,12 @@ class EnvironmentTaskApiService(TaskApiService):
         self,
         command: str,
         port: int,
-        extra_options: Optional[Dict[str, Any]] = None
     ) -> Tuple[str, int]:
-        if not extra_options:
-            extra_options = {}
         runtime_payload = self._payload_builder.create_payload(
             self._prereq,
             self._shared_dir,
             command,
-            port,
-            **extra_options
+            port
         )
         self._runtime = self._env.runtime(runtime_payload)
         loop = asyncio.get_event_loop()

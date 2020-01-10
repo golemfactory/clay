@@ -1,6 +1,7 @@
 from pathlib import Path
 import os
 from typing import Optional, Dict, Any
+import json
 
 from golem_task_api import constants as api_constants
 
@@ -22,11 +23,9 @@ class DockerTaskApiPayloadBuilder(TaskApiPayloadBuilder):
             shared_dir: Path,
             command: str,
             port: int,
-            extra_options: Optional[Dict[str, Any]] = None
     ) -> RuntimePayload:
         assert isinstance(prereq, DockerPrerequisites)
-        if not extra_options:
-            extra_options = {}
+        extra_options = json.loads(prereq.extra_vars) if prereq.extra_vars is not None else {}
         return DockerRuntimePayload(
             image=prereq.image,
             tag=prereq.tag,

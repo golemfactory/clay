@@ -462,6 +462,7 @@ class DockerCPUEnvironment(EnvironmentBase):
         'net_admin',
         'net_raw',
         'net_bind_service',
+        'sys_chroot',
     ]
 
     BENCHMARK_IMAGE = 'golemfactory/cpu_benchmark:1.0'
