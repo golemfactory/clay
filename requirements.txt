@@ -46,7 +46,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 eventlet==0.24.1
 fasteners==0.15
-ffmpeg-tools==0.20.0
+ffmpeg-tools==0.20.1
 flatbuffers==1.11
 fs==2.4.4
 Golem-Messages==3.14.1
