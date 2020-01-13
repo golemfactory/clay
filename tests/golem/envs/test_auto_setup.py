@@ -12,7 +12,7 @@ from golem.envs import (
     RuntimeEventType,
     RuntimePayload
 )
-from golem.envs.auto_setup import auto_setup
+from golem.envs.wrappers.auto_setup import auto_setup
 
 
 class TestAutoSetup(TwistedTestCase):
@@ -30,9 +30,6 @@ class TestAutoSetup(TwistedTestCase):
         self.master_mock = Mock()  # To assert call order between multiple mocks
         self.master_mock.attach_mock(self.start_usage, 'start_usage')
         self.master_mock.attach_mock(self.end_usage, 'end_usage')
-
-    def test_supported(self):
-        self.assertEqual(self.wrapped_env.supported(), self.env.supported())
 
     def test_parse_prerequisites(self):
         prereq_dict = {'key': 'value'}
@@ -200,8 +197,8 @@ class TestAutoSetup(TwistedTestCase):
         payload = Mock(spec_set=RuntimePayload)
         config = Mock(spec_set=EnvConfig)
         runtime = self.wrapped_env.runtime(payload, config)
-        counters = runtime.usage_counters()
-        self.assertEqual(counters, self.runtime.usage_counters())
+        counters = runtime.usage_counter_values()
+        self.assertEqual(counters, self.runtime.usage_counter_values())
 
     def test_runtime_listen(self):
         payload = Mock(spec_set=RuntimePayload)

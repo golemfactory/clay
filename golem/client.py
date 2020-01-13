@@ -21,7 +21,9 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
+from golem_task_api.envs import DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -33,6 +35,7 @@ from apps.appsmanager import AppsManager
 import golem
 from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
+from golem.apps.default import APPS
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
@@ -76,10 +79,10 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.task import taskpreset
+from golem.task import taskpreset, taskstate
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
@@ -88,6 +91,8 @@ logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
+    # pylint: disable=unused-import
+    from golem.core.service import IService
     from golem.task.requestedtaskmanager import RequestedTaskManager
     from golem.task.taskmanager import TaskManager
 
@@ -134,9 +139,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
-
-        if self.config_desc.in_shutdown:
-            self.update_setting('in_shutdown', 0)
 
         logger.info(
             'Client %s, datadir: %s',
@@ -231,6 +233,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self._task_finished_cb = task_finished_cb
         self._update_hw_preset = update_hw_preset
 
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', 0)
+
         dispatcher.connect(
             self.p2p_listener,
             signal='golem.p2p'
@@ -314,6 +319,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         )
 
         op = kwargs['op'] if 'op' in kwargs else None
+        if op is taskstate.TaskOp.WORK_OFFER_RECEIVED:
+            # Drop this event to avoid publisher flooding
+            # main twisteds reactor thread
+            return
 
         if op is not None and op.subtask_related():
             self._publish(Task.evt_subtask_status, kwargs['task_id'],
@@ -531,6 +540,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             listener = ClientTaskComputerEventListener(self)
             self.task_server.task_computer.register_listener(listener)
 
+            self.task_server.requested_task_manager.restore_tasks()
+
             if self.monitor:
                 self.diag_service.register(
                     self.p2pservice,
@@ -718,34 +729,52 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return result
 
     @rpc_utils.expose('comp.task.abort')
+    @inlineCallbacks
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
-        self.task_server.task_manager.abort_task(task_id)
+        rtm = self.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            yield deferred_from_future(rtm.abort_task(task_id))
+        else:
+            self.task_server.task_manager.abort_task(task_id)
 
     @rpc_utils.expose('comp.task.subtask.restart')
+    @inlineCallbacks
     def restart_subtask(self, subtask_id):
-        logger.debug("restarting subtask %s", subtask_id)
-        task_manager = self.task_server.task_manager
+        logger.debug("Restarting subtask %s", subtask_id)
 
+        rtm = self.task_server.requested_task_manager
+        subtask = rtm.get_requested_subtask(subtask_id)
+        if subtask:
+            self.funds_locker.add_subtask(subtask.task.task_id)
+            yield deferred_from_future(rtm.restart_subtask(subtask_id))
+            return
+
+        task_manager = self.task_server.task_manager
         task_id = task_manager.get_task_id(subtask_id)
         self.funds_locker.add_subtask(task_id)
-
         task_manager.restart_subtask(subtask_id)
 
     @rpc_utils.expose('comp.task.delete')
+    @inlineCallbacks
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
-        self.task_server.task_manager.delete_task(task_id)
+        rtm = self.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            yield deferred_from_future(rtm.delete_task(task_id))
+        else:
+            self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
+    @inlineCallbacks
     def purge_tasks(self):
         tasks = self.get_tasks()
         logger.debug('Deleting %d tasks ...', len(tasks))
         for t in tasks:
-            self.delete_task(t['id'])
+            yield self.delete_task(t['id'])
 
     @rpc_utils.expose('net.ident')
     def get_node(self):
@@ -820,12 +849,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         return value
 
     @rpc_utils.expose('env.opt.update')
-    def update_setting(self, key, value):
+    def update_setting(self, key, value, update_config=True):
         logger.debug("updating setting %s = %r", key, value)
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
-        self.change_config(self.config_desc)
+        if update_config:
+            self.change_config(self.config_desc)
 
     @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
@@ -870,7 +900,64 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
-            task_dict = {'id': task.task_id, 'status': task.status.value}
+            # time_started
+            if task.start_time is None:
+                time_started = get_timestamp_utc()
+                if task.status == taskstate.TaskStatus.errorCreating:
+                    time_started -= 1
+            else:
+                time_started = task.start_time.timestamp()
+            # proress and time_remaining
+            finished_subtasks = rtm.count_finished_subtasks(task.task_id)
+            progress = finished_subtasks / task.max_subtasks
+            time_remaining = None
+            if progress > 0.0 and not task.status.is_completed():
+                elapsed = task.elapsed_seconds
+                time_remaining = (elapsed / progress) - elapsed
+            # type
+            app_name = 'Unknown'
+            if task.app_id in APPS:
+                app = APPS[task.app_id]
+                app_name = app.name
+            # last_updated
+            if task.end_time is None:
+                last_updated = get_timestamp_utc()
+            else:
+                last_updated = task.end_time.timestamp()
+            # compute_on
+            compute_on = 'cpu'
+            if task.env_id == DOCKER_GPU_ENV_ID:
+                compute_on = 'gpu'
+            # estimated_cost and estimated_fee
+            subtask_price = calculate_subtask_payment(
+                task.max_price_per_hour,
+                task.subtask_timeout
+            )
+            estimated_cost = subtask_price * task.max_subtasks
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.max_subtasks
+            )
+            task_dict = {
+                'id': task.task_id,
+                'time_remaining': time_remaining,
+                'subtasks_count': task.max_subtasks,
+                'status': task.status.value,
+                'progress': progress,
+                'time_started': time_started,
+                'last_updated': last_updated,
+                'name': task.name,
+                'bid': float(task.max_price_per_hour) / denoms.ether,
+                'compute_on': compute_on,
+                'concent_enabled': task.concent_enabled,
+                'subtask_timeout': str(timedelta(seconds=task.subtask_timeout)),
+                'timeout': str(timedelta(seconds=task.task_timeout)),
+                'type': app_name,
+                'options': {
+                    'output_path': task.output_directory
+                },
+                'estimated_cost': estimated_cost,
+                'estimated_fee': estimated_fee,
+            }
         else:
             # OLD taskmanager
             logger.debug('get_task(task_id=%r) - OLD', task_id)
@@ -934,13 +1021,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if return_created_tasks_only:
             filter_fn = self._filter_task_created_status
 
-        return list(filter(filter_fn, tasks))
+        filtered_tasks = list(filter(filter_fn, tasks))
+        return sorted(filtered_tasks, key=lambda task: task['time_started'])
 
     @staticmethod
     def _filter_task_created_status(task: Dict) -> bool:
         return bool(task) and task['status'] not in (
-            TaskStatus.creating.value,
-            TaskStatus.errorCreating.value)
+            taskstate.TaskStatus.creating.value,
+            taskstate.TaskStatus.errorCreating.value)
 
     @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
@@ -959,17 +1047,18 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return None
 
     @rpc_utils.expose('comp.task.subtask')
-    def get_subtask(self, subtask_id: str, task_id: Optional[str]) \
-            -> Tuple[Optional[Dict], Optional[str]]:
+    def get_subtask(
+            self,
+            subtask_id: str,
+    ) -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             tm = self.task_server.task_manager
             rtm = self.task_server.requested_task_manager
 
-            if task_id:
-                subtask = rtm.get_requested_task_subtask(task_id, subtask_id)
-                if subtask:
-                    return subtask.to_dict(), None
+            subtask = rtm.get_requested_subtask(subtask_id)
+            if subtask:
+                return subtask.to_dict(), None
             subtask = tm.get_subtask_dict(subtask_id)
             return subtask, None
         except (AttributeError, KeyError):
@@ -977,6 +1066,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.task.preview')
     def get_task_preview(self, task_id, single=False):
+        self._assert_not_task_api_task(task_id)
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
@@ -1150,8 +1240,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
+        self._assert_not_task_api_task(task_id)
         state = self.task_server.task_manager.query_task_state(task_id)
         return DictSerializer.dump(state)
+
+    def _assert_not_task_api_task(self, task_id: str):
+        assert self.task_server
+        if self.task_server.requested_task_manager.task_exists(task_id):
+            raise RuntimeError("Task API: unsupported RPC call")
 
     def pull_resources(self, task_id, resources, client_options=None):
         self.resource_server.download_resources(
@@ -1540,14 +1636,24 @@ class NetworkConnectionPublisherService(LoopingCallService):
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
+        self._last_value = self.poll()
 
     def _run_async(self):
         # Skip the async_run call and publish events in the main thread
         self._run()
 
     def _run(self):
-        self._client._publish(Network.evt_connection,
-                              self._client.connection_status())
+        current_value = self.poll()
+        if current_value == self._last_value:
+            return
+        self._last_value = current_value
+        self._client._publish(  # pylint: disable=protected-access
+            Network.evt_connection,
+            self._last_value,
+        )
+
+    def poll(self) -> Dict[str, Any]:
+        return self._client.connection_status()
 
 
 class TaskArchiverService(LoopingCallService):
@@ -1635,8 +1741,10 @@ class MaskUpdateService(LoopingCallService):
             requested_task_manager.decrease_task_mask(
                 task_id=db_task.task_id,
                 num_bits=self._update_num_bits)
-            logger.info('Updating mask. task_id=%r, new_mask_size=%r',
-                        db_task.task_id, db_task.mask.num_bits)
+            logger.info(
+                'Updating mask. task_id=%r, new_mask_size=%r',
+                db_task.task_id,
+                msg_datastructures.masking.Mask(db_task.mask).num_bits)
 
 
 class DailyJobsService(LoopingCallService):

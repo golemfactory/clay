@@ -218,7 +218,9 @@ class TestNode(TestWithDatabase):
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
-                                     concent_variant=concent_disabled,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'main'
+                                     ],
                                      use_monitor=None,
                                      use_talkback=None,
                                      password=None)
@@ -295,7 +297,9 @@ class TestNode(TestWithDatabase):
                                      config_desc=ANY,
                                      geth_address=None,
                                      peers=[],
-                                     concent_variant=concent_disabled,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'main'
+                                     ],
                                      use_monitor=None,
                                      use_talkback=None,
                                      password=None)
@@ -842,7 +846,7 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.node.StatusPublisher')
     def test_graceful_shutdown_off(self, publisher, *_):
-        self.node_kwargs['config_desc'].in_shutdown = True
+        self.node_kwargs['config_desc'].in_shutdown = 1
 
         self.node = Node(**self.node_kwargs)
         self.node.quit = Mock()
@@ -851,8 +855,7 @@ class TestOptNode(TempDirFixture):
 
         result = self.node.graceful_shutdown()
         assert result == ShutdownResponse.off
-        assert self.node.client.update_settings.called_with('in_shutdown',
-                                                            False)
+        assert self.node.client.update_settings.called_with('in_shutdown', 0)
         assert self.node._is_task_in_progress.not_called
         assert self.node.quit.not_called
         publisher.publish.assert_called_with(
@@ -867,8 +870,7 @@ class TestOptNode(TempDirFixture):
 
         result = self.node.graceful_shutdown()
         assert result == ShutdownResponse.on
-        assert self.node.client.update_settings.called_with('in_shutdown',
-                                                            True)
+        assert self.node.client.update_settings.called_with('in_shutdown', 1)
         assert self.node.quit.not_called
         assert self.node._is_task_in_progress.called
         publisher.publish.assert_called_with(
@@ -886,7 +888,7 @@ class TestOptNode(TempDirFixture):
         result = self.node.graceful_shutdown()
         assert result == ShutdownResponse.on
 
-        self.node._config_desc.in_shutdown = True
+        self.node._config_desc.in_shutdown = 1
         self.node._is_task_in_progress = Mock(return_value=False)
         self.node._try_shutdown()
         assert self.node._is_task_in_progress.called

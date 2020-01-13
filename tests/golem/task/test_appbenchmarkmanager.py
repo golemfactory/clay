@@ -33,7 +33,7 @@ class TestAppBenchmarkManager:
     @pytest.fixture(autouse=True)
     def setup_method(self, pytest_database_fixture, tmpdir, event_loop):  # noqa
         # pylint: disable=attribute-defined-outside-init
-        self.env_manager = EnvironmentManager()
+        self.env_manager = EnvironmentManager(Path(tmpdir))
         self.app_benchmark_manager = AppBenchmarkManager(
             env_manager=self.env_manager,
             root_path=Path(tmpdir))

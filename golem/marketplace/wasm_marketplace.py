@@ -1,7 +1,9 @@
 import logging
-from typing import (List, Dict, ClassVar, Tuple, Optional, Iterable,)
+from typing import (List, Dict, ClassVar, Tuple, Iterable,)
 import math
 import numpy
+
+from ethereum.utils import denoms
 
 from golem_messages.message.tasks import (
     ReportComputedTask, WantToComputeTask
@@ -84,12 +86,11 @@ class RequestorWasmMarketStrategy(RequestorPoolingMarketStrategy):
             logger.info("RWMS: Provider %s has excessive usage factor: %f",
                         provider_id, r)
 
-    # pylint: disable-msg=line-too-long
     @classmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    def resolve_task_offers(cls, task_id: str) -> List[Offer]:
         logger.info("RWMS: ordering providers for task: %s", task_id)
         if task_id not in cls._pools:
-            return None
+            return []
 
         max_factor: float = cls._max_usage_factor
         offers: List[Offer] = cls._pools.pop(task_id)
@@ -176,6 +177,8 @@ def geomean(a: Iterable[float]) -> float:
 
 class ProviderWasmMarketStrategy(ProviderMarketStrategy):
 
+    SET_CPU_TIME_LIMIT: bool = True
+
     @classmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
@@ -203,12 +206,27 @@ def _calculate_usage_payment(rct: ReportComputedTask) -> int:
         rct.stats.cpu_stats.cpu_usage['total_usage'] * NANOSECOND
     )
     price = rct.task_to_compute.want_to_compute_task.price
+    value = calculate_subtask_payment(price, usage)
+    payment = min(value, task_header.subtask_budget)
 
-    return min(
-        calculate_subtask_payment(price, usage),
-        task_header.subtask_budget
+    logger.debug(
+        "Calculated usage marketplace job value "
+        "(based on price=%s GNT/hour, usage=%s s): %s GNT. "
+        "Requestor's budget (max payment): %s GNT. "
+        "Actual payment amount: %s GNT. ",
+        price / denoms.ether,
+        usage,
+        value / denoms.ether,
+        task_header.subtask_budget / denoms.ether,
+        payment / denoms.ether,
     )
+    return payment
 
 
 def _calculate_usage_budget(wtct: WantToComputeTask) -> int:
-    return wtct.task_header.subtask_budget
+    budget = wtct.task_header.subtask_budget
+    logger.debug(
+        "Using the provided usage marketplace job budget: %s GNT",
+        budget / denoms.ether,
+    )
+    return budget

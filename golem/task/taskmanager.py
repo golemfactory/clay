@@ -623,6 +623,7 @@ class TaskManager(TaskEventListener):
                 .status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
+            new_task.subtask_status_updated(new_subtask_id)
 
         new_task.num_failed_subtasks = \
             new_task.get_total_tasks() - len(subtasks_to_copy)
@@ -687,6 +688,7 @@ class TaskManager(TaskEventListener):
                 new_subtask_id, old_subtask, TaskResult(files=results))
 
             self.__set_subtask_state_finished(new_subtask_id)
+            new_task.subtask_status_updated(new_subtask_id)
 
             self.notice_task_updated(
                 task_id=new_task_id,
@@ -1156,9 +1158,17 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    def add_comp_task_request(self, theader, price, performance):
+    def add_comp_task_request(
+            self,
+            task_header: message.tasks.TaskHeader,
+            budget: int,
+            performance: float,
+            num_subtasks: int,
+    ):
         """ Add a header of a task which this node may try to compute """
-        self.comp_task_keeper.add_request(theader, price, performance)
+        self.comp_task_keeper.add_request(
+            task_header, budget, performance, num_subtasks
+        )
 
     def __add_subtask_to_tasks_states(self, node_id,
                                       ctd, price: int):

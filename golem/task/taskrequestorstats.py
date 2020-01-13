@@ -407,10 +407,13 @@ class RequestorTaskStats:
             pass
 
         elif op == TaskOp.WORK_OFFER_RECEIVED:
-            if task_state.status.is_active():
-                logger.info('Received work offers: %r',
-                            self.tasks[task_id].want_to_compute_count())
             self.tasks[task_id].got_want_to_compute()
+            if task_state.status.is_active():
+                logger.info(
+                    'Received work offers. offer_count=%r, task_id=%r',
+                    self.tasks[task_id].want_to_compute_count(),
+                    task_id
+                )
 
         elif op == TaskOp.RESTORED:
             if task_state.status.is_completed():

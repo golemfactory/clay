@@ -1,9 +1,10 @@
-from scripts.node_integration_tests.playbooks.test_config_base import \
-    TestConfigBase
+from ....test_config_base import CONCENT_MAIN
+from ..test_config import TestConfig as RpcTestConfigBase
 
 
-class TestConfig(TestConfigBase):
+class TestConfig(RpcTestConfigBase):
     def __init__(self):
         super().__init__()
         for node_config in self.nodes.values():
             node_config.mainnet = True
+            node_config.concent = CONCENT_MAIN

@@ -16,10 +16,32 @@ from twisted.python.failure import Failure
 from golem.core.simpleserializer import DictSerializable
 from golem.model import Performance
 
-CounterId = str
-CounterUsage = Any
+
+class UsageCounter(Enum):
+    CLOCK_MS = 'clock_ms'
+
+    CPU_TOTAL_NS = 'cpu_total_ns'
+    CPU_USER_NS = 'cpu_user_ns'
+    CPU_KERNEL_NS = 'cpu_kernel_ns'
+
+    RAM_MAX_BYTES = 'ram_max_bytes'
+    RAM_AVG_BYTES = 'ram_avg_bytes'
+
+
+@dataclass
+class UsageCounterValues:
+    clock_ms: float = 0.0
+
+    cpu_total_ns: float = 0.0
+    cpu_user_ns: float = 0.0
+    cpu_kernel_ns: float = 0.0
+
+    ram_max_bytes: int = 0
+    ram_avg_bytes: float = 0.0
+
 
 EnvId = str
+RuntimeId = str
 
 
 class RuntimeEventType(Enum):
@@ -143,7 +165,10 @@ class RuntimeInput(ContextManager['RuntimeInput'], ABC):
         self.close()
 
 
-class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
+RuntimeOutput = Iterable[Union[str, bytes]]
+
+
+class RuntimeOutputBase(RuntimeOutput, ABC):
     """ A handle for reading output (either stdout or stderr) from a running
         Runtime. Yielded items are output lines. Output could be either raw
         (bytes) or decoded (str). """
@@ -160,6 +185,12 @@ class RuntimeOutput(Iterable[Union[str, bytes]], ABC):
 class Runtime(ABC):
     """ A runnable object representing some particular computation. Tied to a
         particular Environment that was used to create this object. """
+
+    @abstractmethod
+    def id(self) -> Optional[RuntimeId]:
+        """ Get unique identifier of this Runtime. Might not be available if the
+            Runtime is not yet prepared. """
+        raise NotImplementedError
 
     @abstractmethod
     def prepare(self) -> Deferred:
@@ -228,7 +259,7 @@ class Runtime(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def usage_counters(self) -> Dict[CounterId, CounterUsage]:
+    def usage_counter_values(self) -> UsageCounterValues:
         """ For each usage counter supported by the Environment (e.g. clock
             time) get current usage by this Runtime. """
         raise NotImplementedError
@@ -378,7 +409,6 @@ class RuntimeBase(Runtime, ABC):
 class EnvMetadata:
     id: EnvId
     description: str = ''
-    supported_counters: List[CounterId] = field(default_factory=list)
     custom_metadata: Dict[str, Any] = field(default_factory=dict)
 
 
@@ -403,6 +433,7 @@ class Environment(ABC):
         """ Is the Environment supported on this machine? """
         raise NotImplementedError
 
+    @abstractmethod
     def status(self) -> EnvStatus:
         """ Get current status of the Environment. """
         raise NotImplementedError
@@ -423,9 +454,8 @@ class Environment(ABC):
         """ Get the general performance score for this environment. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_prerequisites(cls, prerequisites_dict: Dict[str, Any]) \
+    def parse_prerequisites(self, prerequisites_dict: Dict[str, Any]) \
             -> Prerequisites:
         """ Build Prerequisites struct from supplied dictionary. Returned value
             is of appropriate type for calling install_prerequisites(). """
@@ -438,9 +468,8 @@ class Environment(ABC):
             Returns boolean indicating whether installation was successful. """
         raise NotImplementedError
 
-    @classmethod
     @abstractmethod
-    def parse_config(cls, config_dict: Dict[str, Any]) -> EnvConfig:
+    def parse_config(self, config_dict: Dict[str, Any]) -> EnvConfig:
         """ Build config struct from supplied dictionary. Returned value
             is of appropriate type for calling update_config(). """
         raise NotImplementedError
@@ -455,12 +484,17 @@ class Environment(ABC):
         """ Update configuration. Assumes current status is 'DISABLED'. """
         raise NotImplementedError
 
+    @abstractmethod
     def listen(
             self,
             event_type: EnvEventType,
             listener: EnvEventListener
     ) -> None:
         """ Register a listener for a given type of Environment events. """
+        raise NotImplementedError
+
+    def supported_usage_counters(self) -> List[UsageCounter]:
+        """ Get list of usage counters supported by this environment. """
         raise NotImplementedError
 
     @abstractmethod

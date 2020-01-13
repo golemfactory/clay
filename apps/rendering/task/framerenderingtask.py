@@ -82,11 +82,14 @@ def _calculate_subtasks_count(
         # whole number of subtasks.
         new_subtasks_count = _round_int(subtasks_count, num_frames)
 
-    if new_subtasks_count > max_subtasks_count:
-        return max_subtasks_count
+    new_subtasks_count = min(new_subtasks_count, max_subtasks_count)
+    if new_subtasks_count != subtasks_count:
+        logger.warning(
+            "Cannot set total subtask count to %s. Changing to %s.",
+            subtasks_count,
+            new_subtasks_count
+        )
 
-    logger.warning("Cannot set total subtasks to %s. Changing to %s",
-                   subtasks_count, new_subtasks_count)
     return new_subtasks_count
 
 
@@ -235,6 +238,9 @@ class FrameRenderingTask(RenderingTask):
         return update_dict(dictionary, {'options': {
             'frame_count': frame_count
         }})
+
+    def subtask_status_updated(self, subtask_id: str) -> None:
+        self._update_subtask_frame_status(subtask_id)
 
     #########################
     # Specific task methods #

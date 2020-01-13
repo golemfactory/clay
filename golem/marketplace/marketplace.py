@@ -1,5 +1,5 @@
-from abc import ABC, abstractclassmethod, abstractmethod
-from typing import Optional, List
+from abc import ABC, abstractmethod
+from typing import List
 
 from dataclasses import dataclass
 
@@ -33,16 +33,17 @@ class ProviderPricing:
 
 class RequestorMarketStrategy(ABC):
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def add(cls, task_id: str, offer: Offer):
         """
         Called when a WantToComputeTask arrives.
         """
         raise NotImplementedError()
 
-    # pylint: disable-msg=line-too-long
-    @abstractclassmethod
-    def resolve_task_offers(cls, task_id: str) -> Optional[List[Offer]]:
+    @classmethod
+    @abstractmethod
+    def resolve_task_offers(cls, task_id: str) -> List[Offer]:
         """
         Arguments:
             task_id {str} -- task_id
@@ -52,7 +53,8 @@ class RequestorMarketStrategy(ABC):
         """
         raise NotImplementedError()
 
-    @abstractclassmethod
+    @classmethod
+    @abstractmethod
     def get_task_offer_count(cls, task_id: str) -> int:
         """
         Returns number of offers known for the task.
@@ -85,7 +87,10 @@ class RequestorMarketStrategy(ABC):
 
 class ProviderMarketStrategy(ABC):
 
-    @abstractclassmethod
+    SET_CPU_TIME_LIMIT: bool = False
+
+    @classmethod
+    @abstractmethod
     def calculate_price(cls, pricing: ProviderPricing, max_price: int,
                         requestor_id: str) -> int:
         raise NotImplementedError()

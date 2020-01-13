@@ -121,13 +121,24 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
     return None
 
 
+def is_task_api_task(task_dict: dict) -> bool:
+    return 'golem' in task_dict and 'app' in task_dict
+
+
 def construct_test_task(task_package_name: str, task_settings: str) \
         -> typing.Dict[str, typing.Any]:
-    settings = tasks.get_settings(task_settings)
+    task_dict = tasks.get_settings(task_settings)
     cwd = Path(__file__).resolve().parent
     tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
-    settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
-    return settings
+    resources = [str(f) for f in tasks_path if f.is_file()]
+
+    if is_task_api_task(task_dict):
+        task_dict['golem']['resources'] = resources
+        task_dict['app']['resources'] = [str(Path(r).name) for r in resources]
+    else:
+        task_dict['resources'] = resources
+
+    return task_dict
 
 
 def scene_file_path(task_package_name: str, file_path: str) -> str:
@@ -143,7 +154,10 @@ def scene_file_path(task_package_name: str, file_path: str) -> str:
 
 
 def set_task_output_path(task_dict: dict, output_path: str) -> None:
-    task_dict['options']['output_path'] = output_path
+    if is_task_api_task(task_dict):
+        task_dict['golem']['output_directory'] = output_path
+    else:
+        task_dict['options']['output_path'] = output_path
 
 
 def timeout_to_seconds(timeout_str: str) -> float:

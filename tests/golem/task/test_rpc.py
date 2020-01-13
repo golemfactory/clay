@@ -1,6 +1,7 @@
-# pylint: disable=protected-access,too-many-ancestors
+# pylint: disable=protected-access,too-many-ancestors,too-many-lines
 import copy
 import itertools
+from pathlib import Path
 from tempfile import TemporaryDirectory
 import unittest
 from unittest import mock
@@ -108,15 +109,24 @@ class ProviderBase(test_client.TestClientBase):
         self.client.task_server.task_manager.add_new_task = add_new_task
 
 
+def mock_create_task_definition(*_):
+    mock_task_definition = Mock(task_id="task_id")
+
+    def build():
+        mock_header = Mock(task_id="task_id")
+        mock_task = Mock(header=mock_header)
+        return mock_task
+    mock_task_builder = Mock(build=build)
+
+    return (mock_task_definition, lambda *_: mock_task_builder)
+
+
 @mock.patch('signal.signal')
 @mock.patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 @mock.patch('golem.task.rpc.enqueue_new_task')
 @mock.patch(
-    'golem.task.taskmanager.TaskManager.create_task',
-    side_effect=lambda *_: mock.MagicMock(
-        header=mock.MagicMock(task_id='task_id'),
-    ),
-)
+    'golem.task.taskmanager.TaskManager.create_task_definition',
+    side_effect=mock_create_task_definition)
 class TestCreateTask(ProviderBase, TestClientBase):
     @staticmethod
     def _get_task_dict(**data):
@@ -133,42 +143,43 @@ class TestCreateTask(ProviderBase, TestClientBase):
             return defer.succeed(f(*args, **kwargs))
 
         with mock.patch('golem.core.deferred.deferToThread', execute):
-            result = self.provider.create_task(self._get_task_dict())
+            result = golem_deferred.sync_wait(
+                self.provider.create_task(self._get_task_dict()))
         rpc.enqueue_new_task.assert_called()
         self.assertEqual(result, ('task_id', None))
 
     def test_create_task_fail_no_type(self, *_):
-        task_id, error = self.provider.create_task({})
+        task_id, error = golem_deferred.sync_wait(
+            self.provider.create_task({}))
         self.assertIsNone(task_id)
         self.assertIn('must be one of', error)
 
     def test_create_task_fail_unknown_type(self, *_):
-        task_id, error = self.provider.create_task(
-            self._get_task_dict(**{'type': 'project_2501'})
-        )
+        task_dict = self._get_task_dict(**{'type': 'project_2501'})
+        task_id, error = golem_deferred.sync_wait(
+            self.provider.create_task(task_dict))
         self.assertIsNone(task_id)
         self.assertIn('must be one of', error)
 
     def test_create_task_fail_no_name(self, *_):
         t = self._get_task_dict()
         del t['name']
-        result = self.provider.create_task(t)
+        result = golem_deferred.sync_wait(self.provider.create_task(t))
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_too_long_name(self, *_):
-        result = self.provider.create_task(
-            self._get_task_dict(name='This name has 27 characters')
-        )
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(
+                self._get_task_dict(name='This name has 27 characters')))
         assert result == (None,
                           "Length of task name cannot be less "
                           "than 4 or more than 24 characters.")
 
     def test_create_task_fail_on_illegal_character_in_name(self, *_):
-        result = self.provider.create_task(
-            self._get_task_dict(name="Golem task/")
-        )
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(self._get_task_dict(name="Golem task/")))
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
@@ -181,7 +192,8 @@ class TestCreateTask(ProviderBase, TestClientBase):
             currency='GNT'
         ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
-        result = self.provider.create_task(self._get_task_dict())
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(self._get_task_dict()))
 
         rpc.enqueue_new_task.assert_not_called()
         self.assertIn('validate_lock_funds_possibility', str(mocked))
@@ -194,6 +206,29 @@ class TestCreateTask(ProviderBase, TestClientBase):
         self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
                                              'Required GNT: '
                                              '0.166667, available: 0.000000\n')
+
+    @mock.patch('golem.task.rpc.ClientProvider.'
+                '_validate_enough_funds_to_pay_for_task')
+    @mock.patch('golem.task.taskmanager.TaskManager.initialize_task',
+                side_effect=Exception("initialization failed"))
+    def test_create_task_fail_on_initialize(self, *_):
+        def execute(f, *args, **kwargs):
+            try:
+                return defer.succeed(f(*args, **kwargs))
+            except Exception as exc:  # pylint: disable=broad-except
+                return defer.fail(exc)
+        with mock.patch('golem.core.deferred.deferToThread', execute):
+            result = golem_deferred.sync_wait(
+                self.provider.create_task(self._get_task_dict()))
+
+        task_manager = self.client.task_server.task_manager
+        assert len(task_manager.tasks) == 1
+        assert len(task_manager.tasks_states) == 1
+        task_state = task_manager.tasks_states["task_id"]
+        assert task_state.status == taskstate.TaskStatus.errorCreating
+        assert task_state.status_message == "initialization failed"
+        # "create_task" rpc call returns no error, because it happens later
+        assert result == ("task_id", None)
 
 
 class TestCreateTaskDryRun(ProviderBase):
@@ -306,7 +341,8 @@ class TestRestartTask(ProviderBase):
         task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
         with mock.patch('golem.task.rpc._prepare_task') as prep_mock:
-            new_task_id, error = self.provider.restart_task(task.header.task_id)
+            deferred = self.provider.restart_task(task.header.task_id)
+            new_task_id, error = golem_deferred.sync_wait(deferred)
             prep_mock.assert_called_once()
 
         mock_validate_funds.assert_called_once_with(
@@ -322,6 +358,11 @@ class TestRestartTask(ProviderBase):
         assert task.header.task_id != new_task_id
         assert task_manager.tasks_states[
             task.header.task_id].status == taskstate.TaskStatus.restarted
+
+        task_def = task_manager.get_task_definition_dict(
+            task_manager.tasks[new_task_id])
+        output_path = Path(task_def['options']['output_path'])
+        self.assertEqual(str(output_path.parent), task_output_path)
 
 
 class TestGetMaskForTask(test_client.TestClientBase):
@@ -638,7 +679,7 @@ class TestRestartSubtasks(ProviderBase):
     @mock.patch('golem.task.rpc.enqueue_new_task')
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
     @mock.patch('golem.task.rpc._restart_subtasks')
-    def test_empty_subtasks_list(self, restart_subtasks_mock, *_):
+    def test_empty_subtasks_list(self, restart_mock, *_):
         ignore_gas_price = fake.pybool()
         disable_concent = fake.pybool()
 
@@ -656,13 +697,17 @@ class TestRestartSubtasks(ProviderBase):
             disable_concent=disable_concent,
         )
 
-        restart_subtasks_mock.assert_called_once_with(
+        restart_mock.assert_called_once_with(
             client=self.client,
             old_task_id=self.task_id,
             task_dict=mock.ANY,
             subtask_ids_to_copy={'finished-subtask-id'},
             ignore_gas_price=ignore_gas_price
         )
+
+        task_dict = restart_mock.call_args[1]['task_dict']
+        output_path = task_dict['options']['output_path']
+        self.assertEqual(output_path, task_output_path)
 
     @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
     @mock.patch('golem.client.Client.restart_subtask')
@@ -729,23 +774,27 @@ class TestRestartSubtasks(ProviderBase):
             ignore_gas_price=ignore_gas_price
         )
 
+        task_dict = restart_mock.call_args[1]['task_dict']
+        output_path = task_dict['options']['output_path']
+        self.assertEqual(output_path, task_output_path)
+
     def test_task_unknown(self, *_):
         task_id = 'unknown-task-uuid'
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=task_id,
-            subtask_ids=self.subtask_ids
-        )
+            subtask_ids=self.subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertIn(task_id, error)
 
     def test_subtask_mismatch(self, *_):
         subtask_ids = ['im-not-from-this-task']
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=self.task_id,
-            subtask_ids=subtask_ids
-        )
+            subtask_ids=subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error, f'Subtask does not belong to the given task.'
                                 f'task_id: {self.task_id}, '
@@ -761,10 +810,10 @@ class TestRestartSubtasks(ProviderBase):
                 currency='ETH'
             )
 
-        error = self.provider.restart_subtasks(
+        deferred = self.provider.restart_subtasks(
             task_id=self.task.header.task_id,
-            subtask_ids=self.subtask_ids
-        )
+            subtask_ids=self.subtask_ids)
+        error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
         self.assertIsNotNone(error['error_msg'])
@@ -841,10 +890,10 @@ class TestRestartFrameSubtasks(ProviderBase):
             'golem.task.taskmanager.TaskManager.get_frame_subtasks',
             return_value=mock_frame_subtasks
         ):
-            error = self.provider.restart_frame_subtasks(
+            deferred = self.provider.restart_frame_subtasks(
                 task_id=task_id,
-                frame=1
-            )
+                frame=1)
+            error = golem_deferred.sync_wait(deferred)
 
         self.assertEqual(error, f'Task not found: {task_id!r}')
 
@@ -860,16 +909,15 @@ class TestExceptionPropagation(ProviderBase):
             )
 
     @mock.patch('twisted.internet.reactor', mock.Mock())
-    @mock.patch("golem.task.taskmanager.TaskManager.task_creation_failed")
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
-    def test_create_task(self, mock_method, creation_failed, *_):
+    def test_create_task(self, mock_method, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
         mock_method.side_effect = Exception("Test")
 
-        result = self.provider.create_task(t.to_dict())
+        result = golem_deferred.sync_wait(
+            self.provider.create_task(t.to_dict()))
         mock_method.assert_called()
-        creation_failed.assert_called()
         self.assertEqual(result, (None, "Test"))
 
     def test_restart_task(self, *_):
@@ -881,8 +929,8 @@ class TestExceptionPropagation(ProviderBase):
         self.provider.task_manager.assert_task_can_be_restarted\
             .side_effect = Exception("Test")
 
-        result = self.provider.restart_task(0)
-
+        deferred = self.provider.restart_task("0")
+        result = golem_deferred.sync_wait(deferred)
         self.assertEqual(result, (None, "Test"))
 
     @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
