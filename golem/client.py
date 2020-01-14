@@ -21,7 +21,9 @@ from typing import (
     TYPE_CHECKING,
 )
 
+from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
+from golem_task_api.envs import DOCKER_GPU_ENV_ID
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -33,6 +35,7 @@ from apps.appsmanager import AppsManager
 import golem
 from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
+from golem.apps.default import APPS
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
@@ -76,8 +79,8 @@ from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
-from golem.task import taskpreset
-from golem.task import taskstate
+from golem.task import taskpreset, taskstate
+from golem.task.helpers import calculate_subtask_payment
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
@@ -897,14 +900,63 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             if not task:
                 return None
             subtask_ids = rtm.get_requested_task_subtask_ids(task_id)
+            # time_started
             if task.start_time is None:
                 time_started = get_timestamp_utc()
+                if task.status == taskstate.TaskStatus.errorCreating:
+                    time_started -= 1
             else:
                 time_started = task.start_time.timestamp()
+            # proress and time_remaining
+            finished_subtasks = rtm.count_finished_subtasks(task.task_id)
+            progress = finished_subtasks / task.max_subtasks
+            time_remaining = None
+            if progress > 0.0 and not task.status.is_completed():
+                elapsed = task.elapsed_seconds
+                time_remaining = (elapsed / progress) - elapsed
+            # type
+            app_name = 'Unknown'
+            if task.app_id in APPS:
+                app = APPS[task.app_id]
+                app_name = app.name
+            # last_updated
+            if task.end_time is None:
+                last_updated = get_timestamp_utc()
+            else:
+                last_updated = task.end_time.timestamp()
+            # compute_on
+            compute_on = 'cpu'
+            if task.env_id == DOCKER_GPU_ENV_ID:
+                compute_on = 'gpu'
+            # estimated_cost and estimated_fee
+            subtask_price = calculate_subtask_payment(
+                task.max_price_per_hour,
+                task.subtask_timeout
+            )
+            estimated_cost = subtask_price * task.max_subtasks
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.max_subtasks
+            )
             task_dict = {
                 'id': task.task_id,
+                'time_remaining': time_remaining,
+                'subtasks_count': task.max_subtasks,
                 'status': task.status.value,
+                'progress': progress,
                 'time_started': time_started,
+                'last_updated': last_updated,
+                'name': task.name,
+                'bid': float(task.max_price_per_hour) / denoms.ether,
+                'compute_on': compute_on,
+                'concent_enabled': task.concent_enabled,
+                'subtask_timeout': str(timedelta(seconds=task.subtask_timeout)),
+                'timeout': str(timedelta(seconds=task.task_timeout)),
+                'type': app_name,
+                'options': {
+                    'output_path': task.output_directory
+                },
+                'estimated_cost': estimated_cost,
+                'estimated_fee': estimated_fee,
             }
         else:
             # OLD taskmanager
