@@ -25,7 +25,11 @@ class DockerTaskApiPayloadBuilder(TaskApiPayloadBuilder):
             port: int,
     ) -> RuntimePayload:
         assert isinstance(prereq, DockerPrerequisites)
-        extra_options = json.loads(prereq.extra_vars) if prereq.extra_vars is not None else {}
+        if prereq.extra_vars:
+            extra_vars = json.loads(prereq.extra_vars)
+            extra_options = extra_vars if extra_vars else {}
+        else:
+            extra_options = {}
         return DockerRuntimePayload(
             image=prereq.image,
             tag=prereq.tag,
