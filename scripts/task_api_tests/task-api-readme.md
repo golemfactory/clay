@@ -1,8 +1,8 @@
 # Running a task on Task-Api
 
 Task-API has been enabled on testnet since the 0.22.0 release.
-For this first release there is no GUI implementation yet, so this guide will use the CLI only.
-When you create a task with CLI it will not show up in GUI
+For this first release there is no GUI support yet, so this guide will use the CLI only.
+When you create a task with CLI it will not be supported from the GUI
 
 ## Short summary:
 
@@ -55,12 +55,12 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
 #### golem.app_id
 
 App id is the unique identifier of the app including its version.
-You can get the build in app_id's with the command `golemcli ...` (TBD)
+You can get the build in app_id's from the logs when starting golem
 `daec55c08c9de7b71bf4ec3eb759c83b` is `golemfactory/blenderapp:0.7.2` the only available option at the time.
 
 #### golem.name
 
-Name of the task in the GUI, not related to task-api. Allowed to be empty. Will not be used in this first release, GUI does not show tasks
+Name of the task in the GUI, not related to task-api. Allowed to be empty.
 
 #### golem.resources
 
@@ -86,7 +86,6 @@ Subtask timeout in seconds, 600 is 10 minutes.
 ### app
 
 The app block contains app specific input parameters, these are different per app.
-TODO: Move this to app specific readme.md
 
 ```
 ...
@@ -103,7 +102,6 @@ TODO: Move this to app specific readme.md
 #### app.resources
 
 A relative list of the resources, currently only one level.
-TO FIX: allow folders and generate the list by default based on golem.resources
 
 #### app.resolution
 
