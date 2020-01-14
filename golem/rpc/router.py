@@ -110,7 +110,9 @@ class CrossbarRouter(object):
 
         allowed_origins = [
             'http://' + address.host + ':*',
-            'https://' + address.host + ':*'
+            'https://' + address.host + ':*',
+            'ws://' + address.host + ':*',
+            'wss://' + address.host + ':*'
         ]
 
         ws_endpoint = {

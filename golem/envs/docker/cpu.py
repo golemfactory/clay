@@ -520,7 +520,6 @@ class DockerCPUEnvironment(EnvironmentBase):
         'setfcap',
         'setpcap',
         'sys_boot',
-        'sys_chroot',
         'sys_module',
         'sys_nice',
         'sys_pacct',
