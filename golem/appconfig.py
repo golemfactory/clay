@@ -152,6 +152,7 @@ class AppConfig:
             opt_peer_num=OPTIMAL_PEER_NUM,
             # flags
             in_shutdown=0,
+            task_api_dev_mode=0,
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,
@@ -195,7 +196,7 @@ class AppConfig:
             disallow_ip_timeout_seconds=DISALLOW_IP_TIMEOUT_SECONDS,
             disallow_id_max_times=DISALLOW_ID_MAX_TIMES,
             disallow_ip_max_times=DISALLOW_IP_MAX_TIMES,
-            #hyperg
+            # hyperg
             hyperdrive_port=DEFAULT_HYPERDRIVE_PORT,
             hyperdrive_address=DEFAULT_HYPERDRIVE_ADDRESS,
             hyperdrive_rpc_port=DEFAULT_HYPERDRIVE_RPC_PORT,

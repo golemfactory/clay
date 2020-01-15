@@ -148,7 +148,9 @@ class TaskServer(
         register_built_in_repositories()
         register_environments(
             work_dir=self.get_task_computer_root(),
-            env_manager=new_env_manager)
+            env_manager=new_env_manager,
+            dev_mode=self.config_desc.task_api_dev_mode == 1,
+        )
 
         app_dir = self.get_app_dir()
         built_in_apps = save_built_in_app_definitions(app_dir)

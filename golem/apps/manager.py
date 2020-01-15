@@ -25,7 +25,12 @@ class AppManager:
         if app_id not in self._state:
             self._state[app_id] = False
         logger.info(
-            "Application registered. app_name=%r app_id=%r", app.name, app_id)
+            "Application registered. app_name=%r:%r, state=%r, app_id=%r",
+            app.name,
+            app.version,
+            self._state[app_id],
+            app_id,
+        )
 
     def enabled(self, app_id: AppId) -> bool:
         """ Check if an application with the given ID is registered in the
