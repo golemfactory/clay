@@ -640,7 +640,6 @@ class TaskComputation:
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
-        cpu_limit = task_header.subtask_budget
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
@@ -666,7 +665,12 @@ class TaskComputation:
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 resource_dir, temp_dir)
             tt: TaskThread = DockerTaskThread(
-                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
+                docker_images,
+                extra_data,
+                dir_mapping,
+                task_timeout,
+                self.cpu_limit
+            )
         elif tc.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
