@@ -512,6 +512,12 @@ class TaskManager(TaskEventListener):
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
+    def is_task_active(self, task_id: str) -> bool:
+        if task_id not in self.tasks_states:
+            return False
+
+        return self.tasks_states[task_id].status.is_active()
+
     def should_wait_for_node(self,
                              task_id: str,
                              node_id: str,

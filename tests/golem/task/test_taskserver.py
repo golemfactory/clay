@@ -471,8 +471,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider memory size: '
-                f'{estimated_memory} B < {DEFAULT_MAX_MEMORY_SIZE_KB} '
-                f'KiB; {ids}')
+                f'4.0 KiB < 4.0 KiB; Free at least 1 B;'
+                f' {ids}')
 
         listener.assert_called_once_with(
             sender=ANY,
