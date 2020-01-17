@@ -924,6 +924,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.remove_task_header = Mock()
         c.task_server.remove_task_header = Mock()
         c.task_server.task_manager.delete_task = Mock()
+        c.task_server.task_manager.is_active = Mock(return_value=False)
 
         task_id = str(uuid.uuid4())
         sync_wait(c.delete_task(task_id))
