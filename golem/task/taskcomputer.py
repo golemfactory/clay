@@ -491,8 +491,8 @@ class NewTaskComputer:
 
 @dataclass
 class TaskComputation:
-    """Represents single compuatation in TaskComputer.  There could be only one
-    non-signle core computation or multiple single-core computations.
+    """Represents single computation in TaskComputer.  There could be only one
+    non-single core computation or multiple single-core computations.
     """
     task_computer: 'TaskComputer'
     assigned_subtask: ComputeTaskDef
@@ -871,7 +871,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                     computation.start_computation()
                 else:
                     logger.warning(
-                        "compuatation already started " +
+                        "computation already started " +
                         "(task_id=%s, substask_id=%s)", task_id, subtask_id)
         return started
 
