@@ -5,8 +5,10 @@ import time
 import unittest.mock as mock
 import uuid
 
+from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef, TaskFailure
 from twisted.internet import defer
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -58,141 +60,255 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.task_computer.check_timeout()
         cc.counting_thread.check_timeout.assert_called_once()
 
-    def test_computation(self):  # pylint: disable=too-many-statements
-        # FIXME Refactor too single tests and remove disable too many
-        ctd = ComputeTaskDef()
-        ctd['task_id'] = "xyz"
-        ctd['subtask_id'] = "xxyyzz"
-        ctd['extra_data'] = {}
-        ctd['extra_data']['src_code'] = \
-            "cnt=0\n" \
-            "for i in range(10000):\n" \
-            "\tcnt += 1\n" \
-            "output={'data': cnt, 'result_type': 0}"
-        ctd['deadline'] = timeout_to_deadline(10)
-        ctd['resources'] = ["abcd", "efgh"]
+    def test_computation_not_supported(self):
+        # Given
+        subtask_timeout = 5
 
-        task_server = self.task_server
-        task_server.task_keeper.task_headers = {
-            ctd['subtask_id']: mock.Mock(
-                subtask_timeout=5,
-                deadline=timeout_to_deadline(5)
-            ),
+        ctd = msg_factories.tasks.ComputeTaskDefFactory()
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
             ctd['task_id']: mock.Mock(
-                subtask_timeout=5,
-                deadline=timeout_to_deadline(20)
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
             )
         }
 
         mock_finished = mock.Mock()
         tc = TaskComputer(
-            task_server,
+            self.task_server,
             use_docker_manager=False,
             finished_cb=mock_finished)
 
-        self.assertFalse(tc.assigned_subtasks)
+        # When
         tc.task_given(ctd)
-        self.assertTrue(tc.assigned_subtasks)
-        self.assertLessEqual(
-            tc.assigned_subtasks[-1].assigned_subtask['deadline'],
-            timeout_to_deadline(10))
-
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
-        assert not tc._is_computing()
-        assert not tc.assigned_subtasks
-        task_server.send_task_failed.assert_called_with(
-            "xxyyzz",
-            "xyz",
+
+        # Then
+        self.assertFalse(tc.assigned_subtasks)
+        self.task_server.send_task_failed.assert_called_with(
+            ctd['subtask_id'],
+            ctd['task_id'],
             "Host direct task not supported"
         )
 
+    def test_computation_ok(self):
+        # Given
+        subtask_timeout = 5
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory()
+        ctd['extra_data']['src_code'] = \
+            "cnt=0\n" \
+            "for i in range(10000):\n" \
+            "\tcnt += 1\n" \
+            "output={'data': cnt, 'result_type': 0}"
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
         tc.support_direct_computation = True
+
+        # When
         tc.task_given(ctd)
-        tc.start_computation(ctd['task_id'], None)
-        assert tc._is_computing()
-        self.assertGreater(
-            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 8)
-        self.assertLessEqual(
-            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
-        mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
+        tc.start_computation(ctd['task_id'], ctd['subtask_id'])
         self.__wait_for_tasks(tc)
 
-        prev_task_failed_count = task_server.send_task_failed.call_count
-        self.assertFalse(tc._is_computing())
-        self.assertFalse(bool(tc.assigned_subtasks))
-        assert task_server.send_task_failed.call_count == prev_task_failed_count
-        self.assertTrue(task_server.send_results.called)
-        kwargs = task_server.send_results.call_args[1]
-        self.assertEqual(kwargs['subtask_id'], "xxyyzz")
-        self.assertEqual(kwargs['task_id'], "xyz")
+        # Then
+        self.assertFalse(tc.assigned_subtasks)
+        self.assertTrue(self.task_server.send_results.called)
+        kwargs = self.task_server.send_results.call_args[1]
+        self.assertEqual(kwargs['subtask_id'], ctd['subtask_id'])
+        self.assertEqual(kwargs['task_id'], ctd['task_id'])
         self.assertEqual(kwargs['result'], 10000)
         mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
 
-        ctd['subtask_id'] = "aabbcc"
+    def test_computation_failure(self):
+        # Given
+        subtask_timeout = 5
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory()
         ctd['extra_data']['src_code'] = "raise Exception('some exception')"
-        ctd['deadline'] = timeout_to_deadline(5)
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
         tc.task_given(ctd)
-        assert len(tc.assigned_subtasks) == 1
-        comp = tc.assigned_subtasks[0]
-        self.assertEqual(comp.assigned_subtask, ctd)
-        self.assertLessEqual(comp.assigned_subtask['deadline'],
-                             timeout_to_deadline(5))
-        tc.start_computation(ctd['task_id'], None)
+        tc.start_computation(ctd['task_id'], ctd['subtask_id'])
+
+        # Then
+        self.assertEqual(len(tc.assigned_subtasks), 1)
+        assigned_subtask = tc.assigned_subtasks[0].assigned_subtask
         self.__wait_for_tasks(tc)
-
-        self.assertFalse(tc._is_computing())
-        self.assertFalse(bool(tc.assigned_subtasks))
-        task_server.send_task_failed.assert_called_with(
-            "aabbcc", "xyz", 'some exception', TaskFailure.DEFAULT_REASON)
+        self.assertLessEqual(assigned_subtask['deadline'],
+                             ctd['deadline'])
+        self.task_server.send_task_failed.assert_called_with(
+            ctd['subtask_id'],
+            ctd['task_id'],
+            'some exception',
+            TaskFailure.DEFAULT_REASON)
         mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
 
-        ctd['subtask_id'] = "aabbcc2"
+    def test_computation_wrong_format(self):
+        # Given
+        subtask_timeout = 5
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory()
         ctd['extra_data']['src_code'] = "print('Hello world')"
-        ctd['deadline'] = timeout_to_deadline(5)
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
         tc.task_given(ctd)
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
         self.__wait_for_tasks(tc)
 
-        task_server.send_task_failed.assert_called_with(
-            "aabbcc2", "xyz", "Wrong result format")
+        # Then
+        self.task_server.send_task_failed.assert_called_with(
+            ctd['subtask_id'], ctd['task_id'], "Wrong result format")
         mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
 
-        task_server.task_keeper.task_headers["xyz"].deadline = \
-            timeout_to_deadline(20)
-        ctd['subtask_id'] = "aabbcc3"
+    def test_computation_time_elapsed(self):
+        # Given
+        subtask_timeout = 5
+        deadline = timeout_to_deadline(20)
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(deadline=deadline)
         ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
-        ctd['deadline'] = timeout_to_deadline(40)
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
         tc.task_given(ctd)
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
+
+        # Then
         self.assertTrue(tc._is_computing())
         self.assertGreater(
-            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 10)
+            tc.assigned_subtasks[0].counting_thread.time_to_compute, 10)
         self.assertLessEqual(
-            tc.assigned_subtasks[-1].counting_thread.time_to_compute, 20)
+            tc.assigned_subtasks[0].counting_thread.time_to_compute, 20)
         self.__wait_for_tasks(tc)
 
-        ctd['subtask_id'] = "xxyyzz2"
-        ctd['deadline'] = timeout_to_deadline(1)
+    def test_computation_task_thread(self):
+        # Given
+        subtask_timeout = 1
+        deadline = timeout_to_deadline(1)
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory(deadline=deadline)
+        ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
         tc.task_given(ctd)
         tc.start_computation(ctd['task_id'], ctd['subtask_id'])
-        mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
-        cc = tc.assigned_subtasks[-1]
-        tt = cc.counting_thread
-        cc.task_computed(cc.counting_thread)
+        assigned_subtask = tc.assigned_subtasks[0]
+        task_thread = assigned_subtask.counting_thread
+        assigned_subtask.task_computed(task_thread)
+
+        # Then
         self.assertFalse(tc._is_computing())
         mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
-        task_server.send_task_failed.assert_called_with(
-            "xxyyzz2", "xyz", "Wrong result format")
-        tt.end_comp()
+        task_thread.end_comp()
         time.sleep(0.5)
-        if tt.is_alive():
-            tt.join(timeout=5)
+        if task_thread.is_alive():
+            task_thread.join(timeout=5)
+
+    def test_computation_cpu_limit(self):
+        # Given
+        subtask_budget = 1 * denoms.ether   # 1 GNT
+        subtask_timeout = 5
+        cpu_time_limit = 1800   # CPU time limit in seconds
+
+        ctd = msg_factories.tasks.ComputeTaskDefFactory()
+        ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
+
+        self.task_server.task_keeper.task_headers = {
+            ctd['subtask_id']: mock.Mock(subtask_timeout=subtask_timeout),
+            ctd['task_id']: mock.Mock(
+                subtask_timeout=subtask_timeout,
+                deadline=ctd['deadline'],
+                subtask_budget=subtask_budget
+            )
+        }
+
+        mock_finished = mock.Mock()
+        tc = TaskComputer(
+            self.task_server,
+            use_docker_manager=False,
+            finished_cb=mock_finished)
+        tc.support_direct_computation = True
+
+        # When
+        tc.task_given(ctd, cpu_time_limit)
+        tc.start_computation(ctd['task_id'], ctd['subtask_id'])
+
+        # Then
+        assigned_subtask = tc.assigned_subtasks[0]
+        self.assertEqual(cpu_time_limit, assigned_subtask.cpu_limit)
+        self.__wait_for_tasks(tc)
 
     @mock.patch('golem.task.taskthread.TaskThread.start')
     def test_compute_task(self, start):
