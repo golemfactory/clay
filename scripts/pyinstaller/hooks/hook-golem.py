@@ -1,4 +1,11 @@
-from PyInstaller.utils.hooks import collect_submodules
+import os
+import glob
+from PyInstaller.compat import is_win
+from PyInstaller.utils.hooks import (
+    get_module_file_attribute,
+    collect_submodules,
+)
+
 
 hiddenimports = collect_submodules('golem') + \
                 collect_submodules('apps') + \
@@ -38,3 +45,14 @@ datas = [
      'scripts/virtualization'),
     ('scripts/virtualization/get-hyperv-state.ps1', 'scripts/virtualization')
 ]
+
+# copy of the native `hooks/hook-numpy.py`, so it will also search DLLs/
+binaries = []
+
+if is_win:
+    extra_dll_locations = ['DLLs']
+    for location in extra_dll_locations:
+        dll_glob = os.path.join(os.path.dirname(
+            get_module_file_attribute('numpy')), location, "*.dll")
+        if glob.glob(dll_glob):
+            binaries.append((dll_glob, "."))
