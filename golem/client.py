@@ -762,11 +762,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         rtm = self.task_server.requested_task_manager
+        is_active = False
         if rtm.task_exists(task_id):
+            is_active = rtm.get_requested_task(task_id).status.is_active()
             yield deferred_from_future(rtm.delete_task(task_id))
         else:
+            is_active = self.task_server.task_manager.is_task_active(task_id)
             self.task_server.task_manager.delete_task(task_id)
-        self.funds_locker.remove_task(task_id)
+        if is_active:
+            self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
     @inlineCallbacks

@@ -92,6 +92,7 @@ from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
+from golem.tools import memoryhelper
 from golem.utils import decode_hex
 from .server import concent
 from .server import helpers
@@ -1112,6 +1113,9 @@ class TaskServer(
             provider_perf: float, max_memory_size: int,
             offer_hash: str) -> bool:
 
+        # max_memory_size: int KiB
+        max_memory_size_b = int(max_memory_size) * 1024  # Bytes
+
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
@@ -1152,9 +1156,22 @@ class TaskServer(
                 })
             return False
 
-        if min_memory > (int(max_memory_size) * 1024):
-            logger.info('insufficient provider memory size: '
-                        f'{min_memory} B < {max_memory_size} KiB; {ids}')
+        if min_memory > max_memory_size_b:
+            logger.info(
+                'insufficient provider memory size:'
+                ' %(available)s < %(min_memory)s;'
+                ' Free at least %(missing)s; %(ids)s',
+                {
+                    'min_memory': memoryhelper.dir_size_to_display(min_memory),
+                    'available': memoryhelper.dir_size_to_display(
+                        max_memory_size_b,
+                    ),
+                    'missing': memoryhelper.dir_size_to_display(
+                        min_memory - max_memory_size_b,
+                    ),
+                    'ids': ids,
+                }
+            )
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.memory_size,
