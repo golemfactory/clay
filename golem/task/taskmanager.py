@@ -15,7 +15,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Tuple,
     Type,
     TYPE_CHECKING,
 )
@@ -28,7 +27,6 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from apps.core.task.coretaskstate import TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
@@ -59,6 +57,7 @@ from golem.task.timer import ProviderComputeTimers
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
+    from typing import Tuple
     from apps.appsmanager import App
     from apps.core.task.coretaskstate import TaskDefinition
     from golem.task.taskbase import TaskTypeInfo, TaskBuilder
@@ -978,6 +977,36 @@ class TaskManager(TaskEventListener):
 
         logger.info("Task %s put into restarted state", task_id)
         self.notice_task_updated(task_id, op=TaskOp.RESTARTED)
+
+    @handle_task_key_error
+    def put_task_in_failed_state(
+            self,
+            task_id: str,
+            task_status=TaskStatus.errorCreating,
+    ) -> None:
+        assert not task_status.is_active()
+        assert not task_status.is_completed()
+        task_state = self.tasks_states[task_id]
+        if task_state.status.is_completed():
+            logger.debug(
+                "Task is already completed. Won't change status."
+                " current_status=%(current_status)s,"
+                " refused_status=%(refused_status)s",
+                {
+                    'current_status': task_state.status,
+                    'refused_status': task_status,
+                },
+            )
+            return
+
+        task_state.status = task_status
+
+        logger.info(
+            "Task %s put into failed state. task_status=%s",
+            task_id,
+            task_state,
+        )
+        self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
     @handle_subtask_key_error
     def restart_subtask(
