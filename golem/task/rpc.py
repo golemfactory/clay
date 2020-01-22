@@ -405,8 +405,6 @@ def enqueue_new_task(client, task, force=False) \
             task=task,
             resource_server_result=resource_server_result,
         )
-
-        logger.info("Task started. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
         logger.error(
             "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
