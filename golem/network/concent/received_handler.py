@@ -94,14 +94,14 @@ def on_force_report_computed_task_response(msg, **_):
 
 
 @library.register_handler(message.concents.ForceSubtaskResultsRejected)
-def on_force_subtask_results_rejected(msg):
+def on_force_subtask_results_rejected(msg, **_):
     # After #2349 we could reschedule ForceSubtaskResults message
     # if reason is RequestPremature (because subtask_id would be known)
     logger.warning("[CONCENT] %r", msg)
 
 
 @library.register_handler(message.concents.ForcePaymentRejected)
-def on_force_payment_rejected(msg):
+def on_force_payment_rejected(msg, **_):
     logger.warning("[CONCENT] ForcePaymentRejected by %r", msg)
     if msg.reason is msg.REASON.TimestampError:
         logger.warning(
@@ -311,7 +311,7 @@ class TaskServerMessageHandler():
         )
 
     @handler_for(message.concents.ForceSubtaskResultsResponse)
-    def on_force_subtask_results_response(self, msg):
+    def on_force_subtask_results_response(self, msg, **_):
         """Concent forwards verified Requestors response to ForceSubtaskResults
         """
         if msg.subtask_results_accepted:
