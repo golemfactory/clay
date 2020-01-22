@@ -433,9 +433,20 @@ def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
-        -> typing.Tuple[None, str]:
+def _restart_task_error(
+        e: Exception,
+        self: 'ClientProvider',
+        task_id: str,
+        *_args, **kwargs
+) -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
+    try:
+        new_task = kwargs['new_task']
+        self.task_manager.put_task_in_failed_state(new_task.task_id)
+    except KeyError:
+        logger.debug('No new task given')
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Can't put task in failed state. task_id=%r", task_id)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -776,8 +787,9 @@ class ClientProvider:
         deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
-                _self=self,
+                self=self,
                 task_id=task_id,
+                new_task=new_task,
             )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
