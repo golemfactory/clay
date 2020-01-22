@@ -277,7 +277,7 @@ class TaskManager(TaskEventListener):
 
         task_state.status = TaskStatus.waiting
         self.notice_task_updated(task_id, op=TaskOp.STARTED)
-        logger.info("Task %s started", task_id)
+        logger.info("Task started. task_id=%r", task_id)
 
     def _dump_filepath(self, task_id):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
