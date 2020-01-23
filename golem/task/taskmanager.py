@@ -1,5 +1,6 @@
 # pylint: disable=too-many-lines
 
+import copy
 import logging
 import os
 import pickle
@@ -247,24 +248,26 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
         """ Increase mask for given task i.e. make it more restrictive """
-        task = self.tasks[task_id]
+        task = copy.deepcopy(self.tasks[task_id])
         try:
             task.header.mask.increase(num_bits)
         except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
             self.sign_task_header(task.header)
+            self.tasks[task_id] = task
 
     @handle_task_key_error
     def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
         """ Decrease mask for given task i.e. make it less restrictive """
-        task = self.tasks[task_id]
+        task = copy.deepcopy(self.tasks[task_id])
         try:
             task.header.mask.decrease(num_bits)
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
             self.sign_task_header(task.header)
+            self.tasks[task_id] = task
 
     @handle_task_key_error
     def start_task(self, task_id):
