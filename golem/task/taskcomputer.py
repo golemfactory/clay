@@ -491,8 +491,8 @@ class NewTaskComputer:
 
 @dataclass
 class TaskComputation:
-    """Represents single compuatation in TaskComputer.  There could be only one
-    non-signle core computation or multiple single-core computations.
+    """Represents single computation in TaskComputer.  There could be only one
+    non-single core computation or multiple single-core computations.
     """
     task_computer: 'TaskComputer'
     assigned_subtask: ComputeTaskDef
@@ -640,7 +640,6 @@ class TaskComputation:
             return
 
         deadline = min(task_header.deadline, subtask_deadline)
-        cpu_limit = task_header.subtask_budget
         task_timeout = deadline_to_timeout(deadline)
 
         unique_str = str(uuid.uuid4())
@@ -666,7 +665,12 @@ class TaskComputation:
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 resource_dir, temp_dir)
             tt: TaskThread = DockerTaskThread(
-                docker_images, extra_data, dir_mapping, task_timeout, cpu_limit)
+                docker_images,
+                extra_data,
+                dir_mapping,
+                task_timeout,
+                self.cpu_limit
+            )
         elif tc.support_direct_computation:
             tt = PyTaskThread(extra_data, resource_dir, temp_dir,
                               task_timeout)
@@ -867,7 +871,7 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                     computation.start_computation()
                 else:
                     logger.warning(
-                        "compuatation already started " +
+                        "computation already started " +
                         "(task_id=%s, substask_id=%s)", task_id, subtask_id)
         return started
 

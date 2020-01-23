@@ -394,8 +394,8 @@ class TransactionSystem(LoopingCallService, MemCacheMixin):
         )
         # As a requestor
         self._sci.subscribe_to_forced_payments(
-            requestor_address=None,
-            provider_address=self._sci.get_eth_address(),
+            requestor_address=self._sci.get_eth_address(),
+            provider_address=None,
             from_block=from_block,
             cb=lambda event: self._payment_processor.sent_forced_payment(
                 tx_hash=event.tx_hash,
