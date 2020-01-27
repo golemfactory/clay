@@ -152,7 +152,6 @@ class AppConfig:
             opt_peer_num=OPTIMAL_PEER_NUM,
             # flags
             in_shutdown=0,
-            task_api_dev_mode=0,
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,

@@ -153,8 +153,6 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             config_desc.hyperdrive_port = hyperdrive_port
         if hyperdrive_rpc_port:
             config_desc.hyperdrive_rpc_port = hyperdrive_rpc_port
-        if task_api_dev:
-            config_desc.task_api_dev = task_api_dev
 
         # Golem headless
         install_reactor()
@@ -169,6 +167,22 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         log_platform_info()
         log_ethereum_config(ethereum_config)
         log_concent_choice(ethereum_config.CONCENT_VARIANT)
+
+        # Config variables continued, after logging is enabled
+        if variables.ENV_TASK_API_DEV not in os.environ:
+            if task_api_dev:
+                os.environ[variables.ENV_TASK_API_DEV] = '1'
+            else:
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
+        else:
+            if os.environ[variables.ENV_TASK_API_DEV] not in ['0', '1']:
+                logger.warning(
+                    "Invalid value in ENV[%r]: given %r should be '0' or '1'."
+                    " Using default value = '0'",
+                    variables.ENV_TASK_API_DEV,
+                    os.environ[variables.ENV_TASK_API_DEV],
+                )
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
 
         node = Node(
             datadir=datadir,

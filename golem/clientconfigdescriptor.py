@@ -59,7 +59,6 @@ class ClientConfigDescriptor(object):
 
         self.accept_tasks = 1
         self.debug_third_party = 0
-        self.task_api_dev_mode = 0
         self.in_shutdown = 0
 
         self.net_masking_enabled = 0

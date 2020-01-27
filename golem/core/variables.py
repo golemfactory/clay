@@ -18,6 +18,7 @@ APP_NAME = "Brass Golem"
 PRIVATE_KEY = "keystore.json"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
+ENV_TASK_API_DEV = 'ENV_TASK_API_DEV'
 
 #################
 # NETWORK CONST #

@@ -50,7 +50,7 @@ from golem.core.deferred import (
     deferred_from_future,
     sync_wait,
 )
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES, ENV_TASK_API_DEV
 from golem.environments.environment import (
     Environment as OldEnv,
     SupportStatus,
@@ -149,7 +149,7 @@ class TaskServer(
         register_environments(
             work_dir=self.get_task_computer_root(),
             env_manager=new_env_manager,
-            dev_mode=self.config_desc.task_api_dev_mode == 1,
+            dev_mode=os.environ[ENV_TASK_API_DEV] == "1",
         )
 
         app_dir = self.get_app_dir()
