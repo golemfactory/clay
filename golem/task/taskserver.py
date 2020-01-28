@@ -146,10 +146,12 @@ class TaskServer(
         runtime_logs_dir = get_log_dir(client.datadir)
         new_env_manager = EnvironmentManager(runtime_logs_dir)
         register_built_in_repositories()
+        task_api_dev_mode = ENV_TASK_API_DEV in os.environ \
+            and os.environ[ENV_TASK_API_DEV] == "1"
         register_environments(
             work_dir=self.get_task_computer_root(),
             env_manager=new_env_manager,
-            dev_mode=os.environ[ENV_TASK_API_DEV] == "1",
+            dev_mode=task_api_dev_mode,
         )
 
         app_dir = self.get_app_dir()
