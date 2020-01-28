@@ -50,7 +50,9 @@ async def test_task(
     Whitelist.add(app_definition.requestor_prereq['image'])
     register_environments(
         work_dir=str(work_dir),
-        env_manager=env_manager)
+        env_manager=env_manager,
+        dev_mode=True,
+    )
 
     rtm_work_dir = work_dir / 'rtm'
     rtm_work_dir.mkdir()
