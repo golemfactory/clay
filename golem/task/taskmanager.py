@@ -880,7 +880,7 @@ class TaskManager(TaskEventListener):
         ban_node = subtask_state.time_started + timeout < time.time()
         return self.task_computation_failure(
             subtask_id,
-            f'Task computation rejected: {err.value}',
+            f'Task computation rejected: {err.value if err else "unknown"}',
             ban_node,
         )
 
