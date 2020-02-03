@@ -3,7 +3,7 @@ import sys
 import tempfile
 from typing import Type
 
-from os.path import dirname, join
+from os.path import dirname, join, realpath
 from os import close
 
 from apps.blender.blenderenvironment import BlenderEnvironment, \
@@ -22,7 +22,8 @@ class BlenderBenchmark(RenderingBenchmark):
         super(BlenderBenchmark, self).__init__()
         self._normalization_constant = 9360
         if hasattr(sys, 'frozen') and sys.frozen:
-            self.blender_task_path = join(dirname(sys.executable),
+            real_exe_path = realpath(sys.executable)
+            self.blender_task_path = join(dirname(real_exe_path),
                                           'examples', 'blender')
         else:
             this_dir = pathlib.Path(__file__).resolve().parent
