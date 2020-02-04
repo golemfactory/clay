@@ -1,6 +1,9 @@
 import logging
 import pathlib
 import uuid
+import sys
+
+from os.path import dirname, join
 
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
@@ -18,8 +21,13 @@ class ffmpegBenchmark(CoreBenchmark):
         self._normalization_constant = 1000
         super(ffmpegBenchmark, self).__init__()
 
-        video = pathlib.Path(__file__).resolve().parent
-        video = video / 'resources' / 'test_video.mp4'
+        if hasattr(sys, 'frozen') and sys.frozen:
+            exec_dir = dirname(sys.executable)
+            video_dir = join(exec_dir, 'examples', 'transcoding')
+        else:
+            video_dir = pathlib.Path(__file__).resolve().parent
+
+        video = video_dir / 'resources' / 'test_video.mp4'
 
         task_def = ffmpegTaskDefinition()
         task_def.task_id = str(uuid.uuid4())
