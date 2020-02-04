@@ -157,7 +157,7 @@ class PaymentProcessor:
             value: int,
     ) -> model.TaskPayment:
         log.info(
-            "Adding payment for %s to %s (%.8f GNTB)",
+            "Adding payment. subtask_id=%s, receiver=%s, value=(%.18f GNTB)",
             subtask_id,
             eth_addr,
             value / denoms.ether,
@@ -259,7 +259,7 @@ class PaymentProcessor:
         payments = self._awaiting[:payments_count]
 
         value = sum([p.wallet_operation.amount for p in payments])
-        log.info("Batch payments value: %.3f GNTB", value / denoms.ether)
+        log.info("Batch payments value: %.18f GNTB", value / denoms.ether)
 
         closure_time = int(
             payments[-1].created_date.replace(

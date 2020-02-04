@@ -78,15 +78,11 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         return None, None
 
     initial_steps = NodeTestPlaybook.initial_steps + (
-        partial(NodeTestPlaybook.step_ensure_concent_off,
-                node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_enable_concent,
                 node_id=NodeId.provider),
         partial(NodeTestPlaybook.step_ensure_concent_on,
                 node_id=NodeId.provider),
 
-        partial(NodeTestPlaybook.step_ensure_concent_off,
-                node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_enable_concent,
                 node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_ensure_concent_on,

@@ -127,7 +127,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         self.assertEqual(task.after_test(None, None), {})
 
-        assert not task.listeners
+        assert len(task.listeners) == 0
 
         class TestListener(TaskEventListener):
 
@@ -194,7 +194,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-            files[0], files[1], files[4]])
+                         files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -205,7 +205,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.interpret_task_results(
             subtask_id, TaskResult(files=files_copy), False)
         self.assertEqual(task.results[subtask_id], [
-            files[0], files[1], files[4]])
+                         files[0], files[1], files[4]])
         for f in files_copy:
             with open(f, 'w'):
                 pass
@@ -246,7 +246,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         files[4] = outer_dir_path(files[4])
 
         self.assertEqual(task.results[subtask_id], [
-            files[0], files[1], files[4]])
+                         files[0], files[1], files[4]])
         self.assertEqual(task.stderr[subtask_id], files[3])
         self.assertEqual(task.stdout[subtask_id], files[2])
 
@@ -255,8 +255,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                 os.path.join(task.tmp_dir, os.path.basename(f))))
 
         for f in [files[2], files[3]]:
-            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir,
-                                                        subtask_id,
+            self.assertTrue(os.path.isfile(os.path.join(task.tmp_dir, subtask_id,
                                                         os.path.basename(f))))
 
     def test_interpret_task_results_with_sorting(self):
@@ -293,8 +292,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task.counting_nodes = MagicMock()
 
         task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
-                                           'start_task': 1,
-                                           'node_id': 'ABC'}
+                                      'start_task': 1,
+                                      'node_id': 'ABC'}
         task.subtasks_given["abc"] = {'status': SubtaskStatus.failure,
                                       'start_task': 4,
                                       'node_id': 'abc'}

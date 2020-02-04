@@ -2,6 +2,8 @@ import asyncio
 import logging
 import typing
 
+from ethereum.utils import denoms
+
 from golem_messages import message
 from golem_messages import utils as msg_utils
 from golem_messages.datastructures import p2p as dt_p2p
@@ -73,7 +75,7 @@ class VerificationMixin:
                 # Experimental feature. Try to spread subtasks fairly amongst
                 # providers.
                 self.disallow_node(
-                    node_id=task_to_compute.provider_id,
+                    node_id=node.key,
                     timeout_seconds=config_desc.disallow_node_timeout_seconds,
                     persist=False,
                 )
@@ -81,7 +83,7 @@ class VerificationMixin:
                 # Experimental feature. Try to spread subtasks fairly amongst
                 # providers.
                 self.disallow_ip(
-                    ip=self.address,
+                    ip=node.pub_addr,
                     timeout_seconds=config_desc.disallow_ip_timeout_seconds,
                 )
 
@@ -89,6 +91,15 @@ class VerificationMixin:
             payment_value = market_strategy.calculate_payment(
                 report_computed_task
             )
+
+            logger.info(
+                "Accepting result. subtask_id=%s, "
+                "provider_id=%s, payment_value=%s GNT",
+                subtask_id,
+                report_computed_task.provider_id,
+                payment_value / denoms.ether,
+            )
+
             payment = self.accept_result(
                 task_id,
                 subtask_id,
@@ -165,9 +176,7 @@ class VerificationMixin:
                 f"Completed verification of subtask {subtask_id} "
                 f"within an unknown task {task_id}")
 
-        subtask = self.requested_task_manager.get_requested_task_subtask(
-            task_id,
-            subtask_id)
+        subtask = self.requested_task_manager.get_requested_subtask(subtask_id)
         if not subtask:
             raise RuntimeError(
                 f"Completed verification of unknown subtask {subtask_id} "

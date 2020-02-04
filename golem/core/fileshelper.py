@@ -193,11 +193,7 @@ def du(path):
             logger.info("Can't open dir {}: {}".format(path, str(err)))
             return "-1"
 
-    human_readable_size, idx = memoryhelper.dir_size_to_display(size)
-    return "{} {}".format(
-        human_readable_size,
-        memoryhelper.translate_resource_index(idx)
-    )
+    return memoryhelper.dir_size_to_display(size)
 
 
 def relative_path(path, prefix):

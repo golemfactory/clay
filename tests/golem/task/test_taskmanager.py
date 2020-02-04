@@ -747,9 +747,30 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         )
         task_mock.computation_failed.assert_not_called()
         self.assertIs(
-            self.tm.tasks_states[task_mock.header.task_id]\
+            self.tm.tasks_states[task_mock.header.task_id]
                 .subtask_states[subtask_id].status,
             SubtaskStatus.cancelled,
+        )
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    @patch('golem.task.taskmanager.TaskManager.task_computation_failure')
+    def test_task_computation_cancelled_unknown_reason(self, failure_mock, *_):
+        reason = None
+        subtask_id = "aabbcc"
+        task_mock = self._get_task_mock()
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = subtask_id
+        self.tm.get_next_subtask("NODE", "xyz", 1000, 100, 'oh')
+        self.tm.task_computation_cancelled(
+            subtask_id,
+            reason,
+            timeout=1000,
+        )
+        failure_mock.assert_called_once_with(
+            subtask_id,
+            'Task computation rejected: unknown',
+            False,
         )
 
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)

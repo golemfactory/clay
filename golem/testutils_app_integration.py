@@ -8,8 +8,6 @@ from random import SystemRandom
 from typing import Tuple, List
 from unittest.mock import patch
 from pathlib import Path
-from datetime import datetime
-import time
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -25,7 +23,6 @@ from golem.docker.task_thread import DockerTaskThread, DockerDirMapping
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskResult
 from golem.task.taskmanager import TaskManager
-from golem.task.taskstate import TaskState
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 logger = logging.getLogger(__name__)
@@ -72,14 +69,6 @@ class VerificationWait:
 # pylint: disable=too-many-instance-attributes
 class TestTaskIntegration(TestDatabaseWithReactor):
 
-    @staticmethod
-    def check_file_existence(filename):
-        return os.path.isfile(filename)
-
-    @staticmethod
-    def check_dir_existence(dir_path):
-        return os.path.isdir(dir_path)
-
     def setUp(self):
         super().setUp()
 
@@ -116,14 +105,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
         self.verification_timeout = 100
 
-    def _mock_remove_files(self):
-        pass
-
-    def get_task_state(self, task: Task):
-        task_id = task.task_definition.task_id
-        task_state: TaskState = self.task_manager.tasks_states[task_id]
-        return task_state.status
-
     def execute_task(self, task_def):
         task: Task = self.start_task(task_def)
 
@@ -151,11 +132,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
 
         return result, subtask_id, ctd
 
-    def fail_computing_next_subtask(self, task: Task):
-        subtask_id, _ = self.query_next_subtask(task)
-        result = self.produce_no_output_on_mock_provider(task, subtask_id)
-        return result, subtask_id
-
     def query_next_subtask(self, task: Task):
         ctd: ComputeTaskDef = self.task_manager. \
             get_next_subtask(node_id=self._generate_node_id(),
@@ -165,6 +141,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
                                  task.price /
                                  task.task_definition.subtasks_count),
                              offer_hash="blaa offeeeeer")
+
         return ctd["subtask_id"], ctd
 
     def execute_on_mock_provider(self, task: Task, ctd: dict, subtask_id: int,
@@ -182,23 +159,6 @@ class TestTaskIntegration(TestDatabaseWithReactor):
                                                      task_id,
                                                      subtask_id)
         return TaskResult(files=result)
-
-    def produce_no_output_on_mock_provider(self, task: Task, subtask_id: int):
-        task_id = task.task_definition.task_id
-        result: List[str] = []
-        result = self._collect_results_from_provider(result,
-                                                     task_id,
-                                                     subtask_id)
-        return TaskResult(result)
-
-    def timeout_next_subtask(self, task: Task):
-        subtask_id, ctd = self.query_next_subtask(task)
-        deadline = datetime.fromtimestamp(ctd['deadline'])
-        now = datetime.now()
-        time.sleep((deadline - now).seconds + 0.5)
-
-        result = self.execute_on_mock_provider(task, ctd, subtask_id, 0)
-        return result, subtask_id
 
     def verify_subtask(self, task: Task, subtask_id, result):
         task_id = task.task_definition.task_id
@@ -227,7 +187,7 @@ class TestTaskIntegration(TestDatabaseWithReactor):
         return self._run_test_job(task, provider_tempdir, extra_data)
 
     @staticmethod
-    def _copy_resources(task: Task, resources_dir):
+    def _copy_resources(task, resources_dir):
 
         logger.info("Copy files to docker resources "
                     "directory {}".format(resources_dir))

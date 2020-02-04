@@ -17,10 +17,14 @@ DOCKER_REPOSITORY = "golemfactory"
 
 def _register_docker_cpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
     docker_cpu_config = DockerCPUConfig(work_dirs=[Path(work_dir)])
-    docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+    docker_cpu_env = NonHypervisedDockerCPUEnvironment(
+        docker_cpu_config,
+        dev_mode,
+    )
 
     env_manager.register_env(
         docker_cpu_env,
@@ -32,11 +36,14 @@ def _register_docker_cpu_env(
 
 def _register_docker_gpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
     docker_config_dict = dict(work_dirs=[work_dir])
-    docker_gpu_env = \
-        NonHypervisedDockerGPUEnvironment.default(docker_config_dict)
+    docker_gpu_env = NonHypervisedDockerGPUEnvironment.default(
+        docker_config_dict,
+        dev_mode,
+    )
 
     env_manager.register_env(
         docker_gpu_env,
@@ -53,11 +60,15 @@ def register_built_in_repositories():
 
 def register_environments(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
 
-    if NonHypervisedDockerCPUEnvironment.supported().supported:
-        _register_docker_cpu_env(work_dir, env_manager)
+    from golem.config.active import TASK_API_ENVS
+    if DOCKER_CPU_ENV_ID in TASK_API_ENVS:
+        if NonHypervisedDockerCPUEnvironment.supported().supported:
+            _register_docker_cpu_env(work_dir, env_manager, dev_mode)
 
-    if NonHypervisedDockerGPUEnvironment.supported().supported:
-        _register_docker_gpu_env(work_dir, env_manager)
+    if DOCKER_GPU_ENV_ID in TASK_API_ENVS:
+        if NonHypervisedDockerGPUEnvironment.supported().supported:
+            _register_docker_gpu_env(work_dir, env_manager, dev_mode)

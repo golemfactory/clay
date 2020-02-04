@@ -174,7 +174,7 @@ class TestP2PService(TestDatabaseWithReactor):
         node.last_message_time = 0
         self.service.sync_network()
 
-        assert not self.service.peers
+        assert len(self.service.peers) == 0
 
         self.service.add_peer(node)
         self.service.peers[node.key].last_message_time = time.time() + 1000

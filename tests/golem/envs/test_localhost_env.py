@@ -7,7 +7,7 @@ from golem_task_api import (
     RequestorAppClient
 )
 from golem_task_api.enums import VerifyResult
-from golem_task_api.structs import Subtask, Task
+from golem_task_api.structs import Subtask, Task, Infrastructure
 from grpclib.exceptions import StreamTerminatedError
 from twisted.internet.defer import inlineCallbacks
 
@@ -96,7 +96,8 @@ class TestLocalhostEnv(TwistedAsyncioTestCase):
     def test_create_task(self):
         task = Task(
             env_id='test_env',
-            prerequisites={'key': 'value'}
+            prerequisites={'key': 'value'},
+            inf_requirements=Infrastructure(min_memory_mib=2000.),
         )
 
         async def create_task():

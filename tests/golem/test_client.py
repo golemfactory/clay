@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,too-many-lines
+# pylint: disable=protected-access,too-many-lines,no-member
 import os
 import time
 import uuid
@@ -13,10 +13,12 @@ from unittest.mock import (
 )
 
 from ethereum.utils import denoms
+from faker import Faker
+from faker.providers import date_time as fake_date_time
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred, inlineCallbacks
+from twisted.internet.defer import Deferred
 
 from golem import model
 from golem import testutils
@@ -30,7 +32,8 @@ from golem.client import Client, ClientTaskComputerEventListener, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import EthereumConfig
-from golem.core.common import timeout_to_string
+from golem.core.common import datetime_to_timestamp_utc, timeout_to_string, \
+    timestamp_to_datetime
 from golem.core.deferred import sync_wait
 from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
@@ -51,7 +54,10 @@ from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
 from tests.factories import model as model_factory
-from tests.factories.task import taskstate as taskstate_factory
+from tests.factories.task import (
+    taskstate as taskstate_factory,
+    requestedtaskmanager as rtm_factory,
+)
 
 random = Random(__name__)
 
@@ -104,12 +110,17 @@ def make_mock_ets(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
-def make_client(*_, **kwargs):
+def make_client(*_, config_desc_attrs=None, **kwargs):
     config_desc = ClientConfigDescriptor()
     config_desc.max_memory_size = 1024 * 1024  # 1 GiB
     config_desc.num_cores = 1
     config_desc.hyperdrive_rpc_address = DEFAULT_HYPERDRIVE_RPC_ADDRESS
     config_desc.hyperdrive_rpc_port = DEFAULT_HYPERDRIVE_RPC_PORT
+
+    if config_desc_attrs:
+        for k, v in config_desc_attrs.items():
+            setattr(config_desc, k, v)
+
     default_kwargs = {
         'app_config': Mock(),
         'config_desc': config_desc,
@@ -144,6 +155,19 @@ class TestClientBase(DatabaseFixture):
         with patch('golem.task.taskserver.TaskServer.quit'):
             self.client.quit()
         super().tearDown()
+
+
+class TestClientInit(DatabaseFixture):
+    def setUp(self):
+        super().setUp()
+
+    def test_client_init_shutdown(self):
+        client = make_client(
+            datadir=self.path,
+            config_desc_attrs={
+                'in_shutdown': 1
+            })
+        self.assertIsInstance(client, Client)
 
 
 @patch(
@@ -389,15 +413,37 @@ class TestGetTasks(TestClientBase):
 
     def setUp(self):
         super().setUp()
+
+        fake = Faker()
+        fake.add_provider(fake_date_time)
+
         tm_tasks = {
-            'task_1': {'status': TaskStatus.creating.value},
-            'task_2': {'status': TaskStatus.errorCreating.value},
-            'task_3': {'status': TaskStatus.aborted.value},
+            'task_1': {
+                'status': TaskStatus.creating.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_2': {
+                'status': TaskStatus.errorCreating.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_3': {
+                'status': TaskStatus.aborted.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
         }
         rtm_tasks = {
-            'task_4': {'status': TaskStatus.computing.value},
-            'task_5': {'status': TaskStatus.finished.value},
-            'task_6': {'status': TaskStatus.creatingDeposit.value},
+            'task_4': {
+                'status': TaskStatus.computing.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_5': {
+                'status': TaskStatus.finished.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
+            'task_6': {
+                'status': TaskStatus.creatingDeposit.value,
+                'time_started': datetime_to_timestamp_utc(fake.date_time())
+            },
         }
 
         self.tasks = dict()
@@ -414,6 +460,12 @@ class TestGetTasks(TestClientBase):
         retrieved_tasks = self.client.get_tasks()
         assert isinstance(retrieved_tasks, list)
         assert len(retrieved_tasks) == 6
+        # Check that task start times are sorted in ascending order
+        for i in range(len(retrieved_tasks) - 1):
+            date = timestamp_to_datetime(retrieved_tasks[i]['time_started'])
+            next_date = timestamp_to_datetime(
+                retrieved_tasks[i + 1]['time_started'])
+            assert date < next_date
 
     def test_get_single_task(self):
         self.client.get_task = lambda task_id: self.tasks[task_id]
@@ -448,7 +500,8 @@ class TestClientRestartSubtasks(TestClientBase):
             10,
         )
 
-        self.client.task_server = Mock()
+        self.client.task_server = Mock(
+            requested_task_manager=rtm_factory.MockRequestedTaskManager())
 
     def test_restart_subtask(self):
         # given
@@ -456,7 +509,7 @@ class TestClientRestartSubtasks(TestClientBase):
             self.task_id
 
         # when
-        self.client.restart_subtask('subtask_id')
+        sync_wait(self.client.restart_subtask('subtask_id'))
 
         # then
         self.client.task_server.task_manager.restart_subtask.\
@@ -588,7 +641,9 @@ class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
         )
 
     @patch('golem.client.logger')
-    def test_run(self, logger):
+    @patch('golem.client.NetworkConnectionPublisherService.poll')
+    def test_run(self, poll_mock, logger):
+        poll_mock.return_value = {'random_key': random.random()}
         self.service._run()
 
         logger.debug.assert_not_called()
@@ -668,6 +723,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.monitor = Mock()
         self.client._update_hw_preset = Mock()
         self.client.task_server.change_config = Mock()
+        self.client.task_server.requested_task_manager = \
+            rtm_factory.MockRequestedTaskManager()
 
     def test_node(self, *_):
         c = self.client
@@ -863,12 +920,14 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_delete_task(self, *_):
         c = self.client
-        c.remove_task_header = Mock()
         c.remove_task = Mock()
-        c.task_server = Mock()
+        c.remove_task_header = Mock()
+        c.task_server.remove_task_header = Mock()
+        c.task_server.task_manager.delete_task = Mock()
+        c.task_server.task_manager.is_active = Mock(return_value=False)
 
         task_id = str(uuid.uuid4())
-        c.delete_task(task_id)
+        sync_wait(c.delete_task(task_id))
         assert c.task_server.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
@@ -876,14 +935,15 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_purge_tasks(self, *_):
         c = self.client
-        c.remove_task_header = Mock()
         c.remove_task = Mock()
-        c.task_server = Mock()
+        c.remove_task_header = Mock()
+        c.task_server.remove_task_header = Mock()
+        c.task_server.task_manager.delete_task = Mock()
 
         task_id = str(uuid.uuid4())
         c.get_tasks = Mock(return_value=[{'id': task_id}, ])
 
-        c.purge_tasks()
+        sync_wait(c.purge_tasks())
         assert c.get_tasks.called
         assert c.task_server.remove_task_header.called
         assert c.remove_task.called
@@ -1123,7 +1183,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_provider_status_not_accepting_tasks(self, *_):
         # given
-        self.client.config_desc.accept_tasks = False
+        self.client.config_desc.accept_tasks = 0
 
         # when
         status = self.client.get_provider_status()
@@ -1317,6 +1377,17 @@ class TestGetTask(TestClientBase):
                 ),
             ]
         self.client.get_task(uuid.uuid4())
+
+
+class TestTaskManagerListener(TestClientBase):
+    @patch('golem.client.Client._publish')
+    def test_work_offer_received(self, mock_publish):  # noqa pylint: disable=no-self-use
+        dispatcher.send(
+            signal="golem.taskmanager",
+            event="task_status_updated",
+            op=taskstate.TaskOp.WORK_OFFER_RECEIVED,
+        )
+        mock_publish.assert_not_called()
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

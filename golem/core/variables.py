@@ -18,6 +18,7 @@ APP_NAME = "Brass Golem"
 PRIVATE_KEY = "keystore.json"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
+ENV_TASK_API_DEV = 'GOLEM_TASK_API_DEV'
 
 #################
 # NETWORK CONST #
@@ -44,7 +45,7 @@ CONCENT_CHOICES: dict = {
         'pubkey': b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x84\x81b6C\xe8\xe0\xdb\\.P\x00;rZM\xafQI\xf7G\x95\xe3\xe3.h\x19\xf1\x0f\xfa\x8c\xed\x12:\x88\x8aK\x00C9 \xf0~P',  # noqa pylint: disable=line-too-long
         'certificate': str(CONCENT_CERTIFICATES_DIR / 'staging.crt'),
         'deposit_contract_address':
-            '0x863f24E4E4217692Def7EFc0824A42c7D0585B26',
+            '0x884443710CDe8Bb56D10E81059513fb1c4Bf32A3',
     },
     'test': {
         'url': 'https://test.concent.golem.network',
@@ -54,8 +55,10 @@ CONCENT_CHOICES: dict = {
             '0x74751ae0b80276dB6b9310b7F8F79fe044205b83',
     },
     'main': {
-        'url': 'http://main.concent.golem.network',
-        'pubkey': b"\xfch\x8e.\xe8\x1b\xe2\x95\x9c7&D\xe4\xfb\x9d\x88\xe2\xd90\x14t\xfd\x81pC\x93B\xefo\xda.\xd8\x85'\x02m\xf0\xc1\x8c\xf9\xb1\xfe\xd7uc\xd7\x81\x94\r\xe8\xce\xed(%TmX\xba\xd5\xc2Y\x0c9\x8b",  # noqa pylint: disable=line-too-long
+        'url': 'https://main.concent.golem.network',
+        'pubkey': b'F[\x03\xa8\xab[\x98\xd4\xd4$\xf8\xe1\x0fG\x92\xa1\xb2\xef*\xc5`}\xb52\xaaU\x1f\xd4\x8b\t\xb5=r\\\x8c\x07A`\x8c\x1a\x83\x01>@\x9b\x87\x17\x8d/\xfc\x0b\xa5\xe1\x80.\x9dm\xbcQ\x93hR\x1f6',  # noqa pylint: disable=line-too-long
+        'deposit_contract_address':
+            '0x98d3ca6528A2532Ffd9BDef50F92189568932570',
     },
 }
 

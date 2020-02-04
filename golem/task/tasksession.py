@@ -18,8 +18,6 @@ from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 from twisted.internet import defer
 
-from apps.appsmanager import App
-
 import golem
 from golem.core import common
 from golem.core import deferred
@@ -45,14 +43,13 @@ from golem.task.helpers import calculate_subtask_payment
 from golem.task.requestedtaskmanager import ComputingNodeDefinition
 from golem.task.rpc import add_resources
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import Task
 
 if TYPE_CHECKING:
     # pylint: disable=unused-import,ungrouped-imports
     from twisted.internet.protocol import Protocol
 
     from .requestedtaskmanager import RequestedTaskManager
-    from .taskcomputer import TaskComputer
+    from .taskcomputer import TaskComputerAdapter
     from .taskmanager import TaskManager
     from .taskserver import TaskServer
     from golem.network.concent.client import ConcentClientService
@@ -144,7 +141,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return self.task_server.requested_task_manager
 
     @property
-    def task_computer(self) -> 'TaskComputer':
+    def task_computer(self) -> 'TaskComputerAdapter':
         return self.task_server.task_computer
 
     @property
@@ -165,15 +162,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _get_app_from_header(
-            self, task_header: message.tasks.TaskHeader) -> Optional[App]:
-        return self.task_server.client.apps_manager.get_app_for_env(
+    def _get_task_class(
+            self, task_header: message.tasks.TaskHeader):
+        return self.task_server.client.apps_manager.get_task_class_for_env(
             task_header.environment
         )
-
-    def _get_task_class(self, task_header: message.tasks.TaskHeader):
-        app = self._get_app_from_header(task_header)
-        return app.builder.TASK_CLASS if app else Task
 
     ########################
     # BasicSession methods #
@@ -260,9 +253,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def read_msg_queue(self):
         if not self.key_id:
+            logger.debug('skipping queue, no key_id')
             return
         if not self.verified:
+            logger.debug('skipping queue, not verified. key_id=%r', self.key_id)
             return
+        logger.debug('sending messages for key. %r', self.key_id)
         for msg in msg_queue.get(self.key_id):
             self.send(msg)
 
@@ -436,11 +432,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd, package_hash, package_size = ctd_res
             logger.debug("CTD generated. %s, ctd=%s", task_node_info, ctd)
 
-            logger.info(
-                "Subtask assigned. %s, subtask_id=%r",
-                task_node_info, ctd["subtask_id"]
-            )
-
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 want_to_compute_task=msg,
@@ -472,6 +463,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
             self.send(ttc)
+
+            logger.info(
+                "Subtask assigned. %s, subtask_id=%r",
+                task_node_info, ctd["subtask_id"]
+            )
 
             history.add(
                 msg=signed_ttc,
@@ -594,8 +590,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message=msg
         )
 
+        logger.info(
+            "Received subtask. task_id: %r, subtask_id: %r, requestor_id: %r",
+            ctd["task_id"],
+            ctd["subtask_id"],
+            common.short_node_id(msg.requestor_id)
+        )
+
         def _cannot_compute(reason):
-            logger.debug("Cannot %r", reason)
+            assert isinstance(reason, message.tasks.CannotComputeTask.REASON)
+            logger.info(
+                "Cannot compute subtask. subtask_id: %r, reason: %r",
+                ctd["subtask_id"],
+                reason
+            )
+
             self.send(
                 message.tasks.CannotComputeTask(
                     task_to_compute=msg,
@@ -606,7 +615,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.task_computer.has_assigned_task():
+        if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
             return
 
@@ -689,9 +698,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(e.reason)
             return
 
-        self.task_manager.comp_task_keeper.receive_subtask(msg)
         if not self.task_server.task_given(msg):
-            _cannot_compute(None)
+            _cannot_compute(reasons.CannotTakeWork)
             return
 
     # pylint: enable=too-many-return-statements, too-many-branches
@@ -705,25 +713,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
+    @defer.inlineCallbacks
     def _react_to_cannot_compute_task(self, msg):
         if not self.check_provider_for_subtask(msg.task_id, msg.subtask_id):
             self.dropped()
             return
 
         logger.info(
-            "Provider can't compute subtask: %r Reason: %r",
+            "Provider can't compute subtask. subtask_id: %r, reason: %r",
             msg.subtask_id,
             msg.reason,
         )
 
-        config = self.task_server.config_desc
-        timeout = config.computation_cancellation_timeout
-
-        self.task_manager.task_computation_cancelled(
-            msg.subtask_id,
-            msg.reason,
-            timeout,
-        )
+        if self.requested_task_manager.subtask_exists(msg.subtask_id):
+            yield deferred_from_future(
+                self.requested_task_manager.abort_subtask(msg.subtask_id)
+            )
+        else:
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+            self.task_manager.task_computation_cancelled(
+                msg.subtask_id,
+                msg.reason,
+                timeout,
+            )
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
@@ -849,6 +862,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.report_computed_task)
         self._adjust_requestor_assigned_sum(
             msg.requestor_id, payment_value, budget)
+
+        logger.info(
+            "Result accepted. subtask_id=%s, "
+            "requestor_id=%s, payment_value=%s GNT",
+            msg.subtask_id,
+            msg.requestor_id,
+            payment_value / denoms.ether,
+        )
 
         self.task_server.subtask_accepted(
             sender_node_id=self.key_id,
@@ -1079,16 +1100,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_reject_report_computed_task(self, msg):
         keeper = self.task_manager.comp_task_keeper
+        subtask_known = False
         if keeper.check_task_owner_by_subtask(self.key_id, msg.subtask_id):
-            logger.info("Requestor '%r' rejected the computed subtask '%r' "
-                        "report", self.key_id, msg.subtask_id)
-
             self.concent_service.cancel_task_message(
                 msg.subtask_id, 'ForceReportComputedTask')
-        else:
-            logger.warning("Requestor '%r' rejected a computed task report of"
-                           "an unknown task (subtask_id='%s')",
-                           self.key_id, msg.subtask_id)
+            subtask_known = True
+        logger.log(
+            logging.INFO if subtask_known else logging.WARNING,
+            "ReportComputedTask rejected by the requestor%s. "
+            "requestor_id='%r', subtask_id='%r', reason='%s'",
+            '' if subtask_known else ' and the subtask is unknown to us',
+            self.key_id, msg.subtask_id, msg.reason
+        )
 
     def disconnect(self, reason: message.base.Disconnect.REASON):
         if not self.conn.opened:

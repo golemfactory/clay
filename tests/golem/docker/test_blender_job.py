@@ -44,9 +44,8 @@ class TestBlenderDockerJob(TestDockerJob):
         }
 
         with self._create_test_job(
-            script="/golem/entrypoints/render_entrypoint.py",
-            params=params) as job:
-
+                script="/golem/entrypoints/render_entrypoint.py",
+                params=params) as job:
             job.start()
             exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)

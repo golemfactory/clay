@@ -13,6 +13,12 @@ class ActionTimer:
         self._started: Optional[float] = None
         self._finished: Optional[float] = time.time()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}: " \
+               f"started={self._started}, " \
+               f"finished={self._finished}, " \
+               f"time={self.time}"
+
     @property
     def finished(self) -> bool:
         return self._finished is not None
@@ -66,7 +72,10 @@ class ThirstTimer(ActionTimer):
 
     @property
     def profit_factor(self):
-        thrist = time.time() - self._finished
+        if self._finished is not None:
+            thrist = time.time() - self._finished
+        else:
+            thrist = 0
         return self._profit_factor * math.exp(-self._ALPHA * thrist)
 
     def _finish(self) -> None:

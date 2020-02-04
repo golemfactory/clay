@@ -13,7 +13,3 @@ class TestRuntime(TestCase):
             ),
             port_mapper=mock.Mock()
         )
-
-    def test_usage_counters(self):
-        with self.assertRaises(NotImplementedError):
-            self.runtime.usage_counters()

@@ -94,14 +94,14 @@ def on_force_report_computed_task_response(msg, **_):
 
 
 @library.register_handler(message.concents.ForceSubtaskResultsRejected)
-def on_force_subtask_results_rejected(msg):
+def on_force_subtask_results_rejected(msg, **_):
     # After #2349 we could reschedule ForceSubtaskResults message
     # if reason is RequestPremature (because subtask_id would be known)
     logger.warning("[CONCENT] %r", msg)
 
 
 @library.register_handler(message.concents.ForcePaymentRejected)
-def on_force_payment_rejected(msg):
+def on_force_payment_rejected(msg, **_):
     logger.warning("[CONCENT] ForcePaymentRejected by %r", msg)
     if msg.reason is msg.REASON.TimestampError:
         logger.warning(
@@ -311,7 +311,7 @@ class TaskServerMessageHandler():
         )
 
     @handler_for(message.concents.ForceSubtaskResultsResponse)
-    def on_force_subtask_results_response(self, msg):
+    def on_force_subtask_results_response(self, msg, **_):
         """Concent forwards verified Requestors response to ForceSubtaskResults
         """
         if msg.subtask_results_accepted:
@@ -493,6 +493,8 @@ class TaskServerMessageHandler():
 
         task = self.task_server.task_manager.tasks.get(rct.task_id, None)
         output_dir = getattr(task, 'tmp_dir', None)
+        is_task_api_task = self.task_server.requested_task_manager.task_exists(
+            rct.task_id)
 
         def success(response):
             logger.debug("Concent results download successful: %r, %s",
@@ -506,14 +508,17 @@ class TaskServerMessageHandler():
                              msg.subtask_id, e)
                 return
 
-            logger.debug("Task result extracted %r",
-                         extracted_package.__dict__)
+            files = [str(extracted_package)] \
+                if is_task_api_task \
+                else extracted_package.get_full_path_files()
+
+            logger.debug("Task result downloaded: %r", files)
 
             # instantiate session and run the tasksession's reaction to
             # received results
             self.task_server.verify_results(
                 report_computed_task=rct,
-                extracted_package=extracted_package)
+                files=files)
 
         def error(exc):
             logger.warning("Concent download failed: %r, %s",

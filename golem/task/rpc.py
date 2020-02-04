@@ -6,6 +6,7 @@ import logging
 import os.path
 import re
 import typing
+from pathlib import Path
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -404,8 +405,6 @@ def enqueue_new_task(client, task, force=False) \
             task=task,
             resource_server_result=resource_server_result,
         )
-
-        logger.info("Task started. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
         logger.error(
             "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
@@ -424,7 +423,7 @@ def enqueue_new_task(client, task, force=False) \
 
 def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
         -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
-    _self.client.task_manager.task_creation_failed(task_dict.get('id'), str(e))
+    logger.error("Cannot create task %r: %s", task_dict, e)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -432,9 +431,20 @@ def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, *args, **_kwargs) \
-        -> typing.Tuple[None, str]:
+def _restart_task_error(
+        e: Exception,
+        self: 'ClientProvider',
+        task_id: str,
+        *_args, **kwargs
+) -> typing.Tuple[None, str]:
     logger.error("Cannot restart task %r: %s", task_id, e)
+    try:
+        new_task = kwargs['new_task']
+        self.task_manager.put_task_in_failed_state(new_task.task_id)
+    except KeyError:
+        logger.debug('No new task given')
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Can't put task in failed state. task_id=%r", task_id)
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -483,44 +493,117 @@ class ClientProvider:
         return self.client.task_server.requested_task_manager
 
     @rpc_utils.expose('comp.task.create')
-    @safe_run(_create_task_error)
-    def create_task(self, task_dict, force=False) \
-            -> typing.Tuple[typing.Optional[str],
-                            typing.Optional[typing.Union[str, typing.Dict]]]:
+    @defer.inlineCallbacks
+    def create_task(
+            self,
+            task_dict: dict,
+            force: bool = False,
+    ):
         """
+        :param task_dict: task definition dictionary
         :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
+
+        if 'golem' in task_dict and 'app' in task_dict:
+            try:
+                task_id = yield self._create_task_api_task(
+                    task_dict['golem'],
+                    task_dict['app'])
+                return task_id, None
+            except Exception as exc:  # pylint: disable=broad-except
+                return None, str(exc)
+        return self._create_legacy_task(task_dict, force)
+
+    @safe_run(_create_task_error)
+    def _create_legacy_task(
+            self,
+            task_dict: dict,
+            force: bool = False,
+    ) -> typing.Tuple[TaskId, typing.Optional[str]]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
         task = _create_task(self.client, task_dict)
         task_id = task.header.task_id
 
-        try:
-            self._validate_enough_funds_to_pay_for_task(
-                task.subtask_price,
-                task.get_total_tasks(),
-                task.header.concent_enabled,
-                force
-            )
-        except Exception as exc:  # pylint: disable=broad-except
-            self.task_manager.task_creation_failed(task_id, str(exc))
-            raise
+        self._validate_enough_funds_to_pay_for_task(
+            task.subtask_price,
+            task.get_total_tasks(),
+            task.header.concent_enabled,
+            force
+        )
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
         deferred.addErrback(
-            lambda failure: _create_task_error(
-                e=failure.value,
-                _self=self,
-                task_dict=task_dict,
-                force=force
-            )
+            lambda failure: self.client.task_manager.task_creation_failed(
+                task_id, str(failure.value)))
+        return task_id, None
+
+    @defer.inlineCallbacks
+    def _create_task_api_task(
+            self,
+            golem_params: dict,
+            app_params: dict,
+    ):
+        logger.info('Creating Task API task. golem_params=%r', golem_params)
+
+        if self.client.has_assigned_task():
+            raise RuntimeError('Cannot create task while computing')
+
+        create_task_params = requestedtaskmanager.CreateTaskParams(
+            app_id=golem_params['app_id'],
+            name=golem_params['name'],
+            output_directory=Path(golem_params['output_directory']),
+            max_price_per_hour=int(golem_params['max_price_per_hour']),
+            max_subtasks=int(golem_params['max_subtasks']),
+            task_timeout=int(golem_params['task_timeout']),
+            subtask_timeout=int(golem_params['subtask_timeout']),
+            concent_enabled=bool(golem_params.get('concent_enabled', False)),
+            resources=list(map(Path, golem_params['resources'])),
         )
 
-        return task_id, None
+        self._validate_enough_funds_to_pay_for_task(
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+            create_task_params.concent_enabled,
+            False,
+        )
+
+        future = self.requested_task_manager.create_task(
+            create_task_params,
+            app_params)
+        task_id = yield deferred_from_future(future)
+
+        self.client.funds_locker.lock_funds(
+            task_id,
+            create_task_params.max_price_per_hour,
+            create_task_params.max_subtasks,
+        )
+
+        self.client.update_setting('accept_tasks', False, False)
+
+        # Do not yield, this is a fire and forget deferred as it may take long
+        # time to complete and shouldn't block the RPC call.
+        d = self._init_task_api_task(task_id)
+        d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
+
+        return task_id
+
+    @defer.inlineCallbacks
+    def _init_task_api_task(self, task_id: str):
+        try:
+            yield deferred_from_future(
+                self.requested_task_manager.init_task(task_id))
+        except Exception:
+            self.client.funds_locker.remove_task(task_id)
+            self.client.update_setting('accept_tasks', True, False)
+            self.requested_task_manager.error_creating(task_id)
+            raise
+        else:
+            self.requested_task_manager.start_task(task_id)
 
     @rpc_utils.expose('comp.task.create.dry_run')
     @safe_run(_create_task_error)
@@ -537,6 +620,7 @@ class ClientProvider:
                           'comp.task.create'.
         :return: (task_dict, None) on success; (None, error_message) on failure.
         """
+        self._assert_not_task_api_dict(task_dict)
         validate_client(self.client)
         prepare_and_validate_task_dict(self.client, task_dict)
         task_definition, task_builder_type = \
@@ -547,60 +631,6 @@ class ClientProvider:
             task_builder_type.build_dictionary(task_definition),
         )
         return task_dict, None
-
-    # FIXME: integration tests pass a single argument
-    @rpc_utils.expose('comp.task_api.create')
-    def create_task_api_task(
-            self,
-            golem_params: dict,
-            app_params: typing.Optional[dict] = None
-    ) -> TaskId:
-        logger.info('Creating Task API task. golem_params=%r', golem_params)
-
-        if self.client.has_assigned_task():
-            raise RuntimeError('Cannot create task while computing')
-
-        create_task_params, app_params = requestedtaskmanager.CreateTaskParams \
-            .parse(golem_params, app_params)
-
-        self._validate_enough_funds_to_pay_for_task(
-            create_task_params.max_price_per_hour,
-            create_task_params.max_subtasks,
-            create_task_params.concent_enabled,
-            False,
-        )
-
-        task_id = self.requested_task_manager.create_task(
-            create_task_params,
-            app_params,
-        )
-
-        self.client.funds_locker.lock_funds(
-            task_id,
-            create_task_params.max_price_per_hour,
-            create_task_params.max_subtasks,
-        )
-
-        self.client.update_setting('accept_tasks', False)
-
-        @defer.inlineCallbacks
-        def init_task():
-            try:
-                yield deferred_from_future(
-                    self.requested_task_manager.init_task(task_id))
-            except Exception:
-                self.client.funds_locker.remove_task(task_id)
-                self.client.update_setting('accept_tasks', True)
-                raise
-            else:
-                self.requested_task_manager.start_task(task_id)
-
-        # Do not yield, this is a fire and forget deferred as it may take long
-        # time to complete and shouldn't block the RPC call.
-        d = init_task()
-        d.addErrback(lambda e: logger.info("Task creation error %r", e))  # noqa pylint: disable=no-member
-
-        return task_id
 
     def _validate_enough_funds_to_pay_for_task(
             self,
@@ -649,7 +679,7 @@ class ClientProvider:
             raise eth_exceptions.NotEnoughFunds(missing_funds)
 
     @rpc_utils.expose('comp.task.restart')
-    @safe_run(_restart_task_error)
+    @defer.inlineCallbacks
     def restart_task(
             self,
             task_id: str,
@@ -660,9 +690,60 @@ class ClientProvider:
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
-        logger.info('Restarting task. task_id=%r', task_id)
-        logger.debug('force=%r, disable_concent=%r', force, disable_concent)
+        logger.info('Attempting to restart task. task_id=%r', task_id)
+        logger.debug(
+            'restart_task. task_id=%r, force=%r, disable_concent=%r',
+            task_id,
+            force,
+            disable_concent
+        )
+        assert self.client.task_server
 
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            result = yield self.restart_task_api_task(
+                task_id,
+                force,
+                disable_concent)
+            return result
+
+        return self.restart_legacy_task(task_id, force, disable_concent)
+
+    @defer.inlineCallbacks
+    def restart_task_api_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False,
+    ):
+        assert self.client.task_server
+        rtm = self.client.task_server.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+        if not task:
+            return None, f"Unknown task: {task_id}"
+
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.max_price_per_hour,
+                task.max_subtasks,
+                False if disable_concent else task.concent_enabled,
+                force)
+        except eth_exceptions.NotEnoughFunds as exc:
+            return None, str(exc)
+
+        try:
+            yield deferred_from_future(rtm.restart_task(task_id))
+        except Exception as exc:  # pylint: disable=broad-except
+            return None, str(exc)
+        return task_id, None
+
+    @safe_run(_restart_task_error)
+    def restart_legacy_task(
+            self,
+            task_id: str,
+            force: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
@@ -693,21 +774,27 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
+
         new_task = _create_task(self.client, task_dict)
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=new_task, force=force)
         deferred.addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
-                _self=self,
+                self=self,
                 task_id=task_id,
+                new_task=new_task,
             )
         )
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
 
     @rpc_utils.expose('comp.task.subtasks.restart')
-    @safe_run(_restart_subtasks_error)
+    @defer.inlineCallbacks
     def restart_subtasks(
             self,
             task_id: str,
@@ -732,6 +819,59 @@ class ClientProvider:
         :return: In case of any errors, returns the representation of the error
         (either a string or a dict). Otherwise, returns None.
         """
+        rtm = self.requested_task_manager
+        if rtm.task_exists(task_id):
+            try:
+                yield self.restart_task_api_task_subtasks(
+                    task_id,
+                    subtask_ids,
+                    ignore_gas_price)
+                return None
+            except Exception as exc:  # pylint: disable=broad-except
+                return str(exc)
+
+        return self.restart_legacy_task_subtasks(
+            task_id,
+            subtask_ids,
+            ignore_gas_price,
+            disable_concent)
+
+    @defer.inlineCallbacks
+    def restart_task_api_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+    ):
+        """ Restart selected subtasks within an active task. This method's
+            behaviour differs from 'restart_legacy_task_subtasks' in that
+            it does not create a new task and does not copy the finished
+            subtask state / results. Task API does not currently allow to
+            manage subtask state within the app. """
+        logger.info('Restarting subtasks. task_id=%r', task_id)
+
+        rtm = self.requested_task_manager
+        task = rtm.get_requested_task(task_id)
+        if not task:
+            raise RuntimeError(f'Task not found: {task_id!r}')
+
+        self._validate_enough_funds_to_pay_for_task(
+            task.max_price_per_hour,
+            len(subtask_ids),
+            task.concent_enabled,
+            ignore_gas_price
+        )
+
+        yield deferred_from_future(rtm.restart_subtasks(task_id, subtask_ids))
+
+    @safe_run(_restart_subtasks_error)
+    def restart_legacy_task_subtasks(
+            self,
+            task_id: str,
+            subtask_ids: typing.List[str],
+            ignore_gas_price: bool = False,
+            disable_concent: bool = False
+    ) -> typing.Optional[typing.Union[str, typing.Dict]]:
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return f'Task not found: {task_id!r}'
@@ -783,6 +923,7 @@ class ClientProvider:
             task_id: str,
             frame: int
     ) -> typing.Optional[typing.Union[str, typing.Dict]]:
+        self._assert_not_task_api_task(task_id)
         logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
                      task_id, frame)
 
@@ -847,6 +988,11 @@ class ClientProvider:
         if disable_concent:
             task_dict['concent_enabled'] = False
 
+        # Drop the final path component to keep a common parent for generated
+        # output directories
+        output_path = task_dict['options']['output_path']
+        task_dict['options']['output_path'] = str(Path(output_path).parent)
+
         logger.debug('_restart_finished_task_subtasks. task_dict=%s', task_dict)
         _restart_subtasks(
             client=self.client,
@@ -896,6 +1042,7 @@ class ClientProvider:
         :return: a result, error tuple. When the result is present the error
         should be None (and vice-versa).
         """
+        self._assert_not_task_api_task(task_id)
         task = self.task_manager.tasks.get(task_id)
         if not task:
             return None, f'Task not found: {task_id}'
@@ -952,6 +1099,8 @@ class ClientProvider:
         """
         subtask_count: int = 0
         subtask_price: int = 0
+
+        self._assert_not_task_api_task(task_id)
 
         if task_id:
             task: typing.Optional[taskbase.Task] = \
@@ -1016,6 +1165,7 @@ class ClientProvider:
         (along with an error message) if the task is not known or it is not a
         rendering task.
         """
+        self._assert_not_task_api_task(task_id)
         task = self.task_manager.tasks.get(task_id)
         if task is None:
             return None, f"Task not found: '{task_id}'"
@@ -1031,3 +1181,16 @@ class ClientProvider:
             fragments[subtask['extra_data']['start_task']].append(subtask)
 
         return fragments, None
+
+    def _assert_not_task_api_task(self, task_id):
+        rtm = self.client.task_server.requested_task_manager
+        if rtm.task_exists(task_id):
+            self._raise_task_api_not_supported()
+
+    def _assert_not_task_api_dict(self, task_dict: dict):
+        if 'golem' in task_dict and 'app' in task_dict:
+            self._raise_task_api_not_supported()
+
+    @staticmethod
+    def _raise_task_api_not_supported():
+        raise RuntimeError("Task API: unsupported RPC call")
