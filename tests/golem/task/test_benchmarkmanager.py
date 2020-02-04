@@ -7,7 +7,7 @@ from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Performance
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.testutils import DatabaseFixture, PEP8MixIn
-
+from golem.tools.ci import ci_skip
 
 benchmarks_needed = BenchmarkManager.benchmarks_needed
 
@@ -25,7 +25,7 @@ class MockThread:
     def target(self):
         return self._target
 
-
+@ci_skip
 class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     PEP8_FILES = ['golem/task/benchmarkmanager.py']
 

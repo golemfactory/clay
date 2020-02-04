@@ -298,9 +298,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 8
+            expected = 9
         else:
-            expected = 6
+            expected = 7
 
         assert pulls[0] == expected
 
@@ -327,9 +327,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 8
+            expected = 9
         else:
-            expected = 6
+            expected = 7
 
         assert builds[0] == expected
         assert tags[0] == expected
