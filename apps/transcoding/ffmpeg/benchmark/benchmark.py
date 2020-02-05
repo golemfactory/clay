@@ -1,9 +1,9 @@
 import logging
-import pathlib
 import uuid
 import sys
 
 from os.path import dirname, join
+from pathlib import Path
 
 from ffmpeg_tools.codecs import VideoCodec
 from ffmpeg_tools.formats import Container
@@ -23,9 +23,9 @@ class ffmpegBenchmark(CoreBenchmark):
 
         if hasattr(sys, 'frozen') and sys.frozen:
             exec_dir = dirname(sys.executable)
-            video_dir = join(exec_dir, 'examples', 'transcoding')
+            video_dir = Path(exec_dir).joinpath('examples', 'transcoding')
         else:
-            video_dir = pathlib.Path(__file__).resolve().parent
+            video_dir = Path(__file__).resolve().parent
 
         video = video_dir / 'resources' / 'test_video.mp4'
 
