@@ -129,6 +129,9 @@ class PyInstaller(Command):
         if not path.exists(blender_dir):
             makedirs(blender_dir)
 
+        if not path.exists(transcoding_dir):
+            makedirs(transcoding_dir)
+
         shutil.copy(blender_cpu_example, blender_dir)
         shutil.copy(blender_gpu_example, blender_dir)
         shutil.copy(transcoding_example, transcoding_dir)
