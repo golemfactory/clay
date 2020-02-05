@@ -41,7 +41,7 @@ class TestIntegration(TestCase, DatabaseFixture):
         # shared so using self.new_path would result with a pop-up window
         # appearing during every test.
         config = DockerCPUConfig(work_dirs=[self.new_path.parent.parent])
-        self.env = DockerCPUEnvironment(config)
+        self.env = DockerCPUEnvironment(config, dev_mode=False)
         yield self.env.prepare()
 
         # Download busybox image

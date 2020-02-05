@@ -311,9 +311,7 @@ class TestProtocols(unittest.TestCase):
             self.assertNotIn('session', p.__dict__)
 
     def test_connection_lost(self):
-        prt = [BasicProtocol(),
-               ServerProtocol(Server()),
-               SafeProtocol(Server())]
+        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
         for p in prt:
             p.transport = Transport()
             session_factory = SessionFactory(ASession)

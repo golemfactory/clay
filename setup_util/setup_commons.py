@@ -116,17 +116,25 @@ class PyInstaller(Command):
 
         examples_dir = path.join(dist_dir, 'examples')
         blender_dir = path.join(examples_dir, 'blender')
+        transcoding_dir = path.join(examples_dir, 'transcoding')
 
         blender_src_dir = path.join('apps', 'blender', 'benchmark', 'test_task')
+        transcoding_src_dir = path.join('apps', 'transcoding', 'ffmpeg',
+                                        'benchmark', 'resources')
 
         blender_cpu_example = path.join(blender_src_dir, 'bmw27_cpu.blend')
         blender_gpu_example = path.join(blender_src_dir, 'bmw27_gpu.blend')
+        transcoding_example = path.join(transcoding_src_dir, 'test_video.mp4')
 
         if not path.exists(blender_dir):
             makedirs(blender_dir)
 
+        if not path.exists(transcoding_dir):
+            makedirs(transcoding_dir)
+
         shutil.copy(blender_cpu_example, blender_dir)
         shutil.copy(blender_gpu_example, blender_dir)
+        shutil.copy(transcoding_example, transcoding_dir)
 
 
     def move(self, dist_dir):

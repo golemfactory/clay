@@ -1,5 +1,6 @@
 # pylint: disable=too-many-lines
 
+import copy
 import logging
 import os
 import pickle
@@ -15,7 +16,6 @@ from typing import (
     Iterable,
     List,
     Optional,
-    Tuple,
     Type,
     TYPE_CHECKING,
 )
@@ -28,7 +28,6 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
-from apps.core.task.coretaskstate import TaskDefinition
 from apps.wasm.environment import WasmTaskEnvironment
 
 from golem import model
@@ -59,6 +58,7 @@ from golem.task.timer import ProviderComputeTimers
 
 if TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
+    from typing import Tuple
     from apps.appsmanager import App
     from apps.core.task.coretaskstate import TaskDefinition
     from golem.task.taskbase import TaskTypeInfo, TaskBuilder
@@ -248,24 +248,32 @@ class TaskManager(TaskEventListener):
     @handle_task_key_error
     def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
         """ Increase mask for given task i.e. make it more restrictive """
-        task = self.tasks[task_id]
+        task_header = copy.deepcopy(self.tasks[task_id].header)
         try:
-            task.header.mask.increase(num_bits)
+            task_header.mask.increase(num_bits)
         except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
-            self.sign_task_header(task.header)
+            self.sign_task_header(task_header)
+            try:
+                self.tasks[task_id].header = task_header
+            except KeyError:
+                pass
 
     @handle_task_key_error
     def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
         """ Decrease mask for given task i.e. make it less restrictive """
-        task = self.tasks[task_id]
+        task_header = copy.deepcopy(self.tasks[task_id].header)
         try:
-            task.header.mask.decrease(num_bits)
+            task_header.mask.decrease(num_bits)
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
-            self.sign_task_header(task.header)
+            self.sign_task_header(task_header)
+            try:
+                self.tasks[task_id].header = task_header
+            except KeyError:
+                pass
 
     @handle_task_key_error
     def start_task(self, task_id):
@@ -277,7 +285,7 @@ class TaskManager(TaskEventListener):
 
         task_state.status = TaskStatus.waiting
         self.notice_task_updated(task_id, op=TaskOp.STARTED)
-        logger.info("Task %s started", task_id)
+        logger.info("Task started. task_id=%r", task_id)
 
     def _dump_filepath(self, task_id):
         return self.tasks_dir / ('%s.pickle' % (task_id,))
@@ -511,6 +519,12 @@ class TaskManager(TaskEventListener):
     def is_my_task(self, task_id: str) -> bool:
         """ Check if the task ID is known by this node. """
         return task_id in self.tasks
+
+    def is_task_active(self, task_id: str) -> bool:
+        if task_id not in self.tasks_states:
+            return False
+
+        return self.tasks_states[task_id].status.is_active()
 
     def should_wait_for_node(self,
                              task_id: str,
@@ -875,7 +889,7 @@ class TaskManager(TaskEventListener):
         ban_node = subtask_state.time_started + timeout < time.time()
         return self.task_computation_failure(
             subtask_id,
-            f'Task computation rejected: {err.value}',
+            f'Task computation rejected: {err.value if err else "unknown"}',
             ban_node,
         )
 
@@ -982,6 +996,36 @@ class TaskManager(TaskEventListener):
 
         logger.info("Task %s put into restarted state", task_id)
         self.notice_task_updated(task_id, op=TaskOp.RESTARTED)
+
+    @handle_task_key_error
+    def put_task_in_failed_state(
+            self,
+            task_id: str,
+            task_status=TaskStatus.errorCreating,
+    ) -> None:
+        assert not task_status.is_active()
+        assert not task_status.is_completed()
+        task_state = self.tasks_states[task_id]
+        if task_state.status.is_completed():
+            logger.debug(
+                "Task is already completed. Won't change status."
+                " current_status=%(current_status)s,"
+                " refused_status=%(refused_status)s",
+                {
+                    'current_status': task_state.status,
+                    'refused_status': task_status,
+                },
+            )
+            return
+
+        task_state.status = task_status
+
+        logger.info(
+            "Task %s put into failed state. task_status=%s",
+            task_id,
+            task_state,
+        )
+        self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
     @handle_subtask_key_error
     def restart_subtask(

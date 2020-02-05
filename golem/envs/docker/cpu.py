@@ -551,6 +551,7 @@ class DockerCPUEnvironment(EnvironmentBase):
     def __init__(
             self,
             config: DockerCPUConfig,
+            dev_mode: bool,
             env_logger: Optional[logging.Logger] = None,
     ) -> None:
         super().__init__(logger=env_logger or logger)
@@ -564,6 +565,7 @@ class DockerCPUEnvironment(EnvironmentBase):
         self._port_mapper = ContainerPortMapper(self._hypervisor)
         self._update_work_dirs(config.work_dirs)
         self._constrain_hypervisor(config)
+        self._dev_mode = dev_mode
 
     def _get_hypervisor_config(self) -> Dict[str, int]:
         return {
@@ -647,7 +649,8 @@ class DockerCPUEnvironment(EnvironmentBase):
                              f"is in invalid state: '{self._status}'")
         self._logger.info("Preparing prerequisites...")
 
-        if not Whitelist.is_whitelisted(prerequisites.image):
+        if not self._dev_mode and \
+                not Whitelist.is_whitelisted(prerequisites.image):
             self._logger.info(
                 "Docker image '%s' is not whitelisted.",
                 prerequisites.image,
@@ -656,11 +659,14 @@ class DockerCPUEnvironment(EnvironmentBase):
 
         def _prepare():
             try:
-                client = local_client()
-                client.pull(
-                    prerequisites.image,
-                    tag=prerequisites.tag
-                )
+                if not self._dev_mode:
+                    client = local_client()
+                    client.pull(
+                        prerequisites.image,
+                        tag=prerequisites.tag
+                    )
+                else:
+                    logger.info('task-api-dev mode enabled, use local images')
             except Exception as e:
                 self._error_occurred(
                     e, "Preparing prerequisites failed.", set_status=False)
@@ -763,7 +769,7 @@ class DockerCPUEnvironment(EnvironmentBase):
             config: Optional[EnvConfig] = None
     ) -> DockerCPURuntime:
         assert isinstance(payload, DockerRuntimePayload)
-        if not Whitelist.is_whitelisted(payload.image):
+        if not self._dev_mode and not Whitelist.is_whitelisted(payload.image):
             raise RuntimeError(f"Image '{payload.image}' is not whitelisted.")
 
         if config is not None:

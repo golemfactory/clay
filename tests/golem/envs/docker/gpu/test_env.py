@@ -21,7 +21,7 @@ class TestGPUEnvironment(TestCase):
         return_value=EnvSupportStatus(True)
     )
     def test_supported(self, mock_super_supported, *_):
-        env = DockerGPUEnvironment(DockerNvidiaGPUConfig())
+        env = DockerGPUEnvironment(DockerNvidiaGPUConfig(), dev_mode=False)
         status = env.supported()
 
         self.assertEqual(status, EnvSupportStatus(True))
@@ -30,7 +30,7 @@ class TestGPUEnvironment(TestCase):
     @mock.patch('golem.envs.docker.gpu.nvidia.is_supported', return_value=False)
     @mock.patch('golem.envs.docker.gpu.DockerCPUEnvironment.supported')
     def test_not_supported(self, mock_super_supported, *_):
-        env = DockerGPUEnvironment(DockerNvidiaGPUConfig())
+        env = DockerGPUEnvironment(DockerNvidiaGPUConfig(), dev_mode=False)
         status = env.supported()
         expected_status = EnvSupportStatus(False, "No supported GPU found")
 
@@ -51,7 +51,7 @@ class TestGPUEnvironment(TestCase):
     def test_validate_config_success(self):
         with mock.patch('golem.envs.docker.gpu.DockerGPUConfig.validate'):
             config = DockerGPUConfig()
-            DockerGPUEnvironment(config)
+            DockerGPUEnvironment(config, dev_mode=False)
             # pylint: disable=no-member
             self.assertEqual(config.validate.call_count, 1)
 
@@ -62,7 +62,7 @@ class TestGPUEnvironment(TestCase):
         ):
             config = DockerGPUConfig()
             with self.assertRaises(ValueError):
-                DockerGPUEnvironment(config)
+                DockerGPUEnvironment(config, dev_mode=False)
             # pylint: disable=no-member
             self.assertEqual(config.validate.call_count, 1)
 
@@ -73,7 +73,7 @@ class TestGPUEnvironment(TestCase):
         local_client.return_value = client
 
         config = DockerGPUConfig()
-        env = DockerGPUEnvironment(config)
+        env = DockerGPUEnvironment(config, dev_mode=False)
         container_config = dict(runtime='test')
 
         binds = [DockerBind(source=Path('/tmp'), target='/tmp')]

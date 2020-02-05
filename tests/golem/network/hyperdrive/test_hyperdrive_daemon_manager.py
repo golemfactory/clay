@@ -9,7 +9,6 @@ from golem.testutils import TempDirFixture
 from tests.factories.hyperdrive import hyperdrive_client_kwargs
 
 
-# pylint: disable=no-member
 class TestHyperdriveDaemonManager(TempDirFixture):
 
     @patch('golem.network.hyperdrive.daemon_manager.ProcessMonitor')

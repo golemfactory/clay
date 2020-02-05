@@ -1,13 +1,13 @@
 # pylint: disable=too-many-lines
 
 import collections
+import datetime
 import enum
 import logging
 import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from datetime import timedelta
 from typing import (
     Any,
     Dict,
@@ -762,11 +762,15 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
         self.remove_task(task_id)
         rtm = self.task_server.requested_task_manager
+        is_active = False
         if rtm.task_exists(task_id):
+            is_active = rtm.get_requested_task(task_id).status.is_active()
             yield deferred_from_future(rtm.delete_task(task_id))
         else:
+            is_active = self.task_server.task_manager.is_task_active(task_id)
             self.task_server.task_manager.delete_task(task_id)
-        self.funds_locker.remove_task(task_id)
+        if is_active:
+            self.funds_locker.remove_task(task_id)
 
     @rpc_utils.expose('comp.task.purge')
     @inlineCallbacks
@@ -949,8 +953,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                 'bid': float(task.max_price_per_hour) / denoms.ether,
                 'compute_on': compute_on,
                 'concent_enabled': task.concent_enabled,
-                'subtask_timeout': str(timedelta(seconds=task.subtask_timeout)),
-                'timeout': str(timedelta(seconds=task.task_timeout)),
+                'subtask_timeout': str(
+                    datetime.timedelta(seconds=task.subtask_timeout),
+                ),
+                'timeout': str(datetime.timedelta(seconds=task.task_timeout)),
                 'type': app_name,
                 'options': {
                     'output_path': task.output_directory
@@ -1750,13 +1756,20 @@ class MaskUpdateService(LoopingCallService):
 class DailyJobsService(LoopingCallService):
     def __init__(self):
         super().__init__(
-            interval_seconds=timedelta(days=1).total_seconds(),
+            interval_seconds=datetime.timedelta(days=1).total_seconds(),
         )
 
     def _run(self) -> None:
         jobs = (
             nodeskeeper.sweep,
             msg_queue.sweep,
+            lambda: logger.info(
+                "Time marker. time(): %s now(): %s, utcnow(): %s, delta: %s",
+                time.time(),
+                datetime.datetime.now(),
+                datetime.datetime.utcnow(),
+                datetime.datetime.now() - datetime.datetime.utcnow(),
+            ),
         )
         logger.info('Running daily jobs')
         for job in jobs:

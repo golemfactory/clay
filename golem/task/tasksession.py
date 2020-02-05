@@ -598,6 +598,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         def _cannot_compute(reason):
+            assert isinstance(reason, message.tasks.CannotComputeTask.REASON)
             logger.info(
                 "Cannot compute subtask. subtask_id: %r, reason: %r",
                 ctd["subtask_id"],
@@ -698,7 +699,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_server.task_given(msg):
-            _cannot_compute(None)
+            _cannot_compute(reasons.CannotTakeWork)
             return
 
     # pylint: enable=too-many-return-statements, too-many-branches

@@ -50,7 +50,7 @@ from golem.core.deferred import (
     deferred_from_future,
     sync_wait,
 )
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES, ENV_TASK_API_DEV
 from golem.environments.environment import (
     Environment as OldEnv,
     SupportStatus,
@@ -92,6 +92,7 @@ from golem.task.server.whitelist import DockerWhitelistRPC
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
+from golem.tools import memoryhelper
 from golem.utils import decode_hex
 from .server import concent
 from .server import helpers
@@ -145,9 +146,13 @@ class TaskServer(
         runtime_logs_dir = get_log_dir(client.datadir)
         new_env_manager = EnvironmentManager(runtime_logs_dir)
         register_built_in_repositories()
+        task_api_dev_mode = ENV_TASK_API_DEV in os.environ \
+            and os.environ[ENV_TASK_API_DEV] == "1"
         register_environments(
             work_dir=self.get_task_computer_root(),
-            env_manager=new_env_manager)
+            env_manager=new_env_manager,
+            dev_mode=task_api_dev_mode,
+        )
 
         app_dir = self.get_app_dir()
         built_in_apps = save_built_in_app_definitions(app_dir)
@@ -797,14 +802,12 @@ class TaskServer(
                 task_header.task_id,
                 task_header.signature,
             )
-            logger.debug("task_header=%r", task_header)
             return False
         if task_header.deadline < get_timestamp_utc():
             logger.info(
                 "Task's deadline already in the past. task_id=%r",
                 task_header.task_id
             )
-            logger.debug("task_header=%r", task_header)
             return False
 
         if task_header.environment_prerequisites:
@@ -1101,6 +1104,9 @@ class TaskServer(
             provider_perf: float, max_memory_size: int,
             offer_hash: str) -> bool:
 
+        # max_memory_size: int KiB
+        max_memory_size_b = int(max_memory_size) * 1024  # Bytes
+
         node_name_id = short_node_id(node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
 
@@ -1141,9 +1147,22 @@ class TaskServer(
                 })
             return False
 
-        if min_memory > (int(max_memory_size) * 1024):
-            logger.info('insufficient provider memory size: '
-                        f'{min_memory} B < {max_memory_size} KiB; {ids}')
+        if min_memory > max_memory_size_b:
+            logger.info(
+                'insufficient provider memory size:'
+                ' %(available)s < %(min_memory)s;'
+                ' Free at least %(missing)s; %(ids)s',
+                {
+                    'min_memory': memoryhelper.dir_size_to_display(min_memory),
+                    'available': memoryhelper.dir_size_to_display(
+                        max_memory_size_b,
+                    ),
+                    'missing': memoryhelper.dir_size_to_display(
+                        min_memory - max_memory_size_b,
+                    ),
+                    'ids': ids,
+                }
+            )
             self.notify_provider_rejected(
                 node_id=node_id, task_id=task_id,
                 reason=self.RejectedReason.memory_size,
