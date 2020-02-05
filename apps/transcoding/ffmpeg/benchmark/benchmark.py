@@ -25,9 +25,9 @@ class ffmpegBenchmark(CoreBenchmark):
             exec_dir = dirname(sys.executable)
             video_dir = Path(exec_dir).joinpath('examples', 'transcoding')
         else:
-            video_dir = Path(__file__).resolve().parent
+            video_dir = Path(__file__).resolve().parent.joinpath('resources')
 
-        video = video_dir / 'resources' / 'test_video.mp4'
+        video = video_dir / 'test_video.mp4'
 
         task_def = ffmpegTaskDefinition()
         task_def.task_id = str(uuid.uuid4())
