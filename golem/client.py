@@ -1548,12 +1548,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
 
 class DoWorkService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self, client: Client) -> None:
         super().__init__(interval_seconds=1)
         self._client = client
-        self._check_ts: Dict[Hashable, Any] = {}
 
     def start(self):
         super().start(now=False)
@@ -1582,17 +1579,8 @@ class DoWorkService(LoopingCallService):
         except Exception:
             logger.exception("ranking.sync_network failed")
 
-    def _time_for(self, key: Hashable, interval_seconds: float):
-        now = time.time()
-        if now >= self._check_ts.get(key, 0):
-            self._check_ts[key] = now + interval_seconds
-            return True
-        return False
-
 
 class MonitoringPublisherService(LoopingCallService):
-    _task_server = None  # type: TaskServer
-
     def __init__(self,
                  task_server: TaskServer,
                  interval_seconds: int) -> None:
@@ -1635,18 +1623,12 @@ class MonitoringPublisherService(LoopingCallService):
 
 
 class NetworkConnectionPublisherService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
         self._last_value = self.poll()
-
-    def _run_async(self):
-        # Skip the async_run call and publish events in the main thread
-        self._run()
 
     def _run(self):
         current_value = self.poll()
@@ -1663,11 +1645,10 @@ class NetworkConnectionPublisherService(LoopingCallService):
 
 
 class TaskArchiverService(LoopingCallService):
-    _task_archiver = None  # type: TaskArchiver
-
     def __init__(self,
                  task_archiver: TaskArchiver) -> None:
-        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
+        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL,
+                         run_in_thread=True)
         self._task_archiver = task_archiver
 
     def _run(self):
@@ -1675,14 +1656,11 @@ class TaskArchiverService(LoopingCallService):
 
 
 class ResourceCleanerService(LoopingCallService):
-    _client = None  # type: Client
-    older_than_seconds = 0  # type: int
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int,
                  older_than_seconds: int) -> None:
-        super().__init__(interval_seconds)
+        super().__init__(interval_seconds, run_in_thread=True)
         self._client = client
         self.older_than_seconds = older_than_seconds
 
@@ -1694,8 +1672,6 @@ class ResourceCleanerService(LoopingCallService):
 
 
 class TaskCleanerService(LoopingCallService):
-    _client = None  # type: Client
-
     def __init__(self,
                  client: Client,
                  interval_seconds: int) -> None:
@@ -1707,7 +1683,6 @@ class TaskCleanerService(LoopingCallService):
 
 
 class MaskUpdateService(LoopingCallService):
-
     def __init__(
             self,
             requested_task_manager: 'RequestedTaskManager',
