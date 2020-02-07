@@ -173,10 +173,11 @@ class _DenyAcl(Acl):
             try:
                 existNode = ACLDeniedNodes.get(node_id=node_id)
             except ACLDeniedNodes.DoesNotExist:
-                existNode = None
-            if not existNode:
                 peers = self._client.p2pservice.incoming_peers or dict()
-                node = peers[node_id]
+                if node_id in peers:
+                    node = peers[node_id]
+                else:
+                    node = dict(node_name="Unknown")
                 node_db = ACLDeniedNodes(
                     node_id=node_id, node_name=node['node_name'])
                 node_db.save()
@@ -194,9 +195,6 @@ class _DenyAcl(Acl):
             try:
                 existNode = ACLDeniedNodes.get(node_id=node_id)
             except ACLDeniedNodes.DoesNotExist:
-                existNode = None
-
-            if existNode:
                 ACLDeniedNodes \
                     .delete() \
                     .where(ACLDeniedNodes.node_id == node_id) \
@@ -230,8 +228,8 @@ class _DenyAcl(Acl):
                 'node_name': _get_node_info(
                     self._client, identity)['node_name']
             },
-             AclRule.deny,
-             decode_deadline(deadline))
+                AclRule.deny,
+                decode_deadline(deadline))
             for (identity, deadline) in self._deny_deadlines.items()]
         return AclStatus(AclRule.allow, rules)
 
