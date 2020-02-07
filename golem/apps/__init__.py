@@ -1,12 +1,11 @@
-import hashlib
 import logging
 from pathlib import Path
-from typing import Dict, Any, Iterator, Type, Tuple
+from typing import Iterator, Type, Tuple
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
-from pathvalidate import sanitize_filename
+from golem_task_api.apputils.app_definition import AppDefinitionBase
 
 from golem.marketplace import (
     RequestorMarketStrategy,
@@ -22,17 +21,7 @@ AppId = str
 
 @dataclass_json
 @dataclass
-class AppDefinition:
-    name: str
-    requestor_env: str
-    requestor_prereq: Dict[str, Any] = field(metadata=config(
-        mm_field=mm_fields.Dict(keys=mm_fields.Str())
-    ))
-    max_benchmark_score: float
-    version: str = '0.0'
-    description: str = ''
-    author: str = ''
-    license: str = ''
+class AppDefinition(AppDefinitionBase):
 
     market_strategy: Type[RequestorMarketStrategy] = field(
         metadata=config(
@@ -43,31 +32,12 @@ class AppDefinition:
         default=DEFAULT_REQUESTOR_MARKET_STRATEGY,
     )
 
-    @property
-    def id(self) -> AppId:
-        return hashlib.blake2b(  # pylint: disable=no-member
-            self.to_json().encode('utf-8'),
-            digest_size=16
-        ).hexdigest()
-
     @classmethod
     def from_json(cls, json_str: str) -> 'AppDefinition':
         raise NotImplementedError  # A stub to silence the linters
 
     def to_json(self) -> str:
         raise NotImplementedError  # A stub to silence the linters
-
-
-def save_app_to_json_file(app_def: AppDefinition, json_file: Path) -> None:
-    """ Save application definition to the given file in JSON format.
-        Create parent directories if they don't exist. """
-    try:
-        json_file.parent.mkdir(parents=True, exist_ok=True)
-        json_file.write_text(app_def.to_json())
-    except OSError:
-        msg = f"Error writing app definition to file '{json_file}."
-        logger.exception(msg)
-        raise ValueError(msg)
 
 
 def load_app_from_json_file(json_file: Path) -> AppDefinition:
