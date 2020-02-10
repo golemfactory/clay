@@ -171,7 +171,8 @@ class _DenyAcl(Acl):
 
         if persist and timeout_seconds == -1:
             try:
-                existNode = ACLDeniedNodes.get(node_id=node_id)
+                ACLDeniedNodes.get(node_id=node_id)
+                raise Exception(node_id)
             except ACLDeniedNodes.DoesNotExist:
                 peers = self._client.p2pservice.incoming_peers or dict()
                 if node_id in peers:
@@ -181,6 +182,7 @@ class _DenyAcl(Acl):
                 node_db = ACLDeniedNodes(
                     node_id=node_id, node_name=node['node_name'])
                 node_db.save()
+
 
     def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
@@ -193,8 +195,10 @@ class _DenyAcl(Acl):
 
         if persist:
             try:
-                existNode = ACLDeniedNodes.get(node_id=node_id)
+                ACLDeniedNodes.get(node_id=node_id)
             except ACLDeniedNodes.DoesNotExist:
+                raise Exception(node_id)
+            finally:
                 ACLDeniedNodes \
                     .delete() \
                     .where(ACLDeniedNodes.node_id == node_id) \
@@ -284,11 +288,10 @@ class _AllowAcl(Acl):
             self._allow_list = [node for node in self._allow_list if not (
                 node_id == node.node_id)]
             try:
-                existNode = ACLAllowedNodes.get(node_id=node_id)
+                ACLAllowedNodes.get(node_id=node_id)
             except ACLAllowedNodes.DoesNotExist:
-                existNode = None
-
-            if existNode:
+                raise Exception(node_id)
+            finally: 
                 ACLAllowedNodes \
                     .delete() \
                     .where(ACLAllowedNodes.node_id == node_id) \
@@ -310,11 +313,9 @@ class _AllowAcl(Acl):
 
         if persist:
             try:
-                existNode = ACLAllowedNodes.get(node_id=node_id)
+                ACLAllowedNodes.get(node_id=node_id)
+                raise Exception(node_id)
             except ACLAllowedNodes.DoesNotExist:
-                existNode = None
-
-            if not existNode:
                 node_model.save()
 
     def status(self) -> AclStatus:

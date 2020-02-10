@@ -1259,10 +1259,14 @@ class TaskServer(
     @rpc_utils.expose('net.peer.allow')
     def allow_node(self, node_id: Union[str, list],
                    persist: bool = True) -> None:
-        if isinstance(node_id, str):
-            node_id = [node_id]
-        for item in node_id:
-            self.acl.allow(item, persist)
+        try:
+            if isinstance(node_id, str):
+                node_id = [node_id]
+            for item in node_id:
+                self.acl.allow(item, persist)
+            return True, None
+        except Exception as e:  # pylint: disable=broad-except
+            return False, str(e)
 
     @rpc_utils.expose('net.peer.allow_ip')
     def allow_ip(self, ip: Union[str, list], persist: bool = True) -> None:
