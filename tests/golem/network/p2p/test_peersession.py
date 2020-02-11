@@ -243,7 +243,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     def test_react_to_hello_new_version(self):
         listener = MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
-        self.peer_session.p2p_service.seeds = {
+        self.peer_session.p2p_service.bootstrap_seeds = {
             (host, random.randint(0, 65535))
             for host in
             ipaddress.ip_network('192.0.2.0/29').hosts()
@@ -273,7 +273,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         listener.reset_mock()
 
         # Choose one seed
-        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        chosen_seed = random.choice(tuple(
+            self.peer_session.p2p_service.bootstrap_seeds))
         msg_kwargs['port'] = chosen_seed[1]
         self.peer_session.address = chosen_seed[0]
 
@@ -306,7 +307,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             ipaddress.ip_network('192.0.2.0/29').hosts()
         }
         version = semantic_version.Version(golem.__version__)
-        chosen_seed = random.choice(tuple(self.peer_session.p2p_service.seeds))
+        chosen_seed = random.choice(tuple(
+            self.peer_session.p2p_service.bootstrap_seeds))
         self.peer_session.address = chosen_seed[0]
         msg = msg_factories.base.HelloFactory(
             client_ver=f"{version.major}.{version.next_minor().minor}",
