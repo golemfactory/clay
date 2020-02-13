@@ -1524,29 +1524,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def enable_talkback(value: bool):
         enable_sentry_logger(value)
 
-    @rpc_utils.expose('net.peer.block')
-    def block_node(
-            self,
-            node_id: Union[str, list],
-            timeout_seconds: int = -1,
-    ) -> Tuple[bool, Optional[str]]:
-        if not self.task_server:
-            return False, 'Client is not ready'
-
-        try:
-            if isinstance(node_id, str):
-                node_id = [node_id]
-
-            for item in node_id:
-                self.task_server.disallow_node(item,
-                                               timeout_seconds=timeout_seconds,
-                                               persist=True)
-
-            return True, None
-        except Exception as e:  # pylint: disable=broad-except
-            return False, str(e)
-
-
 class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
