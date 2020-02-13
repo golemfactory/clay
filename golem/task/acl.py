@@ -183,7 +183,6 @@ class _DenyAcl(Acl):
                     node_id=node_id, node_name=node['node_name'])
                 node_db.save()
 
-
     def allow(self, node_id: str, persist: bool = False) -> None:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
@@ -232,8 +231,8 @@ class _DenyAcl(Acl):
                 'node_name': _get_node_info(
                     self._client, identity)['node_name']
             },
-                AclRule.deny,
-                decode_deadline(deadline))
+             AclRule.deny,
+             decode_deadline(deadline))
             for (identity, deadline) in self._deny_deadlines.items()]
         return AclStatus(AclRule.allow, rules)
 
@@ -291,7 +290,7 @@ class _AllowAcl(Acl):
                 ACLAllowedNodes.get(node_id=node_id)
             except ACLAllowedNodes.DoesNotExist:
                 raise Exception(node_id)
-            finally: 
+            finally:
                 ACLAllowedNodes \
                     .delete() \
                     .where(ACLAllowedNodes.node_id == node_id) \

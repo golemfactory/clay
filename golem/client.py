@@ -1524,6 +1524,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def enable_talkback(value: bool):
         enable_sentry_logger(value)
 
+
 class DoWorkService(LoopingCallService):
     _client = None  # type: Client
 
