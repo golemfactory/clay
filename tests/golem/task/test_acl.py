@@ -224,7 +224,7 @@ class TestAcl(DatabaseFixture):
         acl = get_acl(self.client)
         acl.disallow('Node1', persist=True)
         acl.disallow('Node2', persist=True)
-        acl.disallow('Node1', persist=True)
+        self.assertRaises(Exception, acl.disallow, 'Node1', persist=True)
         acl.allow('Node1')
         acl.allow('Node4', persist=True)
 
@@ -246,10 +246,9 @@ class TestAcl(DatabaseFixture):
     def test_allow_disallow_persistence(self):
 
         acl = setup_acl(self.client, AclRule.deny, ['Node1', 'Node2'])
-
         acl.disallow('Node1', persist=True)
-        acl.disallow('Node3', persist=True)
-        acl.disallow('Node1', persist=True)
+        self.assertRaises(Exception, acl.disallow, 'Node3', persist=True)
+        self.assertRaises(Exception, acl.disallow, 'Node1', persist=True)
         acl.allow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
