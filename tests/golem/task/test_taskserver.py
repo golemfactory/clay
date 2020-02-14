@@ -150,7 +150,7 @@ class TaskServerTestBase(LogTestCase,
         self.client.concent_service.enabled = False
         self.client.keys_auth.key_id = 'key_id'
         self.client.keys_auth.eth_addr = 'eth_addr'
-
+        self.client.p2pservice.incoming_peers = MagicMock()
         self.ts = TaskServer(
             node=dt_p2p_factory.Node(),
             config_desc=self.ccd,
@@ -721,10 +721,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.acl = Mock()
 
         # when
-        ts.disallow_node('ABC', 314, True)
+        ts.disallow_node('ABC', 314)
 
         # then
-        ts.acl.disallow.assert_called_once_with('ABC', 314, True)
+        ts.acl.disallow.assert_called_once_with('ABC', 314)
 
     def test_disallow_ip(self, *_):
         # given

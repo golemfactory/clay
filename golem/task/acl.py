@@ -70,7 +70,7 @@ class Acl(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def disallow(self, node_id: str, timeout_seconds: int, persist: bool) \
+    def disallow(self, node_id: str, timeout_seconds: int) \
             -> None:
         raise NotImplementedError
 
@@ -147,13 +147,11 @@ class _DenyAcl(Acl):
         return True, None
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1,
-                 persist: bool = False) -> None:
+                 timeout_seconds: int = -1) -> None:
         logger.info(
-            'Banned node. node_id=%s, timeout=%ds, persist=%s',
+            'Banned node. node_id=%s, timeout=%ds',
             common.short_node_id(node_id),
             timeout_seconds,
-            persist,
         )
 
         if timeout_seconds < 0:
@@ -169,7 +167,7 @@ class _DenyAcl(Acl):
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
 
-        if persist and timeout_seconds == -1:
+        if timeout_seconds == -1:
             try:
                 ACLDeniedNodes.get(node_id=node_id)
                 raise Exception(node_id)
@@ -274,15 +272,13 @@ class _AllowAcl(Acl):
         return False, DenyReason.not_whitelisted
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = 0,
-                 persist: bool = False) -> None:
+                 timeout_seconds: int = -1) -> None:
 
-        if persist:
+        if timeout_seconds < 0:
             logger.info(
-                'Banned node. node_id=%s, timeout=%ds, persist=%s',
+                'Removed node. node_id=%s, timeout=%ds',
                 common.short_node_id(node_id),
-                timeout_seconds,
-                persist,
+                timeout_seconds
             )
             self._allow_list = [node for node in self._allow_list if not (
                 node_id == node.node_id)]

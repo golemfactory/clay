@@ -1245,13 +1245,12 @@ class TaskServer(
             self,
             node_id: Union[str, list],
             timeout_seconds: int = -1,
-            persist: bool = False
     ) -> Tuple[bool, Optional[str]]:
         try:
             if isinstance(node_id, str):
                 node_id = [node_id]
             for item in node_id:
-                self.acl.disallow(item, timeout_seconds, persist)
+                self.acl.disallow(item, timeout_seconds)
             return True, None
         except Exception as e:  # pylint: disable=broad-except
             return False, str(e)

@@ -1266,13 +1266,13 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_block_node(self, *_):
         self.client.task_server.acl = Mock(spec=Acl)
-        self.client.task_server.disallow_node('node_id', -1, True)
+        self.client.task_server.disallow_node('node_id', -1)
         self.client.task_server.acl.disallow.assert_called_once_with(
-            'node_id', -1, True)
+            'node_id', -1)
         self.client.task_server.disallow_node(
-            ['node_id_1', 'node_id_2'], -1, True)
+            ['node_id_1', 'node_id_2'], -1)
         self.client.task_server.acl.disallow.assert_called_with(
-            'node_id_2', -1, True)
+            'node_id_2', -1)
 
     @classmethod
     def __new_incoming_peer(cls):
