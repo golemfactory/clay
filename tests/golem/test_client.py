@@ -1266,10 +1266,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_block_node(self, *_):
         self.client.task_server.acl = Mock(spec=Acl)
-        self.client.block_node('node_id')
+        self.client.task_server.disallow_node('node_id', -1, True)
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', -1, True)
-        self.client.block_node(['node_id_1', 'node_id_2'])
+        self.client.task_server.disallow_node(['node_id_1', 'node_id_2'], -1, True)
         self.client.task_server.acl.disallow.assert_called_with(
             'node_id_2', -1, True)
 
