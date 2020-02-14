@@ -1269,7 +1269,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.disallow_node('node_id', -1, True)
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', -1, True)
-        self.client.task_server.disallow_node(['node_id_1', 'node_id_2'], -1, True)
+        self.client.task_server.disallow_node(
+            ['node_id_1', 'node_id_2'], -1, True)
         self.client.task_server.acl.disallow.assert_called_with(
             'node_id_2', -1, True)
 
