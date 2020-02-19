@@ -8,13 +8,17 @@ from twisted.internet.defer import maybeDeferred
 from twisted.internet.endpoints import TCP4ServerEndpoint, \
     TCP4ClientEndpoint, TCP6ServerEndpoint, TCP6ClientEndpoint, \
     HostnameEndpoint
-from twisted.internet.protocol import connectionDone
 
 from golem.core.databuffer import DataBuffer
 from golem.core.hostaddress import get_host_addresses
+from golem.network import broadcast
 from golem.network.transport.limiter import CallRateLimiter
-from .network import Network, SessionProtocol, IncomingProtocolFactoryWrapper, \
-    OutgoingProtocolFactoryWrapper
+from .network import (
+    IncomingProtocolFactory,
+    Network,
+    OutgoingProtocolFactory,
+    SessionProtocol,
+)
 from .spamprotector import SpamProtector
 
 # Import helpers to this namespace
@@ -46,9 +50,9 @@ class TCPNetwork(Network):
         """
         from twisted.internet import reactor
         self.reactor = reactor
-        self.incoming_protocol_factory = IncomingProtocolFactoryWrapper(
+        self.incoming_protocol_factory = IncomingProtocolFactory.from_factory(
             protocol_factory)
-        self.outgoing_protocol_factory = OutgoingProtocolFactoryWrapper(
+        self.outgoing_protocol_factory = OutgoingProtocolFactory.from_factory(
             protocol_factory)
         self.use_ipv6 = use_ipv6
         self.timeout = timeout
@@ -269,11 +273,18 @@ class BasicProtocol(SessionProtocol):
        serialization
     """
 
-    def __init__(self):
-        super().__init__()
-        self.opened = False
+    def __init__(self, session_factory, **_kwargs):
+        super().__init__(session_factory)
         self.db = DataBuffer()
         self.spam_protector = SpamProtector()
+        self.machine.add_transition_callback(
+            'connectionLostTransition', 'connected', 'disconnected',
+            'before',
+            lambda reason: (
+                (self.session.dropped() if self.session else True)
+                or True  # always True
+            ),
+        )
 
     def send_message(self, msg):
         """
@@ -307,12 +318,11 @@ class BasicProtocol(SessionProtocol):
         """
         self.transport.loseConnection()
 
-    # Protocol functions
-    def connectionMade(self):
-        """Called when new connection is successfully opened"""
-        SessionProtocol.connectionMade(self)
-        self.opened = True
+    @property
+    def opened(self):
+        return self.is_connected()  # pylint: disable=no-member
 
+    # Protocol functions
     def dataReceived(self, data):
         """Called when additional chunk of data
             is received from another peer"""
@@ -325,16 +335,9 @@ class BasicProtocol(SessionProtocol):
 
         self._interpret(data)
 
-    def connectionLost(self, reason=connectionDone):
-        """Called when connection is lost (for whatever reason)"""
-        self.opened = False
-        if self.session:
-            self.session.dropped()
-
-        SessionProtocol.connectionLost(self, reason)
-
     # Protected functions
-    def _prepare_msg_to_send(self, msg):
+    @classmethod
+    def _prepare_msg_to_send(cls, msg):
         ser_msg = golem_messages.dump(msg, None, None)
 
         db = DataBuffer()
@@ -351,7 +354,8 @@ class BasicProtocol(SessionProtocol):
         for m in mess:
             self.session.interpret(m)
 
-    def _load_message(self, data):
+    @classmethod
+    def _load_message(cls, data):
         msg = golem_messages.load(data, None, None)
         logger.debug(
             'BasicProtocol._load_message(): received %r',
@@ -420,27 +424,30 @@ class ServerProtocol(BasicProtocol):
     """ Basic protocol connected to server instance
     """
 
-    def __init__(self, server):
+    def __init__(self, session_factory, server, **_kwargs):
         """
         :param Server server: server instance
         :return None:
         """
-        BasicProtocol.__init__(self)
+        BasicProtocol.__init__(self, session_factory)
         self.server = server
+        self.machine.add_transition_callback(
+            'connectionMadeTransition', 'initial', 'connected',
+            'after',
+            lambda: (
+                self.server.new_connection(self.session)
+                or True  # always True
+            ),
+        )
 
     # Protocol functions
-    def connectionMade(self):
-        """Called when new connection is successfully opened"""
-        BasicProtocol.connectionMade(self)
-        self.server.new_connection(self.session)
-
     def _can_receive(self) -> bool:
         if not self.opened:
             logger.warning("Protocol is closed")
             return False
 
         if not self.session and self.server:
-            self.opened = False
+            self.connectionLostTransition()  # pylint: disable=no-member
             logger.warning('Peer for connection is None')
             return False
 
@@ -479,3 +486,89 @@ class SafeProtocol(ServerProtocol):
             msg,
         )
         return msg
+
+
+class BroadcastProtocol(SafeProtocol):
+    """Send and expect broadcast message before any other communication"""
+
+    def __init__(self, session_factory, server, **_kwargs):
+        super().__init__(session_factory, server)
+        self.machine.add_state('handshaking')
+        self.machine.add_transition(
+            'connectionMadeTransition',
+            'initial',
+            'handshaking',
+            after=self.sendHandshake,
+        )
+        self.machine.move_transitions(
+            from_trigger='connectionMadeTransition',
+            from_source='initial',
+            from_dest='connected',
+            to_trigger='handshakeFinished',
+            to_source='handshaking',
+            to_dest='connected',
+        )
+        self.machine.copy_transitions(
+            from_trigger='connectionLostTransition',
+            from_source='connected',
+            from_dest='disconnected',
+            to_trigger='connectionLostTransition',
+            to_source='handshaking',
+            to_dest='disconnected',
+        )
+
+    def sendHandshake(self) -> bool:
+        handshake_bytes = broadcast.prepare_handshake().to_bytes()
+        db = DataBuffer()
+        db.append_len_prefixed_bytes(handshake_bytes)
+
+        self.transport.getHandle()
+        self.transport.write(db.read_all())
+        return True
+
+    def dataReceived(self, data: bytes) -> None:
+        if self.is_connected():  # pylint: disable=no-member
+            return super().dataReceived(data)
+        if self.is_handshaking():  # pylint: disable=no-member
+            try:
+                return self.dataReceivedHandshake(data)
+            except broadcast.BroadcastError:
+                logger.debug(
+                    'Invalid broadcast received. peer=%s, data=%s',
+                    self.transport.getPeer(),
+                    data,
+                )
+                return None
+        logger.debug(
+            '%(module_name)s.%(class_name)s.dataReceived(%(data)r)'
+            ' Protocol not ready.'
+            ' Current state: %(machine)s',
+            {
+                'class_name': self.__class__.__qualname__,
+                'module_name': __name__,
+                'data': data,
+                'machine': self.state,  # pylint: disable=no-member
+            },
+        )
+        return None
+
+    def dataReceivedHandshake(self, data: bytes) -> None:
+        logger.debug('handshake data received %sb', len(data))
+        self.db.append_bytes(data)
+        b = self.db.read_len_prefixed_bytes()
+        if b is None:
+            return None
+        broadcasts_l = broadcast.BroadcastList.from_bytes(b)
+        for bc in broadcasts_l:
+            if not bc.process():
+                logger.debug(
+                    'Broadcast rejected: %s, peer: %s',
+                    bc,
+                    self.transport.getPeer(),
+                )
+        self.handshakeFinished()  # pylint: disable=no-member
+        logger.debug(
+            "Sucesfuly finished handshake with %s",
+            self.transport.getPeer(),
+        )
+        return None

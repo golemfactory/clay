@@ -11,7 +11,6 @@ from copy import copy, deepcopy
 from typing import (
     Any,
     Dict,
-    Hashable,
     Iterable,
     List,
     Optional,
@@ -61,6 +60,7 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.network import broadcast
 from golem.network import nodeskeeper
 from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
@@ -263,6 +263,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
+        from golem.rpc.api import broadcast_ as api_broadcast
         from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
         from golem.apps import rpc as apps_rpc
@@ -282,6 +283,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             task_rpc_provider,
             app_rpc_provider,
             api_ethereum.ETSProvider(self.transaction_system),
+            api_broadcast,
         )
         mapping = {}
         for rpc_provider in providers:
@@ -1743,6 +1745,7 @@ class DailyJobsService(LoopingCallService):
         jobs = (
             nodeskeeper.sweep,
             msg_queue.sweep,
+            broadcast.sweep,
             lambda: logger.info(
                 "Time marker. time(): %s now(): %s, utcnow(): %s, delta: %s",
                 time.time(),

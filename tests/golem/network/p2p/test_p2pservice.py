@@ -321,11 +321,11 @@ class TestP2PService(TestDatabaseWithReactor):
         self.assertGreater(len(self.service.seeds), 0)
         self.service.connect_to_known_hosts = True
         self.service.connect_to_seeds()
-        self.assertEquals(m_connect.call_count, 1)
+        self.assertEqual(m_connect.call_count, 1)
         m_connect.reset_mock()
         m_connect.side_effect = RuntimeError('ConnectionProblem')
         self.service.connect_to_seeds()
-        self.assertEquals(m_connect.call_count, len(self.service.seeds))
+        self.assertEqual(m_connect.call_count, len(self.service.seeds))
 
     def test_want_to_start_task_session(self):
         self.service.task_server = mock.MagicMock()
@@ -336,7 +336,7 @@ class TestP2PService(TestDatabaseWithReactor):
         self.service.task_server.task_connections_helper \
             .is_new_conn_request = mock.Mock(side_effect=lambda *_: True)
 
-        def true_method(*args) -> bool:
+        def true_method(*_args) -> bool:
             return True
 
         def gen_uuid():
@@ -473,19 +473,18 @@ class TestP2PService(TestDatabaseWithReactor):
         socket.fileno = mock.Mock(return_value=0)
         socket.getsockopt = mock.Mock(return_value=None)
         socket.connect_ex = mock.Mock(return_value=EISCONN)
+        socket.recv = mock.Mock(return_value=b'')
 
         addr = SocketAddress('127.0.0.1', 40102)
         self.service.connect(addr)
         time.sleep(0.1)
-        assert connection_established.called
-        assert connection_established.call_args[0][0] is not None
-        assert connection_established.call_args[1]['conn_id'] is not None
+        connection_established.assert_called_once_with(None, conn_id=mock.ANY)
 
     @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket',
                 side_effect=Exception('something has failed'))
     @mock.patch('golem.network.p2p.p2pservice.'
                 'P2PService._P2PService__connection_failure')
-    def test_connect_failure(self, connection_failure, createSocket):
+    def test_connect_failure(self, connection_failure, _createSocket):
         self.service.resume()
         addr = SocketAddress('127.0.0.1', 40102)
         self.service.connect(addr)

@@ -72,7 +72,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         network = tcpnetwork.TCPNetwork(
             ProtocolFactory(
-                tcpnetwork.SafeProtocol,
+                tcpnetwork.BroadcastProtocol,
                 self,
                 SessionFactory(PeerSession)
             ),
