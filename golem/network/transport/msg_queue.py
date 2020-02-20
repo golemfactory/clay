@@ -12,6 +12,7 @@ import peewee
 from golem import decorators
 from golem import model
 from golem.core import variables
+from golem.core.common import short_node_id
 
 
 logger = logging.getLogger(__name__)
@@ -27,6 +28,8 @@ FORBIDDEN_CLASSES = (
 def put(node_id: str, msg: message.base.Message) -> None:
     assert not isinstance(msg, FORBIDDEN_CLASSES),\
         "Disconnect message shouldn't be in a queue"
+    logger.debug("saving into queue node_id=%s, msg=%r",
+                 short_node_id(node_id), msg)
     db_model = model.QueuedMessage.from_message(node_id, msg)
     db_model.save()
 
@@ -62,6 +65,8 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
                 continue
             finally:
                 db_model.delete_instance()
+        logger.debug("got from queue node_id=%s, msg=%r",
+                     short_node_id(node_id), msg)
         yield msg
 
 
