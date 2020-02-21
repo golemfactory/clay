@@ -12,6 +12,8 @@ logger = logging.getLogger(__name__)
 
 class ClientAppProvider:
     def __init__(self, client: 'Client'):
+        assert client.task_server is not None, \
+            'ClientAppProvider needs task_server'
         self.app_manager = client.task_server.app_manager
 
     @rpc_utils.expose('apps.list')

@@ -20,7 +20,7 @@ class AppManager:
         self._app_dir = app_dir
 
         # Save build in apps, then load apps from path
-        built_in_apps = []
+        built_in_apps: List[AppId] = []
         if save_apps:
             built_in_apps = save_built_in_app_definitions(app_dir)
         for app_def in load_apps_from_dir(app_dir):

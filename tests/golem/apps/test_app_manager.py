@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from golem.apps.manager import AppManager
 from golem.apps import (
     AppDefinition,
