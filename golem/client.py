@@ -36,6 +36,7 @@ import golem
 from golem import model
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.apps.default import APPS
+import golem.apps.rpc as apps_rpc
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
 from golem.core.common import (
@@ -266,6 +267,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
+        app_rpc_provider = apps_rpc.ClientAppProvider(self)
         providers = (
             self,
             concent_soft_switch,
@@ -276,6 +278,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self.environments_manager,
             self.transaction_system,
             task_rpc_provider,
+            app_rpc_provider,
             api_ethereum.ETSProvider(self.transaction_system),
         )
         mapping = {}

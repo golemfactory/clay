@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from golem.apps.manager import AppManager
 from golem.apps import (
     AppDefinition,
@@ -22,7 +24,9 @@ class AppManagerTestBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        self.app_manager = AppManager()
+        app_path = self.new_path / 'apps'
+        app_path.mkdir(exist_ok=True)
+        self.app_manager = AppManager(app_path, False)
 
 
 class TestRegisterApp(AppManagerTestBase):
@@ -37,6 +41,12 @@ class TestRegisterApp(AppManagerTestBase):
         self.app_manager.register_app(APP_DEF)
         with self.assertRaises(ValueError):
             self.app_manager.register_app(APP_DEF)
+
+    def test_delete_app(self):
+        self.app_manager.register_app(APP_DEF)
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.app_manager.delete(APP_ID)
+        self.assertEqual(self.app_manager.apps(), [])
 
 
 class TestSetEnabled(AppManagerTestBase):

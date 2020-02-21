@@ -1,7 +1,11 @@
 import logging
 from typing import Dict, List, Tuple
+from pathlib import Path
 
-from golem.apps import AppId, AppDefinition
+from golem.apps import (
+    AppId, AppDefinition, load_apps_from_dir, delete_app_from_dir,
+)
+from golem.apps.default import save_built_in_app_definitions
 from golem.model import AppConfiguration
 
 logger = logging.getLogger(__name__)
@@ -10,9 +14,22 @@ logger = logging.getLogger(__name__)
 class AppManager:
     """ Manager class for applications using Task API. """
 
-    def __init__(self) -> None:
+    def __init__(self, app_dir: Path, save_apps=True) -> None:
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
+        self._app_dir = app_dir
+
+        # Save build in apps, then load apps from path
+        built_in_apps = []
+        if save_apps:
+            built_in_apps = save_built_in_app_definitions(app_dir)
+        for app_def in load_apps_from_dir(app_dir):
+            self.register_app(app_def)
+        for app_id in built_in_apps:
+            self.set_enabled(app_id, True)
+
+    def registered(self, app_id) -> bool:
+        return app_id in self._apps
 
     def register_app(self, app: AppDefinition) -> None:
         """ Register an application in the manager. """
@@ -57,6 +74,18 @@ class AppManager:
     def app(self, app_id: AppId) -> AppDefinition:
         """ Get an app with given ID (assuming it is registered). """
         return self._apps[app_id]
+
+    def delete(self, app_id: AppId) -> bool:
+        # Delete self._state from the database first
+        try:
+            AppConfiguration.delete() \
+                .where(AppConfiguration.app_id == app_id).execute()
+        except AppConfiguration.DoesNotExist:
+            logger.warning('Can not delete app, not found. id=%e', app_id)
+            return False
+        delete_app_from_dir(self._app_dir, self._apps[app_id])
+        del self._apps[app_id]
+        return True
 
 
 class AppStates:

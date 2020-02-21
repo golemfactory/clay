@@ -6,6 +6,7 @@ from typing import Dict, Any, Iterator, Type
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
 from marshmallow import fields as mm_fields
+from pathvalidate import sanitize_filename
 
 from golem.marketplace import (
     RequestorMarketStrategy,
@@ -89,3 +90,19 @@ def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
             yield load_app_from_json_file(json_file)
         except ValueError:
             continue
+
+
+def delete_app_from_dir(app_dir, app_def: AppDefinition) -> bool:
+    filename = app_json_file_name(app_def)
+    file = app_dir / filename
+    if not file.exists():
+        logger.warning('Can not delete app, file not found. file=%r', file)
+        return False
+    file.unlink()
+    return True
+
+
+def app_json_file_name(app_def: AppDefinition) -> str:
+    filename = f"{app_def.name}_{app_def.version}_{app_def.id}.json"
+    filename = sanitize_filename(filename, replacement_text="_")
+    return filename
