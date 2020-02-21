@@ -14,6 +14,8 @@ class ffmpegEnvironment(DockerEnvironment):
             tag=self.DOCKER_TAG
         )])
         self.binds = binds or []
+        self.short_description = "Environment for transcoding videos" \
+                                 " using ffmpeg."
 
     def get_container_config(self):
         d = super(ffmpegEnvironment, self).get_container_config()
