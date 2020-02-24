@@ -1,7 +1,7 @@
 import hashlib
 import logging
 from pathlib import Path
-from typing import Dict, Any, Iterator, Type
+from typing import Dict, Any, Iterator, Type, Tuple
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
@@ -82,24 +82,14 @@ def load_app_from_json_file(json_file: Path) -> AppDefinition:
         raise ValueError(msg)
 
 
-def load_apps_from_dir(app_dir: Path) -> Iterator[AppDefinition]:
+def load_apps_from_dir(app_dir: Path) -> Iterator[Tuple[Path, AppDefinition]]:
     """ Read every file in the given directory and attempt to parse it. Ignore
         files which don't contain valid app definitions. """
     for json_file in app_dir.iterdir():
         try:
-            yield load_app_from_json_file(json_file)
+            yield (json_file, load_app_from_json_file(json_file))
         except ValueError:
             continue
-
-
-def delete_app_from_dir(app_dir, app_def: AppDefinition) -> bool:
-    filename = app_json_file_name(app_def)
-    file = app_dir / filename
-    if not file.exists():
-        logger.warning('Can not delete app, file not found. file=%r', file)
-        return False
-    file.unlink()
-    return True
 
 
 def app_json_file_name(app_def: AppDefinition) -> str:

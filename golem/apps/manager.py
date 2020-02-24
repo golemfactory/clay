@@ -2,9 +2,7 @@ import logging
 from typing import Dict, List, Tuple
 from pathlib import Path
 
-from golem.apps import (
-    AppId, AppDefinition, load_apps_from_dir, delete_app_from_dir,
-)
+from golem.apps import AppId, AppDefinition, load_apps_from_dir
 from golem.apps.default import save_built_in_app_definitions
 from golem.model import AppConfiguration
 
@@ -17,14 +15,15 @@ class AppManager:
     def __init__(self, app_dir: Path, save_apps=True) -> None:
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
-        self._app_dir = app_dir
+        self._app_file_names: Dict[AppId, Path] = dict()
 
         # Save build in apps, then load apps from path
         built_in_apps: List[AppId] = []
         if save_apps:
             built_in_apps = save_built_in_app_definitions(app_dir)
-        for app_def in load_apps_from_dir(app_dir):
+        for (app_def_path, app_def) in load_apps_from_dir(app_dir):
             self.register_app(app_def)
+            self._app_file_names[app_def.id] = app_def_path
         for app_id in built_in_apps:
             self.set_enabled(app_id, True)
 
@@ -78,8 +77,8 @@ class AppManager:
     def delete(self, app_id: AppId) -> bool:
         # Delete self._state from the database first
         del self._state[app_id]
-        delete_app_from_dir(self._app_dir, self._apps[app_id])
         del self._apps[app_id]
+        self._app_file_names[app_id].unlink()
         return True
 
 
