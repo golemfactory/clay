@@ -5,16 +5,14 @@ from golem.rpc import utils as rpc_utils
 
 if typing.TYPE_CHECKING:
     # pylint:disable=unused-import, ungrouped-imports
-    from golem.client import Client
+    from golem.apps.manager import AppManager
 
 logger = logging.getLogger(__name__)
 
 
 class ClientAppProvider:
-    def __init__(self, client: 'Client'):
-        assert client.task_server is not None, \
-            'ClientAppProvider needs task_server'
-        self.app_manager = client.task_server.app_manager
+    def __init__(self, app_manager: 'AppManager'):
+        self.app_manager = app_manager
 
     @rpc_utils.expose('apps.list')
     def apps_list(self):

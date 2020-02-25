@@ -4,19 +4,14 @@ from mock import Mock
 from golem.apps.rpc import ClientAppProvider
 from golem.apps.manager import AppManager
 from golem.apps.default import BlenderAppDefinition
-from golem.client import Client
 from golem.testutils import pytest_database_fixture  # noqa pylint: disable=unused-import
-from golem.task.taskserver import TaskServer
 
 
 class TestClientAppProvider:
     @pytest.fixture(autouse=True)
     def setup_method(self):
-        self._client = Mock(spec=Client)
-        self._client.task_server = Mock(spec=TaskServer)
-        self._client.task_server.app_manager = Mock(spec=AppManager)
-        self._app_manger = self._client.task_server.app_manager
-        self._handler = ClientAppProvider(self._client)
+        self._app_manger = Mock(spec=AppManager)
+        self._handler = ClientAppProvider(self._app_manger)
 
     def test_list(self):
         # given

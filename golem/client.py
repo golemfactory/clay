@@ -267,7 +267,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from golem.rpc.api import ethereum_ as api_ethereum
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
-        app_rpc_provider = apps_rpc.ClientAppProvider(self)
+        app_rpc_provider = apps_rpc.ClientAppProvider(
+            self.task_server.app_manager
+        )
         providers = (
             self,
             concent_soft_switch,
