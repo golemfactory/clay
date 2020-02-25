@@ -55,12 +55,12 @@ class TestClientAppProvider:
         self._app_manger.registered.return_value = False
 
         # when
-        result = self._handler.apps_update(app_id, enabled)
+        with pytest.raises(Exception):
+            self._handler.apps_update(app_id, enabled)
 
         # then
         self._app_manger.registered.called_once_with(app_id)
         self._app_manger.set_enabled.assert_not_called()
-        assert result == f"App not found, please check the app_id={app_id}"
 
     def test_delete(self):
         # given
@@ -79,8 +79,8 @@ class TestClientAppProvider:
         self._app_manger.delete.return_value = False
 
         # when
-        result = self._handler.apps_delete(app_id)
+        with pytest.raises(Exception):
+            self._handler.apps_delete(app_id)
 
         # then
         self._app_manger.delete.called_once_with(app_id)
-        assert result == 'Failed to delete app.'

@@ -41,8 +41,7 @@ class ClientAppProvider:
             enabled,
         )
         if not self.app_manager.registered(app_id):
-            logger.warning('App not found, not updated. app_id=%r', app_id)
-            return f"App not found, please check the app_id={app_id}"
+            raise Exception(f"App not found, please check the app_id={app_id}")
         self.app_manager.set_enabled(app_id, bool(enabled))
         logger.info('Updated app. app_id=%r, enabled=%r', app_id, enabled)
         return "App state updated."
@@ -51,6 +50,6 @@ class ClientAppProvider:
     def apps_delete(self, app_id):
         logger.debug('apps.delete called from rpc. app_id=%r', app_id)
         if not self.app_manager.delete(app_id):
-            return "Failed to delete app."
+            raise Exception(f"Failed to delete app. app_id={app_id}")
         logger.info('Deleted app. app_id=%r', app_id)
         return "App deleted with success."
