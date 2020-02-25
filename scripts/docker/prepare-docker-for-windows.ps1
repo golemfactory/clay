@@ -54,7 +54,7 @@ $HvAdminGroup =(gwmi Win32_Group | ?{$_.sid -eq $HvAdminGroupSID})
 if( $HvAdminGroup )
 {
     "currentUserName:" + $currentUserName
-    $fullUserName = "$env:computername\$currentUserName"
+    $fullUserName = "$env:UserDomain\$currentUserName"
     $isMember = (Get-LocalGroupMember -sid $HvAdminGroup.sid  | ?{$_.name -eq $fullUserName})
     "Is the current user member?"
     "isMember: " + $isMember
@@ -62,7 +62,7 @@ if( $HvAdminGroup )
     {
         "Add current user to Hyper-V Administrators group"
         Add-LocalGroupMember -sid $HvAdminGroup.sid -member $fullUserName
-
+s
         $isMember = (Get-LocalGroupMember -sid $HvAdminGroup.sid  | ?{$_.name -eq $fullUserName})
         "Is the current user member?"
       "isMember: " + $isMember
