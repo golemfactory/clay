@@ -29,7 +29,7 @@ def put(
         node_id: str,
         msg: message.base.Message,
         timeout: typing.Optional[datetime.timedelta] = None
-    ) -> None:
+) -> None:
     assert not isinstance(msg, FORBIDDEN_CLASSES),\
         "Disconnect message shouldn't be in a queue"
     logger.debug("saving into queue node_id=%s, msg=%r",

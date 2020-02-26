@@ -674,7 +674,7 @@ class QueuedMessage(BaseModel):
             golem_messages.__version__,
         )
         instance.msg_data = golem_messages.dump(msg, None, None)
-        instance.deadline = deadline
+        instance.deadline = deadline    # type: ignore
         return instance
 
     def as_message(self) -> message.base.Message:

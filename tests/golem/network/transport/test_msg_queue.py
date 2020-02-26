@@ -134,7 +134,7 @@ class TestMsqQueue(testutils.DatabaseFixture):
             model.QueuedMessage.select().count(),
             0,
         )
-    
+
     @freeze_time()
     def test_sweep_timeout(self):
         timeout = datetime.timedelta(seconds=1)
