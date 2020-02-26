@@ -12,7 +12,7 @@ import peewee
 from golem import decorators
 from golem import model
 from golem.core import variables
-from golem.core.common import short_node_id
+from golem.core.common import default_now, short_node_id
 
 
 logger = logging.getLogger(__name__)
@@ -25,12 +25,17 @@ FORBIDDEN_CLASSES = (
 )
 
 
-def put(node_id: str, msg: message.base.Message) -> None:
+def put(
+        node_id: str,
+        msg: message.base.Message,
+        timeout: typing.Optional[datetime.timedelta] = None
+    ) -> None:
     assert not isinstance(msg, FORBIDDEN_CLASSES),\
         "Disconnect message shouldn't be in a queue"
     logger.debug("saving into queue node_id=%s, msg=%r",
                  short_node_id(node_id), msg)
-    db_model = model.QueuedMessage.from_message(node_id, msg)
+    deadline_utc = default_now() + timeout if timeout else None
+    db_model = model.QueuedMessage.from_message(node_id, msg, deadline_utc)
     db_model.save()
 
 
@@ -44,7 +49,17 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
                     ).order_by(model.QueuedMessage.created_date).get()
             except model.QueuedMessage.DoesNotExist:
                 return
+
             try:
+                if db_model.deadline and db_model.deadline <= default_now():
+                    logger.debug(
+                        'deleting message past its deadline.'
+                        ' db_model=%s, deadline=%s',
+                        db_model,
+                        db_model.deadline
+                    )
+                    continue
+
                 msg = db_model.as_message()
             except msg_exceptions.VersionMismatchError:
                 logger.info(
@@ -73,6 +88,9 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
 def waiting() -> typing.Iterator[str]:
     query = model.QueuedMessage.select(
         model.QueuedMessage.node,
+    ).where(
+        (model.QueuedMessage.deadline.is_null()) |
+        (model.QueuedMessage.deadline > default_now())
     ).group_by(model.QueuedMessage.node)
     try:
         for db_row in query:
@@ -90,12 +108,18 @@ def waiting() -> typing.Iterator[str]:
 
 @decorators.run_with_db()
 def sweep() -> None:
-    """Sweep ancient messages"""
+    """Sweep messages"""
     with READ_LOCK:
-        oldest_allowed = datetime.datetime.now() \
+        count = 0
+        count += model.QueuedMessage.delete().where(
+            model.QueuedMessage.deadline <= default_now()
+        ).execute()
+
+        oldest_allowed = default_now() \
             - variables.MESSAGE_QUEUE_MAX_AGE
-        count = model.QueuedMessage.delete().where(
+        count += model.QueuedMessage.delete().where(
             model.QueuedMessage.created_date < oldest_allowed,
         ).execute()
+
     if count:
-        logger.info('Sweeped ancient messages from queue. count=%d', count)
+        logger.info('Sweeped messages from queue. count=%d', count)

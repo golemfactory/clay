@@ -654,12 +654,17 @@ class QueuedMessage(BaseModel):
     msg_version = VersionField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+    deadline = UTCDateTimeField(null=True)
 
     class Meta:
         database = db
 
     @classmethod
-    def from_message(cls, node_id: str, msg: message.base.Message):
+    def from_message(
+            cls,
+            node_id: str,
+            msg: message.base.Message,
+            deadline: Optional[datetime.datetime] = None):
         instance = cls()
         instance.node = node_id
         instance.msg_cls = '.'.join(
@@ -669,6 +674,7 @@ class QueuedMessage(BaseModel):
             golem_messages.__version__,
         )
         instance.msg_data = golem_messages.dump(msg, None, None)
+        instance.deadline = deadline
         return instance
 
     def as_message(self) -> message.base.Message:

@@ -2,6 +2,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import datetime
 import functools
 import itertools
 import logging
@@ -516,6 +517,8 @@ class TaskServer(
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
+                timeout=datetime.timedelta(
+                    seconds=deadline_to_timeout(theader.deadline))
             )
 
             timer.ProviderTTCDelayTimers.start(wtct.task_id)
