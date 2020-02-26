@@ -30,7 +30,10 @@ from scripts.tempdir import fix_osx_tmpdir
 fix_osx_tmpdir()
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
+external_loggers = ['hpack'] #, 'peewee', 'urllib3', 'docker']
+for logger_name in external_loggers:
+    logging.getLogger(logger_name).setLevel(logging.INFO)
 TASK_TIMEOUT = 360
 SUBTASK_TIMEOUT = 60
 
@@ -94,7 +97,6 @@ async def test_task(
     with open(task_params_path, 'r') as f:
         task_params = json.load(f)
     task_id = await rtm.create_task(golem_params, task_params)
-    print('Task created', task_id)
     await deferred_from_future(rtm.init_task(task_id))
     rtm.start_task(task_id)
     print('Task started')
