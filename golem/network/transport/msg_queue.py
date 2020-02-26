@@ -34,7 +34,7 @@ def put(
         "Disconnect message shouldn't be in a queue"
     logger.debug("saving into queue node_id=%s, msg=%r",
                  short_node_id(node_id), msg)
-    deadline_utc = default_now() + timeout if timeout else None
+    deadline_utc = (default_now() + timeout) if timeout else None
     db_model = model.QueuedMessage.from_message(node_id, msg, deadline_utc)
     db_model.save()
 
@@ -51,7 +51,7 @@ def get(node_id: str) -> typing.Iterator['message.base.Base']:
                 return
 
             try:
-                if db_model.deadline and db_model.deadline <= default_now():
+                if db_model.deadline <= default_now():
                     logger.debug(
                         'deleting message past its deadline.'
                         ' db_model=%s, deadline=%s',
@@ -89,8 +89,7 @@ def waiting() -> typing.Iterator[str]:
     query = model.QueuedMessage.select(
         model.QueuedMessage.node,
     ).where(
-        (model.QueuedMessage.deadline.is_null()) |
-        (model.QueuedMessage.deadline > default_now())
+        model.QueuedMessage.deadline > default_now()
     ).group_by(model.QueuedMessage.node)
     try:
         for db_row in query:

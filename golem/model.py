@@ -32,6 +32,7 @@ import semantic_version
 from golem.core import common
 from golem.core.common import datetime_to_timestamp, default_now
 from golem.core.simpleserializer import DictSerializable
+from golem.core.variables import MESSAGE_QUEUE_MAX_AGE
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.ranking import ProviderEfficacy
@@ -649,12 +650,18 @@ class NetworkMessage(BaseModel):
         return msg
 
 
+def default_msg_deadline() -> datetime.datetime:
+    return default_now() + MESSAGE_QUEUE_MAX_AGE
+
 class QueuedMessage(BaseModel):
     node = CharField(null=False, index=True)
     msg_version = VersionField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
-    deadline = UTCDateTimeField(null=True)
+    deadline = UTCDateTimeField(
+        null=False,
+        default=default_msg_deadline()
+    )
 
     class Meta:
         database = db
@@ -674,7 +681,7 @@ class QueuedMessage(BaseModel):
             golem_messages.__version__,
         )
         instance.msg_data = golem_messages.dump(msg, None, None)
-        instance.deadline = deadline    # type: ignore
+        instance.deadline = deadline or default_msg_deadline()  # type: ignore
         return instance
 
     def as_message(self) -> message.base.Message:

@@ -11,6 +11,7 @@ from golem_messages.factories import tasks as tasks_factories
 from golem import model
 from golem import testutils
 from golem.core.common import default_now
+from golem.model import default_msg_deadline
 from golem.network.transport import msg_queue
 
 
@@ -20,6 +21,7 @@ class TestMsqQueue(testutils.DatabaseFixture):
         self.node_id = str(uuid.uuid4())
         self.msg = tasks_factories.WantToComputeTaskFactory()
 
+    @freeze_time()
     def test_put(self):
         msg_queue.put(self.node_id, self.msg)
         row = model.QueuedMessage.get()
@@ -28,19 +30,10 @@ class TestMsqQueue(testutils.DatabaseFixture):
             'golem_messages.message.tasks.WantToComputeTask',
         )
         self.assertEqual(str(row.msg_version), golem_messages.__version__)
-        self.assertIsNone(row.deadline)
+        self.assertEqual(row.deadline, default_msg_deadline())
         row_msg = row.as_message()
         self.assertEqual(row_msg.slots(), self.msg.slots())
         self.assertIsNone(row_msg.sig)
-
-    @freeze_time()
-    def test_put_timeout(self):
-        timeout = datetime.timedelta(seconds=1)
-        msg_queue.put(self.node_id, self.msg, timeout)
-
-        row = model.QueuedMessage.get()
-
-        self.assertEqual(row.deadline, default_now() + timeout)
 
     def test_get(self):
         msg_queue.put(self.node_id, self.msg)
