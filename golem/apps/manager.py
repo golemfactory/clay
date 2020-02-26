@@ -18,13 +18,13 @@ class AppManager:
         self._app_file_names: Dict[AppId, Path] = dict()
 
         # Save build in apps, then load apps from path
-        built_in_apps: List[AppId] = []
+        new_apps: List[AppId] = []
         if save_apps:
-            built_in_apps = save_built_in_app_definitions(app_dir)
-        for (app_def_path, app_def) in load_apps_from_dir(app_dir):
+            new_apps = save_built_in_app_definitions(app_dir)
+        for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
-        for app_id in built_in_apps:
+        for app_id in new_apps:
             self.set_enabled(app_id, True)
 
     def registered(self, app_id) -> bool:
