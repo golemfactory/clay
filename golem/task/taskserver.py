@@ -32,12 +32,10 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
-import golem.apps
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem import constants as gconst
 from golem.apps import manager as app_manager
-from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import (
     short_node_id,
@@ -154,14 +152,7 @@ class TaskServer(
             dev_mode=task_api_dev_mode,
         )
 
-        app_dir = self.get_app_dir()
-        built_in_apps = save_built_in_app_definitions(app_dir)
-
-        self.app_manager = app_mgr = app_manager.AppManager()
-        for app_def in golem.apps.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
-        for app_id in built_in_apps:
-            app_mgr.set_enabled(app_id, True)
+        self.app_manager = app_manager.AppManager(self.get_app_dir())
 
         self.node = node
         self.task_archiver = task_archiver
@@ -182,7 +173,7 @@ class TaskServer(
         )
 
         self.requested_task_manager = RequestedTaskManager(
-            app_manager=app_mgr,
+            app_manager=self.app_manager,
             env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),

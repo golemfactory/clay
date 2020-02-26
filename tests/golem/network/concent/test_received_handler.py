@@ -187,6 +187,7 @@ class TaskServerMessageHandlerTestBase(
         # Remove registered handlers
         del self.task_server
         gc.collect()
+        super().tearDown()
 
 
 class IsOursTest(TaskServerMessageHandlerTestBase):

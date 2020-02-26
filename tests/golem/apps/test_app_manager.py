@@ -1,3 +1,5 @@
+from mock import Mock
+
 from golem.apps.manager import AppManager
 from golem.apps import (
     AppDefinition,
@@ -22,7 +24,9 @@ class AppManagerTestBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        self.app_manager = AppManager()
+        app_path = self.new_path / 'apps'
+        app_path.mkdir(exist_ok=True)
+        self.app_manager = AppManager(app_path, False)
 
 
 class TestRegisterApp(AppManagerTestBase):
@@ -37,6 +41,15 @@ class TestRegisterApp(AppManagerTestBase):
         self.app_manager.register_app(APP_DEF)
         with self.assertRaises(ValueError):
             self.app_manager.register_app(APP_DEF)
+
+    def test_delete_app(self):
+        self.app_manager.register_app(APP_DEF)
+        self.app_manager._app_file_names[APP_ID] = mocked_file = Mock()
+        mocked_file.unlink = Mock()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.app_manager.delete(APP_ID)
+        self.assertEqual(self.app_manager.apps(), [])
+        mocked_file.unlink.assert_called_once_with()
 
 
 class TestSetEnabled(AppManagerTestBase):
@@ -109,4 +122,4 @@ class TestLoadAppsFromDir(TempDirFixture):
         app_file.write_text(APP_DEF.to_json(), encoding='utf-8')
         bogus_file.write_text('(╯°□°）╯︵ ┻━┻', encoding='utf-8')
         loaded_apps = list(load_apps_from_dir(self.new_path))
-        self.assertEqual(loaded_apps, [APP_DEF])
+        self.assertEqual(loaded_apps, [(app_file, APP_DEF)])
