@@ -11,7 +11,6 @@ import peewee
 
 from golem import decorators
 from golem import model
-from golem.core import variables
 from golem.core.common import default_now, short_node_id
 
 
@@ -109,17 +108,8 @@ def waiting() -> typing.Iterator[str]:
 def sweep() -> None:
     """Sweep messages"""
     with READ_LOCK:
-        now = default_now()
-        count = 0
-
-        count += model.QueuedMessage.delete().where(
-            model.QueuedMessage.deadline <= now
-        ).execute()
-
-        oldest_allowed = now \
-            - variables.MESSAGE_QUEUE_MAX_AGE
-        count += model.QueuedMessage.delete().where(
-            model.QueuedMessage.created_date < oldest_allowed,
+        count = model.QueuedMessage.delete().where(
+            model.QueuedMessage.deadline <= default_now()
         ).execute()
 
     if count:
