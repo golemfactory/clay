@@ -109,12 +109,14 @@ def waiting() -> typing.Iterator[str]:
 def sweep() -> None:
     """Sweep messages"""
     with READ_LOCK:
+        now = default_now()
         count = 0
+
         count += model.QueuedMessage.delete().where(
-            model.QueuedMessage.deadline <= default_now()
+            model.QueuedMessage.deadline <= now
         ).execute()
 
-        oldest_allowed = default_now() \
+        oldest_allowed = now \
             - variables.MESSAGE_QUEUE_MAX_AGE
         count += model.QueuedMessage.delete().where(
             model.QueuedMessage.created_date < oldest_allowed,

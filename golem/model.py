@@ -653,6 +653,7 @@ class NetworkMessage(BaseModel):
 def default_msg_deadline() -> datetime.datetime:
     return default_now() + MESSAGE_QUEUE_MAX_AGE
 
+
 class QueuedMessage(BaseModel):
     node = CharField(null=False, index=True)
     msg_version = VersionField(null=False)
