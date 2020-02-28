@@ -152,7 +152,7 @@ class _DenyAcl(Acl):
             'Banned node. node_id=%s, timeout=%ds, persist=%s',
             common.short_node_id(node_id),
             timeout_seconds,
-            timeout_seconds < 0;
+            timeout_seconds < 0
         )
 
         if timeout_seconds < 0:
