@@ -2,9 +2,13 @@ import logging
 from typing import Dict, List, Tuple
 from pathlib import Path
 
+from dataclasses import asdict
+
 from golem.apps import AppId, AppDefinition, load_apps_from_dir
 from golem.apps.downloader import download_definitions
 from golem.model import AppConfiguration
+from golem.report import EventPublisher
+from golem.rpc.mapping.rpceventnames import App
 
 logger = logging.getLogger(__name__)
 
@@ -22,8 +26,10 @@ class AppManager:
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
+
+        # Notify about newly available apps
         for app in new_apps:
-            self.set_enabled(app.id, True)
+            EventPublisher.publish(App.evt_new_definiton, asdict(app))
 
     def registered(self, app_id) -> bool:
         return app_id in self._apps
