@@ -777,6 +777,8 @@ class DockerCPUEnvironment(EnvironmentBase):
         else:
             config = self.config()
 
+        logger.debug('creating runtime. config=%r, payload=%r', config, payload)
+
         return self._create_runtime(config, payload)
 
     def _create_host_config(
@@ -822,10 +824,15 @@ class DockerCPUEnvironment(EnvironmentBase):
         host_config = self._create_host_config(config, payload)
         ports = [(p, 'tcp') for p in payload.ports] if payload.ports else None
 
+        command = payload.command
+        if self._dev_mode:
+            command += ' --log-level DEBUG'
+            logger.info('appended command with debug request. %r', command)
+
         return dict(
             image=image,
             volumes=volumes,
-            command=payload.command,
+            command=command,
             user=payload.user,
             environment=payload.env,
             working_dir=payload.work_dir,

@@ -51,7 +51,7 @@ fs==2.4.4
 Golem-Messages==3.15.0
 Golem-Smart-Contracts-Interface==1.11.2
 #Golem-Task-Api==0.24.1
-git+https://github.com/golemfactory/task-api@mwu/task-api-build-tool#egg=golem_task_api&subdirectory=python
+git+https://github.com/golemfactory/task-api@mwu/blenderapp-logging#egg=golem_task_api&subdirectory=python
 greenlet==0.4.15
 grpclib==0.2.4
 h2==3.0.1

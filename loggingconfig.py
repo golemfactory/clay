@@ -33,14 +33,14 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'NOTSET',
             'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
         },
         'file': {
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'level': 'INFO',
+            'level': 'NOTSET',
             'formatter': 'date',
             # suffix is substituted in golem.core.common.config_logging()
             'filename': '%(logdir)s/golem%(suffix)s.log',
@@ -72,54 +72,11 @@ LOGGING = {
         },
     },
     'root': {
-        'level': 'WARNING',
+        'level': 'INFO',
         'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],  # noqa pylint: disable=line-too-long
-        'filters': [],
-    },
-    'loggers': {
-        'golemapp': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.rpc.crossbar': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem_sci': {
-            'level': 'INFO',
-            'propagate': True,
-        },
+    }
         'transitions': {
             'level': 'WARNING',
             'propagate': True,
         },
-        'twisted': {
-            'level': 'WARNING',
-            'propagate': True,
-        },
-        'golem.network': {'propagate': True},
-        'golem.network.concent.received_handler': {'propagate': True},
-        'golem.network.transport': {'propagate': True},
-        'golem.network.transport.session': {
-            'level': 'WARNING',
-            'propagate': True,
-        },
-        'golem.network.transport.tcpserver': {
-            'level': 'WARNING',
-            'propagate': True,
-        },
-        'apps': {
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'test': {
-            'level': 'DEBUG',
-            'propagate': False,
-            'handlers': ['console', 'file', ],
-        },
-    },
 }

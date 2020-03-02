@@ -1,5 +1,5 @@
 import collections
-import logging.config
+import logging
 import os
 import subprocess
 import sys
@@ -15,10 +15,13 @@ import pytz
 from golem.core import simpleenv
 from golem.decorators import locked
 
+from golem_task_api.apputils.logging import init_logging
+
 F = TypeVar('F', bound=Callable[..., Any])
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
+logger = logging.getLogger(__name__)
 
 
 def is_frozen():
@@ -290,18 +293,37 @@ def config_logging(
         if loglevel:
             handler['level'] = loglevel
 
-    if loglevel:
-        for _logger in LOGGING.get('loggers', {}).values():
-            _logger['level'] = loglevel
-        LOGGING['root']['level'] = loglevel
-        if config_desc and not config_desc.debug_third_party:
-            LOGGING['loggers']['golem.rpc.crossbar']['level'] = 'WARNING'
-            LOGGING['loggers']['twisted']['level'] = 'WARNING'
+    external_loggers = []
+    external_level = logging.WARNING
+    if config_desc and not config_desc.debug_third_party:
+        external_loggers += [
+            'docker.auth',
+            'docker.utils.config',
+            'golem.ethereum.web3.providers',
+            'golem.rpc.crossbar',
+            'golem.rpc.session',
+            'hpack',
+            'peewee',
+            'twisted',
+            'urllib3',
+        ]
 
     try:
         logdir_path.mkdir(parents=True, exist_ok=True)
-
-        logging.config.dictConfig(LOGGING)
+        init_logging(
+            log_config=LOGGING,
+            log_level_arg=loglevel,
+            external_loggers=external_loggers,
+            external_log_level=external_level
+        )
+        if loglevel:
+            logger.info('logging started. level=%s', loglevel)
+        logger.debug(
+            'config=%r, external=%r, external_level=%r',
+            LOGGING,
+            external_loggers,
+            external_level
+        )
     except (ValueError, PermissionError) as e:
         sys.stderr.write(f"Can't configure logging in {logdir_path} Got: {e}\n")
         return  # Avoid consequent errors
@@ -321,11 +343,10 @@ def config_logging(
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
 
-    crossbar_log_lvl = logging.getLevelName(
-        logging.getLogger('golem.rpc.crossbar').level).lower()
+    crossbar_log_lvl = 'warn'
     # Fix inconsistency in log levels, only warn affected
-    if crossbar_log_lvl == 'warning':
-        crossbar_log_lvl = 'warn'
+    if config_desc and config_desc.debug_third_party:
+        crossbar_log_lvl = 'debug'
 
     txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
 

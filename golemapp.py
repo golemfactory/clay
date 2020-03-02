@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 import binascii
+import logging
 import os
 import platform
 import sys
-import logging
 from multiprocessing import freeze_support
 
 import click
@@ -149,7 +149,11 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             loglevel=log_level,
             config_desc=config_desc)
 
+        global logger
+        logger = logging.getLogger('golemapp')
+
         log_golem_version()
+        logger.debug('test')
         log_platform_info()
         log_ethereum_config(ethereum_config)
         log_concent_choice(ethereum_config.CONCENT_VARIANT)
