@@ -3,7 +3,7 @@ from typing import Dict, List, Tuple
 from pathlib import Path
 
 from golem.apps import AppId, AppDefinition, load_apps_from_dir
-from golem.apps.default import save_built_in_app_definitions
+from golem.apps.downloader import download_definitions
 from golem.model import AppConfiguration
 
 logger = logging.getLogger(__name__)
@@ -12,20 +12,18 @@ logger = logging.getLogger(__name__)
 class AppManager:
     """ Manager class for applications using Task API. """
 
-    def __init__(self, app_dir: Path, save_apps=True) -> None:
+    def __init__(self, app_dir: Path) -> None:
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
         self._app_file_names: Dict[AppId, Path] = dict()
 
-        # Save build in apps, then load apps from path
-        new_apps: List[AppId] = []
-        if save_apps:
-            new_apps = save_built_in_app_definitions(app_dir)
+        # Download default apps then load from path
+        new_apps = download_definitions(app_dir)
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
-        for app_id in new_apps:
-            self.set_enabled(app_id, True)
+        for app in new_apps:
+            self.set_enabled(app.id, True)
 
     def registered(self, app_id) -> bool:
         return app_id in self._apps
