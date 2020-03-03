@@ -96,6 +96,12 @@ class AppManager:
         new_apps = download_definitions(self.app_dir)
 
         for app in new_apps:
+            logger.info('New application definition downloaded. '
+                'app_name=%s, app_version=%s, app_id=%r',
+                app.name,
+                app.version,
+                app.id
+            )
             if register_apps:
                 self.register_app(app)
                 app_file_path = self.app_dir / app_json_file_name(app)

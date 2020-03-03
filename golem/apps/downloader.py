@@ -1,5 +1,6 @@
 import abc
 import datetime
+import logging
 from pathlib import Path
 import typing
 import xml.etree.ElementTree as xml
@@ -9,6 +10,8 @@ import dateutil.parser as date_parser
 import requests
 
 from golem.apps import save_app_to_json_file, AppDefinition
+
+logger = logging.getLogger(__name__)
 
 S3_BUCKET_URL = 'https://golem-app-definitions.s3.eu-central-1.amazonaws.com/'
 
@@ -83,6 +86,8 @@ def get_bucket_listing() -> ListBucketResult:
 def download_definition(
         key: str,
         destination: Path) -> AppDefinition:
+    logger.debug('download_definition. key=%s, destination=%s',
+        key, destination)
     json = requests.get(f'{S3_BUCKET_URL}{key}').text
     definition = AppDefinition.from_json(json)
     save_app_to_json_file(definition, destination)
@@ -95,8 +100,11 @@ def download_definitions(app_dir: Path) -> typing.List[AppDefinition]:
         :param: app_dir: path to directory containing local app definitions.
         :return: list of newly downloaded app definitions. """
     new_definitions = []
+    bucket_listing = get_bucket_listing()
+    logger.debug('download_definitions. app_dir=%s, bucket_listing=%r',
+        app_dir, bucket_listing)
 
-    for metadata in get_bucket_listing().contents:
+    for metadata in bucket_listing.contents:
         definition_path = app_dir / metadata.key
         if not (definition_path).exists():
             new_definitions.append(
