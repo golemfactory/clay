@@ -24,6 +24,12 @@ from golem.envs.default import register_environments
 from golem.envs.docker.whitelist import Whitelist
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
+from scripts.tempdir import fix_osx_tmpdir
+
+
+fix_osx_tmpdir()
+
+
 logging.basicConfig(level=logging.INFO)
 TASK_TIMEOUT = 360
 SUBTASK_TIMEOUT = 60
