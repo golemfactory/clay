@@ -17,19 +17,16 @@ class AppManager:
     """ Manager class for applications using Task API. """
 
     def __init__(self, app_dir: Path) -> None:
+        self.app_dir: Path = app_dir
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
         self._app_file_names: Dict[AppId, Path] = dict()
 
         # Download default apps then load from path
-        new_apps = download_definitions(app_dir)
+        self.update_apps()
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
-
-        # Notify about newly available apps
-        for app in new_apps:
-            EventPublisher.publish(App.evt_new_definiton, asdict(app))
 
     def registered(self, app_id) -> bool:
         return app_id in self._apps
@@ -84,6 +81,13 @@ class AppManager:
         del self._apps[app_id]
         self._app_file_names[app_id].unlink()
         return True
+
+    def update_apps(self):
+        """ Download new app definitions if available. For each definition
+            downloaded publish an RPC event to notify clients. """
+        new_apps = download_definitions(self.app_dir)
+        for app in new_apps:
+            EventPublisher.publish(App.evt_new_definiton, asdict(app))
 
 
 class AppStates:

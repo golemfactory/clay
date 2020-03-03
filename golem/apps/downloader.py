@@ -93,8 +93,8 @@ def download_definition(
 def download_definitions(app_dir: Path) -> typing.List[AppDefinition]:
     """ Download app definitions from Golem Factory CDN. Only downloads
         definitions which are not already present locally.
-        :param: app_dir: path to the Golem instance apps directory.
-        :return: list of newly-downloaded app definitions """
+        :param: app_dir: path to directory containing local app definitions.
+        :return: list of newly downloaded app definitions. """
     new_definitions = []
 
     for metadata in get_definitions_metadata().contents:

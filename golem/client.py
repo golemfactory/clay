@@ -193,7 +193,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             TaskArchiverService(self.task_archiver),
             MessageHistoryService(),
             DoWorkService(self),
-            DailyJobsService(),
+            DailyJobsService(self),
         ]
 
         clean_resources_older_than = \
@@ -1734,13 +1734,14 @@ class MaskUpdateService(LoopingCallService):
 
 
 class DailyJobsService(LoopingCallService):
-    def __init__(self):
+    def __init__(self, client: Client):
         super().__init__(
-            interval_seconds=datetime.timedelta(days=1).total_seconds(),
+            interval_seconds=int(datetime.timedelta(days=1).total_seconds()),
         )
+        self._client = client
 
     def _run(self) -> None:
-        jobs = (
+        jobs = [
             nodeskeeper.sweep,
             msg_queue.sweep,
             lambda: logger.info(
@@ -1750,7 +1751,11 @@ class DailyJobsService(LoopingCallService):
                 datetime.datetime.utcnow(),
                 datetime.datetime.now() - datetime.datetime.utcnow(),
             ),
-        )
+        ]
+
+        if self._client.task_server:
+            jobs.append(self._client.task_server.app_manager.update_apps)
+
         logger.info('Running daily jobs')
         for job in jobs:
             try:
