@@ -1,15 +1,14 @@
 import abc
 import datetime
 from pathlib import Path
-import requests
 import typing
 import xml.etree.ElementTree as xml
 
 from dataclasses import dataclass
 import dateutil.parser as date_parser
+import requests
 
 from golem.apps import save_app_to_json_file, AppDefinition
-
 
 S3_BUCKET_URL = 'https://golem-app-definitions.s3.eu-central-1.amazonaws.com/'
 
@@ -75,16 +74,16 @@ def _get_namespace(element: xml.Element):
     return tag[tag.find("{")+1:tag.rfind("}")]
 
 
-def get_definitions_metadata() -> ListBucketResult:
+def get_bucket_listing() -> ListBucketResult:
     response = requests.get(S3_BUCKET_URL)
     root: xml.Element = xml.fromstring(response.content)
     return ListBucketResult(root)
 
 
 def download_definition(
-        metadata: Contents,
+        key: str,
         destination: Path) -> AppDefinition:
-    json = requests.get(f'{S3_BUCKET_URL}{metadata.key}').text
+    json = requests.get(f'{S3_BUCKET_URL}{key}').text
     definition = AppDefinition.from_json(json)
     save_app_to_json_file(definition, destination)
     return definition
@@ -97,11 +96,11 @@ def download_definitions(app_dir: Path) -> typing.List[AppDefinition]:
         :return: list of newly downloaded app definitions. """
     new_definitions = []
 
-    for metadata in get_definitions_metadata().contents:
+    for metadata in get_bucket_listing().contents:
         definition_path = app_dir / metadata.key
         if not (definition_path).exists():
             new_definitions.append(
-                download_definition(metadata, definition_path))
+                download_definition(metadata.key, definition_path))
 
     return new_definitions
 

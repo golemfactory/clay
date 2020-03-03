@@ -4,7 +4,12 @@ from pathlib import Path
 
 from dataclasses import asdict
 
-from golem.apps import AppId, AppDefinition, load_apps_from_dir
+from golem.apps import (
+    AppId,
+    AppDefinition,
+    app_json_file_name,
+    load_apps_from_dir
+)
 from golem.apps.downloader import download_definitions
 from golem.model import AppConfiguration
 from golem.report import EventPublisher
@@ -16,14 +21,15 @@ logger = logging.getLogger(__name__)
 class AppManager:
     """ Manager class for applications using Task API. """
 
-    def __init__(self, app_dir: Path) -> None:
+    def __init__(self, app_dir: Path, download_apps: bool = True) -> None:
         self.app_dir: Path = app_dir
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
         self._app_file_names: Dict[AppId, Path] = dict()
 
-        # Download default apps then load from path
-        self.update_apps()
+        # Download default apps then load all apps from path
+        if download_apps:
+            self.update_apps(register_apps=False)
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
@@ -82,11 +88,19 @@ class AppManager:
         self._app_file_names[app_id].unlink()
         return True
 
-    def update_apps(self):
+    def update_apps(self, register_apps: bool = True):
         """ Download new app definitions if available. For each definition
-            downloaded publish an RPC event to notify clients. """
+            downloaded publish an RPC event to notify clients.
+            :param register_apps: if True, new definitions will be
+            registered in the manager. """
         new_apps = download_definitions(self.app_dir)
+
         for app in new_apps:
+            if register_apps:
+                self.register_app(app)
+                app_file_path = self.app_dir / app_json_file_name(app)
+                self._app_file_names[app.id] = app_file_path
+
             EventPublisher.publish(App.evt_new_definiton, asdict(app))
 
 
