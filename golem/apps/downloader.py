@@ -10,10 +10,9 @@ import dateutil.parser as date_parser
 import requests
 
 from golem.apps import save_app_to_json_file, AppDefinition
+from golem.core.variables import APP_DEFINITIONS_CDN_URL
 
 logger = logging.getLogger(__name__)
-
-S3_BUCKET_URL = 'https://golem-app-definitions.s3.eu-central-1.amazonaws.com/'
 
 
 class FromXml(abc.ABC):
@@ -79,7 +78,7 @@ def _get_namespace(element: xml.Element):
 
 
 def get_bucket_listing() -> ListBucketResult:
-    response = requests.get(S3_BUCKET_URL)
+    response = requests.get(APP_DEFINITIONS_CDN_URL)
     root: xml.Element = xml.fromstring(response.content)
     return ListBucketResult(root)
 
@@ -89,7 +88,7 @@ def download_definition(
         destination: Path) -> AppDefinition:
     logger.debug(
         'download_definition. key=%s, destination=%s', key, destination)
-    json = requests.get(f'{S3_BUCKET_URL}{key}').text
+    json = requests.get(f'{APP_DEFINITIONS_CDN_URL}{key}').text
     definition = AppDefinition.from_json(json)
     save_app_to_json_file(definition, destination)
     return definition
