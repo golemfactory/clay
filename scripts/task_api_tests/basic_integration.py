@@ -38,7 +38,9 @@ async def test_task(
 ) -> None:
 
     env_prerequisites = app_definition.requestor_prereq
-    app_manager = appmanager.AppManager()
+    app_dir = work_dir / 'apps'
+    app_dir.mkdir(exist_ok=True)
+    app_manager = appmanager.AppManager(app_dir, False)
     app_manager.register_app(app_definition)
     app_manager.set_enabled(app_definition.id, True)
 
