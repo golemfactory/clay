@@ -26,15 +26,15 @@ class FromXml(abc.ABC):
             self,
             element: xml.Element,
             name: str):
-        key, ns_name = list(self._namespace_map.items())[0]
+        key, _ = list(self._namespace_map.items())[0]
         return element.find(f'{key}:{name}', self._namespace_map)
 
     def _get_elements(
-        self,
-        element: xml.Element,
-        name: str
+            self,
+            element: xml.Element,
+            name: str
     ) -> typing.List[xml.Element]:
-        key, ns_name = list(self._namespace_map.items())[0]
+        key, _ = list(self._namespace_map.items())[0]
         return element.findall(f'{key}:{name}', self._namespace_map)
 
 
@@ -65,7 +65,8 @@ class ListBucketResult(FromXml):
         namespace_map = {'ns': _get_namespace(root)}
         super().__init__(namespace_map)
 
-        self.contents = [Contents(e, self._namespace_map)
+        self.contents = [
+            Contents(e, self._namespace_map)
             for e in self._get_elements(root, 'Contents')]
 
 
@@ -86,8 +87,8 @@ def get_bucket_listing() -> ListBucketResult:
 def download_definition(
         key: str,
         destination: Path) -> AppDefinition:
-    logger.debug('download_definition. key=%s, destination=%s',
-        key, destination)
+    logger.debug(
+        'download_definition. key=%s, destination=%s', key, destination)
     json = requests.get(f'{S3_BUCKET_URL}{key}').text
     definition = AppDefinition.from_json(json)
     save_app_to_json_file(definition, destination)
@@ -101,8 +102,11 @@ def download_definitions(app_dir: Path) -> typing.List[AppDefinition]:
         :return: list of newly downloaded app definitions. """
     new_definitions = []
     bucket_listing = get_bucket_listing()
-    logger.debug('download_definitions. app_dir=%s, bucket_listing=%r',
-        app_dir, bucket_listing)
+    logger.debug(
+        'download_definitions. app_dir=%s, bucket_listing=%r',
+        app_dir,
+        bucket_listing
+    )
 
     for metadata in bucket_listing.contents:
         definition_path = app_dir / metadata.key
@@ -111,4 +115,3 @@ def download_definitions(app_dir: Path) -> typing.List[AppDefinition]:
                 download_definition(metadata.key, definition_path))
 
     return new_definitions
-

@@ -101,7 +101,8 @@ class AppManager:
             return
 
         for app in new_apps:
-            logger.info('New application definition downloaded. '
+            logger.info(
+                'New application definition downloaded. '
                 'app_name=%s, app_version=%s, app_id=%r',
                 app.name,
                 app.version,

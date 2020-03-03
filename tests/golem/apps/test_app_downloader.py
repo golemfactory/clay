@@ -2,14 +2,8 @@ from mock import Mock, patch
 
 import requests
 
-from golem.apps.manager import AppManager
 import golem.apps.downloader as downloader
-from golem.apps import (
-    AppDefinition,
-    load_app_from_json_file,
-    load_apps_from_dir,
-)
-from golem.testutils import TempDirFixture, DatabaseFixture
+from golem.testutils import TempDirFixture
 
 ROOT_PATH = 'golem.apps.downloader'
 
@@ -29,7 +23,7 @@ BUCKET_LISTING_XML = f'''<?xml version="1.0" encoding="UTF-8"?>
 
 
 class TestAppDownloader(TempDirFixture):
-    
+
     @patch(f'{ROOT_PATH}.get_bucket_listing')
     @patch(f'{ROOT_PATH}.download_definition')
     def test_download_definitions(self, download_mock, bucket_listing_mock):
@@ -48,8 +42,8 @@ class TestAppDownloader(TempDirFixture):
         new_definitions = downloader.download_definitions(apps_path)
 
         self.assertEqual(len(new_definitions), 1)
-        download_mock.assert_called_once_with(new_app_key,
-            apps_path / new_app_key)
+        download_mock.assert_called_once_with(
+            new_app_key, apps_path / new_app_key)
         self.assertEqual(download_mock.call_count, 1)
 
     @patch('requests.get')
@@ -63,4 +57,3 @@ class TestAppDownloader(TempDirFixture):
 
         self.assertEqual(len(result.contents), 1)
         self.assertEqual(result.contents[0].key, APP_KEY)
-
