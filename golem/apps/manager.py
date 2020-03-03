@@ -3,6 +3,7 @@ from typing import Dict, List, Tuple
 from pathlib import Path
 
 from dataclasses import asdict
+from requests.exceptions import RequestException
 
 from golem.apps import (
     AppId,
@@ -93,7 +94,11 @@ class AppManager:
             downloaded publish an RPC event to notify clients.
             :param register_apps: if True, new definitions will be
             registered in the manager. """
-        new_apps = download_definitions(self.app_dir)
+        try:
+            new_apps = download_definitions(self.app_dir)
+        except RequestException as e:
+            logger.error('Failed to download new app definitions. %s', e)
+            return
 
         for app in new_apps:
             logger.info('New application definition downloaded. '
