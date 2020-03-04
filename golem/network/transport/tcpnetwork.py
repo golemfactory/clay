@@ -518,7 +518,7 @@ class BroadcastProtocol(SafeProtocol):
         )
 
     def sendHandshake(self) -> bool:
-        handshake_bytes = broadcast.prepare_handshake().to_bytes()
+        handshake_bytes = broadcast.list_to_bytes(broadcast.prepare_handshake())
         db = DataBuffer()
         db.append_len_prefixed_bytes(handshake_bytes)
 
@@ -558,7 +558,7 @@ class BroadcastProtocol(SafeProtocol):
         b = self.db.read_len_prefixed_bytes()
         if b is None:
             return None
-        broadcasts_l = broadcast.BroadcastList.from_bytes(b)
+        broadcasts_l = broadcast.list_from_bytes(b)
         for bc in broadcasts_l:
             if not bc.process():
                 logger.debug(

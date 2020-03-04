@@ -16,46 +16,45 @@ class BroadcastError(Exception):
     pass
 
 
-class BroadcastList(list):
-    @classmethod
-    def from_bytes(cls, b: bytes) -> typing.List[model.Broadcast]:
-        db = DataBuffer()
-        db.append_bytes(b)
-        result = []
-        for cnt, broadcast_binary in enumerate(db.get_len_prefixed_bytes()):
-            if cnt >= 10:
-                break
-            try:
-                b = model.Broadcast.from_bytes(broadcast_binary)
-                b.verify_signature(public_key=variables.BROADCAST_PUBKEY)
-                result.append(b)
-            except BroadcastError as e:
-                logger.debug(
-                    'Invalid broadcast received: %s. b=%r',
-                    e,
-                    broadcast_binary,
-                )
-            except Exception:  # pylint: disable=broad-except
-                logger.debug(
-                    'Invalid broadcast received: %r',
-                    broadcast_binary,
-                    exc_info=True,
-                )
-        return result
-
-    def to_bytes(self) -> bytes:
-        db = DataBuffer()
-        for broadcast in self:
-            assert isinstance(broadcast, model.Broadcast)
-            db.append_len_prefixed_bytes(broadcast.to_bytes())
-        return db.read_all()
+def list_from_bytes(b: bytes) -> typing.List[model.Broadcast]:
+    db = DataBuffer()
+    db.append_bytes(b)
+    result = []
+    for cnt, broadcast_binary in enumerate(db.get_len_prefixed_bytes()):
+        if cnt >= 10:
+            break
+        try:
+            b = model.Broadcast.from_bytes(broadcast_binary)
+            b.verify_signature(public_key=variables.BROADCAST_PUBKEY)
+            result.append(b)
+        except BroadcastError as e:
+            logger.debug(
+                'Invalid broadcast received: %s. b=%r',
+                e,
+                broadcast_binary,
+            )
+        except Exception:  # pylint: disable=broad-except
+            logger.debug(
+                'Invalid broadcast received: %r',
+                broadcast_binary,
+                exc_info=True,
+            )
+    return result
 
 
-def prepare_handshake() -> BroadcastList:
+def list_to_bytes(l: typing.List[model.Broadcast]) -> bytes:
+    db = DataBuffer()
+    for broadcast in l:
+        assert isinstance(broadcast, model.Broadcast)
+        db.append_len_prefixed_bytes(broadcast.to_bytes())
+    return db.read_all()
+
+
+def prepare_handshake() -> typing.List[model.Broadcast]:
     query = model.Broadcast.select().where(
         model.Broadcast.broadcast_type == model.Broadcast.TYPE.Version,
     )
-    bl = BroadcastList()
+    bl = []
     if query.exists():
         bl.append(query.order_by('-timestamp')[0])
     logger.debug('Prepared handshake: %s', bl)
