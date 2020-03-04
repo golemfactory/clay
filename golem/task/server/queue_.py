@@ -115,7 +115,9 @@ class TaskMessagesQueueMixin:
             conn_id,
             node_id,
     ):
-        session: 'TaskSession' = protocol.session
+        session = protocol.session
+        if typing.TYPE_CHECKING:
+            assert isinstance(session, TaskSession)
         try:
             if self.sessions[node_id] is not None:
                 # There is a session already established
