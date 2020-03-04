@@ -175,7 +175,6 @@ class SessionProtocol(Protocol):
             pass
 
         self.session = self.session_factory.get_session(self)
-        return True
 
 
 class Session(object, metaclass=abc.ABCMeta):

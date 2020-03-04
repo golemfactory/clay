@@ -280,7 +280,7 @@ class BasicProtocol(SessionProtocol):
         self.machine.add_transition_callback(
             'connectionLostTransition', 'connected', 'disconnected',
             'before',
-            lambda reason: self.session.dropped() if self.session else None,
+            lambda reason: self.session.dropped(),
         )
 
     def send_message(self, msg):
