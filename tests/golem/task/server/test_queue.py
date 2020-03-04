@@ -41,7 +41,7 @@ class TestTaskQueueMixin(
 
     def test_conn_established(self, *_):
         self.server.msg_queue_connection_established(
-            self.session,
+            mock.MagicMock(session=self.session),
             self.conn_id,
             self.node_id,
         )

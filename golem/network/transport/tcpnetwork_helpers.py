@@ -226,7 +226,9 @@ class TCPConnectInfo(object):
             if final_failure_callback else None)
 
     def __str__(self):
-        get_func = lambda cbk: cbk.func if cbk is not None else None  # noqa
+        def get_func(cbk):
+            return cbk.func if cbk is not None else None
+
         return ("TCP connection information: addresses {}, "
                 "callback {}, errback {}, final_errback {}").format(
                     self.socket_addresses,

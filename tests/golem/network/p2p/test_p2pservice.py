@@ -478,7 +478,10 @@ class TestP2PService(TestDatabaseWithReactor):
         addr = SocketAddress('127.0.0.1', 40102)
         self.service.connect(addr)
         time.sleep(0.1)
-        connection_established.assert_called_once_with(None, conn_id=mock.ANY)
+        connection_established.assert_called_once_with(
+            mock.ANY,
+            conn_id=mock.ANY,
+        )
 
     @mock.patch('twisted.internet.tcp.BaseClient.createInternetSocket',
                 side_effect=Exception('something has failed'))
