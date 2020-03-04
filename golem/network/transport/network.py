@@ -16,7 +16,7 @@ class ExtendedMachine(transitions.Machine):
     def add_transition_callback(  # pylint: disable=too-many-arguments
             self,
             trigger: str,
-            source,
+            source: str,
             dest: str,
             callback_trigger: str,  # 'before', 'after' or 'prepare'
             callback_func,
