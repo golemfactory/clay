@@ -148,7 +148,13 @@ class SessionProtocol(Protocol):
             'connectionLostTransition',
             '*',
             'disconnected',
-            after=lambda reason: (
+        )
+        self.machine.add_transition_callback(
+            'connectionLostTransition',
+            'connected',
+            'disconnected',
+            'after',
+            lambda reason: (
                 delattr(self, 'session'),
             ),
         )
@@ -163,7 +169,7 @@ class SessionProtocol(Protocol):
         # map twisted Protocol event into transition
         self.connectionLostTransition(reason=reason)  # noqa pylint: disable=no-member
 
-    def create_session(self) -> bool:
+    def create_session(self) -> None:
         """Called when new connection is successfully opened"""
 
         # If the underlying transport is TCP, enable TCP keepalive.

@@ -1,6 +1,7 @@
 import logging
 import struct
 import time
+import typing
 
 import golem_messages
 from golem_messages import message
@@ -169,13 +170,13 @@ class TCPNetwork(Network):
                          connect_info)
 
     @staticmethod
-    def __connection_established(conn, established_callback,
+    def __connection_established(protocol, established_callback,
                                  connect_info: TCPConnectInfo):
-        pp = conn.transport.getPeer()
+        pp = protocol.transport.getPeer()
         logger.debug("Connection established %r %r", pp.host, pp.port)
         TCPNetwork.__call_established_callback(
             established_callback,
-            conn.session,
+            protocol,
             connect_info,
         )
 
@@ -186,11 +187,11 @@ class TCPNetwork(Network):
         TCPNetwork.__call_failure_callback(failure_callback, connect_info)
 
     @staticmethod
-    def __connection_to_address_established(conn,
+    def __connection_to_address_established(protocol,
                                             connect_info: TCPConnectInfo):
         TCPNetwork.__call_established_callback(
             connect_info.established_callback,
-            conn,
+            protocol,
         )
 
     def __connection_to_address_failure(self, connect_info: TCPConnectInfo):
@@ -247,7 +248,17 @@ class TCPNetwork(Network):
                                     **kwargs):
         if established_callback is None:
             return
-        established_callback(result, *args, **kwargs)
+        try:
+            established_callback(result, *args, **kwargs)
+        except Exception:  # pylint: disable=broad-except
+            logger.error(
+                "Problem calling established callback: %s(*%s, **%s)",
+                established_callback,
+                args,
+                kwargs,
+                exc_info=True,
+            )
+            raise
 
     @staticmethod
     def __stop_listening_success(result, callback):
@@ -487,6 +498,7 @@ class BroadcastProtocol(SafeProtocol):
 
     def __init__(self, session_factory, server, **_kwargs):
         super().__init__(session_factory, server)
+        self.conn_id: typing.Optional[str] = None
         self.machine.add_state('handshaking')
         self.machine.add_transition(
             'connectionMadeTransition',
@@ -510,6 +522,10 @@ class BroadcastProtocol(SafeProtocol):
             to_source='handshaking',
             to_dest='disconnected',
         )
+
+    def create_session(self):
+        super().create_session()
+        self.session.conn_id = self.conn_id
 
     def sendHandshake(self) -> bool:
         handshake_bytes = broadcast.list_to_bytes(broadcast.prepare_handshake())
