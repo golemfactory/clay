@@ -2,6 +2,7 @@ import os
 import pathlib
 import shutil
 
+from apps.blender.blenderenvironment import BlenderEnvironment
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
 from .test_docker_job import TestDockerJob
@@ -14,7 +15,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.10"
+        return BlenderEnvironment.DOCKER_TAG
 
     def test_blender_job(self):
         # copy the scene file to the resources dir
