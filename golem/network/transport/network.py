@@ -12,7 +12,7 @@ from .tcpnetwork_helpers import TCPConnectInfo, TCPListenInfo, TCPListeningInfo
 logger = logging.getLogger(__name__)
 
 
-class GolemStateMachine(transitions.Machine):
+class ExtendedMachine(transitions.Machine):
     def add_transition_callback(  # pylint: disable=too-many-arguments
             self,
             trigger: str,
@@ -128,7 +128,7 @@ class SessionProtocol(Protocol):
         """Connection-oriented basic protocol for twisted"""
         self.session_factory = session_factory
         self.session: typing.Optional[Session] = None
-        self.machine = GolemStateMachine(
+        self.machine = ExtendedMachine(
             self,
             states=[
                 'initial',
