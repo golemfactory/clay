@@ -5,7 +5,7 @@ import peewee
 
 from golem import decorators
 from golem import model
-from golem.core import variables
+from golem.config import active
 from golem.core.databuffer import DataBuffer
 
 
@@ -25,7 +25,7 @@ def list_from_bytes(b: bytes) -> typing.List[model.Broadcast]:
             break
         try:
             b = model.Broadcast.from_bytes(broadcast_binary)
-            b.verify_signature(public_key=variables.BROADCAST_PUBKEY)
+            b.verify_signature(public_key=active.BROADCAST_PUBKEY)
             result.append(b)
         except BroadcastError as e:
             logger.debug(

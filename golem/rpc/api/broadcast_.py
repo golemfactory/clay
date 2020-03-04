@@ -1,8 +1,6 @@
-import codecs
-
 from golem import model
+from golem.config import active
 from golem.core import common
-from golem.core import variables
 from golem.rpc import utils as rpc_utils
 
 
@@ -16,13 +14,13 @@ def hash_(
        before pushing
     """
     type_ = model.Broadcast.TYPE(int(broadcast_type))
-    data = codecs.decode(data_hex, 'hex')  # type: ignore
+    data = bytes.fromhex(data_hex)
     bc = model.Broadcast(
         broadcast_type=type_,
         timestamp=int(timestamp),
         data=data,
     )
-    return codecs.encode(bc.get_hash(), 'hex').decode()  # type: ignore
+    return bc.get_hash().hex()
 
 
 @rpc_utils.expose('broadcast.push')
@@ -34,15 +32,15 @@ def push(
 ):
     """Push signed broadcast into the p2p network
     """
-    data = codecs.decode(data_hex, 'hex')  # type: ignore
-    signature = codecs.decode(signature_hex, 'hex')  # type: ignore
+    data = bytes.fromhex(data_hex)
+    signature = bytes.fromhex(signature_hex)
     bc = model.Broadcast(
         broadcast_type=model.Broadcast.TYPE(int(broadcast_type)),
         timestamp=int(timestamp),
         data=data,
         signature=signature,
     )
-    bc.verify_signature(public_key=variables.BROADCAST_PUBKEY)
+    bc.verify_signature(public_key=active.BROADCAST_PUBKEY)
     if not bc.process():
         raise RuntimeError("Broadcast rejected")
 
@@ -56,7 +54,7 @@ def list_():
             'timestamp': bc.timestamp,
             'broadcast_type': bc.broadcast_type.value,
             'broadcast_type_name': bc.broadcast_type.name,
-            'data_hex': codecs.encode(bc.data, 'hex').decode(),
+            'data_hex': bc.data.hex(),
             'created_date': common.datetime_to_timestamp_utc(bc.created_date),
         }
         for bc

@@ -30,8 +30,6 @@ MAX_CONNECT_SOCKET_ADDRESSES = 8
 DEFAULT_CONNECT_TO = '8.8.8.8'
 DEFAULT_CONNECT_TO_PORT = 80
 
-BROADCAST_PUBKEY = b'\xab\xab;\xb0\x89\x10\r\xf8Hs\xd7\x91\xcc\x13\xdb\x0b9tw\x80\xd4t?\xdc\x9dS.\x9at\xe3X\xbcBK\x1c\xef\xdb3\xab}z\xad\xde"ZW\xa9T\xdeN\xb6\xc7P\x0e\xa9\x7fv\x1a\xec\xcbN\x07R\x10'  # noqa pylint: disable=line-too-long
-
 CONCENT_CERTIFICATES_DIR = pathlib.Path(common.get_golem_path()) \
     / 'golem/network/concent/resources/ssl/certs'
 CONCENT_CHOICES: dict = {
