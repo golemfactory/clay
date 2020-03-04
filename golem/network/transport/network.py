@@ -142,14 +142,14 @@ class SessionProtocol(Protocol):
             'connectionMadeTransition',
             'initial',
             'connected',
-            after=self.create_session or True,  # always True
+            after=self.create_session,
         )
         self.machine.add_transition(
             'connectionLostTransition',
             '*',
             'disconnected',
             after=lambda reason: (
-                delattr(self, 'session') or True  # always True
+                delattr(self, 'session'),
             ),
         )
 
