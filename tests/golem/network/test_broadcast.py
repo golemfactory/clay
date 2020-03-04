@@ -23,8 +23,13 @@ class SweepTestCase(testutils.DatabaseFixture):
             1,
         )
 
-    @freeze_time("2018-01-01 00:00:00", as_arg=True)
-    def test_two(frozen_time, self):  # noqa pylint: disable=no-self-argument, no-self-use
+    def test_two(self):
+        with freeze_time("2018-01-01 00:00:00") as frozen_time:
+            # override a bug in freezegun that passes
+            # frozen_time as first argument even to methods (before self)
+            self.frozen_two(frozen_time)
+
+    def frozen_two(self, frozen_time):
         model.Broadcast.create_and_sign(self.privkey, 1, b'1.3.3.7')
         # bug in freezegun puts frozen_time as first argument event in methods
         frozen_time.tick()  # pylint: disable=no-member
