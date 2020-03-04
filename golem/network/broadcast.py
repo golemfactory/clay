@@ -64,7 +64,6 @@ def prepare_handshake() -> BroadcastList:
 
 @decorators.run_with_db()
 def sweep() -> None:
-    logger.info('Sweeping broadcasts')
     max_timestamp = model.Broadcast.select(
         peewee.fn.MAX(model.Broadcast.timestamp),
     ).scalar()

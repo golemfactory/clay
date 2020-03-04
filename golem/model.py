@@ -939,7 +939,8 @@ class Broadcast(BaseModel):
 
     @classmethod
     def from_bytes(cls, b: bytes) -> 'Broadcast':
-        # Remember to verify signature
+        # Remember to verify signature of this broadcast if it's been loaded
+        # from untrusted source
         if len(b) < cls.HEADER_LENGTH + cls.SIGNATURE_LENGTH:
             from golem.network import broadcast
             raise broadcast.BroadcastError(
@@ -971,7 +972,6 @@ class Broadcast(BaseModel):
         )
 
     def verify_signature(self, public_key: bytes) -> None:
-        # XXX MultiSig solution? Like two of three?
         cryptography.ecdsa_verify(
             pubkey=public_key,
             signature=self.signature,
