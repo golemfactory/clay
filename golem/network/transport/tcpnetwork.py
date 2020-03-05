@@ -288,11 +288,6 @@ class BasicProtocol(SessionProtocol):
         super().__init__(session_factory)
         self.db = DataBuffer()
         self.spam_protector = SpamProtector()
-        self.machine.add_transition_callback(
-            'connectionLostTransition', 'connected', 'disconnected',
-            'before',
-            lambda reason: self.session.dropped(),
-        )
 
     def send_message(self, msg):
         """

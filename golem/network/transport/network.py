@@ -149,14 +149,16 @@ class SessionProtocol(Protocol):
             '*',
             'disconnected',
         )
+
+        def after_disconnection(reason):  # pylint: disable=unused-argument
+            self.session.dropped()
+            delattr(self, 'session')
         self.machine.add_transition_callback(
             'connectionLostTransition',
             'connected',
             'disconnected',
             'after',
-            lambda reason: (
-                delattr(self, 'session'),
-            ),
+            after_disconnection,
         )
 
     def connectionMade(self):
