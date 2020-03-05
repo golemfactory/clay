@@ -2,9 +2,19 @@ import logging
 from typing import Dict, List, Tuple
 from pathlib import Path
 
-from golem.apps import AppId, AppDefinition, load_apps_from_dir
-from golem.apps.default import save_built_in_app_definitions
+from dataclasses import asdict
+from requests.exceptions import RequestException
+
+from golem.apps import (
+    AppId,
+    AppDefinition,
+    app_json_file_name,
+    load_apps_from_dir
+)
+from golem.apps.downloader import download_definitions
 from golem.model import AppConfiguration
+from golem.report import EventPublisher
+from golem.rpc.mapping.rpceventnames import App
 
 logger = logging.getLogger(__name__)
 
@@ -12,20 +22,19 @@ logger = logging.getLogger(__name__)
 class AppManager:
     """ Manager class for applications using Task API. """
 
-    def __init__(self, app_dir: Path, save_apps=True) -> None:
+    def __init__(self, app_dir: Path, download_apps: bool = True) -> None:
+        self.app_dir: Path = app_dir
+        self.app_dir.mkdir(exist_ok=True)
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
         self._app_file_names: Dict[AppId, Path] = dict()
 
-        # Save build in apps, then load apps from path
-        new_apps: List[AppId] = []
-        if save_apps:
-            new_apps = save_built_in_app_definitions(app_dir)
+        # Download default apps then load all apps from path
+        if download_apps:
+            self.update_apps(register_apps=False)
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path
-        for app_id in new_apps:
-            self.set_enabled(app_id, True)
 
     def registered(self, app_id) -> bool:
         return app_id in self._apps
@@ -80,6 +89,32 @@ class AppManager:
         del self._apps[app_id]
         self._app_file_names[app_id].unlink()
         return True
+
+    def update_apps(self, register_apps: bool = True):
+        """ Download new app definitions if available. For each definition
+            downloaded publish an RPC event to notify clients.
+            :param register_apps: if True, new definitions will be
+            registered in the manager. """
+        try:
+            new_apps = download_definitions(self.app_dir)
+        except RequestException as e:
+            logger.error('Failed to download new app definitions. %s', e)
+            return
+
+        for app in new_apps:
+            logger.info(
+                'New application definition downloaded. '
+                'app_name=%s, app_version=%s, app_id=%r',
+                app.name,
+                app.version,
+                app.id
+            )
+            if register_apps:
+                self.register_app(app)
+                app_file_path = self.app_dir / app_json_file_name(app)
+                self._app_file_names[app.id] = app_file_path
+
+            EventPublisher.publish(App.evt_new_definiton, asdict(app))
 
 
 class AppStates:
