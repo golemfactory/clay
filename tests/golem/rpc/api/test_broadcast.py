@@ -1,11 +1,15 @@
-import binascii
+from unittest import mock
 
 from freezegun import freeze_time
 import golem_messages.exceptions
 
 from golem import model
 from golem import testutils
+from golem.config import active
 from golem.rpc.api import broadcast_ as api_broadcast
+
+PRIVATE_KEY = b"\x91M7\x06\x85\xd1\x15\xc7\x14\t\xe9\xca+\xef\xce\x15\xdf\xc5\xb6\x93]\xdc\xd0p\x0f\x18'\x92=3\n/"  # noqa pylint: disable=line-too-long
+PUBLIC_KEY = b'\xb7\xdap\xa8\xbb\xb49\xe8\xf1\xcd\xf7IL\xe1c)J\x88L\xca\xf9\xf1\x17\x02><\xad^]L\xb6\x06U\xae\xc6\x97\xc8Y\xfd\xeb\x98\x80\xef\x94\xe3p^\xe0\xa2\xddD\xeb\xa7\xd6\x8c\xab\xcd\x90\xe7\x97+H\xd0\x0f'  # noqa pylint: disable=line-too-long
 
 
 class BroadcastTestBase(testutils.DatabaseFixture):
@@ -45,6 +49,7 @@ class HashTest(BroadcastTestBase):
         self.assertEqual(result, self.hash_)
 
 
+@mock.patch.object(active, 'BROADCAST_PUBKEY', PUBLIC_KEY)
 class PushTest(BroadcastTestBase):
     def test_basic(self):
         api_broadcast.push(
@@ -76,7 +81,7 @@ class PushTest(BroadcastTestBase):
         self.assertFalse(self.query.exists())
 
     def test_invalid_signature_invalid_hex(self):
-        with self.assertRaises(binascii.Error):
+        with self.assertRaises(ValueError):
             api_broadcast.push(
                 timestamp=str(self.timestamp),
                 broadcast_type=str(self.broadcast_type),
@@ -86,6 +91,7 @@ class PushTest(BroadcastTestBase):
         self.assertFalse(self.query.exists())
 
 
+@mock.patch.object(active, 'BROADCAST_PUBKEY', PUBLIC_KEY)
 class ListTest(BroadcastTestBase):
     @freeze_time("2018-01-01 00:00:00")
     def test_basic(self):
