@@ -24,6 +24,7 @@ class AppManager:
 
     def __init__(self, app_dir: Path, download_apps: bool = True) -> None:
         self.app_dir: Path = app_dir
+        self.app_dir.mkdir(exist_ok=True)
         self._apps: Dict[AppId, AppDefinition] = {}
         self._state = AppStates()
         self._app_file_names: Dict[AppId, Path] = dict()
