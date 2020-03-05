@@ -55,6 +55,8 @@ class EthereumConfig:  # pylint:disable=too-many-instance-attributes
 
 # P2P
 
+BROADCAST_PUBKEY = b'\xbe\x0e\xb0@\xad\xad~\xd7\xe3\xca\x96*k\x7f\x0b*\x96++\xb0{\x95+n~\xfdF\xc8\x88\xff\x06\x93cr\xb3\xcb@\xc8Y\xd5n\x98|\xec\x90$\xf2E\xf9\xbbyh:\x99"\xaf\xa2-\xc9os:\xb6\x88'  # noqa pylint: disable=line-too-long
+
 P2P_SEEDS = [
     ('94.23.57.58', 40102),
     ('94.23.57.58', 40104),

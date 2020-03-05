@@ -273,11 +273,6 @@ class PeerSession(BasicSafeSession):
             logger.error("Received unexpected Hello message, ignoring")
             return
 
-        # Check if sender is a seed/bootstrap node
-        port = getattr(msg, 'port', None)
-        if (self.address, port) in self.p2p_service.seeds:
-            compare_version(getattr(msg, 'client_ver', None))
-
         if not self.conn.opened:
             return
 

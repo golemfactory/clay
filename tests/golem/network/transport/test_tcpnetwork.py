@@ -3,9 +3,9 @@ import struct
 import unittest
 from unittest import mock
 
-import golem_messages
 import semantic_version
 from freezegun import freeze_time
+import golem_messages
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
@@ -32,10 +32,13 @@ class TestConformance(unittest.TestCase, testutils.PEP8MixIn):
 class TestBasicProtocol(LogTestCase):
 
     def setUp(self):
-        self.protocol = tcpnetwork.BasicProtocol()
-        self.protocol.session = mock.MagicMock()
-        self.protocol.session.my_private_key = None
-        self.protocol.session.theirs_public_key = None
+        session_mock = mock.MagicMock()
+        session_mock.my_private_key = None
+        session_mock.theirs_private_key = None
+        self.protocol = tcpnetwork.BasicProtocol(
+            mock.MagicMock(return_value=session_mock),
+        )
+
         self.protocol.transport = mock.MagicMock()
 
     def test_init(self):
@@ -44,11 +47,13 @@ class TestBasicProtocol(LogTestCase):
     @mock.patch('golem_messages.load')
     def test_dataReceived(self, load_mock):
         data = b"abc"
-        self.assertIsNone(self.protocol.dataReceived(data))
-        self.protocol.opened = True
-        self.assertIsNone(self.protocol.dataReceived(data))
+        # can_receive() returns False
+        self.protocol.dataReceived(data)
+
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(data)
         self.protocol.db.clear_buffer()
-        self.assertEqual(load_mock.call_count, 0)
+        load_mock.assert_not_called()
 
         m = message.base.Disconnect(reason=None)
         data = m.serialize()
@@ -61,8 +66,8 @@ class TestBasicProtocol(LogTestCase):
         'golem.network.transport.tcpnetwork.BasicProtocol._load_message'
     )
     def test_dataReceived_long(self, load_mock):
+        self.protocol.connectionMade()
         data = bytes([0xff] * (MAX_MESSAGE_SIZE + 1))
-        self.protocol.opened = True
         self.assertIsNone(self.protocol.dataReceived(data))
         self.assertEqual(load_mock.call_count, 0)
 
@@ -101,11 +106,14 @@ class TestBasicProtocol(LogTestCase):
 
 class SafeProtocolTestCase(unittest.TestCase):
     def setUp(self):
-        self.protocol = SafeProtocol(MagicMock())
-        self.protocol.opened = True
-        self.protocol.session = mock.MagicMock()
-        self.protocol.session.my_private_key = None
-        self.protocol.session.theirs_public_key = None
+        session_mock = mock.MagicMock()
+        session_mock.my_private_key = None
+        session_mock.theirs_private_key = None
+        self.protocol = SafeProtocol(
+            MagicMock(return_value=session_mock),
+            MagicMock(),
+        )
+        self.protocol.connectionMade()
 
     @mock.patch('golem_messages.load')
     def test_drop_set_task(self, load_mock):
@@ -136,7 +144,7 @@ class TestSocketAddress(unittest.TestCase):
         address = "fe80::3%eth0"
         port = 1111
         sa = SocketAddress(address, port)
-        assert sa.address == base_address
+        self.assertEqual(sa.address, base_address)
         assert sa.port == port
 
         address = "fe80::3%1"
@@ -152,7 +160,7 @@ class TestSocketAddress(unittest.TestCase):
         assert sa.address == base_address
 
     def test_is_proper_address(self):
-        assert SocketAddress.is_proper_address("127.0.0.1", 1020)
+        self.assertTrue(SocketAddress.is_proper_address("127.0.0.1", 1020))
         assert not SocketAddress.is_proper_address("127.0.0.1", 0)
         assert not SocketAddress.is_proper_address("127.0.0.1", "ABC")
         assert not SocketAddress.is_proper_address("AB?*@()F*)A", 1020)

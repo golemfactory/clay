@@ -54,6 +54,8 @@ class EthereumConfig:
 
 # P2P
 
+BROADCAST_PUBKEY = b'\xab\xab;\xb0\x89\x10\r\xf8Hs\xd7\x91\xcc\x13\xdb\x0b9tw\x80\xd4t?\xdc\x9dS.\x9at\xe3X\xbcBK\x1c\xef\xdb3\xab}z\xad\xde"ZW\xa9T\xdeN\xb6\xc7P\x0e\xa9\x7fv\x1a\xec\xcbN\x07R\x10'  # noqa pylint: disable=line-too-long
+
 P2P_SEEDS = [
     ('seeds.golem.network', 40102),
     ('0.seeds.golem.network', 40102),
