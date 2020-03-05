@@ -75,7 +75,7 @@ MESSAGE_QUEUE_MAX_AGE = dateutil.relativedelta.relativedelta(months=6)
 # How long should peer be banned when failing on resources (seconds)
 ACL_BLOCK_TIMEOUT_RESOURCE = 2 * 3600  # s
 
-APP_DEFINITIONS_CDN_URL = 'https://golem-app-definitions.cdn.golem.network'
+APP_DEFINITIONS_CDN_URL = 'https://golem-app-definitions.cdn.golem.network/'
 
 
 ###############
