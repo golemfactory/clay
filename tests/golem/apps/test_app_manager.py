@@ -1,4 +1,4 @@
-from mock import Mock
+from mock import Mock, patch
 
 from golem.apps.manager import AppManager
 from golem.apps import (
@@ -8,6 +8,7 @@ from golem.apps import (
 )
 from golem.testutils import TempDirFixture, DatabaseFixture
 
+ROOT_PATH = 'golem.apps.manager'
 APP_DEF = AppDefinition(
     name='test_app',
     requestor_env='test_env',
@@ -27,6 +28,25 @@ class AppManagerTestBase(DatabaseFixture):
         app_path = self.new_path / 'apps'
         app_path.mkdir(exist_ok=True)
         self.app_manager = AppManager(app_path, False)
+
+
+class TestUpdateApps(AppManagerTestBase):
+
+    @patch(f'{ROOT_PATH}.download_definitions')
+    @patch(f'{ROOT_PATH}.EventPublisher')
+    def test_update(self, publisher_mock, download_mock):
+        download_mock.return_value = [APP_DEF]
+        self.app_manager.update_apps()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.assertEqual(self.app_manager.app(APP_ID), APP_DEF)
+        self.assertFalse(self.app_manager.enabled(APP_ID))
+        self.assertEqual(publisher_mock.publish.call_count, 1)
+
+        # Definition already exists locally
+        download_mock.return_value = []
+        self.app_manager.update_apps()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.assertEqual(publisher_mock.publish.call_count, 1)
 
 
 class TestRegisterApp(AppManagerTestBase):
