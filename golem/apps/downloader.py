@@ -79,6 +79,7 @@ def _get_namespace(element: xml.Element):
 
 def get_bucket_listing() -> ListBucketResult:
     response = requests.get(APP_DEFINITIONS_CDN_URL)
+    response.raise_for_status()
     root: xml.Element = xml.fromstring(response.content)
     return ListBucketResult(root)
 
@@ -88,8 +89,9 @@ def download_definition(
         destination: Path) -> AppDefinition:
     logger.debug(
         'download_definition. key=%s, destination=%s', key, destination)
-    json = requests.get(f'{APP_DEFINITIONS_CDN_URL}{key}').text
-    definition = AppDefinition.from_json(json)
+    response = requests.get(f'{APP_DEFINITIONS_CDN_URL}{key}')
+    response.raise_for_status()
+    definition = AppDefinition.from_json(response.text)
     save_app_to_json_file(definition, destination)
     return definition
 
