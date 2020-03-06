@@ -501,6 +501,11 @@ class BroadcastProtocol(SafeProtocol):
             'handshaking',
             after=self.sendHandshake,
         )
+        self.machine.add_transition(
+            'connectionLostTransition',
+            'handshaking',
+            'disconnected',
+        )
         self.machine.move_transitions(
             from_trigger='connectionMadeTransition',
             from_source='initial',
@@ -508,14 +513,6 @@ class BroadcastProtocol(SafeProtocol):
             to_trigger='handshakeFinished',
             to_source='handshaking',
             to_dest='connected',
-        )
-        self.machine.copy_transitions(
-            from_trigger='connectionLostTransition',
-            from_source='connected',
-            from_dest='disconnected',
-            to_trigger='connectionLostTransition',
-            to_source='handshaking',
-            to_dest='disconnected',
         )
 
     def create_session(self):
