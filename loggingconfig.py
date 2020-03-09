@@ -93,6 +93,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'transitions': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
         'twisted': {
             'level': 'WARNING',
             'propagate': True,
