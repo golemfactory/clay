@@ -25,3 +25,5 @@ Help us develop the application by submitting issues and bugs. See instruction
 [here](https://docs.golem.network/#/Products/Brass-Beta/Testing).
 
 You can also send us an email to `contact@golem.network` or talk to us on [chat.golem.network](https://chat.golem.network).
+
+Tests
