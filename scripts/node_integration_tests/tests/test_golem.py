@@ -102,6 +102,9 @@ class GolemNodeTest(NodeTestBase):
     def test_lenient_verification(self):
         self._run_test('golem.lenient_verification')
 
+    def test_simultaneous_tasks(self):
+        self._run_test('golem.simultaneous_tasks')
+
     def test_four_by_three(self):
         """
         introduces an uneven division 400 pixels -> 3 subtasks
