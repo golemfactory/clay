@@ -120,6 +120,12 @@ class ProtocolFactory(Factory):
         )
 
     def buildProtocol(self, addr):
+        logger.debug(
+            'buildProtocol(%r) session_factory=%s, server=%s',
+            addr,
+            self.session_factory,
+            self.server,
+        )
         return self.protocol_class(self.session_factory, server=self.server)
 
 

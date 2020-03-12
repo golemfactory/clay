@@ -329,7 +329,18 @@ class BasicProtocol(SessionProtocol):
     def dataReceived(self, data):
         """Called when additional chunk of data
             is received from another peer"""
+        logger.debug(
+            '%s.%s.dataReceived(%r)',
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            data,
+        )
         if not self._can_receive():
+            logger.debug(
+                "Can't receive. opened:%s self.db:%r",
+                self.opened,
+                self.db,
+            )
             return
 
         if not self.session:
@@ -529,6 +540,12 @@ class BroadcastProtocol(SafeProtocol):
         return True
 
     def dataReceived(self, data: bytes) -> None:
+        logger.debug(
+            '%s.%s.dataReceived(%r)',
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            data,
+        )
         if self.is_connected():  # pylint: disable=no-member
             return super().dataReceived(data)
         if self.is_handshaking():  # pylint: disable=no-member
