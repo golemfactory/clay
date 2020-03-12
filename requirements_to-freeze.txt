@@ -39,7 +39,7 @@ peewee<2.11,>=2.8
 peewee_migrate==0.14.0
 pluggy==0.6.0
 portalocker==1.2.1
-psutil==5.2.2
+psutil==5.6.6
 py-cpuinfo==4.0.0
 pyasn1==0.4.5
 pycparser==2.17
