@@ -202,3 +202,44 @@ class TestTCPNetworkConnections(unittest.TestCase):
         connect_all(TCPConnectInfo(self.addresses, mock.Mock(), mock.Mock()))
         assert not connect.called
         assert call.called
+
+
+class TestBrodcastProtocol(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.session_factory = mock.MagicMock()
+        self.server = mock.MagicMock()
+        self.protocol = tcpnetwork.BroadcastProtocol(
+            session_factory=self.session_factory,
+            server=self.server,
+        )
+        self.protocol.transport = mock.MagicMock()
+        self.protocol.transport.loseConnection.side_effect = \
+            lambda: self.protocol.connectionLost()
+        self.broadcast_data = b'B\x00\x00\x00\x00\x00'  # empty
+        self.msg_data = b'\x00\x00\x02\xcd\x00\x00\x00\x00\x00\x00^jJv\x00`]\x88wO\xc5z\xa9\xf5\xa9\xb1\x94\xb7\x86\xe42\xe0\r\xd9\xb3d{(a4\xe1\xbaH\xfc\x07\x9bCY\xe8l\x0b?\n\xcf\xc5g\xc3\xbb\xf30\x8f\x98\xb5\x0cK\x00\x81(\xa2\x8ffhjXO\x93\x98\xeb"\x00\x89\x82hrand_val\xfb?\xc5\xffU\xa8rlm\x82hproto_idb32\x82inode_info\xadinode_namepmainnet-gf-1 gitckeyx\x800c706778f7442d63c626dbdd7cbcf3cad62071f0328ce4987249389aad854203d13547f8f1e1a967a9cc1700f9def0d5a25d88ec5d9d596f7beb2cebbddcba13hprv_port\x19\x9c\xa7hpub_port\x19\x9c\xa7lp2p_prv_port\x19\x9c\xa6lp2p_pub_port\x19\x9c\xa6hprv_addrm172.31.57.199hpub_addrm18.197.86.211mprv_addresses\x82m172.31.57.199j172.17.0.1shyperdrive_prv_port\x19\x0c\xd2shyperdrive_pub_port\x19\x0c\xd2mport_statuses\xa3\x19\x9c\xa6dopen\x19\x9c\xa7dopen\x19\x0c\xd2dopenhnat_type\x80\x82dport\x19\x9c\xa6\x82jclient_verf0.22.1\x82osolve_challenge\xf4\x82ichallenge\xf6\x82jdifficulty\xf6\x82hmetadata\xa1kperformance\xa4gBLENDER\xfb@b\xa5\xbf\x84\xc3\xdb\x02mBLENDER_NVGPU\xfb\x00\x00\x00\x00\x00\x00\x00\x00dWASM\xfb@\x85\x91g\\\xf0vNgDEFAULT\xfb@\x9e6\xc0\x02\xfb)y\x063.14.2\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'  # noqa pylint: disable=line-too-long
+
+    def test_no_marker(self):
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(self.msg_data)
+        self.assertTrue(self.protocol.is_disconnected())
+
+    @mock.patch(
+        'golem.network.broadcast.prepare_handshake',
+        return_value=[],
+    )
+    @mock.patch(
+        'golem.network.transport.tcpnetwork'
+        '.BasicProtocol._data_to_messages',
+        return_value=[],
+    )
+    def test_broadcast_and_message(
+            self,
+            mock_data_to_messages,
+            mock_prepare_handshake,
+    ):
+        self.protocol.connectionMade()
+        self.protocol.dataReceived(self.broadcast_data+self.msg_data)
+        mock_data_to_messages.assert_called_once_with()
+        self.assertEqual(self.protocol.db.data_size(), 721)
+        mock_prepare_handshake.assert_called_once_with()
