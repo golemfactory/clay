@@ -342,7 +342,9 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
 
     @staticmethod
     def _identify_new_task_id(
-            tasks: set, known_tasks: set) -> typing.Optional[str]:
+            tasks: set,
+            known_tasks: set
+    ) -> typing.Optional[str]:
         new_tasks = tasks - known_tasks
         if len(new_tasks) != 1:
             print("Cannot find the new task ({})".format(new_tasks))
