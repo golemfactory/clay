@@ -120,6 +120,12 @@ class ProtocolFactory(Factory):
         )
 
     def buildProtocol(self, addr):
+        logger.debug(
+            'buildProtocol(%r) session_factory=%s, server=%s',
+            addr,
+            self.session_factory,
+            self.server,
+        )
         return self.protocol_class(self.session_factory, server=self.server)
 
 
@@ -159,6 +165,15 @@ class SessionProtocol(Protocol):
             'disconnected',
             'after',
             after_disconnection,
+        )
+
+    def __str__(self):
+        peer = self.transport.getPeer() if self.transport else '<no_transport>'
+        # pylint: disable=no-member
+        return (
+            f"{self.__class__.__module__}.{self.__class__.__qualname__}"
+            f" with {peer}"
+            f" state {self.state}"
         )
 
     def connectionMade(self):
