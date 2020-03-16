@@ -57,7 +57,7 @@ class GolemNodeTest(NodeTestBase):
         render the output as JPEG with the proper extension.
         """
         self._run_test(
-            'golem.regular_run_stop_on_reject',
+            'golem.jpeg',
             **{'task-package': 'cube'}
         )
 
