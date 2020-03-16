@@ -167,6 +167,15 @@ class SessionProtocol(Protocol):
             after_disconnection,
         )
 
+    def __str__(self):
+        peer = self.transport.getPeer() if self.transport else '<no_transport>'
+        # pylint: disable=no-member
+        return (
+            f"{self.__class__.__module__}.{self.__class__.__qualname__}"
+            f" with {peer}"
+            f" state {self.state}"
+        )
+
     def connectionMade(self):
         super().connectionMade()
         # map twisted Protocol event into transition
