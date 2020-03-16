@@ -56,7 +56,10 @@ class GolemNodeTest(NodeTestBase):
         verifies if Golem - when supplied with `JPEG` as the format - will
         render the output as JPEG with the proper extension.
         """
-        self._run_test('golem.jpeg')
+        self._run_test(
+            'golem.jpeg',
+            **{'task-package': 'cube'}
+        )
 
     def test_jpg(self):
         """
