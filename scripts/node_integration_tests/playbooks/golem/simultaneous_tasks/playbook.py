@@ -16,18 +16,7 @@ if typing.TYPE_CHECKING:
 class Playbook(NodeTestPlaybook):
     def __init__(self, config: 'TestConfigBase') -> None:
         super().__init__(config)
-        self.output_path2 = tempfile.mkdtemp(
-            prefix="golem-integration-test-output-")
-        self.task_dict2 = copy.deepcopy(self.config.task_dict)
         self.task_id2: typing.Optional[str] = None
-        helpers.set_task_output_path(self.task_dict2, self.output_path2)
-
-    def step_create_task2(self, node_id: NodeId = NodeId.requestor):
-        return self.step_create_task(
-            node_id=node_id,
-            output_path=self.output_path2,
-            task_dict=self.task_dict2,
-        )
 
     def step_get_task_id2(self, node_id: NodeId = NodeId.requestor):
 
@@ -51,7 +40,7 @@ class Playbook(NodeTestPlaybook):
     steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
-        step_create_task2,
+        NodeTestPlaybook.step_create_task,
         step_get_task_id2,
         NodeTestPlaybook.step_wait_task_finished,
         step_wait_task_finished2,
