@@ -34,7 +34,8 @@ class NonHypervisedDockerGPUEnvironment(DockerGPUEnvironment):
     @classmethod
     def default(
             cls,
-            config_dict: Dict[str, Any]
+            config_dict: Dict[str, Any],
+            dev_mode: bool,
     ) -> 'NonHypervisedDockerGPUEnvironment':
         from golem.envs.docker.vendor import nvidia
         config_dict = dict(config_dict)
@@ -42,4 +43,4 @@ class NonHypervisedDockerGPUEnvironment(DockerGPUEnvironment):
         docker_config = DockerGPUConfig.from_dict(config_dict)
         # Make linters know that docker_config is an instance of DockerGPUConfig
         assert isinstance(docker_config, DockerGPUConfig)
-        return cls(docker_config)
+        return cls(docker_config, dev_mode)

@@ -2,6 +2,7 @@
 # pylint: disable=too-many-lines
 
 import asyncio
+import datetime
 import functools
 import itertools
 import logging
@@ -32,12 +33,10 @@ from twisted.internet import defer
 from twisted.internet.defer import inlineCallbacks, Deferred, \
     TimeoutError as DeferredTimeoutError
 
-import golem.apps
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem import constants as gconst
 from golem.apps import manager as app_manager
-from golem.apps.default import save_built_in_app_definitions
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import (
     short_node_id,
@@ -50,7 +49,7 @@ from golem.core.deferred import (
     deferred_from_future,
     sync_wait,
 )
-from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES, ENV_TASK_API_DEV
 from golem.environments.environment import (
     Environment as OldEnv,
     SupportStatus,
@@ -148,18 +147,15 @@ class TaskServer(
         runtime_logs_dir = get_log_dir(client.datadir)
         new_env_manager = EnvironmentManager(runtime_logs_dir)
         register_built_in_repositories()
+        task_api_dev_mode = ENV_TASK_API_DEV in os.environ \
+            and os.environ[ENV_TASK_API_DEV] == "1"
         register_environments(
             work_dir=self.get_task_computer_root(),
-            env_manager=new_env_manager)
+            env_manager=new_env_manager,
+            dev_mode=task_api_dev_mode,
+        )
 
-        app_dir = self.get_app_dir()
-        built_in_apps = save_built_in_app_definitions(app_dir)
-
-        self.app_manager = app_mgr = app_manager.AppManager()
-        for app_def in golem.apps.load_apps_from_dir(app_dir):
-            app_mgr.register_app(app_def)
-        for app_id in built_in_apps:
-            app_mgr.set_enabled(app_id, True)
+        self.app_manager = app_manager.AppManager(self.get_app_dir())
 
         self.node = node
         self.task_archiver = task_archiver
@@ -180,7 +176,7 @@ class TaskServer(
         )
 
         self.requested_task_manager = RequestedTaskManager(
-            app_manager=app_mgr,
+            app_manager=self.app_manager,
             env_manager=new_env_manager,
             public_key=self.keys_auth.public_key,
             root_path=Path(TaskServer.__get_task_manager_root(client.datadir)),
@@ -523,6 +519,8 @@ class TaskServer(
             msg_queue.put(
                 node_id=theader.task_owner.key,
                 msg=wtct,
+                timeout=datetime.timedelta(
+                    seconds=deadline_to_timeout(theader.deadline))
             )
 
             timer.ProviderTTCDelayTimers.start(wtct.task_id)

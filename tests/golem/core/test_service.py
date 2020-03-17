@@ -42,7 +42,7 @@ def test_service_invalid_stop():
 
 class CountingService(LoopingCallService):
     def __init__(self):
-        super(CountingService, self).__init__()
+        super().__init__(run_in_thread=True)
         self.clock = Clock()
         self.count = 0
         # Mock the real clock.
@@ -54,7 +54,7 @@ class CountingService(LoopingCallService):
 
 class AsyncCountingService(LoopingCallService):
     def __init__(self):
-        super(AsyncCountingService, self).__init__()
+        super().__init__(run_in_thread=True)
         self.count = 0
 
     def _run(self):
@@ -63,7 +63,7 @@ class AsyncCountingService(LoopingCallService):
 
 class ExceptionalService(LoopingCallService):
     def __init__(self, delay):
-        super(ExceptionalService, self).__init__()
+        super().__init__(run_in_thread=True)
         self.initial_delay = delay
         self.delay = 0
         self.clock = Clock()

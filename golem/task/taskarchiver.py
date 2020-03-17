@@ -25,6 +25,7 @@ class TaskArchiver(object):
     """
 
     def __init__(self, datadir=None, max_tasks=TASKARCHIVE_MAX_TASKS):
+        self._input_lock = threading.Lock()
         self._input_tasks = []
         self._input_statuses = []
         self._archive_lock = threading.Lock()
@@ -50,14 +51,16 @@ class TaskArchiver(object):
         """Schedule a task to be archived.
         :param task_header: Header of task to be archived
         """
-        self._input_tasks.append(ArchTask(task_header))
+        with self._input_lock:
+            self._input_tasks.append(ArchTask(task_header))
 
     def add_support_status(self, uuid, support_status):
         """Schedule support status of a task to be archived.
         :param uuid: Identifier of task the status belongs to
         :param support_status: SupportStatus object denoting the status
         """
-        self._input_statuses.append((uuid, support_status))
+        with self._input_lock:
+            self._input_statuses.append((uuid, support_status))
 
     def do_maintenance(self):
         """Updates information on unsupported task reasons and
@@ -66,8 +69,9 @@ class TaskArchiver(object):
         functions. Optimizes internal structures and, if needed, writes the
         entire structure to a file.
         """
-        input_tasks, self._input_tasks = self._input_tasks, []
-        input_statuses, self._input_statuses = self._input_statuses, []
+        with self._input_lock:
+            input_tasks, self._input_tasks = self._input_tasks, []
+            input_statuses, self._input_statuses = self._input_statuses, []
         with self._archive_lock:
             ntasks_to_take = self._max_tasks - len(self._archive.tasks)
             if ntasks_to_take < len(input_tasks):
@@ -139,6 +143,10 @@ class TaskArchiver(object):
          For each task we only take into consideration the most recent support
          status of this task.
         """
+        with self._archive_lock:
+            return self._get_unsupport_reasons(last_n_days, today)
+
+    def _get_unsupport_reasons(self, last_n_days, today):
         if not today:
             today = datetime.datetime.now(pytz.utc)
         today = today.replace(hour=0, minute=0, second=0, microsecond=0)

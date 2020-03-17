@@ -14,6 +14,11 @@ from ethereum.utils import denoms
 
 from . import tasks
 
+from ..tempdir import fix_osx_tmpdir
+
+
+fix_osx_tmpdir()
+
 
 class ConfigurationError(Exception):
     pass

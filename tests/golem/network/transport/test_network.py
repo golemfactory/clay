@@ -1,15 +1,14 @@
 from contextlib import contextmanager
 import logging
-import os
 import time
 import unittest
 
 from golem_messages import message
 import golem_messages.cryptography
+import transitions
 
 from golem.network.transport.network import ProtocolFactory, SessionFactory, \
     SessionProtocol
-from golem.network.transport import session
 from golem.network.transport.tcpnetwork import TCPNetwork, TCPListenInfo, \
     TCPListeningInfo, TCPConnectInfo, \
     SocketAddress, BasicProtocol, ServerProtocol, SafeProtocol
@@ -278,8 +277,17 @@ class Transport:
 
 
 class TestProtocols(unittest.TestCase):
+    @classmethod
+    def get_protocols(cls):
+        session_factory = SessionFactory(ASession)
+        return [
+            BasicProtocol(session_factory, ),
+            ServerProtocol(session_factory, Server()),
+            SafeProtocol(session_factory, Server()),
+        ]
+
     def test_init(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
+        prt = self.get_protocols()
         for p in prt:
             from twisted.internet.protocol import Protocol
             self.assertTrue(isinstance(p, Protocol))
@@ -289,19 +297,15 @@ class TestProtocols(unittest.TestCase):
             self.assertIsNotNone(p.server)
 
     def test_close(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
-        for p in prt:
+        for p in self.get_protocols():
             p.transport = Transport()
             self.assertFalse(p.transport.lose_connection_called)
             p.close()
             self.assertTrue(p.transport.lose_connection_called)
 
     def test_connection_made(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
-        for p in prt:
+        for p in self.get_protocols():
             p.transport = Transport()
-            session_factory = SessionFactory(ASession)
-            p.set_session_factory(session_factory)
             self.assertFalse(p.opened)
             p.connectionMade()
             self.assertTrue(p.opened)
@@ -311,29 +315,22 @@ class TestProtocols(unittest.TestCase):
             self.assertNotIn('session', p.__dict__)
 
     def test_connection_lost(self):
-        prt = [BasicProtocol(), ServerProtocol(Server()), SafeProtocol(Server())]
-        for p in prt:
+        for p in self.get_protocols():
             p.transport = Transport()
-            session_factory = SessionFactory(ASession)
-            p.set_session_factory(session_factory)
             self.assertIsNone(p.session)
             p.connectionLost()
             self.assertFalse(p.opened)
-            p.connectionMade()
-            self.assertTrue(p.opened)
-            self.assertIsNotNone(p.session)
-            self.assertFalse(p.session.dropped_called)
-            p.connectionLost()
-            self.assertFalse(p.opened)
-            self.assertNotIn('session', p.__dict__)
+            with self.assertRaises(transitions.MachineError):
+                # Can't trigger event connectionMadeTransition
+                # from state disconnected!
+                p.connectionMade()
 
 
 class TestBasicProtocol(unittest.TestCase):
     def test_send_and_receive_message(self):
-        p = BasicProtocol()
-        p.transport = Transport()
         session_factory = SessionFactory(ASession)
-        p.set_session_factory(session_factory)
+        p = BasicProtocol(session_factory)
+        p.transport = Transport()
         self.assertFalse(p.send_message("123"))
         msg = message.base.Hello()
         self.assertFalse(p.send_message(msg))
@@ -358,9 +355,8 @@ class TestBasicProtocol(unittest.TestCase):
 
 class TestServerProtocol(unittest.TestCase):
     def test_connection_made(self):
-        p = ServerProtocol(Server())
         session_factory = SessionFactory(ASession)
-        p.set_session_factory(session_factory)
+        p = ServerProtocol(session_factory, Server())
         p.connectionMade()
         self.assertEqual(len(p.server.sessions), 1)
         p.connectionLost()
@@ -369,10 +365,9 @@ class TestServerProtocol(unittest.TestCase):
 
 class TestSaferProtocol(unittest.TestCase):
     def test_send_and_receive_message(self):
-        p = SafeProtocol(Server())
-        p.transport = Transport()
         session_factory = SessionFactory(ASession)
-        p.set_session_factory(session_factory)
+        p = SafeProtocol(session_factory, Server())
+        p.transport = Transport()
         self.assertFalse(p.send_message("123"))
         msg = message.base.Hello()
         self.assertIsNone(msg.sig)

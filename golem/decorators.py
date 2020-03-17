@@ -61,6 +61,7 @@ def surge_detector(timeout: datetime.timedelta, treshold: int):
                 hottest_args = sorted(
                     [item for item in calls_counters.items()],
                     key=lambda item: item[1],
+                    reverse=True,
                 )[0]
                 log.warning(
                     "Invocation surge detected. func=%s, hottest_args=%s",

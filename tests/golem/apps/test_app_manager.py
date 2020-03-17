@@ -1,3 +1,5 @@
+from mock import Mock, patch
+
 from golem.apps.manager import AppManager
 from golem.apps import (
     AppDefinition,
@@ -6,6 +8,7 @@ from golem.apps import (
 )
 from golem.testutils import TempDirFixture, DatabaseFixture
 
+ROOT_PATH = 'golem.apps.manager'
 APP_DEF = AppDefinition(
     name='test_app',
     requestor_env='test_env',
@@ -22,7 +25,28 @@ class AppManagerTestBase(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        self.app_manager = AppManager()
+        app_path = self.new_path / 'apps'
+        app_path.mkdir(exist_ok=True)
+        self.app_manager = AppManager(app_path, False)
+
+
+class TestUpdateApps(AppManagerTestBase):
+
+    @patch(f'{ROOT_PATH}.download_definitions')
+    @patch(f'{ROOT_PATH}.EventPublisher')
+    def test_update(self, publisher_mock, download_mock):
+        download_mock.return_value = [APP_DEF]
+        self.app_manager.update_apps()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.assertEqual(self.app_manager.app(APP_ID), APP_DEF)
+        self.assertFalse(self.app_manager.enabled(APP_ID))
+        self.assertEqual(publisher_mock.publish.call_count, 1)
+
+        # Definition already exists locally
+        download_mock.return_value = []
+        self.app_manager.update_apps()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.assertEqual(publisher_mock.publish.call_count, 1)
 
 
 class TestRegisterApp(AppManagerTestBase):
@@ -37,6 +61,15 @@ class TestRegisterApp(AppManagerTestBase):
         self.app_manager.register_app(APP_DEF)
         with self.assertRaises(ValueError):
             self.app_manager.register_app(APP_DEF)
+
+    def test_delete_app(self):
+        self.app_manager.register_app(APP_DEF)
+        self.app_manager._app_file_names[APP_ID] = mocked_file = Mock()
+        mocked_file.unlink = Mock()
+        self.assertEqual(self.app_manager.apps(), [(APP_ID, APP_DEF)])
+        self.app_manager.delete(APP_ID)
+        self.assertEqual(self.app_manager.apps(), [])
+        mocked_file.unlink.assert_called_once_with()
 
 
 class TestSetEnabled(AppManagerTestBase):
@@ -109,4 +142,4 @@ class TestLoadAppsFromDir(TempDirFixture):
         app_file.write_text(APP_DEF.to_json(), encoding='utf-8')
         bogus_file.write_text('(╯°□°）╯︵ ┻━┻', encoding='utf-8')
         loaded_apps = list(load_apps_from_dir(self.new_path))
-        self.assertEqual(loaded_apps, [APP_DEF])
+        self.assertEqual(loaded_apps, [(app_file, APP_DEF)])

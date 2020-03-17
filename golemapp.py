@@ -106,6 +106,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--enable-talkback', is_flag=True, default=None)
 @click.option('--hyperdrive-port', type=int, help="Hyperdrive public port")
 @click.option('--hyperdrive-rpc-port', type=int, help="Hyperdrive RPC port")
+@click.option('--task-api-dev', is_flag=True, default=False,
+              help="Enable task-api developer mode")
 @click.option('--enable-cloud', is_flag=True, default=False,
               help="Enable Golem Cloud (EXPERIMENTAL)")
 @click.option('--cloud-config', default=None,
@@ -114,7 +116,7 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         net, geth_address, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback: bool,
-        hyperdrive_port, hyperdrive_rpc_port, enable_cloud: bool,
+        hyperdrive_port, hyperdrive_rpc_port, task_api_dev, enable_cloud: bool,
         cloud_config
 ):
     if version:
@@ -174,6 +176,22 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
         log_platform_info()
         log_ethereum_config(ethereum_config)
         log_concent_choice(ethereum_config.CONCENT_VARIANT)
+
+        # Config variables continued, after logging is enabled
+        if variables.ENV_TASK_API_DEV not in os.environ:
+            if task_api_dev:
+                os.environ[variables.ENV_TASK_API_DEV] = '1'
+            else:
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
+        else:
+            if os.environ[variables.ENV_TASK_API_DEV] not in ['0', '1']:
+                logger.warning(
+                    "Invalid value in ENV[%r]: given %r should be '0' or '1'."
+                    " Using default value = '0'",
+                    variables.ENV_TASK_API_DEV,
+                    os.environ[variables.ENV_TASK_API_DEV],
+                )
+                os.environ[variables.ENV_TASK_API_DEV] = '0'
 
         node = Node(
             datadir=datadir,

@@ -24,7 +24,15 @@ from golem.envs.default import register_environments
 from golem.envs.docker.whitelist import Whitelist
 from golem.task import envmanager, requestedtaskmanager, taskcomputer
 
+from scripts.tempdir import fix_osx_tmpdir
+
+
+fix_osx_tmpdir()
+
+
 logging.basicConfig(level=logging.INFO)
+TASK_TIMEOUT = 360
+SUBTASK_TIMEOUT = 60
 
 
 async def test_task(
@@ -36,7 +44,9 @@ async def test_task(
 ) -> None:
 
     env_prerequisites = app_definition.requestor_prereq
-    app_manager = appmanager.AppManager()
+    app_dir = work_dir / 'apps'
+    app_dir.mkdir(exist_ok=True)
+    app_manager = appmanager.AppManager(app_dir, False)
     app_manager.register_app(app_definition)
     app_manager.set_enabled(app_definition.id, True)
 
@@ -48,7 +58,9 @@ async def test_task(
     Whitelist.add(app_definition.requestor_prereq['image'])
     register_environments(
         work_dir=str(work_dir),
-        env_manager=env_manager)
+        env_manager=env_manager,
+        dev_mode=True,
+    )
 
     rtm_work_dir = work_dir / 'rtm'
     rtm_work_dir.mkdir()
@@ -71,8 +83,8 @@ async def test_task(
     golem_params = requestedtaskmanager.CreateTaskParams(
         app_id=app_definition.id,
         name='testtask',
-        task_timeout=4,
-        subtask_timeout=4,
+        task_timeout=TASK_TIMEOUT,
+        subtask_timeout=SUBTASK_TIMEOUT,
         output_directory=output_dir,
         resources=list(map(Path, resources)),
         max_subtasks=max_subtasks,
@@ -101,14 +113,14 @@ async def test_task(
             task_id=task_id,
             environment=app_definition.requestor_env,
             environment_prerequisites=env_prerequisites,
-            subtask_timeout=4,
-            deadline=time.time() + 3600,
+            subtask_timeout=SUBTASK_TIMEOUT,
+            deadline=time.time() + TASK_TIMEOUT,
         )
         ctd = {
             'subtask_id': subtask_def.subtask_id,
             'extra_data': subtask_def.params,
             'performance': 0,
-            'deadline': time.time() + 3600,
+            'deadline': time.time() + SUBTASK_TIMEOUT,
         }
         task_computer.task_given(task_header, ctd)
         for resource in subtask_def.resources:

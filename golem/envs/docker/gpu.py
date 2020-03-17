@@ -96,9 +96,10 @@ class DockerGPUEnvironment(DockerCPUEnvironment):
     def __init__(  # pylint: disable=useless-super-delegation
             self,
             config: DockerGPUConfig,
+            dev_mode: bool,
             env_logger: Optional[Logger] = None,
     ) -> None:
-        super().__init__(config, env_logger or logger)
+        super().__init__(config, dev_mode, env_logger or logger)
 
     @classmethod
     def supported(cls) -> EnvSupportStatus:

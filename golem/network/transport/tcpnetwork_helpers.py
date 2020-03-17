@@ -226,9 +226,12 @@ class TCPConnectInfo(object):
             if final_failure_callback else None)
 
     def __str__(self):
+        def get_func(cbk):
+            return cbk.func if cbk is not None else None
+
         return ("TCP connection information: addresses {}, "
                 "callback {}, errback {}, final_errback {}").format(
                     self.socket_addresses,
-                    self.established_callback.func,
-                    self.failure_callback.func,
-                    self.final_failure_callback.func)
+                    get_func(self.established_callback),
+                    get_func(self.failure_callback),
+                    get_func(self.final_failure_callback))
