@@ -1,3 +1,3 @@
 from PyInstaller.utils.hooks import collect_submodules
 
-hiddenimports = collect_submodules('eth_hash')
+hiddenimports = collect_submodules('os_win')

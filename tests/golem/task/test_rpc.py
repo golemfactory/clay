@@ -1,4 +1,5 @@
 # pylint: disable=protected-access,too-many-ancestors,too-many-lines
+# pylint: disable=arguments-differ
 import copy
 import itertools
 from pathlib import Path
@@ -28,6 +29,7 @@ from golem.task import taskbase
 from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
+from golem.task.rpc import _restart_task_error
 from golem.task.rpc import ClientProvider
 from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
@@ -363,6 +365,28 @@ class TestRestartTask(ProviderBase):
             task_manager.tasks[new_task_id])
         output_path = Path(task_def['options']['output_path'])
         self.assertEqual(str(output_path.parent), task_output_path)
+
+    def test_restart_task_error(self):
+        new_task_id = 'nw_task_id'
+        task_manager = self.provider.task_manager
+        task_manager.tasks_states[new_task_id] = taskstate.TaskState()
+        result = _restart_task_error(
+            e=RuntimeError('Test error'),
+            self=self.provider,
+            task_id='task_id',
+            new_task=Mock(task_id=new_task_id),
+        )
+        self.assertEqual(
+            result,
+            (
+                None,
+                'Test error',
+            ),
+        )
+        self.assertIs(
+            task_manager.tasks_states[new_task_id].status,
+            taskstate.TaskStatus.errorCreating,
+        )
 
 
 class TestGetMaskForTask(test_client.TestClientBase):

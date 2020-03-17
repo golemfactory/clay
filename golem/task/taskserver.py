@@ -809,14 +809,12 @@ class TaskServer(
                 task_header.task_id,
                 task_header.signature,
             )
-            logger.debug("task_header=%r", task_header)
             return False
         if task_header.deadline < get_timestamp_utc():
             logger.info(
                 "Task's deadline already in the past. task_id=%r",
                 task_header.task_id
             )
-            logger.debug("task_header=%r", task_header)
             return False
 
         if task_header.environment_prerequisites:
