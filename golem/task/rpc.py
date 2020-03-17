@@ -421,9 +421,18 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict, *args, **_kwargs) \
-        -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
+def _create_task_error(
+        e: Exception,
+        self: 'ClientProvider',
+        task_dict: dict,
+        *_args,
+        **kwargs
+) -> typing.Tuple[None, typing.Union[str, typing.Dict]]:
     logger.error("Cannot create task %r: %s", task_dict, e)
+
+    task_id = kwargs.get('task_id')
+    if task_id:
+        self.task_manager.task_creation_failed(task_id, str(e))
 
     if hasattr(e, 'to_dict'):
         return None, rpc_utils.int_to_string(e.to_dict())
@@ -528,12 +537,15 @@ class ClientProvider:
         task = _create_task(self.client, task_dict)
         task_id = task.header.task_id
 
-        self._validate_enough_funds_to_pay_for_task(
-            task.subtask_price,
-            task.get_total_tasks(),
-            task.header.concent_enabled,
-            force
-        )
+        try:
+            self._validate_enough_funds_to_pay_for_task(
+                task.subtask_price,
+                task.get_total_tasks(),
+                task.header.concent_enabled,
+                force
+            )
+        except eth_exceptions.NotEnoughFunds as e:
+            return _create_task_error(e, self, task_dict, task_id=task_id)
 
         # Fire and forget the next steps after create_task
         deferred = _prepare_task(client=self.client, task=task, force=force)
