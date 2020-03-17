@@ -44,8 +44,8 @@ class CloudConfigSchemaContainer(Schema):
     tag = fields.Str(required=True, default='latest')
     command: Optional[str] = fields.Str()
     ports: Optional[List[str]] = fields.List(fields.Str())
-    env: Optional[Dict[str, str]] = fields.Dict(keys=fields.Str(),
-                                                values=fields.Str())
+    env: Optional[Dict[str, Any]] = fields.Dict(keys=fields.Str(),
+                                                values=fields.Raw())
     work_dir: Optional[str] = fields.Str()
     binds: Optional[List[Any]] = fields.List(CloudConfigBindField())
     networking_config: Optional[Dict[str, Any]] = fields.Dict(
