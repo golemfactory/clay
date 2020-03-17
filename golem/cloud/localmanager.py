@@ -3,6 +3,7 @@ import logging
 from copy import deepcopy
 import time
 import os
+import sys
 
 from twisted.internet.defer import inlineCallbacks
 
@@ -74,6 +75,9 @@ class LocalContainerManager:
                                             schema_class=CloudConfigSchema)
             logger.info('Cloud configuration loaded.')
         except Exception as e:
+            import traceback
+            exc_type, exc_value, exc_traceback = sys.exc_info()
+            traceback.print_tb(exc_traceback)
             logger.error(f'Cloud configuration FAILED: {e}')
             return
 
