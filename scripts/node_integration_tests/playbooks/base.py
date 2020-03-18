@@ -304,9 +304,31 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
 
         return self.call(node_id, 'comp.tasks', on_success=on_success)
 
+    def step_enable_app(self, node_id: NodeId = NodeId.requestor):
+        app_id = self.config.task_dict.get('golem', {}).get('app_id')
+        if not app_id:
+            print('not task api, no need to enable app')
+            self.next()
+            return
+
+        def on_success(result):
+            print(f'finished enabling app. result={result}, app_id={app_id}')
+            self.next()
+
+        print(f'enabling app. app_id={app_id}')
+        return self.call(
+            node_id,
+            'apps.update',
+            app_id,
+            True,
+            on_success=on_success
+        )
+
     def step_create_task(
-            self, node_id: NodeId = NodeId.requestor,
-            output_path: str = None, task_dict: dict = None
+            self,
+            node_id: NodeId = NodeId.requestor,
+            output_path: str = None,
+            task_dict: dict = None
     ):
         if not output_path:
             output_path = self.output_path
@@ -578,6 +600,7 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
     )
 
     steps: typing.Tuple = initial_steps + (
+        step_enable_app,
         step_create_task,
         step_get_task_id,
         step_get_task_status,
