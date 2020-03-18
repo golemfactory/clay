@@ -531,7 +531,7 @@ class ClientProvider:
             task_dict: dict,
             force: bool = False,
     ) -> typing.Tuple[typing.Optional[TaskId],
-            typing.Optional[typing.Union[str, typing.Dict]]]:
+                      typing.Optional[typing.Union[str, typing.Dict]]]:
         logger.info('Creating task. task_dict=%r', task_dict)
         logger.debug('force=%r', force)
 
