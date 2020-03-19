@@ -839,7 +839,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
             self.assertIs(
                 task_state.subtask_states["aabbcc"].status,
-                SubtaskStatus.failure,
+                SubtaskStatus.timeout,
             )
         # Task with task and subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation',
@@ -869,7 +869,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             )
             self.assertIs(
                 task_state.subtask_states["qwerty"].status,
-                SubtaskStatus.failure,
+                SubtaskStatus.timeout,
             )
             checker([("qwe", "qwerty", SubtaskOp.TIMEOUT),
                      ("qwe", None, TaskOp.TIMEOUT)])
