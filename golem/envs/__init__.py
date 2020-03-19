@@ -346,13 +346,12 @@ class RuntimeBase(Runtime, ABC):
         self._set_status(RuntimeStatus.RUNNING)
         self._emit_event(RuntimeEventType.STARTED)
 
-    def _stopped(self, *args):
+    def _stopped(self, *_) -> None:
         """ Acknowledge that Runtime has been stopped. Log message, set status
             and emit event. Arguments are ignored (for callback use). """
         self._logger.info("Runtime stopped.")
         self._set_status(RuntimeStatus.STOPPED)
         self._emit_event(RuntimeEventType.STOPPED)
-        return args
 
     def _torn_down(self, *_) -> None:
         """ Acknowledge that Runtime has been torn down. Log message, set status
@@ -366,7 +365,7 @@ class RuntimeBase(Runtime, ABC):
             error: Optional[Exception],
             message: str,
             set_status: bool = True
-    ) -> Optional[Exception]:
+    ) -> None:
         """ Acknowledge that an error occurred in runtime. Log message and emit
             event. If set_status is True also set status to 'FAILURE'. """
         self._logger.error(message, exc_info=error)
@@ -377,7 +376,6 @@ class RuntimeBase(Runtime, ABC):
                 'error': error,
                 'message': message
             })
-        return error
 
     def _error_callback(self, message: str) -> Callable[[Failure], Failure]:
         """ Get an error callback accepting Twisted's Failure object that will

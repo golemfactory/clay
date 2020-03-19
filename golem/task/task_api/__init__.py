@@ -1,7 +1,7 @@
 import abc
 import asyncio
 from pathlib import Path
-from typing import Optional, Tuple, Type, Dict, Any
+from typing import Optional, Tuple, Type
 
 from golem_task_api import TaskApiService
 
@@ -42,16 +42,12 @@ class EnvironmentTaskApiService(TaskApiService):
         self._payload_builder = payload_builder
         self._runtime: Optional[Runtime] = None
 
-    async def start(
-        self,
-        command: str,
-        port: int,
-    ) -> Tuple[str, int]:
+    async def start(self, command: str, port: int) -> Tuple[str, int]:
         runtime_payload = self._payload_builder.create_payload(
             self._prereq,
             self._shared_dir,
             command,
-            port
+            port,
         )
         self._runtime = self._env.runtime(runtime_payload)
         loop = asyncio.get_event_loop()

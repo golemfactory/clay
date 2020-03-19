@@ -331,7 +331,6 @@ class DockerCPURuntime(RuntimeBase):
             while self.status() not in (RuntimeStatus.STOPPED,
                                         RuntimeStatus.FAILURE,
                                         RuntimeStatus.CLEANING_UP):
-                logger.info(self.status())
                 time.sleep(1)
             logger.info(f"Removing container: '{self._container_id}'")
             client.remove_container(self._container_id, force=True)
@@ -399,25 +398,25 @@ class DockerCPURuntime(RuntimeBase):
             return res
 
         def _join_status_update_thread(res):
-            self._logger.info("Joining status update thread...")
+            self._logger.debug("Joining status update thread...")
             self._status_update_thread.join(self.STATUS_UPDATE_INTERVAL * 2)
             if self._status_update_thread.is_alive():
                 self._logger.warning("Failed to join status update thread.")
             else:
-                self._logger.info("Status update thread joined.")
+                self._logger.debug("Status update thread joined.")
             return res
 
         def _close_stdin(res):
-            self._logger.info("Closing stdin...")
+            self._logger.debug("Closing stdin...")
             if self._stdin_socket is not None:
                 self._stdin_socket.close()
             return res
 
         deferred_stop = deferToThread(_stop)
         deferred_stop.addCallback(self._stopped)
-        deferred_stop.addErrback(
-            self._error_callback,
-            f"Stopping container '{self._container_id}' failed.")
+        deferred_stop.addErrback(self._error_callback(
+            f"Stopping container '{self._container_id}' failed."))
+        deferred_stop.addBoth(_join_counter_update_thread)
         deferred_stop.addBoth(_join_status_update_thread)
         deferred_stop.addBoth(_close_stdin)
         return deferred_stop

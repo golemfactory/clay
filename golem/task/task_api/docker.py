@@ -1,6 +1,5 @@
 from pathlib import Path
 import os
-from typing import Optional, Dict, Any
 import json
 
 from golem_task_api import constants as api_constants
