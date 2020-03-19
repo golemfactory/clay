@@ -994,7 +994,6 @@ class TaskManager(TaskEventListener):
             task_status=TaskStatus.errorCreating,
     ) -> None:
         assert not task_status.is_active()
-        assert not task_status.is_completed()
         task_state = self.tasks_states[task_id]
         if task_state.status.is_completed():
             logger.debug(
