@@ -5,9 +5,12 @@ from ethereum.utils import denoms
 
 logger = logging.getLogger(__name__)
 
+FAUCET_HOST = "faucet.testnet.golem.network"
+FAUCET_PORT = 4000
+
 
 def tETH_faucet_donate(addr: str):
-    request = "http://188.165.227.180:4000/donate/{}".format(addr)
+    request = f"http://{FAUCET_HOST}:{FAUCET_PORT}/donate/{addr}"
     resp = requests.get(request)
     response = resp.json()
     if resp.status_code != 200:
