@@ -4,8 +4,9 @@ from typing import Iterator, Type, Tuple
 
 from dataclasses import dataclass, field
 from dataclasses_json import dataclass_json, config
-from marshmallow import fields as mm_fields
 from golem_task_api.apputils.app_definition import AppDefinitionBase
+from marshmallow import fields as mm_fields
+from pathvalidate import sanitize_filename
 
 from golem.marketplace import (
     RequestorMarketStrategy,
