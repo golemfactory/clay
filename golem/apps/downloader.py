@@ -7,9 +7,10 @@ import xml.etree.ElementTree as xml
 
 from dataclasses import dataclass
 import dateutil.parser as date_parser
+from golem_task_api.apputils.app_definition import save_app_to_json_file
 import requests
 
-from golem.apps import save_app_to_json_file, AppDefinition
+from golem.apps import AppDefinition
 from golem.core.variables import APP_DEFINITIONS_CDN_URL
 
 logger = logging.getLogger(__name__)
