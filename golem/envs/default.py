@@ -79,11 +79,11 @@ def register_environments(
     ]
     from golem.config.active import TASK_API_ENVS
     for (env_id, env_cls, _register) in ENVS:
-        if env_id in TASK_API_ENVS:
-            if env_cls.supported().supported:
-                logger.info('Registering environment. env_id=%r', env_id)
-                _register(work_dir, env_manager, dev_mode)
-            else:
-                logger.info('Environment not supported. env_id=%r', env_id)
-        else:
+        if env_id not in TASK_API_ENVS:
             logger.debug('Environment disabled. env_id=%r', env_id)
+            continue
+        if not env_cls.supported().supported:
+            logger.info('Environment not supported. env_id=%r', env_id)
+            continue
+        logger.info('Registering environment. env_id=%r', env_id)
+        _register(work_dir, env_manager, dev_mode)
