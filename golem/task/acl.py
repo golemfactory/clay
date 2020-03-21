@@ -148,14 +148,14 @@ class _DenyAcl(Acl):
 
     def disallow(self, node_id: str,
                  timeout_seconds: int = -1) -> None:
+        persist = timeout_seconds < 0
         logger.info(
             'Banned node. node_id=%s, timeout=%ds, persist=%s',
             common.short_node_id(node_id),
             timeout_seconds,
-            timeout_seconds < 0
+            persist
         )
-
-        if timeout_seconds < 0:
+        if persist:
             self._deny_deadlines[node_id] = self._always
         else:
             if node_id not in self._deny_deadlines:
@@ -168,7 +168,7 @@ class _DenyAcl(Acl):
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
 
-        if timeout_seconds < 0:
+        if persist:
             try:
                 ACLDeniedNodes.get(node_id=node_id)
                 raise Exception(node_id)
@@ -274,8 +274,8 @@ class _AllowAcl(Acl):
 
     def disallow(self, node_id: str,
                  timeout_seconds: int = -1) -> None:
-
-        if timeout_seconds < 0:
+        persist = timeout_seconds < 0
+        if persist:
             logger.info(
                 'Removed node. node_id=%s, timeout=%ds, persist=True',
                 common.short_node_id(node_id),
