@@ -90,7 +90,7 @@ class DockerGPURuntime(DockerCPURuntime):
 
 class DockerGPUEnvironment(DockerCPUEnvironment):
 
-    BENCHMARK_IMAGE = 'golemfactory/gpu_benchmark:1.0'
+    BENCHMARK_IMAGE = 'golemfactoryapps/gpu_benchmark:1.0'
 
     # Enforce DockerGPUConfig config class type (DockerCPUConfig in super)
     def __init__(  # pylint: disable=useless-super-delegation
