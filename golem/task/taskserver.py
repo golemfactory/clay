@@ -345,15 +345,20 @@ class TaskServer(
             request exceeds the configured request interval, choose a random
             task from the network to compute on our machine. """
 
+        logger.debug("_request_random_task... ")
         if time.time() - self._last_task_request_time \
                 < self.config_desc.task_request_interval:
+            logger.debug("_request_random_task: interval not yet passed")
             return
 
         if (not self.task_computer.compute_tasks) \
                 or (not self.task_computer.runnable):
+            logger.debug(
+                "_request_random_task: task computer disabled or not ready")
             return
 
         if not self.task_computer.can_take_work():
+            logger.debug("_request_random_task: task computer still busy")
             return
 
         compatible_tasks = self.task_computer.compatible_tasks(
@@ -361,8 +366,18 @@ class TaskServer(
 
         task_header = self.task_keeper.get_task(
             exclude=self.requested_tasks, supported_tasks=compatible_tasks)
+
         if task_header is None:
+            logger.debug(
+                "_request_random_task: no suitable task found. "
+                "exclude=%s, supported_tasks=%s",
+                self.requested_tasks,
+                compatible_tasks,
+            )
             return
+
+        logger.debug(
+            "_request_random_task: got task header: %s", task_header)
 
         self._last_task_request_time = time.time()
         self.task_computer.stats.increase_stat('tasks_requested')
@@ -589,6 +604,7 @@ class TaskServer(
             requestor_id: str,
             price: int,
     ) -> None:
+        logger.debug("requested_tasks cleared")
         self.requested_tasks.clear()
         update_requestor_assigned_sum(requestor_id, price)
         dispatcher.send(
@@ -834,6 +850,7 @@ class TaskServer(
 
     @rpc_utils.expose('comp.tasks.known.delete')
     def remove_task_header(self, task_id) -> bool:
+        logger.debug("removing task header: task_id=%s", task_id)
         self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
@@ -1112,6 +1129,11 @@ class TaskServer(
             accept_client_verdict = task.should_accept_client(
                 node_id,
                 offer_hash)
+            logger.debug(
+                "should_accept_client verdict: %s, task_id=%s",
+                accept_client_verdict,
+                task_id,
+            )
         elif self.requested_task_manager.task_exists(task_id):
             req_task = self.requested_task_manager.get_requested_task(task_id)
             assert req_task, "Task missing due a race condition"

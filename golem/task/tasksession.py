@@ -309,6 +309,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.task_server.should_accept_provider(
                 self.key_id, self.address, msg.task_id, msg.perf_index,
                 msg.max_memory_size, offer_hash):
+            logger.debug(
+                "should_accept_provider False. provider=%s, task_id=%s",
+                self.key_id, msg.task_id
+            )
             self._cannot_assign_task(msg.task_id, reasons.NoMoreSubtasks)
             return
 
@@ -427,6 +431,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         for _i in range(msg.num_subtasks):
             ctd_res = yield self._get_next_ctd(msg)
             if ctd_res is None:
+                logger.debug("_get_next_ctd None. %s", task_id)
                 self._cannot_assign_task(task_id, reasons.NoMoreSubtasks)
                 return
             ctd, package_hash, package_size = ctd_res
@@ -617,6 +622,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if not self.task_computer.can_take_work():
             _cannot_compute(reasons.OfferCancelled)
+            self.task_server.requested_tasks.discard(ctd["task_id"])
             return
 
         if (

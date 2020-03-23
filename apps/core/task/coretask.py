@@ -8,6 +8,7 @@ from typing import (
     Callable,
     Dict,
     List,
+    Optional,
     Type,
     TYPE_CHECKING,
 )
@@ -304,17 +305,29 @@ class CoreTask(Task):
             self.restart_subtask(subtask_id)
 
     @handle_key_error
-    def restart_subtask(self, subtask_id):
-        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
-
+    def restart_subtask(
+            self,
+            subtask_id,
+            new_state: Optional[SubtaskStatus] = None,
+    ):
         subtask_info = self.subtasks_given[subtask_id]
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
+        logger.debug(
+            'restart_subtask. subtask_id=%r, subtask_status=%r, new_state=%r',
+            subtask_id,
+            subtask_info['status'],
+            new_state,
+        )
+
         if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
-            self._mark_subtask_failed(subtask_id)
+            self._mark_subtask_failed(
+                subtask_id,
+                ban_node=(new_state != SubtaskStatus.cancelled)
+            )
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
             self.num_tasks_received -= 1
@@ -462,7 +475,11 @@ class CoreTask(Task):
 
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id: str, ban_node: bool = True):
-        logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
+        logger.debug(
+            '_mark_subtask_failed. subtask_id=%r, ban_node=%r',
+            subtask_id,
+            ban_node,
+        )
 
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']

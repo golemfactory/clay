@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from typing import cast, Type, TYPE_CHECKING
+from typing import cast, Optional, Type, TYPE_CHECKING
 
 from pathlib import Path
 
@@ -89,10 +89,14 @@ class RenderingTask(CoreTask):
         self.collected_file_names = {}
 
     @CoreTask.handle_key_error
-    def restart_subtask(self, subtask_id):
+    def restart_subtask(
+            self,
+            subtask_id,
+            new_state: Optional[SubtaskStatus] = None,
+    ):
         if self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished:
             self._remove_from_preview(subtask_id)
-        super().restart_subtask(subtask_id)
+        super().restart_subtask(subtask_id, new_state=new_state)
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:
