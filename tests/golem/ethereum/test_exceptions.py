@@ -14,8 +14,8 @@ class TestNotEnoughFunds(TestCase):
                 currency='GNT'
             )
         except NotEnoughFunds as err:
-            expected = f'Not enough funds available.\n' \
-                f'Required GNT: 5.000000, available: 1.000000\n'
+            expected = f'Not enough funds available. ' \
+                f'Required GNT: 5.000000, available: 1.000000.'
             self.assertIn(str(err), expected)
 
     def test_error_message_multiple_currencies(self):
@@ -35,9 +35,9 @@ class TestNotEnoughFunds(TestCase):
         try:
             raise NotEnoughFunds(missing_funds)
         except NotEnoughFunds as err:
-            expected = f'Not enough funds available.\n' \
-                f'Required ETH: 5.000000, available: 1.000000\n' \
-                f'Required GNT: 1.000000, available: 0.000000\n'
+            expected = f'Not enough funds available. ' \
+                f'Required ETH: 5.000000, available: 1.000000. ' \
+                f'Required GNT: 1.000000, available: 0.000000.'
             self.assertIn(str(err), expected)
 
     def test_error_to_dict(self):

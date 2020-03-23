@@ -329,7 +329,18 @@ class BasicProtocol(SessionProtocol):
     def dataReceived(self, data):
         """Called when additional chunk of data
             is received from another peer"""
+        logger.debug(
+            '%s.%s.dataReceived(%r)',
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            data,
+        )
         if not self._can_receive():
+            logger.debug(
+                "Can't receive. opened:%s self.db:%r",
+                self.opened,
+                self.db,
+            )
             return
 
         if not self.session:
@@ -491,19 +502,36 @@ class SafeProtocol(ServerProtocol):
 class BroadcastProtocol(SafeProtocol):
     """Send and expect broadcast message before any other communication"""
 
+    PROTOCOL_MARKER = struct.pack('!cx', b'B')
+
     def __init__(self, session_factory, server, **_kwargs):
         super().__init__(session_factory, server)
         self.conn_id: typing.Optional[str] = None
+        self.machine.add_state('detectingProtocol')
         self.machine.add_state('handshaking')
         self.machine.add_transition(
             'connectionMadeTransition',
             'initial',
+            'detectingProtocol',
+            after=self.sendMarker,
+        )
+        self.machine.add_transition(
+            'protocolDetected',
+            'detectingProtocol',
             'handshaking',
-            after=self.sendHandshake,
+            after=[
+                lambda: self.dataReceived(b''),
+                self.sendHandshake,
+            ],
         )
         self.machine.add_transition(
             'connectionLostTransition',
             'handshaking',
+            'disconnected',
+        )
+        self.machine.add_transition(
+            'connectionLostTransition',
+            'detectingProtocol',
             'disconnected',
         )
         self.machine.move_transitions(
@@ -514,51 +542,101 @@ class BroadcastProtocol(SafeProtocol):
             to_source='handshaking',
             to_dest='connected',
         )
+        # It's important to trigger .dataReceived()
+        # after handshaking is finished, because we might already
+        # have a message (Hello) waiting in a buffer.
+        self.machine.add_transition_callback(
+            'handshakeFinished',
+            'handshaking',
+            'connected',
+            'after',
+            lambda: self.dataReceived(b''),
+        )
 
     def create_session(self):
         super().create_session()
         self.session.conn_id = self.conn_id
 
-    def sendHandshake(self) -> bool:
+    def sendMarker(self) -> None:
+        self.transport.getHandle()
+        self.transport.write(self.PROTOCOL_MARKER)
+
+    def sendHandshake(self) -> None:
         handshake_bytes = broadcast.list_to_bytes(broadcast.prepare_handshake())
         db = DataBuffer()
         db.append_len_prefixed_bytes(handshake_bytes)
 
         self.transport.getHandle()
         self.transport.write(db.read_all())
-        return True
+        return
 
     def dataReceived(self, data: bytes) -> None:
+        logger.debug(
+            '%s.%s.dataReceived(%r)',
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            data,
+        )
         if self.is_connected():  # pylint: disable=no-member
             return super().dataReceived(data)
+        self.db.append_bytes(data)
         if self.is_handshaking():  # pylint: disable=no-member
             try:
-                return self.dataReceivedHandshake(data)
+                return self.dataReceivedHandshake()
             except broadcast.BroadcastError:
                 logger.debug(
-                    'Invalid broadcast received. peer=%s, data=%s',
-                    self.transport.getPeer(),
+                    '%s. Invalid broadcast received. data=%s',
+                    self,
                     data,
                 )
                 return None
+        if self.is_detectingProtocol():  # pylint: disable=no-member
+            return self.detectProtocol()
         logger.debug(
-            '%(module_name)s.%(class_name)s.dataReceived(%(data)r)'
+            '.dataReceived()'
             ' Protocol not ready.'
-            ' Current state: %(machine)s',
+            ' self: %(self)s, data: %(data)r',
             {
-                'class_name': self.__class__.__qualname__,
-                'module_name': __name__,
+                'self': self,
                 'data': data,
-                'machine': self.state,  # pylint: disable=no-member
             },
         )
         return None
 
-    def dataReceivedHandshake(self, data: bytes) -> None:
-        logger.debug('handshake data received %sb', len(data))
-        self.db.append_bytes(data)
+    def detectProtocol(self):
+        data = self.db.read_bytes(len(self.PROTOCOL_MARKER))
+        if data is None:
+            logger.debug(
+                'Still waiting for protocol marker. self: %s',
+                self,
+            )
+            return
+        if data != self.PROTOCOL_MARKER:
+            logger.debug(
+                'No broadcast marker. Probably peer with old protocol.'
+                ' Disconnecting. self: %s',
+                self,
+            )
+            self.transport.loseConnection()
+            return
+        logger.debug(
+            'Handshake protocol detected. self: %s',
+            self,
+        )
+        self.protocolDetected()  # pylint: disable=no-member
+
+    def dataReceivedHandshake(self) -> None:
+        logger.debug(
+            'handshake data received. peer: %s, current_size: %sb',
+            self.transport.getPeer(),
+            self.db.data_size(),
+        )
         b = self.db.read_len_prefixed_bytes()
         if b is None:
+            logger.debug(
+                'Not a full handshake. Still waiting. peer: %s',
+                self.transport.getPeer(),
+            )
             return None
         broadcasts_l = broadcast.list_from_bytes(b)
         for bc in broadcasts_l:
@@ -568,9 +646,9 @@ class BroadcastProtocol(SafeProtocol):
                     bc,
                     self.transport.getPeer(),
                 )
-        self.handshakeFinished()  # pylint: disable=no-member
         logger.debug(
             "Sucesfuly finished handshake with %s",
             self.transport.getPeer(),
         )
+        self.handshakeFinished()  # pylint: disable=no-member
         return None
