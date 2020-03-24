@@ -327,15 +327,12 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
     def step_create_task(
             self,
             node_id: NodeId = NodeId.requestor,
-            output_path: typing.Optional[str] = None,
             task_dict: typing.Optional[dict] = None,
     ):
-        if not output_path:
-            output_path = self.output_path
         if not task_dict:
             task_dict = self.config.task_dict
 
-        print("Output path: {}".format(output_path))
+        print("Output path: {}".format(self.output_path))
         print("Task dict: {}".format(task_dict))
 
         def on_success(result):
