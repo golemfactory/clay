@@ -327,8 +327,8 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
     def step_create_task(
             self,
             node_id: NodeId = NodeId.requestor,
-            output_path: str = None,
-            task_dict: dict = None
+            output_path: typing.Optional[str] = None,
+            task_dict: typing.Optional[dict] = None,
     ):
         if not output_path:
             output_path = self.output_path
@@ -371,6 +371,7 @@ class NodeTestPlaybook:  # noqa pylint: disable=too-many-instance-attributes, to
         if len(new_tasks) != 1:
             print("Cannot find the new task ({})".format(new_tasks))
             time.sleep(3)
+            return None
         else:
             task_id = list(new_tasks)[0]
             print("Task id: {}".format(task_id))

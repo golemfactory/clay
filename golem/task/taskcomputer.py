@@ -747,7 +747,8 @@ class TaskComputer:  # pylint: disable=too-many-instance-attributes
                 cpu_limit=cpu_time_limit))
 
     def has_assigned_task(self) -> bool:
-        logger.debug(f"Has assigned task? assigned_subtasks={self.assigned_subtasks}")
+        logger.debug(
+            f"Has assigned task? assigned_subtasks={self.assigned_subtasks}")
         return bool(self.assigned_subtasks)
 
     @property
