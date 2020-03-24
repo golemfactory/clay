@@ -3,6 +3,7 @@ from typing import List
 
 from golem_sci import contracts
 from golem_sci.chains import MAINNET
+from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
 
 from golem.core.variables import PROTOCOL_CONST
 from . import CONCENT_ENVIRONMENT_VARIABLE, init_concent_config
@@ -81,4 +82,6 @@ CONCENT_SUPPORTED_APPS = (
     'blender_nvgpu'
 )
 
-TASK_API_ENVS: List[str] = []
+TASK_API_ENVS: List[str] = [
+    DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
+]

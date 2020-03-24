@@ -205,9 +205,9 @@ class TestCreateTask(ProviderBase, TestClientBase):
         error = result[1]
         # noqa pylint:disable=unsubscriptable-object
         self.assertEqual(error['error_type'], 'NotEnoughFunds')
-        self.assertEqual(error['error_msg'], 'Not enough funds available.\n'
+        self.assertEqual(error['error_msg'], 'Not enough funds available. '
                                              'Required GNT: '
-                                             '0.166667, available: 0.000000\n')
+                                             '0.166667, available: 0.000000.')
 
     @mock.patch('golem.task.rpc.ClientProvider.'
                 '_validate_enough_funds_to_pay_for_task')
@@ -277,11 +277,11 @@ class ConcentDepositLockPossibilityTest(unittest.TestCase):
                 subtask_price=required_gnt,
                 subtask_count=1
             )
-        expected = f'Not enough funds available.\n' \
+        expected = f'Not enough funds available. ' \
             f'Required GNT: {required_gnt / denoms.ether:f}, ' \
-            f'available: {available_gnt / denoms.ether:f}\n' \
+            f'available: {available_gnt / denoms.ether:f}. ' \
             f'Required ETH: {required_eth / denoms.ether:f}, ' \
-            f'available: {available_eth / denoms.ether:f}\n'
+            f'available: {available_eth / denoms.ether:f}. '
         self.assertIn(str(e.exception), expected)
 
 
