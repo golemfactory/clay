@@ -1,5 +1,5 @@
 import collections
-import logging
+import logging.config
 import os
 import subprocess
 import sys
@@ -14,8 +14,6 @@ import pytz
 
 from golem.core import simpleenv
 from golem.decorators import locked
-
-from golem_task_api.apputils.logging import init_logging
 
 F = TypeVar('F', bound=Callable[..., Any])
 
@@ -310,12 +308,7 @@ def config_logging(
 
     try:
         logdir_path.mkdir(parents=True, exist_ok=True)
-        init_logging(
-            log_config=LOGGING,
-            log_level_arg=loglevel,
-            external_loggers=external_loggers,
-            external_log_level=external_level
-        )
+        logging.config.dictConfig(LOGGING)
         if loglevel:
             logger.info('logging started. level=%s', loglevel)
         logger.debug(

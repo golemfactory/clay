@@ -10,7 +10,7 @@ from unittest import mock
 import click
 from twisted.internet.task import react
 from twisted.internet.defer import ensureDeferred
-from golem_task_api.apputils.logging import init_logging
+from golem_task_api.apputils.start_logging import from_arg
 
 from golem import database, model
 from golem.apps import (
@@ -32,7 +32,7 @@ fix_osx_tmpdir()
 
 
 external_loggers = ['hpack', 'peewee', 'urllib3', 'docker']
-init_logging(log_level_arg=logging.DEBUG, external_loggers=external_loggers)
+from_arg(log_level_arg=logging.DEBUG, external_loggers=external_loggers)
 logger = logging.getLogger(__name__)
 
 TASK_TIMEOUT = 360
