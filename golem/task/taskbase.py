@@ -8,7 +8,7 @@ from golem_messages.datastructures import stats as dt_stats
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.helpers import calculate_subtask_payment
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, SubtaskStatus
 from golem.marketplace import (
     ProviderMarketStrategy, RequestorMarketStrategy,
     DEFAULT_REQUESTOR_MARKET_STRATEGY,
@@ -281,7 +281,11 @@ class Task(abc.ABC):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def restart_subtask(self, subtask_id):
+    def restart_subtask(
+            self,
+            subtask_id,
+            new_state: Optional[SubtaskStatus] = None
+    ):
         """ Restart subtask with given id """
         raise NotImplementedError
 

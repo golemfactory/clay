@@ -62,7 +62,7 @@ class TaskClient(object):
     def accept(self):
         with self._lock:
             self._accepted += 1
-            if self._accepted == self._wtct_num_subtasks:
+            if self._accepted == self._started:
                 self._reset()
 
     def reject(self):
@@ -73,6 +73,8 @@ class TaskClient(object):
     def cancel(self):
         with self._lock:
             self._started = max(self._started - 1, 0)
+            if not self._started:
+                self._reset()
 
     def rejected(self):
         with self._lock:
