@@ -63,6 +63,12 @@ class RuntimeLogsWrapper(RuntimeWrapper):
         self._stderr_thread.join(5)
         if self._stderr_thread.is_alive():
             logger.warning('Cannot join stderr thread')
+        if logger.getEffectiveLevel() >= logging.DEBUG:
+            stdout_file = self._logs_dir / f'{self._runtime.id()}_stdout.txt'
+            stderr_file = self._logs_dir / f'{self._runtime.id()}_stderr.txt'
+            logger.debug('Runtime cleaned up. id=%r', self._runtime.id())
+            logger.debug('stdout=%r', stdout_file.read_text())
+            logger.debug('stderr=%r', stderr_file.read_text())
 
 
 class EnvironmentLogsWrapper(EnvironmentWrapper):
