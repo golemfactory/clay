@@ -74,9 +74,34 @@ LOGGING = {
     'root': {
         'level': 'INFO',
         'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],  # noqa pylint: disable=line-too-long
-    }
-        'transitions': {
+    },
+    'loggers': {
+        'docker.auth': {
             'level': 'WARNING',
-            'propagate': True,
         },
+        'docker.utils.config': {
+            'level': 'WARNING',
+        },
+        'golem.ethereum.web3.providers': {
+            'level': 'WARNING',
+        },
+        'golem.rpc.crossbar': {
+            'level': 'WARNING',
+        },
+        'golem.rpc.session': {
+            'level': 'WARNING',
+        },
+        'hpack': {
+            'level': 'WARNING',
+        },
+        'peewee': {
+            'level': 'WARNING',
+        },
+        'twisted': {
+            'level': 'WARNING',
+        },
+        'urllib3': {
+            'level': 'WARNING',
+        },
+    }
 }

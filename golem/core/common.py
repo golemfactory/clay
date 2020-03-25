@@ -291,32 +291,18 @@ def config_logging(
         if loglevel:
             handler['level'] = loglevel
 
-    external_loggers = []
-    external_level = logging.WARNING
-    if config_desc and not config_desc.debug_third_party:
-        external_loggers += [
-            'docker.auth',
-            'docker.utils.config',
-            'golem.ethereum.web3.providers',
-            'golem.rpc.crossbar',
-            'golem.rpc.session',
-            'hpack',
-            'peewee',
-            'twisted',
-            'urllib3',
-        ]
+    if loglevel:
+        LOGGING['root']['level'] = loglevel
+
+    if config_desc and config_desc.debug_third_party:
+        LOGGING['loggers'] = {}
 
     try:
         logdir_path.mkdir(parents=True, exist_ok=True)
         logging.config.dictConfig(LOGGING)
         if loglevel:
             logger.info('logging started. level=%s', loglevel)
-        logger.debug(
-            'config=%r, external=%r, external_level=%r',
-            LOGGING,
-            external_loggers,
-            external_level
-        )
+        logger.debug('config=%r', LOGGING)
     except (ValueError, PermissionError) as e:
         sys.stderr.write(f"Can't configure logging in {logdir_path} Got: {e}\n")
         return  # Avoid consequent errors
