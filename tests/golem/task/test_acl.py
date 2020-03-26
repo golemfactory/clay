@@ -249,7 +249,7 @@ class TestAcl(DatabaseFixture):
         acl.disallow('Node1')
         self.assertEqual('Node3', acl.disallow("Node3"))
         self.assertEqual('Node1', acl.disallow("Node1"))
-        
+
         acl.allow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
