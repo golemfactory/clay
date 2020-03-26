@@ -12,6 +12,7 @@ from golem.apps import (
     load_apps_from_dir
 )
 from golem.apps.downloader import download_definitions
+from golem.apps.default import save_built_in_app_definitions
 from golem.model import AppConfiguration
 from golem.report import EventPublisher
 from golem.rpc.mapping.rpceventnames import App
@@ -32,6 +33,7 @@ class AppManager:
         # Download default apps then load all apps from path
         if download_apps:
             self.update_apps(register_apps=False)
+            save_built_in_app_definitions(app_dir)
         for app_def_path, app_def in load_apps_from_dir(app_dir):
             self.register_app(app_def)
             self._app_file_names[app_def.id] = app_def_path

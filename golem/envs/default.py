@@ -12,7 +12,7 @@ from golem.envs.docker.whitelist import Whitelist
 from golem.task.envmanager import EnvironmentManager
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 
-DOCKER_REPOSITORY = "golemfactory"
+DOCKER_REPOSITORY = "golemfactoryapps"
 
 
 def _register_docker_cpu_env(

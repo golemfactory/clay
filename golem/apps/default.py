@@ -9,18 +9,18 @@ from golem.apps import (
 from golem.marketplace import RequestorBrassMarketStrategy
 
 BlenderAppDefinition = AppDefinition(
-    name='golemfactory/blenderapp',
+    name='golemfactoryapps/blenderapp',
     author='Golem Factory GmbH',
     license='GPLv3',
-    version='0.7.2',
+    version='0.7.3',
     description=(
         'Rendering with Blender, the free and open source '
         '3D creation suite'
     ),
     requestor_env=DOCKER_CPU_ENV_ID,
     requestor_prereq=dict(
-        image='golemfactory/blenderapp',
-        tag='0.7.2',
+        image='golemfactoryapps/blenderapp',
+        tag='0.7.3',
     ),
     market_strategy=RequestorBrassMarketStrategy,
     max_benchmark_score=10000.,
