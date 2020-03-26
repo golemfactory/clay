@@ -1268,7 +1268,7 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.allow')
     def allow_node(
-        self, 
+        self,
         node_id: Union[str, list],
         persist: bool = True
     ) -> Tuple[bool, List[str], Optional[str]]:
