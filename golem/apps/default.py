@@ -2,9 +2,10 @@ from pathlib import Path
 from typing import List
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID
-from pathvalidate import sanitize_filename
 
-from golem.apps import AppId, AppDefinition, save_app_to_json_file
+from golem.apps import (
+    AppId, AppDefinition, save_app_to_json_file, app_json_file_name,
+)
 from golem.marketplace import RequestorBrassMarketStrategy
 
 BlenderAppDefinition = AppDefinition(
@@ -31,16 +32,13 @@ APPS = {
 
 
 def save_built_in_app_definitions(path: Path) -> List[AppId]:
-    app_ids = []
-
+    new_app_ids = []
     for app_id, app in APPS.items():
-
-        filename = f"{app.name}_{app.version}_{app_id}.json"
-        filename = sanitize_filename(filename, replacement_text="_")
+        filename = app_json_file_name(app)
         json_file = path / filename
 
         if not json_file.exists():
             save_app_to_json_file(app, json_file)
-            app_ids.append(app_id)
+            new_app_ids.append(app_id)
 
-    return app_ids
+    return new_app_ids

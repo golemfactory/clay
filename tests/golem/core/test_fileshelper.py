@@ -210,6 +210,8 @@ class TestDirSize(TestDirFixture):
         if os.path.isdir(self.testdir):
             shutil.rmtree(self.testdir)
 
+        super().tearDown()
+
 
 class TestDu(TestDirFixture):
 
@@ -290,6 +292,7 @@ class TestFindAndCopy(TestDirFixture):
 
         os.rmdir(self.test_dir2)
         os.rmdir(self.test_dir1)
+        super().tearDown()
 
     def test_find_file_with_ext(self):
         """ Test find_file_with_ext method """

@@ -48,9 +48,9 @@ eventlet==0.24.1
 fasteners==0.15
 flatbuffers==1.11
 fs==2.4.4
-Golem-Messages==3.14.2
+Golem-Messages==3.15.0
 Golem-Smart-Contracts-Interface==1.11.1
-Golem-Task-Api==0.24.1
+Golem-Task-Api==0.24.5
 greenlet==0.4.15
 grpclib==0.2.4
 h2==3.0.1
@@ -157,6 +157,7 @@ tabulate==0.8.2
 token-bucket==0.2.0
 toml==0.10.0
 toolz==0.9.0
+transitions==0.7.2
 treq==17.8.0
 Twisted==19.7.0
 txaio==18.8.1

@@ -94,7 +94,7 @@ class Node(HardwarePresetsMixin):
                  use_talkback: bool = False,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None
+                 password: Optional[str] = None,
                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL

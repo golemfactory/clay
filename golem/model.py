@@ -1,8 +1,10 @@
 import datetime
 import enum
+import hashlib
 import inspect
 import json
 import pickle
+import struct
 import sys
 import time
 from typing import Any, Dict, Optional
@@ -10,6 +12,7 @@ from typing import Any, Dict, Optional
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 import golem_messages
+from golem_messages import cryptography
 from golem_messages import datastructures as msg_dt
 from golem_messages import message
 from golem_messages.datastructures import p2p as dt_p2p, masking
@@ -32,6 +35,7 @@ import semantic_version
 from golem.core import common
 from golem.core.common import datetime_to_timestamp, default_now
 from golem.core.simpleserializer import DictSerializable
+from golem.core.variables import MESSAGE_QUEUE_MAX_AGE
 from golem.database import GolemSqliteDatabase
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 from golem.ranking import ProviderEfficacy
@@ -198,7 +202,7 @@ class ProviderEfficacyField(CharField):
 class EnumField(EnumFieldBase, IntegerField):
     """ Database field that maps enum type to integer."""
 
-    def __init__(self, enum_type, *args, **kwargs):
+    def __init__(self, *args, enum_type=None, **kwargs):
         super(EnumField, self).__init__(*args, **kwargs)
         self.enum_type = enum_type
 
@@ -649,17 +653,29 @@ class NetworkMessage(BaseModel):
         return msg
 
 
+def default_msg_deadline() -> datetime.datetime:
+    return default_now() + MESSAGE_QUEUE_MAX_AGE
+
+
 class QueuedMessage(BaseModel):
     node = CharField(null=False, index=True)
     msg_version = VersionField(null=False)
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
+    deadline = UTCDateTimeField(
+        null=False,
+        default=default_msg_deadline()
+    )
 
     class Meta:
         database = db
 
     @classmethod
-    def from_message(cls, node_id: str, msg: message.base.Message):
+    def from_message(
+            cls,
+            node_id: str,
+            msg: message.base.Message,
+            deadline: Optional[datetime.datetime] = None):
         instance = cls()
         instance.node = node_id
         instance.msg_cls = '.'.join(
@@ -669,6 +685,7 @@ class QueuedMessage(BaseModel):
             golem_messages.__version__,
         )
         instance.msg_data = golem_messages.dump(msg, None, None)
+        instance.deadline = deadline or default_msg_deadline()  # type: ignore
         return instance
 
     def as_message(self) -> message.base.Message:
@@ -860,6 +877,105 @@ class UsageFactor(BaseModel):
             f"provider={self.provider_node_id}, "
             f"usage_factor={self.usage_factor}"
             f">"
+        )
+
+
+class Broadcast(BaseModel):
+    class TYPE(enum.IntEnum):
+        Version = enum.auto()
+    HEADER_FORMAT = '!HQ'
+    HEADER_LENGTH = struct.calcsize(HEADER_FORMAT)
+    SIGNATURE_LENGTH = 65
+    timestamp = IntegerField()
+    broadcast_type = EnumField(enum_type=TYPE)
+    signature = BlobField()
+    data = BlobField()
+
+    def __repr__(self):
+        return (
+            f"<{self.__class__.__qualname__}"
+            f" {self.timestamp} {self.broadcast_type.name}>"
+        )
+
+    @classmethod
+    def create_and_sign(cls, private_key, broadcast_type, data) -> 'Broadcast':
+        bc = cls()
+        bc.timestamp = int(time.time())
+        bc.broadcast_type = broadcast_type
+        bc.data = data
+        bc.sign(private_key=private_key)
+        bc.save(force_insert=True)
+        return bc
+
+    def process(self) -> bool:
+        if Broadcast.select().where(
+                Broadcast.broadcast_type == self.broadcast_type,
+                Broadcast.timestamp == self.timestamp,
+        ).exists():
+            return False
+        if self.broadcast_type is self.TYPE.Version:
+            from golem.network.p2p.peersession import compare_version
+            compare_version(self.data.decode('utf-8', 'replace'))
+        self.save(force_insert=True)
+        return True
+
+    def header_to_bytes(self) -> bytes:
+        return struct.pack(
+            self.HEADER_FORMAT,
+            self.broadcast_type,
+            self.timestamp,
+        )
+
+    def header_from_bytes(self, b: bytes) -> None:
+        try:
+            broadcast_type, self.timestamp = struct.unpack(
+                self.HEADER_FORMAT,
+                b,
+            )
+            self.broadcast_type = self.TYPE(broadcast_type)  # type: ignore
+        except (ValueError, struct.error):
+            from golem.network import broadcast
+            raise broadcast.BroadcastError('Invalid header')
+
+    @classmethod
+    def from_bytes(cls, b: bytes) -> 'Broadcast':
+        # Remember to verify signature of this broadcast if it's been loaded
+        # from untrusted source
+        if len(b) < cls.HEADER_LENGTH + cls.SIGNATURE_LENGTH:
+            from golem.network import broadcast
+            raise broadcast.BroadcastError(
+                'Invalid broadcast: too short'
+                f' ({len(b)} < {cls.HEADER_LENGTH + cls.SIGNATURE_LENGTH})',
+            )
+        bc = cls()
+        bc.header_from_bytes(b[:cls.HEADER_LENGTH])
+        bc.signature = b[
+            cls.HEADER_LENGTH:cls.HEADER_LENGTH+cls.SIGNATURE_LENGTH
+        ]
+        bc.data = b[cls.HEADER_LENGTH+cls.SIGNATURE_LENGTH:]
+        return bc
+
+    def to_bytes(self) -> bytes:
+        return self.header_to_bytes() + self.signature + self.data
+
+    def get_hash(self) -> bytes:
+        sha = hashlib.sha1()
+        sha.update(self.header_to_bytes())
+        sha.update(self.data)
+        return sha.digest()
+
+    def sign(self, private_key: bytes) -> None:
+        assert self.signature is None
+        self.signature = cryptography.ecdsa_sign(
+            privkey=private_key,
+            msghash=self.get_hash(),
+        )
+
+    def verify_signature(self, public_key: bytes) -> None:
+        cryptography.ecdsa_verify(
+            pubkey=public_key,
+            signature=self.signature,
+            message=self.get_hash(),
         )
 
 

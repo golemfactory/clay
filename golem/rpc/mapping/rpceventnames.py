@@ -49,6 +49,10 @@ class UI:
     evt_lock_config = 'evt.ui.widget.config.lock'
 
 
+class App:
+    evt_new_definiton = 'evt.apps.new_definition'
+
+
 NAMESPACES = [
     Golem,
     Environment,

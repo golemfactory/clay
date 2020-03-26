@@ -18,6 +18,7 @@ APP_NAME = "Brass Golem"
 PRIVATE_KEY = "keystore.json"
 DEFAULT_PROC_FILE = "node_processes.ctl"
 MAX_PROC_FILE_SIZE = 1024 * 1024
+ENV_TASK_API_DEV = 'GOLEM_TASK_API_DEV'
 
 #################
 # NETWORK CONST #
@@ -73,6 +74,8 @@ MESSAGE_QUEUE_MAX_AGE = dateutil.relativedelta.relativedelta(months=6)
 
 # How long should peer be banned when failing on resources (seconds)
 ACL_BLOCK_TIMEOUT_RESOURCE = 2 * 3600  # s
+
+APP_DEFINITIONS_CDN_URL = 'https://golem-app-definitions.cdn.golem.network/'
 
 
 ###############

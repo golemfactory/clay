@@ -495,6 +495,17 @@ class TaskSessionReactToTaskToComputeTest(TaskSessionTestBase):
         self.task_session.task_server.task_given.assert_called_with(ttc)
         self.conn.close.assert_not_called()
 
+    def test_react_to_task_to_compute_task_not_give(self):
+        self.task_session.task_server.task_given.return_value = False
+        ctd = self.ctd()
+        ttc: message.tasks.TaskToCompute = self.ttc_prepare_and_react(ctd)
+        self.task_session.send.assert_called_once_with(
+            message.tasks.CannotComputeTask(
+                task_to_compute=ttc,
+                reason=message.tasks.CannotComputeTask.REASON.CannotTakeWork,
+            ),
+        )
+
     def test_no_ctd(self, *_):
         # ComputeTaskDef is None -> failure
         self.ttc_prepare_and_react(None)

@@ -22,11 +22,13 @@ class Hypervisor(ABC):
 
     _instance = None
 
-    def __init__(self,
-                 get_config: GetConfigFunction,
-                 vm_name: str = DOCKER_VM_NAME) -> None:
+    def __init__(
+            self,
+            get_config_fn: GetConfigFunction,
+            vm_name: str = DOCKER_VM_NAME
+    ) -> None:
 
-        self._get_config = get_config
+        self._get_config = get_config_fn
         self._vm_name = vm_name
         self._work_dirs: List[Path] = []
 

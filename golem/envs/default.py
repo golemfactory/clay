@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from golem_task_api.envs import DOCKER_CPU_ENV_ID, DOCKER_GPU_ENV_ID
@@ -13,14 +14,19 @@ from golem.task.envmanager import EnvironmentManager
 from golem.task.task_api.docker import DockerTaskApiPayloadBuilder
 
 DOCKER_REPOSITORY = "golemfactory"
+logger = logging.getLogger(__name__)
 
 
 def _register_docker_cpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
     docker_cpu_config = DockerCPUConfig(work_dirs=[Path(work_dir)])
-    docker_cpu_env = NonHypervisedDockerCPUEnvironment(docker_cpu_config)
+    docker_cpu_env = NonHypervisedDockerCPUEnvironment(
+        docker_cpu_config,
+        dev_mode,
+    )
 
     env_manager.register_env(
         docker_cpu_env,
@@ -32,11 +38,14 @@ def _register_docker_cpu_env(
 
 def _register_docker_gpu_env(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
     docker_config_dict = dict(work_dirs=[work_dir])
-    docker_gpu_env = \
-        NonHypervisedDockerGPUEnvironment.default(docker_config_dict)
+    docker_gpu_env = NonHypervisedDockerGPUEnvironment.default(
+        docker_config_dict,
+        dev_mode,
+    )
 
     env_manager.register_env(
         docker_gpu_env,
@@ -53,14 +62,28 @@ def register_built_in_repositories():
 
 def register_environments(
         work_dir: str,
-        env_manager: EnvironmentManager
+        env_manager: EnvironmentManager,
+        dev_mode: bool,
 ) -> None:
-
+    ENVS = [
+        (
+            DOCKER_CPU_ENV_ID,
+            NonHypervisedDockerCPUEnvironment,
+            _register_docker_cpu_env
+        ),
+        (
+            DOCKER_GPU_ENV_ID,
+            NonHypervisedDockerGPUEnvironment,
+            _register_docker_gpu_env
+        ),
+    ]
     from golem.config.active import TASK_API_ENVS
-    if DOCKER_CPU_ENV_ID in TASK_API_ENVS:
-        if NonHypervisedDockerCPUEnvironment.supported().supported:
-            _register_docker_cpu_env(work_dir, env_manager)
-
-    if DOCKER_GPU_ENV_ID in TASK_API_ENVS:
-        if NonHypervisedDockerGPUEnvironment.supported().supported:
-            _register_docker_gpu_env(work_dir, env_manager)
+    for (env_id, env_cls, _register) in ENVS:
+        if env_id not in TASK_API_ENVS:
+            logger.debug('Environment disabled. env_id=%r', env_id)
+            continue
+        if not env_cls.supported().supported:
+            logger.info('Environment not supported. env_id=%r', env_id)
+            continue
+        logger.info('Registering environment. env_id=%r', env_id)
+        _register(work_dir, env_manager, dev_mode)

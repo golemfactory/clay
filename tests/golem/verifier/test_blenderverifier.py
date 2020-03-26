@@ -29,6 +29,7 @@ from tests.golem.verifier.test_utils.helpers import \
 
 logger = logging.getLogger(__name__)
 
+
 @pytest.mark.slow
 @pytest.mark.skipif(
     not is_linux(),
@@ -71,6 +72,7 @@ class TestBlenderVerifier(TempDirFixture):
             # Try again after 3 seconds
             sleep(3)
             self.remove_files()
+        super().tearDown()
 
     def remove_files(self):
         above_tmp_dir = os.path.dirname(self.tempdir)

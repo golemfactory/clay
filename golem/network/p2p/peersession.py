@@ -131,6 +131,13 @@ class PeerSession(BasicSafeSession):
                                         the connection hasn't been
                                         verified yet?
         """
+        logger.debug(
+            '%s.%s.send(send_unverified=%r, msg=%r)',
+            self.__class__.__module__,
+            self.__class__.__qualname__,
+            send_unverified,
+            msg,
+        )
         BasicSafeSession.send(self, msg, send_unverified)
         self.p2p_service.set_last_message(
             "->",
@@ -160,6 +167,11 @@ class PeerSession(BasicSafeSession):
             self.port
         )
         if self.__should_init_handshake():
+            logger.debug(
+                'Initiating handshake with %s:%r',
+                self.address,
+                self.port,
+            )
             self.__send_hello()
 
     def ping(self, interval):
@@ -272,11 +284,6 @@ class PeerSession(BasicSafeSession):
         if self.verified:
             logger.error("Received unexpected Hello message, ignoring")
             return
-
-        # Check if sender is a bootstrap node
-        port = getattr(msg, 'port', None)
-        if (self.address, port) in self.p2p_service.bootstrap_seeds:
-            compare_version(getattr(msg, 'client_ver', None))
 
         if not self.conn.opened:
             return
