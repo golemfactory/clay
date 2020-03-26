@@ -71,11 +71,11 @@ class Acl(abc.ABC):
 
     @abc.abstractmethod
     def disallow(self, node_id: str, timeout_seconds: int) \
-            -> None:
+            -> Union[bool, str]:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def allow(self, node_id: str, persist: bool) -> None:
+    def allow(self, node_id: str, persist: bool) -> Union[bool, str]:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -171,6 +171,7 @@ class _DenyAcl(Acl):
         if persist:
             try:
                 ACLDeniedNodes.get(node_id=node_id)
+                return node_id
             except ACLDeniedNodes.DoesNotExist:
                 peers = self._client.p2pservice.incoming_peers or dict()
                 if node_id in peers:
@@ -180,8 +181,7 @@ class _DenyAcl(Acl):
                 node_db = ACLDeniedNodes(
                     node_id=node_id, node_name=node['node_name'])
                 node_db.save()
-                return True
-            return node_id
+        return True
 
     def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
         logger.info(
@@ -202,7 +202,7 @@ class _DenyAcl(Acl):
                     .delete() \
                     .where(ACLDeniedNodes.node_id == node_id) \
                     .execute()
-            return True
+        return True
 
     def status(self) -> AclStatus:
         _always = self._always
@@ -294,7 +294,7 @@ class _AllowAcl(Acl):
                     .delete() \
                     .where(ACLAllowedNodes.node_id == node_id) \
                     .execute()
-            return True
+        return True
 
     def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
         logger.info(
@@ -316,7 +316,7 @@ class _AllowAcl(Acl):
                 return node_id
             except ACLAllowedNodes.DoesNotExist:
                 node_model.save()
-            return True
+        return True
 
     def status(self) -> AclStatus:
         self._read_list()
