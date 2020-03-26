@@ -1267,8 +1267,10 @@ class TaskServer(
             self.acl_ip.disallow(item, timeout_seconds)
 
     @rpc_utils.expose('net.peer.allow')
-    def allow_node(self, node_id: Union[str, list],
-                   persist: bool = True
+    def allow_node(
+        self, 
+        node_id: Union[str, list],
+        persist: bool = True
     ) -> Tuple[bool, List[str], Optional[str]]:
         results: List[str] = []
         try:
