@@ -1245,8 +1245,8 @@ class TaskServer(
             self,
             node_id: Union[str, list],
             timeout_seconds: int = -1,
-    ) -> Tuple[bool, Optional[str]]:
-        results = []
+    ) -> Tuple[bool, List[str], Optional[str]]:
+        results: List[str] = []
         try:
             if isinstance(node_id, str):
                 node_id = [node_id]
@@ -1256,7 +1256,7 @@ class TaskServer(
                     results.append(result)
             return True, results, None
         except Exception as e:  # pylint: disable=broad-except
-            return False, None, str(e)
+            return False, results, str(e)
 
     @rpc_utils.expose('net.peer.block_ip')
     def disallow_ip(self, ip: Union[str, list],
@@ -1268,8 +1268,8 @@ class TaskServer(
 
     @rpc_utils.expose('net.peer.allow')
     def allow_node(self, node_id: Union[str, list],
-                   persist: bool = True) -> Tuple[bool, Optional[str]]:
-        results = []
+                   persist: bool = True) -> Tuple[bool, List[str], Optional[str]]:
+        results: List[str] = []
         try:
             if isinstance(node_id, str):
                 node_id = [node_id]

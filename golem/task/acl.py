@@ -147,7 +147,7 @@ class _DenyAcl(Acl):
         return True, None
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1) -> None:
+                 timeout_seconds: int = -1) -> Union[bool, str]:
         persist = timeout_seconds < 0
         logger.info(
             'Banned node. node_id=%s, timeout=%ds, persist=%s',
@@ -183,7 +183,7 @@ class _DenyAcl(Acl):
                 return True
             return node_id
 
-    def allow(self, node_id: str, persist: bool = False) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -275,7 +275,7 @@ class _AllowAcl(Acl):
         return False, DenyReason.not_whitelisted
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1) -> None:
+                 timeout_seconds: int = -1) -> Union[bool, str]:
         persist = timeout_seconds < 0
         if persist:
             logger.info(
@@ -296,7 +296,7 @@ class _AllowAcl(Acl):
                     .execute()
             return True
 
-    def allow(self, node_id: str, persist: bool = False) -> None:
+    def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
