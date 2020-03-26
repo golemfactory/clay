@@ -224,7 +224,7 @@ class TestAcl(DatabaseFixture):
         acl = get_acl(self.client)
         acl.disallow('Node1')
         acl.disallow('Node2')
-        self.assertRaises(Exception, acl.disallow, 'Node1')
+        self.assertEqual('Node1', acl.disallow("Node1"))
         acl.allow('Node1')
         acl.allow('Node4', persist=True)
 
@@ -247,8 +247,9 @@ class TestAcl(DatabaseFixture):
 
         acl = setup_acl(self.client, AclRule.deny, ['Node1', 'Node2'])
         acl.disallow('Node1')
-        self.assertRaises(Exception, acl.disallow, 'Node3')
-        self.assertRaises(Exception, acl.disallow, 'Node1')
+        self.assertEqual('Node3', acl.disallow("Node3"))
+        self.assertEqual('Node1', acl.disallow("Node1"))
+        
         acl.allow('Node4')
 
         allowed_nodes = [r[0] for r in acl.status().rules]
