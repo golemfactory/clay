@@ -76,6 +76,9 @@ LOGGING = {
         'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],  # noqa pylint: disable=line-too-long
     },
     'loggers': {
+        'transitions': {
+            'level': 'WARNING',
+        },
         'docker.auth': {
             'level': 'WARNING',
         },
