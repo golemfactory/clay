@@ -566,8 +566,9 @@ class BroadcastProtocol(SafeProtocol):
         db = DataBuffer()
         db.append_len_prefixed_bytes(handshake_bytes)
 
-        self.transport.getHandle()
-        self.transport.write(db.read_all())
+        data = db.read_all()
+        logger.debug('BroadcastProtocol#sendHandshake: %s', data)
+        self.transport.write(data)
         return
 
     def dataReceived(self, data: bytes) -> None:
