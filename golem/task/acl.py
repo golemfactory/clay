@@ -147,7 +147,7 @@ class _DenyAcl(Acl):
         return True, None
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1) -> Union[bool, str]:
+                 timeout_seconds: int = -1) -> bool:
         persist = timeout_seconds < 0
         logger.info(
             'Banned node. node_id=%s, timeout=%ds, persist=%s',
@@ -163,7 +163,7 @@ class _DenyAcl(Acl):
             node_deadlines = self._deny_deadlines[node_id]
 
             if node_deadlines is self._always:
-                return
+                return True
 
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
@@ -183,7 +183,7 @@ class _DenyAcl(Acl):
                 node_db.save()
         return True
 
-    def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
+    def allow(self, node_id: str, persist: bool = False) -> bool:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
