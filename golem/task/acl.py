@@ -71,11 +71,11 @@ class Acl(abc.ABC):
 
     @abc.abstractmethod
     def disallow(self, node_id: str, timeout_seconds: int) \
-            -> Union[bool, str]:
+            -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def allow(self, node_id: str, persist: bool) -> Union[bool, str]:
+    def allow(self, node_id: str, persist: bool) -> bool:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -171,7 +171,7 @@ class _DenyAcl(Acl):
         if persist:
             try:
                 ACLDeniedNodes.get(node_id=node_id)
-                return node_id
+                return False
             except ACLDeniedNodes.DoesNotExist:
                 peers = self._client.p2pservice.incoming_peers or dict()
                 if node_id in peers:
@@ -196,7 +196,7 @@ class _DenyAcl(Acl):
             try:
                 ACLDeniedNodes.get(node_id=node_id)
             except ACLDeniedNodes.DoesNotExist:
-                return node_id
+                return False
             finally:
                 ACLDeniedNodes \
                     .delete() \
@@ -275,7 +275,7 @@ class _AllowAcl(Acl):
         return False, DenyReason.not_whitelisted
 
     def disallow(self, node_id: str,
-                 timeout_seconds: int = -1) -> Union[bool, str]:
+                 timeout_seconds: int = -1) -> bool:
         persist = timeout_seconds < 0
         if persist:
             logger.info(
@@ -288,7 +288,7 @@ class _AllowAcl(Acl):
             try:
                 ACLAllowedNodes.get(node_id=node_id)
             except ACLAllowedNodes.DoesNotExist:
-                return node_id
+                return False
             finally:
                 ACLAllowedNodes \
                     .delete() \
@@ -296,7 +296,7 @@ class _AllowAcl(Acl):
                     .execute()
         return True
 
-    def allow(self, node_id: str, persist: bool = False) -> Union[bool, str]:
+    def allow(self, node_id: str, persist: bool = False) -> bool:
         logger.info(
             'Whitelist node. node_id=%s, persist=%s',
             common.short_node_id(node_id),
@@ -313,7 +313,7 @@ class _AllowAcl(Acl):
         if persist:
             try:
                 ACLAllowedNodes.get(node_id=node_id)
-                return node_id
+                return False
             except ACLAllowedNodes.DoesNotExist:
                 node_model.save()
         return True
