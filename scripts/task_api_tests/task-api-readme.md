@@ -56,7 +56,7 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
 
 App id is the unique identifier of the app including its version.
 You can get the build in app_id's from the logs when starting golem
-`6b39331ac73484ff596447cefdfba9e5` is `golemfactory/blenderapp:0.7.2` the only available option at the time.
+`6b39331ac73484ff596447cefdfba9e5` is `golemfactory/blenderapp:0.7.3` the only available option at the time.
 
 #### golem.name
 
