@@ -10,7 +10,6 @@ import click
 import humanize
 import psutil
 from cpuinfo import get_cpu_info
-from ethereum import slogging
 from portalocker import Lock, LockException
 
 # Export pbr version for peewee_migrate user
@@ -34,19 +33,6 @@ from golem.rpc import (  # noqa
 )
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
-
-# ethereum.slogging and logging compatibility patch
-orig_getLogger = slogging.SManager.getLogger
-
-
-def monkey_patched_getLogger(*args, **kwargs):
-    orig_class = logging.getLoggerClass()
-    result = orig_getLogger(*args, **kwargs)
-    logging.setLoggerClass(orig_class)
-    return result
-
-
-slogging.SManager.getLogger = monkey_patched_getLogger
 
 
 @click.command()
