@@ -1248,11 +1248,11 @@ class TaskServer(
     ) -> Tuple[bool, List[str], Optional[str]]:
         '''
         return Tuple
-        [is_disallow_succeed, list_of_already_disallowed_nodes, err_message]
+        (is_disallow_success, list_of_already_disallowed_nodes, err_message)
 
-        Success: [True, [], None]
-        Success with exist node: [True, ['node_id'], None]
-        Error: [False, [], 'message']
+        Success: (True, [], None)
+        Success with existing node: (True, ['node_id'], None)
+        Error: (False, [], 'message')
         '''
         not_changed: List[str] = []
         try:
