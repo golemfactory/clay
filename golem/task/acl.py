@@ -163,7 +163,7 @@ class _DenyAcl(Acl):
             node_deadlines = self._deny_deadlines[node_id]
 
             if node_deadlines is self._always:
-                return True
+                return False
 
             assert isinstance(node_deadlines, SortedList)
             node_deadlines.add(self._deadline(timeout_seconds))
