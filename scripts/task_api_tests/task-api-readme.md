@@ -16,7 +16,7 @@ Here is an example of a new task-api JSON file.
 ```JSON
 {
     "golem": {
-        "app_id": "daec55c08c9de7b71bf4ec3eb759c83b",
+        "app_id": "6b39331ac73484ff596447cefdfba9e5",
         "name": "",
         "resources": ["/absolute/path/to/resources/file.blend"],
         "max_price_per_hour": "1_000_000_000_000_000_000",
@@ -40,7 +40,7 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
 ```
 ...
     "golem": {
-        "app_id": "daec55c08c9de7b71bf4ec3eb759c83b",
+        "app_id": "6b39331ac73484ff596447cefdfba9e5",
         "name": "",
         "resources": ["/absolute/path/to/resources/file.blend"],
         "max_price_per_hour": "1_000_000_000_000_000_000",
@@ -56,7 +56,7 @@ The golem block of the JSON is meant for the input Golem needs, these are the sa
 
 App id is the unique identifier of the app including its version.
 You can get the build in app_id's from the logs when starting golem
-`daec55c08c9de7b71bf4ec3eb759c83b` is `golemfactory/blenderapp:0.7.2` the only available option at the time.
+`6b39331ac73484ff596447cefdfba9e5` is `golemfactory/blenderapp:0.7.3` the only available option at the time.
 
 #### golem.name
 

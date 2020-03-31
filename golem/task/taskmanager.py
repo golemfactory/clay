@@ -1023,7 +1023,16 @@ class TaskManager(TaskEventListener):
             new_status: SubtaskStatus = SubtaskStatus.restarted,
     ):
         task_id = self.subtask2task_mapping[subtask_id]
-        self.tasks[task_id].restart_subtask(subtask_id)
+        logger.debug(
+            "Restart subtask. subtask_id=%s, new_status=%s, task_id=%s",
+            subtask_id,
+            new_status,
+            task_id,
+        )
+        self.tasks[task_id].restart_subtask(
+            subtask_id,
+            new_state=new_status,
+        )
         task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.computing
         subtask_state = task_state.subtask_states[subtask_id]

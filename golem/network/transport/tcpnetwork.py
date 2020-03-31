@@ -520,8 +520,8 @@ class BroadcastProtocol(SafeProtocol):
             'detectingProtocol',
             'handshaking',
             after=[
-                lambda: self.dataReceived(b''),
                 self.sendHandshake,
+                lambda: self.dataReceived(b''),
             ],
         )
         self.machine.add_transition(
