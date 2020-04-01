@@ -25,10 +25,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{EDA703EA-C007-454D-9DDC-9ADC5836BF62} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{453AB4A3-C2BA-4859-891E-97F239A26395} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.22.2" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.23.0" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -73,7 +73,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiCompsComponent">
     <ROW Component="AIShRegAnswer" ComponentId="{A5AAAB35-1647-4E0D-9EAD-EA32AC226446}" Directory_="APPDIR" Attributes="260" KeyPath="AIShRegAnswer"/>
-    <ROW Component="AI_CustomARPName" ComponentId="{C75EFAB5-E444-48D0-AD3E-EA17BD3D0066}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
+    <ROW Component="AI_CustomARPName" ComponentId="{58F83B0D-3288-48E9-B216-D321A35D30B1}" Directory_="APPDIR" Attributes="260" KeyPath="DisplayName" Options="1"/>
     <ROW Component="AI_ExePath" ComponentId="{E4EBF48B-0937-4467-A8CE-BA9097359940}" Directory_="APPDIR" Attributes="260" KeyPath="AI_ExePath"/>
     <ROW Component="APPDIR" ComponentId="{33DBAA61-0C3E-4C0A-A5B6-FF9575EEB496}" Directory_="APPDIR" Attributes="0"/>
     <ROW Component="NewFolder" ComponentId="{CB07874E-2413-4F94-9D88-DA308652F712}" Directory_="NewFolder_2_Dir" Attributes="0"/>
