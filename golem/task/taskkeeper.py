@@ -24,10 +24,14 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.environments.environmentsmanager import \
-    EnvironmentsManager as OldEnvManager
-from golem.task.envmanager import EnvironmentManager as NewEnvManager
 from golem.task.taskproviderstats import ProviderStatsManager
+
+if typing.TYPE_CHECKING:
+    # pylint:disable=unused-import, ungrouped-imports
+    from golem.environments.environmentsmanager import \
+        EnvironmentsManager as OldEnvManager
+    from golem.task.envmanager import EnvironmentManager as NewEnvManager
+
 
 logger = logging.getLogger(__name__)
 
@@ -327,9 +331,9 @@ class TaskHeaderKeeper:
 
     def __init__(
             self,
-            old_env_manager: OldEnvManager,
+            old_env_manager: 'OldEnvManager',
             # FIXME: rename to `env_manager` when old env manager is removed
-            new_env_manager: NewEnvManager,
+            new_env_manager: 'NewEnvManager',
             node: dt_p2p.Node,
             min_price=0.0,
             remove_task_timeout=180,
