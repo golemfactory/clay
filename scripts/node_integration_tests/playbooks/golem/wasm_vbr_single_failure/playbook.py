@@ -1,8 +1,9 @@
 import time
 from functools import partial
 
-from ...base import NodeTestPlaybook
 from .test_config import NodeId
+
+from ..wasm_vbr_success.playbook import Playbook as NodeTestPlaybook
 
 
 class Playbook(NodeTestPlaybook):
@@ -29,33 +30,7 @@ class Playbook(NodeTestPlaybook):
         return self.call(node_id, 'comp.task.subtasks', self.task_id,
                          on_success=on_success)
 
-    steps = (
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.requestor),
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider),
-        partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider2),
-        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider),
-        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider2),
-
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.requestor),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.provider),
-        partial(NodeTestPlaybook.step_get_network_info,
-                node_id=NodeId.provider2),
-
-        partial(NodeTestPlaybook.step_wait_for_gnt, node_id=NodeId.requestor),
-
-        partial(NodeTestPlaybook.step_connect, node_id=NodeId.provider,
-                target_node=NodeId.requestor),
-        partial(NodeTestPlaybook.step_verify_connection,
-                node_id=NodeId.requestor, target_node=NodeId.provider),
-
-        partial(NodeTestPlaybook.step_connect, node_id=NodeId.provider2,
-                target_node=NodeId.requestor),
-        partial(NodeTestPlaybook.step_verify_connection,
-                node_id=NodeId.requestor, target_node=NodeId.provider2),
-
-        NodeTestPlaybook.step_get_known_tasks,
+    steps = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,

@@ -5,7 +5,8 @@ from .test_config import NodeId
 
 
 class Playbook(NodeTestPlaybook):
-    steps = (
+
+    initial_steps  = (
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_get_address, node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider),
@@ -13,7 +14,9 @@ class Playbook(NodeTestPlaybook):
         partial(NodeTestPlaybook.step_get_key, node_id=NodeId.provider2),
         partial(NodeTestPlaybook.step_get_address, node_id=NodeId.provider2),
 
+        partial(NodeTestPlaybook.step_configure, node_id=NodeId.requestor),
         partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider),
+        partial(NodeTestPlaybook.step_configure, node_id=NodeId.provider2),
 
         partial(NodeTestPlaybook.step_get_network_info,
                 node_id=NodeId.requestor),
@@ -33,7 +36,12 @@ class Playbook(NodeTestPlaybook):
                 node_id=NodeId.requestor, target_node=NodeId.provider2),
 
         partial(NodeTestPlaybook.step_wait_for_gnt, node_id=NodeId.requestor),
+
         NodeTestPlaybook.step_get_known_tasks,
+    )
+
+    steps = initial_steps + (
+
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
