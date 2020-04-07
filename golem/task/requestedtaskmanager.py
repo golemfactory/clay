@@ -548,7 +548,7 @@ class RequestedTaskManager:
         task_outputs_dir = self._task_dir(task_id).task_outputs_dir
 
         for entry in task_outputs_dir.iterdir():
-            entry.resolve().replace(user_output_dir / entry.name)
+            shutil.move(entry.resolve(), user_output_dir/entry.name)
 
     async def abort_task(self, task_id: TaskId) -> None:
         task = RequestedTask.get(RequestedTask.task_id == task_id)
