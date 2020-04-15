@@ -238,6 +238,8 @@ class TaskComputerAdapter:
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if self._old_computer.has_assigned_task():
             return self._old_computer.get_progress()
+        if self._new_computer.has_assigned_task():
+            return self._new_computer.get_progress()
         return None
 
     def get_environment(self) -> 'Optional[EnvId]':
@@ -300,6 +302,7 @@ class NewTaskComputer:
         self._assigned_task: Optional[NewTaskComputer.AssignedTask] = None
         self._computation: Optional[defer.Deferred] = None
         self._app_client: Optional[ProviderAppClient] = None
+        self._start_time: Optional[int] = None
 
     def has_assigned_task(self) -> bool:
         return self._assigned_task is not None
@@ -344,6 +347,8 @@ class NewTaskComputer:
     def compute(self) -> defer.Deferred:
         assigned_task = self._assigned_task
         assert assigned_task is not None
+
+        self._start_time = time.time()
 
         compute_future = asyncio.ensure_future(
             self._create_client_and_compute())
@@ -437,6 +442,7 @@ class NewTaskComputer:
             )
             self._computation = None
             self._assigned_task = None
+            self._start_time = None
             app_client = self._app_client
             self._app_client = None
             if not success and app_client is not None:
@@ -452,6 +458,16 @@ class NewTaskComputer:
     def task_interrupted(self) -> None:
         if self.has_assigned_task() and self._computation:
             self._computation.cancel()
+
+    def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
+        if not self._is_computing():
+            return None
+        return ComputingSubtaskStateSnapshot(
+            subtask_id=self._assigned_task.subtask_id,
+            progress=0,
+            seconds_to_timeout=deadline_to_timeout(self._assigned_task.deadline),
+            running_time_seconds=time.time() - self._start_time,
+        )
 
     def get_current_computing_env(self) -> 'Optional[EnvId]':
         if self._assigned_task is None:
