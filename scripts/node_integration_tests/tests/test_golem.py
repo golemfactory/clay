@@ -129,3 +129,7 @@ class GolemNodeTest(NodeTestBase):
 
     def test_wasm_vbr_crash_provider_side(self):
         self._run_test('golem.wasm_vbr_crash_provider_side')
+
+    @unittest.skip("fails on 0.23.0")
+    def test_wasm_vbr_simultaneous(self):
+        self._run_test('golem.wasm_vbr_simultaneous')
